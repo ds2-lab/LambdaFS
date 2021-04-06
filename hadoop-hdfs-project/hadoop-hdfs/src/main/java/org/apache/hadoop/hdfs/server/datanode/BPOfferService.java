@@ -142,7 +142,7 @@ class BPOfferService implements Runnable {
   private BPServiceActor blkReportHander = null;
   private List<ActiveNode> nnList = Collections.synchronizedList(new ArrayList<ActiveNode>());
   private List<InetSocketAddress> blackListNN = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
-//  private Object nnListSync = new Object();
+  // private Object nnListSync = new Object();
   private AtomicInteger rpcRoundRobinIndex = new AtomicInteger(0);
   // you have bunch of NNs, which one to send the incremental block report
   private AtomicInteger refreshNNRoundRobinIndex = new AtomicInteger(0);
@@ -528,7 +528,7 @@ class BPOfferService implements Runnable {
   public boolean otherActorsConnectedToNNs(BPServiceActor skip){
     try{
       readLock();
-      for (BPServiceActor actor : bpServices) {
+      for (BPServiceActor actor : bpServices) {int
         if(actor != skip){
           if (actor.connectedToNN()) {
             return true;

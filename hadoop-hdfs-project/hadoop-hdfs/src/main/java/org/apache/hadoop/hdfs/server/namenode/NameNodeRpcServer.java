@@ -17,6 +17,13 @@
  */
 package org.apache.hadoop.hdfs.server.namenode;
 
+// Used for latency benchmark.
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.mysql.clusterj.annotation.Column;
+import com.mysql.clusterj.annotation.PersistenceCapable;
+import com.mysql.clusterj.annotation.PrimaryKey;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.BlockingService;
 import io.hops.leader_election.node.ActiveNode;
@@ -90,6 +97,7 @@ import org.slf4j.Logger;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.sql.*;
 import java.util.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
@@ -415,7 +423,204 @@ class NameNodeRpcServer implements NamenodeProtocols {
     checkNNStartup();
     namesystem.cancelDelegationToken(token);
   }
-  
+
+  private ArrayList<User> userCache;
+  /**
+   * Used to test the performance of HopsFS and NDB for our latency benchmark.
+   * @param connectionUrl The URL to be used to connect to the MySQL database.
+   * @param dataSource Indicates whether to retrieve that data from NDB regardless of whether
+   *                   or not it is in the local cache, or if we can use the local cache.
+   * @param query The query to be executed.
+   * @param id The ID of the desired user.
+   */
+  @Override
+  public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException {
+    JsonObject response = new JsonObject();
+
+    if (id >= 0 && dataSource != null && dataSource != "FROM_NDB") {
+      System.out.println("Checking cache for user with ID " + id + " before executing query...");
+      for (User user : userCache) {
+        if (user.getId() == id) {
+          System.out.println("Found user: ");
+          System.out.println(user.toString());
+          response.add("RESULT", packageUserAsJson(user));
+          response.addProperty("RETRIEVED-FROM", "LOCAL CACHE");
+          response.addProperty("WARM", "N/A");
+          return response;
+        }
+      }
+    }
+
+    ArrayList<User> results = executeQuery(connectionUrl, query);
+
+    JsonArray resultsArrayJson = new JsonArray();
+    for (User user : results) {
+      resultsArrayJson.add(packageUserAsJson(user));
+    }
+
+    response.add("RESULT", resultsArrayJson);
+    response.addProperty("RETRIEVED-FROM", "NDB");
+
+    response.addProperty("WARM", "N/A");
+    return response;
+  }
+
+  private ArrayList<User> executeQuery(String connectionUrl, String query) throws SQLException {
+    ResultSet resultSet = null;
+
+    Properties info = new Properties();
+    info.put("user", "user");
+    info.put("password", "password");
+    Connection connection = DriverManager.getConnection(connectionUrl, info);
+
+    if (connection == null) {
+      System.out.println("ERROR: Failed to establish connection to MySQL database.");
+      System.exit(1);
+    }
+
+    ArrayList<User> resultsList = new ArrayList<User>();
+
+    try {
+      Statement statement = connection.createStatement();
+      System.out.println("Successfully connected.");
+      System.out.println("Executing query now...");
+
+      resultSet = statement.executeQuery(query);
+
+      System.out.println("Executed query. Displaying results now...");
+
+      // Print results from select statement
+      while (resultSet.next()) {
+        // Apparently columns are 1-indexed and not 0-indexed because it's cool to
+        // not follow established conventions.
+        String result = String.format("%d - %s %s - %s, Department of %s",
+                resultSet.getInt(1), resultSet.getString(2), resultSet.getString(3),
+                resultSet.getString(4), resultSet.getString(5));
+
+        User user = new UserEntry(resultSet.getInt(1), resultSet.getString(2), resultSet.getString(3),
+                resultSet.getString(4), resultSet.getString(5));
+
+        System.out.println(result);
+        resultsList.add(user);
+
+        if (!userCache.contains(user)) {
+          System.out.println("Adding user " + user.getId() + " - " + user.getFirstName() + " " + user.getLastName() + " to local cache.");
+          userCache.add(user);
+          System.out.println("Cache size after adding user " + user.getId() + ": " + userCache.size());
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      if (connection != null)
+        connection.close();
+    }
+
+    return resultsList;
+  }
+
+  public static class UserEntry implements User {
+    public int id;
+    public String firstName;
+    public String lastName;
+    public String position;
+    public String department;
+
+    public UserEntry(int id, String firstName, String lastName, String position, String department) {
+      this.id = id;
+      this.firstName = firstName;
+      this.lastName = lastName;
+      this.position = position;
+      this.department = department;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == null)
+        return false;
+
+      if (!(obj instanceof User))
+        return false;
+
+      User other = (User)obj;
+
+      return this.id == other.getId() && this.firstName.equals(other.getFirstName()) &&
+              this.getLastName().equals(other.getLastName()) &&
+              this.getPosition().equals(other.getPosition()) &&
+              this.getDepartment().equals(other.getDepartment());
+    }
+
+    @Override
+    public int getId() {
+      return id;
+    }
+
+    @Override
+    public void setId(int id) {
+      this.id = id;
+    }
+
+    @Override
+    public String getFirstName() {
+      return firstName;
+    }
+
+    @Override
+    public void setFirstName(String firstName) {
+      this.firstName = firstName;
+    }
+
+    @Override
+    public String getLastName() {
+      return lastName;
+    }
+
+    @Override
+    public void setLastName(String lastName) {
+      this.lastName = lastName;
+    }
+
+    @Override
+    public String getPosition() {
+      return position;
+    }
+
+    @Override
+    public void setPosition(String position) {
+      this.position = position;
+    }
+
+    @Override
+    public String getDepartment() {
+      return department;
+    }
+
+    @Override
+    public void setDepartment(String department) {
+      this.department = department;
+    }
+
+    @Override
+    public String toString() {
+      return "User<<ID: " + id + ", First Name: " + firstName + ", Last Name: " + lastName + ", Position: " + position + ", Department: " + department + ">>";
+    }
+  }
+
+  /**
+   * Convert the given user to JSON.
+   */
+  private JsonObject packageUserAsJson(User user) {
+    JsonObject jsonObj = new JsonObject();
+
+    jsonObj.addProperty("ID", user.getId());
+    jsonObj.addProperty("FIRST_NAME", user.getFirstName());
+    jsonObj.addProperty("LAST_NAME", user.getLastName());
+    jsonObj.addProperty("POSITION", user.getPosition());
+    jsonObj.addProperty("DEPARTMENT", user.getDepartment());
+
+    return jsonObj;
+  }
+
   @Override // ClientProtocol
   public LocatedBlocks getBlockLocations(String src, long offset, long length)
       throws IOException {

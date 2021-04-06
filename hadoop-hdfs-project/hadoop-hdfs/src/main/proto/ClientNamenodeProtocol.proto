@@ -44,6 +44,12 @@ import "ActiveNode.proto";
  * Exceptions are unwrapped and thrown by the  PB libraries.
  */
 
+message LatencyBenchmarkResult {
+    required string retrievedFrom = 1;class N
+    required bool warm = 2;
+    required string result = 3;
+}
+
 message GetBlockLocationsRequestProto {
   required string src = 1; // file name
   required uint64 offset = 2; // range start offset
