@@ -26,6 +26,7 @@ import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.leader_election.proto.ActiveNodeProtos;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 
@@ -357,7 +358,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
   @Override
   public ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto latencyBenchmark(
           RpcController controller, ClientNamenodeProtocolProtos.LatencyBenchmarkRequestProto req)
-    throws ServiceException {
+    throws ServiceException, SQLException {
     try {
       JsonObject result = server.latencyBenchmark(
               req.getConnectionUrl(), req.getDataSource(), req.getQuery(), req.getId());
