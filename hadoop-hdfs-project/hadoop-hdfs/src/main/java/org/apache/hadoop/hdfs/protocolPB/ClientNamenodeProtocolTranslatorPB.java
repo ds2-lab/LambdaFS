@@ -233,12 +233,12 @@ public class ClientNamenodeProtocolTranslatorPB
 
   @Override
   public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException, IOException {
-    LatencyBenchmarkRequestProto req =
-            LatencyBenchmarkRequestProto.newBuilder().setConnectionUrl(connectionUrl).setDataSource(dataSource)
+    ClientNamenodeProtocolProtos.LatencyBenchmarkRequestProto req =
+            ClientNamenodeProtocolProtos.LatencyBenchmarkRequestProto.newBuilder().setConnectionUrl(connectionUrl).setDataSource(dataSource)
               .setQuery(query).setId(id).build();
 
     try {
-      LatencyBenchmarkResponseProto resp =
+      ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto resp =
               rpcProxy.latencyBenchmark(null, req);
 
       JsonObject response = new JsonObject();

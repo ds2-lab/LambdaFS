@@ -360,7 +360,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
       JsonObject result = server.latencyBenchmark(
               req.getConnectionUrl(), req.getDataSource(), req.getQuery(), req.getId());
 
-      Builder builder = ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto.newBuilder();
+      ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto.Builder builder = ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto.newBuilder();
 
       if (result != null) {
         JsonArray resultArrJson = result.get("RESULT").getAsJsonArray();
