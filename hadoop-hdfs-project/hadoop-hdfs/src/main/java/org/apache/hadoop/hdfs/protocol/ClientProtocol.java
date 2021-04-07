@@ -113,7 +113,7 @@ public interface ClientProtocol {
   // File contents
   ///////////////////////////////////////
 
-  public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException;
+  public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException, IOException;
 
   /**
    * Get locations of the blocks of the specified file within the specified

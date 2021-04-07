@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hdfs.protocolPB;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.ActiveNodePBImpl;
 import io.hops.leader_election.node.SortedActiveNodeList;
@@ -24,6 +26,8 @@ import io.hops.leader_election.node.SortedActiveNodeListPBImpl;
 import io.hops.leader_election.proto.ActiveNodeProtos;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
+
+import java.sql.SQLException;
 import java.util.EnumSet;
 
 
@@ -198,6 +202,7 @@ import static org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos
 public class ClientNamenodeProtocolTranslatorPB
     implements ProtocolMetaInterface, ClientProtocol, Closeable,
     ProtocolTranslator {
+
   final private ClientNamenodeProtocolPB rpcProxy;
 
   static final GetServerDefaultsRequestProto VOID_GET_SERVER_DEFAULT_REQUEST =
@@ -224,6 +229,35 @@ public class ClientNamenodeProtocolTranslatorPB
   @Override
   public void close() {
     RPC.stopProxy(rpcProxy);
+  }
+
+  @Override
+  public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException, IOException {
+    LatencyBenchmarkRequestProto req =
+            LatencyBenchmarkRequestProto.newBuilder().setConnectionUrl(connectionUrl).setDataSource(dataSource)
+              .setQuery(query).setId(id).build();
+
+    try {
+      LatencyBenchmarkResponseProto resp =
+              rpcProxy.latencyBenchmark(null, req);
+
+      JsonObject response = new JsonObject();
+      response.addProperty("RETRIEVED-FROM", resp.getRetrievedFrom());
+
+      JsonArray results = new JsonArray();
+      String[] resultsArr = resp.getResults();
+
+      for (String result : resultsArr) {
+        results.add(result);
+      }
+
+      response.add("RESULT", results);
+
+      return response;
+
+    } catch (ServiceException e) {
+      throw ProtobufHelper.getRemoteException(e);
+    }
   }
 
   @Override
