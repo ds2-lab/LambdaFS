@@ -836,6 +836,7 @@ message InvCachesUserAddedToGroupRequestProto {
 message InvCachesUserAddedToGroupResponseProto { }
 
 service ClientNamenodeProtocol {
+  rpc latencyBenchmark (LatencyBenchmarkRequestProto) returns (LatencyBenchmarkResponseProto);
   rpc getBlockLocations (GetBlockLocationsRequestProto) returns (GetBlockLocationsResponseProto);
   rpc getMissingBlockLocations (GetMissingBlockLocationsRequestProto) returns (GetMissingBlockLocationsResponseProto);
   rpc addBlockChecksum (AddBlockChecksumRequestProto) returns (AddBlockChecksumResponseProto);

@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hdfs.protocolPB;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import io.hops.leader_election.node.ActiveNode;
@@ -344,6 +346,34 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
       if (b != null) {
         builder.setLocations(PBHelper.convert(b)).build();
       }
+      return builder.build();
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  @Override
+  public ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto latencyBenchmark(
+          RpcController controller, ClientNamenodeProtocolProtos.LatencyBenchmarkRequestProto req)
+    throws ServiceException {
+    try {
+      JsonObject result = server.latencyBenchmark(
+              req.getConnectionUrl(), req.getDataSource(), req.getQuery(), req.getId());
+
+      Builder builder = LatencyBenchmarkResponseProto.newBuilder();
+
+      if (result != null) {
+        JsonArray resultArrJson = result.get("RESULT").getAsJsonArray();
+
+        String[] resultArr = new String[resultArrJson.size()];
+
+        for (int i = 0; i < resultArrJson.size(); i++) {
+          resultArr[i] = resultArrJson.get(i);
+        }
+
+        builder.setResult(resultArr).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
+      }
+
       return builder.build();
     } catch (IOException e) {
       throw new ServiceException(e);
