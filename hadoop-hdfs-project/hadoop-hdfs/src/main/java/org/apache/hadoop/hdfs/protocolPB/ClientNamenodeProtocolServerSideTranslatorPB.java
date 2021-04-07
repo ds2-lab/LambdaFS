@@ -358,7 +358,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
   @Override
   public ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto latencyBenchmark(
           RpcController controller, ClientNamenodeProtocolProtos.LatencyBenchmarkRequestProto req)
-    throws ServiceException, SQLException {
+    throws ServiceException {
     try {
       JsonObject result = server.latencyBenchmark(
               req.getConnectionUrl(), req.getDataSource(), req.getQuery(), req.getId());
@@ -380,7 +380,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
       }
 
       return builder.build();
-    } catch (IOException e) {
+    } catch (IOException | SQLException e) {
       throw new ServiceException(e);
     }
   }
