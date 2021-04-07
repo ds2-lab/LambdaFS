@@ -528,7 +528,7 @@ class BPOfferService implements Runnable {
   public boolean otherActorsConnectedToNNs(BPServiceActor skip){
     try{
       readLock();
-      for (BPServiceActor actor : bpServices) {int
+      for (BPServiceActor actor : bpServices) {
         if(actor != skip){
           if (actor.connectedToNN()) {
             return true;
