@@ -49,7 +49,7 @@ message LatencyBenchmarkRequestProto {
     required string connectionUrl = 1;  // How to connect to MySQL database.
     required string dataSource = 2;     // Indicates whether to get data from MySQL or local cache.
     required string query = 3;          // The query to be executed.
-    required int id = 4;                // ID (i.e., MySQL key) of desired data item.
+    required int64 id = 4;                // ID (i.e., MySQL key) of desired data item.
 }
 
 message LatencyBenchmarkResponseProto {
