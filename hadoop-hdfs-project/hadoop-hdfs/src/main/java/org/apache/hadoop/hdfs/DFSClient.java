@@ -27,6 +27,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CACHE_READAHEAD;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CONTEXT;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CONTEXT_DEFAULT;
 
+import com.google.gson.JsonObject;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import java.io.BufferedOutputStream;
@@ -44,6 +45,7 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -1678,6 +1680,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
                                      SafeModeException.class,
                                      UnresolvedPathException.class);
     }
+  }
+
+  public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id)
+          throws IOException, SQLException {
+    return namenode.latencyBenchmark(connectionUrl, dataSource, query, id);
   }
 
   /** Implemented using getFileInfo(src)
