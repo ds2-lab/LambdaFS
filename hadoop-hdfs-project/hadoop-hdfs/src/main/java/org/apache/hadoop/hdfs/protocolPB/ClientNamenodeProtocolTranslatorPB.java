@@ -245,7 +245,7 @@ public class ClientNamenodeProtocolTranslatorPB
       response.addProperty("RETRIEVED-FROM", resp.getRetrievedFrom());
 
       JsonArray results = new JsonArray();
-      String[] resultsArr = resp.getResults();
+      List<String> resultsArr = resp.getResultResult();
 
       for (String result : resultsArr) {
         results.add(result);

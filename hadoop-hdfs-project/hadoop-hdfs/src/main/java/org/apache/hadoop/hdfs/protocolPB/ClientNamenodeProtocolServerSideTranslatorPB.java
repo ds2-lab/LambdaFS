@@ -25,6 +25,8 @@ import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.leader_election.proto.ActiveNodeProtos;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
+
+import java.util.ArrayList;
 import java.util.EnumSet;
 
 import io.hops.metadata.hdfs.entity.MetaStatus;
@@ -365,13 +367,15 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
       if (result != null) {
         JsonArray resultArrJson = result.get("RESULT").getAsJsonArray();
 
-        String[] resultArr = new String[resultArrJson.size()];
+        //String[] resultArr = new String[resultArrJson.size()];
+        ArrayList<String> resultList = new ArrayList<String>(resultArrJson.size());
 
         for (int i = 0; i < resultArrJson.size(); i++) {
-          resultArr[i] = resultArrJson.get(i).getAsString();
+          //resultArr[i] = resultArrJson.get(i).getAsString();
+          resultList.add(resultArrJson.get(i).getAsString());
         }
-
-        builder.setResult(resultArr).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
+        builder.addAllResult(resultList).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
+        //builder.addAllResult(resultArr).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
       }
 
       return builder.build();
