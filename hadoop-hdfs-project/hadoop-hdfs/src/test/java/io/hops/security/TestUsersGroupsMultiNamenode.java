@@ -16,6 +16,7 @@
 package io.hops.security;
 
 
+import com.google.gson.JsonObject;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.GroupDataAccess;
@@ -48,6 +49,7 @@ import org.junit.Test;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -81,6 +83,11 @@ public class TestUsersGroupsMultiNamenode {
       this.id = id;
       this.usersGroupsMapping = usersGroupsMapping;
       UsersGroups.createSyncRow();
+    }
+
+    @Override
+    public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException, IOException {
+      return null;
     }
 
     @Override
