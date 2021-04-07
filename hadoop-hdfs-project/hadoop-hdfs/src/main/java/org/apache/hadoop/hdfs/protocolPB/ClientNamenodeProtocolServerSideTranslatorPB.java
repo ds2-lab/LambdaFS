@@ -360,7 +360,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
       JsonObject result = server.latencyBenchmark(
               req.getConnectionUrl(), req.getDataSource(), req.getQuery(), req.getId());
 
-      Builder builder = LatencyBenchmarkResponseProto.newBuilder();
+      Builder builder = ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto.newBuilder();
 
       if (result != null) {
         JsonArray resultArrJson = result.get("RESULT").getAsJsonArray();
@@ -368,7 +368,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
         String[] resultArr = new String[resultArrJson.size()];
 
         for (int i = 0; i < resultArrJson.size(); i++) {
-          resultArr[i] = resultArrJson.get(i);
+          resultArr[i] = resultArrJson.get(i).getAsString();
         }
 
         builder.setResult(resultArr).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
