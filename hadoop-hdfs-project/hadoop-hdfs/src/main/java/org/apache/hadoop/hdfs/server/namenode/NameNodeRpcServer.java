@@ -437,6 +437,16 @@ class NameNodeRpcServer implements NamenodeProtocols {
   public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException {
     JsonObject response = new JsonObject();
 
+    System.out.println("Performing latency benchmark!");
+    System.out.println("connectionUrl = " + connectionUrl);
+    System.out.println("dataSource = " + dataSource);
+    System.out.println("query = " + query);
+    System.out.println("id = " + id);
+
+    if (userCache == null) {
+      userCache = new ArrayList<>();
+    }
+
     if (id >= 0 && dataSource != null && dataSource != "FROM_NDB") {
       System.out.println("Checking cache for user with ID " + id + " before executing query...");
       for (User user : userCache) {
