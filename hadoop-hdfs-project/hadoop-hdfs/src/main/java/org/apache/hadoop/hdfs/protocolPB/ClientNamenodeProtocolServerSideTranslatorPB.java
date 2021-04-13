@@ -373,7 +373,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
 
         for (int i = 0; i < resultArrJson.size(); i++) {
           //resultArr[i] = resultArrJson.get(i).getAsString();
-          resultList.add(resultArrJson.get(i).getAsString());
+          resultList.add(resultArrJson.get(i).toString());
         }
         builder.addAllResult(resultList).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
         //builder.addAllResult(resultArr).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
