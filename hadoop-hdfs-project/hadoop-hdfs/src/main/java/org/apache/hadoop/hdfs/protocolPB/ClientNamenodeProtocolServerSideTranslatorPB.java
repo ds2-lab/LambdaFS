@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs.protocolPB;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
@@ -373,7 +374,9 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
 
         for (int i = 0; i < resultArrJson.size(); i++) {
           //resultArr[i] = resultArrJson.get(i).getAsString();
-          resultList.add(resultArrJson.get(i).toString());
+          JsonElement elem = resultArrJson.get(i);
+          System.out.println("JsonElement at position " + i + ": " + elem);
+          resultList.add(elem.toString());
         }
         builder.addAllResult(resultList).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
         //builder.addAllResult(resultArr).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
