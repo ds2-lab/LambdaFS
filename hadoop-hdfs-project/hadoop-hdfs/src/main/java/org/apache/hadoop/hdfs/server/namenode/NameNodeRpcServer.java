@@ -447,13 +447,15 @@ class NameNodeRpcServer implements NamenodeProtocols {
       userCache = new ArrayList<>();
     }
 
-    if (id >= 0 && dataSource != null && dataSource != "FROM_NDB") {
+    if (id >= 0 && dataSource != null && !dataSource.equals("FROM_NDB")) {
       System.out.println("Checking cache for user with ID " + id + " before executing query...");
       for (User user : userCache) {
         if (user.getId() == id) {
           System.out.println("Found user: ");
           System.out.println(user.toString());
-          response.add("RESULT", packageUserAsJson(user));
+          JsonArray resultArr = new JsonArray();
+          resultArr.add(packageUserAsJson(user));
+          response.add("RESULT", resultArr);
           response.addProperty("RETRIEVED-FROM", "LOCAL CACHE");
           response.addProperty("WARM", "N/A");
           return response;
