@@ -443,16 +443,25 @@ class NameNodeRpcServer implements NamenodeProtocols {
     System.out.println("query = " + query);
     System.out.println("id = " + id);
 
+    LOG.info("Performing latency benchmark!");
+    LOG.debug("connectionUrl = " + connectionUrl);
+    LOG.debug("dataSource = \"" + dataSource + "\"");
+    LOG.debug("query = " + query);
+    LOG.debug("id = " + id);
+
     if (userCache == null) {
       userCache = new ArrayList<>();
     }
 
     if (id >= 0 && dataSource != null && !dataSource.equals("FROM_NDB")) {
       System.out.println("Checking cache for user with ID " + id + " before executing query...");
+      LOG.debug("Checking cache for user with ID " + id + " before executing query...");
       for (User user : userCache) {
         if (user.getId() == id) {
           System.out.println("Found user: ");
+          LOG.debug("Found user: ");
           System.out.println(user.toString());
+          LOG.debug(user.toString());
           JsonArray resultArr = new JsonArray();
           resultArr.add(packageUserAsJson(user));
           response.add("RESULT", resultArr);
@@ -474,6 +483,9 @@ class NameNodeRpcServer implements NamenodeProtocols {
     response.addProperty("RETRIEVED-FROM", "NDB");
 
     response.addProperty("WARM", "N/A");
+
+    System.out.println("Returning the following object from RPC Server latency benchmark: " + response.toString());
+    LOG.debug("Returning the following object from RPC Server latency benchmark: " + response.toString());
     return response;
   }
 
@@ -487,6 +499,7 @@ class NameNodeRpcServer implements NamenodeProtocols {
 
     if (connection == null) {
       System.out.println("ERROR: Failed to establish connection to MySQL database.");
+      LOG.error("Failed to establish connection to MySQL database.");
       System.exit(1);
     }
 
@@ -497,9 +510,13 @@ class NameNodeRpcServer implements NamenodeProtocols {
       System.out.println("Successfully connected.");
       System.out.println("Executing query now...");
 
+      LOG.debug("Successfully connected.");
+      LOG.debug("Executing query now...");
+
       resultSet = statement.executeQuery(query);
 
       System.out.println("Executed query. Displaying results now...");
+      LOG.debug("Executed query. Displaying results now...");
 
       // Print results from select statement
       while (resultSet.next()) {
@@ -512,13 +529,16 @@ class NameNodeRpcServer implements NamenodeProtocols {
         User user = new UserEntry(resultSet.getInt(1), resultSet.getString(2), resultSet.getString(3),
                 resultSet.getString(4), resultSet.getString(5));
 
-        System.out.println(result);
+        System.out.println("Result from query = " + result);
+        LOG.debug("Result from query = " + result);
         resultsList.add(user);
 
         if (!userCache.contains(user)) {
           System.out.println("Adding user " + user.getId() + " - " + user.getFirstName() + " " + user.getLastName() + " to local cache.");
+          System.out.println("Adding user " + user.getId() + " - " + user.getFirstName() + " " + user.getLastName() + " to local cache.");
           userCache.add(user);
-          System.out.println("Cache size after adding user " + user.getId() + ": " + userCache.size());
+          LOG.debug("Cache size after adding user " + user.getId() + ": " + userCache.size());
+          LOG.debug("Cache size after adding user " + user.getId() + ": " + userCache.size());
         }
       }
     } catch (SQLException e) {
