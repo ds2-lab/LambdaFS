@@ -19,6 +19,7 @@ package org.apache.hadoop.hdfs.server.namenode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.hops.StorageConnector;
 import io.hops.exception.StorageException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
@@ -26,7 +27,9 @@ import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.HdfsVariables;
+import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
 import io.hops.metadata.hdfs.dal.LeaseCreationLocksDataAccess;
+import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.security.HopsUGException;
@@ -269,7 +272,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private AtomicBoolean started = new AtomicBoolean(false);
 
   public static JsonObject main(JsonObject args) {
-    System.out.println("Function execution started.");
+    LOG.info("Function execution started.");
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
     String[] commandLineArguments;
@@ -297,7 +300,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       try {
         nameNodeInstance = startServerlessNameNode(commandLineArguments);
       } catch (Exception ex) {
-        LOG.error("Encountered exception wihle initializing the name node.", ex);
+        LOG.error("Encountered exception while initializing the name node.", ex);
         response.addProperty("EXCEPTION", ex.toString());
       }
     }
@@ -421,6 +424,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     try {
       StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
       ServerlessNameNode nameNode = createNameNode(commandLineArgs, null);
+
+      // Retrieve the DataNodes from intermediate storage.
+      LOG.info("Retrieving list of DataNodes from intermediate storage now...");
+      DataNodeDataAccess<DataNodeMeta> dataAccess = (DataNodeDataAccess<DataNodeMeta>)
+              HdfsStorageFactory.getDataAccess(DataNodeMeta.class);
+      List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
+      LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
+
+      for (DataNodeMeta dataNodeMeta : dataNodes) {
+        LOG.info("Discovered " + dataNodeMeta.toString());
+      }
 
       if (nameNode == null) {
         System.out.println("ERROR: NameNode is null. Failed to create and/or initialize the Serverless NameNode.");

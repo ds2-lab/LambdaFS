@@ -15,6 +15,8 @@ import io.hops.metadata.ndb.wrapper.HopsSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import javax.xml.crypto.Data;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDataAccess<DataNodeMeta> {
@@ -110,17 +112,53 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
     }
 
     /**
+     * Retrieve all of the DataNodes stored in intermediate storage.
+     * @return A list containing all of the DataNodes stored in the intermediate storage.
+     */
+    @Override
+    public List<DataNodeMeta> getAllDataNodes() throws StorageException {
+        HopsSession session = connector.obtainSession();
+        HopsQueryBuilder queryBuilder = session.getQueryBuilder();
+
+        HopsQueryDomainType<DataNodeDTO> queryDomainType = queryBuilder.createQueryDefinition(DataNodeDTO.class);
+        HopsQuery<DataNodeDTO> query = session.createQuery(queryDomainType);
+        List<DataNodeDTO> resultsRaw = query.getResultList();
+
+        List<DataNodeMeta> results = new ArrayList<DataNodeMeta>();
+
+        // Convert each DataNodeDTO object to a DataNodeMeta object and add it to the list.
+        for (DataNodeDTO dataNodeDTO : resultsRaw) {
+            results.add(convert(dataNodeDTO));
+        }
+
+        return results;
+    }
+
+    /**
+     * Convert the given {@link io.hops.metadata.ndb.dalimpl.hdfs.DataNodeClusterJ.DataNodeDTO} instance
+     * to an object of type {@link io.hops.metadata.hdfs.entity.DataNodeMeta}.
+     * @param src The DataNodeDTO source object.
+     * @return An instance of DataNodeMeta whose instance variables have been populated from the {@code src} parameter.
+     */
+    private DataNodeMeta convert(DataNodeDTO src) {
+        return new DataNodeMeta(
+                src.getDatanodeUuid(), src.getHostname(), src.getIpAddress(),
+                src.getXferPort(), src.getInfoPort(), src.getIpcPort()
+        );
+    }
+
+    /**
      * Copy the state from the given {@link io.hops.metadata.hdfs.entity.DataNodeMeta} instance to the given
      * {@link io.hops.metadata.ndb.dalimpl.hdfs.DataNodeClusterJ.DataNodeDTO} instance.
-     * @param dataNodeDTO The destination object.
-     * @param dataNode The source object.
+     * @param dest The DataNodeDTO destination object.
+     * @param src The DataNodeMeta source object.
      */
-    private void copyState(DataNodeDTO dataNodeDTO, DataNodeMeta dataNode) {
-        dataNodeDTO.setDatanodeUuid(dataNode.getDatanodeUuid());
-        dataNodeDTO.setHostname(dataNode.getHostname());
-        dataNodeDTO.setIpAddr(dataNode.getIpAddress());
-        dataNodeDTO.setXferPort(dataNode.getXferPort());
-        dataNodeDTO.setInfoPort(dataNode.getInfoPort());
-        dataNodeDTO.setIpcPort(dataNode.getIpcPort());
+    private void copyState(DataNodeDTO dest, DataNodeMeta src) {
+        dest.setDatanodeUuid(src.getDatanodeUuid());
+        dest.setHostname(src.getHostname());
+        dest.setIpAddr(src.getIpAddress());
+        dest.setXferPort(src.getXferPort());
+        dest.setInfoPort(src.getInfoPort());
+        dest.setIpcPort(src.getIpcPort());
     }
 }
