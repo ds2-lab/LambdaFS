@@ -18,7 +18,6 @@
  */
 package io.hops.metadata.ndb.mysqlserver;
 
-import com.mysql.jdbc.exceptions.MySQLIntegrityConstraintViolationException;
 import io.hops.exception.StorageException;
 
 import java.sql.Connection;
