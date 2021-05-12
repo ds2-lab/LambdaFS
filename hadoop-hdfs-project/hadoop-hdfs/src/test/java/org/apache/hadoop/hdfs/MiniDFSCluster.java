@@ -69,7 +69,7 @@ import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsVolumeSpi;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.FsDatasetUtil;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.FsVolumeImpl;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeAdapter;
 import org.apache.hadoop.hdfs.server.protocol.BlockReport;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
@@ -95,7 +95,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.channels.FileChannel;
-import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -534,12 +533,12 @@ public class MiniDFSCluster {
    * Stores the information related to a namenode in the cluster
    */
   static class NameNodeInfo {
-    final NameNode nameNode;
+    final ServerlessNameNode serverlessNameNode;
     final Configuration conf;
     final String nnId;
 
-    NameNodeInfo(NameNode nn, String nnId, Configuration conf) {
-      this.nameNode = nn;
+    NameNodeInfo(ServerlessNameNode nn, String nnId, Configuration conf) {
+      this.serverlessNameNode = nn;
       this.nnId = nnId;
       this.conf = conf;
     }
@@ -927,17 +926,17 @@ public class MiniDFSCluster {
     List<String> nnhttpAddresses = Lists.newArrayList();
     List<String> nnhttpsAddresses = Lists.newArrayList();
     for (NameNodeInfo nameNodeInfo : nameNodes) {
-      nnRpcs.add(nameNodeInfo.nameNode.getNameNodeAddressHostPortString());
-      if (nameNodeInfo.nameNode.getHttpAddress() != null) {
+      nnRpcs.add(nameNodeInfo.serverlessNameNode.getNameNodeAddressHostPortString());
+      if (nameNodeInfo.serverlessNameNode.getHttpAddress() != null) {
         nnhttpAddresses.add(
-            NetUtils.getHostPortString(nameNodeInfo.nameNode.getHttpAddress()));
+            NetUtils.getHostPortString(nameNodeInfo.serverlessNameNode.getHttpAddress()));
       }
-      if (nameNodeInfo.nameNode.getHttpsAddress() != null) {
+      if (nameNodeInfo.serverlessNameNode.getHttpsAddress() != null) {
         nnhttpsAddresses.add(
-            NetUtils.getHostPortString(nameNodeInfo.nameNode.getHttpsAddress()));
+            NetUtils.getHostPortString(nameNodeInfo.serverlessNameNode.getHttpsAddress()));
       }
       nnServiceRpcs.add(NetUtils
-          .getHostPortString(nameNodeInfo.nameNode.getServiceRpcAddress()));
+          .getHostPortString(nameNodeInfo.serverlessNameNode.getServiceRpcAddress()));
     }
 
     String rpcAddresses = DFSUtil.joinNameNodesHostPortString(nnRpcs);
@@ -999,7 +998,7 @@ public class MiniDFSCluster {
         operation == StartupOption.FORMAT ||
         operation == StartupOption.REGULAR) ? new String[]{} :
         new String[]{operation.getName()};
-    NameNode nn = NameNode.createNameNode(args, nameNodeConf);
+    ServerlessNameNode nn = ServerlessNameNode.createNameNode(args, nameNodeConf);
     if (operation == StartupOption.RECOVER) {
       return;
     }
@@ -1030,12 +1029,12 @@ public class MiniDFSCluster {
    */
   public URI getURI(int nnIndex) {
     String hostPort =
-        nameNodes[nnIndex].nameNode.getNameNodeAddressHostPortString();
+        nameNodes[nnIndex].serverlessNameNode.getNameNodeAddressHostPortString();
     URI uri = null;
     try {
       uri = new URI("hdfs://" + hostPort);
     } catch (URISyntaxException e) {
-      NameNode.LOG.warn("unexpected URISyntaxException: " + e);
+      ServerlessNameNode.LOG.warn("unexpected URISyntaxException: " + e);
     }
     return uri;
   }
@@ -1437,7 +1436,7 @@ public class MiniDFSCluster {
    * Finalize the namenode. Block pools corresponding to the namenode are
    * finalized on the datanode.
    */
-  private void finalizeNamenode(NameNode nn, Configuration conf)
+  private void finalizeNamenode(ServerlessNameNode nn, Configuration conf)
       throws Exception {
     if (nn == null) {
       throw new IllegalStateException(
@@ -1456,7 +1455,7 @@ public class MiniDFSCluster {
    */
   public void finalizeCluster(int nnIndex, Configuration conf)
       throws Exception {
-    finalizeNamenode(nameNodes[nnIndex].nameNode, nameNodes[nnIndex].conf);
+    finalizeNamenode(nameNodes[nnIndex].serverlessNameNode, nameNodes[nnIndex].conf);
   }
 
   /**
@@ -1473,7 +1472,7 @@ public class MiniDFSCluster {
         throw new IllegalStateException(
             "Attempting to finalize " + "Namenode but it is not running");
       }
-      finalizeNamenode(nnInfo.nameNode, nnInfo.conf);
+      finalizeNamenode(nnInfo.serverlessNameNode, nnInfo.conf);
     }
   }
   
@@ -1484,7 +1483,7 @@ public class MiniDFSCluster {
   /**
    * Gets the started NameNode.  May be null.
    */
-  public NameNode getNameNode() {
+  public ServerlessNameNode getNameNode() {
     checkSingleNameNode();
     return getNameNode(0);
   }
@@ -1507,8 +1506,8 @@ public class MiniDFSCluster {
   /**
    * Gets the NameNode for the index.  May be null.
    */
-  public NameNode getNameNode(int nnIndex) {
-    return nameNodes[nnIndex].nameNode;
+  public ServerlessNameNode getNameNode(int nnIndex) {
+    return nameNodes[nnIndex].serverlessNameNode;
   }
   
   /**
@@ -1518,11 +1517,11 @@ public class MiniDFSCluster {
    */
   public FSNamesystem getNamesystem() {
     checkSingleNameNode();
-    return NameNodeAdapter.getNamesystem(nameNodes[0].nameNode);
+    return NameNodeAdapter.getNamesystem(nameNodes[0].serverlessNameNode);
   }
   
   public FSNamesystem getNamesystem(int nnIndex) {
-    return NameNodeAdapter.getNamesystem(nameNodes[nnIndex].nameNode);
+    return NameNodeAdapter.getNamesystem(nameNodes[nnIndex].serverlessNameNode);
   }
 
   /**
@@ -1564,14 +1563,14 @@ public class MiniDFSCluster {
    * caller supplied port is not necessarily the actual port used.
    */
   public int getNameNodePort(int nnIndex) {
-    return nameNodes[nnIndex].nameNode.getNameNodeAddress().getPort();
+    return nameNodes[nnIndex].serverlessNameNode.getNameNodeAddress().getPort();
   }
 
   /**
    * @return the service rpc port used by the NameNode at the given index.
    */
   public int getNameNodeServicePort(int nnIndex) {
-    return nameNodes[nnIndex].nameNode.getServiceRpcAddress().getPort();
+    return nameNodes[nnIndex].serverlessNameNode.getServiceRpcAddress().getPort();
   }
 
   /**
@@ -1616,8 +1615,8 @@ public class MiniDFSCluster {
       if (nnInfo == null) {
         continue;
       }
-      NameNode nameNode = nnInfo.nameNode;
-      if (nameNode != null) {
+      ServerlessNameNode serverlessNameNode = nnInfo.serverlessNameNode;
+      if (serverlessNameNode != null) {
         shutdownNameNode(i);
       }
     }
@@ -1658,7 +1657,7 @@ public class MiniDFSCluster {
    * Shutdown the namenode at a given index.
    */
   public synchronized void shutdownNameNode(int nnIndex) {
-    NameNode nn = nameNodes[nnIndex].nameNode;
+    ServerlessNameNode nn = nameNodes[nnIndex].serverlessNameNode;
     if (nn != null) {
       LOG.info("Shutting down the namenode");
       nn.stop();
@@ -1728,7 +1727,7 @@ public class MiniDFSCluster {
     Configuration conf = nameNodes[nnIndex].conf;
     shutdownNameNode(nnIndex);
 
-    NameNode nn = NameNode.createNameNode(args, conf);
+    ServerlessNameNode nn = ServerlessNameNode.createNameNode(args, conf);
     nameNodes[nnIndex] = new NameNodeInfo(nn, nnId, conf);
     if (waitActive) {
       waitClusterUp();
@@ -2009,15 +2008,15 @@ public class MiniDFSCluster {
    * or if waiting for safe mode is disabled.
    */
   public boolean isNameNodeUp(int nnIndex) throws IOException {
-    NameNode nameNode = nameNodes[nnIndex].nameNode;
-    if (nameNode == null) {
+    ServerlessNameNode serverlessNameNode = nameNodes[nnIndex].serverlessNameNode;
+    if (serverlessNameNode == null) {
       return false;
     }
     long[] sizes;
-    sizes = NameNodeAdapter.getStats(nameNode.getNamesystem());
+    sizes = NameNodeAdapter.getStats(serverlessNameNode.getNamesystem());
     boolean isUp = false;
     synchronized (this) {
-      isUp = ((!nameNode.isInSafeMode() || !waitSafeMode) &&
+      isUp = ((!serverlessNameNode.isInSafeMode() || !waitSafeMode) &&
           sizes[ClientProtocol.GET_STATS_CAPACITY_IDX] != 0);
     }
     return isUp;
@@ -2113,10 +2112,10 @@ public class MiniDFSCluster {
    */
   public void waitActive(int nnIndex) throws IOException {
     if (nameNodes.length == 0 || nameNodes[nnIndex] == null ||
-        nameNodes[nnIndex].nameNode == null) {
+        nameNodes[nnIndex].serverlessNameNode == null) {
       return;
     }
-    InetSocketAddress addr = nameNodes[nnIndex].nameNode.getServiceRpcAddress();
+    InetSocketAddress addr = nameNodes[nnIndex].serverlessNameNode.getServiceRpcAddress();
     assert addr.getPort() != 0;
     DFSClient client = new DFSClient(addr, conf);
 

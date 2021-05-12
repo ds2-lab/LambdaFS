@@ -75,7 +75,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -91,7 +90,7 @@ import static org.apache.hadoop.util.ExitUtil.terminate;
 public class BlockManager {
 
   public static final Logger LOG = LoggerFactory.getLogger(BlockManager.class);
-  public static final Logger blockLog = NameNode.blockStateChangeLog;
+  public static final Logger blockLog = ServerlessNameNode.blockStateChangeLog;
 
   private final Namesystem namesystem;
 
@@ -972,7 +971,7 @@ public class BlockManager {
     if (isBlockTokenEnabled()) {
       // Use cached UGI if serving RPC calls.
       b.setBlockToken(blockTokenSecretManager.generateToken(
-          NameNode.getRemoteUser().getShortUserName(),
+          ServerlessNameNode.getRemoteUser().getShortUserName(),
           b.getBlock(), EnumSet.of(mode)));
     }
   }
@@ -2136,7 +2135,7 @@ public class BlockManager {
       final long endTime = Time.monotonicNow();
 
       // Log the block report processing stats from Namenode perspective
-      final NameNodeMetrics metrics = NameNode.getNameNodeMetrics();
+      final NameNodeMetrics metrics = ServerlessNameNode.getNameNodeMetrics();
       if (metrics != null) {
         metrics.addBlockReport((int) (endTime - startTime));
       }
@@ -3520,7 +3519,7 @@ public class BlockManager {
         LOG.info("Number of  over-replicated blocks = " + nrOverReplicated.get()
             + ((nrPostponed.get() > 0) ? (" (" + nrPostponed.get() + " postponed)") : ""));
         LOG.info("Number of blocks being written    = " + nrUnderConstruction.get());
-        NameNode.stateChangeLog
+        ServerlessNameNode.stateChangeLog
             .info("STATE* Replication Queue initialization "
                 + "scan for invalid, over- and under-replicated blocks "
                 + "completed in "

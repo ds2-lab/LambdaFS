@@ -1,0 +1,2 @@
+HopsFS uses custom libndbclient and clusterj jars
+This folder contains all the NDB modified classes and a sample NDB clouster config file usesd in the benchmarks for FAST 2016 paper

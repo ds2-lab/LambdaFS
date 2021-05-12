@@ -41,7 +41,7 @@ import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
 import org.apache.hadoop.hdfs.security.token.block.SecurityTestUtil;
 import org.apache.hadoop.hdfs.server.balancer.TestBalancer;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.token.Token;
@@ -243,7 +243,7 @@ public class TestBlockTokenWithDFS {
       cluster.waitActive();
       assertEquals(numDataNodes, cluster.getDataNodes().size());
 
-      final NameNode nn = cluster.getNameNode();
+      final ServerlessNameNode nn = cluster.getNameNode();
       final BlockManager bm = nn.getNamesystem().getBlockManager();
       final BlockTokenSecretManager sm = bm.getBlockTokenSecretManager();
 
@@ -305,7 +305,7 @@ public class TestBlockTokenWithDFS {
       cluster.waitActive();
       assertEquals(numDataNodes, cluster.getDataNodes().size());
 
-      final NameNode nn = cluster.getNameNode();
+      final ServerlessNameNode nn = cluster.getNameNode();
       final BlockManager bm = nn.getNamesystem().getBlockManager();
       final BlockTokenSecretManager sm = bm.getBlockTokenSecretManager();
 
@@ -359,7 +359,7 @@ public class TestBlockTokenWithDFS {
       cluster.waitActive();
       assertEquals(numDataNodes, cluster.getDataNodes().size());
 
-      final NameNode nn = cluster.getNameNode();
+      final ServerlessNameNode nn = cluster.getNameNode();
       final NamenodeProtocols nnProto = nn.getRpcServer();
       final BlockManager bm = nn.getNamesystem().getBlockManager();
       final BlockTokenSecretManager sm = bm.getBlockTokenSecretManager();

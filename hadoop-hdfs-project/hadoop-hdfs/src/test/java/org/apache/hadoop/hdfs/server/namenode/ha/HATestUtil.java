@@ -29,7 +29,7 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.test.GenericTestUtils;
 
 import com.google.common.base.Supplier;
@@ -69,7 +69,7 @@ public abstract class HATestUtil {
    * Wait for the NameNode to issue any deletions that are already
    * pending (i.e. for the pendingDeletionBlocksCount to go to 0)
    */
-  public static void waitForNNToIssueDeletions(final NameNode nn)
+  public static void waitForNNToIssueDeletions(final ServerlessNameNode nn)
       throws Exception {
     GenericTestUtils.waitFor(new Supplier<Boolean>() {
       @Override

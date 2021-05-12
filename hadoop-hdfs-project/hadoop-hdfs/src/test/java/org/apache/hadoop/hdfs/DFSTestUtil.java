@@ -55,13 +55,12 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
-import com.google.common.annotations.VisibleForTesting;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -102,11 +101,8 @@ import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeLayoutVersion;
 import org.apache.hadoop.hdfs.server.datanode.SimulatedFSDataset;
 import org.apache.hadoop.hdfs.server.datanode.TestTransferRbw;
-import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
-import org.apache.hadoop.hdfs.server.namenode.INode;
-import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
-import org.apache.hadoop.hdfs.server.namenode.LeaseManager;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.*;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.hdfs.tools.DFSAdmin;
 import org.apache.hadoop.io.IOUtils;
@@ -153,9 +149,6 @@ import org.apache.hadoop.hdfs.protocol.LayoutVersion;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsDatasetSpi;
 import org.apache.hadoop.io.nativeio.NativeIO;
-import org.apache.hadoop.test.GenericTestUtils;
-import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.util.Tool;
 import org.junit.Assert;
 import org.junit.Assume;
 
@@ -164,14 +157,7 @@ import io.hops.metadata.hdfs.dal.DirectoryWithQuotaFeatureDataAccess;
 import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
-import org.apache.hadoop.hdfs.server.namenode.DirectoryWithQuotaFeature;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
-import org.apache.hadoop.util.VersionInfo;
-import com.google.common.base.Charsets;
-import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
-import com.google.common.base.Supplier;
-import com.google.common.collect.Lists;
 import io.hops.transaction.EntityManager;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
@@ -246,7 +232,7 @@ public class DFSTestUtil {
       StartupOption.FORMAT.setClusterId("testClusterID");
     }
 
-    NameNode.format(conf);
+    ServerlessNameNode.format(conf);
 
     String fsOwnerShortUserName = UserGroupInformation.getCurrentUser()
         .getShortUserName();
@@ -1767,7 +1753,7 @@ public class DFSTestUtil {
   public static void createKey(String keyName, MiniDFSCluster cluster,
                                int idx, Configuration conf)
       throws NoSuchAlgorithmException, IOException {
-    NameNode nn = cluster.getNameNode(idx);
+    ServerlessNameNode nn = cluster.getNameNode(idx);
     KeyProvider provider = nn.getNamesystem().getProvider();
     final KeyProvider.Options options = KeyProvider.options(conf);
     options.setDescription(keyName);
@@ -1833,9 +1819,9 @@ public class DFSTestUtil {
     GenericTestUtils.setLogLevel(FSNamesystem.LOG, level);
     GenericTestUtils.setLogLevel(BlockManager.LOG, level);
     GenericTestUtils.setLogLevel(LeaseManager.LOG, level);
-    GenericTestUtils.setLogLevel(NameNode.LOG, level);
-    GenericTestUtils.setLogLevel(NameNode.stateChangeLog, level);
-    GenericTestUtils.setLogLevel(NameNode.blockStateChangeLog, level);
+    GenericTestUtils.setLogLevel(ServerlessNameNode.LOG, level);
+    GenericTestUtils.setLogLevel(ServerlessNameNode.stateChangeLog, level);
+    GenericTestUtils.setLogLevel(ServerlessNameNode.blockStateChangeLog, level);
   }
 
  /**

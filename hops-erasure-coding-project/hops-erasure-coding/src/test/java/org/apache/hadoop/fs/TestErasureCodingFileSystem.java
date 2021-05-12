@@ -36,7 +36,7 @@ import org.apache.hadoop.hdfs.TestDfsClient;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeUtil;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -122,8 +122,8 @@ public class TestErasureCodingFileSystem extends ClusterTest {
     getCluster().triggerBlockReports();
 
     ErasureCodingFileSystem ecfs = (ErasureCodingFileSystem) getFileSystem();
-    NameNode nameNode = getCluster().getNameNode();
-    ecfs.initialize(nameNode.getUri(nameNode.getServiceRpcAddress()), conf);
+    ServerlessNameNode serverlessNameNode = getCluster().getNameNode();
+    ecfs.initialize(serverlessNameNode.getUri(serverlessNameNode.getServiceRpcAddress()), conf);
     try {
       FSDataInputStream in = ecfs.open(testFile);
       byte[] buff = new byte[TEST_BLOCK_COUNT * DFS_TEST_BLOCK_SIZE];
@@ -180,8 +180,8 @@ public class TestErasureCodingFileSystem extends ClusterTest {
     }.handle();
 
     ErasureCodingFileSystem ecfs = (ErasureCodingFileSystem) getFileSystem();
-    NameNode nameNode = getCluster().getNameNode();
-    ecfs.initialize(nameNode.getUri(nameNode.getServiceRpcAddress()), conf);
+    ServerlessNameNode serverlessNameNode = getCluster().getNameNode();
+    ecfs.initialize(serverlessNameNode.getUri(serverlessNameNode.getServiceRpcAddress()), conf);
     try {
       FSDataInputStream in = ecfs.open(testFile);
       byte[] buff = new byte[TEST_BLOCK_COUNT * DFS_TEST_BLOCK_SIZE];

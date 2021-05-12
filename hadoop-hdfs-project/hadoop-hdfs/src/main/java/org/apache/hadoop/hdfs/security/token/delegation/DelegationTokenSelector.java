@@ -19,7 +19,7 @@ package org.apache.hadoop.hdfs.security.token.delegation;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.SecurityUtil;
@@ -56,7 +56,7 @@ public class DelegationTokenSelector
     Text serviceName = SecurityUtil.buildTokenService(nnUri);
     final String nnServiceName = conf.get(SERVICE_NAME_KEY + serviceName);
     
-    int nnRpcPort = NameNode.DEFAULT_PORT;
+    int nnRpcPort = ServerlessNameNode.DEFAULT_PORT;
     if (nnServiceName != null) {
       nnRpcPort = NetUtils.createSocketAddr(nnServiceName, nnRpcPort).getPort();
     }

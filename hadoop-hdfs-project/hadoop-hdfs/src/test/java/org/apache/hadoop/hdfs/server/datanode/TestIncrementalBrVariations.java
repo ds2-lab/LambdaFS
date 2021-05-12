@@ -42,7 +42,7 @@ import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsVolumeSpi;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.ReceivedDeletedBlockInfo.BlockStatus;
 import org.apache.hadoop.test.GenericTestUtils;
@@ -80,9 +80,9 @@ public class TestIncrementalBrVariations {
   private DatanodeRegistration dn0Reg;  // DataNodeRegistration for dn0
 
   static {
-    GenericTestUtils.setLogLevel(NameNode.stateChangeLog, Level.ALL);
+    GenericTestUtils.setLogLevel(ServerlessNameNode.stateChangeLog, Level.ALL);
     GenericTestUtils.setLogLevel(BlockManager.blockLog, Level.ALL);
-    GenericTestUtils.setLogLevel(NameNode.blockStateChangeLog, Level.ALL);
+    GenericTestUtils.setLogLevel(ServerlessNameNode.blockStateChangeLog, Level.ALL);
     GenericTestUtils
         .setLogLevel(LogFactory.getLog(FSNamesystem.class), Level.ALL);
     GenericTestUtils.setLogLevel(DataNode.LOG, Level.ALL);

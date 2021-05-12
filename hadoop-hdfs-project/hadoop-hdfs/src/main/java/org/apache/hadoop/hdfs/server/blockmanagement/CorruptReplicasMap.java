@@ -17,27 +17,23 @@
  */
 package org.apache.hadoop.hdfs.server.blockmanagement;
 
-import io.hops.StorageConnector;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.CorruptReplicaDataAccess;
 import io.hops.metadata.hdfs.entity.CorruptReplica;
-import io.hops.metadata.hdfs.entity.Storage;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.LightWeightRequestHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.ipc.Server;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -45,7 +41,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.apache.hadoop.hdfs.protocol.Block;
 
 /**
  * Stores information about all corrupt blocks in the File System.
@@ -102,12 +97,12 @@ public class CorruptReplicasMap {
     }
     
     if (!nodes.keySet().contains(storage.getDatanodeDescriptor())) {
-      NameNode.blockStateChangeLog.info(
+      ServerlessNameNode.blockStateChangeLog.info(
           "BLOCK NameSystem.addToCorruptReplicasMap: {} added as corrupt on "
               + "{} by {} {}", blk.getBlockName(), storage, Server.getRemoteIp(),
           reasonText);
     } else {
-      NameNode.blockStateChangeLog.info(
+      ServerlessNameNode.blockStateChangeLog.info(
           "BLOCK NameSystem.addToCorruptReplicasMap: duplicate requested for" +
               " {} to add as corrupt on {} by {} {}", blk.getBlockName(), storage,
               Server.getRemoteIp(), reasonText);

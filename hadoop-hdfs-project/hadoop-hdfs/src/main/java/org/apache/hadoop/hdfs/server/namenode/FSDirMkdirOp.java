@@ -18,19 +18,15 @@
 package org.apache.hadoop.hdfs.server.namenode;
 
 import io.hops.common.IDsGeneratorFactory;
-import io.hops.exception.StorageException;
-import io.hops.exception.TransactionContextException;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.INodeLock;
 import io.hops.transaction.lock.LockFactory;
-import io.hops.transaction.lock.TransactionLockTypes;
 import io.hops.transaction.lock.TransactionLockTypes.INodeLockType;
 import io.hops.transaction.lock.TransactionLockTypes.INodeResolveType;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.InvalidPathException;
-import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
@@ -56,8 +52,8 @@ class FSDirMkdirOp {
       final PermissionStatus permissions, final boolean createParent) throws IOException {
     final FSDirectory fsd = fsn.getFSDirectory();
 
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* NameSystem.mkdirs: " + srcArg);
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.mkdirs: " + srcArg);
     }
     if (!DFSUtil.isValidName(srcArg)) {
       throw new InvalidPathException(srcArg);
@@ -228,11 +224,11 @@ class FSDirMkdirOp {
         final INode newNode = existing.getLastINode();
     // Directory creation also count towards FilesCreated
     // to match count of FilesDeleted metric.
-    NameNode.getNameNodeMetrics().incrFilesCreated();
+    ServerlessNameNode.getNameNodeMetrics().incrFilesCreated();
 
     String cur = existing.getPath();
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("mkdirs: created directory " + cur);
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("mkdirs: created directory " + cur);
     }
     return existing;
   }

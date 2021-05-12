@@ -99,18 +99,18 @@ import static org.apache.hadoop.util.Time.now;
 
 /**
  * This class is responsible for handling all of the RPC calls to the NameNode.
- * It is created, started, and stopped by {@link NameNode}.
+ * It is created, started, and stopped by {@link ServerlessNameNode}.
  */
 class NameNodeRpcServer implements NamenodeProtocols {
   
-  private static final Logger LOG = NameNode.LOG;
-  private static final Logger stateChangeLog = NameNode.stateChangeLog;
-  private static final Logger blockStateChangeLog = NameNode
+  private static final Logger LOG = ServerlessNameNode.LOG;
+  private static final Logger stateChangeLog = ServerlessNameNode.stateChangeLog;
+  private static final Logger blockStateChangeLog = ServerlessNameNode
       .blockStateChangeLog;
   
   // Dependencies from other parts of NN.
   protected FSNamesystem namesystem;
-  protected final NameNode nn;
+  protected final ServerlessNameNode nn;
   private final NameNodeMetrics metrics;
   
   private final boolean serviceAuthEnabled;
@@ -129,10 +129,10 @@ class NameNodeRpcServer implements NamenodeProtocols {
   
   private final String minimumDataNodeVersion;
 
-  public NameNodeRpcServer(Configuration conf, NameNode nn) throws IOException {
+  public NameNodeRpcServer(Configuration conf, ServerlessNameNode nn) throws IOException {
     this.nn = nn;
     this.namesystem = nn.getNamesystem();
-    this.metrics = NameNode.getNameNodeMetrics();
+    this.metrics = ServerlessNameNode.getNameNodeMetrics();
 
     int handlerCount = conf.getInt(DFS_NAMENODE_HANDLER_COUNT_KEY,
         DFS_NAMENODE_HANDLER_COUNT_DEFAULT);
@@ -369,7 +369,7 @@ class NameNodeRpcServer implements NamenodeProtocols {
   }
 
   private static UserGroupInformation getRemoteUser() throws IOException {
-    return NameNode.getRemoteUser();
+    return ServerlessNameNode.getRemoteUser();
   }
   
   

@@ -137,11 +137,11 @@ public class TestLeaseManager {
     HdfsStorageFactory.setConfiguration(conf);
     int leaseCreationLockRows = conf.getInt(DFSConfigKeys.DFS_LEASE_CREATION_LOCKS_COUNT_KEY,
             DFSConfigKeys.DFS_LEASE_CREATION_LOCKS_COUNT_DEFAULT);
-    NameNode.format(conf);
+    ServerlessNameNode.format(conf);
     FSDirectory dir = Mockito.mock(FSDirectory.class);
     FSNamesystem fsn = Mockito.mock(FSNamesystem.class);
     Mockito.when(fsn.isRunning()).thenReturn(true);
-    NameNode namenode = Mockito.mock(NameNode.class);
+    ServerlessNameNode namenode = Mockito.mock(ServerlessNameNode.class);
     Mockito.when(fsn.getNameNode()).thenReturn(namenode);
     Mockito.when(namenode.getId()).thenReturn(0L);
     SortedActiveNodeList sanl = Mockito.mock(SortedActiveNodeList.class);

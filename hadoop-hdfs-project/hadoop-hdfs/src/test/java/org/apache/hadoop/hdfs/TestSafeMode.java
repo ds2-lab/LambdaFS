@@ -35,7 +35,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeAdapter;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.io.IOUtils;
@@ -207,7 +207,7 @@ public class TestSafeMode {
     cluster.restartNameNode(false);
     cluster.waitActive();
 
-    final NameNode nn = cluster.getNameNode();
+    final ServerlessNameNode nn = cluster.getNameNode();
     
     String status = nn.getNamesystem().getSafemode();
     assertEquals("Safe mode is ON. The reported blocks 0 needs additional " +
@@ -534,7 +534,7 @@ public class TestSafeMode {
       DFSTestUtil.createFile(fs, file2, 2000, (short) 1, 0);
       checkGetBlockLocationsWorks(fs, file1);
       
-      NameNode namenode = cluster.getNameNode();
+      ServerlessNameNode namenode = cluster.getNameNode();
 
       // manually set safemode.
       dfs.setSafeMode(SafeModeAction.SAFEMODE_ENTER);

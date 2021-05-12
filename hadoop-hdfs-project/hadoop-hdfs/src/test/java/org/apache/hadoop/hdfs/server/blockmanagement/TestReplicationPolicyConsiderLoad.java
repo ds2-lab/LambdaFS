@@ -26,7 +26,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
 import org.apache.hadoop.util.VersionInfo;
 import org.junit.AfterClass;
@@ -47,7 +47,7 @@ import static org.junit.Assert.assertTrue;
 
 public class TestReplicationPolicyConsiderLoad {
 
-  private static NameNode namenode;
+  private static ServerlessNameNode namenode;
   private static DatanodeManager dnManager;
   private static List<DatanodeRegistration> dnrList;
   private static DatanodeDescriptor[] dataNodes;
@@ -74,7 +74,7 @@ public class TestReplicationPolicyConsiderLoad {
     DFSTestUtil.formatNameNode(conf);
     storages = DFSTestUtil.createDatanodeStorageInfos(racks);
     dataNodes = DFSTestUtil.toDatanodeDescriptor(storages);
-    namenode = new NameNode(conf);
+    namenode = new ServerlessNameNode(conf);
     int blockSize = 1024;
 
     dnrList = new ArrayList<DatanodeRegistration>();

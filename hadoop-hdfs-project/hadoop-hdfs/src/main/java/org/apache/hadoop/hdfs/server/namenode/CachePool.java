@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import javax.annotation.Nonnull;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
@@ -32,7 +30,6 @@ import org.apache.hadoop.hdfs.protocol.CachePoolInfo;
 import org.apache.hadoop.hdfs.protocol.CachePoolStats;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.util.IntrusiveCollection;
 
 import com.google.common.base.Preconditions;
 import io.hops.exception.StorageException;
@@ -120,13 +117,13 @@ public final class CachePool {
     UserGroupInformation ugi = null;
     String ownerName = info.getOwnerName();
     if (ownerName == null) {
-      ugi = NameNode.getRemoteUser();
+      ugi = ServerlessNameNode.getRemoteUser();
       ownerName = ugi.getShortUserName();
     }
     String groupName = info.getGroupName();
     if (groupName == null) {
       if (ugi == null) {
-        ugi = NameNode.getRemoteUser();
+        ugi = ServerlessNameNode.getRemoteUser();
       }
       groupName = ugi.getPrimaryGroupName();
     }

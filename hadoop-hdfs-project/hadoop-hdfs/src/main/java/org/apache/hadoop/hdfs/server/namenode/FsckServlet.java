@@ -61,7 +61,7 @@ public class FsckServlet extends DfsServlet {
       ugi.doAs(new PrivilegedExceptionAction<Object>() {
         @Override
         public Object run() throws Exception {
-          NameNode nn = NameNodeHttpServer.getNameNodeFromContext(context);
+          ServerlessNameNode nn = NameNodeHttpServer.getNameNodeFromContext(context);
           
           final FSNamesystem namesystem = nn.getNamesystem();
           final BlockManager bm = namesystem.getBlockManager();

@@ -27,7 +27,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.NameNodeProxies;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.tools.GetGroupsBase;
 import org.apache.hadoop.tools.GetUserMappingsProtocol;
 import org.apache.hadoop.util.ToolRunner;
@@ -63,7 +63,7 @@ public class GetGroups extends GetGroupsBase {
   @Override
   protected InetSocketAddress getProtocolAddress(Configuration conf)
       throws IOException {
-    return NameNode.getAddress(conf);
+    return ServerlessNameNode.getAddress(conf);
   }
   
   @Override

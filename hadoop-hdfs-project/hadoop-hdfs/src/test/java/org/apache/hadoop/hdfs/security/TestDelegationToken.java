@@ -33,7 +33,7 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenSecretManager;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeAdapter;
 import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMethods;
 import org.apache.hadoop.hdfs.web.WebHdfsConstants;
@@ -267,7 +267,7 @@ public class TestDelegationToken {
         .setInt(DFSConfigKeys.DFS_NAMENODE_SAFEMODE_EXTENSION_KEY, 30000);
     cluster.setWaitSafeMode(false);
     cluster.restartNameNode();
-    NameNode nn = cluster.getNameNode();
+    ServerlessNameNode nn = cluster.getNameNode();
     assertTrue(nn.isInSafeMode());
     DelegationTokenSecretManager sm =
         NameNodeAdapter.getDtSecretManager(nn.getNamesystem());

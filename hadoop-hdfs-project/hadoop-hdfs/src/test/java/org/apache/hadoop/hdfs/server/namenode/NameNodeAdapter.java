@@ -47,39 +47,39 @@ public class NameNodeAdapter {
   /**
    * Get the namesystem from the namenode
    */
-  public static FSNamesystem getNamesystem(NameNode namenode) {
+  public static FSNamesystem getNamesystem(ServerlessNameNode namenode) {
     return namenode.getNamesystem();
   }
 
   /**
    * Get block locations within the specified range.
    */
-  public static LocatedBlocks getBlockLocations(NameNode namenode, String src,
-      long offset, long length) throws IOException {
+  public static LocatedBlocks getBlockLocations(ServerlessNameNode namenode, String src,
+                                                long offset, long length) throws IOException {
     return namenode.getNamesystem()
         .getBlockLocations("foo", src, offset, length);
   }
   
-  public static HdfsFileStatus getFileInfo(NameNode namenode, String src,
-      boolean resolveLink)
+  public static HdfsFileStatus getFileInfo(ServerlessNameNode namenode, String src,
+                                           boolean resolveLink)
       throws AccessControlException, UnresolvedLinkException, StandbyException,
       IOException {
     return FSDirStatAndListingOp.getFileInfo(namenode.getNamesystem()
             .getFSDirectory(), src, resolveLink);
   }
   
-  public static boolean mkdirs(NameNode namenode, String src,
-      PermissionStatus permissions, boolean createParent)
+  public static boolean mkdirs(ServerlessNameNode namenode, String src,
+                               PermissionStatus permissions, boolean createParent)
       throws UnresolvedLinkException, IOException {
     return namenode.getNamesystem().mkdirs(src, permissions, createParent);
   }
   
-  public static void enterSafeMode(NameNode namenode, boolean resourcesLow)
+  public static void enterSafeMode(ServerlessNameNode namenode, boolean resourcesLow)
       throws IOException {
     namenode.getNamesystem().enterSafeMode(resourcesLow);
   }
   
-  public static void leaveSafeMode(NameNode namenode) throws IOException {
+  public static void leaveSafeMode(ServerlessNameNode namenode) throws IOException {
     namenode.getNamesystem().leaveSafeMode();
   }
   
@@ -89,7 +89,7 @@ public class NameNodeAdapter {
    *
    * @return rpc server
    */
-  public static Server getRpcServer(NameNode namenode) {
+  public static Server getRpcServer(ServerlessNameNode namenode) {
     return ((NameNodeRpcServer) namenode.getRpcServer()).clientRpcServer;
   }
 
@@ -124,7 +124,7 @@ public class NameNodeAdapter {
     namesystem.leaseManager.triggerMonitorCheckNow();
   }
 
-  public static String getLeaseHolderForPath(final NameNode namenode,
+  public static String getLeaseHolderForPath(final ServerlessNameNode namenode,
       final String path) throws IOException {
 
     return (String) new HopsTransactionalRequestHandler(
@@ -147,7 +147,7 @@ public class NameNodeAdapter {
    * @return the timestamp of the last renewal of the given lease,
    * or -1 in the case that the lease doesn't exist.
    */
-  public static long getLeaseRenewalTime(final NameNode nn, final String path)
+  public static long getLeaseRenewalTime(final ServerlessNameNode nn, final String path)
       throws IOException {
 
     HopsTransactionalRequestHandler leaseRenewalTimeHandler =
@@ -191,7 +191,7 @@ public class NameNodeAdapter {
    * @return the number of blocks marked safe by safemode, or -1
    * if safemode is not running.
    */
-  public static int getSafeModeSafeBlocks(NameNode nn) throws IOException {
+  public static int getSafeModeSafeBlocks(ServerlessNameNode nn) throws IOException {
     SafeModeInfo smi = nn.getNamesystem().getSafeModeInfoForTests();
     if (smi == null) {
       return -1;
@@ -202,7 +202,7 @@ public class NameNodeAdapter {
   /**
    * @return Replication queue initialization status
    */
-  public static boolean safeModeInitializedReplQueues(NameNode nn) throws IOException {
+  public static boolean safeModeInitializedReplQueues(ServerlessNameNode nn) throws IOException {
     return nn.getNamesystem().isPopulatingReplQueues();
   }
 }

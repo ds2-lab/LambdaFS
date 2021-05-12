@@ -26,7 +26,6 @@ import org.junit.After;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 import org.apache.hadoop.hdfs.DFSTestUtil;
@@ -175,7 +174,7 @@ public class TestHABasicFailover extends junit.framework.TestCase {
   }
 
   public static boolean doesDataNodesRecognizeLeader(List<DataNode> datanodes,
-      NameNode namenode) {
+      ServerlessNameNode namenode) {
     boolean result = true;
     for (DataNode datanode : datanodes) {
       result = result & (datanode.isConnectedToNN(namenode.getNameNodeAddress())
@@ -184,7 +183,7 @@ public class TestHABasicFailover extends junit.framework.TestCase {
     return result;
   }
 
-  public static void waitLeaderElection(List<DataNode> datanodes, NameNode nn,
+  public static void waitLeaderElection(List<DataNode> datanodes, ServerlessNameNode nn,
       long timeout) throws TimeoutException {
     // wait for the new leader to be elected
     long initTime = System.currentTimeMillis();

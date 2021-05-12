@@ -21,7 +21,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FsShell;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.util.ToolRunner;
 import org.junit.Test;
 
@@ -105,7 +105,7 @@ public class TestDFSShellGenericOptions {
     try {
       ToolRunner.run(shell, args);
       fs = FileSystem
-          .get(NameNode.getUri(NameNode.getAddress(namenode)), shell.getConf());
+          .get(ServerlessNameNode.getUri(ServerlessNameNode.getAddress(namenode)), shell.getConf());
       assertTrue("Directory does not get created",
           fs.isDirectory(new Path("/data")));
       fs.delete(new Path("/data"), true);

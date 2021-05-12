@@ -76,7 +76,7 @@ if "%1" == "--loglevel" (
 goto :eof
 
 :namenode
-  set CLASS=org.apache.hadoop.hdfs.server.namenode.NameNode
+  set CLASS=org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode
   set HADOOP_OPTS=%HADOOP_OPTS% %HADOOP_NAMENODE_OPTS%
   goto :eof
 

@@ -35,7 +35,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.util.Daemon;
@@ -208,7 +208,7 @@ public class BlockManagerTestUtil {
    * @param dnName
    *     the name of the DataNode
    */
-  public static void noticeDeadDatanode(NameNode nn, String dnName)
+  public static void noticeDeadDatanode(ServerlessNameNode nn, String dnName)
       throws IOException {
     FSNamesystem namesystem = nn.getNamesystem();
     DatanodeManager dnm = namesystem.getBlockManager().getDatanodeManager();

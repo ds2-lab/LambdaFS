@@ -51,7 +51,7 @@ import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeAdapter;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.apache.log4j.Level;
@@ -328,7 +328,7 @@ public class TestDecommission {
   }
   
   /* Get DFSClient to the namenode */
-  private static DFSClient getDfsClient(NameNode nn, Configuration conf)
+  private static DFSClient getDfsClient(ServerlessNameNode nn, Configuration conf)
       throws IOException {
     return new DFSClient(nn.getNameNodeAddress(), conf);
   }
@@ -363,8 +363,8 @@ public class TestDecommission {
     ns.getBlockManager().getDatanodeManager().refreshNodes(conf);
   }
   
-  private void verifyStats(NameNode namenode, FSNamesystem fsn,
-      DatanodeInfo info, DataNode node, boolean decommissioning)
+  private void verifyStats(ServerlessNameNode namenode, FSNamesystem fsn,
+                           DatanodeInfo info, DataNode node, boolean decommissioning)
       throws InterruptedException, IOException {
     // Do the stats check over 10 heartbeats
     for (int i = 0; i < 10; i++) {
@@ -659,7 +659,7 @@ public class TestDecommission {
       writeFile(fileSys, file, 1);
       
       FSNamesystem fsn = cluster.getNamesystem(i);
-      NameNode namenode = cluster.getNameNode(i);
+      ServerlessNameNode namenode = cluster.getNameNode(i);
       
       DatanodeInfo decomInfo = decommissionNode(i, null, null,
           AdminStates.DECOMMISSION_INPROGRESS);

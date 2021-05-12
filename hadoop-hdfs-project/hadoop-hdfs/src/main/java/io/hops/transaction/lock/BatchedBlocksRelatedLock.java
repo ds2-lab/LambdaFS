@@ -15,13 +15,6 @@
  */
 package io.hops.transaction.lock;
 
-import io.hops.common.Pair;
-import io.hops.metadata.common.FinderType;
-import io.hops.metadata.hdfs.entity.InvalidatedBlock;
-
-import java.io.IOException;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
-
 abstract class BatchedBlocksRelatedLock extends Lock {
 /*
   private final FinderType finder;

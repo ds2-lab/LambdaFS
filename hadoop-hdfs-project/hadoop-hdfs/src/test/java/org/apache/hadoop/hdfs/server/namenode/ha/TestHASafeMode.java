@@ -44,7 +44,7 @@ import org.apache.hadoop.hdfs.MiniDFSNNTopology;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem.SafeModeInfo;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeAdapter;
 import org.apache.log4j.Level;
 import org.junit.After;
@@ -59,8 +59,8 @@ import org.mockito.internal.util.reflection.Whitebox;
 public class TestHASafeMode {
   private static final Log LOG = LogFactory.getLog(TestHASafeMode.class);
   private static final int BLOCK_SIZE = 1024;
-  private NameNode nn0;
-  private NameNode nn1;
+  private ServerlessNameNode nn0;
+  private ServerlessNameNode nn1;
   private FileSystem fs;
   private MiniDFSCluster cluster;
   

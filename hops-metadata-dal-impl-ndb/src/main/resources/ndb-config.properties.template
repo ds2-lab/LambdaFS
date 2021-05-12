@@ -1,0 +1,25 @@
+#
+#    Do not add spaces in the file. it is also used by some deployment scripts that fail if there are redundant spaces
+#
+com.mysql.clusterj.connectstring=cloud1.sics.se
+com.mysql.clusterj.database=hop_bram_vm
+com.mysql.clusterj.connection.pool.size=1
+com.mysql.clusterj.max.transactions=1024
+#com.mysql.clusterj.connection.pool.nodeids=
+
+io.hops.metadata.ndb.mysqlserver.data_source_class_name = com.mysql.jdbc.jdbc2.optional.MysqlDataSource
+
+io.hops.metadata.ndb.mysqlserver.host=
+io.hops.metadata.ndb.mysqlserver.port=3306
+io.hops.metadata.ndb.mysqlserver.username=
+io.hops.metadata.ndb.mysqlserver.password=
+io.hops.metadata.ndb.mysqlserver.connection_pool_size=1
+
+#size of the session pool. should be altreat as big as the number of active RPC handling Threads in the system
+io.hops.session.pool.size=1000
+
+#Session is reused Random.getNextInt(0,io.hops.session.reuse.count) times and then it is GCed
+#use smaller values if using java 6.
+#if you use java 7 or higer then use G1GC and there is no need to close sessions. use Int.MAX_VALUE
+io.hops.session.reuse.count=2147483647
+

@@ -27,7 +27,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.*;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.BlockReportContext;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.StorageBlockReport;
@@ -114,7 +114,7 @@ public class TestDnRespectsBlockReportSplitThreshold {
   @Test(timeout=300000)
   public void testAlwaysSplit() throws IOException, InterruptedException {
     startUpCluster(0);
-    NameNode nn = cluster.getNameNode();
+    ServerlessNameNode nn = cluster.getNameNode();
     DataNode dn = cluster.getDataNodes().get(0);
 
     // Create a file with a few blocks.
@@ -146,7 +146,7 @@ public class TestDnRespectsBlockReportSplitThreshold {
   @Test(timeout=300000)
   public void testCornerCaseUnderThreshold() throws IOException, InterruptedException {
     startUpCluster(BLOCKS_IN_FILE + 1);
-    NameNode nn = cluster.getNameNode();
+    ServerlessNameNode nn = cluster.getNameNode();
     DataNode dn = cluster.getDataNodes().get(0);
 
     // Create a file with a few blocks.
@@ -178,7 +178,7 @@ public class TestDnRespectsBlockReportSplitThreshold {
   @Test(timeout=300000)
   public void testCornerCaseAtThreshold() throws IOException, InterruptedException {
     startUpCluster(BLOCKS_IN_FILE);
-    NameNode nn = cluster.getNameNode();
+    ServerlessNameNode nn = cluster.getNameNode();
     DataNode dn = cluster.getDataNodes().get(0);
 
     // Create a file with a few blocks.

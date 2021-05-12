@@ -18,7 +18,7 @@ package org.apache.hadoop.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.util.ExitUtil;
 import org.junit.Test;
 
@@ -38,7 +38,7 @@ public class TestFormatAll {
     ExitUtil.disableSystemExit();
     String[] argv = {"-formatAll"};
     try {
-      NameNode.createNameNode(argv, conf);
+      ServerlessNameNode.createNameNode(argv, conf);
     } catch (ExitUtil.ExitException e) {
     } catch (Exception e) {
       fail();
@@ -50,7 +50,7 @@ public class TestFormatAll {
     MiniDFSCluster cluster = null;
     Configuration conf = new HdfsConfiguration();
     try {
-      NameNode.formatAll(conf);
+      ServerlessNameNode.formatAll(conf);
     } catch (Exception e) {
       fail();
     }

@@ -58,7 +58,7 @@ import static org.junit.Assert.assertTrue;
  * blocks/files are also returned.
  */
 public class TestListCorruptFileBlocks {
-  static final Logger LOG = NameNode.stateChangeLog;
+  static final Logger LOG = ServerlessNameNode.stateChangeLog;
 
   /**
    * check if nn.getCorruptFiles() returns a file that has corrupted blocks
@@ -86,7 +86,7 @@ public class TestListCorruptFileBlocks {
       util.createFiles(fs, "/srcdat10");
 
       // fetch bad file list from namenode. There should be none.
-      final NameNode namenode = cluster.getNameNode();
+      final ServerlessNameNode namenode = cluster.getNameNode();
       Collection<FSNamesystem.CorruptFileBlockInfo> badFiles = namenode.
           getNamesystem().listCorruptFileBlocks("/", null);
       assertTrue(
@@ -286,7 +286,7 @@ public class TestListCorruptFileBlocks {
           setMaxSize(1024).build();
       util.createFiles(fs, "/corruptData");
 
-      final NameNode namenode = cluster.getNameNode();
+      final ServerlessNameNode namenode = cluster.getNameNode();
       Collection<FSNamesystem.CorruptFileBlockInfo> corruptFileBlocks =
           namenode.getNamesystem().listCorruptFileBlocks("/corruptData", null);
       int numCorrupt = corruptFileBlocks.size();
@@ -478,7 +478,7 @@ public class TestListCorruptFileBlocks {
       util.waitReplication(fs, "/srcdat2", (short) 1);
 
       // verify that there are no bad blocks.
-      final NameNode namenode = cluster.getNameNode();
+      final ServerlessNameNode namenode = cluster.getNameNode();
       Collection<FSNamesystem.CorruptFileBlockInfo> badFiles = namenode.
           getNamesystem().listCorruptFileBlocks("/srcdat2", null);
       assertTrue(

@@ -57,7 +57,7 @@ public class TestFsLimits {
 
   
   static private FSNamesystem getMockNamesystem() throws IOException {
-    NameNode nn = mock(NameNode.class);
+    ServerlessNameNode nn = mock(ServerlessNameNode.class);
     when(nn.getActiveNameNodes())
         .thenReturn(new SortedActiveNodeListPBImpl(Collections.EMPTY_LIST));
     FSNamesystem fsn = new FSNamesystem(conf,nn);
@@ -70,7 +70,7 @@ public class TestFsLimits {
   private void initFS() throws StorageException, IOException {
     HdfsStorageFactory.setConfiguration(conf);
     assert (HdfsStorageFactory.formatStorage());
-    NameNode.format(conf);
+    ServerlessNameNode.format(conf);
     try {
       UsersGroups.addUser(perms.getUserName());
     } catch (UserAlreadyInGroupException e){}
@@ -81,7 +81,7 @@ public class TestFsLimits {
       UsersGroups.addUserToGroup(perms.getUserName(), perms.getGroupName());
     } catch(UserAlreadyInGroupException e){}
     IDsMonitor.getInstance().start();
-    NameNode.initMetrics(conf, NamenodeRole.NAMENODE);
+    ServerlessNameNode.initMetrics(conf, NamenodeRole.NAMENODE);
     fs = null;
     fsIsReady = true;
   }

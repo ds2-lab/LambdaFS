@@ -1,0 +1,14 @@
+*.iml
+*.ipr
+*.iws
+.idea
+.svn
+.classpath
+.project
+.settings
+target
+build
+*.junit
+ndb-config.properties
+nbactions-os.mac.xml
+nbactions.xml

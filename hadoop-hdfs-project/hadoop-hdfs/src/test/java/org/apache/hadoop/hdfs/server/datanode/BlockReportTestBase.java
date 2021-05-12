@@ -37,7 +37,7 @@ import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.BlockReport;
 import org.apache.hadoop.hdfs.server.protocol.BlockReportContext;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
@@ -632,7 +632,7 @@ public abstract class BlockReportTestBase  {
     REPL_FACTOR = 2;
     startDNandWait(null, false);
 
-    NameNode nn = cluster.getNameNode();
+    ServerlessNameNode nn = cluster.getNameNode();
 
     FSDataOutputStream out = fs.create(filePath, REPL_FACTOR);
     try {

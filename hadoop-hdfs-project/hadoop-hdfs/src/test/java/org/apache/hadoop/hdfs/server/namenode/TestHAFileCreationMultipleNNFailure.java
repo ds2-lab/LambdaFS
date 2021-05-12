@@ -59,7 +59,7 @@ public class TestHAFileCreationMultipleNNFailure
       LogFactory.getLog(TestHAFileCreationMultipleNNFailure.class);
 
   {
-    ((Log4JLogger) NameNode.stateChangeLog).getLogger().setLevel(Level.ALL);
+    ((Log4JLogger) ServerlessNameNode.stateChangeLog).getLogger().setLevel(Level.ALL);
     ((Log4JLogger) LeaseManager.LOG).getLogger().setLevel(Level.ALL);
     ((Log4JLogger) LogFactory.getLog(FSNamesystem.class)).getLogger()
         .setLevel(Level.ALL);

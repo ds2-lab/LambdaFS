@@ -1130,7 +1130,7 @@ public class TestFsck {
       DFSTestUtil.createFile(dfs, path, fileLen, REPL_FACTOR, 1);
       
       // Create an under-replicated file
-      NameNode namenode = cluster.getNameNode();
+      ServerlessNameNode namenode = cluster.getNameNode();
       NetworkTopology nettop =
           cluster.getNamesystem().getBlockManager().getDatanodeManager()
               .getNetworkTopology();
@@ -1205,7 +1205,7 @@ public class TestFsck {
       DFSTestUtil.createFile(dfs, path, fileLen, REPL_FACTOR, 1);
       
       // Create an under-replicated file
-      NameNode namenode = cluster.getNameNode();
+      ServerlessNameNode namenode = cluster.getNameNode();
       NetworkTopology nettop = cluster.getNamesystem().getBlockManager()
           .getDatanodeManager().getNetworkTopology();
       // Add a new node on different rack, so previous blocks' replicas 
@@ -1246,7 +1246,7 @@ public class TestFsck {
     final short NUM_REPLICAS = 1;
 
     Configuration conf = new Configuration();
-    NameNode namenode = mock(NameNode.class);
+    ServerlessNameNode namenode = mock(ServerlessNameNode.class);
     NetworkTopology nettop = mock(NetworkTopology.class);
     Map<String,String[]> pmap = new HashMap<String, String[]>();
     Writer result = new StringWriter();

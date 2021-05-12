@@ -16,7 +16,7 @@
 package io.hops.transaction.lock;
 
 import io.hops.leader_election.node.ActiveNode;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 
 import java.util.Collection;
 
@@ -25,6 +25,6 @@ public final class SubtreeLockHelper {
   public static boolean isSTOLocked(boolean subtreeLocked, long nameNodeId,
                                     Collection<ActiveNode> activeNamenodes) {
     return subtreeLocked &&
-        NameNode.isNameNodeAlive(activeNamenodes, nameNodeId);
+        ServerlessNameNode.isNameNodeAlive(activeNamenodes, nameNodeId);
   }
 }

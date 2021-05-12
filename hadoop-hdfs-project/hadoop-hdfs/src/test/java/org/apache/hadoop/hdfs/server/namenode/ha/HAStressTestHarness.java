@@ -28,7 +28,7 @@ import org.apache.hadoop.hdfs.MiniDFSNNTopology;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManagerTestUtil;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.test.MultithreadedTestUtil.RepeatingTestThread;
 import org.apache.hadoop.test.MultithreadedTestUtil.TestContext;
 
@@ -88,7 +88,7 @@ public class HAStressTestHarness {
           DataNodeTestUtils.triggerHeartbeat(dn);
         }
         for (int i = 0; i < 2; i++) {
-          NameNode nn = cluster.getNameNode(i);
+          ServerlessNameNode nn = cluster.getNameNode(i);
           while (nn == null) {
             nn = cluster.getNameNode(i);
           }

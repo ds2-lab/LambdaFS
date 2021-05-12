@@ -1,26 +1,20 @@
 package org.apache.hadoop.hdfs.server.namenode.ha;
 
-import com.google.common.base.Preconditions;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
-import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.NameNodeProxies;
 import org.apache.hadoop.hdfs.protocol.ClientProtocol;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
-import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
-import org.apache.hadoop.io.retry.FailoverProxyProvider;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.ipc.protobuf.RpcHeaderProtos;
 import org.apache.hadoop.security.UserGroupInformation;
 
 import javax.net.ssl.SSLException;
-import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -73,7 +67,7 @@ public class FailoverProxyHelper {
     ClientProtocol handle = null;
     try {
       handle = (ClientProtocol) NameNodeProxies.createNonHAProxy(conf,
-              NameNode.getAddress(defaultUri), xface, ugi, false).getProxy();
+              ServerlessNameNode.getAddress(defaultUri), xface, ugi, false).getProxy();
       anl = handle.getActiveNamenodesForClient();
     } catch (SSLException e) {
       LOG.error(e, e);
@@ -103,7 +97,7 @@ public class FailoverProxyHelper {
         try {
           LOG.debug("Trying to connect to  " + nn);
           handle = (ClientProtocol) NameNodeProxies.createNonHAProxy(conf,
-                  NameNode.getAddress(nn), xface, ugi, false).getProxy();
+                  ServerlessNameNode.getAddress(nn), xface, ugi, false).getProxy();
           if (handle != null) {
             anl = handle.getActiveNamenodesForClient();
           }

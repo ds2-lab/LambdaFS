@@ -46,7 +46,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.ipc.ProtobufRpcEngine;
@@ -897,7 +897,7 @@ public class DFSAdmin extends FsShell {
   }
 
   /**
-   * Refresh the authorization policy on the {@link NameNode}.
+   * Refresh the authorization policy on the {@link ServerlessNameNode}.
    *
    * @return exitcode 0 on success, non-zero on failure
    * @throws IOException
@@ -924,7 +924,7 @@ public class DFSAdmin extends FsShell {
   }
   
   /**
-   * Refresh the user-to-groups mappings on the {@link NameNode}.
+   * Refresh the user-to-groups mappings on the {@link ServerlessNameNode}.
    *
    * @return exitcode 0 on success, non-zero on failure
    * @throws IOException
@@ -952,7 +952,7 @@ public class DFSAdmin extends FsShell {
   
 
   /**
-   * refreshSuperUserGroupsConfiguration {@link NameNode}.
+   * refreshSuperUserGroupsConfiguration {@link ServerlessNameNode}.
    *
    * @return exitcode 0 on success, non-zero on failure
    * @throws IOException

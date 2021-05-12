@@ -76,7 +76,7 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
 
 public class TestFileTruncate {
   static {
-    GenericTestUtils.setLogLevel(NameNode.stateChangeLog, Level.ALL);
+    GenericTestUtils.setLogLevel(ServerlessNameNode.stateChangeLog, Level.ALL);
   }
   static final Log LOG = LogFactory.getLog(TestFileTruncate.class);
   static final int BLOCK_SIZE = 4;
@@ -108,7 +108,7 @@ public class TestFileTruncate {
     cluster = new MiniDFSCluster.Builder(conf)
         .format(true)
         .numDataNodes(DATANODE_NUM)
-        .nameNodePort(NameNode.DEFAULT_PORT)
+        .nameNodePort(ServerlessNameNode.DEFAULT_PORT)
         .waitSafeMode(true)
         .build();
     fs = cluster.getFileSystem();

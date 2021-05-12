@@ -894,7 +894,7 @@ public final class CacheManager {
     }.handle();
     endTime = Time.monotonicNow();
     // Log the block report processing stats from Namenode perspective
-    final NameNodeMetrics metrics = NameNode.getNameNodeMetrics();
+    final NameNodeMetrics metrics = ServerlessNameNode.getNameNodeMetrics();
     if (metrics != null) {
       metrics.addCacheBlockReport((int) (endTime - startTime));
     }
