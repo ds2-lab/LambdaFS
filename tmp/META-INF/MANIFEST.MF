@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Archiver-Version: Plexus Archiver
+Created-By: Apache Maven
+Built-By: salman
+Build-Jdk: 1.8.0_151
+Extension-Name: clusterj-native
+Implementation-Title: clusterj-native
+Implementation-Version: 7.6.10
+
