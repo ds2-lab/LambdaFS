@@ -140,6 +140,12 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>io.hops.metadata</groupId>
+      <artifactId>hops-metadata-dal</artifactId>
+      <scope>compile</scope>
+      <version>3.2.0.3-SNAPSHOT</version>
+    </dependency>
+    <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-minikdc</artifactId>
       <scope>test</scope>

@@ -55,6 +55,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import io.hops.StorageConnector;
+import io.hops.exception.StorageException;
+import io.hops.metadata.HdfsStorageFactory;
+import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
+import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.security.CertificateLocalizationCtx;
 import io.hops.security.CertificateLocalizationService;
 import io.hops.security.HopsSecurityActionsFactory;
@@ -1249,6 +1254,29 @@ public class DataNode extends ReconfigurableBase
     saslClient = new SaslDataTransferClient(dnConf.conf, 
         dnConf.saslPropsResolver, dnConf.trustedChannelResolver);
     saslServer = new SaslDataTransferServer(dnConf, blockPoolTokenSecretManager);
+
+    LOG.info("Preparing to store DataNode information in intermediate storage...");
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess) HdfsStorageFactory.getDataAccess(DataNodeMeta.class);
+
+    String dataNodeUuid = this.id.getDatanodeUuid();
+
+    DataNodeMeta dataNodeMeta = null;
+
+    try {
+      dataNodeMeta = dataNodeDataAccess.getDataNode(dataNodeUuid);
+    } catch (StorageException ex) {
+      LOG.info("Did not find any DataNodes in intermediate storage with UUID " + dataNodeUuid);
+    }
+
+    // If dataNodeMeta is null, then we just write our metadata to intermediate storage.
+    // If it is non-null, then we will delete the old entry first before writing our latest metadata.
+    if (dataNodeMeta != null) {
+      LOG.info("Deleting old metadata associated with DataNode " + dataNodeUuid);
+      dataNodeDataAccess.removeDataNode(dataNodeUuid);
+    }
+
+
+    dataNodeDataAccess.addDataNode(this.id);
   }
   
   /**
@@ -1373,6 +1401,8 @@ public class DataNode extends ReconfigurableBase
     DatanodeID dnId =
         new DatanodeID(streamingAddr.getAddress().getHostAddress(), hostName,
             storage.getDatanodeUuid(), getXferPort(), getInfoPort(), infoSecurePort, getIpcPort());
+
+
 
     return new DatanodeRegistration(dnId, storageInfo, new ExportedBlockKeys(),
         VersionInfo.getVersion());

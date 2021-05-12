@@ -16,8 +16,22 @@
 package io.hops.metadata.hdfs;
 
 public class TablesDef {
-  public interface BlockLookUpTableDef {
 
+  /**
+   * Defines the MySQL NDB table for the DataNodes.
+   * This table is used by serverless NameNodes to establish connections with the DataNodes.
+   */
+  public interface DataNodesTableDef {
+    String TABLE_NAME = "datanodes";
+    String DATANODE_UUID = "datanode_uuid";
+    String HOSTNAME = "hostname";
+    String IP_ADDR = "ipaddr";
+    String XFER_PORT = "xfer_port";
+    String INFO_PORT = "info_port";
+    String IPC_PORT = "ipc_port";
+  }
+
+  public interface BlockLookUpTableDef {
     String TABLE_NAME = "hdfs_block_lookup_table";
     String BLOCK_ID = "block_id";
     String INODE_ID = "inode_id";

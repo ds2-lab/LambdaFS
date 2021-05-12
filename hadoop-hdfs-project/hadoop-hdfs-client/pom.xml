@@ -37,7 +37,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <scope>provided</scope>
       <exclusions>
         <exclusion>
-          <groupId>io.hops</groupId>
+          <groupId>io.hops.metadata</groupId>
           <artifactId>hops-metadata-dal</artifactId>
         </exclusion>
       </exclusions>

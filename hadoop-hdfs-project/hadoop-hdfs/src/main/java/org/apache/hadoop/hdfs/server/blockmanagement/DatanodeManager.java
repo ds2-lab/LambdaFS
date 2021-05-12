@@ -25,7 +25,10 @@ import com.google.common.net.InetAddresses;
 import io.hops.common.INodeUtil;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
+import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.StorageMap;
+import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
+import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.metadata.hdfs.entity.INodeIdentifier;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
@@ -550,6 +553,12 @@ public class DatanodeManager {
     }
     networktopology.remove(nodeInfo);
     decrementVersionCount(nodeInfo.getSoftwareVersion());
+
+    // Remove the metadata of the datanode from intermediate storage.
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess) HdfsStorageFactory.getDataAccess(DataNodeMeta.class);
+    String dataNodeUuid = nodeInfo.getDatanodeUuid();
+    LOG.info("Removing metadata of DataNode " + dataNodeUuid + " from intermediate storage.");
+    dataNodeDataAccess.removeDataNode(dataNodeUuid);
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("removed datanode " + nodeInfo);
