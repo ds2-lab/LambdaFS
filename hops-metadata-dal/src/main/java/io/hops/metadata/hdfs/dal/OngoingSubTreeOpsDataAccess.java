@@ -30,9 +30,15 @@ public interface OngoingSubTreeOpsDataAccess<T> extends EntityDataAccess {
 
   Collection<T> allOpsToRecoverAsync() throws StorageException;
 
+  Collection<T> allDeadOperations(long[] aliveNNIDs, long time) throws StorageException;
+
+  Collection<T> allSlowActiveOperations(long[] aliveNNIDs, long time) throws StorageException;
+
+  long getLockTime(long inodeID) throws StorageException;
+
   //only for testing
   Collection<T> allOps() throws StorageException;
 
   void prepare(Collection<T> removed, Collection<T> newed,
-      Collection<T> modified) throws StorageException;
+               Collection<T> modified) throws StorageException;
 }

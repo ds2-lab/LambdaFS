@@ -6,7 +6,7 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -25,6 +25,7 @@ import com.mysql.clusterj.annotation.PrimaryKey;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.hdfs.dal.OngoingSubTreeOpsDataAccess;
+import io.hops.metadata.hdfs.entity.Storage;
 import io.hops.metadata.hdfs.entity.SubTreeOperation;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.wrapper.HopsPredicate;
@@ -35,11 +36,12 @@ import io.hops.metadata.ndb.wrapper.HopsQueryDomainType;
 import io.hops.metadata.ndb.wrapper.HopsSession;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
 public class OnGoingSubTreeOpsClusterj
-    implements TablesDef.OnGoingSubTreeOpsDef, OngoingSubTreeOpsDataAccess<SubTreeOperation> {
+        implements TablesDef.OnGoingSubTreeOpsDef, OngoingSubTreeOpsDataAccess<SubTreeOperation> {
 
   @PersistenceCapable(table = TABLE_NAME)
   @PartitionKey(column =  PARTITION_ID)
@@ -57,7 +59,7 @@ public class OnGoingSubTreeOpsClusterj
     @Column(name = NAME_NODE_ID)
     long getNamenodeId();
     void setNamenodeId(long namenodeId);
-    
+
     @Column(name = OP_NAME)
     int getOpName();
     void setOpName(int namenodeId);
@@ -83,24 +85,24 @@ public class OnGoingSubTreeOpsClusterj
   private ClusterjConnector connector = ClusterjConnector.getInstance();
 
   @Override
-  public void prepare(Collection<SubTreeOperation> removed, 
-      Collection<SubTreeOperation> newed, Collection<SubTreeOperation> modified)
+  public void prepare(Collection<SubTreeOperation> removed,
+                      Collection<SubTreeOperation> newed, Collection<SubTreeOperation> modified)
           throws StorageException {
-    
+
     List<OnGoingSubTreeOpsDTO> changes = new ArrayList<>();
     List<OnGoingSubTreeOpsDTO> deletions = new ArrayList<>();
     HopsSession dbSession = connector.obtainSession();
     try {
       for (SubTreeOperation ops : newed) {
         OnGoingSubTreeOpsDTO lTable =
-            dbSession.newInstance(OnGoingSubTreeOpsDTO.class);
+                dbSession.newInstance(OnGoingSubTreeOpsDTO.class);
         createPersistableSubTreeOp(ops, lTable);
         changes.add(lTable);
       }
 
       for (SubTreeOperation ops : modified) {
         OnGoingSubTreeOpsDTO lTable =
-            dbSession.newInstance(OnGoingSubTreeOpsDTO.class);
+                dbSession.newInstance(OnGoingSubTreeOpsDTO.class);
         createPersistableSubTreeOp(ops, lTable);
         changes.add(lTable);
       }
@@ -110,7 +112,7 @@ public class OnGoingSubTreeOpsClusterj
         key[0] = getHash(ops.getPath());
         key[1] = ops.getPath();
         OnGoingSubTreeOpsDTO opsTable =
-            dbSession.newInstance(OnGoingSubTreeOpsDTO.class, key);
+                dbSession.newInstance(OnGoingSubTreeOpsDTO.class, key);
         deletions.add(opsTable);
       }
       if (!deletions.isEmpty()) {
@@ -124,13 +126,13 @@ public class OnGoingSubTreeOpsClusterj
       dbSession.release(changes);
     }
   }
-  
+
   @Override
   public Collection<SubTreeOperation> allOps() throws StorageException {
     HopsSession session = connector.obtainSession();
     HopsQueryBuilder qb = session.getQueryBuilder();
     HopsQuery<OnGoingSubTreeOpsDTO> query =
-        session.createQuery(qb.createQueryDefinition(OnGoingSubTreeOpsDTO.class));
+            session.createQuery(qb.createQueryDefinition(OnGoingSubTreeOpsDTO.class));
     return convertAndRelease(session, query.getResultList());
   }
 
@@ -147,6 +149,90 @@ public class OnGoingSubTreeOpsClusterj
     HopsQuery query = dbSession.createQuery(dobj);
     query.setParameter("asyncLockRecoveryTimeParam", (long)0);
     return convertAndRelease(dbSession, query.getResultList());
+  }
+
+  @Override
+  public Collection<SubTreeOperation> allDeadOperations(long[] aliveNNIDs, long time) throws StorageException {
+    if(aliveNNIDs == null || aliveNNIDs.length == 0){
+      throw new IllegalArgumentException("No alive namenode specified");
+    }
+
+    HopsSession dbSession = connector.obtainSession();
+    HopsQueryBuilder qb = dbSession.getQueryBuilder();
+    HopsQueryDomainType dobj = qb.createQueryDefinition(OnGoingSubTreeOpsDTO.class);
+
+    HopsPredicate pred[] = new HopsPredicate[aliveNNIDs.length];
+    for(int i = 0; i < aliveNNIDs.length; i++ ){
+      pred[i] = dobj.not(dobj.get("namenodeId").equal(dobj.param("namenodeIdParam"+i)));
+    }
+
+    HopsPredicate allCombined = pred[0];
+    for(int i = 1; i < aliveNNIDs.length; i++ ){
+      allCombined = allCombined.and(pred[i]);
+    }
+    allCombined.and(dobj.get("startTime").lessThan(dobj.param("startTimeParam")));
+
+    dobj.where(allCombined);
+    HopsQuery query = dbSession.createQuery(dobj);
+
+    for(int i = 0; i < aliveNNIDs.length; i++ ){
+      query.setParameter("namenodeIdParam"+i, aliveNNIDs[i]);
+    }
+    query.setParameter("startTimeParam", time);
+
+    return convertAndRelease(dbSession, query.getResultList());
+  }
+
+  @Override
+  public Collection<SubTreeOperation> allSlowActiveOperations(long[] aliveNNIDs, long time)
+          throws StorageException {
+    if(aliveNNIDs == null || aliveNNIDs.length == 0){
+      throw new IllegalArgumentException("No alive namenode specified");
+    }
+
+    HopsSession dbSession = connector.obtainSession();
+    HopsQueryBuilder qb = dbSession.getQueryBuilder();
+    HopsQueryDomainType dobj = qb.createQueryDefinition(OnGoingSubTreeOpsDTO.class);
+
+    HopsPredicate pred[] = new HopsPredicate[aliveNNIDs.length];
+    for(int i = 0; i < aliveNNIDs.length; i++ ){
+      pred[i] = dobj.get("namenodeId").equal(dobj.param("namenodeIdParam"+i));
+    }
+
+    HopsPredicate allCombined = pred[0];
+    for(int i = 1; i < aliveNNIDs.length; i++ ){
+      allCombined = allCombined.or(pred[i]);
+    }
+    allCombined = dobj.get("startTime").lessThan(dobj.param("startTimeParam")).and(allCombined);
+
+    dobj.where(allCombined);
+    HopsQuery query = dbSession.createQuery(dobj);
+
+    for(int i = 0; i < aliveNNIDs.length; i++ ){
+      query.setParameter("namenodeIdParam"+i, aliveNNIDs[i]);
+    }
+    query.setParameter("startTimeParam", time);
+
+    return convertAndRelease(dbSession, query.getResultList());
+  }
+
+  @Override
+  public long getLockTime(long inodeID) throws StorageException {
+    HopsSession dbSession = connector.obtainSession();
+    HopsQueryBuilder qb = dbSession.getQueryBuilder();
+    HopsQueryDomainType dobj = qb.createQueryDefinition(OnGoingSubTreeOpsDTO.class);
+    HopsPredicate pred = dobj.get("inodeId").equal(dobj.param("inodeIdParam"));
+    dobj.where(pred);
+    HopsQuery query = dbSession.createQuery(dobj);
+    query.setParameter("inodeIdParam", inodeID);
+    List<SubTreeOperation> list = convertAndRelease(dbSession, query.getResultList());
+    if (list.size() > 0) {
+      if (list.size() > 1) {
+        throw new StorageException("Multiple subtree locks found for same INode: " + inodeID);
+      }
+      return list.get(0).getStartTime();
+    }
+    return 0;
   }
 
   @Override
@@ -182,7 +268,7 @@ public class OnGoingSubTreeOpsClusterj
 
   @Override
   public Collection<SubTreeOperation> findByPathsByPrefix(String prefix)
-      throws StorageException {
+          throws StorageException {
 
     HopsSession dbSession = connector.obtainSession();
     HopsQueryBuilder qb = dbSession.getQueryBuilder();
@@ -199,7 +285,7 @@ public class OnGoingSubTreeOpsClusterj
   }
 
   private List<SubTreeOperation> convertAndRelease(HopsSession session,
-      Collection<OnGoingSubTreeOpsDTO> dtos) throws StorageException {
+                                                   Collection<OnGoingSubTreeOpsDTO> dtos) throws StorageException {
     List<SubTreeOperation> list = new ArrayList<>();
     for (OnGoingSubTreeOpsDTO dto : dtos) {
       list.add(convertAndRelease(session, dto));
@@ -208,17 +294,17 @@ public class OnGoingSubTreeOpsClusterj
   }
 
   private SubTreeOperation convertAndRelease(HopsSession session,
-      OnGoingSubTreeOpsDTO opsDto) throws StorageException {
+                                             OnGoingSubTreeOpsDTO opsDto) throws StorageException {
     SubTreeOperation subTreeOperation = new SubTreeOperation(opsDto.getPath(),
-        opsDto.getInodeId(), opsDto.getNamenodeId(), SubTreeOperation.Type.values()
-        [opsDto.getOpName()], opsDto.getStartTime(),
+            opsDto.getInodeId(), opsDto.getNamenodeId(), SubTreeOperation.Type.values()
+            [opsDto.getOpName()], opsDto.getStartTime(),
             opsDto.getUser(), opsDto.getAsyncLockRecoveryTime());
     session.release(opsDto);
     return subTreeOperation;
   }
 
   private void createPersistableSubTreeOp(SubTreeOperation op,
-      OnGoingSubTreeOpsDTO opDto) {
+                                          OnGoingSubTreeOpsDTO opDto) {
     opDto.setPath(op.getPath());
     opDto.setPartitionId(getHash(op.getPath()));
     opDto.setNamenodeId(op.getNameNodeId());
