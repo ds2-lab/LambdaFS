@@ -34,3 +34,4 @@ public interface DataNodeDataAccess<T> extends EntityDataAccess {
      */
     List<T> getAllDataNodes() throws StorageException;
 }
+
