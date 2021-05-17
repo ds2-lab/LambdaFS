@@ -60,10 +60,7 @@ import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeProtocol;
-import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol;
-import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
-import org.apache.hadoop.hdfs.server.protocol.NamenodeRegistration;
+import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
@@ -335,10 +332,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public JsonObject performOperation(String op, JsonObject fsArgs) throws IOException, ClassNotFoundException {
-    System.out.println("Specified operation: " + op);
+    LOG.info("Specified operation: " + op);
 
     if (op == null) {
-      System.out.println("User did not specify an operation.");
+      LOG.info("User did not specify an operation.");
       return new JsonObject(); // empty
     }
 
@@ -365,8 +362,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       case "rename":
         renameOperation(fsArgs);
         break;
+      case "versionRequest":
+        returnValue = versionRequestOperation(fsArgs);
+        break;
       default:
-        System.out.println("Unknown operation: " + op);
+        LOG.info("Unknown operation: " + op);
     }
 
     // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64 so we
@@ -419,7 +419,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       System.exit(0);
     }
 
-    System.out.println("Creating and initializing Serverless NameNode now...");
+    LOG.info("Creating and initializing Serverless NameNode now...");
 
     try {
       StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
@@ -437,10 +437,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
 
       if (nameNode == null) {
-        System.out.println("ERROR: NameNode is null. Failed to create and/or initialize the Serverless NameNode.");
+        LOG.info("ERROR: NameNode is null. Failed to create and/or initialize the Serverless NameNode.");
         terminate(1);
       } else {
-        System.out.println("Successfully created and initialized Serverless NameNode.");
+        LOG.info("Successfully created and initialized Serverless NameNode.");
       }
 
       initialized = true;
@@ -519,6 +519,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   }
 
+  private NamespaceInfo versionRequestOperation(JsonObject fsArgs) throws IOException {
+    LOG.info("Performing versionRequest operation now...");
+    namesystem.checkSuperuserPrivilege();
+    return namesystem.getNamespaceInfo();
+  }
+
   /**
    (String src, FsPermission masked,
    String clientName, EnumSetWritable<CreateFlag> flag, boolean createParent,
@@ -526,7 +532,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
 
   private HdfsFileStatus createOperation(JsonObject fsArgs) throws IOException {
-    System.out.println("Unpacking arguments for the CREATE operation now...");
+    LOG.info("Unpacking arguments for the CREATE operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     short permissionAsShort = fsArgs.getAsJsonPrimitive("masked").getAsShort();
@@ -599,7 +605,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     try {
       StringUtils.startupShutdownMessage(ServerlessNameNode.class, args, LOG);
       ServerlessNameNode namenode = createNameNode(args, null);
-      System.out.println("NameNode == null: " + (namenode == null));
+      LOG.info("NameNode == null: " + (namenode == null));
     } catch (Throwable e) {
       LOG.error("Failed to start namenode.", e);
       terminate(1, e);
@@ -1547,7 +1553,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
       case GENCLUSTERID: {
         System.err.println("Generating new cluster id:");
-        System.out.println(StorageInfo.newClusterID());
+        LOG.info(StorageInfo.newClusterID());
         terminate(0);
         return null;
       }

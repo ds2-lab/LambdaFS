@@ -74,12 +74,14 @@ import static org.apache.hadoop.util.Time.monotonicNow;
 class BPOfferService implements Runnable {
 
   static final Log LOG = DataNode.LOG;
+
   /**
    * Information about the namespace that this service is registering with.
    * This
    * is assigned after the first phase of the handshake.
    */
   NamespaceInfo bpNSInfo;
+
   /**
    * The registration information for this block pool. This is assigned after
    * the second phase of the handshake.

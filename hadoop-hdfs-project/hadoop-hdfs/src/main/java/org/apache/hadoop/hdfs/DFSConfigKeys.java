@@ -942,10 +942,14 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int     DEFAULT_DFSCLIENT_HEDGED_READ_THREADPOOL_SIZE
       = HdfsClientConfigKeys.HedgedRead.THREADPOOL_SIZE_DEFAULT;
 
-
-
   public static final String  DFS_CLIENT_WRITE_PACKET_SIZE_KEY = "dfs.client-write-packet-size";
   public static final int     DFS_CLIENT_WRITE_PACKET_SIZE_DEFAULT = 64*1024;
+
+  /**
+   * Configuration name for specifying the endpoint to issue HTTP requests to invoke serverless functions.
+   */
+  public static final String SERVERLESS_ENDPOINT = "serverless.endpoint";
+  public static final String SERVERLESS_ENDPOINT_DEFAULT = "hdfs://10.150.0.6:9000";
 
   public static final String  DFS_CLIENT_SOCKET_TIMEOUT_KEY = "dfs.client.socket-timeout";
   public static final String  DFS_CLIENT_SOCKET_CACHE_CAPACITY_KEY = "dfs.client.socketcache.capacity";

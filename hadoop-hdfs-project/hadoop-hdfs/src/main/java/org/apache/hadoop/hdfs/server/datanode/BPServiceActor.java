@@ -18,18 +18,20 @@
 package org.apache.hadoop.hdfs.server.datanode;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import static org.apache.hadoop.util.Time.monotonicNow;
 
+import java.io.ByteArrayInputStream;
 import java.io.EOFException;
+
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.UnregisteredNodeException;
+import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
@@ -41,11 +43,20 @@ import org.apache.hadoop.util.VersionInfo;
 import org.apache.hadoop.util.VersionUtil;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.Collection;
 import java.util.List;
-import org.apache.hadoop.hdfs.protocol.RollingUpgradeStatus;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
+
+import javax.xml.stream.events.Namespace;
 
 /**
  * A thread per active or standby namenode to perform:
@@ -137,13 +148,64 @@ class BPServiceActor implements Runnable {
     NamespaceInfo nsInfo = null;
     while (shouldRun()) {
       try {
-        nsInfo = bpNamenode.versionRequest();
+
+        CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+        // Instead of using RPC to call the create() function, we perform a serverless invocation.
+        String uri = dnConf.serverlessEndpoint;
+        System.out.println("OpenWhisk URI: \"" + uri + "\"");
+        HttpPost request = new HttpPost(uri);
+        request.addHeader("content-type", "application/json");
+
+        // Arguments for the NameNode program itself.
+        JsonObject namenodeArgs = new JsonObject();
+
+        // Arguments for the particular operation we're performing.
+        JsonObject opArguments = new JsonObject();
+
+        // Add the function arguments to the invocation request arguments.
+        namenodeArgs.add("fsArgs", opArguments);
+        namenodeArgs.addProperty("op", "create");
+        namenodeArgs.addProperty("command-line-arguments", "-regular");
+
+        JsonObject requestArguments = new JsonObject();
+        // It looks like OpenWhisk expects the arguments for the serverless
+        // function to be stored with the key/property "value".
+        requestArguments.add("value", namenodeArgs);
+
+        StringEntity params = new StringEntity(requestArguments.toString());
+        request.setEntity(params);
+
+        HttpResponse response = httpClient.execute(request);
+
+        String json = EntityUtils.toString(response.getEntity(), "UTF-8");
+        //System.out.println("json = " + json);
+        Gson gson = new Gson();
+        JsonObject responseJson = gson.fromJson(json, JsonObject.class);
+
+        System.out.println("responseJson = " + responseJson.toString());
+
+        if (responseJson.has("RESULT")) {
+          String resultBase64 = responseJson.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
+          byte[] resultSerialized = Base64.decodeBase64(resultBase64);
+
+          ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
+          ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+          nsInfo = (NamespaceInfo) objectInputStream.readObject();
+        } else if (responseJson.has("EXCEPTION")) {
+          String exception = responseJson.getAsJsonPrimitive("EXCEPTION").getAsString();
+          LOG.error("Exception encountered during Serverless NameNode execution.");
+          LOG.error(exception);
+        }
+
+        //nsInfo = bpNamenode.versionRequest();
         LOG.debug(this + " received versionRequest response: " + nsInfo);
         break;
       } catch (SocketTimeoutException e) {  // namenode is busy
         LOG.warn("Problem connecting to server: " + nnAddr);
       } catch (IOException e) {  // namenode is not available
         LOG.warn("Problem connecting to server: " + nnAddr);
+      } catch (ClassNotFoundException e) {
+        e.printStackTrace();
       }
 
       // try again in a second
@@ -179,11 +241,12 @@ class BPServiceActor implements Runnable {
   }
 
   private void connectToNNAndHandshake() throws IOException {
-    // get NN proxy
+    LOG.info("Performing handshake with NameNode now...");
 
+    // get NN proxy
     bpNamenode = dn.connectToNN(nnAddr);
-    // First phase of the handshake with NN - get the namespace
-    // info.
+
+    // First phase of the handshake with NN - get the namespace info.
     NamespaceInfo nsInfo = retrieveNamespaceInfo();
 
     // Verify that this matches the other NN in this HA pair.
