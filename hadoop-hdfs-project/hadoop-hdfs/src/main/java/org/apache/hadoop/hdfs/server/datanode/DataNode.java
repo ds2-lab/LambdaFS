@@ -1256,7 +1256,7 @@ public class DataNode extends ReconfigurableBase
     saslServer = new SaslDataTransferServer(dnConf, blockPoolTokenSecretManager);
 
     LOG.info("Preparing to store DataNode information in intermediate storage...");
-    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess) HdfsStorageFactory.getDataAccess(DataNodeMeta.class);
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess) HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
 
     String dataNodeUuid = this.id.getDatanodeUuid();
 
