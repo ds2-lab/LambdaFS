@@ -1255,6 +1255,8 @@ public class DataNode extends ReconfigurableBase
         dnConf.saslPropsResolver, dnConf.trustedChannelResolver);
     saslServer = new SaslDataTransferServer(dnConf, blockPoolTokenSecretManager);
 
+    HdfsStorageFactory.setConfiguration(conf);
+
     LOG.info("Preparing to store DataNode information in intermediate storage...");
     DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess) HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
 
