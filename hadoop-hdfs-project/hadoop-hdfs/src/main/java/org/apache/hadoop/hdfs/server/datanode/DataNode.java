@@ -1256,7 +1256,14 @@ public class DataNode extends ReconfigurableBase
     saslServer = new SaslDataTransferServer(dnConf, blockPoolTokenSecretManager);
 
     HdfsStorageFactory.setConfiguration(conf);
+  }
 
+  /**
+   * Write this node's metadata to intermediate storage so that serverless NameNodes can discover this DataNode.
+   *
+   * This is called by the BPOfferService class in the registrationSucceeded() function.
+   */
+  void writeMetadataToIntermediateStorage() throws StorageException {
     LOG.info("Preparing to store DataNode information in intermediate storage...");
     DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess) HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
 
@@ -1280,7 +1287,7 @@ public class DataNode extends ReconfigurableBase
     // Create a new instance of DataNodeMeta. We pass this to the metadata abstraction layer to store
     // the associated metadata in intermediate storage.
     dataNodeMeta = new DataNodeMeta(this.id.getDatanodeUuid(), this.id.getHostName(), this.id.getIpAddr(),
-                                    this.id.getXferPort(), this.id.getInfoPort(), this.id.getIpcPort());
+            this.id.getXferPort(), this.id.getInfoPort(), this.id.getIpcPort());
 
     dataNodeDataAccess.addDataNode(dataNodeMeta);
   }

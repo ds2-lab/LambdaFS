@@ -445,6 +445,11 @@ class BPOfferService implements Runnable {
         dn.blockPoolTokenSecretManager.addKeys(getBlockPoolId(),
             reg.getExportedKeys());
       }
+
+      // Now that the DataNode has its ID field populated (this occurs in the bpRegistrationSucceeded() function),
+      // we can have the DataNode write its MetaData to intermediate storage.
+      dn.writeMetadataToIntermediateStorage();
+
     } finally {
       writeUnlock();
     }

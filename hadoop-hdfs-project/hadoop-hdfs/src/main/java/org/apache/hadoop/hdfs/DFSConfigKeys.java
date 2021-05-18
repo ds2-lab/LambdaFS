@@ -949,7 +949,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * Configuration name for specifying the endpoint to issue HTTP requests to invoke serverless functions.
    */
   public static final String SERVERLESS_ENDPOINT = "serverless.endpoint";
-  public static final String SERVERLESS_ENDPOINT_DEFAULT = "hdfs://10.150.0.6:9000";
+  public static final String SERVERLESS_ENDPOINT_DEFAULT = "https://127.0.0.1/api/v1/namespaces/whisk.system/actions/namenode?blocking=true";
 
   public static final String  DFS_CLIENT_SOCKET_TIMEOUT_KEY = "dfs.client.socket-timeout";
   public static final String  DFS_CLIENT_SOCKET_CACHE_CAPACITY_KEY = "dfs.client.socketcache.capacity";

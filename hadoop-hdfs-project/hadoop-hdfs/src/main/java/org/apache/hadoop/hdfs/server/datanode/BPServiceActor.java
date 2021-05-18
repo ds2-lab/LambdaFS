@@ -152,7 +152,7 @@ class BPServiceActor implements Runnable {
         CloseableHttpClient httpClient = HttpClientBuilder.create().build();
         // Instead of using RPC to call the create() function, we perform a serverless invocation.
         String uri = dnConf.serverlessEndpoint;
-        System.out.println("OpenWhisk URI: \"" + uri + "\"");
+        LOG.info("OpenWhisk URI: \"" + uri + "\"");
         HttpPost request = new HttpPost(uri);
         request.addHeader("content-type", "application/json");
 
@@ -164,7 +164,7 @@ class BPServiceActor implements Runnable {
 
         // Add the function arguments to the invocation request arguments.
         namenodeArgs.add("fsArgs", opArguments);
-        namenodeArgs.addProperty("op", "create");
+        namenodeArgs.addProperty("op", "versionRequest");
         namenodeArgs.addProperty("command-line-arguments", "-regular");
 
         JsonObject requestArguments = new JsonObject();
@@ -178,11 +178,11 @@ class BPServiceActor implements Runnable {
         HttpResponse response = httpClient.execute(request);
 
         String json = EntityUtils.toString(response.getEntity(), "UTF-8");
-        //System.out.println("json = " + json);
+        //LOG.info("json = " + json);
         Gson gson = new Gson();
         JsonObject responseJson = gson.fromJson(json, JsonObject.class);
 
-        System.out.println("responseJson = " + responseJson.toString());
+        LOG.info("responseJson = " + responseJson.toString());
 
         if (responseJson.has("RESULT")) {
           String resultBase64 = responseJson.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
@@ -244,7 +244,7 @@ class BPServiceActor implements Runnable {
     LOG.info("Performing handshake with NameNode now...");
 
     // get NN proxy
-    bpNamenode = dn.connectToNN(nnAddr);
+    // bpNamenode = dn.connectToNN(nnAddr);
 
     // First phase of the handshake with NN - get the namespace info.
     NamespaceInfo nsInfo = retrieveNamespaceInfo();
@@ -491,6 +491,9 @@ class BPServiceActor implements Runnable {
     // off disk - so update the bpRegistration object from that info
     bpRegistration = bpos.createRegistration();
 
+    /*
+    This is the old registration code. We are not registering with a serverful namenode. So we just skip this.
+
     while (shouldRun()) {
       try {
         // Use returned registration from namenode with updated fields
@@ -506,6 +509,7 @@ class BPServiceActor implements Runnable {
         sleepAndLogInterrupts(1000, "connecting to server");
       }
     }
+    */
 
     LOG.info("Block pool " + this + " successfully registered with NN");
     bpos.registrationSucceeded(this, bpRegistration);
