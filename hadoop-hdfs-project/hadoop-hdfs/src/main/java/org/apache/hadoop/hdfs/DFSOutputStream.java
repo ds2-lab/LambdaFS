@@ -226,11 +226,11 @@ public class DFSOutputStream extends FSOutputSummer
         CloseableHttpClient httpClient = HttpClientBuilder.create().build();
 
         try {
-          System.out.println("Creating HTTP Post req to invoke NN for CREATE op now...");
+          LOG.info("Creating HTTP Post req to invoke NN for CREATE op now...");
 
           // Instead of using RPC to call the create() function, we perform a serverless invocation.
           String uri = dfsClient.openWhiskEndpoint.toString();
-          System.out.println("OpenWhisk URI: \"" + uri + "\"");
+          LOG.info("OpenWhisk URI: \"" + uri + "\"");
           HttpPost request = new HttpPost(uri);
 
           // Arguments for the NameNode program itself.
@@ -281,16 +281,16 @@ public class DFSOutputStream extends FSOutputSummer
           request.setEntity(params);
           request.setHeader("Content-type", "application/json");
 
-          System.out.println("Invoking serverless namenode now...");
+          LOG.info("Invoking serverless namenode now...");
 
           HttpResponse response = httpClient.execute(request);
 
           String json = EntityUtils.toString(response.getEntity(), "UTF-8");
-          //System.out.println("json = " + json);
+          //LOG.info("json = " + json);
           Gson gson = new Gson();
           JsonObject responseJson = gson.fromJson(json, JsonObject.class);
 
-          System.out.println("responseJson = " + responseJson.toString());
+          LOG.info("responseJson = " + responseJson.toString());
 
           if (responseJson.has("RESULT")) {
             String resultBase64 = responseJson.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();

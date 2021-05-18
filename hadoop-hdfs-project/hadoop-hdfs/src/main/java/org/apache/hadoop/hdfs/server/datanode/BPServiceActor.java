@@ -148,6 +148,7 @@ class BPServiceActor implements Runnable {
     NamespaceInfo nsInfo = null;
     while (shouldRun()) {
       try {
+        LOG.debug("Attempting to invoke NameNode for DN-NN handshake now...");
 
         CloseableHttpClient httpClient = HttpClientBuilder.create().build();
         // Instead of using RPC to call the create() function, we perform a serverless invocation.
@@ -175,6 +176,7 @@ class BPServiceActor implements Runnable {
         StringEntity params = new StringEntity(requestArguments.toString());
         request.setEntity(params);
 
+        LOG.debug("Issuing request now...");
         HttpResponse response = httpClient.execute(request);
 
         String json = EntityUtils.toString(response.getEntity(), "UTF-8");
@@ -201,9 +203,13 @@ class BPServiceActor implements Runnable {
         LOG.debug(this + " received versionRequest response: " + nsInfo);
         break;
       } catch (SocketTimeoutException e) {  // namenode is busy
-        LOG.warn("Problem connecting to server: " + nnAddr);
+        //LOG.warn("Problem connecting to server: " + nnAddr);
+        LOG.warn("Socket timeout encountered. Problem performing serverless NN handshake.");
+        e.printStackTrace();
       } catch (IOException e) {  // namenode is not available
-        LOG.warn("Problem connecting to server: " + nnAddr);
+        LOG.warn("IOException encountered. Problem performing serverless NN handshake.");
+        //LOG.warn("Problem connecting to server: " + nnAddr);
+        e.printStackTrace();
       } catch (ClassNotFoundException e) {
         e.printStackTrace();
       }
