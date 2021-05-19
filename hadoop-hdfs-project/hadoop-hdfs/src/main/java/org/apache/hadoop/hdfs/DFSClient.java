@@ -183,6 +183,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public static final long SERVER_DEFAULTS_VALIDITY_PERIOD = 60 * 60 * 1000L; // 1 hour
   static final int TCP_WINDOW_SIZE = 128 * 1024; // 128 KB
 
+  /**
+   * Responsible for invoking the Serverless NameNode(s).
+   */
   public ServerlessInvoker<JsonObject> serverlessInvoker;
 
   // We issue invocations to this endpoint...

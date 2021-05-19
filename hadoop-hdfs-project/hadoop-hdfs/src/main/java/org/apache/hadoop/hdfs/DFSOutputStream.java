@@ -54,6 +54,7 @@ import java.io.*;
 import java.nio.channels.ClosedChannelException;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 /****************************************************************
@@ -224,11 +225,43 @@ public class DFSOutputStream extends FSOutputSummer
         shouldRetry = false;
 
         try {
+          // We need to pass a series of arguments to the Serverless NameNode. We prepare these arguments here
+          // in a HashMap and pass them off to the ServerlessInvoker, which will package them up in the required
+          // format for the Serverless NameNode.
+
+          // Arguments for the 'create' filesystem operation.
+          HashMap<String, Object> opArguments = new HashMap<>();
+
+          opArguments.put("src", src);
+          opArguments.put("masked", masked.toShort());
+          opArguments.put("clientName", dfsClient.clientName);
+
+          // Convert this argument (to the 'create' function) to a String so we can send it over JSON.
+          EnumSetWritable<CreateFlag> flagWritable = new EnumSetWritable<CreateFlag>(flag, CreateFlag.class);
+          DataOutputBuffer out = new DataOutputBuffer();
+          ObjectWritable.writeObject(out, flagWritable, flagWritable.getClass(), null);
+          byte[] objectBytes = out.getData();
+          String enumSetBase64 = Base64.encodeBase64String(objectBytes);
+
+          opArguments.put("enumSetBase64", enumSetBase64);
+          opArguments.put("createParent", createParent);
+          opArguments.put("replication", replication);
+          opArguments.put("blockSize", blockSize);
+
+          // Include a flag to indicate whether or not the policy is non-null.
+          opArguments.put("policyExists", policy != null);
+
+          // Only include these if the policy is non-null.
+          if (policy != null) {
+            opArguments.put("codec", policy.getCodec());
+            opArguments.put("targetReplication", policy.getTargetReplication());
+          }
+
           JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                   "create",
                   dfsClient.openWhiskEndpoint.toString(),
-                  null,
-                  null);
+                  null, // We do not have any additional/non-default arguments to pass to the NN.
+                  opArguments);
 
           /*
           LOG.info("Creating HTTP Post req to invoke NN for CREATE op now...");

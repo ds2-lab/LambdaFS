@@ -22,13 +22,14 @@ public interface ServerlessInvoker<T> {
      * @param operationName The name of the file system operation to be performed by the ServerlessNameNode.
      * @param functionUri The web-enabled URI of the serverless NameNode function. We issue an HTTP POST request
      *                    to this URI to invoke the function.
-     * @param nameNodeArguments The arguments to pass to the NameNode itself.
+     * @param nameNodeArguments Any additional arguments to pass to the NameNode itself. This function will handle
+     *                          adding the default/bare minimum/required arguments.
      * @param fileSystemOperationArguments The arguments to pass to the file system function.
      * @return The response/result of the NameNode serverless function.
      */
     public T invokeNameNodeViaHttpPost(
             String operationName,
             String functionUri,
-            HashMap<String, String> nameNodeArguments,
-            HashMap<String, String> fileSystemOperationArguments) throws IOException;
+            HashMap<String, Object> nameNodeArguments,
+            HashMap<String, Object> fileSystemOperationArguments) throws IOException;
 }

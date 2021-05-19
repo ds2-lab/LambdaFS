@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.sun.javaws.exceptions.InvalidArgumentException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
@@ -32,13 +33,16 @@ import java.util.Map;
  * Concrete implementation of the {@link ServerlessInvoker} interface for the OpenWhisk serverless platform.
  */
 public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
-    private static Log LOG = LogFactory.getLog(OpenWhiskInvoker.class);
+    private static final Log LOG = LogFactory.getLog(OpenWhiskInvoker.class);
 
     /**
      * HTTPClient used to invoke serverless functions.
      */
     private final CloseableHttpClient httpClient;
 
+    /**
+     * Default constructor.
+     */
     public OpenWhiskInvoker() {
         httpClient = HttpClientBuilder.create().build();
     }
@@ -46,8 +50,8 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
     public JsonObject invokeNameNodeViaHttpPost(
         String operationName,
         String functionUri,
-        HashMap<String, String> nameNodeArguments,
-        HashMap<String, String> fileSystemOperationArguments) throws IOException
+        HashMap<String, Object> nameNodeArguments,
+        HashMap<String, Object> fileSystemOperationArguments) throws IOException
     {
         LOG.debug(String.format("Preparing to invoke OpenWhisk serverless function with URI \"%s\" for FS operation \"%s\" now...",
                 functionUri, operationName));
@@ -65,13 +69,13 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         // This is the top-level JSON object passed along with the HTTP POST request.
         JsonObject requestArguments = new JsonObject();
 
-        // Populate the NameNode arguments JSON.
-        for (Map.Entry<String, String> entry : nameNodeArguments.entrySet())
-            nameNodeArgumentsJson.addProperty(entry.getKey(), entry.getValue());
+        // Populate the NameNode arguments JSON with any additional arguments specified by the user.
+        if (nameNodeArguments != null) {
+            populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
+        }
 
         // Populate the file system operation arguments JSON.
-        for (Map.Entry<String, String> entry : fileSystemOperationArguments.entrySet())
-            fileSystemOperationArgumentsJson.addProperty(entry.getKey(), entry.getValue());
+        populateJsonObjectWithArguments(fileSystemOperationArguments, fileSystemOperationArgumentsJson);
 
         // We pass the file system operation arguments to the NameNode, as it
         // will hand them off to the intended file system operation function.
@@ -96,6 +100,32 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         String json = EntityUtils.toString(response.getEntity(), "UTF-8");
         Gson gson = new Gson();
         return gson.fromJson(json, JsonObject.class);
+    }
+
+    /**
+     * Process the arguments passed in the given HashMap. Attempt to add them to the JsonObject.
+     *
+     * Throws an exception if one of the arguments is not a String, Number, Boolean, or Character.
+     * @param arguments The HashMap of arguments to add to the JsonObject.
+     * @param jsonObject The JsonObject to which we are adding arguments.
+     */
+    private void populateJsonObjectWithArguments(HashMap<String, Object> arguments, JsonObject jsonObject) {
+        for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+
+            if (value instanceof String)
+                jsonObject.addProperty(key, (String)value);
+            else if (value instanceof Number)
+                jsonObject.addProperty(key, (Number)value);
+            else if (value instanceof Boolean)
+                jsonObject.addProperty(key, (Boolean)value);
+            else if (value instanceof Character)
+                jsonObject.addProperty(key, (Character)value);
+            else
+                throw new IllegalArgumentException(
+                        "Argument " + key + " is not of a valid type: " + value.getClass().toString());
+        }
     }
 
     /**
