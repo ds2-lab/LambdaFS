@@ -204,10 +204,10 @@ class BPServiceActor implements Runnable {
         break;
       } catch (SocketTimeoutException e) {  // namenode is busy
         //LOG.warn("Problem connecting to server: " + nnAddr);
-        LOG.warn("Socket timeout encountered. Problem performing serverless NN handshake.");
+        LOG.warn("Socket timeout encountered while performing serverless NN handshake.");
         e.printStackTrace();
       } catch (IOException e) {  // namenode is not available
-        LOG.warn("IOException encountered. Problem performing serverless NN handshake.");
+        LOG.warn("IOException encountered while performing serverless NN handshake.");
         //LOG.warn("Problem connecting to server: " + nnAddr);
         e.printStackTrace();
       } catch (ClassNotFoundException e) {

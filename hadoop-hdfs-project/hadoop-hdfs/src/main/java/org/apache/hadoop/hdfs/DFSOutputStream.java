@@ -223,9 +223,14 @@ public class DFSOutputStream extends FSOutputSummer
       while (shouldRetry) {
         shouldRetry = false;
 
-        CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-
         try {
+          JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                  "create",
+                  dfsClient.openWhiskEndpoint.toString(),
+                  null,
+                  null);
+
+          /*
           LOG.info("Creating HTTP Post req to invoke NN for CREATE op now...");
 
           // Instead of using RPC to call the create() function, we perform a serverless invocation.
@@ -290,7 +295,7 @@ public class DFSOutputStream extends FSOutputSummer
           Gson gson = new Gson();
           JsonObject responseJson = gson.fromJson(json, JsonObject.class);
 
-          LOG.info("responseJson = " + responseJson.toString());
+          LOG.info("responseJson = " + responseJson.toString());*/
 
           if (responseJson.has("RESULT")) {
             String resultBase64 = responseJson.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
@@ -334,8 +339,6 @@ public class DFSOutputStream extends FSOutputSummer
           }
         } catch (ClassNotFoundException re) {
           re.printStackTrace();
-        } finally {
-          httpClient.close();
         }
       }
       Preconditions.checkNotNull(stat, "HdfsFileStatus should not be null!");

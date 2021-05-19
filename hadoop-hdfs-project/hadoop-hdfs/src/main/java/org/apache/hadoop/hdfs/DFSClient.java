@@ -9,6 +9,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CACHE_READAHEAD;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CONTEXT;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CONTEXT_DEFAULT;
 
+import com.google.gson.JsonObject;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import java.io.BufferedOutputStream;
@@ -26,14 +27,7 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -118,6 +112,8 @@ import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.protocol.HdfsBlocksMetadata;
+import org.apache.hadoop.hdfs.serverless.ServerlessInvoker;
+import org.apache.hadoop.hdfs.serverless.ServerlessInvokerFactory;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -143,7 +139,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
-import java.util.Collection;
+
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -186,6 +182,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public static final Log LOG = LogFactory.getLog(DFSClient.class);
   public static final long SERVER_DEFAULTS_VALIDITY_PERIOD = 60 * 60 * 1000L; // 1 hour
   static final int TCP_WINDOW_SIZE = 128 * 1024; // 128 KB
+
+  public ServerlessInvoker<JsonObject> serverlessInvoker;
 
   // We issue invocations to this endpoint...
   public InetSocketAddress openWhiskEndpoint;
@@ -398,6 +396,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
             conf.get(DFSConfigKeys.DFS_CLIENT_XCEIVER_SOCKET_FACTORY_CLASS_KEY,
                     DFSConfigKeys.DEFAULT_DFS_CLIENT_XCEIVER_FACTORY_CLASS));
     this.dtpReplaceDatanodeOnFailure = ReplaceDatanodeOnFailure.get(conf);
+
+    this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
+            conf.get(DFSConfigKeys.SERVERLESS_PLATFORM, DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT)
+                    .toLowerCase(Locale.ROOT)
+    );
 
     this.ugi = UserGroupInformation.getCurrentUser();
 
