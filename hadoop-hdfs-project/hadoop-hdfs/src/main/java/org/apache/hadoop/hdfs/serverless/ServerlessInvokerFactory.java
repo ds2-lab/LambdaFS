@@ -4,16 +4,21 @@ import com.google.gson.JsonObject;
 import io.hops.DalStorageFactory;
 import io.hops.exception.StorageInitializtionException;
 
+import java.util.Locale;
+
 public class ServerlessInvokerFactory {
 
     /**
      * Return the class name of the serverless invoker for the specified serverless platform.
      *
+     * This automatically checks against the all-lowercase version of the `serverlessPlatformName` parameter.
+     *
      * @throws StorageInitializtionException If the specified serverless platform is not supported (i.e., there does
      * not exist a serverless invoker implementation for the specified serverless platform).
      */
     private static String getInvokerClassName(String serverlessPlatformName) throws StorageInitializtionException {
-        if (serverlessPlatformName.equals("openwhisk"))
+        if (serverlessPlatformName.toLowerCase(Locale.ROOT).equals("openwhisk") ||
+                serverlessPlatformName.toLowerCase(Locale.ROOT).equals("open whisk"))
             return "org.apache.hadoop.hdfs.serverless.OpenWhiskInvoker";
         else
             throw new StorageInitializtionException(

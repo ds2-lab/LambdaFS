@@ -402,7 +402,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
             conf.get(DFSConfigKeys.SERVERLESS_PLATFORM, DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT)
-                    .toLowerCase(Locale.ROOT)
     );
 
     this.ugi = UserGroupInformation.getCurrentUser();
