@@ -54,7 +54,11 @@ public class TransactionLockTypes {
     /**
      * Single Path
      */
-    SINGLE_PATH
+    SINGLE_PATH,
+    /**
+     * Single Path
+     */
+    ALL_SYSTEM_PATHS_FOR_TESTSING
   }
 
   public enum INodeLockType {
