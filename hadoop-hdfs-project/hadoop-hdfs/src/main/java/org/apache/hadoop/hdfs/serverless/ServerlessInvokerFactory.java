@@ -1,7 +1,6 @@
 package org.apache.hadoop.hdfs.serverless;
 
 import com.google.gson.JsonObject;
-import io.hops.DalStorageFactory;
 import io.hops.exception.StorageInitializtionException;
 
 import java.util.Locale;
