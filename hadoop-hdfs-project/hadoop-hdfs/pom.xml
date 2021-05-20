@@ -50,7 +50,8 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-annotations</artifactId>
-      <scope>provided</scope>
+      <!--<scope>provided</scope>-->
+      <scope>${dependency-scope}</scope>
     </dependency>
     <dependency>
       <groupId>io.hops</groupId>
@@ -60,7 +61,8 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
-      <scope>provided</scope>
+      <!--<scope>provided</scope>-->
+      <scope>${dependency-scope}</scope>
     </dependency>
     <dependency>
       <groupId>io.hops</groupId>
@@ -164,7 +166,8 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <scope>provided</scope>
+      <!--<scope>provided</scope>-->
+      <scope>${dependency-scope}</scope>
     </dependency>
     <dependency>
       <groupId>xmlenc</groupId>
