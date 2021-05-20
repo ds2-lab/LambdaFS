@@ -96,6 +96,11 @@ public class DNConf {
    */
   final String serverlessEndpoint;
 
+  /**
+   * The name of the serverless platform being used for the Serverless NameNodes.
+   */
+  final String serverlessPlatformName;
+
   final String minimumNameNodeVersion;
   final String encryptionAlgorithm;
   final TrustedChannelResolver trustedChannelResolver;
@@ -111,6 +116,7 @@ public class DNConf {
     this.conf = conf;
 
     serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+    serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
     socketTimeout = conf.getInt(DFS_CLIENT_SOCKET_TIMEOUT_KEY,
         HdfsServerConstants.READ_TIMEOUT);

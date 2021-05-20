@@ -71,12 +71,12 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         JsonObject requestArguments = new JsonObject();
 
         // Populate the NameNode arguments JSON with any additional arguments specified by the user.
-        if (nameNodeArguments != null) {
+        if (nameNodeArguments != null)
             populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
-        }
 
         // Populate the file system operation arguments JSON.
-        populateJsonObjectWithArguments(fileSystemOperationArguments, fileSystemOperationArgumentsJson);
+        if (fileSystemOperationArguments != null)
+            populateJsonObjectWithArguments(fileSystemOperationArguments, fileSystemOperationArgumentsJson);
 
         // We pass the file system operation arguments to the NameNode, as it
         // will hand them off to the intended file system operation function.

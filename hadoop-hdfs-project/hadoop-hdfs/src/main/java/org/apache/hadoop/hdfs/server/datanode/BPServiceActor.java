@@ -20,6 +20,7 @@ package org.apache.hadoop.hdfs.server.datanode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import io.hops.exception.StorageInitializtionException;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import static org.apache.hadoop.util.Time.monotonicNow;
@@ -36,6 +37,8 @@ import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.ServerlessInvoker;
+import org.apache.hadoop.hdfs.serverless.ServerlessInvokerFactory;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.Time;
@@ -70,6 +73,8 @@ import javax.xml.stream.events.Namespace;
 @InterfaceAudience.Private
 class BPServiceActor implements Runnable {
 
+  private ServerlessInvoker<JsonObject> serverlessInvoker;
+
   static final Log LOG = DataNode.LOG;
   final InetSocketAddress nnAddr;
   BPOfferService bpos;
@@ -90,11 +95,12 @@ class BPServiceActor implements Runnable {
 
   private boolean connectedToNN = false;
 
-  BPServiceActor(InetSocketAddress nnAddr, BPOfferService bpos) {
+  BPServiceActor(InetSocketAddress nnAddr, BPOfferService bpos) throws StorageInitializtionException {
     this.bpos = bpos;
     this.dn = bpos.getDataNode();
     this.nnAddr = nnAddr;
     this.dnConf = dn.getDnConf();
+    this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(dn.getDnConf().serverlessPlatformName);
     scheduler = new Scheduler(dnConf.heartBeatInterval);
   }
 
@@ -150,7 +156,14 @@ class BPServiceActor implements Runnable {
       try {
         LOG.debug("Attempting to invoke NameNode for DN-NN handshake now...");
 
-        CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "versionRequest",
+                dnConf.serverlessEndpoint,
+                null,
+                null
+        );
+
+        /*CloseableHttpClient httpClient = HttpClientBuilder.create().build();
         // Instead of using RPC to call the create() function, we perform a serverless invocation.
         String uri = dnConf.serverlessEndpoint;
         LOG.info("OpenWhisk URI: \"" + uri + "\"");
@@ -182,7 +195,7 @@ class BPServiceActor implements Runnable {
         String json = EntityUtils.toString(response.getEntity(), "UTF-8");
         //LOG.info("json = " + json);
         Gson gson = new Gson();
-        JsonObject responseJson = gson.fromJson(json, JsonObject.class);
+        JsonObject responseJson = gson.fromJson(json, JsonObject.class);*/
 
         LOG.info("responseJson = " + responseJson.toString());
 

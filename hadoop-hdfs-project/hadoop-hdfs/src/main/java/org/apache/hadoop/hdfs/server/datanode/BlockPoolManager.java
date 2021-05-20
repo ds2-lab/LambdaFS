@@ -22,6 +22,7 @@ import com.google.common.collect.Maps;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import io.hops.exception.StorageInitializtionException;
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
@@ -155,7 +156,7 @@ class BlockPoolManager {
   /**
    * Extracted out for test purposes.
    */
-  protected BPOfferService createBPOS(List<InetSocketAddress> nnAddrs) {
+  protected BPOfferService createBPOS(List<InetSocketAddress> nnAddrs) throws StorageInitializtionException {
     return new BPOfferService(nnAddrs, dn);
   }
 }

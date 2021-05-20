@@ -23,6 +23,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
+import io.hops.exception.StorageInitializtionException;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.ActiveNodePBImpl;
 import io.hops.leader_election.node.SortedActiveNodeList;
@@ -163,7 +164,7 @@ class BPOfferService implements Runnable {
   private Random rand = new Random(System.currentTimeMillis());
   private long prevBlockReportId;
 
-  BPOfferService(List<InetSocketAddress> nnAddrs, DataNode dn) {
+  BPOfferService(List<InetSocketAddress> nnAddrs, DataNode dn) throws StorageInitializtionException {
     Preconditions
         .checkArgument(!nnAddrs.isEmpty(), "Must pass at least one NN.");
     this.dn = dn;
@@ -770,7 +771,7 @@ class BPOfferService implements Runnable {
     }
   }
 
-  private BPServiceActor startAnActor(InetSocketAddress address) {
+  private BPServiceActor startAnActor(InetSocketAddress address) throws StorageInitializtionException {
     BPServiceActor actor = new BPServiceActor(address, this);
     actor.start();
     return actor;
