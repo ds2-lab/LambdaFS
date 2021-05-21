@@ -37,4 +37,7 @@ public interface ReplicaUnderConstructionDataAccess<T>
       Collection<T> modified) throws StorageException;
 
   int countAll() throws StorageException;
+
+  //only for testing
+  List<T> findAll() throws StorageException;
 }

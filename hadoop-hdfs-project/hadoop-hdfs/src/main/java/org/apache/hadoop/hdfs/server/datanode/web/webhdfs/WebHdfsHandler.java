@@ -194,7 +194,7 @@ public class WebHdfsHandler extends SimpleChannelInboundHandler<HttpRequest> {
     ctx.pipeline().replace(this, handler.getClass().getSimpleName(), handler);
   }
 
-  private void onAppend(ChannelHandlerContext ctx) throws IOException {
+  private void onAppend(ChannelHandlerContext ctx) throws IOException, URISyntaxException {
     writeContinueHeader(ctx);
     final String nnId = params.namenodeId();
     final int bufferSize = params.bufferSize();
@@ -208,7 +208,7 @@ public class WebHdfsHandler extends SimpleChannelInboundHandler<HttpRequest> {
     ctx.pipeline().replace(this, handler.getClass().getSimpleName(), handler);
   }
 
-  private void onOpen(ChannelHandlerContext ctx) throws IOException {
+  private void onOpen(ChannelHandlerContext ctx) throws IOException, URISyntaxException {
     final String nnId = params.namenodeId();
     final int bufferSize = params.bufferSize();
     final long offset = params.offset();
@@ -250,7 +250,7 @@ public class WebHdfsHandler extends SimpleChannelInboundHandler<HttpRequest> {
     }).addListener(ChannelFutureListener.CLOSE);
   }
   
-  private void onGetFileChecksum(ChannelHandlerContext ctx) throws IOException {
+  private void onGetFileChecksum(ChannelHandlerContext ctx) throws IOException, URISyntaxException {
     MD5MD5CRC32FileChecksum checksum = null;
     final String nnId = params.namenodeId();
     DFSClient dfsclient = newDfsClient(nnId, conf);

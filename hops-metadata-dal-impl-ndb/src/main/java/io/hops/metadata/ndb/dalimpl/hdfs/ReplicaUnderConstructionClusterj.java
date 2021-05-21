@@ -172,6 +172,17 @@ public class ReplicaUnderConstructionClusterj
     return MySQLQueryHelper.countAll(TABLE_NAME);
   }
 
+  @Override
+  public List<ReplicaUnderConstruction> findAll() throws StorageException {
+    HopsSession session = connector.obtainSession();
+    HopsQueryBuilder qb = session.getQueryBuilder();
+    HopsQuery<ReplicaUcDTO> query =
+            session.createQuery(qb.createQueryDefinition(ReplicaUcDTO.class));
+    List<ReplicaUcDTO> dtos = query.getResultList();
+    List<ReplicaUnderConstruction> list = convertAndRelease(session, dtos);
+    return list;
+  }
+
   private List<ReplicaUnderConstruction> convertAndRelease(HopsSession session,
       List<ReplicaUcDTO> replicaUc) throws StorageException {
     List<ReplicaUnderConstruction> replicas =

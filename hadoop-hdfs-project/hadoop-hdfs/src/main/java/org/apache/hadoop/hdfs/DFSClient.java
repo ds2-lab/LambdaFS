@@ -254,7 +254,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @see #DFSClient(URI, Configuration, FileSystem.Statistics)
    */
   public DFSClient(URI hdfsUri, Configuration conf) throws IOException, URISyntaxException {
-    // TODO: Fix this.
+    // TODO: Fix this. Ordinarily it passes the HDFS URI here. Not sure if this will cause issues or not.
     this(new URI(conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT)), conf, null);
   }
 
