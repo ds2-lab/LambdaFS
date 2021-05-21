@@ -3,11 +3,7 @@ package org.apache.hadoop.hdfs;
 import static org.apache.hadoop.crypto.key.KeyProvider.KeyVersion;
 import static org.apache.hadoop.crypto.key.KeyProviderCryptoExtension.EncryptedKeyVersion;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_CRYPTO_CODEC_CLASSES_KEY_PREFIX;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CACHE_DROP_BEHIND_READS;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CACHE_DROP_BEHIND_WRITES;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CACHE_READAHEAD;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CONTEXT;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CONTEXT_DEFAULT;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 import com.google.gson.JsonObject;
 import io.hops.leader_election.node.ActiveNode;
@@ -257,10 +253,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * Same as this(nameNodeUri, conf, null);
    * @see #DFSClient(URI, Configuration, FileSystem.Statistics)
    */
-    /*public DFSClient(URI nameNodeUri, Configuration conf
-    ) throws IOException {
-        this(nameNodeUri, conf, null);
-    }*/
+  public DFSClient(URI hdfsUri, Configuration conf) throws IOException, URISyntaxException {
+    // TODO: Fix this.
+    this(new URI(conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT)), conf, null);
+  }
 
   /**
    * Same as this(nameNodeUri, null, conf, stats);

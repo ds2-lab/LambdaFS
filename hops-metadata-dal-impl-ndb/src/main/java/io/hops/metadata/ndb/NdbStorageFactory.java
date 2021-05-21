@@ -160,5 +160,10 @@ public class NdbStorageFactory implements DalStorageFactory {
   public boolean hasResources(double threshold) throws StorageException {
     return MysqlServerConnector.hasResources(threshold);
   }
+
+  @Override
+  public float getResourceMemUtilization() throws StorageException {
+    return MysqlServerConnector.getResourceMemUtilization();
+  }
   
 }

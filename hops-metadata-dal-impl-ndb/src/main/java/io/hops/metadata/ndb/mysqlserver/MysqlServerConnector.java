@@ -297,6 +297,23 @@ public class MysqlServerConnector implements StorageConnector<Connection> {
   public String getDatabaseName() {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
+
+  public static float getResourceMemUtilization() throws StorageException {
+    return MySQLQueryHelper.execute("SELECT memory_type, used, total FROM " +
+                    "ndbinfo.memoryusage where memory_type = \"Data memory\"",
+            new MySQLQueryHelper.ResultSetHandler<Float>() {
+              @Override
+              public Float handle(ResultSet result)
+                      throws SQLException {
+                while (result.next()) {
+                  long used = result.getLong("used");
+                  long total = result.getLong("total");
+                  return Float.valueOf((float) (((float)used / (float) total) * 100.0));
+                }
+                return Float.valueOf(-1);
+              }
+            });
+  }
   
   public static boolean hasResources(final double threshold) throws StorageException {
     return MySQLQueryHelper.execute("SELECT memory_type, used, total FROM " +

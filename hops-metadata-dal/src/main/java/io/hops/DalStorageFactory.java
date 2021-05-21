@@ -31,5 +31,6 @@ public interface DalStorageFactory {
   public EntityDataAccess getDataAccess(Class type);
   
   public boolean hasResources(double threshold) throws StorageException;
-  
+
+  public float getResourceMemUtilization() throws StorageException;
 }
