@@ -6,15 +6,22 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.config.Registry;
+import org.apache.http.config.RegistryBuilder;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -38,11 +45,32 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
      */
     public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
         // https://stackoverflow.com/questions/19517538/ignoring-ssl-certificate-in-apache-httpclient-4-3
-        SSLContextBuilder builder = new SSLContextBuilder();
-        builder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
-        SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(
-                builder.build());
-        httpClient = HttpClients.custom().setSSLSocketFactory(sslsf).build();
+//        SSLContextBuilder builder = new SSLContextBuilder();
+//        builder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
+//        SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(
+//                builder.build());
+//        httpClient = HttpClients.custom().setSSLSocketFactory(sslsf).build();
+
+        // https://stackoverflow.com/questions/34655031/javax-net-ssl-sslpeerunverifiedexception-host-name-does-not-match-the-certifica
+        final SSLConnectionSocketFactory sslsf;
+        try {
+            sslsf = new SSLConnectionSocketFactory(SSLContext.getDefault(),
+                    NoopHostnameVerifier.INSTANCE);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+        final Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
+                .register("http", new PlainConnectionSocketFactory())
+                .register("https", sslsf)
+                .build();
+
+        final PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager(registry);
+        cm.setMaxTotal(100);
+        httpClient = HttpClients.custom()
+                .setSSLSocketFactory(sslsf)
+                .setConnectionManager(cm)
+                .build();
 
         // httpClient = HttpClientBuilder.create().build();
     }
