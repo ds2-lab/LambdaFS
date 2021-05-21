@@ -34,6 +34,7 @@ import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenIdenti
 import org.junit.*;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -136,7 +137,7 @@ public class TestResolveHdfsSymlink {
    */
   @Test
   public void testLinkTargetNonSymlink() throws UnsupportedFileSystemException,
-      IOException {
+          IOException, URISyntaxException {
     FileContext fc = null;
     Path notSymlink = new Path("/notasymlink");
     try {
@@ -161,7 +162,7 @@ public class TestResolveHdfsSymlink {
    * Tests that attempting to resolve a non-existent-file
    */
   @Test
-  public void testLinkTargetNonExistent() throws IOException {
+  public void testLinkTargetNonExistent() throws IOException, URISyntaxException {
     Path doesNotExist = new Path("/filethatdoesnotexist");
     DFSClient client = new DFSClient(cluster.getFileSystem().getUri(),
         cluster.getConfiguration(0));
