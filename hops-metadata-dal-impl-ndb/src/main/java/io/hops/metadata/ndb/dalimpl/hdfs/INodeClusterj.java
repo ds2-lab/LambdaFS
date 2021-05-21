@@ -6,7 +6,7 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -169,19 +169,19 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
     @Column(name = STORAGE_POLICY)
     byte getStoragePolicy();
     void setStoragePolicy(byte storagePolicy);
-    
+
     @Column(name = CHILDREN_NUM)
     int getChildrenNum();
     void setChildrenNum(int childrenNum);
-    
+
     @Column(name = NUM_ACES)
     int getNumAces();
     void setNumAces(int numAces);
-  
+
     @Column(name = NUM_USER_XATTRS)
     byte getNumUserXAttrs();
     void setNumUserXAttrs(byte numUserXAttrs);
-  
+
     @Column(name = NUM_SYS_XATTRS)
     byte getNumSysXAttrs();
     void setNumSysXAttrs(byte numSysXAttrs);
@@ -189,12 +189,12 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   private ClusterjConnector connector = ClusterjConnector.getInstance();
   private MysqlServerConnector mysqlConnector =
-      MysqlServerConnector.getInstance();
+          MysqlServerConnector.getInstance();
   private final static int NOT_FOUND_ROW = -1000;
 
   @Override
   public void prepare(Collection<INode> removed, Collection<INode> newEntries,
-      Collection<INode> modified) throws StorageException {
+                      Collection<INode> modified) throws StorageException {
     HopsSession session = connector.obtainSession();
     List<InodeDTO> changes = new ArrayList<>();
     List<InodeDTO> deletions = new ArrayList<>();
@@ -238,7 +238,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
     HopsQueryBuilder qb = session.getQueryBuilder();
     HopsQueryDomainType<InodeDTO> dobj =
-        qb.createQueryDefinition(InodeDTO.class);
+            qb.createQueryDefinition(InodeDTO.class);
     HopsPredicate pred1 = dobj.get("id").equal(dobj.param("idParam"));
     dobj.where(pred1);
 
@@ -270,7 +270,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
     HopsQueryBuilder qb = session.getQueryBuilder();
     HopsQueryDomainType<InodeDTO> dobj =
-        qb.createQueryDefinition(InodeDTO.class);
+            qb.createQueryDefinition(InodeDTO.class);
     HopsPredicate pred1 = dobj.get("id").in(dobj.param("idParam"));
     dobj.where(pred1);
 
@@ -290,18 +290,18 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
       session.release(results);
     }
   }
-  
+
   @Override
   public List<INode> findInodesByParentIdFTIS(long parentId)
-      throws StorageException {
+          throws StorageException {
     //System.out.println("*** indexScanFindInodesByParentId ");
     HopsSession session = connector.obtainSession();
 
     HopsQueryBuilder qb = session.getQueryBuilder();
     HopsQueryDomainType<InodeDTO> dobj =
-        qb.createQueryDefinition(InodeDTO.class);
+            qb.createQueryDefinition(InodeDTO.class);
     HopsPredicate pred1 =
-        dobj.get("parentId").equal(dobj.param("parentIDParam"));
+            dobj.get("parentId").equal(dobj.param("parentIDParam"));
     dobj.where(pred1);
     HopsQuery<InodeDTO> query = session.createQuery(dobj);
     query.setParameter("parentIDParam", parentId);
@@ -318,12 +318,12 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   @Override
   public List<INode> findInodesByParentIdAndPartitionIdPPIS(long parentId, long partitionId)
-      throws StorageException {
+          throws StorageException {
     HopsSession session = connector.obtainSession();
 
     HopsQueryBuilder qb = session.getQueryBuilder();
     HopsQueryDomainType<InodeDTO> dobj =
-        qb.createQueryDefinition(InodeDTO.class);
+            qb.createQueryDefinition(InodeDTO.class);
     HopsPredicate pred1 = dobj.get("partitionId").equal(dobj.param("partitionIDParam"));
     HopsPredicate pred2 = dobj.get("parentId").equal(dobj.param("parentIDParam"));
     dobj.where(pred1.and(pred2));
@@ -343,7 +343,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   @Override
   public List<ProjectedINode> findInodesFTISTx(
-      long parentId, EntityContext.LockMode lock) throws StorageException {
+          long parentId, EntityContext.LockMode lock) throws StorageException {
     HopsSession session = connector.obtainSession();
     List<InodeDTO> results = null;
     try {
@@ -374,25 +374,25 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   private ProjectedINode createProjectedINode(InodeDTO inode){
     return new ProjectedINode(inode.getId(),
-              inode.getParentId(),
-              inode.getName(),
-              inode.getPartitionId(),
-              NdbBoolean.convert(inode.getIsDir()),
-              inode.getPermission(),
-              inode.getUserID(),
-              inode.getGroupID(),
-              inode.getHeader(),
-              inode.getSymlink()== null ? false : true,
-              NdbBoolean.convert(inode.getQuotaEnabled()),
-              NdbBoolean.convert(inode.getUnderConstruction()),
-              NdbBoolean.convert(inode.getSubtreeLocked()),
-              inode.getSubtreeLockOwner(),
-              inode.getSize(),
-              inode.getLogicalTime(),
-              inode.getStoragePolicy(),
-              inode.getNumAces(),
-              inode.getNumUserXAttrs(),
-              inode.getNumSysXAttrs());
+            inode.getParentId(),
+            inode.getName(),
+            inode.getPartitionId(),
+            NdbBoolean.convert(inode.getIsDir()),
+            inode.getPermission(),
+            inode.getUserID(),
+            inode.getGroupID(),
+            inode.getHeader(),
+            inode.getSymlink()== null ? false : true,
+            NdbBoolean.convert(inode.getQuotaEnabled()),
+            NdbBoolean.convert(inode.getUnderConstruction()),
+            NdbBoolean.convert(inode.getSubtreeLocked()),
+            inode.getSubtreeLockOwner(),
+            inode.getSize(),
+            inode.getLogicalTime(),
+            inode.getStoragePolicy(),
+            inode.getNumAces(),
+            inode.getNumUserXAttrs(),
+            inode.getNumSysXAttrs());
   }
 //  public List<ProjectedINode> findInodesForSubtreeOperationsWithWriteLockFTIS(
 //      int parentId) throws StorageException {
@@ -534,7 +534,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   @Override
   public INode findInodeByNameParentIdAndPartitionIdPK(String name, long parentId, long partitionId)
-      throws StorageException {
+          throws StorageException {
     HopsSession session = connector.obtainSession();
 
     Object[] pk = new Object[3];
@@ -554,7 +554,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   @Override
   public List<INode> getINodesPkBatched(String[] names, long[] parentIds, long[] partitionIds)
-      throws StorageException {
+          throws StorageException {
     HopsSession session = connector.obtainSession();
 
     List<InodeDTO> dtos = new ArrayList<>();
@@ -576,19 +576,19 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   private boolean isRoot(INode inode){
     return inode.getName().equals("") && inode.getParentId() == 0 && inode
-        .getId() == 1;
+            .getId() == 1;
   }
 
   @Override
   public List<INodeIdentifier> getAllINodeFiles(long startId, long endId)
-      throws StorageException {
+          throws StorageException {
     HopsSession session = connector.obtainSession();
     HopsQueryBuilder qb = session.getQueryBuilder();
     HopsQueryDomainType<InodeDTO> dobj =
-        qb.createQueryDefinition(InodeDTO.class);
+            qb.createQueryDefinition(InodeDTO.class);
     HopsPredicate pred = dobj.get("isDir").equal(dobj.param("isDirParam"));
     HopsPredicate pred2 =
-        dobj.get("id").between(dobj.param("startId"), dobj.param("endId"));
+            dobj.get("id").between(dobj.param("startId"), dobj.param("endId"));
     dobj.where(pred.not().and(pred2));
     HopsQuery<InodeDTO> query = session.createQuery(dobj);
     query.setParameter("isDirParam", NdbBoolean.convert(true));
@@ -599,43 +599,62 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
     List<INodeIdentifier> res = new ArrayList<>();
     for (InodeDTO dto : dtos) {
       res.add(
-          new INodeIdentifier(dto.getId(), dto.getParentId(), dto.getName(), dto.getPartitionId()));
+              new INodeIdentifier(dto.getId(), dto.getParentId(), dto.getName(), dto.getPartitionId()));
     }
     session.release(dtos);
     return res;
   }
-  
-  
+
+
   @Override
   public boolean haveFilesWithIdsBetween(long startId, long endId)
-      throws StorageException {
+          throws StorageException {
     return MySQLQueryHelper.exists(TABLE_NAME, String
-        .format("%s<>0 and %s " + "between %d and %d", HEADER, ID, startId,
-            (endId - 1)));
+            .format("%s<>0 and %s " + "between %d and %d", HEADER, ID, startId,
+                    (endId - 1)));
   }
-  
+
   @Override
   public boolean haveFilesWithIdsGreaterThan(long id) throws StorageException {
     return MySQLQueryHelper.exists(TABLE_NAME,
-        String.format("%s<>0 and " + "%s>%d", HEADER, ID, id));
+            String.format("%s<>0 and " + "%s>%d", HEADER, ID, id));
   }
-  
+
   @Override
   public long getMinFileId() throws StorageException {
     return MySQLQueryHelper
-        .minLong(TABLE_NAME, ID, String.format("%s<>0", HEADER));
+            .minLong(TABLE_NAME, ID, String.format("%s<>0", HEADER));
   }
 
   @Override
   public long getMaxFileId() throws StorageException {
     return MySQLQueryHelper
-        .maxLong(TABLE_NAME, ID, String.format("%s<>0", HEADER));
+            .maxLong(TABLE_NAME, ID, String.format("%s<>0", HEADER));
   }
 
   @Override
   public int countAllFiles() throws StorageException {
     return MySQLQueryHelper
-        .countWithCriterion(TABLE_NAME, String.format("%s<>0", HEADER));
+            .countWithCriterion(TABLE_NAME, String.format("%s<>0", HEADER));
+  }
+
+  @Override
+  public List<INode> findINodes(String name) throws StorageException {
+    HopsSession session = connector.obtainSession();
+
+    HopsQueryBuilder qb = session.getQueryBuilder();
+    HopsQueryDomainType<InodeDTO> dobj =
+            qb.createQueryDefinition(InodeDTO.class);
+    HopsPredicate pred1 = dobj.get("name").equal(dobj.param("nameParam"));
+    dobj.where(pred1);
+
+    HopsQuery<InodeDTO> query = session.createQuery(dobj);
+    query.setParameter("nameParam", name);
+
+    List<InodeDTO> dtos = query.getResultList();
+    List<INode> results = convert(dtos);
+    session.release(dtos);
+    return results;
   }
 
   @Override
@@ -644,26 +663,26 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
             TablesDef.INodeTableDef.NAME +" = \""+inodeName+"\"";
     MySQLQueryHelper.execute(query);
   }
-  
+
   @Override
   public List<INode> allINodes() throws StorageException { // only for testing
     HopsSession session = connector.obtainSession();
     HopsQueryBuilder qb = session.getQueryBuilder();
     HopsQuery<InodeDTO> query =
-        session.createQuery(qb.createQueryDefinition(InodeDTO.class));
+            session.createQuery(qb.createQueryDefinition(InodeDTO.class));
     List<InodeDTO> dtos = query.getResultList();
     List<INode> list = convert(dtos);
     session.release(dtos);
     return list;
   }
-  
+
   @Override
   public boolean hasChildren(long parentId, boolean areChildRandomlyPartitioned) throws StorageException {
     HopsSession session = connector.obtainSession();
 
     HopsQueryBuilder qb = session.getQueryBuilder();
     HopsQueryDomainType<InodeDTO> dobj =
-        qb.createQueryDefinition(InodeDTO.class);
+            qb.createQueryDefinition(InodeDTO.class);
     HopsPredicate pred1 = dobj.get("parentId").equal(dobj.param("parentIDParam"));
     HopsPredicate pred2 = dobj.get("partitionId").equal(dobj.param("partitionIDParam"));
     if(areChildRandomlyPartitioned){
@@ -690,7 +709,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   @Override
   public void updateLogicalTime(Collection<INodeMetadataLogEntry> logEntries)
-      throws StorageException {
+          throws StorageException {
     HopsSession session = connector.obtainSession();
     for(INodeMetadataLogEntry logEntry : logEntries){
       InodeDTO inodeDTO = createPersistable(session, logEntry);
@@ -706,7 +725,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   }
 
   private InodeDTO createPersistable(HopsSession session, INodeMetadataLogEntry
-      logEntry) throws StorageException {
+          logEntry) throws StorageException {
     InodeDTO inodeDTO = session.newInstance(InodeDTO.class);
     inodeDTO.setPartitionId(logEntry.getPartitionId());
     inodeDTO.setParentId(logEntry.getParentId());
@@ -719,7 +738,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   public long getMaxId() throws StorageException{
     return MySQLQueryHelper.maxLong(TABLE_NAME, ID);
   }
-  
+
   private List<INode> convert(List<InodeDTO> list) throws StorageException {
     List<INode> inodes = new ArrayList<>();
     for (InodeDTO persistable : list) {
@@ -733,23 +752,23 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   protected static INode convert(InodeDTO persistable) {
     INode node = new INode(persistable.getId(), persistable.getName(),
-        persistable.getParentId(), persistable.getPartitionId(),
-        NdbBoolean.convert(persistable.getIsDir()),
-        NdbBoolean.convert(persistable.getQuotaEnabled()),
-        persistable.getModificationTime(), persistable.getATime(),
-        persistable.getUserID(), persistable.getGroupID(),
-        persistable.getPermission(), NdbBoolean.convert(persistable.getUnderConstruction()),
-        persistable.getClientName(), persistable.getClientMachine(),
-        persistable.getGenerationStamp(),
-        persistable.getHeader(), persistable.getSymlink(),
-        NdbBoolean.convert(persistable.getSubtreeLocked()),
-        persistable.getSubtreeLockOwner(),
-        persistable.getMetaEnabled(),
-        persistable.getSize(), NdbBoolean.convert(persistable
-        .getFileStoredInDd()), persistable.getLogicalTime(),
-        persistable.getStoragePolicy(), persistable.getChildrenNum(),
-        persistable.getNumAces(), persistable.getNumUserXAttrs(),
-        persistable.getNumSysXAttrs());
+            persistable.getParentId(), persistable.getPartitionId(),
+            NdbBoolean.convert(persistable.getIsDir()),
+            NdbBoolean.convert(persistable.getQuotaEnabled()),
+            persistable.getModificationTime(), persistable.getATime(),
+            persistable.getUserID(), persistable.getGroupID(),
+            persistable.getPermission(), NdbBoolean.convert(persistable.getUnderConstruction()),
+            persistable.getClientName(), persistable.getClientMachine(),
+            persistable.getGenerationStamp(),
+            persistable.getHeader(), persistable.getSymlink(),
+            NdbBoolean.convert(persistable.getSubtreeLocked()),
+            persistable.getSubtreeLockOwner(),
+            persistable.getMetaEnabled(),
+            persistable.getSize(), NdbBoolean.convert(persistable
+            .getFileStoredInDd()), persistable.getLogicalTime(),
+            persistable.getStoragePolicy(), persistable.getChildrenNum(),
+            persistable.getNumAces(), persistable.getNumUserXAttrs(),
+            persistable.getNumSysXAttrs());
 
     return node;
   }
@@ -798,7 +817,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 //    }
   }
 
-   com.mysql.clusterj.LockMode getLock(EntityContext.LockMode lock){
+  com.mysql.clusterj.LockMode getLock(EntityContext.LockMode lock){
     switch(lock){
       case WRITE_LOCK:
         return LockMode.EXCLUSIVE;
@@ -809,6 +828,6 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
       default:
         throw new UnsupportedOperationException("Lock Type is not supported");
     }
-   }
+  }
 
 }
