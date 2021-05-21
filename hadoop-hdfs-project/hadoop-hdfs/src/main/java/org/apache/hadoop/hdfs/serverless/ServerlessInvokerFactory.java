@@ -3,6 +3,9 @@ package org.apache.hadoop.hdfs.serverless;
 import com.google.gson.JsonObject;
 import io.hops.exception.StorageInitializtionException;
 
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 
 public class ServerlessInvokerFactory {
@@ -32,8 +35,8 @@ public class ServerlessInvokerFactory {
 
         try {
             return (ServerlessInvoker<JsonObject>) Class.forName(invokerClassName).newInstance();
-        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException ex) {
-            throw new StorageInitializtionException(ex);
+        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e1) {
+            throw new StorageInitializtionException(e1);
         }
     }
 }
