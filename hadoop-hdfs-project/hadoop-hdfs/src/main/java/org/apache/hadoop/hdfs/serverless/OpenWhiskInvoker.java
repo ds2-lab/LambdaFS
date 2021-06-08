@@ -78,7 +78,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         HashMap<String, Object> nameNodeArguments,
         HashMap<String, Object> fileSystemOperationArguments) throws IOException
     {
-        LOG.debug(String.format("Preparing to invoke OpenWhisk serverless function with URI \"%s\" for FS operation \"%s\" now...",
+        LOG.info(String.format("Preparing to invoke OpenWhisk serverless function with URI \"%s\" for FS operation \"%s\" now...",
                 functionUri, operationName));
 
         HttpPost request = new HttpPost(functionUri);
@@ -119,7 +119,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         request.setHeader("Content-type", "application/json");
         request.setHeader("Authorization", "Basic Basic 789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP");
 
-        LOG.debug("Invoking the OpenWhisk serverless NameNode function now...");
+        LOG.info("Invoking the OpenWhisk serverless NameNode function now...");
 
         HttpResponse response = httpClient.execute(request);
 
