@@ -1,8 +1,11 @@
 package org.apache.hadoop.hdfs.serverless;
 
 import org.apache.hadoop.ipc.RemoteException;
+import org.apache.http.impl.client.CloseableHttpClient;
 
 import java.io.IOException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 
 /**
@@ -32,4 +35,10 @@ public interface ServerlessInvoker<T> {
             String functionUri,
             HashMap<String, Object> nameNodeArguments,
             HashMap<String, Object> fileSystemOperationArguments) throws IOException;
+
+    /**
+     * Return an HTTP client configured appropriately for the serverless platform associated with the
+     * concrete implementation of this interface.
+     */
+    public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException;
 }

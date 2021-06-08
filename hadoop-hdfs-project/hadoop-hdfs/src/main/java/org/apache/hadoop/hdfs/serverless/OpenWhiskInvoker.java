@@ -21,11 +21,13 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
 
+import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
+import java.security.*;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,35 +46,30 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
      * Default constructor.
      */
     public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
-        // https://stackoverflow.com/questions/19517538/ignoring-ssl-certificate-in-apache-httpclient-4-3
-//        SSLContextBuilder builder = new SSLContextBuilder();
-//        builder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
-//        SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(
-//                builder.build());
-//        httpClient = HttpClients.custom().setSSLSocketFactory(sslsf).build();
+        // Create a trust manager that does not validate certificate chains
+        TrustManager[] trustAllCerts = new TrustManager[] {
+                new X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+                    public void checkClientTrusted(
+                            java.security.cert.X509Certificate[] certs, String authType) {
+                    }
+                    public void checkServerTrusted(
+                            java.security.cert.X509Certificate[] certs, String authType) {
+                    }
+                }
+        };
 
-        // https://stackoverflow.com/questions/34655031/javax-net-ssl-sslpeerunverifiedexception-host-name-does-not-match-the-certifica
-        final SSLConnectionSocketFactory sslsf;
         try {
-            sslsf = new SSLConnectionSocketFactory(SSLContext.getDefault(),
-                    NoopHostnameVerifier.INSTANCE);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            SSLContext sc = SSLContext.getInstance("SSL");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+        } catch (GeneralSecurityException e) {
+            LOG.error(e);
         }
 
-        final Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
-                .register("http", new PlainConnectionSocketFactory())
-                .register("https", sslsf)
-                .build();
-
-        final PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager(registry);
-        cm.setMaxTotal(100);
-        httpClient = HttpClients.custom()
-                .setSSLSocketFactory(sslsf)
-                .setConnectionManager(cm)
-                .build();
-
-        // httpClient = HttpClientBuilder.create().build();
+        httpClient = getHttpClient();
     }
 
     public JsonObject invokeNameNodeViaHttpPost(
@@ -120,6 +117,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         StringEntity parameters = new StringEntity(requestArguments.toString());
         request.setEntity(parameters);
         request.setHeader("Content-type", "application/json");
+        request.setHeader("Authorization", "Basic Basic 789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP");
 
         LOG.debug("Invoking the OpenWhisk serverless NameNode function now...");
 
@@ -167,5 +165,33 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
      */
     private void addStandardArguments(JsonObject nameNodeArgumentsJson) {
         nameNodeArgumentsJson.addProperty("command-line-arguments", "-regular");
+    }
+
+    /**
+     * Return an HTTP client configured appropriately for the OpenWhisk serverless platform.
+     */
+    public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException {
+        // We create the client in this way in order to avoid SSL certificate validation/verification errors.
+        // The solution here is provided by:
+        // https://gist.github.com/mingliangguo/c86e05a0f8a9019b281a63d151965ac7
+
+        TrustManager[] trustAllCerts = new TrustManager[] {
+                new X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+                    public void checkClientTrusted(X509Certificate[] certs, String authType) {  }
+
+                    public void checkServerTrusted(X509Certificate[] certs, String authType) {  }
+                }
+        };
+
+        SSLContext sc = SSLContext.getInstance("SSL");
+        sc.init(null, trustAllCerts, new SecureRandom());
+        return HttpClients
+            .custom()
+            .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+            .setSSLContext(sc)
+            .build();
     }
 }
