@@ -220,12 +220,12 @@
       <artifactId>hadoop-auth</artifactId>
       <scope>compile</scope>
     </dependency>
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-auth</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-minikdc</artifactId>
