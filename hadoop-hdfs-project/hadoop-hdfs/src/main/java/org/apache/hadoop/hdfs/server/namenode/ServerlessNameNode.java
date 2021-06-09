@@ -307,7 +307,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     if (nameNodeInstance == null) {
       LOG.error("NameNodeInstance is null despite having been initialized.");
-      response.addProperty("EXCEPTION", "Failed to initialize NameNode. Unknown error. Review logs for details.");
+      response.addProperty("ERROR-MESSAGE", "Failed to initialize NameNode. Unknown error. Review logs for details.");
       return response;
     }
 
