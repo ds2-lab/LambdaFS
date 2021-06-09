@@ -272,6 +272,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("Function execution started.");
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
+    LOG.info("System.getenv(\"HADOOP_CONF_DIR\") = " + System.getenv("HADOOP_CONF_DIR"));
+
     String[] commandLineArguments;
 
     // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
