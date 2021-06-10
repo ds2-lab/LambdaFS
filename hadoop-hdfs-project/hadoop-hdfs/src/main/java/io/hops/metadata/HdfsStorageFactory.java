@@ -104,6 +104,9 @@ public class HdfsStorageFactory {
   }
 
   public static void setConfiguration(Configuration conf) throws IOException {
+    System.out.println("Test 123");
+    LOG.info("Test 456");
+    LOG.debug("Test 789");
     IDsMonitor.getInstance().setConfiguration(conf);
     Cache.getInstance(conf);
     LockFactory.getInstance().setConfiguration(conf);
