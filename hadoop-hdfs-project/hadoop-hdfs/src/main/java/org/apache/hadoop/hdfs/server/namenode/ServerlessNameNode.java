@@ -939,6 +939,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     
     UserGroupInformation.setConfiguration(conf);
     loginAsNameNodeUser(conf);
+
+    LOG.debug("Setting up the configuration for the HdfsStorageFactory now...");
     
     HdfsStorageFactory.setConfiguration(conf);
 

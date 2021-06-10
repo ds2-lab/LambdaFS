@@ -22,6 +22,7 @@ public class DalDriver {
   public static DalStorageFactory load(String storageFactoryClassName)
       throws StorageInitializtionException {
     try {
+      System.out.println("Attempting to load storage factory class with class name: \"" + storageFactoryClassName + "\"");
       return (DalStorageFactory) Class.forName(storageFactoryClassName)
           .newInstance();
     } catch (ClassNotFoundException | IllegalAccessException | InstantiationException ex) {
