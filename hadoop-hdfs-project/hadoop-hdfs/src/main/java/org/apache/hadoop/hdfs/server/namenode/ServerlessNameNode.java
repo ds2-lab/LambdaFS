@@ -183,6 +183,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private static ServerlessNameNode nameNodeInstance = null;
 
   /**
+   * Added by Ben; mostly used for debugging (i.e., making sure the NameNode code that
+   * is running is up-to-date with the source code base).
+   *
+   * Syntax:
+   *  Major.Minor.Build.Revision
+   */
+  private static String versionNumber = "0.1.1.1";
+
+  /**
    * HDFS configuration can have three types of parameters:
    * <ol>
    * <li>Parameters that are common for all the name services in the
@@ -269,7 +278,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private AtomicBoolean started = new AtomicBoolean(false);
 
   public static JsonObject main(JsonObject args) {
-    LOG.info("Function execution started.");
+    LOG.info("=======================================");
+    LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
     LOG.info("System.getenv(\"HADOOP_CONF_DIR\") = " + System.getenv("HADOOP_CONF_DIR"));
