@@ -280,7 +280,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   public static JsonObject main(JsonObject args) {
     LOG.info("=================================================================");
     LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
-    LOG.info("=================================================================\n");
+    LOG.info("=================================================================");
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
     LOG.info("System.getenv(\"HADOOP_CONF_DIR\") = " + System.getenv("HADOOP_CONF_DIR"));
