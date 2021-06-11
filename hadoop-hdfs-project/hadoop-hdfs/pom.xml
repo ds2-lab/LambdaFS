@@ -201,7 +201,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <groupId>org.apache.htrace</groupId>
       <artifactId>htrace-core4</artifactId>
     </dependency>
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-kms</artifactId>
       <scope>test</scope>
@@ -211,7 +211,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>hadoop-kms</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
   </dependencies>
 
   <build>
