@@ -940,14 +940,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     UserGroupInformation.setConfiguration(conf);
     loginAsNameNodeUser(conf);
 
-    LOG.debug("Setting up the configuration for the HdfsStorageFactory now...");
+    //LOG.debug("Setting up the configuration for the HdfsStorageFactory now...");
 
-    LOG.debug(HdfsStorageFactory.class.getSimpleName() + ".class");
-    LOG.debug(String.valueOf(HdfsStorageFactory.class.getResource("HdfsStorageFactory.class")));
+    //LOG.debug(HdfsStorageFactory.class.getSimpleName() + ".class");
+    //LOG.debug(String.valueOf(HdfsStorageFactory.class.getResource("HdfsStorageFactory.class")));
 
     ClassLoader loader = HdfsStorageFactory.class.getClassLoader();
-    LOG.debug(String.valueOf(loader.getResource("io/hops/metadata/HdfsStorageFactory.class")));
-    LOG.debug(String.valueOf(HdfsStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));
+    //LOG.debug(String.valueOf(loader.getResource("io/hops/metadata/HdfsStorageFactory.class")));
+    //LOG.debug(String.valueOf(HdfsStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));
     
     HdfsStorageFactory.setConfiguration(conf);
 

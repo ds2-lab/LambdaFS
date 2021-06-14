@@ -104,9 +104,9 @@ public class HdfsStorageFactory {
   }
 
   public static void setConfiguration(Configuration conf) throws IOException {
-    System.out.println("Test 123");
+    /*System.out.println("Test 123");
     LOG.info("Test 456");
-    LOG.debug("Test 789");
+    LOG.debug("Test 789");*/
     IDsMonitor.getInstance().setConfiguration(conf);
     Cache.getInstance(conf);
     LockFactory.getInstance().setConfiguration(conf);
@@ -149,9 +149,9 @@ public class HdfsStorageFactory {
 
   public static Properties getMetadataClusterConfiguration(Configuration conf)
       throws IOException {
-    LOG.debug("Attempting to read metadata cluster configuration now...");
     String configFile = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE,
         DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE_DEFAULT);
+    LOG.debug("Attempting to read metadata cluster configuration from " + configFile + " now...");
     Properties clusterConf = new Properties();
     InputStream inStream =
         StorageConnector.class.getClassLoader().getResourceAsStream(configFile);
