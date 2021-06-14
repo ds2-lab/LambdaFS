@@ -59,10 +59,7 @@ import org.apache.hadoop.hdfs.server.namenode.INodeFile;
 import org.apache.hadoop.hdfs.server.namenode.INodeSymlink;
 import org.apache.hadoop.hdfs.server.namenode.Lease;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -153,14 +150,22 @@ public class HdfsStorageFactory {
         DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE_DEFAULT);
     LOG.debug("Attempting to read metadata cluster configuration from " + configFile + " now...");
     Properties clusterConf = new Properties();
-    InputStream inStream =
-        StorageConnector.class.getClassLoader().getResourceAsStream(configFile);
-    if (inStream == null) {
+    //InputStream inStream = StorageConnector.class.getClassLoader().getResourceAsStream(configFile);
+
+    // The configuration file isn't in the proper class structure or in a resources directory. So I am not sure
+    // that the getResourceAsStream() will work... it gives an error, and I think that's the reason why. So I am
+    // trying this to load it from an absolute location, that is, the location of the config file in the Docker image.
+    InputStream inputStream = new BufferedInputStream(new FileInputStream(configFile));
+
+    // I commented this out because the FileInputStream constructor will
+    // throw a FileNotFoundException if it cannot locate the specified file.
+    /*if (inputStream == null)
       throw new FileNotFoundException("Unable to load database configuration file");
-    } else {
-      LOG.debug("Database configuration file is NOT null. Reading now...");
-    }
-    clusterConf.load(inStream);
+    else
+      LOG.debug("Database configuration file is NOT null. Reading now...");*/
+
+    LOG.debug("Database configuration file is NOT null. Reading now...");
+    clusterConf.load(inputStream);
     return clusterConf;
   }
   
