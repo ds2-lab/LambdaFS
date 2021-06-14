@@ -155,6 +155,10 @@ public class HdfsStorageFactory {
     // The configuration file isn't in the proper class structure or in a resources directory. So I am not sure
     // that the getResourceAsStream() will work... it gives an error, and I think that's the reason why. So I am
     // trying this to load it from an absolute location, that is, the location of the config file in the Docker image.
+    //
+    // Also, I wrap the FileInputStream in a BufferedInputStream for performance reasons.
+    // According to https://stackoverflow.com/a/7692316, using FileInputStream directly is very slow, and it
+    // is made faster by wrapping in a BufferedInputStream.
     InputStream inputStream = new BufferedInputStream(new FileInputStream(configFile));
 
     // I commented this out because the FileInputStream constructor will

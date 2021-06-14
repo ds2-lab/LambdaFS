@@ -994,13 +994,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     
     ServerlessNameNode.initMetrics(conf, this.getRole());
     StartupProgressMetrics.register(startupProgress);
-    
-    startHttpServer(conf);
+
+    // Serverless NameNodes do not need to start the HTTP server.
+    // startHttpServer(conf);
     loadNamesystem(conf);
 
-    rpcServer = createRpcServer(conf);
-    tokenServiceName = NetUtils.getHostPortString(rpcServer.getRpcAddress());
-    httpServer.setNameNodeAddress(getNameNodeAddress());
+    // Serverless NameNodes do not need to create or start an RPC server.
+    // rpcServer = createRpcServer(conf);
+
+    //tokenServiceName = NetUtils.getHostPortString(rpcServer.getRpcAddress());
+    //httpServer.setNameNodeAddress(getNameNodeAddress());
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);
