@@ -40,13 +40,13 @@ public final class VariablesLock extends Lock {
 
   private final Map<Variable.Finder, TransactionLockTypes.LockType> variables;
 
-  VariablesLock() {
+  public VariablesLock() {
     this.variables =
         new EnumMap<>(
             Variable.Finder.class);
   }
 
-  VariablesLock addVariable(Variable.Finder variableType,
+  public VariablesLock addVariable(Variable.Finder variableType,
       TransactionLockTypes.LockType lockType) {
     this.variables.put(variableType, lockType);
     return this;
