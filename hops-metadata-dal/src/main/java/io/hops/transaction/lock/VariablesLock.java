@@ -66,7 +66,7 @@ public final class VariablesLock extends Lock {
   }
 
   @Override
-  protected final Type getType() {
+  public final Type getType() {
     return Type.Variable;
   }
 }
