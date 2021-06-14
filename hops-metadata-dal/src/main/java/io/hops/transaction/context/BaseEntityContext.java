@@ -31,7 +31,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
-abstract class BaseEntityContext<Key, Entity> extends EntityContext<Entity> {
+public abstract class BaseEntityContext<Key, Entity> extends EntityContext<Entity> {
 
   private static boolean statsEnabled = false;
 
