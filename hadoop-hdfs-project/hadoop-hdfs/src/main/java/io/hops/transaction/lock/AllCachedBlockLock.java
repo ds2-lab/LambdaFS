@@ -32,7 +32,7 @@ public class AllCachedBlockLock extends Lock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     cachedBlocks = acquireLockList(TransactionLockTypes.LockType.WRITE, CachedBlock.Finder.All);
 
   }

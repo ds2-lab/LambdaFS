@@ -101,7 +101,7 @@ public class INodeLock extends BaseINodeLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     if (paths != null) {
       /*
        * Needs to be sorted in order to avoid deadlocks. Otherwise one transaction
@@ -119,7 +119,7 @@ public class INodeLock extends BaseINodeLock {
     }
   }
 
-  protected void acquireInodeIdInodeLock() throws IOException {
+  public void acquireInodeIdInodeLock() throws IOException {
     if (!resolveType.equals(TransactionLockTypes.INodeResolveType.PATH) && !resolveType.equals(
         TransactionLockTypes.INodeResolveType.PATH_AND_IMMEDIATE_CHILDREN) && !resolveType.equals(
             TransactionLockTypes.INodeResolveType.PATH_AND_ALL_CHILDREN_RECURSIVELY)) {
@@ -142,7 +142,7 @@ public class INodeLock extends BaseINodeLock {
     }
   }
 
-  protected void acquirePathsINodeLocks() throws IOException {
+  public void acquirePathsINodeLocks() throws IOException {
     if (!resolveType.equals(TransactionLockTypes.INodeResolveType.PATH) &&
             !resolveType.equals(
                     TransactionLockTypes.INodeResolveType.PATH_AND_IMMEDIATE_CHILDREN) &&

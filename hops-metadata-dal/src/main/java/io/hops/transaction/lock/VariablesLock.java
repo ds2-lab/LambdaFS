@@ -53,7 +53,7 @@ public final class VariablesLock extends Lock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     for (Map.Entry<Variable.Finder, TransactionLockTypes.LockType> e : variables
         .entrySet()) {
       acquireLock(e.getValue(), e.getKey());

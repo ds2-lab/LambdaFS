@@ -58,7 +58,7 @@ public final class LeaseLock extends Lock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     setLockMode(lockType);
 
     Set<String> hldrs = new HashSet<>();

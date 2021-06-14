@@ -44,7 +44,7 @@ final class INodesLocks extends BaseINodeLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     if (inodeIdentifiers == null || inodeIdentifiers.isEmpty()) {
       return;
     }

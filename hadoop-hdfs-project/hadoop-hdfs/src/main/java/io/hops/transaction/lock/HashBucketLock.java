@@ -32,7 +32,7 @@ public class HashBucketLock extends Lock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     setLockMode(TransactionLockTypes.LockType.WRITE);
     EntityManager.findList(HashBucket.Finder.ByStorageId, storageId);
   }

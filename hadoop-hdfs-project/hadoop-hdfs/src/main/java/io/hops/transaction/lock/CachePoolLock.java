@@ -49,7 +49,7 @@ public class CachePoolLock extends Lock {
   }
  
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     setLockMode(lockType);
     if(poolNames!=null && !poolNames.isEmpty()){
       for(String poolName: poolNames){
