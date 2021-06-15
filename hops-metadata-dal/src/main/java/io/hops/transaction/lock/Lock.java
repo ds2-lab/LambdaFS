@@ -85,7 +85,7 @@ public abstract class Lock implements Comparable<Lock> {
   protected final static TransactionLockTypes.LockType DEFAULT_LOCK_TYPE =
       TransactionLockTypes.LockType.READ_COMMITTED;
   
-  protected abstract void acquire(TransactionLocks locks) throws IOException;
+  public abstract void acquire(TransactionLocks locks) throws IOException;
 
   public abstract Type getType();
 
