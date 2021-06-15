@@ -34,7 +34,7 @@ abstract class BaseIndividualBlockLock extends Lock {
   }
 
   @Override
-  protected Lock.Type getType() {
+  public Lock.Type getType() {
     return Lock.Type.Block;
   }
 }

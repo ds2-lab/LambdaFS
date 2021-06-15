@@ -38,7 +38,7 @@ public class AllCachedBlockLock extends Lock {
   }
 
   @Override
-  protected Lock.Type getType() {
+  public Lock.Type getType() {
     return Lock.Type.AllCachedBlock;
   }
 

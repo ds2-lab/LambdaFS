@@ -50,7 +50,7 @@ public class CachedBlockLock extends Lock {
   }
 
   @Override
-  protected Lock.Type getType() {
+  public Lock.Type getType() {
     return Lock.Type.CachedBlock;
   }
 
