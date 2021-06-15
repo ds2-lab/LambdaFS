@@ -94,7 +94,7 @@ public class XAttrLock extends Lock{
   }
   
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.XAttr;
   }
 }

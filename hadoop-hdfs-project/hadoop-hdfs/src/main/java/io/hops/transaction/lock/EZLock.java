@@ -39,7 +39,7 @@ public class EZLock extends Lock {
   }
 
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.EZ;
   }
 }
