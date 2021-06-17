@@ -26,7 +26,7 @@ public class DalDriver {
 
       ClassLoader loader = DalDriver.class.getClassLoader();
       System.out.println(DalDriver.class.getSimpleName() + ".class");
-      System.out.println(String.valueOf(DalDriver.class.getResource("HdfsStorageFactory.class")));
+      System.out.println(String.valueOf(DalDriver.class.getResource("DalDriver.class")));
       System.out.println(String.valueOf(loader.getResource("io/hops/DalDriver.class")));
       System.out.println(String.valueOf(DalDriver.class.getProtectionDomain().getCodeSource().getLocation()));
 

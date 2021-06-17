@@ -120,6 +120,13 @@ public class HdfsStorageFactory {
                 DFSConfigKeys.DFS_TRANSACTION_STATS_DETAILED_ENABLED_DEFAULT));
     if (!isDALInitialized) {
       LOG.debug("Initializing Data Access Layer (DAL) now...");
+
+      ClassLoader loader = DalDriver.class.getClassLoader();
+      System.out.println(DalDriver.class.getSimpleName() + ".class");
+      System.out.println(String.valueOf(DalDriver.class.getResource("DalDriver.class")));
+      System.out.println(String.valueOf(loader.getResource("io/hops/DalDriver.class")));
+      System.out.println(String.valueOf(DalDriver.class.getProtectionDomain().getCodeSource().getLocation()));
+
       HdfsVariables.registerDefaultValues(conf);
       addToClassPath(conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,
           DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT));
