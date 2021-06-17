@@ -122,6 +122,8 @@ public class HdfsStorageFactory {
       LOG.debug("Initializing Data Access Layer (DAL) now...");
 
       ClassLoader loader = DalDriver.class.getClassLoader();
+      System.out.println("Loader = " + loader.toString() + ", class = " + loader.getClass());
+
       System.out.println(DalDriver.class.getSimpleName() + ".class");
       System.out.println(String.valueOf(DalDriver.class.getResource("DalDriver.class")));
       System.out.println(String.valueOf(loader.getResource("io/hops/DalDriver.class")));

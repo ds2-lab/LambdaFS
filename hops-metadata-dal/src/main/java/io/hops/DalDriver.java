@@ -24,11 +24,11 @@ public class DalDriver {
     try {
       System.out.println("Attempting to load storage factory class with class name: \"" + storageFactoryClassName + "\"");
 
-      ClassLoader loader = DalStorageFactory.class.getClassLoader();
+      /*ClassLoader loader = DalStorageFactory.class.getClassLoader();
       System.out.println(DalStorageFactory.class.getSimpleName() + ".class");
       System.out.println(String.valueOf(DalStorageFactory.class.getResource("DalStorageFactory.class")));
       System.out.println(String.valueOf(loader.getResource("io/hops/DalStorageFactory.class")));
-      System.out.println(String.valueOf(DalStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));
+      System.out.println(String.valueOf(DalStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));*/
 
       System.out.println("Attempting to create instance of class " + storageFactoryClassName + " without casting it to DalStorageFactory...");
 
