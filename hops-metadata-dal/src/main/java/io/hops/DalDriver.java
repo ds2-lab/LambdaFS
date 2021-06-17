@@ -30,6 +30,8 @@ public class DalDriver {
       System.out.println(String.valueOf(loader.getResource("io/hops/DalStorageFactory.class")));
       System.out.println(String.valueOf(DalStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));
 
+      System.out.println("Attempting to create instance of class " + storageFactoryClassName + " without casting it to DalStorageFactory...");
+
       Object instance = Class.forName(storageFactoryClassName).newInstance();
 
       System.out.println("instance.getClass() = " + instance.getClass().toString());
