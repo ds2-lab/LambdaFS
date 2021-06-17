@@ -122,9 +122,8 @@ public class HdfsStorageFactory {
       LOG.debug("Initializing Data Access Layer (DAL) now...");
 
       ClassLoader loader = DalDriver.class.getClassLoader();
-      System.out.println("Loader = " + loader.toString() + ", class = " + loader.getClass());
 
-      System.out.println(DalDriver.class.getSimpleName() + ".class");
+      /*System.out.println(DalDriver.class.getSimpleName() + ".class");
       System.out.println(String.valueOf(DalDriver.class.getResource("DalDriver.class")));
       System.out.println(String.valueOf(loader.getResource("io/hops/DalDriver.class")));
       System.out.println(String.valueOf(DalDriver.class.getProtectionDomain().getCodeSource().getLocation()));
@@ -133,11 +132,11 @@ public class HdfsStorageFactory {
       System.out.println(DalStorageFactory.class.getSimpleName() + ".class");
       System.out.println(String.valueOf(DalStorageFactory.class.getResource("DalStorageFactory.class")));
       System.out.println(String.valueOf(loader.getResource("io/hops/DalStorageFactory.class")));
-      System.out.println(String.valueOf(DalStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));
+      System.out.println(String.valueOf(DalStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));*/
 
       HdfsVariables.registerDefaultValues(conf);
       addToClassPath(conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,
-          DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT));
+          DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT), (URLClassLoader)loader);
       dStorageFactory = DalDriver.load(
           conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS,
               DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS_DEFAULT));
@@ -189,13 +188,17 @@ public class HdfsStorageFactory {
   }
   
   //[M]: just for testing purposes
-  private static void addToClassPath(String s)
+  private static void addToClassPath(String s, URLClassLoader urlClassLoader)
       throws StorageInitializtionException {
     try {
       File f = new File(s);
       URL u = f.toURI().toURL();
-      URLClassLoader urlClassLoader =
-          (URLClassLoader) ClassLoader.getSystemClassLoader();
+
+      if (urlClassLoader == null) {
+        LOG.debug("Provided URLClassLoader is null. Using system class loader.");
+        urlClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+      }
+
       Class urlClass = URLClassLoader.class;
       Method method =
           urlClass.getDeclaredMethod("addURL", new Class[]{URL.class});
