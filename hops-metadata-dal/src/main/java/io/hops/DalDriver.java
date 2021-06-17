@@ -23,8 +23,14 @@ public class DalDriver {
       throws StorageInitializtionException {
     try {
       System.out.println("Attempting to load storage factory class with class name: \"" + storageFactoryClassName + "\"");
-      return (DalStorageFactory) Class.forName(storageFactoryClassName)
-          .newInstance();
+
+      ClassLoader loader = DalDriver.class.getClassLoader();
+      System.out.println(DalDriver.class.getSimpleName() + ".class");
+      System.out.println(String.valueOf(DalDriver.class.getResource("HdfsStorageFactory.class")));
+      System.out.println(String.valueOf(loader.getResource("io/hops/DalDriver.class")));
+      System.out.println(String.valueOf(DalDriver.class.getProtectionDomain().getCodeSource().getLocation()));
+
+      return (DalStorageFactory) Class.forName(storageFactoryClassName).newInstance();
     } catch (ClassNotFoundException | IllegalAccessException | InstantiationException ex) {
       throw new StorageInitializtionException(ex);
     }
@@ -32,8 +38,7 @@ public class DalDriver {
   public static DalEventStreaming loadHopsEventStreamingLib(
           String storageFactoryClassName) throws StorageInitializtionException {
     try {
-      return (DalEventStreaming) Class.forName(storageFactoryClassName).
-              newInstance();
+      return (DalEventStreaming) Class.forName(storageFactoryClassName).newInstance();
     } catch (ClassNotFoundException | IllegalAccessException | InstantiationException ex) {
       throw new StorageInitializtionException(ex);
     }
