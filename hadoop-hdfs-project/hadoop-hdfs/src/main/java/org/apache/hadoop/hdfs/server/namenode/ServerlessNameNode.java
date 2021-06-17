@@ -189,7 +189,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Syntax:
    *  Major.Minor.Build.Revision
    */
-  private static String versionNumber = "0.1.1.3";
+  private static String versionNumber = "0.1.1.4";
 
   /**
    * HDFS configuration can have three types of parameters:
