@@ -30,7 +30,14 @@ public class DalDriver {
       System.out.println(String.valueOf(loader.getResource("io/hops/DalStorageFactory.class")));
       System.out.println(String.valueOf(DalStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));
 
-      return (DalStorageFactory) Class.forName(storageFactoryClassName).newInstance();
+      Object instance = Class.forName(storageFactoryClassName).newInstance();
+
+      System.out.println("instance.getClass() = " + instance.getClass().toString());
+      System.out.println(instance.toString());
+
+      return (DalStorageFactory)instance;
+
+      // return (DalStorageFactory) Class.forName(storageFactoryClassName).newInstance();
     } catch (ClassNotFoundException | IllegalAccessException | InstantiationException ex) {
       throw new StorageInitializtionException(ex);
     }
