@@ -284,6 +284,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
     LOG.info("System.getenv(\"HADOOP_CONF_DIR\") = " + System.getenv("HADOOP_CONF_DIR"));
+    LOG.info("System.getenv(\"__OW_ACTIVATION_ID\") = " + System.getenv("__OW_ACTIVATION_ID"));
+
+    LOG.debug("JsonObject args = " + args.toString());
 
     String[] commandLineArguments;
 

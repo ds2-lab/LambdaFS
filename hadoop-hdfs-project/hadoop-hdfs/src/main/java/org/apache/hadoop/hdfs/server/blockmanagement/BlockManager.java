@@ -3473,6 +3473,7 @@ public class BlockManager {
     boolean haveMore;
     final int filesToProcess = slicerBatchSize * processMisReplicatedNoOfBatchs;
 
+    // TODO: Determine more consistent way to handle NameNode IDs given the leader election system isn't used.
     addToMisReplicatedRangeQueue(new MisReplicatedRange(namesystem.getNamenodeId(), -1));
     long maxInodeId = 0;
     if(LOG.isInfoEnabled()){
