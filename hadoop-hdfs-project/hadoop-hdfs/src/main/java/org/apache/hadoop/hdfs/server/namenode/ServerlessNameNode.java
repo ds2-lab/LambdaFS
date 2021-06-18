@@ -1041,13 +1041,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Start the services common to active and standby states
    */
   private void startCommonServices(Configuration conf) throws IOException {
-    startLeaderElectionService();
+    LOG.debug("=-=-=-=-=-=-=-==-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    LOG.debug("Starting common NameNode services now...");
+    LOG.debug("=-=-=-=-=-=-=-==-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    LOG.debug("NOT starting the Leader Election Service.");
+    // startLeaderElectionService();
 
     startMDCleanerService();
     
     namesystem.startCommonServices(conf);
     registerNNSMXBean();
-    rpcServer.start();
+
+    LOG.debug("NOT starting the RPC server.");
+    // rpcServer.start();
     plugins = conf.getInstances(DFS_NAMENODE_PLUGINS_KEY, ServicePlugin.class);
     for (ServicePlugin p : plugins) {
       try {
@@ -1056,11 +1062,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         LOG.warn("ServicePlugin " + p + " could not be started", t);
       }
     }
-    LOG.info(getRole() + " RPC up at: " + rpcServer.getRpcAddress());
+    /*LOG.info(getRole() + " RPC up at: " + rpcServer.getRpcAddress());
     if (rpcServer.getServiceRpcAddress() != null) {
       LOG.info(getRole() + " service RPC up at: " +
           rpcServer.getServiceRpcAddress());
-    }
+    }*/
   }
 
   /**
