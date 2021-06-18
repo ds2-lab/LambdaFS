@@ -277,16 +277,62 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   protected final Configuration conf;
   private AtomicBoolean started = new AtomicBoolean(false);
 
+  /**
+   * Identifies the NameNode. This is used in place of the leader election ID since leader election is not used
+   * by serverless name nodes.
+   *
+   * This is set the first time this function is invoked (when it is warm, it should still be set...).
+   *
+   * The value is computed by hashing the activation ID of the OpenWhisk function.
+   */
+  private static long nameNodeID = -1;
+
+  /**
+   * Source: https://stackoverflow.com/questions/1660501/what-is-a-good-64bit-hash-function-in-java-for-textual-strings
+   * Used to convert the activation ID of this serverless function to a long to use as the NameNode ID.
+   *
+   * In theory, this is done only when the function is cold.
+   */
+  public static long hash(String string) {
+    long h = 1125899906842597L; // prime
+    int len = string.length();
+
+    for (int i = 0; i < len; i++) {
+      h = 31*h + string.charAt(i);
+    }
+    return h;
+  }
+
+  /**
+   * Currently implemented for OpenWhisk.
+   */
+  private static void platformSpecificInitialization() {
+    // TODO: Make this generic so that it can be readily reimplemented for arbitrary serverless platforms.
+    String activationId = System.getenv("__OW_ACTIVATION_ID");
+
+    LOG.info("System.getenv(\"HADOOP_CONF_DIR\") = " + System.getenv("HADOOP_CONF_DIR"));
+    LOG.info("OpenWhisk activation ID = " + activationId);
+
+    if (ServerlessNameNode.nameNodeID == -1) {
+      ServerlessNameNode.nameNodeID = hash(activationId);
+      LOG.info("Set name node ID to " + ServerlessNameNode.nameNodeID);
+    } else {
+      LOG.info("Name node ID already set to " + ServerlessNameNode.nameNodeID);
+    }
+  }
+
+  /**
+   * OpenWhisk function handler. This is the main entrypoint for the serverless name node.
+   */
   public static JsonObject main(JsonObject args) {
     LOG.info("=================================================================");
     LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
     LOG.info("=================================================================");
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
-    LOG.info("System.getenv(\"HADOOP_CONF_DIR\") = " + System.getenv("HADOOP_CONF_DIR"));
-    LOG.info("System.getenv(\"__OW_ACTIVATION_ID\") = " + System.getenv("__OW_ACTIVATION_ID"));
-
     LOG.debug("JsonObject args = " + args.toString());
+
+    platformSpecificInitialization();
 
     String[] commandLineArguments;
 
@@ -1715,7 +1761,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Returns the id of this namenode
    */
   public long getId() {
-    return leaderElection.getCurrentId();
+    //return leaderElection.getCurrentId();
+    return ServerlessNameNode.nameNodeID;
   }
 
   /**
