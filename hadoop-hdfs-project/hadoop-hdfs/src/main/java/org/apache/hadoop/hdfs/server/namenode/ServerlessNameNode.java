@@ -1819,7 +1819,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public long getLeCurrentId() {
-    return leaderElection.getCurrentId();
+    LOG.warn("LeaderElection ID has been replaced by standard NameNode ID because LeaderElection is disabled!");
+    return this.getId();
+    // return leaderElection.getCurrentId();
   }
 
   public SortedActiveNodeList getActiveNameNodes() {
