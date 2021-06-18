@@ -441,7 +441,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // Retrieve the DataNodes from intermediate storage.
       LOG.info("Retrieving list of DataNodes from intermediate storage now...");
       DataNodeDataAccess<DataNodeMeta> dataAccess = (DataNodeDataAccess<DataNodeMeta>)
-              HdfsStorageFactory.getDataAccess(DataNodeMeta.class);
+              HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
       List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
       LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
 
