@@ -716,6 +716,8 @@ public class StringUtils {
     if (SystemUtils.IS_OS_UNIX) {
       try {
         SignalLogger.INSTANCE.register(LOG);
+      } catch (IllegalStateException e) {
+        LOG.info("SignalLogger already registered.");
       } catch (Throwable t) {
         LOG.warn("failed to register any UNIX signal loggers: ", t);
       }

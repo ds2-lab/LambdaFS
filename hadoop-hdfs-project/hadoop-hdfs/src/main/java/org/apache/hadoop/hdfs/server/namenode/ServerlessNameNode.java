@@ -355,8 +355,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     JsonObject response = new JsonObject();
 
     // Check if we need to initialize the namenode.
-    if (!initialized || (initialized && nameNodeInstance == null)) {
+    if (!initialized) {
       try {
+        LOG.debug("This is a COLD START. Creating the NameNode now...");
         nameNodeInstance = startServerlessNameNode(commandLineArguments);
       } catch (Exception ex) {
         LOG.error("Encountered exception while initializing the name node.", ex);
