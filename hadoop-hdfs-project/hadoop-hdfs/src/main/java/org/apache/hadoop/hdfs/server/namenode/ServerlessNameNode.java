@@ -19,6 +19,7 @@ package org.apache.hadoop.hdfs.server.namenode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.hops.StorageConnector;
 import io.hops.exception.StorageException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
@@ -37,6 +38,8 @@ import io.hops.security.UsersGroups;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.LightWeightRequestHandler;
 import io.hops.transaction.handler.RequestHandler;
+import org.apache.commons.cli.*;
+import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -660,19 +663,107 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   }
 
+  private static CommandLine parseMainArguments(String[] args) {
+    Options options = new Options();
+
+    Option commandLineArgumentsOption = new Option("c", "command-line-args", true,
+            "A String containing the command-line arguments for the NameNode.");
+    commandLineArgumentsOption.setRequired(false);
+
+    Option operationOption = new Option("o", "op", true,
+            "The file system operation to perform.");
+    operationOption.setRequired(true);
+
+    Option fsArgsOption = new Option("f", "fsArgs", true,
+            "JSON formatted as a String containing the arguments for the specified file system operation.");
+    fsArgsOption.setRequired(false);
+
+    CommandLineParser parser = new GnuParser();
+    HelpFormatter formatter = new HelpFormatter();
+    CommandLine cmd = null;
+
+    try {
+      cmd = parser.parse(options, args);
+    } catch (ParseException e) {
+      System.out.println(e.getMessage());
+      formatter.printHelp("utility-name", options);
+
+      System.exit(1);
+    }
+
+    return cmd;
+  }
+
   public static void main(String[] args) throws Exception {
-    if (DFSUtil.parseHelpArgument(args, ServerlessNameNode.USAGE, System.out, true)) {
-      System.exit(0);
+    LOG.info("=================================================================");
+    LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
+    LOG.info("=================================================================");
+    System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
+
+    LOG.debug("JsonObject args = " + args.toString());
+
+    platformSpecificInitialization();
+
+    CommandLine cmd = parseMainArguments(args);
+
+    String[] commandLineArguments;
+
+    // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
+    if (cmd.hasOption("command-line-args"))
+      commandLineArguments = new String[]{cmd.getOptionValue("command-line-args")};
+    else
+      commandLineArguments = new String[0];
+
+    String op = null;
+    JsonObject fsArgs = null;
+
+    if (cmd.hasOption("op"))
+      op = cmd.getOptionValue("op");
+
+    // JSON dictionary containing the arguments/parameters for the specified filesystem operation.
+    if (cmd.hasOption("fsArgs")) {
+      String fsArgsAsString = cmd.getOptionValue("fsArgs");
+      JsonParser parser = new JsonParser();
+      fsArgs = parser.parse(fsArgsAsString).getAsJsonObject(); // Convert to JsonObject.
+    }
+
+    JsonObject response = new JsonObject();
+
+    // Check if we need to initialize the namenode.
+    if (!initialized) {
+      try {
+        LOG.debug("This is a COLD START. Creating the NameNode now...");
+        nameNodeInstance = startServerlessNameNode(commandLineArguments);
+      } catch (Exception ex) {
+        LOG.error("Encountered exception while initializing the name node.", ex);
+        response.addProperty("EXCEPTION", ex.toString());
+      }
+    }
+    else {
+      LOG.debug("NameNode is already initialized. Skipping initialization step.");
+    }
+
+    if (nameNodeInstance == null) {
+      LOG.error("NameNodeInstance is null despite having been initialized.");
+      response.addProperty("ERROR-MESSAGE", "Failed to initialize NameNode. Unknown error. Review logs for details.");
+
+      System.out.println(response);
+      return;
     }
 
     try {
-      StringUtils.startupShutdownMessage(ServerlessNameNode.class, args, LOG);
-      ServerlessNameNode namenode = createNameNode(args, null);
-      LOG.info("NameNode == null: " + (namenode == null));
-    } catch (Throwable e) {
-      LOG.error("Failed to start namenode.", e);
-      terminate(1, e);
+      JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
+
+      response.add("RESULT", result);
     }
+    catch (Exception ex) {
+      LOG.error("Exception encountered during execution of Serverless NameNode.");
+      ex.printStackTrace();
+      response.addProperty("EXCEPTION", ex.toString());
+    }
+
+    System.out.println(response);
+    return;
   }
 
   /**
@@ -1041,8 +1132,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.error("Error starting CRL fetcher service", ex);
       throw new IOException(ex);
     }
-    
-    ServerlessNameNode.initMetrics(conf, this.getRole());
+
+    try {
+      ServerlessNameNode.initMetrics(conf, this.getRole());
+    } catch (org.apache.hadoop.metrics2.MetricsException e) {
+      LOG.warn("Encountered exception during initialization of NameNode metrics system.");
+      e.printStackTrace();
+    }
     StartupProgressMetrics.register(startupProgress);
 
     // Serverless NameNodes do not need to start the HTTP server.
