@@ -316,6 +316,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("System.getenv(\"HADOOP_CONF_DIR\") = " + System.getenv("HADOOP_CONF_DIR"));
     LOG.info("OpenWhisk activation ID = " + activationId);
 
+    // OpenWhisk initialization.
+    if (activationId != null)
+      openWhiskInitialization(activationId);
+    else
+      ServerlessNameNode.nameNodeID = 1;
+  }
+
+  /**
+   * Perform initialization specific to OpenWhisk.
+   * @param activationId the activation ID of the running OpenWhisk function instance.
+   */
+  private static void openWhiskInitialization(String activationId) {
     if (ServerlessNameNode.nameNodeID == -1) {
       ServerlessNameNode.nameNodeID = hash(activationId);
       LOG.info("Set name node ID to " + ServerlessNameNode.nameNodeID);
