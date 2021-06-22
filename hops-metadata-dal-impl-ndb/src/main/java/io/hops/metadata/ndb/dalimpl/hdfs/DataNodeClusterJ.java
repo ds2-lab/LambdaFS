@@ -35,7 +35,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
 
         @Column(name = IP_ADDR)
         String getIpAddress();
-        void setIpAddr(String ipAddr);
+        void setIpAddress(String ipAddr);
 
         @Column(name = XFER_PORT)
         int getXferPort();
@@ -156,7 +156,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
     private void copyState(DataNodeDTO dest, DataNodeMeta src) {
         dest.setDatanodeUuid(src.getDatanodeUuid());
         dest.setHostname(src.getHostname());
-        dest.setIpAddr(src.getIpAddress());
+        dest.setIpAddress(src.getIpAddress());
         dest.setXferPort(src.getXferPort());
         dest.setInfoPort(src.getInfoPort());
         dest.setIpcPort(src.getIpcPort());

@@ -30,7 +30,7 @@ CREATE TABLE `datanodes` (
     `info_port` int(11),
     `ipc_port` int(11),
     PRIMARY KEY (`datanode_uuid`)
-) ENGINE=ndbcluster DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `hdfs_block_infos` (
   `inode_id` int(11) NOT NULL,
