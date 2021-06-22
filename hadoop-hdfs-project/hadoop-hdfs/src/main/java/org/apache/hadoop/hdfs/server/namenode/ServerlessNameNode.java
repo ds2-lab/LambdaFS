@@ -367,7 +367,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (args.has("fsArgs"))
       fsArgs = args.getAsJsonObject("fsArgs");
 
+    return nameNodeDriver(op, fsArgs, commandLineArguments);
+  }
+
+  /**
+   * This is called by both main methods.
+   */
+  private static JsonObject nameNodeDriver(String op, JsonObject fsArgs, String[] commandLineArguments) {
     JsonObject response = new JsonObject();
+
+    LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    LOG.info("NameNode Argument Information:");
+    LOG.info("Op = \"" + op + "\"");
+    LOG.info("fsArgs = " + fsArgs.toString());
+    LOG.info("commandLineArguments = " + Arrays.toString(commandLineArguments));
+    LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
 
     // Check if we need to initialize the namenode.
     if (!initialized) {
@@ -379,9 +393,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         response.addProperty("EXCEPTION", ex.toString());
       }
     }
-    else {
+    else
       LOG.debug("NameNode is already initialized. Skipping initialization step.");
-    }
 
     if (nameNodeInstance == null) {
       LOG.error("NameNodeInstance is null despite having been initialized.");
@@ -739,43 +752,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       fsArgs = parser.parse(fsArgsAsString).getAsJsonObject(); // Convert to JsonObject.
     }
 
-    JsonObject response = new JsonObject();
-
-    // Check if we need to initialize the namenode.
-    if (!initialized) {
-      try {
-        LOG.debug("This is a COLD START. Creating the NameNode now...");
-        nameNodeInstance = startServerlessNameNode(commandLineArguments);
-      } catch (Exception ex) {
-        LOG.error("Encountered exception while initializing the name node.", ex);
-        response.addProperty("EXCEPTION", ex.toString());
-      }
-    }
-    else {
-      LOG.debug("NameNode is already initialized. Skipping initialization step.");
-    }
-
-    if (nameNodeInstance == null) {
-      LOG.error("NameNodeInstance is null despite having been initialized.");
-      response.addProperty("ERROR-MESSAGE", "Failed to initialize NameNode. Unknown error. Review logs for details.");
-
-      System.out.println(response);
-      return;
-    }
-
-    try {
-      JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
-
-      response.add("RESULT", result);
-    }
-    catch (Exception ex) {
-      LOG.error("Exception encountered during execution of Serverless NameNode.");
-      ex.printStackTrace();
-      response.addProperty("EXCEPTION", ex.toString());
-    }
-
-    System.out.println(response);
-    return;
+    JsonObject response = nameNodeDriver(op, fsArgs, commandLineArguments);
+    LOG.info("Response = " + response);
   }
 
   /**
