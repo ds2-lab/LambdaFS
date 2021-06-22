@@ -379,7 +379,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
     LOG.info("NameNode Argument Information:");
     LOG.info("Op = \"" + op + "\"");
-    LOG.info("fsArgs = " + fsArgs.toString());
+    if (fsArgs != null)
+      LOG.info("fsArgs = " + fsArgs.toString());
+    else
+      LOG.info("fsArgs = NULL");
     LOG.info("commandLineArguments = " + Arrays.toString(commandLineArguments));
     LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
 
