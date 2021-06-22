@@ -360,6 +360,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String op = null;
     JsonObject fsArgs = null;
 
+    System.out.println("args.keySet() = " + args.keySet().toString());
+
     if (args.has("op"))
       op = args.getAsJsonPrimitive("op").getAsString();
 
@@ -378,7 +380,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
     LOG.info("NameNode Argument Information:");
-    LOG.info("Op = \"" + op + "\"");
+    LOG.info("Op = " + op);
     if (fsArgs != null)
       LOG.info("fsArgs = " + fsArgs.toString());
     else
