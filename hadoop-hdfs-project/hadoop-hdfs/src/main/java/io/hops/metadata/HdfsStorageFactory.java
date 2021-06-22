@@ -135,8 +135,13 @@ public class HdfsStorageFactory {
       System.out.println(String.valueOf(DalStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));*/
 
       HdfsVariables.registerDefaultValues(conf);
-      addToClassPath(conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,
-          DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT), (URLClassLoader)loader);
+
+      String metadataDalJarPath = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,
+              DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT);
+
+      LOG.debug("Adding the hops-metadata-dal-impl JAR to classpath. Path: " + metadataDalJarPath);
+
+      addToClassPath(metadataDalJarPath, (URLClassLoader)loader);
       dStorageFactory = DalDriver.load(
           conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS,
               DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS_DEFAULT));
