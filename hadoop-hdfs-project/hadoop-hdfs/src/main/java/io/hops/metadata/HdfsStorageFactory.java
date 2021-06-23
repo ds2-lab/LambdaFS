@@ -53,6 +53,7 @@ import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.blockmanagement.PendingBlockInfo;
 import org.apache.hadoop.hdfs.server.blockmanagement.ReplicaUnderConstruction;
+import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
 import org.apache.hadoop.hdfs.server.namenode.INodeFile;
@@ -344,6 +345,9 @@ public class HdfsStorageFactory {
             (FileProvenanceDataAccess) getDataAccess(FileProvenanceDataAccess.class)));
         entityContexts.put(FileProvXAttrBufferEntry.class, new FileProvXAttrBufferContext(
             (FileProvXAttrBufferDataAccess) getDataAccess(FileProvXAttrBufferDataAccess.class)));
+
+        // entityContexts.put(DataNode.class, (DataNodeDataAccess) getDataAccess(DataNodeDataAccess.class));
+
         return entityContexts;
       }
 

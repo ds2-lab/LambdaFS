@@ -1283,7 +1283,7 @@ public class DataNode extends ReconfigurableBase
       e.printStackTrace();
     }
 
-    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess<DataNodeMeta>)
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
 
     if (dataNodeDataAccess == null)
