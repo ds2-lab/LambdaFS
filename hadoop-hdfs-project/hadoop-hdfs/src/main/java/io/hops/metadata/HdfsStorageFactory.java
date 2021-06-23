@@ -119,7 +119,7 @@ public class HdfsStorageFactory {
                 DFSConfigKeys.DFS_TRANSACTION_STATS_DETAILED_ENABLED_DEFAULT));
 
     if (!isDALInitialized) {
-      LOG.debug("Initializing Data Access Layer (DAL) now...");
+      LOG.info("Initializing Data Access Layer (DAL) now...");
 
       ClassLoader loader = DalDriver.class.getClassLoader();
 
@@ -139,13 +139,13 @@ public class HdfsStorageFactory {
       String metadataDalJarPath = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,
               DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT);
 
-      LOG.debug("Adding the hops-metadata-dal-impl JAR to classpath. Path: " + metadataDalJarPath);
+      LOG.info("Adding the hops-metadata-dal-impl JAR to classpath. Path: " + metadataDalJarPath);
 
       addToClassPath(metadataDalJarPath, (URLClassLoader)loader);
       dStorageFactory = DalDriver.load(
           conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS,
               DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS_DEFAULT));
-      LOG.debug("StorageFactory class loaded successfully. Setting configuration now...");
+      LOG.info("StorageFactory class loaded successfully. Setting configuration now...");
       dStorageFactory.setConfiguration(getMetadataClusterConfiguration(conf));
       initDataAccessWrappers();
       EntityManager.addContextInitializer(getContextInitializer());
