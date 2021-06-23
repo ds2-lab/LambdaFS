@@ -1278,8 +1278,11 @@ public class DataNode extends ReconfigurableBase
       e.printStackTrace();
     }
 
-    LOG.info("Printing data access map keys now...");
-    HdfsStorageFactory.printKeysInDataAccessMap();
+    //LOG.info("Printing data access map keys now...");
+    //HdfsStorageFactory.printKeysInDataAccessMap();
+
+    LOG.info("HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class) == null: "
+            + (HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class) == null));
 
     DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
