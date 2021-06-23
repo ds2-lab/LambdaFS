@@ -693,9 +693,11 @@ class BPServiceActor implements Runnable {
       return;
     }
 
-    SortedActiveNodeList list = this.bpNamenode.getActiveNamenodes();
+    LOG.warn("Immediately returning from `refreshNNConnections() without checking (since this is not applicable for Serverless NameNodes)...");
+
+    /*SortedActiveNodeList list = this.bpNamenode.getActiveNamenodes();
     bpos.updateNNList(list);
-    bpos.setLastNNListUpdateTime();
+    bpos.setLastNNListUpdateTime();*/
   }
 
   public void blockReceivedAndDeleted(DatanodeRegistration registration,
