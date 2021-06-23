@@ -49,11 +49,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.channels.ServerSocketChannel;
 import java.util.HashSet;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 import io.hops.StorageConnector;
 import io.hops.exception.StorageException;
@@ -311,6 +307,12 @@ public class DataNode extends ReconfigurableBase
   private BlockPoolManager blockPoolManager;
   volatile FsDatasetSpi<? extends FsVolumeSpi> data = null;
   private String clusterId = null;
+
+  /**
+   * This is used to prevent the BPOfferService thread from attempting to write metadata to intermediate storage
+   * before the DAL has been initialized.
+   */
+  private final Semaphore dalInitializedSemaphore = new Semaphore(0);
 
   public final static String EMPTY_DEL_HINT = "";
   AtomicInteger xmitsInProgress = new AtomicInteger();
@@ -1258,6 +1260,11 @@ public class DataNode extends ReconfigurableBase
 
     LOG.info("Setting configuration for HdfsStorageFactory now...");
     HdfsStorageFactory.setConfiguration(conf);
+
+    // The setting-up of the DAL occurs in `HdfsStorageFactory.setConfiguration()`, so at this point, the DAL has
+    // been set-up and we should release this semaphore so a potentially-waiting BPOfferService thread can write
+    // this DataNode's metadata to intermediate storage.
+    dalInitializedSemaphore.release();
   }
 
   /**
@@ -1265,7 +1272,16 @@ public class DataNode extends ReconfigurableBase
    *
    * This is called by the BPOfferService class in the registrationSucceeded() function.
    */
-  void writeMetadataToIntermediateStorage() throws StorageException {
+  synchronized void writeMetadataToIntermediateStorage() throws StorageException {
+
+    LOG.info("Attempting to acquire the DAL-Initialized Semaphore now...");
+    try {
+      dalInitializedSemaphore.acquire();
+    } catch (InterruptedException e) {
+      LOG.error("Encountered exception while acquiring the DAL-Initialized Semaphore. Race condition could occur.");
+      e.printStackTrace();
+    }
+
     DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess<DataNodeMeta>)
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
 
