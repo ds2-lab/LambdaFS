@@ -53,6 +53,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+
 import io.hops.metadata.yarn.dal.ReservationStateDataAccess;
 
 public class NdbStorageFactory implements DalStorageFactory {
@@ -164,6 +166,11 @@ public class NdbStorageFactory implements DalStorageFactory {
   @Override
   public float getResourceMemUtilization() throws StorageException {
     return MysqlServerConnector.getResourceMemUtilization();
+  }
+
+  @Override
+  public Map<Class, EntityDataAccess> getDataAccessMap() {
+    return dataAccessMap;
   }
   
 }

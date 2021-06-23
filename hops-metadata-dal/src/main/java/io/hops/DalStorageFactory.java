@@ -19,6 +19,8 @@ import io.hops.exception.StorageException;
 import io.hops.exception.StorageInitializtionException;
 import io.hops.metadata.common.EntityDataAccess;
 
+import javax.swing.text.html.parser.Entity;
+import java.util.Map;
 import java.util.Properties;
 
 public interface DalStorageFactory {
@@ -33,4 +35,6 @@ public interface DalStorageFactory {
   public boolean hasResources(double threshold) throws StorageException;
 
   public float getResourceMemUtilization() throws StorageException;
+
+  public Map<Class, EntityDataAccess> getDataAccessMap();
 }

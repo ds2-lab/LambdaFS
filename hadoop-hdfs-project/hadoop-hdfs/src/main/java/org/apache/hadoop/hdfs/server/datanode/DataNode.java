@@ -66,12 +66,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.ReconfigurableBase;
 import org.apache.hadoop.conf.ReconfigurationException;
 import org.apache.hadoop.conf.ReconfigurationTaskStatus;
-import org.apache.hadoop.fs.CommonConfigurationKeys;
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocalFileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.StorageType;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
@@ -1282,6 +1277,9 @@ public class DataNode extends ReconfigurableBase
       LOG.error("Encountered exception while acquiring the DAL-Initialized Semaphore. Race condition could occur.");
       e.printStackTrace();
     }
+
+    LOG.info("Printing data access map keys now...");
+    HdfsStorageFactory.printKeysInDataAccessMap();
 
     DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);

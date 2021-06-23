@@ -69,6 +69,8 @@ import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+
 import org.apache.hadoop.hdfs.protocol.CacheDirective;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguousUnderConstruction;
@@ -363,6 +365,20 @@ public class HdfsStorageFactory {
       return dataAccessAdaptors.get(type);
     }
     return dStorageFactory.getDataAccess(type);
+  }
+
+  /**
+   * Used for debugging.
+   */
+  public static void printKeysInDataAccessMap() {
+    Map<Class, EntityDataAccess> dataAccessMap = dStorageFactory.getDataAccessMap();
+
+    Set<Class> dataAccessMapKeys = dataAccessMap.keySet();
+
+    System.out.println("Data Access Map keys: ");
+    for (Class clazz : dataAccessMapKeys) {
+      System.out.println(clazz.getSimpleName());
+    }
   }
   
   public static boolean formatStorage() throws StorageException {
