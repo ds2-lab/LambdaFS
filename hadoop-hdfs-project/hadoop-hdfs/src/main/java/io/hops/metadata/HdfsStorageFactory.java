@@ -375,9 +375,9 @@ public class HdfsStorageFactory {
 
     Set<Class> dataAccessMapKeys = dataAccessMap.keySet();
 
-    System.out.println("Data Access Map keys: ");
+    LOG.info("Data Access Map keys: ");
     for (Class clazz : dataAccessMapKeys) {
-      System.out.println(clazz.getSimpleName());
+      LOG.info(clazz.getSimpleName());
     }
   }
   
