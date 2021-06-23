@@ -373,8 +373,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     JsonObject result = nameNodeDriver(op, fsArgs, commandLineArguments);
     LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-    LOG.debug("Result to be returned to the caller:\n" + result.toString());
+    LOG.debug("Result to be returned to the caller:\n" + result);
     LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+
+    // Resource: https://medium.com/openwhisk/web-actions-serverless-web-apps-with-openwhisk-f21db459f9ba
+    // Resource: https://github.com/apache/openwhisk/blob/master/docs/webactions.md
 
     JsonObject response = new JsonObject();
 
@@ -383,7 +386,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     response.addProperty("statusCode", 200);
     response.add("headers", headers);
-    response.add("body", response);
+    response.add("body", result);
 
     return response;
   }
