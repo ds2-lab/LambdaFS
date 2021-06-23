@@ -1261,6 +1261,7 @@ public class DataNode extends ReconfigurableBase
     LOG.info("Setting configuration for HdfsStorageFactory now...");
     HdfsStorageFactory.setConfiguration(conf);
 
+    LOG.info("Releasing the DAL-Initialization semaphore now...");
     // The setting-up of the DAL occurs in `HdfsStorageFactory.setConfiguration()`, so at this point, the DAL has
     // been set-up and we should release this semaphore so a potentially-waiting BPOfferService thread can write
     // this DataNode's metadata to intermediate storage.
