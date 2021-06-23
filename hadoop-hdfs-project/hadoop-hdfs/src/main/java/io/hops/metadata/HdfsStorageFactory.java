@@ -101,9 +101,8 @@ public class HdfsStorageFactory {
   }
 
   public static void setConfiguration(Configuration conf) throws IOException {
-    /*System.out.println("Test 123");
-    LOG.info("Test 456");
-    LOG.debug("Test 789");*/
+    LOG.info("`HdfsStorageFactory.setConfiguration() called...");
+
     IDsMonitor.getInstance().setConfiguration(conf);
     Cache.getInstance(conf);
     LockFactory.getInstance().setConfiguration(conf);
@@ -118,6 +117,7 @@ public class HdfsStorageFactory {
                 .DFS_TRANSACTION_STATS_WRITER_ROUND_DEFAULT), conf
             .getBoolean(DFSConfigKeys.DFS_TRANSACTION_STATS_DETAILED_ENABLED,
                 DFSConfigKeys.DFS_TRANSACTION_STATS_DETAILED_ENABLED_DEFAULT));
+
     if (!isDALInitialized) {
       LOG.debug("Initializing Data Access Layer (DAL) now...");
 
@@ -160,6 +160,9 @@ public class HdfsStorageFactory {
           .HOPS_UG_CACHE_SIZE_DEFUALT));
       
       isDALInitialized = true;
+    }
+    else {
+      LOG.info("DAL is already initialized.");
     }
   }
 
