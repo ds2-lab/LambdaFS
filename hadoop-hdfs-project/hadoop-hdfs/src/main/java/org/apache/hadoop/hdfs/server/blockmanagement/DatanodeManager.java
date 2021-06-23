@@ -555,7 +555,8 @@ public class DatanodeManager {
     decrementVersionCount(nodeInfo.getSoftwareVersion());
 
     // Remove the metadata of the datanode from intermediate storage.
-    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess) HdfsStorageFactory.getDataAccess(DataNodeMeta.class);
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess<DataNodeMeta>)
+            HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     String dataNodeUuid = nodeInfo.getDatanodeUuid();
     LOG.info("Removing metadata of DataNode " + dataNodeUuid + " from intermediate storage.");
     dataNodeDataAccess.removeDataNode(dataNodeUuid);

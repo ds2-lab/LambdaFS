@@ -1264,12 +1264,17 @@ public class DataNode extends ReconfigurableBase
    * This is called by the BPOfferService class in the registrationSucceeded() function.
    */
   void writeMetadataToIntermediateStorage() throws StorageException {
-    LOG.info("Preparing to store DataNode information in intermediate storage...");
-    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess) HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess<DataNodeMeta>)
+            HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+
+    if (dataNodeDataAccess == null)
+      LOG.error("DataNodeDataAccess class is null... the following metadata write operation will fail.");
 
     String dataNodeUuid = this.id.getDatanodeUuid();
 
     DataNodeMeta dataNodeMeta = null;
+
+    LOG.info("Preparing to store information of DataNode " + dataNodeUuid + " in intermediate storage...");
 
     try {
       dataNodeMeta = dataNodeDataAccess.getDataNode(dataNodeUuid);
