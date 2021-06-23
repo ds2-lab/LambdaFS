@@ -1179,6 +1179,7 @@ public class DataNode extends ReconfigurableBase
    */
   void startDataNode(Configuration conf, AbstractList<StorageLocation> dataDirs,
       SecureResources resources) throws IOException {  
+    LOG.info("startDataNode() called!");
 
     // settings global for all BPs in the Data Node
     this.secureResources = resources;
@@ -1255,6 +1256,7 @@ public class DataNode extends ReconfigurableBase
         dnConf.saslPropsResolver, dnConf.trustedChannelResolver);
     saslServer = new SaslDataTransferServer(dnConf, blockPoolTokenSecretManager);
 
+    LOG.info("Setting configuration for HdfsStorageFactory now...");
     HdfsStorageFactory.setConfiguration(conf);
   }
 
