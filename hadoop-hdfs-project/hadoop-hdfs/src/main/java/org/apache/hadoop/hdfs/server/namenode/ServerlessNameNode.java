@@ -479,8 +479,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       ObjectOutputStream objectOutputStream = null;
 
       try {
+        LOG.info("-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
         LOG.info("returnValue.getClass() = " + returnValue.getClass());
         LOG.info("returnValue instanceof Serializable: " + (returnValue instanceof Serializable));
+        LOG.info("returnValue BEFORE being serialized:\n" + returnValue.toString());
+        LOG.info("-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
         objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
         objectOutputStream.writeObject(returnValue);
         objectOutputStream.flush();

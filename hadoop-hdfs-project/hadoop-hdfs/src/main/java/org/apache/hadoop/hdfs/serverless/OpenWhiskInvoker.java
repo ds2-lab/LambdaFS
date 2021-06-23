@@ -123,6 +123,9 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
 
         HttpResponse response = httpClient.execute(request);
 
+        LOG.info("HTTP Response from OpenWhisk function:\n" + response.toString());
+        LOG.info("response.getEntity() = " + response.getEntity());
+
         String json = EntityUtils.toString(response.getEntity(), "UTF-8");
         Gson gson = new Gson();
         return gson.fromJson(json, JsonObject.class);
