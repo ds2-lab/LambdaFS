@@ -345,29 +345,31 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("=================================================================");
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
-    LOG.debug("JsonObject args = " + args.toString());
+    // The arguments passed by the user are included under the 'value' key.
+    JsonObject userArguments = args.get("value").getAsJsonObject();
+
+    LOG.debug("Top-level OpenWhisk arguments = " + args.toString());
+    LOG.debug("User-passed OpenWhisk arguments = " + userArguments.toString());
 
     platformSpecificInitialization();
 
     String[] commandLineArguments;
 
     // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
-    if (args.has("command-line-arguments"))
-      commandLineArguments = args.getAsJsonPrimitive("command-line-arguments").getAsString().split("\\s+");
+    if (userArguments.has("command-line-arguments"))
+      commandLineArguments = userArguments.getAsJsonPrimitive("command-line-arguments").getAsString().split("\\s+");
     else
       commandLineArguments = new String[0];
 
     String op = null;
     JsonObject fsArgs = null;
 
-    System.out.println("args.keySet() = " + args.keySet().toString());
-
-    if (args.has("op"))
-      op = args.getAsJsonPrimitive("op").getAsString();
+    if (userArguments.has("op"))
+      op = userArguments.getAsJsonPrimitive("op").getAsString();
 
     // JSON dictionary containing the arguments/parameters for the specified filesystem operation.
-    if (args.has("fsArgs"))
-      fsArgs = args.getAsJsonObject("fsArgs");
+    if (userArguments.has("fsArgs"))
+      fsArgs = userArguments.getAsJsonObject("fsArgs");
 
     return nameNodeDriver(op, fsArgs, commandLineArguments);
   }
