@@ -371,7 +371,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (userArguments.has("fsArgs"))
       fsArgs = userArguments.getAsJsonObject("fsArgs");
 
-    return nameNodeDriver(op, fsArgs, commandLineArguments);
+    JsonObject response = nameNodeDriver(op, fsArgs, commandLineArguments);
+    LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    LOG.debug("Response to be returned to the caller:\n" + response.toString());
+    LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+
+    return response;
   }
 
   /**
