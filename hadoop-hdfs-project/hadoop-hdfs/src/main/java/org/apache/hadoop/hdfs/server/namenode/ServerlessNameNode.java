@@ -371,10 +371,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (userArguments.has("fsArgs"))
       fsArgs = userArguments.getAsJsonObject("fsArgs");
 
-    JsonObject response = nameNodeDriver(op, fsArgs, commandLineArguments);
+    JsonObject result = nameNodeDriver(op, fsArgs, commandLineArguments);
     LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-    LOG.debug("Response to be returned to the caller:\n" + response.toString());
+    LOG.debug("Result to be returned to the caller:\n" + result.toString());
     LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+
+    JsonObject response = new JsonObject();
+
+    JsonObject headers = new JsonObject();
+    headers.addProperty("content-type", "application/json");
+
+    response.addProperty("statusCode", 200);
+    response.add("headers", headers);
+    response.add("body", response);
 
     return response;
   }
