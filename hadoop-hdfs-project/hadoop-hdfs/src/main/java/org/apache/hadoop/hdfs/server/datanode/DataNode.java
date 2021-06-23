@@ -312,7 +312,7 @@ public class DataNode extends ReconfigurableBase
    * This is used to prevent the BPOfferService thread from attempting to write metadata to intermediate storage
    * before the DAL has been initialized.
    */
-  private final Semaphore dalInitializedSemaphore = new Semaphore(0);
+  private final Semaphore dalInitializedSemaphore = new Semaphore(-1);
 
   public final static String EMPTY_DEL_HINT = "";
   AtomicInteger xmitsInProgress = new AtomicInteger();
