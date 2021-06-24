@@ -17,5 +17,16 @@
 <!-- Put site-specific property overrides in this file. -->
 
 <configuration>
-
+    <property>
+        <name>dfs.storage.driver.configfile</name>
+        <value>ndb-config.properties</value>
+    </property>
+    <property>
+        <name>dfs.storage.driver.jarFile</name>
+        <value>/home/ben/ben-hopsfs/hops-metadata-dal-impl-ndb/target/hops-metadata-dal-impl-ndb-3.2.0.4-SNAPSHOT.jar</value>
+    </property>
+    <property>
+        <name>dfs.storage.driver.class</name>
+        <value>io.hops.metadata.ndb.NdbStorageFactory</value>
+    </property>
 </configuration>

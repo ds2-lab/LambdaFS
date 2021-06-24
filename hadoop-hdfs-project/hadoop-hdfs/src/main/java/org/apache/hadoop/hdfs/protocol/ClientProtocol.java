@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hdfs.protocol;
 
+import com.google.gson.JsonObject;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
@@ -63,6 +64,7 @@ import org.apache.hadoop.security.token.TokenInfo;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.EnumSet;
 import java.util.List;
 import org.apache.hadoop.fs.CacheFlag;
@@ -110,6 +112,8 @@ public interface ClientProtocol {
   ///////////////////////////////////////
   // File contents
   ///////////////////////////////////////
+
+  public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException, IOException;
 
   /**
    * Get locations of the blocks of the specified file within the specified

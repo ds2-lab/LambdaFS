@@ -17,12 +17,18 @@
  */
 package org.apache.hadoop.hdfs.protocolPB;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.leader_election.proto.ActiveNodeProtos;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.EnumSet;
 
 import io.hops.metadata.hdfs.entity.MetaStatus;
@@ -181,6 +187,7 @@ import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.SetXAttrRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.SetXAttrResponseProto;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
+import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.proto.SecurityProtos.CancelDelegationTokenRequestProto;
@@ -198,7 +205,7 @@ import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
 import org.apache.hadoop.hdfs.protocol.CachePoolEntry;
 import org.apache.hadoop.hdfs.protocol.RollingUpgradeInfo;
-
+import org.slf4j.Logger;
 
 
 /**
@@ -213,6 +220,8 @@ import org.apache.hadoop.hdfs.protocol.RollingUpgradeInfo;
 public class ClientNamenodeProtocolServerSideTranslatorPB
     implements ClientNamenodeProtocolPB {
   final private ClientProtocol server;
+
+  private static final Logger LOG = NameNode.LOG;
 
   static final ClientNamenodeProtocolProtos.SetStoragePolicyResponseProto
       VOID_SET_STORAGE_POLICY_RESPONSE =
@@ -346,6 +355,38 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
       }
       return builder.build();
     } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  @Override
+  public ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto latencyBenchmark(
+          RpcController controller, ClientNamenodeProtocolProtos.LatencyBenchmarkRequestProto req)
+    throws ServiceException {
+    try {
+      JsonObject result = server.latencyBenchmark(
+              req.getConnectionUrl(), req.getDataSource(), req.getQuery(), req.getId());
+
+      ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto.Builder builder = ClientNamenodeProtocolProtos.LatencyBenchmarkResponseProto.newBuilder();
+      System.out.println("JsonObject result = " + result.toString());
+      LOG.debug("JsonObject result = " + result.toString());
+
+      if (result != null) {
+        JsonArray resultArrJson = result.get("RESULT").getAsJsonArray();
+
+        ArrayList<String> resultList = new ArrayList<String>(resultArrJson.size());
+
+        for (int i = 0; i < resultArrJson.size(); i++) {
+          JsonElement elem = resultArrJson.get(i);
+          System.out.println("JsonElement at position " + i + ": " + elem);
+          LOG.debug("JsonElement at position " + i + ": " + elem);
+          resultList.add(elem.toString());
+        }
+        builder.addAllResult(resultList).setRetrievedFrom(result.get("RETRIEVED-FROM").getAsString()).build();
+      }
+
+      return builder.build();
+    } catch (IOException | SQLException e) {
       throw new ServiceException(e);
     }
   }

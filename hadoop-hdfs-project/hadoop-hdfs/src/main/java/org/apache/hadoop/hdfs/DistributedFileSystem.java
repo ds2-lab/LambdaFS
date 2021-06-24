@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hdfs;
 
+import com.google.gson.JsonObject;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
@@ -81,6 +82,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -207,6 +209,11 @@ public class DistributedFileSystem extends FileSystem {
                                          file+" is not a valid DFS filename.");
     }
     return result;
+  }
+
+  public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id)
+          throws IOException, SQLException {
+    return dfs.latencyBenchmark(connectionUrl, dataSource, query, id);
   }
 
   @Override

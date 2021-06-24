@@ -23,7 +23,15 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
-import java.util.*;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -1770,6 +1778,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
               SafeModeException.class,
               UnresolvedPathException.class);
     }
+  }
+
+  public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id)
+          throws IOException, SQLException {
+    return namenode.latencyBenchmark(connectionUrl, dataSource, query, id);
   }
 
   /** Implemented using getFileInfo(src)
