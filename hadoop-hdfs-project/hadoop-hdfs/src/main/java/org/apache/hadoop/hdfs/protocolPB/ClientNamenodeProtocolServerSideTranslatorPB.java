@@ -187,7 +187,7 @@ import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.SetXAttrRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.SetXAttrResponseProto;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.proto.SecurityProtos.CancelDelegationTokenRequestProto;
@@ -221,7 +221,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
     implements ClientNamenodeProtocolPB {
   final private ClientProtocol server;
 
-  private static final Logger LOG = NameNode.LOG;
+  private static final Logger LOG = ServerlessNameNode.LOG;
 
   static final ClientNamenodeProtocolProtos.SetStoragePolicyResponseProto
       VOID_SET_STORAGE_POLICY_RESPONSE =
