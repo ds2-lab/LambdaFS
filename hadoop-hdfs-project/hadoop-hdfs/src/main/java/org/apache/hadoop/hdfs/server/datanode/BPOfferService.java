@@ -979,7 +979,7 @@ class BPOfferService implements Runnable {
       return null;
     }
 
-    LOG.warn("DataNode skipping the sending of a block report...");
+    //LOG.warn("DataNode skipping the sending of a block report...");
     return null;
     
     /*scheduler.setNextBlockReportOverwritten(false);

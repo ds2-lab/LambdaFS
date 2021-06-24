@@ -695,7 +695,7 @@ class BPServiceActor implements Runnable {
       return;
     }
 
-    LOG.warn("Immediately returning from `refreshNNConnections() without checking (since this is not applicable for Serverless NameNodes)...");
+    //LOG.warn("Immediately returning from `refreshNNConnections() without checking (since this is not applicable for Serverless NameNodes)...");
 
     /*SortedActiveNodeList list = this.bpNamenode.getActiveNamenodes();
     bpos.updateNNList(list);
