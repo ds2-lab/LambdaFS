@@ -259,7 +259,7 @@ public class DFSOutputStream extends FSOutputSummer
 
           JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                   "create",
-                  dfsClient.openWhiskEndpoint.toString(),
+                  dfsClient.serverlessEndpoint.toString(),
                   null, // We do not have any additional/non-default arguments to pass to the NN.
                   opArguments);
 

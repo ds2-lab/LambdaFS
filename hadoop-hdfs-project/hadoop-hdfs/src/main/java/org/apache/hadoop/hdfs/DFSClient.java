@@ -185,8 +185,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   public ServerlessInvoker<JsonObject> serverlessInvoker;
 
-  // We issue invocations to this endpoint...
-  public InetSocketAddress openWhiskEndpoint;
+  /**
+   * Issue HTTP requests to this to invoke serverless functions.
+   */
+  public String serverlessEndpoint;
+
+  /**
+   * The name of the serverless platform being used for the Serverless NameNodes.
+   */
+  public String serverlessPlatformName;
 
   private final Configuration conf;
   private final Tracer tracer;
@@ -267,6 +274,14 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
           throws IOException {
 
     ClientProtocol rpcNamenode = null;
+
+    serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+    serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
+
+    LOG.info("Serverless endpoint: " + serverlessEndpoint);
+    LOG.info("Serverless platform: " + serverlessPlatformName);
+
+    this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
 
     // Copy only the required DFSClient configuration
     this.tracer = FsTracer.get(conf);
@@ -398,13 +413,16 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
                     DFSConfigKeys.DEFAULT_DFS_CLIENT_XCEIVER_FACTORY_CLASS));
     this.dtpReplaceDatanodeOnFailure = ReplaceDatanodeOnFailure.get(conf);
 
-    this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
-            conf.get(DFSConfigKeys.SERVERLESS_PLATFORM, DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT)
-    );
+    serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+    serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
+
+    LOG.info("Serverless endpoint: " + serverlessEndpoint);
+    LOG.info("Serverless platform: " + serverlessPlatformName);
+
+    this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
 
     this.ugi = UserGroupInformation.getCurrentUser();
 
-    this.openWhiskEndpoint = openWhiskEndpoint;
     URI nameNodeUri = ServerlessNameNode.getUri(openWhiskEndpoint);
 
     //System.out.println("DFSClient Constructor #1");
@@ -436,7 +454,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     //System.out.println("DFSClient Constructor #2");
 
-    if (proxyInfo != null) {
+    /*if (proxyInfo != null) {
       this.dtService = proxyInfo.getDelegationTokenService();
       this.namenode = proxyInfo.getProxy();
       this.leaderNN = namenode; // only for testing
@@ -446,7 +464,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       this.namenode = rpcNamenode;
       this.leaderNN = rpcNamenode;
       dtService = null;
-    } else {
+    } else {*/
       // Since our NameNodes are serverless, we do not need to create a connection to the name node.
 
             /*Preconditions.checkArgument(nameNodeUri != null,
@@ -472,7 +490,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
                     allNNs.clear();
                 }
             }*/
-    }
+    //}
 
     // set epoch
     setClientEpoch();
