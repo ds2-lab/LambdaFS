@@ -305,7 +305,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
               nnFallbackToSimpleAuth);
     }
 
-    if (proxyInfo != null) {
+    LOG.warn("Skipping the set-up of namenode and leaderNN variables...");
+    /*if (proxyInfo != null) {
       this.dtService = proxyInfo.getDelegationTokenService();
       this.namenode = proxyInfo.getProxy();
       this.leaderNN = namenode; // only for testing
@@ -339,7 +340,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
           allNNs.clear();
         }
       }
-    }
+    }*/
 
     // set epoch
     setClientEpoch();
