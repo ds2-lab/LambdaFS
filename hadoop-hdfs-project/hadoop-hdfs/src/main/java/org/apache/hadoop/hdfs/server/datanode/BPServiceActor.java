@@ -435,7 +435,9 @@ class BPServiceActor implements Runnable {
           //
           scheduler.scheduleNextHeartbeat();
           if (!dn.areHeartbeatsDisabledForTests()) {
-            HeartbeatResponse resp = sendHeartBeat();
+            LOG.warn("DataNode skipping heartbeat to NN...");
+
+            /*HeartbeatResponse resp = sendHeartBeat();
             assert resp != null;
 
             connectedToNN = true;
@@ -453,7 +455,7 @@ class BPServiceActor implements Runnable {
               LOG.info("Took " + (endProcessCommands - startProcessCommands) +
                   "ms to process " + resp.getCommands().length +
                   " commands from NN");
-            }
+            }*/
           }
         }
 

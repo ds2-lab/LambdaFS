@@ -978,8 +978,11 @@ class BPOfferService implements Runnable {
     if (!scheduler.isBlockReportDue()) {
       return null;
     }
+
+    LOG.warn("DataNode skipping the sending of a block report...");
+    return null;
     
-    scheduler.setNextBlockReportOverwritten(false);
+    /*scheduler.setNextBlockReportOverwritten(false);
     
     ArrayList<DatanodeCommand> cmds = new ArrayList<DatanodeCommand>();
 
@@ -1092,7 +1095,7 @@ class BPOfferService implements Runnable {
     }
 
     scheduler.scheduleNextBlockReport();
-    return cmds.size() == 0 ? null : cmds;
+    return cmds.size() == 0 ? null : cmds;*/
   }
 
   StorageBlockReport[] slimBlockReports(StorageBlockReport[] reports){

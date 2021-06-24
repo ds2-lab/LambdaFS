@@ -1158,9 +1158,15 @@ public class DataNode extends ReconfigurableBase
   void setHeartbeatsDisabledForTests(boolean heartbeatsDisabledForTests) {
     this.heartbeatsDisabledForTests = heartbeatsDisabledForTests;
   }
-  
+
+  /**
+   * As of right now, this ALWAYS returns True so heartbeats are disabled.
+   *
+   * DNs should not be sending heartbeats to serverless NNs.
+   */
   boolean areHeartbeatsDisabledForTests() {
-    return this.heartbeatsDisabledForTests;
+    return true;
+    //return this.heartbeatsDisabledForTests;
   }
 
   /**
