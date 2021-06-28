@@ -1939,7 +1939,40 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public SortedActiveNodeList getActiveNameNodes() {
-    return leaderElection.getActiveNamenodes();
+    //return leaderElection.getActiveNamenodes();
+
+    return new SortedActiveNodeList() {
+
+      @Override
+      public boolean isEmpty() {
+        return false;
+      }
+
+      @Override
+      public int size() {
+        return 0;
+      }
+
+      @Override
+      public List<ActiveNode> getActiveNodes() {
+        return new ArrayList<ActiveNode>();
+      }
+
+      @Override
+      public List<ActiveNode> getSortedActiveNodes() {
+        return new ArrayList<ActiveNode>();
+      }
+
+      @Override
+      public ActiveNode getActiveNode(InetSocketAddress address) {
+        return null;
+      }
+
+      @Override
+      public ActiveNode getLeader() {
+        return null;
+      }
+    };
   }
 
   private void startMDCleanerService(){
