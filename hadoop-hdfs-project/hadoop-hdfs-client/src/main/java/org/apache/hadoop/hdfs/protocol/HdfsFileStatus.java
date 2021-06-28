@@ -35,6 +35,8 @@ import java.net.URI;
 @InterfaceStability.Evolving
 public class HdfsFileStatus implements Serializable {
 
+  private static final long serialVersionUID = 1L;
+
   private byte[] path;  // local name of the inode that's encoded in java UTF8
   private byte[] symlink; // symlink target encoded in java UTF8 or null
   private long length;
