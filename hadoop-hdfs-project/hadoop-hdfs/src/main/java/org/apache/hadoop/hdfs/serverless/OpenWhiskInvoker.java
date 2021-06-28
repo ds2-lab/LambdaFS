@@ -122,7 +122,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         LOG.info("Invoking the OpenWhisk serverless NameNode function now...");
 
         LOG.debug("HttpRequest (before issuing it): " + request.toString());
-        LOG.debug(("Request URI/URL: " + request.getURI().toURL());
+        LOG.debug("Request URI/URL: " + request.getURI().toURL());
 
         HttpResponse response = httpClient.execute(request);
 
