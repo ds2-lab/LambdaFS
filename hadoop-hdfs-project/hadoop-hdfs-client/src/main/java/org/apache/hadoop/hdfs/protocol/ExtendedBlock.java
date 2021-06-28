@@ -20,12 +20,14 @@ package org.apache.hadoop.hdfs.protocol;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 
+import java.io.Serializable;
+
 /**
  * Identifies a Block uniquely across the block pools
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class ExtendedBlock {
+public class ExtendedBlock implements Serializable {
   private String poolId;
   private Block block;
 

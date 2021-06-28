@@ -795,7 +795,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     opArguments.put("src", src);
     opArguments.put("clientName", clientName);
+    opArguments.put("previous", previous);
     opArguments.put("fileId", fileId);
+    opArguments.put("favoredNodes", favoredNodes);
+    opArguments.put("excludeNodes", excludeNodes);
 
     JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
             "create",
@@ -813,6 +816,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public boolean complete(String src, String clientName, ExtendedBlock last, long fileId, final byte[] data)
           throws IOException {
     HashMap<String, Object> opArguments = new HashMap<>();
+
+    opArguments.put("src", src);
+    opArguments.put("clientName", clientName);
+    opArguments.put("last", last);
+    opArguments.put("fileId", fileId);
+    opArguments.put("data", data);
 
     JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
             "create",

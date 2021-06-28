@@ -3,23 +3,15 @@ package org.apache.hadoop.hdfs.serverless;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -27,11 +19,10 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
+import java.io.Serializable;
 import java.security.*;
 import java.security.cert.X509Certificate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Concrete implementation of the {@link ServerlessInvoker} interface for the OpenWhisk serverless platform.
@@ -161,22 +152,45 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
                 populateJsonObjectWithArguments((Map<String, Object>) value, innerMap);
                 jsonObject.add(key, innerMap);
             }
-            else if (value instanceof List) {
+            else if (value instanceof Collection) {
                 JsonArray arr = new JsonArray();
 
-                for (Object obj : (List)value) {
-                    if (obj instanceof String)
-                        arr.add((String)obj);
-                    else if (obj instanceof Number)
-                        arr.add((Number)obj);
-                    else if (obj instanceof Boolean)
-                        arr.add((Boolean)obj);
-                    else if (obj instanceof Character)
-                        arr.add((Character)obj);
-                    else
-                        throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
-                                + obj.getClass().toString());
+                // We want to check what type of array/list this is. If it is an array/list
+                // of byte, we will simply convert the entire array/list to a base64 string.
+                Class<?> clazz = value.getClass().getComponentType();
+
+                // TODO: Add a parameter that keeps track of the keys that are actually Base64-encoded objects
+                //       so we know which to deserialize/convert on the other side. This may include maintaining
+                //       a master list of keys to ensure everything is unique...
+                if (clazz == Byte.class) {
+                    Collection<?> valueAsCollection = (Collection<?>)value;
+                    Byte[] valueAsByteArray = (Byte[])valueAsCollection.toArray();
+                    String encoded = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(valueAsByteArray));
+                    jsonObject.addProperty(key, encoded);
                 }
+                else { // Note an array or list of byte.
+                    for (Object obj : (List<?>) value) {
+                        if (obj instanceof String)
+                            arr.add((String) obj);
+                        else if (obj instanceof Number)
+                            arr.add((Number) obj);
+                        else if (obj instanceof Boolean)
+                            arr.add((Boolean) obj);
+                        else if (obj instanceof Character)
+                            arr.add((Character) obj);
+                        else if (value instanceof Serializable) {
+                            // TODO: Add serialization support.
+                        } else
+                            throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
+                                    + obj.getClass().toString());
+                    }
+                }
+            }
+            else if (value instanceof Byte) {
+                // TODO: Add byte support (encode to Base64 string).
+            }
+            else if (value instanceof Serializable) {
+                // TODO: Add serialization support.
             }
             else
                 throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
@@ -223,5 +237,14 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
             .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
             .setSSLContext(sc)
             .build();
+    }
+
+    /**
+     * Returns true if the given object is an array.
+     *
+     * Source: https://stackoverflow.com/questions/2725533/how-to-see-if-an-object-is-an-array-without-using-reflection
+     */
+    private static boolean isArray(Object obj) {
+        return obj != null && obj.getClass().isArray();
     }
 }
