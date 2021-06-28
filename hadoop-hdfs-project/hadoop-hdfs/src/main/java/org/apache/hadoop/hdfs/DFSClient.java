@@ -275,7 +275,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     ClientProtocol rpcNamenode = null;
 
-    serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+    serverlessEndpoint = "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true"; //conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
     LOG.info("Serverless endpoint: " + serverlessEndpoint);
