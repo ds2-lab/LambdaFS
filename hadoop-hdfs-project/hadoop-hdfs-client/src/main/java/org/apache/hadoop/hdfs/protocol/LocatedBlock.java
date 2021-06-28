@@ -18,6 +18,8 @@
 package org.apache.hadoop.hdfs.protocol;
 
 import com.google.common.collect.Lists;
+
+import java.io.Serializable;
 import java.util.Arrays;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -36,7 +38,7 @@ import java.util.List;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class LocatedBlock {
+public class LocatedBlock implements Serializable {
 
   private ExtendedBlock b;
   private long offset;  // offset of the first byte of the block in the file

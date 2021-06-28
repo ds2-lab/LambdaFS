@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -29,6 +30,7 @@ import java.io.IOException;
 import java.security.*;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -141,7 +143,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
      * @param arguments The HashMap of arguments to add to the JsonObject.
      * @param jsonObject The JsonObject to which we are adding arguments.
      */
-    private void populateJsonObjectWithArguments(HashMap<String, Object> arguments, JsonObject jsonObject) {
+    private void populateJsonObjectWithArguments(Map<String, Object> arguments, JsonObject jsonObject) {
         for (Map.Entry<String, Object> entry : arguments.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
@@ -154,9 +156,31 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
                 jsonObject.addProperty(key, (Boolean)value);
             else if (value instanceof Character)
                 jsonObject.addProperty(key, (Character)value);
+            else if (value instanceof Map) {
+                JsonObject innerMap = new JsonObject();
+                populateJsonObjectWithArguments((Map<String, Object>) value, innerMap);
+                jsonObject.add(key, innerMap);
+            }
+            else if (value instanceof List) {
+                JsonArray arr = new JsonArray();
+
+                for (Object obj : (List)value) {
+                    if (obj instanceof String)
+                        arr.add((String)obj);
+                    else if (obj instanceof Number)
+                        arr.add((Number)obj);
+                    else if (obj instanceof Boolean)
+                        arr.add((Boolean)obj);
+                    else if (obj instanceof Character)
+                        arr.add((Character)obj);
+                    else
+                        throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
+                                + obj.getClass().toString());
+                }
+            }
             else
-                throw new IllegalArgumentException(
-                        "Argument " + key + " is not of a valid type: " + value.getClass().toString());
+                throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
+                        + value.getClass().toString());
         }
     }
 

@@ -41,6 +41,7 @@ import io.hops.transaction.handler.RequestHandler;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
@@ -465,6 +466,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       case "append":
         appendOperation(fsArgs);
         break;
+      case "complete":
+        break;
       case "concat":
         concatOperation(fsArgs);
         break;
@@ -630,11 +633,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void appendOperation(JsonObject fsArgs) {
+    throw new NotImplementedException("Operation `append` has not been implemented yet.");
+  }
 
+  private void completeOperation(JsonObject fsArgs) {
+    throw new NotImplementedException("Operation `complete` has not been implemented yet.");
   }
 
   private void concatOperation(JsonObject fsArgs) {
-
+    throw new NotImplementedException("Operation `concat` has not been implemented yet.");
   }
 
   private NamespaceInfo versionRequestOperation(JsonObject fsArgs) throws IOException {
