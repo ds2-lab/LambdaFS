@@ -25,6 +25,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSUtilClient;
 
+import java.io.Serializable;
 import java.net.URI;
 
 /**
@@ -32,7 +33,7 @@ import java.net.URI;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class HdfsFileStatus {
+public class HdfsFileStatus implements Serializable {
 
   private byte[] path;  // local name of the inode that's encoded in java UTF8
   private byte[] symlink; // symlink target encoded in java UTF8 or null
