@@ -38,7 +38,8 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * Configuration name for specifying the endpoint to issue HTTP requests to invoke serverless functions.
    */
   public static final String SERVERLESS_ENDPOINT = "serverless.endpoint";
-  public static final String SERVERLESS_ENDPOINT_DEFAULT = "http://127.0.0.1/api/v1/namespaces/whisk.system/actions/namenode?blocking=true";
+  // public static final String SERVERLESS_ENDPOINT_DEFAULT = "http://127.0.0.1/api/v1/namespaces/whisk.system/actions/namenode?blocking=true";
+  public static final String SERVERLESS_ENDPOINT_DEFAULT = "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
 
   public static final String SERVERLESS_PLATFORM = "serverless.platform";
   public static final String SERVERLESS_PLATFORM_DEFAULT = "openwhisk";
