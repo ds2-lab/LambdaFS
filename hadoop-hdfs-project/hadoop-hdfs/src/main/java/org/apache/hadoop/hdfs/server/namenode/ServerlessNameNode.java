@@ -644,8 +644,39 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     throw new NotImplementedException("Operation `append` has not been implemented yet.");
   }
 
-  private void completeOperation(JsonObject fsArgs) {
-    throw new NotImplementedException("Operation `complete` has not been implemented yet.");
+  private boolean completeOperation(JsonObject fsArgs) throws IOException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
+
+    long fileId = fsArgs.getAsJsonPrimitive("fileId").getAsLong();
+
+    ExtendedBlock last = null;
+
+    // TODO: Add helper/utility functions to reduce boilerplate code when extracting arguments.
+    //       References:
+    //       - https://stackoverflow.com/questions/11664894/jackson-deserialize-using-generic-class
+    //       - https://stackoverflow.com/questions/11659844/jackson-deserialize-generic-class-variable
+    //       - https://stackoverflow.com/questions/17400850/is-jackson-really-unable-to-deserialize-json-into-a-generic-type
+    if (fsArgs.has("last")) {
+      String lastBase64 = fsArgs.getAsJsonPrimitive("last").getAsString();
+      byte[] lastBytes = Base64.decodeBase64(lastBase64);
+      DataInputBuffer dataInput = new DataInputBuffer();
+      dataInput.reset(lastBytes, lastBytes.length);
+      last = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);
+    }
+
+    byte[] data = null;
+
+    if (fsArgs.has("data")) {
+      String dataBase64 = fsArgs.getAsJsonPrimitive("data").getAsString();
+      data = Base64.decodeBase64(dataBase64);
+    }
+
+    if (stateChangeLog.isDebugEnabled()) {
+      stateChangeLog.debug("*DIR* NameNode.complete: " + src + " fileId=" + fileId +" for " + clientName);
+    }
+
+    return namesystem.completeFile(src, clientName, last, fileId, data);
   }
 
   private void concatOperation(JsonObject fsArgs) {
