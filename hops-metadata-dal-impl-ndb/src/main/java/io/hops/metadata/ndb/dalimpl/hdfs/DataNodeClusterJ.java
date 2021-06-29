@@ -100,15 +100,20 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
     public void addDataNode(DataNodeMeta dataNode) throws StorageException {
         LOG.info("ADD DataNode " + dataNode.toString());
         DataNodeDTO dataNodeDTO = null;
+        LOG.debug("Obtaining HopsSession now...");
         HopsSession session = connector.obtainSession();
+        LOG.debug("Successfully obtained HopsSession.");
 
         try {
             dataNodeDTO = session.newInstance(DataNodeDTO.class);
+            LOG.debug("Created new instance of DataNodeDTO...");
             copyState(dataNodeDTO, dataNode);
+            LOG.debug("Successfully copied DataNode state to DataNodeDTO.");
             session.savePersistent(dataNodeDTO);
-            LOG.debug("Wrote DataNode " + dataNode.getDatanodeUuid() + " to MySQL NDB storage.");
+            LOG.debug("Wrote/persisted DataNode " + dataNode.getDatanodeUuid() + " to MySQL NDB storage.");
         } finally {
             session.release(dataNodeDTO);
+            LOG.debug("Released DataNodeDTO instance.");
         }
     }
 
