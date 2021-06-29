@@ -50,7 +50,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
         void setIpcPort(int ipcPort);
     }
 
-    private ClusterjConnector connector = ClusterjConnector.getInstance();
+    private final ClusterjConnector connector = ClusterjConnector.getInstance();
 
     /**
      * Retrieve a given DataNode from the intermediate storage.
@@ -106,6 +106,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
             dataNodeDTO = session.newInstance(DataNodeDTO.class);
             copyState(dataNodeDTO, dataNode);
             session.savePersistent(dataNodeDTO);
+            LOG.debug("Wrote DataNode " + dataNode.getDatanodeUuid() + " to MySQL NDB storage.");
         } finally {
             session.release(dataNodeDTO);
         }
