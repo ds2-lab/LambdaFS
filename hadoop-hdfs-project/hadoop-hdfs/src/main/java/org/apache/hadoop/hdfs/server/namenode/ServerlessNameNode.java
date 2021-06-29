@@ -581,14 +581,26 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     long fileId = fsArgs.getAsJsonPrimitive("fileId").getAsLong();
 
-    JsonArray favoredNodesJsonArray = fsArgs.getAsJsonArray("favoredNodes");
-    String[] favoredNodes = new String[favoredNodesJsonArray.size()];
+    String[] favoredNodes = null;
 
-    for (int i = 0; i < favoredNodesJsonArray.size(); i++) {
-      favoredNodes[i] = favoredNodesJsonArray.get(i).getAsString();
+    if (fsArgs.has("favoredNodes")) {
+      JsonArray favoredNodesJsonArray = fsArgs.getAsJsonArray("favoredNodes");
+      favoredNodes = new String[favoredNodesJsonArray.size()];
+
+      for (int i = 0; i < favoredNodesJsonArray.size(); i++) {
+        favoredNodes[i] = favoredNodesJsonArray.get(i).getAsString();
+      }
     }
 
     ExtendedBlock previous = null;
+
+    if (fsArgs.has("previous")) {
+      String previousBase64 = fsArgs.getAsJsonPrimitive("previous").getAsString();
+      byte[] previousBytes = Base64.decodeBase64(previousBase64);
+      DataInputBuffer dataInput = new DataInputBuffer();
+      dataInput.reset(previousBytes, previousBytes.length);
+      previous = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);
+    }
 
     /*boolean blockIncluded = fsArgs.getAsJsonPrimitive("blockIncluded").getAsBoolean();
 
@@ -609,20 +621,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.info("Block variable was NOT included in payload.");
     }*/
 
-    if (fsArgs.has("previous")) {
-      String previousBase64 = fsArgs.getAsJsonPrimitive("previous").getAsString();
-      byte[] previousBytes = Base64.decodeBase64(previousBase64);
-      DataInputBuffer dataInput = new DataInputBuffer();
-      dataInput.reset(previousBytes, previousBytes.length);
-      previous = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);
-    }
+    DatanodeInfo[] excludeNodes = null;
+    if (fsArgs.has("excludeNodes")) {
+      // Decode and deserialize the DatanodeInfo[].
+      JsonArray excludedNodesJsonArray = fsArgs.getAsJsonArray("favoredNodes");
+      excludeNodes = new DatanodeInfo[excludedNodesJsonArray.size()];
 
-    // Decode and deserialize the DatanodeInfo[].
-    String datanodeInfoBase64 = fsArgs.getAsJsonPrimitive("excludeNodes").getAsString();
-    byte[] datanodeInfoBytes = Base64.decodeBase64(datanodeInfoBase64);
-    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(datanodeInfoBytes);
-    ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-    DatanodeInfo[] excludedNodes = (DatanodeInfo[]) objectInputStream.readObject();
+      for (int i = 0; i < excludedNodesJsonArray.size(); i++) {
+        String excludedNodeBase64 = excludedNodesJsonArray.get(i).getAsString();
+        byte[] excludedNodeBytes = Base64.decodeBase64(excludedNodeBase64);
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(excludedNodeBytes);
+        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+        DatanodeInfo excludedNode = (DatanodeInfo)objectInputStream.readObject();
+        excludeNodes[i] = excludedNode;
+      }
+    }
 
     LOG.info("addBlock() function of ServerlessNameNodeRpcServer called.");
     if (stateChangeLog.isDebugEnabled()) {
@@ -631,9 +644,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
     HashSet<Node> excludedNodesSet = null;
 
-    if (excludedNodes != null) {
-      excludedNodesSet = new HashSet<>(excludedNodes.length);
-      excludedNodesSet.addAll(Arrays.asList(excludedNodes));
+    if (excludeNodes != null) {
+      excludedNodesSet = new HashSet<>(excludeNodes.length);
+      excludedNodesSet.addAll(Arrays.asList(excludeNodes));
     }
     List<String> favoredNodesList = Arrays.asList(favoredNodes);
 
