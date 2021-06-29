@@ -72,6 +72,7 @@ import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockStoragePolicySuite;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.NotReplicatedYetException;
+import org.apache.hadoop.hdfs.server.namenode.startupprogress.Status;
 import org.apache.hadoop.hdfs.util.ByteArrayManager;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.MultipleIOException;
@@ -1411,7 +1412,7 @@ class DataStreamer extends Daemon {
    * Must get block ID and the IDs of the destinations from the namenode.
    * Returns the list of target datanodes.
    */
-  private LocatedBlock nextBlockOutputStream() throws IOException {
+  private LocatedBlock nextBlockOutputStream() throws IOException, ClassNotFoundException {
     LocatedBlock lb = null;
     DatanodeInfo[] nodes = null;
     StorageType[] storageTypes = null;
@@ -1685,7 +1686,7 @@ class DataStreamer extends Daemon {
   }
 
   protected LocatedBlock locateFollowingBlock(DatanodeInfo[] excludedNodes)
-      throws IOException {
+          throws IOException, ClassNotFoundException {
     final DfsClientConf conf = dfsClient.getConf(); 
     int retries = conf.getNumBlockWriteLocateFollowingRetry();
     long sleeptime = conf.getBlockWriteLocateFollowingInitialDelayMs();
@@ -1693,8 +1694,11 @@ class DataStreamer extends Daemon {
       long localstart = Time.monotonicNow();
       while (true) {
         try {
-          return dfsClient.namenode.addBlock(src, dfsClient.clientName,
-              block, excludedNodes, stat.getFileId(), favoredNodes);
+          // Call the new addBlock method of the DFSClient class, which invokes a serverless NN.
+          return dfsClient.addBlock(src, dfsClient.clientName, block, excludedNodes, stat.getFileId(), favoredNodes);
+
+          /*return dfsClient.namenode.addBlock(src, dfsClient.clientName,
+              block, excludedNodes, stat.getFileId(), favoredNodes);*/
         } catch (RemoteException e) {
           IOException ue =
               e.unwrapRemoteException(FileNotFoundException.class,

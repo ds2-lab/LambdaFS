@@ -199,7 +199,11 @@ class BPServiceActor implements Runnable {
 
         LOG.info("responseJson = " + responseJson.toString());
 
-        if (responseJson.has("RESULT")) {
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        if (result != null)
+          nsInfo = (NamespaceInfo)result;
+
+        /*if (responseJson.has("RESULT")) {
           String resultBase64 = responseJson.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
           byte[] resultSerialized = Base64.decodeBase64(resultBase64);
 
@@ -210,7 +214,7 @@ class BPServiceActor implements Runnable {
           String exception = responseJson.getAsJsonPrimitive("EXCEPTION").getAsString();
           LOG.error("Exception encountered during Serverless NameNode execution.");
           LOG.error(exception);
-        }
+        }*/
 
         //nsInfo = bpNamenode.versionRequest();
         LOG.debug(this + " received versionRequest response: " + nsInfo);

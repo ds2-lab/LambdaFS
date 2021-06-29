@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless;
 
+import com.google.gson.JsonObject;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.http.impl.client.CloseableHttpClient;
 
@@ -41,4 +42,13 @@ public interface ServerlessInvoker<T> {
      * concrete implementation of this interface.
      */
     public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException;
+
+    /**
+     * Extract and return the result from the JsonObject response obtained from the HttpPost request used to invoke
+     * the serverless name node.
+     *
+     * This function will also check for an Exception. If one is found, then it will be logged.
+     * @param response The response obtained from the HttpPost request used to invoke the serverless name node.
+     */
+    public Object extractResultFromJsonResponse(JsonObject response) throws IOException, ClassNotFoundException;
 }

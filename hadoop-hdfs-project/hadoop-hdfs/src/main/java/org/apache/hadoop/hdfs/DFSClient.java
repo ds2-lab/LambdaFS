@@ -790,7 +790,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   public LocatedBlock addBlock(String src, String clientName,
                                ExtendedBlock previous, DatanodeInfo[] excludeNodes,
-                               long fileId, String[] favoredNodes) throws IOException {
+                               long fileId, String[] favoredNodes) throws IOException, ClassNotFoundException {
     HashMap<String, Object> opArguments = new HashMap<>();
 
     opArguments.put("src", src);
@@ -806,6 +806,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
             null, // We do not have any additional/non-default arguments to pass to the NN.
             opArguments);
 
+    Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+    if (result != null)
+      return (LocatedBlock) result;
+
     return null;
   }
 
@@ -814,7 +818,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * a serverless NameNode and perform the complete() operation.
    */
   public boolean complete(String src, String clientName, ExtendedBlock last, long fileId, final byte[] data)
-          throws IOException {
+          throws IOException, ClassNotFoundException {
     HashMap<String, Object> opArguments = new HashMap<>();
 
     opArguments.put("src", src);
@@ -828,6 +832,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
             serverlessEndpoint.toString(),
             null, // We do not have any additional/non-default arguments to pass to the NN.
             opArguments);
+
+    Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+    if (result != null)
+      return (boolean)result;
 
     return true;
   }

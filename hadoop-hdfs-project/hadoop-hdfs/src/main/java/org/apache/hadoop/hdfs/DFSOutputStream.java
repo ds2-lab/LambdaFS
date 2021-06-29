@@ -330,7 +330,13 @@ public class DFSOutputStream extends FSOutputSummer
 
           LOG.info("responseJson = " + responseJson.toString());*/
 
-          if (responseJson.has("RESULT")) {
+          // Extract the result from the Json response.
+          // If there's an exception, then it will be logged by this function.
+          Object result = dfsClient.serverlessInvoker.extractResultFromJsonResponse(responseJson);
+          if (result != null)
+            stat = (HdfsFileStatus)result;
+
+          /*if (responseJson.has("RESULT")) {
             String resultBase64 = responseJson.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
             byte[] resultSerialized = Base64.decodeBase64(resultBase64);
 
@@ -341,11 +347,11 @@ public class DFSOutputStream extends FSOutputSummer
             String exception = responseJson.getAsJsonPrimitive("EXCEPTION").getAsString();
             LOG.error("Exception encountered during Serverless NameNode execution.");
             LOG.error(exception);
-          }
+          }*/
 
-                    /*stat = dfsClient.namenode.create(src, masked, dfsClient.clientName,
-                            new EnumSetWritable<CreateFlag>(flag), createParent, replication,
-                            blockSize, SUPPORTED_CRYPTO_VERSIONS, policy);*/
+          /*stat = dfsClient.namenode.create(src, masked, dfsClient.clientName,
+                  new EnumSetWritable<CreateFlag>(flag), createParent, replication,
+                  blockSize, SUPPORTED_CRYPTO_VERSIONS, policy);*/
           break;
         } catch (RemoteException re) {
           IOException e = re.unwrapRemoteException(

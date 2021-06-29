@@ -6,6 +6,9 @@ import com.google.gson.JsonObject;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
+import org.apache.hadoop.io.DataOutputBuffer;
+import org.apache.hadoop.io.ObjectWritable;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
@@ -18,7 +21,9 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.security.*;
 import java.security.cert.X509Certificate;
@@ -128,13 +133,26 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
     }
 
     /**
+     * Convert the given Serializable object to a Base64-encoded String.
+     * @param obj The object to encode as a Base64 String.
+     * @return The Base64-encoded String of the given object.
+     * @throws IOException May be thrown when Serializing the object.
+     */
+    private static String serializableToBase64String(Serializable obj) throws IOException {
+        DataOutputBuffer out = new DataOutputBuffer();
+        ObjectWritable.writeObject(out, obj, obj.getClass(), null);
+        byte[] objectBytes = out.getData();
+        return org.apache.commons.codec.binary.Base64.encodeBase64String(objectBytes);
+    }
+
+    /**
      * Process the arguments passed in the given HashMap. Attempt to add them to the JsonObject.
      *
      * Throws an exception if one of the arguments is not a String, Number, Boolean, or Character.
      * @param arguments The HashMap of arguments to add to the JsonObject.
      * @param jsonObject The JsonObject to which we are adding arguments.
      */
-    private void populateJsonObjectWithArguments(Map<String, Object> arguments, JsonObject jsonObject) {
+    private void populateJsonObjectWithArguments(Map<String, Object> arguments, JsonObject jsonObject) throws IOException {
         for (Map.Entry<String, Object> entry : arguments.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
@@ -159,9 +177,6 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
                 // of byte, we will simply convert the entire array/list to a base64 string.
                 Class<?> clazz = value.getClass().getComponentType();
 
-                // TODO: Add a parameter that keeps track of the keys that are actually Base64-encoded objects
-                //       so we know which to deserialize/convert on the other side. This may include maintaining
-                //       a master list of keys to ensure everything is unique...
                 if (clazz == Byte.class) {
                     Collection<?> valueAsCollection = (Collection<?>)value;
                     Byte[] valueAsByteArray = (Byte[])valueAsCollection.toArray();
@@ -179,18 +194,17 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
                         else if (obj instanceof Character)
                             arr.add((Character) obj);
                         else if (value instanceof Serializable) {
-                            // TODO: Add serialization support.
+                            String base64Encoded = serializableToBase64String((Serializable)value);
+                            arr.add(base64Encoded);
                         } else
                             throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
                                     + obj.getClass().toString());
                     }
                 }
             }
-            else if (value instanceof Byte) {
-                // TODO: Add byte support (encode to Base64 string).
-            }
             else if (value instanceof Serializable) {
-                // TODO: Add serialization support.
+                String base64Encoded = serializableToBase64String((Serializable)value);
+                jsonObject.addProperty(key, base64Encoded);
             }
             else
                 throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
@@ -237,6 +251,23 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
             .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
             .setSSLContext(sc)
             .build();
+    }
+
+    @Override
+    public Object extractResultFromJsonResponse(JsonObject response) throws IOException, ClassNotFoundException {
+        if (response.has("RESULT")) {
+            String resultBase64 = response.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
+            byte[] resultSerialized = org.apache.commons.codec.binary.Base64.decodeBase64(resultBase64);
+
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
+            ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+            return objectInputStream.readObject();
+        } else if (response.has("EXCEPTION")) {
+            String exception = response.getAsJsonPrimitive("EXCEPTION").getAsString();
+            LOG.error("Exception encountered during Serverless NameNode execution.");
+            LOG.error(exception);
+        }
+        return null;
     }
 
     /**
