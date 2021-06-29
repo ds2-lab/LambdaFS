@@ -807,8 +807,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
             opArguments);
 
     Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-    if (result != null)
-      return (LocatedBlock) result;
+
+    if (result != null) {
+      LocatedBlock locatedBlock = (LocatedBlock) result;
+
+      LOG.debug("Result returned from addBlock() is of type: " + result.getClass().getSimpleName());
+      LOG.debug("LocatedBlock returned by addBlock(): " + locatedBlock.toString());
+
+      return locatedBlock;
+    }
 
     return null;
   }
