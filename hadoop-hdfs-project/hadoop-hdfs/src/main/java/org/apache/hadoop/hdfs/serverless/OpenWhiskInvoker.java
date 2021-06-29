@@ -206,8 +206,10 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
                 String base64Encoded = serializableToBase64String((Serializable)value);
                 jsonObject.addProperty(key, base64Encoded);
             }
+            else if (value == null)
+                LOG.warn("Value associated with key \"" + key + "\" is null.");
             else
-                throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
+                throw new IllegalArgumentException("Value associated with key \"" + key + "\" is not of a valid type: "
                         + value.getClass().toString());
         }
     }
