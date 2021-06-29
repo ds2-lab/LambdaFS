@@ -590,7 +590,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     ExtendedBlock previous = null;
 
-    boolean blockIncluded = fsArgs.getAsJsonPrimitive("blockIncluded").getAsBoolean();
+    /*boolean blockIncluded = fsArgs.getAsJsonPrimitive("blockIncluded").getAsBoolean();
 
     if (blockIncluded) {
       LOG.info("Block variable WAS included in payload. Extracting now...");
@@ -607,10 +607,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       previous = new ExtendedBlock(blockPoolId, block);
     } else {
       LOG.info("Block variable was NOT included in payload.");
+    }*/
+
+    if (fsArgs.has("previous")) {
+      String previousBase64 = fsArgs.getAsJsonPrimitive("previous").getAsString();
+      byte[] previousBytes = Base64.decodeBase64(previousBase64);
+      DataInputBuffer dataInput = new DataInputBuffer();
+      dataInput.reset(previousBytes, previousBytes.length);
+      previous = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);
     }
 
     // Decode and deserialize the DatanodeInfo[].
-    String datanodeInfoBase64 = fsArgs.getAsJsonPrimitive("excludeNodesBase64").getAsString();
+    String datanodeInfoBase64 = fsArgs.getAsJsonPrimitive("excludeNodes").getAsString();
     byte[] datanodeInfoBytes = Base64.decodeBase64(datanodeInfoBase64);
     ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(datanodeInfoBytes);
     ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
