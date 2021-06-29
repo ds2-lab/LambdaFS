@@ -648,7 +648,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       excludedNodesSet = new HashSet<>(excludeNodes.length);
       excludedNodesSet.addAll(Arrays.asList(excludeNodes));
     }
-    List<String> favoredNodesList = Arrays.asList(favoredNodes);
+    List<String> favoredNodesList = null;
+    if (favoredNodes != null)
+      favoredNodesList = Arrays.asList(favoredNodes);
 
     return namesystem.getAdditionalBlock(src, fileId, clientName, previous, excludedNodesSet, favoredNodesList);
   }
