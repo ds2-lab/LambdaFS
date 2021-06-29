@@ -1302,7 +1302,7 @@ public class DataNode extends ReconfigurableBase
 
     LOG.info("Preparing to store information of DataNode " + dataNodeUuid + " in intermediate storage...");
 
-    /*try {
+    try {
       dataNodeMeta = dataNodeDataAccess.getDataNode(dataNodeUuid);
     } catch (StorageException ex) {
       LOG.info("Did not find any DataNodes in intermediate storage with UUID " + dataNodeUuid);
@@ -1313,7 +1313,7 @@ public class DataNode extends ReconfigurableBase
     if (dataNodeMeta != null) {
       LOG.info("Deleting old metadata associated with DataNode " + dataNodeUuid);
       dataNodeDataAccess.removeDataNode(dataNodeUuid);
-    }*/
+    }
 
     // Create a new instance of DataNodeMeta. We pass this to the metadata abstraction layer to store
     // the associated metadata in intermediate storage.
