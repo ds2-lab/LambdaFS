@@ -117,7 +117,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         request.setHeader("Content-type", "application/json");
         request.setHeader("Authorization", "Basic Basic 789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP");
 
-        LOG.info("Invoking the OpenWhisk serverless NameNode function now...");
+        LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
 
         LOG.debug("HttpRequest (before issuing it): " + request.toString());
         LOG.debug("Request URI/URL: " + request.getURI().toURL());
@@ -196,7 +196,8 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
                         else if (value instanceof Serializable) {
                             String base64Encoded = serializableToBase64String((Serializable)value);
                             arr.add(base64Encoded);
-                        } else
+                        }
+                        else
                             throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
                                     + obj.getClass().toString());
                     }

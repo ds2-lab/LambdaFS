@@ -801,7 +801,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     opArguments.put("excludeNodes", excludeNodes);
 
     JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-            "create",
+            "addBlock",
             serverlessEndpoint.toString(),
             null, // We do not have any additional/non-default arguments to pass to the NN.
             opArguments);
@@ -828,7 +828,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     opArguments.put("data", data);
 
     JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-            "create",
+            "complete",
             serverlessEndpoint.toString(),
             null, // We do not have any additional/non-default arguments to pass to the NN.
             opArguments);
