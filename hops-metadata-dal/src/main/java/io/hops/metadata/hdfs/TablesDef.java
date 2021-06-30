@@ -29,6 +29,7 @@ public class TablesDef {
     String XFER_PORT = "xfer_port";
     String INFO_PORT = "info_port";
     String IPC_PORT = "ipc_port";
+    String INFO_SECURE_PORT = "info_secure_port";
   }
 
   public interface BlockLookUpTableDef {

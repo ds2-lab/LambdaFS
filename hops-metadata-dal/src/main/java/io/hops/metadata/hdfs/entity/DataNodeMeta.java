@@ -37,13 +37,17 @@ public final class DataNodeMeta {
      */
     private final int ipcPort;
 
-    public DataNodeMeta(String datanodeUuid, String hostname, String ipAddress, int xferPort, int infoPort, int ipcPort) {
+    private final int infoSecurePort;
+
+    public DataNodeMeta(String datanodeUuid, String hostname, String ipAddress,
+                        int xferPort, int infoPort, int infoSecurePort, int ipcPort) {
         this.datanodeUuid = datanodeUuid;
         this.hostname = hostname;
         this.ipAddress = ipAddress;
         this.xferPort = xferPort;
         this.infoPort = infoPort;
         this.ipcPort = ipcPort;
+        this.infoSecurePort = infoSecurePort;
     }
 
     public String getDatanodeUuid() {
@@ -70,9 +74,12 @@ public final class DataNodeMeta {
         return ipcPort;
     }
 
+    public int getInfoSecurePort() { return infoSecurePort; }
+
     @Override
     public String toString() {
         return "Datanode <UUID = " + datanodeUuid + ", hostname = " + hostname + ", ipAddress = " + ipAddress
-                + ", xferPort = " + xferPort + ", infoPort = " + infoPort + ", ipcPort = " + ipcPort;
+                + ", xferPort = " + xferPort + ", infoPort = " + infoPort + ", infoSecurePort = " + infoSecurePort +
+                ", ipcPort = " + ipcPort;
     }
 }

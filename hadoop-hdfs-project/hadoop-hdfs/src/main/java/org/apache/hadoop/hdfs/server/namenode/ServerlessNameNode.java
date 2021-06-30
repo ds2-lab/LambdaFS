@@ -54,13 +54,16 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.*;
+import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
 import org.apache.hadoop.hdfs.server.blockmanagement.BRLoadBalancingNonLeaderException;
 import org.apache.hadoop.hdfs.server.blockmanagement.BRTrackingService;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
+import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NamenodeRole;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.RollingUpgradeStartupOption;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
+import org.apache.hadoop.hdfs.server.datanode.DataNodeLayoutVersion;
 import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
@@ -81,10 +84,8 @@ import org.apache.hadoop.security.ssl.RevocationListFetcherService;
 import org.apache.hadoop.ipc.RefreshCallQueueProtocol;
 import org.apache.hadoop.tools.GetUserMappingsProtocol;
 import org.apache.hadoop.tracing.TraceAdminProtocol;
+import org.apache.hadoop.util.*;
 import org.apache.hadoop.util.ExitUtil.ExitException;
-import org.apache.hadoop.util.ServicePlugin;
-import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,7 +123,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.HADOOP_USER_GROUP_METRICS_PER
 import static org.apache.hadoop.hdfs.protocol.HdfsConstants.MAX_PATH_DEPTH;
 import static org.apache.hadoop.hdfs.protocol.HdfsConstants.MAX_PATH_LENGTH;
 import static org.apache.hadoop.util.ExitUtil.terminate;
-import org.apache.hadoop.util.JvmPauseMonitor;
+
 import org.apache.htrace.core.Tracer;
 
 /**
@@ -193,7 +194,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Syntax:
    *  Major.Minor.Build.Revision
    */
-  private static String versionNumber = "0.1.1.4";
+  private static String versionNumber = "0.1.1.5";
 
   /**
    * HDFS configuration can have three types of parameters:
@@ -428,6 +429,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     try {
+      nameNodeInstance.getDataNodesFromIntermediateStorage();
+
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
 
       response.add("RESULT", result);
@@ -546,17 +549,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
       ServerlessNameNode nameNode = createNameNode(commandLineArgs, null);
 
-      // Retrieve the DataNodes from intermediate storage.
-      LOG.info("Retrieving list of DataNodes from intermediate storage now...");
-      DataNodeDataAccess<DataNodeMeta> dataAccess = (DataNodeDataAccess)
-              HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
-      List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
-      LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
-
-      for (DataNodeMeta dataNodeMeta : dataNodes) {
-        LOG.info("Discovered " + dataNodeMeta.toString());
-      }
-
       if (nameNode == null) {
         LOG.info("ERROR: NameNode is null. Failed to create and/or initialize the Serverless NameNode.");
         terminate(1);
@@ -573,6 +565,45 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     initialized = false;
     return null;
+  }
+
+  /**
+   * Retrieve the DataNodes from intermediate storage.
+   */
+  private void getDataNodesFromIntermediateStorage() throws IOException {
+    // Retrieve the DataNodes from intermediate storage.
+    LOG.info("Retrieving list of DataNodes from intermediate storage now...");
+    DataNodeDataAccess<DataNodeMeta> dataAccess = (DataNodeDataAccess)
+            HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+    List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
+    LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
+
+    NamespaceInfo nsInfo = namesystem.getNamespaceInfo();
+
+    for (DataNodeMeta dataNodeMeta : dataNodes) {
+      LOG.info("Discovered " + dataNodeMeta.toString());
+
+      DatanodeID dnId =
+          new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
+              dataNodeMeta.getDatanodeUuid(), dataNodeMeta.getXferPort(), dataNodeMeta.getInfoPort(),
+                  dataNodeMeta.getInfoSecurePort(), dataNodeMeta.getIpcPort());
+
+      StorageInfo storageInfo = new StorageInfo(
+              DataNodeLayoutVersion.CURRENT_LAYOUT_VERSION,
+              nsInfo.getNamespaceID(), nsInfo.clusterID, nsInfo.getCTime(),
+              HdfsServerConstants.NodeType.DATA_NODE, nsInfo.getBlockPoolID());
+
+      DatanodeRegistration datanodeRegistration = new DatanodeRegistration(
+              dnId, storageInfo, new ExportedBlockKeys(), VersionInfo.getVersion());
+
+      try {
+        namesystem.registerDatanode(datanodeRegistration);
+      } catch (IOException ex) {
+        // Log this so we know the source of the exception, then re-throw it so it gets caught one layer up.
+        LOG.error("Error registering datanode " + dataNodeMeta.getDatanodeUuid());
+        throw ex;
+      }
+    }
   }
 
   private LocatedBlock addBlockOperation(JsonObject fsArgs) throws IOException, ClassNotFoundException {

@@ -62,7 +62,7 @@ public class NdbStorageFactory implements DalStorageFactory {
   /**
    * Used to keep track of the version that is being used so I can know if something is out of date.
    */
-  private static final String versionNumber = "0.1.0.0";
+  private static final String versionNumber = "0.1.0.1";
 
   private Map<Class, EntityDataAccess> dataAccessMap =
       new HashMap<>();

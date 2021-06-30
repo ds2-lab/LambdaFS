@@ -515,6 +515,7 @@ class BPServiceActor implements Runnable {
     // The handshake() phase loaded the block pool storage
     // off disk - so update the bpRegistration object from that info
     bpRegistration = bpos.createRegistration();
+    bpRegistration.setNamespaceInfo(nsInfo);
 
     /*
     This is the old registration code. We are not registering with a serverful namenode. So we just skip this.

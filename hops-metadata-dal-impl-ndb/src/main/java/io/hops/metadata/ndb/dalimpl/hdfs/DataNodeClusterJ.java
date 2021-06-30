@@ -45,6 +45,10 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
         int getInfoPort();
         void setInfoPort(int infoPort);
 
+        @Column(name = INFO_SECURE_PORT)
+        int getInfoSecurePort();
+        void setInfoSecurePort(int infoSecurePort);
+
         @Column(name = IPC_PORT)
         int getIpcPort();
         void setIpcPort(int ipcPort);
@@ -72,8 +76,9 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
 
         if (results.size() == 1) {
             DataNodeDTO dataNodeDTO = results.get(0);
-            dataNode = new DataNodeMeta(dataNodeDTO.getDatanodeUuid(), dataNodeDTO.getHostname(), dataNodeDTO.getIpAddress(),
-                    dataNodeDTO.getXferPort(), dataNodeDTO.getInfoPort(), dataNodeDTO.getIpcPort());
+            dataNode = new DataNodeMeta(dataNodeDTO.getDatanodeUuid(), dataNodeDTO.getHostname(),
+                    dataNodeDTO.getIpAddress(), dataNodeDTO.getXferPort(), dataNodeDTO.getInfoPort(),
+                    dataNodeDTO.getInfoSecurePort(), dataNodeDTO.getIpcPort());
         }
 
         session.release(results);
@@ -149,7 +154,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
     private DataNodeMeta convert(DataNodeDTO src) {
         return new DataNodeMeta(
                 src.getDatanodeUuid(), src.getHostname(), src.getIpAddress(),
-                src.getXferPort(), src.getInfoPort(), src.getIpcPort()
+                src.getXferPort(), src.getInfoPort(), src.getInfoSecurePort(), src.getIpcPort()
         );
     }
 
@@ -165,6 +170,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
         dest.setIpAddress(src.getIpAddress());
         dest.setXferPort(src.getXferPort());
         dest.setInfoPort(src.getInfoPort());
+        dest.setInfoSecurePort(src.getInfoSecurePort());
         dest.setIpcPort(src.getIpcPort());
     }
 }

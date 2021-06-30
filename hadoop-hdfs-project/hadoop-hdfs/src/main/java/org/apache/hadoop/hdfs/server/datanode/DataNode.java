@@ -1446,8 +1446,6 @@ public class DataNode extends ReconfigurableBase
         new DatanodeID(streamingAddr.getAddress().getHostAddress(), hostName,
             storage.getDatanodeUuid(), getXferPort(), getInfoPort(), infoSecurePort, getIpcPort());
 
-
-
     return new DatanodeRegistration(dnId, storageInfo, new ExportedBlockKeys(),
         VersionInfo.getVersion());
   }
