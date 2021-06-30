@@ -1318,7 +1318,7 @@ public class DataNode extends ReconfigurableBase
     // Create a new instance of DataNodeMeta. We pass this to the metadata abstraction layer to store
     // the associated metadata in intermediate storage.
     dataNodeMeta = new DataNodeMeta(this.id.getDatanodeUuid(), this.id.getHostName(), this.id.getIpAddr(),
-            this.id.getXferPort(), this.id.getInfoPort(), this.id.getIpcPort());
+            this.id.getXferPort(), this.id.getInfoPort(), this.id.getInfoSecurePort(), this.id.getIpcPort());
 
     dataNodeDataAccess.addDataNode(dataNodeMeta);
   }
