@@ -286,6 +286,15 @@ public class DataNode extends ReconfigurableBase
       "  and rolling upgrades.";
   
   static final int CURRENT_BLOCK_FORMAT_VERSION = 1;
+
+  /**
+   * Added by Ben; mostly used for debugging (i.e., making sure the NameNode code that
+   * is running is up-to-date with the source code base).
+   *
+   * Syntax:
+   *  Major.Minor.Build.Revision
+   */
+  private static String versionNumber = "0.1.1.8";
   
   private static final String DATANODE_HTRACE_PREFIX = "datanode.htrace.";
   /**
@@ -1315,11 +1324,18 @@ public class DataNode extends ReconfigurableBase
       dataNodeDataAccess.removeDataNode(dataNodeUuid);
     }
 
+    LOG.info("streamingAddr.getAddress().getHostAddress() = " + streamingAddr.getAddress().getHostAddress());
+    LOG.info("this.id.getIpAddr() = " + this.id.getIpAddr());
+
+    LOG.warn("Using hard-coded IP address for the DataNode's metadata: 10.150.0.12");
+
     // Create a new instance of DataNodeMeta. We pass this to the metadata abstraction layer to store
     // the associated metadata in intermediate storage.
     dataNodeMeta = new DataNodeMeta(this.id.getDatanodeUuid(), this.id.getHostName(),
-            streamingAddr.getAddress().getHostAddress(), this.id.getXferPort(), this.id.getInfoPort(),
+            "10.150.0.12", this.id.getXferPort(), this.id.getInfoPort(),
             this.id.getInfoSecurePort(), this.id.getIpcPort());
+
+    LOG.info("Creating DataNodeMeta instance: " + dataNodeMeta.toString());
 
     dataNodeDataAccess.addDataNode(dataNodeMeta);
   }
@@ -2872,6 +2888,10 @@ public class DataNode extends ReconfigurableBase
   }
   
   public static void main(String args[]) {
+    LOG.info("=================================================================");
+    LOG.info("DataNode v" + versionNumber + " has started executing.");
+    LOG.info("=================================================================");
+
     if (DFSUtil.parseHelpArgument(args, DataNode.USAGE, System.out, true)) {
       System.exit(0);
     }
