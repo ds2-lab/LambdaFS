@@ -86,7 +86,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
      */
     @Override
     public void removeDataNode(String uuid) throws StorageException {
-        LOG.info("REMOVE DataNode " + uuid);
+        LOG.info("REMOVE DataNode: " + uuid);
         HopsSession session = connector.obtainSession();
 
         session.deletePersistent(DataNodeDTO.class, uuid);
@@ -98,7 +98,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
      */
     @Override
     public void addDataNode(DataNodeMeta dataNode) throws StorageException {
-        LOG.info("ADD DataNode " + dataNode.toString());
+        LOG.info("ADD DataNode: " + dataNode.toString());
         DataNodeDTO dataNodeDTO = null;
         LOG.info("Obtaining HopsSession now...");
         HopsSession session = connector.obtainSession();
