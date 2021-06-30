@@ -59,12 +59,26 @@ import io.hops.metadata.yarn.dal.ReservationStateDataAccess;
 
 public class NdbStorageFactory implements DalStorageFactory {
 
+  /**
+   * Used to keep track of the version that is being used so I can know if something is out of date.
+   */
+  private static final String versionNumber = "0.1.0.0";
+
   private Map<Class, EntityDataAccess> dataAccessMap =
       new HashMap<>();
+
+  /**
+   * Default constructor.
+   */
+  public NdbStorageFactory() {
+    System.out.println("NdbStorageFactory Version Number: " + versionNumber);
+  }
 
   @Override
   public void setConfiguration(Properties conf)
           throws StorageInitializtionException {
+    System.out.println("NdbStorageFactory Version Number: " + versionNumber);
+
     try {
       ClusterjConnector.getInstance().setConfiguration(conf);
       MysqlServerConnector.getInstance().setConfiguration(conf);
@@ -76,6 +90,8 @@ public class NdbStorageFactory implements DalStorageFactory {
   }
 
   private void initDataAccessMap() {
+    System.out.println("NdbStorageFactory Version Number: " + versionNumber);
+
     dataAccessMap.put(DataNodeDataAccess.class, new DataNodeClusterJ());
     dataAccessMap.put(StorageDataAccess.class, new StoragesClusterj());
     dataAccessMap.put(BlockInfoDataAccess.class, new BlockInfoClusterj());
