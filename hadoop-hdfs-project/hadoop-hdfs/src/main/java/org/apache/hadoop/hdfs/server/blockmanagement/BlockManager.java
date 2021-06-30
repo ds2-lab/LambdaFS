@@ -4930,7 +4930,7 @@ public class BlockManager {
             }
           } else {
             updateState();
-            LOG.debug("Namesystem is not leader: will not run replication monitor");
+            //LOG.debug("Namesystem is not leader: will not run replication monitor");
           }
           Thread.sleep(replicationRecheckInterval);
         } catch (Throwable t) {
