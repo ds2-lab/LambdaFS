@@ -652,7 +652,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     boolean badTarget = false;
     DatanodeStorageInfo firstChosen = null;
 
-    LOG.debug("@@@ -- START -- " + numOfAvailableNodes + " " + scope + " " +
+    LOG.debug("@@@ -- START -- AvailNodes: " + numOfAvailableNodes + ", Scope: " + scope + ", ExcludedNodes: " +
         Arrays.toString(excludedNodes.toArray()));
 
     while(numOfReplicas > 0 && numOfAvailableNodes > 0) {
@@ -669,8 +669,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
 
         int i = 0;
         boolean search = true;
-        // For each storagetype that we need (starting at fastest), check if
-        // this node has it.
+        // For each storagetype that we need (starting at fastest), check if this node has it.
         for (Iterator<Map.Entry<StorageType, Integer>> iter = storageTypes
             .entrySet().iterator(); search && iter.hasNext(); ) {
           Map.Entry<StorageType, Integer> entry = iter.next();
@@ -790,6 +789,10 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       List<DatanodeStorageInfo> results,
       boolean avoidStaleNodes,
       StorageType requiredStorageType) {
+
+    LOG.debug("Checking if node " + storage.getDatanodeDescriptor().getDatanodeUuid() + " is a good target...");
+    LOG.debug("DN's storage type: " + storage.getStorageType().name());
+    LOG.debug("Required storage type: " + requiredStorageType.name());
 
     if (storage.getStorageType() != requiredStorageType) {
       logNodeIsNotChosen(storage, "storage types do not match,"

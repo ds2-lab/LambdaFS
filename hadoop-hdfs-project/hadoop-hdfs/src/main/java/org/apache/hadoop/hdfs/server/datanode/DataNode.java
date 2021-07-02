@@ -2892,6 +2892,11 @@ public class DataNode extends ReconfigurableBase
     LOG.info("DataNode v" + versionNumber + " has started executing.");
     LOG.info("=================================================================");
 
+    if (LOG.isDebugEnabled())
+      LOG.info("Debug-logging IS enabled.");
+    else
+      LOG.info("Debug-logging is NOT enabled.");
+
     if (DFSUtil.parseHelpArgument(args, DataNode.USAGE, System.out, true)) {
       System.exit(0);
     }
