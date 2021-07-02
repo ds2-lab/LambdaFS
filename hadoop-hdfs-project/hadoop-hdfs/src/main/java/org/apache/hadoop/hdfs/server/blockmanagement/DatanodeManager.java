@@ -52,6 +52,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.UnregisteredNodeException;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor.BlockTargetPair;
+import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.Namesystem;
 import org.apache.hadoop.hdfs.server.protocol.BalancerBandwidthCommand;
@@ -836,6 +837,10 @@ public class DatanodeManager {
         if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
           ServerlessNameNode.stateChangeLog
               .debug("BLOCK* registerDatanode: " + "node restarted.");
+
+          DatanodeStorageInfo[] dnStorageInfos = nodeN.getStorageInfos();
+          ServerlessNameNode.LOG.debug("Newly-registered DN (nodeN & nodeS) has at least one associated storageInfo: {}",
+                  (dnStorageInfos != null) && dnStorageInfos.length > 0);
         }
       } else {
         // nodeS is found
@@ -877,6 +882,10 @@ public class DatanodeManager {
       heartbeatManager.register(nodeS);
       incrementVersionCount(nodeS.getSoftwareVersion());
       startDecommissioningIfExcluded(nodeS);
+
+      DatanodeStorageInfo[] dnStorageInfos = nodeS.getStorageInfos();
+      ServerlessNameNode.LOG.debug("Newly-registered DN (nodeS) has at least one associated storageInfo: {}",
+              (dnStorageInfos != null) && dnStorageInfos.length > 0);
       return;
     }
 
@@ -896,6 +905,10 @@ public class DatanodeManager {
     }
     nodeDescr.setSoftwareVersion(nodeReg.getSoftwareVersion());
     addDatanode(nodeDescr);
+
+    DatanodeStorageInfo[] dnStorageInfos = nodeDescr.getStorageInfos();
+    ServerlessNameNode.LOG.debug("Newly-registered (nodeDescr) DN has at least one associated storageInfo: {}",
+            (dnStorageInfos != null) && dnStorageInfos.length > 0);
 
     // also treat the registration message as a heartbeat
     // no need to update its timestamp
