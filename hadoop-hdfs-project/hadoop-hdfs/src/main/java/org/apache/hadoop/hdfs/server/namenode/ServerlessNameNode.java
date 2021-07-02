@@ -194,7 +194,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Syntax:
    *  Major.Minor.Build.Revision
    */
-  private static String versionNumber = "0.1.1.8";
+  private static String versionNumber = "0.1.1.9";
 
   /**
    * HDFS configuration can have three types of parameters:
@@ -398,6 +398,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private static JsonObject nameNodeDriver(String op, JsonObject fsArgs, String[] commandLineArguments) {
     JsonObject response = new JsonObject();
+
+    if (LOG.isDebugEnabled())
+      LOG.info("Debug-logging IS enabled.");
+    else
+      LOG.info("Debug-logging is NOT enabled.");
 
     LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
     LOG.info("NameNode Argument Information:");
