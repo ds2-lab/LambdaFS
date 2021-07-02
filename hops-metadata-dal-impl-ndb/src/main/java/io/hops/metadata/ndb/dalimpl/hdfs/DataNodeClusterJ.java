@@ -88,13 +88,19 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
     /**
      * Remove a given DataNode from the intermediate storage.
      * @param uuid The UUID of the DataNode to remove.
+     *
+     * TODO: Fix this method. Doesn't seem to work. Maybe need to pass a DataNodeDTO object.
      */
     @Override
     public void removeDataNode(String uuid) throws StorageException {
         LOG.info("REMOVE DataNode: " + uuid);
         HopsSession session = connector.obtainSession();
 
-        session.deletePersistent(DataNodeDTO.class, uuid);
+        DataNodeDTO deleteMe = session.find(DataNodeDTO.class, uuid);
+
+        session.deletePersistent(DataNodeDTO.class, deleteMe);
+
+        LOG.debug("Successfully deleted metadata for DataNode " + uuid);
     }
 
     /**
