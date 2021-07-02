@@ -549,7 +549,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
 
       if (LOG.isDebugEnabled()) {
         LOG.debug("Failed to choose from local rack (location = " + localRack
-            + "); the second replica is not found, retry choosing ramdomly", e);
+            + "); the second replica is not found, retry choosing randomly", e);
       }
       //the second replica is not found, randomly choose one from the network
       return chooseRandom(NodeBase.ROOT, excludedNodes, blocksize,
@@ -667,6 +667,8 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
         final DatanodeStorageInfo[] storages = DFSUtil.shuffle(
             chosenNode.getStorageInfos());
 
+        LOG.debug("The chosen node " + chosenNode.getDatanodeUuid() + " has " + storages.length + " storage infos.");
+
         int i = 0;
         boolean search = true;
         // For each storagetype that we need (starting at fastest), check if this node has it.
@@ -674,6 +676,9 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
             .entrySet().iterator(); search && iter.hasNext(); ) {
           Map.Entry<StorageType, Integer> entry = iter.next();
           StorageType type = entry.getKey();
+
+          LOG.debug("Checking if target is a good fit for StorageType: " + type.name());
+
           // Check all storages on this node
           for (i = 0; i < storages.length; i++) {
             // Check if it's a good storage
