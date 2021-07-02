@@ -587,6 +587,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     for (DataNodeMeta dataNodeMeta : dataNodes) {
       LOG.info("Discovered " + dataNodeMeta.toString());
+      LOG.info("IP Address: {}, Hostname: {}, Xfer Port: {}, Info Port: {}, Info Secure Port: {}, IPC Port: {}",
+              dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(), dataNodeMeta.getXferPort(),
+              dataNodeMeta.getInfoPort(), dataNodeMeta.getInfoSecurePort(), dataNodeMeta.getIpcPort());
 
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
@@ -597,6 +600,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               DataNodeLayoutVersion.CURRENT_LAYOUT_VERSION,
               nsInfo.getNamespaceID(), nsInfo.clusterID, nsInfo.getCTime(),
               HdfsServerConstants.NodeType.DATA_NODE, nsInfo.getBlockPoolID());
+
+      LOG.info("NamespaceID: {}, ClusterID: {}, CTime: {}, BlockPoolID: {}", nsInfo.getNamespaceID(),
+              nsInfo.clusterID, nsInfo.getCTime(), nsInfo.getBlockPoolID());
 
       DatanodeRegistration datanodeRegistration = new DatanodeRegistration(
               dnId, storageInfo, new ExportedBlockKeys(), VersionInfo.getVersion());
