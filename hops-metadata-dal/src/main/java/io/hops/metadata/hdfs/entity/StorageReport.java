@@ -16,6 +16,8 @@ public class StorageReport {
 
     private final boolean failed;
 
+    private final long capacity;
+
     private final long dfsUsed;
 
     private final long remaining;
@@ -24,11 +26,12 @@ public class StorageReport {
 
     private final String datanodeStorageId;
 
-    public StorageReport(int groupId, int reportId, boolean failed, long dfsUsed,
+    public StorageReport(int groupId, int reportId, boolean failed, long capacity, long dfsUsed,
                          long remaining, long blockPoolUsed, String datanodeStorageId) {
         this.groupId = groupId;
         this.reportId = reportId;
         this.failed = failed;
+        this.capacity = capacity;
         this.dfsUsed = dfsUsed;
         this.remaining = remaining;
         this.blockPoolUsed = blockPoolUsed;
@@ -51,7 +54,7 @@ public class StorageReport {
         return dfsUsed;
     }
 
-    public boolean isFailed() {
+    public boolean getFailed() {
         return failed;
     }
 
@@ -63,10 +66,14 @@ public class StorageReport {
         return groupId;
     }
 
+    public long getCapacity() {
+        return capacity;
+    }
+
     @Override
     public String toString() {
         return "StorageReport < groupId = " + groupId + ", reportId = " + reportId + ", failed = " + failed +
-                ", dfsUsed = " + dfsUsed + ", remaining = " + remaining + ", blockPoolUsed = " + blockPoolUsed +
-                ", datanodeStorageId = " + datanodeStorageId + ">";
+                ", capacity = " + capacity + ", dfsUsed = " + dfsUsed + ", remaining = " + remaining +
+                ", blockPoolUsed = " + blockPoolUsed + ", datanodeStorageId = " + datanodeStorageId + ">";
     }
 }
