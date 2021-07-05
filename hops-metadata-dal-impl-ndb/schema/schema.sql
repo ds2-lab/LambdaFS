@@ -49,7 +49,7 @@ CREATE TABLE `storage_reports` (
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 -- This table is used to store DatanodeStorage instances. These instances are referenced by StorageReports.
-CREATE TABLE `datanode_storage` (
+CREATE TABLE `datanode_storages` (
     `storage_id` varchar(255) NOT NULL,
     `state` int(11) NOT NULL, -- This refers to the State enum. There are 3 possible values.
     `storage_type` int(11) NOT NULL, -- This refers to the StorageType enum. There are 6 possible values.

@@ -1,7 +1,7 @@
 package io.hops.metadata.hdfs.entity;
 
 /**
- * Encapsulates a DataNode (specifically its metadata) as stored in the intermediate storage.
+ * POJO encapsulating a DataNode (specifically its metadata) as stored in the intermediate storage.
  */
 public final class DataNodeMeta {
 

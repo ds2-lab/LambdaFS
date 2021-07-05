@@ -32,6 +32,23 @@ public class TablesDef {
     String INFO_SECURE_PORT = "info_secure_port";
   }
 
+  public interface StorageReportsTableDef {
+    String GROUP_ID = "group_id";
+    String REPORT_ID = "report_id";
+    String FAILED = "failed";
+    String CAPACITY = "capacity";
+    String DFS_USED = "dfsUsed";
+    String REMAINING = "remaining";
+    String BLOCK_POOL_USED = "remaining";
+    String DATANODE_STORAGE_ID = "blockPoolUsed";
+  }
+
+  public interface DatanodeStoragesTableDef {
+    String STORAGE_ID = "storage_id";
+    String STATE = "state";
+    String STORAGE_TYPE = "storage_type";
+  }
+
   public interface BlockLookUpTableDef {
     String TABLE_NAME = "hdfs_block_lookup_table";
     String BLOCK_ID = "block_id";
