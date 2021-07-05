@@ -57,7 +57,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
     private final ClusterjConnector connector = ClusterjConnector.getInstance();
 
     /**
-     * Retrieve a given DataNode from the intermediate storage.
+     * Retrieve a particular DataNode from the intermediate storage identified by the given UUID.
      * @param uuid The UUID of the DataNode to retrieve.
      */
     @Override
@@ -76,9 +76,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
 
         if (results.size() == 1) {
             DataNodeDTO dataNodeDTO = results.get(0);
-            dataNode = new DataNodeMeta(dataNodeDTO.getDatanodeUuid(), dataNodeDTO.getHostname(),
-                    dataNodeDTO.getIpAddress(), dataNodeDTO.getXferPort(), dataNodeDTO.getInfoPort(),
-                    dataNodeDTO.getInfoSecurePort(), dataNodeDTO.getIpcPort());
+            dataNode = convert(dataNodeDTO);
         }
 
         session.release(results);
@@ -93,7 +91,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
      */
     @Override
     public void removeDataNode(String uuid) throws StorageException {
-        LOG.info("REMOVE DataNode: " + uuid);
+        LOG.info("REMOVE DataNode " + uuid);
         HopsSession session = connector.obtainSession();
 
         DataNodeDTO deleteMe = session.find(DataNodeDTO.class, uuid);
@@ -109,22 +107,22 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
      */
     @Override
     public void addDataNode(DataNodeMeta dataNode) throws StorageException {
-        LOG.info("ADD DataNode: " + dataNode.toString());
+        LOG.info("ADD DataNode " + dataNode.toString());
         DataNodeDTO dataNodeDTO = null;
-        LOG.info("Obtaining HopsSession now...");
+        //LOG.info("Obtaining HopsSession now...");
         HopsSession session = connector.obtainSession();
-        LOG.info("Successfully obtained HopsSession.");
+        //LOG.info("Successfully obtained HopsSession.");
 
         try {
             dataNodeDTO = session.newInstance(DataNodeDTO.class);
-            LOG.info("Created new instance of DataNodeDTO...");
+            //LOG.info("Created new instance of DataNodeDTO...");
             copyState(dataNodeDTO, dataNode);
-            LOG.info("Successfully copied DataNode state to DataNodeDTO.");
+            //LOG.info("Successfully copied DataNode state to DataNodeDTO.");
             session.savePersistent(dataNodeDTO);
-            LOG.info("Wrote/persisted DataNode " + dataNode.getDatanodeUuid() + " to MySQL NDB storage.");
+            LOG.debug("Wrote/persisted DataNode " + dataNode.getDatanodeUuid() + " to MySQL NDB storage.");
         } finally {
             session.release(dataNodeDTO);
-            LOG.info("Released DataNodeDTO instance.");
+            //LOG.info("Released DataNodeDTO instance.");
         }
     }
 

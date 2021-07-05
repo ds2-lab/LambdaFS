@@ -6,6 +6,7 @@ import com.mysql.clusterj.annotation.PrimaryKey;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
+import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.metadata.hdfs.entity.DatanodeStorage;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.wrapper.HopsQuery;
@@ -40,6 +41,10 @@ public class DatanodeStorageClusterJ
 
     private final ClusterjConnector connector = ClusterjConnector.getInstance();
 
+    /**
+     * Retrieve a particular DatanodeStorage from NDB identified by the provided storageId.
+     * @param storageId Identifies the DatanodeStorage.
+     */
     @Override
     public DatanodeStorage getDatanodeStorage(String storageId) throws StorageException {
         LOG.info("GET DatanodeStorage " + storageId);
@@ -67,13 +72,47 @@ public class DatanodeStorageClusterJ
         return datanodeStorage;
     }
 
+    /**
+     * Remove a particular DatanodeStorage from NDB identified by the given storageId.
+     * @param storageId The ID of the DatanodeStorage instance to remove from NDB.
+     */
     @Override
     public void removeDatanodeStorage(String storageId) throws StorageException {
+        LOG.info("REMOVE DatanodeStorage " + storageId);
 
+        HopsSession session = connector.obtainSession();
+        DatanodeStorageDTO deleteMe = session.find(DatanodeStorageDTO.class, storageId);
+        session.deletePersistent(DatanodeStorageDTO.class, deleteMe);
+
+        LOG.debug("Successfully removed/deleted DatanodeStorage with storageId " + storageId);
     }
 
     @Override
     public void addDatanodeStorage(DatanodeStorage datanodeStorage) throws StorageException {
+        LOG.info("ADD DatanodeStorage " + datanodeStorage.toString());
+        DatanodeStorageDTO toAdd = null;
+        HopsSession session = connector.obtainSession();
 
+        try {
+            toAdd = session.newInstance(DatanodeStorageDTO.class);
+            copyState(toAdd, datanodeStorage);
+            session.savePersistent(toAdd);
+
+            LOG.debug("Wrote/persisted DatanodeStorage " + toAdd.getStorageId() + " to MySQL NDB storage.");
+        } finally {
+            session.release(toAdd);
+        }
+    }
+
+    /**
+     * Copy the state from the given {@link io.hops.metadata.hdfs.entity.DatanodeStorage} instance to the given
+     * {@link io.hops.metadata.ndb.dalimpl.hdfs.DatanodeStorageClusterJ.DatanodeStorageDTO} instance.
+     * @param dest The DatanodeStorageDTO destination object.
+     * @param src The DatanodeStorage source object.
+     */
+    private void copyState(DatanodeStorageDTO dest, DatanodeStorage src) {
+        dest.setStorageId(src.getStorageId());
+        dest.setState(src.getState());
+        dest.setStorageType(src.getStorageType());
     }
 }
