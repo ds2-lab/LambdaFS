@@ -33,6 +33,7 @@ public class TablesDef {
   }
 
   public interface StorageReportsTableDef {
+    String TABLE_NAME = "storage_reports";
     String GROUP_ID = "group_id";
     String REPORT_ID = "report_id";
     String FAILED = "failed";
@@ -44,6 +45,7 @@ public class TablesDef {
   }
 
   public interface DatanodeStoragesTableDef {
+    String TABLE_NAME = "datanode_storages";
     String STORAGE_ID = "storage_id";
     String STATE = "state";
     String STORAGE_TYPE = "storage_type";

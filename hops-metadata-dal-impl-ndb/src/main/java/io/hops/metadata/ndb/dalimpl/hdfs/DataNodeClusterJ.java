@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDataAccess<DataNodeMeta> {
-    private static final Log LOG = LogFactory.getLog(EncodingStatusClusterj.class);
+    private static final Log LOG = LogFactory.getLog(DataNodeClusterJ.class);
 
     @PersistenceCapable(table = TABLE_NAME)
     public interface DataNodeDTO {
@@ -67,7 +67,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
 
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
         HopsQueryDomainType<DataNodeDTO> domainType = queryBuilder.createQueryDefinition(DataNodeDTO.class);
-        domainType.where(domainType.get("name").equal(domainType.param("param")));
+        domainType.where(domainType.get("name").equal(domainType.param("param"))); // Not sure why we need this line?
         HopsQuery<DataNodeDTO> query = session.createQuery(domainType);
         query.setParameter("param", uuid);
         List<DataNodeDTO> results = query.getResultList();
