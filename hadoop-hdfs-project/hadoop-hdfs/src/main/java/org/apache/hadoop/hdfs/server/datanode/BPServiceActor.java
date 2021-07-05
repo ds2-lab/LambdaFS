@@ -20,6 +20,7 @@ package org.apache.hadoop.hdfs.server.datanode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import io.hops.exception.StorageException;
 import io.hops.exception.StorageInitializtionException;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
@@ -28,6 +29,8 @@ import static org.apache.hadoop.util.Time.monotonicNow;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 
+import io.hops.metadata.HdfsStorageFactory;
+import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -73,7 +76,10 @@ import javax.xml.stream.events.Namespace;
 @InterfaceAudience.Private
 class BPServiceActor implements Runnable {
 
-  private ServerlessInvoker<JsonObject> serverlessInvoker;
+  /**
+   * Used to invoke serverless name nodes.
+   */
+  private final ServerlessInvoker<JsonObject> serverlessInvoker;
 
   static final Log LOG = DataNode.LOG;
   final InetSocketAddress nnAddr;
@@ -304,6 +310,33 @@ class BPServiceActor implements Runnable {
     }
   }
 
+  /**
+   * Store the given StorageReport instance in intermediate storage.
+   * @param report the report to store in intermediate storage.
+   */
+  private void storeStorageReportInIntermediateStorage(StorageReport report, int groupId, int reportId) throws StorageException {
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> access =
+            (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+
+    storeStorageReportInIntermediateStorage(report, groupId, reportId, access);
+  }
+
+  /**
+   * Store the given StorageReport instance in intermediate storage.
+   * @param originalReport the report to store in intermediate storage.
+   */
+  private void storeStorageReportInIntermediateStorage(StorageReport originalReport, int groupId, int reportId,
+      StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> access) throws StorageException {
+
+    // This is the Data Abstraction Layer report. Has some additional fields, such as groupId and reportId.
+    io.hops.metadata.hdfs.entity.StorageReport dalReport =
+            new io.hops.metadata.hdfs.entity.StorageReport(groupId, reportId, originalReport.isFailed(),
+                    originalReport.getCapacity(), originalReport.getDfsUsed(), originalReport.getRemaining(),
+                    originalReport.getBlockPoolUsed(), originalReport.getStorage().getStorageID());
+
+    access.addStorageReport(dalReport);
+  }
+
   @VisibleForTesting
   synchronized void triggerHeartbeatForTests() {
     final long nextHeartbeatTime = scheduler.scheduleHeartbeat();
@@ -324,8 +357,20 @@ class BPServiceActor implements Runnable {
       LOG.debug("Sending heartbeat with " + reports.length +
           " storage reports from service actor: " + this);
     }
+
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> access =
+            (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+
+    LOG.info("Storing " + reports.length + " StorageReport instance(s) in intermediate storage now...");
+
+    int reportId = 0;
+    int groupId = dn.getAndIncrementStorageReportGroupCounter();
+    // Store the StorageReport objects in NDB.
+    for (StorageReport report : reports) {
+      storeStorageReportInIntermediateStorage(report, groupId, reportId, access);
+    }
     
-    VolumeFailureSummary volumeFailureSummary = dn.getFSDataset()
+    /*VolumeFailureSummary volumeFailureSummary = dn.getFSDataset()
         .getVolumeFailureSummary();
     int numFailedVolumes = volumeFailureSummary != null ?
         volumeFailureSummary.getFailedStorageLocations().length : 0;
@@ -336,7 +381,9 @@ class BPServiceActor implements Runnable {
         dn.getXmitsInProgress(),
         dn.getXceiverCount(),
         numFailedVolumes,
-        volumeFailureSummary);
+        volumeFailureSummary);*/
+
+    return null;
   }
 
   //This must be called only by BPOfferService
@@ -439,10 +486,10 @@ class BPServiceActor implements Runnable {
           //
           scheduler.scheduleNextHeartbeat();
           if (!dn.areHeartbeatsDisabledForTests()) {
-            LOG.warn("DataNode skipping heartbeat to NN...");
+            //LOG.warn("DataNode skipping heartbeat to NN...");
 
-            /*HeartbeatResponse resp = sendHeartBeat();
-            assert resp != null;
+            HeartbeatResponse resp = sendHeartBeat();
+            /*assert resp != null;
 
             connectedToNN = true;
 
@@ -505,11 +552,6 @@ class BPServiceActor implements Runnable {
    * 2) to receive a registrationID
    * <p/>
    * issued by the namenode to recognize registered datanodes.
-   * 
-   * @param nsInfo current NamespaceInfo
-   * @see FSNamesystem#registerDatanode(DatanodeRegistration)
-   * @throws IOException
-   * @see FSNamesystem#registerDatanode(DatanodeRegistration)
    */
   void register(NamespaceInfo nsInfo) throws IOException {
     // The handshake() phase loaded the block pool storage

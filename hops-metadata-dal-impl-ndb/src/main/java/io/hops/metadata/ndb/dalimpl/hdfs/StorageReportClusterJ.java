@@ -6,8 +6,6 @@ import com.mysql.clusterj.annotation.PrimaryKey;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
-import io.hops.metadata.hdfs.entity.DatanodeStorage;
-import io.hops.metadata.hdfs.entity.Storage;
 import io.hops.metadata.hdfs.entity.StorageReport;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.wrapper.*;

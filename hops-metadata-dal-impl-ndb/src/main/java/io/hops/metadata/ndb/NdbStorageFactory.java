@@ -62,9 +62,9 @@ public class NdbStorageFactory implements DalStorageFactory {
   /**
    * Used to keep track of the version that is being used so I can know if something is out of date.
    */
-  private static final String versionNumber = "0.1.0.1";
+  private static final String versionNumber = "0.2.0.0";
 
-  private Map<Class, EntityDataAccess> dataAccessMap =
+  private final Map<Class, EntityDataAccess> dataAccessMap =
       new HashMap<>();
 
   /**
@@ -90,9 +90,11 @@ public class NdbStorageFactory implements DalStorageFactory {
   }
 
   private void initDataAccessMap() {
-    System.out.println("NdbStorageFactory Version Number: " + versionNumber);
-
+    // These are the classes that I've added for our Serverless NameNode.
     dataAccessMap.put(DataNodeDataAccess.class, new DataNodeClusterJ());
+    dataAccessMap.put(StorageReportDataAccess.class, new StorageReportClusterJ());
+    dataAccessMap.put(DatanodeStorageDataAccess.class, new DatanodeStorageClusterJ());
+
     dataAccessMap.put(StorageDataAccess.class, new StoragesClusterj());
     dataAccessMap.put(BlockInfoDataAccess.class, new BlockInfoClusterj());
     dataAccessMap.put(PendingBlockDataAccess.class, new PendingBlockClusterj());

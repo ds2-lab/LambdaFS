@@ -260,7 +260,12 @@ public class DataNode extends ReconfigurableBase
     implements InterDatanodeProtocol, ClientDatanodeProtocol,
         TraceAdminProtocol, DataNodeMXBean {
   public static final Log LOG = LogFactory.getLog(DataNode.class);
-  
+
+  /**
+   * Each time a new group of StorageReport instances is written to NDB, this variable is incremented.
+   */
+  private volatile int storageReportGroupCounter = 0;
+
   static {
     HdfsConfiguration.init();
   }
@@ -496,6 +501,16 @@ public class DataNode extends ReconfigurableBase
                 return ret;
               }
             });
+  }
+
+  /**
+   * Increments the `storageReportGroupCounter` instance variable and returns the value of this variable
+   * BEFORE it was incremented during this method's execution.
+   */
+  public synchronized int getAndIncrementStorageReportGroupCounter() {
+    int tmp = storageReportGroupCounter;
+    storageReportGroupCounter += 1;
+    return tmp;
   }
 
   @Override  // ReconfigurableBase
@@ -1169,13 +1184,12 @@ public class DataNode extends ReconfigurableBase
   }
 
   /**
-   * As of right now, this ALWAYS returns True so heartbeats are disabled.
-   *
-   * DNs should not be sending heartbeats to serverless NNs.
+   * This is enabled because we write StorageReports to NDB during a heartbeat now instead of sending
+   * a heartbeat to a namenode via RPC.
    */
   boolean areHeartbeatsDisabledForTests() {
-    return true;
-    //return this.heartbeatsDisabledForTests;
+    // return true;
+    return this.heartbeatsDisabledForTests;
   }
 
   /**
