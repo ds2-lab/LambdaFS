@@ -33,6 +33,29 @@ CREATE TABLE `datanodes` (
     PRIMARY KEY (`datanode_uuid`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
+-- This table holds individual storage reports. Storage reports will reference datanode storage instances.
+CREATE TABLE `storage_reports` (
+    `group_id` int(11) NOT NULL,    -- DNs typically send several reports in a single heartbeat.
+                                    -- We can tell which reports are grouped together by this field.
+    `report_id` int(11) NOT NULL,   -- This is how we distinguish between entire groups of storage reports.
+    `failed` BIT(1) NOT NULL,
+    `capacity` bigint(20) NOT NULL,
+    `dfsUsed` bigint(20) NOT NULL,
+    `remaining` bigint(20) NOT NULL,
+    `blockPoolUsed` bigint(20) NOT NULL,
+    `datanodeStorageId` varchar(255) NOT NULL, -- This should refer to a given DatanodeStorage from the other table.
+    PRIMARY KEY (`group_id`, `report_id`),
+    FOREIGN KEY (`datanodeStorageId`) REFERENCES `datanode_storage` (`storage_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+-- This table is used to store DatanodeStorage instances. These instances are referenced by StorageReports.
+CREATE TABLE `datanode_storage` (
+    `storage_id` varchar(255) NOT NULL,
+    `state` int(11) NOT NULL, -- This refers to the State enum. There are 3 possible values.
+    `storage_type` int(11) NOT NULL, -- This refers to the StorageType enum. There are 6 possible values.
+    PRIMARY KEY (`storage_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
 CREATE TABLE `hdfs_block_infos` (
   `inode_id` int(11) NOT NULL,
   `block_id` bigint(20) NOT NULL,
