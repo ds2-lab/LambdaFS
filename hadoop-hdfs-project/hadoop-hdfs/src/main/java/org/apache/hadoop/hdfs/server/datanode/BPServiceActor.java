@@ -30,6 +30,7 @@ import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 
 import io.hops.metadata.HdfsStorageFactory;
+import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
 import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
@@ -53,6 +54,7 @@ import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 import org.apache.http.HttpResponse;
@@ -338,6 +340,15 @@ class BPServiceActor implements Runnable {
     access.addStorageReport(dalReport);
   }
 
+  private void storeDatanodeStorageInIntermediateStorage(DatanodeStorage storage,
+       DatanodeStorageDataAccess<io.hops.metadata.hdfs.entity.DatanodeStorage> access) throws StorageException {
+    io.hops.metadata.hdfs.entity.DatanodeStorage storageDal
+            = new io.hops.metadata.hdfs.entity.DatanodeStorage(storage.getStorageID(), dn.getDatanodeUuid(),
+            storage.getState().ordinal(), storage.getStorageType().ordinal());
+
+    access.addDatanodeStorage(storageDal);
+  }
+
   @VisibleForTesting
   synchronized void triggerHeartbeatForTests() {
     final long nextHeartbeatTime = scheduler.scheduleHeartbeat();
@@ -359,16 +370,27 @@ class BPServiceActor implements Runnable {
           " storage reports from service actor: " + this);
     }
 
-    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> access =
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> reportAccess =
             (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+
+    DatanodeStorageDataAccess<io.hops.metadata.hdfs.entity.DatanodeStorage storageAccess =
+            (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
 
     LOG.info("Storing " + reports.length + " StorageReport instance(s) in intermediate storage now...");
 
     int reportId = 0;
     int groupId = dn.getAndIncrementStorageReportGroupCounter();
+
+    HashSet<DatanodeStorage> datanodeStorages = new HashSet<>();
+
     // Store the StorageReport objects in NDB.
     for (StorageReport report : reports) {
-      storeStorageReportInIntermediateStorage(report, groupId, reportId, access);
+      if (!datanodeStorages.contains(report.getStorage())) {
+        storeDatanodeStorageInIntermediateStorage(report.getStorage(), storageAccess);
+        datanodeStorages.add(report.getStorage());
+      }
+
+      storeStorageReportInIntermediateStorage(report, groupId, reportId, reportAccess);
     }
     
     /*VolumeFailureSummary volumeFailureSummary = dn.getFSDataset()

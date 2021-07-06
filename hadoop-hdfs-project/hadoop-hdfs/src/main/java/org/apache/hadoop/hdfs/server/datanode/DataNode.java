@@ -55,7 +55,9 @@ import io.hops.StorageConnector;
 import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
+import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
 import io.hops.metadata.hdfs.entity.DataNodeMeta;
+import io.hops.metadata.hdfs.entity.DatanodeStorage;
 import io.hops.security.CertificateLocalizationCtx;
 import io.hops.security.CertificateLocalizationService;
 import io.hops.security.HopsSecurityActionsFactory;
@@ -115,6 +117,7 @@ import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.datanode.SecureDataNodeStarter.SecureResources;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsDatasetSpi;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsVolumeSpi;
+import org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.FsVolumeImpl;
 import org.apache.hadoop.hdfs.server.datanode.metrics.DataNodeMetrics;
 import org.apache.hadoop.hdfs.server.datanode.web.DatanodeHttpServer;
 import org.apache.hadoop.hdfs.server.protocol.BlockRecoveryCommand.RecoveringBlock;
@@ -1352,6 +1355,11 @@ public class DataNode extends ReconfigurableBase
     LOG.info("Creating DataNodeMeta instance: " + dataNodeMeta.toString());
 
     dataNodeDataAccess.addDataNode(dataNodeMeta);
+
+    LOG.info("Writing DatanodeStorage information to intermediate storage now...");
+
+    DatanodeStorageDataAccess<DatanodeStorage> storageDataAccess =
+            (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
   }
   
   /**
