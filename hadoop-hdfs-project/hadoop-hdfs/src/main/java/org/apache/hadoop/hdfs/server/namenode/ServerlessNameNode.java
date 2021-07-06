@@ -29,10 +29,14 @@ import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.HdfsVariables;
 import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
+import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
 import io.hops.metadata.hdfs.dal.LeaseCreationLocksDataAccess;
+import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
 import io.hops.metadata.hdfs.entity.DataNodeMeta;
+import io.hops.metadata.hdfs.entity.DatanodeStorage;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
+import io.hops.metadata.hdfs.entity.StorageReport;
 import io.hops.security.HopsUGException;
 import io.hops.security.UsersGroups;
 import io.hops.transaction.handler.HDFSOperationType;
@@ -570,6 +574,31 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     initialized = false;
     return null;
+  }
+
+  /**
+   * Retrieve the DatanodeStorage instances stored in intermediate storage.
+   * These are used in conjunction with StorageReports.
+   */
+  private void retrieveDatanodeStoragesFromIntermediateStorage() throws IOException {
+    LOG.info("Retrieving DatanodeStorage instances from intermediate storage now...");
+
+    DatanodeStorageDataAccess<DatanodeStorage> dataAccess =
+            (DatanodeStorageDataAccess)HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
+
+    List<DatanodeStorage> datanodeStorages = dataAccess.getDatanodeStorage()
+  }
+
+  /**
+   * Retrieve the StorageReports from intermediate storage. The NameNode maintains
+   * the most recent groupId for each DataNode, and we use this reference to ensure
+   * we are retrieving the latest StorageReports.
+   */
+  private void retrieveStorageReportsFromIntermediateStorage() throws IOException {
+    LOG.info("Retrieving StorageReport instances from intermediate storage now...");
+
+    StorageReportDataAccess<StorageReport> dataAccess =
+            (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
   }
 
   /**

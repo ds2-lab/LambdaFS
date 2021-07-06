@@ -8,11 +8,13 @@ import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
 import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.metadata.hdfs.entity.DatanodeStorage;
+import io.hops.metadata.hdfs.entity.StorageReport;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.wrapper.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DatanodeStorageClusterJ
@@ -49,7 +51,7 @@ public class DatanodeStorageClusterJ
      */
     @Override
     public DatanodeStorage getDatanodeStorage(String storageId, String datanodeUuid) throws StorageException {
-        LOG.info("GET DatanodeStorage " + storageId);
+        LOG.info("GET DatanodeStorage with ID: " + storageId + ", DN UUID: " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
 
@@ -79,6 +81,35 @@ public class DatanodeStorageClusterJ
         session.release(results);
 
         return datanodeStorage;
+    }
+
+    @Override
+    public List<DatanodeStorage> getDatanodeStorages(String datanodeUuid) throws StorageException {
+        LOG.info("GET DatanodeStorages associated with DataNode " + datanodeUuid);
+
+        HopsSession session = connector.obtainSession();
+        HopsQueryBuilder queryBuilder = session.getQueryBuilder();
+        HopsQueryDomainType<DatanodeStorageDTO> domainType =
+                queryBuilder.createQueryDefinition(DatanodeStorageDTO.class);
+        HopsPredicate datanodeUuidPredicate =
+                domainType.get("datanodeUuid").equal(domainType.param("datanodeUuidParam"));
+        domainType.where(datanodeUuidPredicate);
+
+        HopsQuery<DatanodeStorageDTO> query = session.createQuery(domainType);
+        query.setParameter("datanodeUuidParam", datanodeUuid);
+
+        List<DatanodeStorageDTO> dtoResults = query.getResultList();
+
+        LOG.debug("Query result contained " + dtoResults.size() + " entries.");
+
+        List<DatanodeStorage> results = new ArrayList<>();
+
+        for (DatanodeStorageDTO result : dtoResults) {
+            // Convert each DatanodeStorageDTO object to a DatanodeStorage object, then add it to the list.
+            results.add(convert(result));
+        }
+
+        return results;
     }
 
     /**
@@ -126,5 +157,12 @@ public class DatanodeStorageClusterJ
         dest.setDatanodeUuid(src.getDatanodeUuid());
         dest.setState(src.getState());
         dest.setStorageType(src.getStorageType());
+    }
+
+    /**
+     * Convert the given DatanodeStorageDTO instance to a DatanodeStorage instance.
+     */
+    private static DatanodeStorage convert(DatanodeStorageDTO src) {
+        return new DatanodeStorage(src.getStorageId(), src.getDatanodeUuid(), src.getState(), src.getStorageType());
     }
 }
