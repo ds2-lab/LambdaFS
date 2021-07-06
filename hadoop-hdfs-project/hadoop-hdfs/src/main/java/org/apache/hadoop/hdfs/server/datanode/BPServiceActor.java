@@ -373,7 +373,7 @@ class BPServiceActor implements Runnable {
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> reportAccess =
             (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
 
-    DatanodeStorageDataAccess<io.hops.metadata.hdfs.entity.DatanodeStorage storageAccess =
+    DatanodeStorageDataAccess<io.hops.metadata.hdfs.entity.DatanodeStorage> storageAccess =
             (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
 
     LOG.info("Storing " + reports.length + " StorageReport instance(s) in intermediate storage now...");
