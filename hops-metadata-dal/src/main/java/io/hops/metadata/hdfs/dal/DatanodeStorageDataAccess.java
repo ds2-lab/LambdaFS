@@ -10,12 +10,12 @@ public interface DatanodeStorageDataAccess<T> extends EntityDataAccess {
     /**
      * Find and return the DatanodeStorage instance with the given storageId from NDB.
      */
-    T getDatanodeStorage(String storageId) throws StorageException;
+    T getDatanodeStorage(String storageId, String datanodeUuid) throws StorageException;
 
     /**
      * Find and remove/delete the DatanodeStorage instance with the given storageId.
      */
-    void removeDatanodeStorage(String storageId) throws StorageException;
+    void removeDatanodeStorage(String storageId, String datanodeUuid) throws StorageException;
 
     /**
      * Store the given DatanodeStorage instance in NDB.

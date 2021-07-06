@@ -14,6 +14,11 @@ public class StorageReport {
      */
     private final int reportId;
 
+    /**
+     * This refers to the unique UUID of the Datanode from which this report originated.
+     */
+    private final String datanodeUuid;
+
     private final boolean failed;
 
     private final long capacity;
@@ -26,10 +31,11 @@ public class StorageReport {
 
     private final String datanodeStorageId;
 
-    public StorageReport(int groupId, int reportId, boolean failed, long capacity, long dfsUsed,
-                         long remaining, long blockPoolUsed, String datanodeStorageId) {
+    public StorageReport(int groupId, int reportId, String datanodeUuid, boolean failed, long capacity,
+                         long dfsUsed, long remaining, long blockPoolUsed, String datanodeStorageId) {
         this.groupId = groupId;
         this.reportId = reportId;
+        this.datanodeUuid = datanodeUuid;
         this.failed = failed;
         this.capacity = capacity;
         this.dfsUsed = dfsUsed;
@@ -72,8 +78,13 @@ public class StorageReport {
 
     @Override
     public String toString() {
-        return "StorageReport < groupId = " + groupId + ", reportId = " + reportId + ", failed = " + failed +
-                ", capacity = " + capacity + ", dfsUsed = " + dfsUsed + ", remaining = " + remaining +
-                ", blockPoolUsed = " + blockPoolUsed + ", datanodeStorageId = " + datanodeStorageId + ">";
+        return "StorageReport < groupId = " + groupId + ", reportId = " + reportId + ", datanodeUuid = " + datanodeUuid +
+                ", failed = " + failed + ", capacity = " + capacity + ", dfsUsed = " + dfsUsed +
+                ", remaining = " + remaining + ", blockPoolUsed = " + blockPoolUsed +
+                ", datanodeStorageId = " + datanodeStorageId + ">";
+    }
+
+    public String getDatanodeUuid() {
+        return datanodeUuid;
     }
 }

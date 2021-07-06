@@ -21,8 +21,11 @@ public class DatanodeStorage {
 
     private final int storageType;
 
-    public DatanodeStorage(String storageId, int state, int storageType) {
+    private final String datanodeUuid;
+
+    public DatanodeStorage(String storageId, String datanodeUuid, int state, int storageType) {
         this.storageId = storageId;
+        this.datanodeUuid = datanodeUuid;
         this.state = state;
         this.storageType = storageType;
     }
@@ -41,7 +44,12 @@ public class DatanodeStorage {
 
     @Override
     public String toString() {
-        return "DatanodeStorage < storageId = " + storageId + ", state = " + state + " (" + stateValues[state]
-                + "), storageType = " + storageType + " (" + storageTypeValues[storageType] + ")>";
+        return "DatanodeStorage < storageId = " + storageId + ", datanodeUuid = " + datanodeUuid
+                + ", state = " + state + " (" + stateValues[state]  + "), storageType = " + storageType
+                + " (" + storageTypeValues[storageType] + ")>";
+    }
+
+    public String getDatanodeUuid() {
+        return datanodeUuid;
     }
 }

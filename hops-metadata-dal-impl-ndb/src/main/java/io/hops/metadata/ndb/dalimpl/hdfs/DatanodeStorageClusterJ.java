@@ -9,10 +9,7 @@ import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
 import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.metadata.hdfs.entity.DatanodeStorage;
 import io.hops.metadata.ndb.ClusterjConnector;
-import io.hops.metadata.ndb.wrapper.HopsQuery;
-import io.hops.metadata.ndb.wrapper.HopsQueryBuilder;
-import io.hops.metadata.ndb.wrapper.HopsQueryDomainType;
-import io.hops.metadata.ndb.wrapper.HopsSession;
+import io.hops.metadata.ndb.wrapper.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -27,6 +24,11 @@ public class DatanodeStorageClusterJ
         @Column(name = STORAGE_ID)
         String getStorageId();
         void setStorageId(String storageId);
+
+        @PrimaryKey
+        @Column(name = DATANODE_UUID)
+        String getDatanodeUuid();
+        void setDatanodeUuid(String datanodeUuid);
 
         @Column(name = STATE)
         int getState();
@@ -46,7 +48,7 @@ public class DatanodeStorageClusterJ
      * @param storageId Identifies the DatanodeStorage.
      */
     @Override
-    public DatanodeStorage getDatanodeStorage(String storageId) throws StorageException {
+    public DatanodeStorage getDatanodeStorage(String storageId, String datanodeUuid) throws StorageException {
         LOG.info("GET DatanodeStorage " + storageId);
 
         HopsSession session = connector.obtainSession();
@@ -54,9 +56,15 @@ public class DatanodeStorageClusterJ
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
         HopsQueryDomainType<DatanodeStorageDTO> domainType =
                 queryBuilder.createQueryDefinition(DatanodeStorageDTO.class);
-        domainType.where(domainType.get("name").equal(domainType.param("param")));
+        HopsPredicate storageIdPredicate = domainType.get("storageId").equal(domainType.param("storageIdParam"));
+        HopsPredicate datanodeUuidPredicate =
+                domainType.get("datanodeUuid").equal(domainType.param("datanodeUuidParam"));
+
+
+        domainType.where(storageIdPredicate.and(datanodeUuidPredicate));
         HopsQuery<DatanodeStorageDTO> query = session.createQuery(domainType);
-        query.setParameter("param", storageId);
+        query.setParameter("storageIdParam", storageId);
+        query.setParameter("datanodeUuidParam", datanodeUuid);
 
         List<DatanodeStorageDTO> results = query.getResultList();
         DatanodeStorage datanodeStorage = null;
@@ -64,7 +72,8 @@ public class DatanodeStorageClusterJ
         if (results.size() == 1) {
             DatanodeStorageDTO result = results.get(0);
 
-            datanodeStorage = new DatanodeStorage(result.getStorageId(), result.getState(), result.getStorageType());
+            datanodeStorage = new DatanodeStorage(result.getStorageId(), result.getDatanodeUuid(),
+                    result.getState(), result.getStorageType());
         }
 
         session.release(results);
@@ -77,14 +86,16 @@ public class DatanodeStorageClusterJ
      * @param storageId The ID of the DatanodeStorage instance to remove from NDB.
      */
     @Override
-    public void removeDatanodeStorage(String storageId) throws StorageException {
+    public void removeDatanodeStorage(String storageId, String datanodeUuid) throws StorageException {
         LOG.info("REMOVE DatanodeStorage " + storageId);
 
         HopsSession session = connector.obtainSession();
-        DatanodeStorageDTO deleteMe = session.find(DatanodeStorageDTO.class, storageId);
+        Object[] primaryKey = {storageId, datanodeUuid};
+        DatanodeStorageDTO deleteMe = session.find(DatanodeStorageDTO.class, primaryKey);
         session.deletePersistent(DatanodeStorageDTO.class, deleteMe);
 
-        LOG.debug("Successfully removed/deleted DatanodeStorage with storageId " + storageId);
+        LOG.debug("Successfully removed/deleted DatanodeStorage with storageId "
+                + storageId + ", datanodeUuid = " + datanodeUuid);
     }
 
     @Override
@@ -112,6 +123,7 @@ public class DatanodeStorageClusterJ
      */
     private void copyState(DatanodeStorageDTO dest, DatanodeStorage src) {
         dest.setStorageId(src.getStorageId());
+        dest.setDatanodeUuid(src.getDatanodeUuid());
         dest.setState(src.getState());
         dest.setStorageType(src.getStorageType());
     }

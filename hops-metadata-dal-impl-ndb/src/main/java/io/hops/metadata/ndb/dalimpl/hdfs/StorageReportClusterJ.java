@@ -30,6 +30,11 @@ public class StorageReportClusterJ
         int getReportId();
         void setReportId(int reportId);
 
+        @PrimaryKey
+        @Column(name = DATANODE_UUID)
+        String getDatanodeUuid();
+        void setDatanodeUuid(String datanodeUuid);
+
         @Column(name = FAILED)
         int getFailed();
         void setFailed(int failed);
@@ -60,12 +65,12 @@ public class StorageReportClusterJ
     private final ClusterjConnector connector = ClusterjConnector.getInstance();
 
     @Override
-    public StorageReport getStorageReport(int groupId, int reportId) throws StorageException {
+    public StorageReport getStorageReport(int groupId, int reportId, String datanodeUuid) throws StorageException {
         LOG.info("GET StorageReport groupId = " + groupId + ", reportId = " + reportId);
 
         HopsSession session = connector.obtainSession();
 
-        Object[] primaryKey = {groupId, reportId};
+        Object[] primaryKey = {groupId, reportId, datanodeUuid};
         StorageReportDTO report = session.find(StorageReportDTO.class, primaryKey);
 
         if (report == null)
@@ -75,11 +80,11 @@ public class StorageReportClusterJ
     }
 
     @Override
-    public void removeStorageReport(int groupId, int reportId) throws StorageException {
+    public void removeStorageReport(int groupId, int reportId, String datanodeUuid) throws StorageException {
         LOG.info("REMOVE StorageReport groupId = " + groupId + ", reportId = " + reportId);
 
         HopsSession session = connector.obtainSession();
-        Object[] primaryKey = {groupId, reportId};
+        Object[] primaryKey = {groupId, reportId, datanodeUuid};
         StorageReportDTO deleteMe = session.find(StorageReportDTO.class, primaryKey);
         session.deletePersistent(StorageReportDTO.class, deleteMe);
 
@@ -88,16 +93,24 @@ public class StorageReportClusterJ
     }
 
     @Override
-    public void removeStorageReports(int groupId) throws StorageException {
-        LOG.info("REMOVE StorageReport group " + groupId);
+    public void removeStorageReports(int groupId, String datanodeUuid) throws StorageException {
+        LOG.info("REMOVE StorageReport group " + groupId + ", datanodeUuid = " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
         HopsQueryDomainType<StorageReportDTO> domainType = queryBuilder.createQueryDefinition(StorageReportDTO.class);
-        HopsPredicate predicate = domainType.get("groupId").equal(domainType.param("groupIdParam"));
-        domainType.where(predicate);
+
+        HopsPredicate predicateGroupId = domainType.get("groupId").equal(domainType.param("groupIdParam"));
+        HopsPredicate predicateDatanodeUuid =
+                domainType.get("datanodeUuid").equal(domainType.param("datanodeUuidParam"));
+        domainType.where(predicateGroupId.and(predicateDatanodeUuid));
+
+        domainType.where(predicateGroupId.and(predicateDatanodeUuid));
+
         HopsQuery<StorageReportDTO> query = session.createQuery(domainType);
         query.setParameter("groupIdParam", groupId);
+        query.setParameter("datanodeUuidParam", datanodeUuid);
+
         List<StorageReportDTO> storeReportDTOs = query.getResultList();
 
         session.deletePersistentAll(storeReportDTOs);
@@ -124,16 +137,22 @@ public class StorageReportClusterJ
     }
 
     @Override
-    public List<StorageReport> getStorageReports(int groupId) throws StorageException {
+    public List<StorageReport> getStorageReports(int groupId, String datanodeUuid) throws StorageException {
         LOG.info("GET StorageReport group " + groupId);
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
         HopsQueryDomainType<StorageReportDTO> domainType = queryBuilder.createQueryDefinition(StorageReportDTO.class);
-        HopsPredicate predicate = domainType.get("groupId").equal(domainType.param("groupIdParam"));
-        domainType.where(predicate);
+
+        HopsPredicate predicateGroupId = domainType.get("groupId").equal(domainType.param("groupIdParam"));
+        HopsPredicate predicateDatanodeUuid =
+                domainType.get("datanodeUuid").equal(domainType.param("datanodeUuidParam"));
+        domainType.where(predicateGroupId.and(predicateDatanodeUuid));
+
         HopsQuery<StorageReportDTO> query = session.createQuery(domainType);
         query.setParameter("groupIdParam", groupId);
+        query.setParameter("datanodeUuidParam", datanodeUuid);
+
         List<StorageReportDTO> storeReportDTOs = query.getResultList();
 
         ArrayList<StorageReport> resultList = new ArrayList<>();
@@ -154,6 +173,7 @@ public class StorageReportClusterJ
     private void copyState(StorageReportDTO dest, StorageReport src) {
         dest.setGroupId(src.getGroupId());
         dest.setReportId(src.getReportId());
+        dest.setDatanodeUuid(src.getDatanodeUuid());
         dest.setFailed(src.getFailed() ? 1 : 0);
         dest.setCapacity(src.getCapacity());
         dest.setDfsUsed(src.getDfsUsed());
@@ -170,7 +190,8 @@ public class StorageReportClusterJ
         if (src.getFailed() >= 1)
             failed = true;
 
-        return new StorageReport(src.getGroupId(), src.getReportId(), failed, src.getCapacity(),
-                src.getDfsUsed(), src.getRemaining(), src.getBlockPoolUsed(), src.getDatanodeStorageId());
+        return new StorageReport(src.getGroupId(), src.getReportId(), src.getDatanodeUuid(), failed,
+                src.getCapacity(), src.getDfsUsed(), src.getRemaining(), src.getBlockPoolUsed(),
+                src.getDatanodeStorageId());
     }
 }
