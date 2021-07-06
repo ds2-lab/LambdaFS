@@ -41,8 +41,8 @@ public class TablesDef {
     String CAPACITY = "capacity";
     String DFS_USED = "dfsUsed";
     String REMAINING = "remaining";
-    String BLOCK_POOL_USED = "remaining";
-    String DATANODE_STORAGE_ID = "blockPoolUsed";
+    String BLOCK_POOL_USED = "blockPoolUsed";
+    String DATANODE_STORAGE_ID = "datanodeStorageId";
   }
 
   public interface DatanodeStoragesTableDef {
