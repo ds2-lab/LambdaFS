@@ -46,7 +46,7 @@ CREATE TABLE `storage_reports` (
     `blockPoolUsed` bigint(20) NOT NULL,
     `datanodeStorageId` varchar(255) NOT NULL, -- This should refer to a given DatanodeStorage from the other table.
     PRIMARY KEY (`group_id`, `report_id`, `datanode_uuid`),
-    FOREIGN KEY (`datanodeStorageId`) REFERENCES `datanode_storage` (`storage_id`),
+    -- FOREIGN KEY (`datanodeStorageId`) REFERENCES `datanode_storages` (`storage_id`),
     FOREIGN KEY (`datanode_uuid`) REFERENCES `datanodes` (`datanode_uuid`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
@@ -56,7 +56,7 @@ CREATE TABLE `datanode_storages` (
     `storage_id` varchar(255) NOT NULL,
     `state` int(11) NOT NULL, -- This refers to the State enum. There are 3 possible values.
     `storage_type` int(11) NOT NULL, -- This refers to the StorageType enum. There are 6 possible values.
-    PRIMARY KEY (`datanode_uuid`, storage_id`),
+    PRIMARY KEY (`datanode_uuid`, `storage_id`),
     FOREIGN KEY (`datanode_uuid`) REFERENCES `datanodes` (`datanode_uuid`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
