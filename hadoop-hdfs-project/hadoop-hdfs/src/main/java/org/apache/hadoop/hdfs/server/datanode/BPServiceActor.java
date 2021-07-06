@@ -330,9 +330,10 @@ class BPServiceActor implements Runnable {
 
     // This is the Data Abstraction Layer report. Has some additional fields, such as groupId and reportId.
     io.hops.metadata.hdfs.entity.StorageReport dalReport =
-            new io.hops.metadata.hdfs.entity.StorageReport(groupId, reportId, originalReport.isFailed(),
-                    originalReport.getCapacity(), originalReport.getDfsUsed(), originalReport.getRemaining(),
-                    originalReport.getBlockPoolUsed(), originalReport.getStorage().getStorageID());
+            new io.hops.metadata.hdfs.entity.StorageReport(groupId, reportId, dn.getDatanodeId().getDatanodeUuid(),
+                    originalReport.isFailed(), originalReport.getCapacity(), originalReport.getDfsUsed(),
+                    originalReport.getRemaining(), originalReport.getBlockPoolUsed(),
+                    originalReport.getStorage().getStorageID());
 
     access.addStorageReport(dalReport);
   }
