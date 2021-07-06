@@ -577,34 +577,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
-   * Retrieve the DatanodeStorage instances stored in intermediate storage.
-   * These are used in conjunction with StorageReports.
-   */
-  private void retrieveDatanodeStoragesFromIntermediateStorage() throws IOException {
-    LOG.info("Retrieving DatanodeStorage instances from intermediate storage now...");
-
-    DatanodeStorageDataAccess<DatanodeStorage> dataAccess =
-            (DatanodeStorageDataAccess)HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
-
-    List<DatanodeStorage> datanodeStorages = dataAccess.getDatanodeStorage()
-  }
-
-  /**
-   * Retrieve the StorageReports from intermediate storage. The NameNode maintains
-   * the most recent groupId for each DataNode, and we use this reference to ensure
-   * we are retrieving the latest StorageReports.
-   */
-  private void retrieveStorageReportsFromIntermediateStorage() throws IOException {
-    LOG.info("Retrieving StorageReport instances from intermediate storage now...");
-
-    StorageReportDataAccess<StorageReport> dataAccess =
-            (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
-  }
-
-  /**
    * Retrieve the DataNodes from intermediate storage.
+   *
+   * @return List of DatanodeRegistration instances to be used to retrieve serverless storage reports once
+   * the registration step(s) have been completed.
    */
-  private void getDataNodesFromIntermediateStorage() throws IOException {
+  private List<DatanodeRegistration> getDataNodesFromIntermediateStorage() throws IOException {
     // Retrieve the DataNodes from intermediate storage.
     LOG.info("Retrieving list of DataNodes from intermediate storage now...");
     DataNodeDataAccess<DataNodeMeta> dataAccess = (DataNodeDataAccess)
@@ -613,6 +591,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
 
     NamespaceInfo nsInfo = namesystem.getNamespaceInfo();
+
+    // Keep track of the DatanodeRegistration instances because we'll need these to retrieve
+    // the storage reports from intermediate storage after we've registered the data node(s).
+    List<DatanodeRegistration> datanodeRegistrations = new ArrayList<>();
 
     for (DataNodeMeta dataNodeMeta : dataNodes) {
       LOG.info("Discovered " + dataNodeMeta.toString());
@@ -638,6 +620,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       try {
         namesystem.registerDatanode(datanodeRegistration);
+
+        datanodeRegistrations.add(datanodeRegistration);
       } catch (IOException ex) {
         // Log this so we know the source of the exception, then re-throw it so it gets caught one layer up.
         LOG.error("Error registering datanode " + dataNodeMeta.getDatanodeUuid());

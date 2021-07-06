@@ -28,7 +28,10 @@ import io.hops.exception.TransactionContextException;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.StorageMap;
 import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
+import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
+import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
 import io.hops.metadata.hdfs.entity.DataNodeMeta;
+import io.hops.metadata.hdfs.entity.DatanodeStorage;
 import io.hops.metadata.hdfs.entity.INodeIdentifier;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
@@ -41,6 +44,7 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
@@ -1285,6 +1289,54 @@ public class DatanodeManager {
   private void setDatanodeDead(DatanodeDescriptor node) {
     node.setLastUpdate(0);
     node.setLastUpdateMonotonic(0);
+  }
+
+  /**
+   * Retrieve the DatanodeStorage instances stored in intermediate storage.
+   * These are used in conjunction with StorageReports.
+   */
+  private List<org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> retrieveDatanodeStoragesFromIntermediateStorage(DatanodeRegistration datanodeRegistration) throws IOException {
+    LOG.info("Retrieving DatanodeStorage instances from intermediate storage now...");
+
+    DatanodeStorageDataAccess<DatanodeStorage> dataAccess =
+            (DatanodeStorageDataAccess)HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
+
+    List<DatanodeStorage> datanodeStorages = dataAccess.getDatanodeStorages(datanodeRegistration.getDatanodeUuid());
+
+    List<org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> convertedDatanodeStorages = new ArrayList<>();
+
+    for (DatanodeStorage datanodeStorage : datanodeStorages) {
+      org.apache.hadoop.hdfs.server.protocol.DatanodeStorage convertedDatanodeStorage =
+              new org.apache.hadoop.hdfs.server.protocol.DatanodeStorage(datanodeStorage.getStorageId(),
+                      org.apache.hadoop.hdfs.server.protocol.DatanodeStorage.State.values()[datanodeStorage.getState()],
+                      StorageType.values()[datanodeStorage.getStorageType()]);
+
+      convertedDatanodeStorages.add(convertedDatanodeStorage);
+    }
+
+    return convertedDatanodeStorages;
+  }
+
+  /**
+   * Retrieve the StorageReports from intermediate storage. The NameNode maintains
+   * the most recent groupId for each DataNode, and we use this reference to ensure
+   * we are retrieving the latest StorageReports.
+   */
+  private void retrieveStorageReportsFromIntermediateStorage() throws IOException {
+    LOG.info("Retrieving StorageReport instances from intermediate storage now...");
+
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
+            (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+
+    // List<io.hops.metadata.hdfs.entity.StorageReport> storageReports = dataAccess.getStorageReports()
+  }
+
+  /**
+   * Retrieve and process storage reports from intermediate storage.
+   * @param datanodeRegistrations
+   */
+  public void handleServerlessStorageReports(List<DatanodeRegistration> datanodeRegistrations) {
+
   }
 
   /**
