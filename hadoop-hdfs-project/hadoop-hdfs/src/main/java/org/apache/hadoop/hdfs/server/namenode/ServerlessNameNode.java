@@ -628,6 +628,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         throw ex;
       }
     }
+
+    return datanodeRegistrations;
   }
 
   private LocatedBlock addBlockOperation(JsonObject fsArgs) throws IOException, ClassNotFoundException {
