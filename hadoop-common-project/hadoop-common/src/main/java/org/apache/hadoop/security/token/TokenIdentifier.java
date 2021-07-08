@@ -19,6 +19,7 @@
 package org.apache.hadoop.security.token;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Arrays;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -35,7 +36,7 @@ import org.apache.hadoop.security.UserGroupInformation;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public abstract class TokenIdentifier implements Writable {
+public abstract class TokenIdentifier implements Writable, Serializable {
 
   private String trackingId = null;
 

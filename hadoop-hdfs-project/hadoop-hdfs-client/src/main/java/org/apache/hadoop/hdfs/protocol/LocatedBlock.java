@@ -40,7 +40,7 @@ import java.util.List;
 @InterfaceStability.Evolving
 public class LocatedBlock implements Serializable {
 
-  private ExtendedBlock b;
+  private ExtendedBlock b; // Should be fine
   private long offset;  // offset of the first byte of the block in the file
   private final DatanodeInfoWithStorage[] locs;
   /** Cached storage ID for each replica */
