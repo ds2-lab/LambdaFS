@@ -438,7 +438,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     try {
-      nameNodeInstance.getDataNodesFromIntermediateStorage();
+      List<DatanodeRegistration> registrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
 
       // TODO: Retrieve storage reports.
 
@@ -447,6 +447,27 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // 2) Retrieve DatanodeStorage instances.
       // 3) Convert these objects from the DAL versions to the HopsFS versions.
       // 4) Pass them off to the handler method in FSFilesystem.
+
+      for (DatanodeRegistration registration : registrations) {
+        String datanodeUuid = registration.getDatanodeUuid();
+
+        LOG.info("Retrieving DatanodeRegistration instances for datanode " + datanodeUuid);
+        List<org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorages
+                = nameNodeInstance.retrieveAndConvertDatanodeStorages(registration);
+      }
+
+      HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap
+              = nameNodeInstance.retrieveStorageReports(registrations);
+
+      for (Map.Entry<String, List<StorageReport>> entry : storageReportMap.entrySet()) {
+        String datanodeUuid = entry.getKey();
+        List<StorageReport> storageReports = entry.getValue();
+        LOG.debug("Storage Reports for Data Node: " + datanodeUuid);
+
+        for (StorageReport report : storageReports) {
+          LOG.debug(report.toString());
+        }
+      }
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
 
@@ -620,7 +641,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> retrieveStorageReports(
           List<DatanodeRegistration> registrations) throws IOException {
-    LOG.info("Retrieving StorageReport instances from intermediate storage now...");
+    LOG.info("Retrieving StorageReport instances for " + registrations.size() + " data nodes now...");
 
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
             (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
@@ -628,12 +649,30 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap = new HashMap<>();
 
     for (DatanodeRegistration registration : registrations) {
-      List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
-              = dataAccess.getLatestStorageReports(registration.getDatanodeUuid());
+      List<io.hops.metadata.hdfs.entity.StorageReport> storageReports = retrieveStorageReports(registration);
       storageReportMap.put(registration.getDatanodeUuid(), storageReports);
     }
 
     return storageReportMap;
+  }
+
+  /**
+   * Retrieve the storage reports associated with one particular DataNode.
+   * @param registration
+   * @return
+   * @throws IOException
+   */
+  private List<io.hops.metadata.hdfs.entity.StorageReport> retrieveStorageReports(DatanodeRegistration registration)
+          throws IOException {
+    LOG.info("Retrieving StorageReport instance for datanode " + registration.getDatanodeUuid());
+
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
+            (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+
+    List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
+            = dataAccess.getLatestStorageReports(registration.getDatanodeUuid());
+
+    return storageReports;
   }
 
   /**
