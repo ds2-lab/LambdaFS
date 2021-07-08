@@ -440,6 +440,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     try {
       nameNodeInstance.getDataNodesFromIntermediateStorage();
 
+      // TODO: Retrieve storage reports.
+
+      // Procedure:
+      // 1) Retrieve StorageReport instances
+      // 2) Retrieve DatanodeStorage instances.
+      // 3) Convert these objects from the DAL versions to the HopsFS versions.
+      // 4) Pass them off to the handler method in FSFilesystem.
+
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
 
       response.add("RESULT", result);
@@ -574,6 +582,58 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     initialized = false;
     return null;
+  }
+
+  /**
+   * Retrieve the DatanodeStorage instances stored in intermediate storage.
+   * These are used in conjunction with StorageReports.
+   *
+   * This method will convert the objects from their DAL versions to the HopsFS versions.
+   */
+  private List<org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> retrieveAndConvertDatanodeStorages(
+          DatanodeRegistration datanodeRegistration) throws IOException {
+    LOG.info("Retrieving DatanodeStorage instances from intermediate storage now...");
+
+    DatanodeStorageDataAccess<DatanodeStorage> dataAccess =
+            (DatanodeStorageDataAccess)HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
+
+    List<DatanodeStorage> datanodeStorages = dataAccess.getDatanodeStorages(datanodeRegistration.getDatanodeUuid());
+
+    List<org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> convertedDatanodeStorages = new ArrayList<>();
+
+    for (DatanodeStorage datanodeStorage : datanodeStorages) {
+      org.apache.hadoop.hdfs.server.protocol.DatanodeStorage convertedDatanodeStorage =
+              new org.apache.hadoop.hdfs.server.protocol.DatanodeStorage(datanodeStorage.getStorageId(),
+                      org.apache.hadoop.hdfs.server.protocol.DatanodeStorage.State.values()[datanodeStorage.getState()],
+                      StorageType.values()[datanodeStorage.getStorageType()]);
+
+      convertedDatanodeStorages.add(convertedDatanodeStorage);
+    }
+
+    return convertedDatanodeStorages;
+  }
+
+  /**
+   * Retrieve the StorageReports from intermediate storage. The NameNode maintains
+   * the most recent groupId for each DataNode, and we use this reference to ensure
+   * we are retrieving the latest StorageReports.
+   */
+  private HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> retrieveStorageReports(
+          List<DatanodeRegistration> registrations) throws IOException {
+    LOG.info("Retrieving StorageReport instances from intermediate storage now...");
+
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
+            (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+
+    HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap = new HashMap<>();
+
+    for (DatanodeRegistration registration : registrations) {
+      List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
+              = dataAccess.getLatestStorageReports(registration.getDatanodeUuid());
+      storageReportMap.put(registration.getDatanodeUuid(), storageReports);
+    }
+
+    return storageReportMap;
   }
 
   /**

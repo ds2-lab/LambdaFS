@@ -39,6 +39,14 @@ public interface StorageReportDataAccess<T> extends EntityDataAccess {
     /**
      * Retrieve all StorageReport instances contained within the group specified by the given groupId.
      * @param groupId The ID of the group of StorageReports to return.
+     * @param datanodeUuid The UUID of the datanode from which the reports should have originated.
      */
     List<T> getStorageReports(int groupId, String datanodeUuid) throws StorageException;
+
+    /**
+     * Retrieve the latest storage reports from the DataNode identified by the given UUID.
+     *
+     * @param datanodeUuid The UUID of the datanode from which the reports should have originated.
+     */
+    List<T> getLatestStorageReports(String datanodeUuid) throws StorageException;
 }
