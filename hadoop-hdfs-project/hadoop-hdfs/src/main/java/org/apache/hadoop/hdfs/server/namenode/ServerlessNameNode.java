@@ -509,8 +509,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         // registration, then we trieve the list of storage reports from the mapping, convert it to an Object[],
         // and cast it to an array of HopsFS StorageReport[].
         nameNodeInstance.namesystem.handleServerlessStorageReports(
-                registration, (org.apache.hadoop.hdfs.server.protocol.StorageReport[]) convertedStorageReportMap.get(
-                        registration.getDatanodeUuid()).toArray());
+                registration, convertedStorageReportMap.get(
+                        registration.getDatanodeUuid()).toArray(
+                                new org.apache.hadoop.hdfs.server.protocol.StorageReport[0]));
       }
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
