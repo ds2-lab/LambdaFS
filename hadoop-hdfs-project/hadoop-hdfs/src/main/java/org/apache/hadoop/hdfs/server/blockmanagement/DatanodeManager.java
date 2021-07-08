@@ -1318,7 +1318,8 @@ public class DatanodeManager {
         }
 
         LOG.info("Calling the `updateHeartbeat()` function now...");
-        heartbeatManager.updateHeartbeat(nodeinfo, reports, 0, 0, 0, 0, 0);
+        heartbeatManager.updateHeartbeat(nodeinfo, reports, 0, 0, 0, 0,
+                null);
       }
     }
   }

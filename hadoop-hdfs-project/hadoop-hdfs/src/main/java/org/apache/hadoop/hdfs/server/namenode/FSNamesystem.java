@@ -4280,7 +4280,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   /**
    * Serverless version of the `handleHeartbeat()` function.
    */
-  public void handleServerlessStorageReports(DatanodeRegistration datanodeRegistration, StorageReport[] reports) {
+  public void handleServerlessStorageReports(DatanodeRegistration datanodeRegistration, StorageReport[] reports)
+          throws IOException {
     blockManager.getDatanodeManager().handleServerlessStorageReports(datanodeRegistration, reports);
   }
 
