@@ -53,7 +53,7 @@ public class Token<T extends TokenIdentifier> implements Serializable, Writable 
   private byte[] password;
   private Text kind;
   private Text service;
-  private TokenRenewer renewer;
+  private transient TokenRenewer renewer;
 
   /**
    * Construct a token given a token identifier and a secret manager for the
