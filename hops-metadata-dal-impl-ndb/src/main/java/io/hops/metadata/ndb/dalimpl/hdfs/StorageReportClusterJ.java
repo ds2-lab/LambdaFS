@@ -210,8 +210,10 @@ public class StorageReportClusterJ
             s = conn.prepareStatement(query);
             result = s.executeQuery();
 
+            LOG.debug("Result = " + result.toString());
+
             if (result.next())
-                return result.getInt(GROUP_ID);
+                return result.getInt(String.format("max(%s)", GROUP_ID));
             else
                 throw new StorageException(
                         "No groupId returned when attempting to find max groupId for datanode " + datanodeUuid);
