@@ -195,7 +195,7 @@ public class StorageReportClusterJ
      * String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, datanodeUuid)
      */
     private static final String MAX_GROUP_ID_QUERY =
-            "SELECT max(%s) FROM %s WHERE datanode_uuid = %s";
+            "SELECT max(%s) FROM %s WHERE datanode_uuid = \"%s\"";
 
     private int getMaxGroupId(String datanodeUuid) throws StorageException {
         String query = String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, datanodeUuid);
