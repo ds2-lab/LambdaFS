@@ -1294,9 +1294,33 @@ public class DatanodeManager {
   /**
    * Process storage reports that were retrieved from intermediate storage.
    */
-  public void handleServerlessStorageReports(DatanodeRegistration datanodeRegistration,
-                                             StorageReport[] reports) {
+  public void handleServerlessStorageReports(DatanodeRegistration nodeReg,
+                                             StorageReport[] reports) throws IOException {
+    synchronized (heartbeatManager) {
+      synchronized (datanodeMap) {
+        DatanodeDescriptor nodeinfo = null;
 
+        try {
+          nodeinfo = getDatanode(nodeReg);
+        } catch (UnregisteredNodeException e) {
+          LOG.error("DataNode " + nodeReg.getDatanodeUuid() + " appears to be unregistered!");
+          throw e;
+        }
+
+        // Check if this datanode should actually be shutdown instead.
+        if (nodeinfo != null && nodeinfo.isDisallowed()) {
+          setDatanodeDead(nodeinfo);
+          throw new DisallowedDatanodeException(nodeinfo);
+        }
+
+        if (nodeinfo == null || !nodeinfo.isAlive) {
+          LOG.error("DataNode " + nodeReg.getDatanodeUuid() + " appears to be unregistered and not alive!");
+        }
+
+        LOG.info("Calling the `updateHeartbeat()` function now...");
+        heartbeatManager.updateHeartbeat(nodeinfo, reports, 0, 0, 0, 0, 0);
+      }
+    }
   }
 
   /**
