@@ -1292,10 +1292,10 @@ public class DatanodeManager {
   }
 
   /**
-   * Retrieve and process storage reports from intermediate storage.
-   * @param datanodeRegistrations
+   * Process storage reports that were retrieved from intermediate storage.
    */
-  public void handleServerlessStorageReports(List<DatanodeRegistration> datanodeRegistrations) {
+  public void handleServerlessStorageReports(DatanodeRegistration datanodeRegistration,
+                                             StorageReport[] reports) {
 
   }
 

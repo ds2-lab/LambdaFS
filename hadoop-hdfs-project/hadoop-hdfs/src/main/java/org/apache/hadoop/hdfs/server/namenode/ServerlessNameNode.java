@@ -438,7 +438,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     try {
-      List<DatanodeRegistration> registrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
+      List<DatanodeRegistration> datanodeRegistrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
 
       // TODO: Retrieve storage reports.
 
@@ -448,25 +448,69 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // 3) Convert these objects from the DAL versions to the HopsFS versions.
       // 4) Pass them off to the handler method in FSFilesystem.
 
-      for (DatanodeRegistration registration : registrations) {
+      // Create a mapping from each DataNode UUID to the map containing all of its converted DatanodeStorage instances.
+      // This is simply a map of maps. The keys of the outer map are datanode UUIDs. The values are HashMaps.
+      // The keys of the inner map are storageIds. The values of the inner map are DatanodeStorage instances.
+      HashMap<String, HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage>> datanodeStorageMaps
+              = new HashMap<>();
+
+      // Iterate over each DatanodeRegistration, representing a registered DataNode. Retrieve its DatanodeStorage
+      // instances from intermediate storage. Create a mapping of them & store the mapping in the HashMap defined above.
+      for (DatanodeRegistration registration : datanodeRegistrations) {
         String datanodeUuid = registration.getDatanodeUuid();
 
         LOG.info("Retrieving DatanodeRegistration instances for datanode " + datanodeUuid);
-        List<org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorages
+        HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorageMap
                 = nameNodeInstance.retrieveAndConvertDatanodeStorages(registration);
+
+        datanodeStorageMaps.put(datanodeUuid, datanodeStorageMap);
       }
 
       HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap
-              = nameNodeInstance.retrieveStorageReports(registrations);
+              = nameNodeInstance.retrieveStorageReports(datanodeRegistrations);
 
+      HashMap<String, List<org.apache.hadoop.hdfs.server.protocol.StorageReport>> convertedStorageReportMap
+              = new HashMap<>();
+
+      // Iterate over all of the storage reports. The keys are datanodeUuids and the values are storage reports.
       for (Map.Entry<String, List<StorageReport>> entry : storageReportMap.entrySet()) {
         String datanodeUuid = entry.getKey();
         List<StorageReport> storageReports = entry.getValue();
         LOG.debug("Storage Reports for Data Node: " + datanodeUuid);
 
+        // Get the mapping of storageIds to DatanodeStorage instances for this particular datanode.
+        HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorageMap
+                = datanodeStorageMaps.get(datanodeUuid);
+
+        ArrayList<org.apache.hadoop.hdfs.server.protocol.StorageReport> convertedStorageReports =
+                new ArrayList<>();
+
+        // For each storage report associated with the current datanode, convert it to a HopsFS storage report (they
+        // are currently the DAL storage reports, which are just designed to be used with intermediate storage).
         for (StorageReport report : storageReports) {
           LOG.debug(report.toString());
+
+          org.apache.hadoop.hdfs.server.protocol.StorageReport convertedReport
+                  = new org.apache.hadoop.hdfs.server.protocol.StorageReport(
+                          datanodeStorageMap.get(report.getDatanodeStorageId()), report.getFailed(),
+                    report.getCapacity(), report.getDfsUsed(), report.getRemaining(), report.getBlockPoolUsed());
+
+          convertedStorageReports.add(convertedReport);
         }
+
+        convertedStorageReportMap.put(datanodeUuid, convertedStorageReports);
+      }
+
+      LOG.debug("Processing storage reports from " + convertedStorageReportMap.size() + " data nodes now...");
+
+      for (DatanodeRegistration registration : datanodeRegistrations) {
+
+        // For each registration, we call the `handleServerlessStorageReports()` function. We pass the given
+        // registration, then we trieve the list of storage reports from the mapping, convert it to an Object[],
+        // and cast it to an array of HopsFS StorageReport[].
+        nameNodeInstance.namesystem.handleServerlessStorageReports(
+                registration, (org.apache.hadoop.hdfs.server.protocol.StorageReport[]) convertedStorageReportMap.get(
+                        registration.getDatanodeUuid()).toArray());
       }
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
@@ -611,7 +655,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * This method will convert the objects from their DAL versions to the HopsFS versions.
    */
-  private List<org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> retrieveAndConvertDatanodeStorages(
+  private HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> retrieveAndConvertDatanodeStorages(
           DatanodeRegistration datanodeRegistration) throws IOException {
     LOG.info("Retrieving DatanodeStorage instances from intermediate storage now...");
 
@@ -620,7 +664,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     List<DatanodeStorage> datanodeStorages = dataAccess.getDatanodeStorages(datanodeRegistration.getDatanodeUuid());
 
-    List<org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> convertedDatanodeStorages = new ArrayList<>();
+    HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> convertedDatanodeStorageMap
+            = new HashMap<>();
 
     for (DatanodeStorage datanodeStorage : datanodeStorages) {
       org.apache.hadoop.hdfs.server.protocol.DatanodeStorage convertedDatanodeStorage =
@@ -628,10 +673,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
                       org.apache.hadoop.hdfs.server.protocol.DatanodeStorage.State.values()[datanodeStorage.getState()],
                       StorageType.values()[datanodeStorage.getStorageType()]);
 
-      convertedDatanodeStorages.add(convertedDatanodeStorage);
+      convertedDatanodeStorageMap.put(convertedDatanodeStorage.getStorageID(), convertedDatanodeStorage);
     }
 
-    return convertedDatanodeStorages;
+    return convertedDatanodeStorageMap;
   }
 
   /**
