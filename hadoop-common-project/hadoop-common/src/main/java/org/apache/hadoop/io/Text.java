@@ -51,7 +51,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 @InterfaceAudience.Public
 @InterfaceStability.Stable
 public class Text extends BinaryComparable
-    implements WritableComparable<BinaryComparable> {
+    implements WritableComparable<BinaryComparable>, Serializable {
   
   private static final ThreadLocal<CharsetEncoder> ENCODER_FACTORY =
     new ThreadLocal<CharsetEncoder>() {
