@@ -47,6 +47,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_MAX_NUM_BLOCKS_TO_LOG_KEY
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.net.*;
 import java.nio.channels.ServerSocketChannel;
 import java.util.HashSet;
 import java.util.concurrent.*;
@@ -169,12 +170,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.net.URI;
-import java.net.UnknownHostException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
@@ -1344,12 +1339,21 @@ public class DataNode extends ReconfigurableBase
     LOG.info("streamingAddr.getAddress().getHostAddress() = " + streamingAddr.getAddress().getHostAddress());
     LOG.info("this.id.getIpAddr() = " + this.id.getIpAddr());
 
+    // Attempt to resolve the DN's own hostname to get its IP addr bc the IP addr field is probably "0.0.0.0"
+    String ipAddr = streamingAddr.getAddress().getHostAddress();
+    try {
+      InetAddress address = InetAddress.getByName(this.id.getHostName());
+      ipAddr = address.getHostAddress();
+    } catch (UnknownHostException e) {
+      e.printStackTrace();
+    }
+
     //LOG.warn("Using hard-coded IP address for the DataNode's metadata: 10.150.0.6");
 
     // Create a new instance of DataNodeMeta. We pass this to the metadata abstraction layer to store
     // the associated metadata in intermediate storage.
     dataNodeMeta = new DataNodeMeta(this.id.getDatanodeUuid(), this.id.getHostName(),
-            streamingAddr.getAddress().getHostAddress(), this.id.getXferPort(), this.id.getInfoPort(),
+            ipAddr, this.id.getXferPort(), this.id.getInfoPort(),
             this.id.getInfoSecurePort(), this.id.getIpcPort());
 
     LOG.info("Creating DataNodeMeta instance: " + dataNodeMeta.toString());
