@@ -1344,12 +1344,12 @@ public class DataNode extends ReconfigurableBase
     LOG.info("streamingAddr.getAddress().getHostAddress() = " + streamingAddr.getAddress().getHostAddress());
     LOG.info("this.id.getIpAddr() = " + this.id.getIpAddr());
 
-    LOG.warn("Using hard-coded IP address for the DataNode's metadata: 10.150.0.12");
+    //LOG.warn("Using hard-coded IP address for the DataNode's metadata: 10.150.0.6");
 
     // Create a new instance of DataNodeMeta. We pass this to the metadata abstraction layer to store
     // the associated metadata in intermediate storage.
     dataNodeMeta = new DataNodeMeta(this.id.getDatanodeUuid(), this.id.getHostName(),
-            "10.150.0.12", this.id.getXferPort(), this.id.getInfoPort(),
+            streamingAddr.getAddress().getHostAddress(), this.id.getXferPort(), this.id.getInfoPort(),
             this.id.getInfoSecurePort(), this.id.getIpcPort());
 
     LOG.info("Creating DataNodeMeta instance: " + dataNodeMeta.toString());
