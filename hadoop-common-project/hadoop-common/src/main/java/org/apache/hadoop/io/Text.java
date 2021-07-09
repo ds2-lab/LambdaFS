@@ -75,7 +75,8 @@ public class Text extends BinaryComparable
   };
   
   private static final byte [] EMPTY_BYTES = new byte[0];
-  
+  private static final long serialVersionUID = -8550877394753503605L;
+
   private byte[] bytes;
   private int length;
 

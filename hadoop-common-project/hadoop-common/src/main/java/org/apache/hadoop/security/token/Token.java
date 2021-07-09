@@ -46,6 +46,7 @@ import java.util.UUID;
 @InterfaceStability.Evolving
 public class Token<T extends TokenIdentifier> implements Serializable, Writable {
   public static final Logger LOG = LoggerFactory.getLogger(Token.class);
+  private static final long serialVersionUID = -3744244084187514092L;
 
   private static Map<Text, Class<? extends TokenIdentifier>> tokenKindMap;
 
