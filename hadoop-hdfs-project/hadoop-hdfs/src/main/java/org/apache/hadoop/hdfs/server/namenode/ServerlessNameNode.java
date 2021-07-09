@@ -563,6 +563,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       case "delete":
         deleteOperation(fsArgs);
         break;
+      case "getServerDefaults":
+        returnValue = getServerDefaultsOperation(fsArgs);
+        break;
       case "rename":
         renameOperation(fsArgs);
         break;
@@ -968,6 +971,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     return stat;
+  }
+
+  private FsServerDefaults getServerDefaultsOperation(JsonObject fsArgs) {
+    return this.namesystem.getServerDefaults();
   }
 
   private void deleteOperation(JsonObject fsArgs) {

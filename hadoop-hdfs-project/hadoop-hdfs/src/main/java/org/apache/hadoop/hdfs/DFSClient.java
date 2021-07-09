@@ -109,6 +109,7 @@ import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.protocol.HdfsBlocksMetadata;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.ServerlessInvoker;
 import org.apache.hadoop.hdfs.serverless.ServerlessInvokerFactory;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -209,7 +210,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   volatile long lastLeaseRenewal;
   private volatile FsServerDefaults serverDefaults;
   private volatile long serverDefaultsLastUpdate;
-  final String clientName;
+  public final String clientName;
   private final SocketFactory socketFactory;
   final ReplaceDatanodeOnFailure dtpReplaceDatanodeOnFailure;
   final FileSystem.Statistics stats;
@@ -275,7 +276,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     ClientProtocol rpcNamenode = null;
 
-    serverlessEndpoint = "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true"; //conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+    // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true"; //
+    serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
     LOG.info("Serverless endpoint: " + serverlessEndpoint);
@@ -319,6 +321,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
               nameNodeUri, ClientProtocol.class, numResponseToDrop,
               nnFallbackToSimpleAuth);
     }
+
+    this.namenode = new ServerlessNameNodeClient(conf, this);
 
     LOG.warn("Skipping the set-up of namenode and leaderNN variables...");
     /*if (proxyInfo != null) {

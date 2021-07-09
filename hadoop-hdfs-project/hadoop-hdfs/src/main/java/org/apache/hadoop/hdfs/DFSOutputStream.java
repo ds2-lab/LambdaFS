@@ -225,133 +225,9 @@ public class DFSOutputStream extends FSOutputSummer
         shouldRetry = false;
 
         try {
-          // We need to pass a series of arguments to the Serverless NameNode. We prepare these arguments here
-          // in a HashMap and pass them off to the ServerlessInvoker, which will package them up in the required
-          // format for the Serverless NameNode.
-
-          // Arguments for the 'create' filesystem operation.
-          HashMap<String, Object> opArguments = new HashMap<>();
-
-          opArguments.put("src", src);
-          opArguments.put("masked", masked.toShort());
-          opArguments.put("clientName", dfsClient.clientName);
-
-          // Convert this argument (to the 'create' function) to a String so we can send it over JSON.
-          EnumSetWritable<CreateFlag> flagWritable = new EnumSetWritable<CreateFlag>(flag, CreateFlag.class);
-          DataOutputBuffer out = new DataOutputBuffer();
-          ObjectWritable.writeObject(out, flagWritable, flagWritable.getClass(), null);
-          byte[] objectBytes = out.getData();
-          String enumSetBase64 = Base64.encodeBase64String(objectBytes);
-
-          opArguments.put("enumSetBase64", enumSetBase64);
-          opArguments.put("createParent", createParent);
-          opArguments.put("replication", replication);
-          opArguments.put("blockSize", blockSize);
-
-          // Include a flag to indicate whether or not the policy is non-null.
-          opArguments.put("policyExists", policy != null);
-
-          // Only include these if the policy is non-null.
-          if (policy != null) {
-            opArguments.put("codec", policy.getCodec());
-            opArguments.put("targetReplication", policy.getTargetReplication());
-          }
-
-          JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                  "create",
-                  dfsClient.serverlessEndpoint.toString(),
-                  null, // We do not have any additional/non-default arguments to pass to the NN.
-                  opArguments);
-
-          /*
-          LOG.info("Creating HTTP Post req to invoke NN for CREATE op now...");
-
-          // Instead of using RPC to call the create() function, we perform a serverless invocation.
-          String uri = dfsClient.openWhiskEndpoint.toString();
-          LOG.info("OpenWhisk URI: \"" + uri + "\"");
-          HttpPost request = new HttpPost(uri);
-
-          // Arguments for the NameNode program itself.
-          JsonObject namenodeArgs = new JsonObject();
-
-          // Arguments for the particular operation we're performing.
-          JsonObject opArguments = new JsonObject();
-
-          opArguments.addProperty("src", src);
-          opArguments.addProperty("masked", masked.toShort());
-          opArguments.addProperty("clientName", dfsClient.clientName);
-
-          EnumSetWritable<CreateFlag> flagWritable = new EnumSetWritable<CreateFlag>(flag, CreateFlag.class);
-          DataOutputBuffer out = new DataOutputBuffer();
-          ObjectWritable.writeObject(out, flagWritable, flagWritable.getClass(), null);
-
-          byte[] objectBytes = out.getData();
-          String enumSetBase64 = Base64.encodeBase64String(objectBytes);
-
-          opArguments.addProperty("enumSetBase64", enumSetBase64);
-          opArguments.addProperty("createParent", createParent);
-          opArguments.addProperty("replication", replication);
-          opArguments.addProperty("blockSize", blockSize);
-
-          // Include a flag to indicate whether or not the policy is non-null.
-          opArguments.addProperty("policyExists", policy != null);
-
-          // Only include these if the policy is non-null.
-          if (policy != null) {
-            opArguments.addProperty("codec", policy.getCodec());
-            opArguments.addProperty("targetReplication", policy.getTargetReplication());
-          }
-
-          request.addHeader("content-type", "application/json");
-
-          // Add the function arguments to the invocation request arguments.
-          namenodeArgs.add("fsArgs", opArguments);
-          namenodeArgs.addProperty("op", "create");
-          namenodeArgs.addProperty("command-line-arguments", "-regular");
-
-          JsonObject requestArguments = new JsonObject();
-
-          // It looks like OpenWhisk expects the arguments for the serverless
-          // function to be stored with the key/property "value".
-          requestArguments.add("value", namenodeArgs);
-
-          StringEntity params = new StringEntity(requestArguments.toString());
-          request.setEntity(params);
-          request.setHeader("Content-type", "application/json");
-
-          LOG.info("Invoking serverless namenode now...");
-
-          HttpResponse response = httpClient.execute(request);
-
-          String json = EntityUtils.toString(response.getEntity(), "UTF-8");
-          //LOG.info("json = " + json);
-          Gson gson = new Gson();
-          JsonObject responseJson = gson.fromJson(json, JsonObject.class);
-
-          LOG.info("responseJson = " + responseJson.toString());*/
-
-          // Extract the result from the Json response.
-          // If there's an exception, then it will be logged by this function.
-          Object result = dfsClient.serverlessInvoker.extractResultFromJsonResponse(responseJson);
-          if (result != null)
-            stat = (HdfsFileStatus)result;
-
-          /*if (responseJson.has("RESULT")) {
-            String resultBase64 = responseJson.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
-            byte[] resultSerialized = Base64.decodeBase64(resultBase64);
-
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
-            ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-            stat = (HdfsFileStatus) objectInputStream.readObject();
-          } else if (responseJson.has("EXCEPTION")) {
-            String exception = responseJson.getAsJsonPrimitive("EXCEPTION").getAsString();
-            LOG.error("Exception encountered during Serverless NameNode execution.");
-            LOG.error(exception);
-          }*/
-
-          /*stat = dfsClient.namenode.create(src, masked, dfsClient.clientName,
+          stat = dfsClient.namenode.create(src, masked, dfsClient.clientName,
                   new EnumSetWritable<CreateFlag>(flag), createParent, replication,
-                  blockSize, SUPPORTED_CRYPTO_VERSIONS, policy);*/
+                  blockSize, SUPPORTED_CRYPTO_VERSIONS, policy);
           break;
         } catch (RemoteException re) {
           IOException e = re.unwrapRemoteException(
@@ -376,8 +252,6 @@ public class DFSOutputStream extends FSOutputSummer
           } else {
             throw e;
           }
-        } catch (ClassNotFoundException re) {
-          re.printStackTrace();
         }
       }
       Preconditions.checkNotNull(stat, "HdfsFileStatus should not be null!");
