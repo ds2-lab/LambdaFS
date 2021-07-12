@@ -97,10 +97,15 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
             populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
 
         // Populate the file system operation arguments JSON.
-        if (fileSystemOperationArguments != null)
+        if (fileSystemOperationArguments != null) {
+            LOG.debug("Populating HTTP request with FS operation arguments now...");
             populateJsonObjectWithArguments(fileSystemOperationArguments, fileSystemOperationArgumentsJson);
-        else
+            LOG.debug("Populated " + fileSystemOperationArgumentsJson.size() + " arguments.");
+        }
+        else {
+            LOG.debug("No FS operation arguments specified.");
             fileSystemOperationArgumentsJson = new JsonObject();
+        }
 
         // We pass the file system operation arguments to the NameNode, as it
         // will hand them off to the intended file system operation function.
@@ -152,25 +157,25 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
      *
      * Throws an exception if one of the arguments is not a String, Number, Boolean, or Character.
      * @param arguments The HashMap of arguments to add to the JsonObject.
-     * @param jsonObject The JsonObject to which we are adding arguments.
+     * @param dest The JsonObject to which we are adding arguments.
      */
-    private void populateJsonObjectWithArguments(Map<String, Object> arguments, JsonObject jsonObject) throws IOException {
+    private void populateJsonObjectWithArguments(Map<String, Object> arguments, JsonObject dest) throws IOException {
         for (Map.Entry<String, Object> entry : arguments.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
 
             if (value instanceof String)
-                jsonObject.addProperty(key, (String)value);
+                dest.addProperty(key, (String)value);
             else if (value instanceof Number)
-                jsonObject.addProperty(key, (Number)value);
+                dest.addProperty(key, (Number)value);
             else if (value instanceof Boolean)
-                jsonObject.addProperty(key, (Boolean)value);
+                dest.addProperty(key, (Boolean)value);
             else if (value instanceof Character)
-                jsonObject.addProperty(key, (Character)value);
+                dest.addProperty(key, (Character)value);
             else if (value instanceof Map) {
                 JsonObject innerMap = new JsonObject();
                 populateJsonObjectWithArguments((Map<String, Object>) value, innerMap);
-                jsonObject.add(key, innerMap);
+                dest.add(key, innerMap);
             }
             else if (value instanceof Collection) {
                 JsonArray arr = new JsonArray();
@@ -183,7 +188,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
                     Collection<?> valueAsCollection = (Collection<?>)value;
                     Byte[] valueAsByteArray = (Byte[])valueAsCollection.toArray();
                     String encoded = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(valueAsByteArray));
-                    jsonObject.addProperty(key, encoded);
+                    dest.addProperty(key, encoded);
                 }
                 else { // Note an array or list of byte.
                     for (Object obj : (List<?>) value) {
@@ -207,7 +212,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
             }
             else if (value instanceof Serializable) {
                 String base64Encoded = serializableToBase64String((Serializable)value);
-                jsonObject.addProperty(key, base64Encoded);
+                dest.addProperty(key, base64Encoded);
             }
             else if (value == null)
                 LOG.warn("Value associated with key \"" + key + "\" is null.");
