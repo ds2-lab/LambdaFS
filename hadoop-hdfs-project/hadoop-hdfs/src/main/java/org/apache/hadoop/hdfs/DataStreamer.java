@@ -1495,6 +1495,8 @@ class DataStreamer extends Daemon {
       nodes = lb.getLocations();
       storageTypes = lb.getStorageTypes();
 
+      LOG.debug("Connecting to the first DataNode in the list now...");
+
       //
       // Connect to first DataNode in the list.
       //

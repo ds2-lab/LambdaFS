@@ -136,6 +136,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throws AccessControlException, AlreadyBeingCreatedException, DSQuotaExceededException,
             FileAlreadyExistsException, FileNotFoundException, NSQuotaExceededException, ParentNotDirectoryException,
             SafeModeException, UnresolvedLinkException, IOException {
+
+        LOG.debug("create() function called. Printing call stack now...");
+        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+        for (StackTraceElement element : elements) {
+            LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
+        }
+
         // We need to pass a series of arguments to the Serverless NameNode. We prepare these arguments here
         // in a HashMap and pass them off to the ServerlessInvoker, which will package them up in the required
         // format for the Serverless NameNode.
