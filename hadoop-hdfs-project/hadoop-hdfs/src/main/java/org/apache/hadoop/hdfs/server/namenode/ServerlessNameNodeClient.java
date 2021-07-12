@@ -255,7 +255,32 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean complete(String src, String clientName, ExtendedBlock last, long fileId, byte[] data) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        return false;
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("clientName", clientName);
+        opArguments.put("last", last);
+        opArguments.put("fileId", fileId);
+        opArguments.put("data", data);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "complete",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        Object result = null;
+        try {
+            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+        }
+        if (result != null)
+            return (boolean)result;
+
+        return true;
     }
 
     @Override

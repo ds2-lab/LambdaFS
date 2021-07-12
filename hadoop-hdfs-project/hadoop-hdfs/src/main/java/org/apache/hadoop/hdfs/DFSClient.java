@@ -825,33 +825,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   }
 
   /**
-   * This should be called in place of calling the namenode's complete() operation directly. This will invoke
-   * a serverless NameNode and perform the complete() operation.
-   */
-  public boolean complete(String src, String clientName, ExtendedBlock last, long fileId, final byte[] data)
-          throws IOException, ClassNotFoundException {
-    HashMap<String, Object> opArguments = new HashMap<>();
-
-    opArguments.put("src", src);
-    opArguments.put("clientName", clientName);
-    opArguments.put("last", last);
-    opArguments.put("fileId", fileId);
-    opArguments.put("data", data);
-
-    JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-            "complete",
-            serverlessEndpoint.toString(),
-            null, // We do not have any additional/non-default arguments to pass to the NN.
-            opArguments);
-
-    Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-    if (result != null)
-      return (boolean)result;
-
-    return true;
-  }
-
-  /**
    * Close all open streams, abandoning all of the leases and files being
    * created.
    * @param abort whether streams should be gracefully closed
