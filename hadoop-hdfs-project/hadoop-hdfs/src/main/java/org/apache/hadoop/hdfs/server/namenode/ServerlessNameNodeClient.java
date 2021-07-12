@@ -112,7 +112,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         FsServerDefaults serverDefaults = null;
 
         JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "create",
+                "getServerDefaults",
                 dfsClient.serverlessEndpoint.toString(),
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 null);
