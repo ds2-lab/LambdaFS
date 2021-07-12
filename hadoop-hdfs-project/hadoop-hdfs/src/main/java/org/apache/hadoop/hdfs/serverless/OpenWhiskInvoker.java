@@ -76,6 +76,13 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         HashMap<String, Object> nameNodeArguments,
         HashMap<String, Object> fileSystemOperationArguments) throws IOException
     {
+        LOG.debug("invokeNameNodeViaHttpPost() function called for operation \"" + operationName
+                + "\". Printing call stack now...");
+        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+        for (StackTraceElement element : elements) {
+            LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
+        }
+
         LOG.info(String.format("Preparing to invoke OpenWhisk serverless function with URI \"%s\" \nfor FS operation \"%s\" now...",
                 functionUri, operationName));
 
