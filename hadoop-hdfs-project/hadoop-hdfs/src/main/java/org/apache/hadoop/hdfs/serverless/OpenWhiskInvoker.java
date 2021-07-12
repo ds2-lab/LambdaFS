@@ -158,7 +158,8 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
             ObjectWritable.writeObject(out, obj, obj.getClass(), null);
         } catch (IOException ex) {
             LOG.error("Encountered IOException while serializing object of type "
-                    + obj.getClass().getSimpleName(), ex);
+                    + obj.getClass().getSimpleName() + ".");
+            LOG.error("obj instanceof Serializable: " + (obj instanceof Serializable));
             throw ex;
         }
         byte[] objectBytes = out.getData();
