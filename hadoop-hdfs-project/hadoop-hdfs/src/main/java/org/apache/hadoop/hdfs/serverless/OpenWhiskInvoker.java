@@ -21,10 +21,7 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.security.*;
 import java.security.cert.X509Certificate;
 import java.util.*;
@@ -153,17 +150,22 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
      * @throws IOException May be thrown when Serializing the object.
      */
     private static String serializableToBase64String(Serializable obj) throws IOException {
-        DataOutputBuffer out = new DataOutputBuffer();
+        // Source: https://stackoverflow.com/questions/134492/how-to-serialize-an-object-into-a-string
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream( baos );
+        oos.writeObject(obj);
+        oos.close();
+        return Base64.getEncoder().encodeToString(baos.toByteArray());
+        /*DataOutputBuffer out = new DataOutputBuffer();
         try {
             ObjectWritable.writeObject(out, obj, obj.getClass(), null);
         } catch (IOException ex) {
             LOG.error("Encountered IOException while serializing object of type "
                     + obj.getClass().getSimpleName() + ".");
-            LOG.error("obj instanceof Serializable: " + (obj instanceof Serializable));
             throw ex;
         }
         byte[] objectBytes = out.getData();
-        return org.apache.commons.codec.binary.Base64.encodeBase64String(objectBytes);
+        return org.apache.commons.codec.binary.Base64.encodeBase64String(objectBytes);*/
     }
 
     /**
