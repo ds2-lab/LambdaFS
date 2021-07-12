@@ -154,7 +154,13 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
      */
     private static String serializableToBase64String(Serializable obj) throws IOException {
         DataOutputBuffer out = new DataOutputBuffer();
-        ObjectWritable.writeObject(out, obj, obj.getClass(), null);
+        try {
+            ObjectWritable.writeObject(out, obj, obj.getClass(), null);
+        } catch (IOException ex) {
+            LOG.error("Encountered IOException while serializing object of type "
+                    + obj.getClass().getSimpleName(), ex);
+            throw ex;
+        }
         byte[] objectBytes = out.getData();
         return org.apache.commons.codec.binary.Base64.encodeBase64String(objectBytes);
     }

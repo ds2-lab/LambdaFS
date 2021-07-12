@@ -37,6 +37,8 @@ public class Block implements Writable, Comparable<Block>, Serializable {
   public static final String BLOCK_FILE_PREFIX = "blk_";
   public static final String METADATA_EXTENSION = ".meta";
 
+  private static final long serialVersionUID = 5351540876142620731L;
+
   static {                                      // register a ctor
     WritableFactories.setFactory(Block.class, new WritableFactory() {
           @Override

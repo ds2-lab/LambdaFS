@@ -28,6 +28,8 @@ import java.io.Serializable;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class ExtendedBlock implements Serializable {
+  private static final long serialVersionUID = 4963220551036194189L;
+
   private String poolId;
   private Block block;
 
