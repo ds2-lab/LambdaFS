@@ -7,7 +7,7 @@ import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang3.UnsupportedOperationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -84,22 +84,22 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public LocatedBlocks getBlockLocations(String src, long offset, long length) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public LocatedBlocks getMissingBlockLocations(String filePath) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void addBlockChecksum(String src, int blockIndex, long checksum) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -200,7 +200,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public LastBlockWithStatus append(String src, String clientName, EnumSetWritable<CreateFlag> flag) throws AccessControlException, DSQuotaExceededException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -210,7 +210,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public BlockStoragePolicy getStoragePolicy(byte storagePolicyID) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -220,37 +220,37 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void setStoragePolicy(String src, String policyName) throws UnresolvedLinkException, FileNotFoundException, QuotaExceededException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void setMetaStatus(String src, MetaStatus metaStatus) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void setPermission(String src, FsPermission permission) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void setOwner(String src, String username, String groupname) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void abandonBlock(ExtendedBlock b, long fileId, String src, String holder) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public LocatedBlock addBlock(String src, String clientName, ExtendedBlock previous, DatanodeInfo[] excludeNodes, long fileId, String[] favoredNodes) throws AccessControlException, FileNotFoundException, NotReplicatedYetException, SafeModeException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public LocatedBlock getAdditionalDatanode(String src, long fileId, ExtendedBlock blk, DatanodeInfo[] existings, String[] existingStorageIDs, DatanodeInfo[] excludes, int numAdditionalNodes, String clientName) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -285,7 +285,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void reportBadBlocks(LocatedBlock[] blocks) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -295,12 +295,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void concat(String trg, String[] srcs) throws IOException, UnresolvedLinkException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void rename2(String src, String dst, Options.Rename... options) throws AccessControlException, DSQuotaExceededException, FileAlreadyExistsException, FileNotFoundException, NSQuotaExceededException, ParentNotDirectoryException, SafeModeException, UnresolvedLinkException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -320,12 +320,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public DirectoryListing getListing(String src, byte[] startAfter, boolean needLocation) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void renewLease(String clientName) throws AccessControlException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -360,22 +360,22 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void refreshNodes() throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public RollingUpgradeInfo rollingUpgrade(HdfsConstants.RollingUpgradeAction action) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public CorruptFileBlocks listCorruptFileBlocks(String path, String cookie) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void setBalancerBandwidth(long bandwidth) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -437,7 +437,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public ContentSummary getContentSummary(String path) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -447,37 +447,37 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void fsync(String src, long inodeId, String client, long lastBlockLength) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void setTimes(String src, long mtime, long atime) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void createSymlink(String target, String link, FsPermission dirPerm, boolean createParent) throws AccessControlException, FileAlreadyExistsException, FileNotFoundException, ParentNotDirectoryException, SafeModeException, UnresolvedLinkException, IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public String getLinkTarget(String path) throws AccessControlException, FileNotFoundException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public LocatedBlock updateBlockForPipeline(ExtendedBlock block, String clientName) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void updatePipeline(String clientName, ExtendedBlock oldBlock, ExtendedBlock newBlock, DatanodeID[] newNodes, String[] newStorages) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public Token<DelegationTokenIdentifier> getDelegationToken(Text renewer) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -487,122 +487,122 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void cancelDelegationToken(Token<DelegationTokenIdentifier> token) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public DataEncryptionKey getDataEncryptionKey() throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void ping() throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public SortedActiveNodeList getActiveNamenodesForClient() throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void changeConf(List<String> props, List<String> newVals) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public EncodingStatus getEncodingStatus(String filePath) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void encodeFile(String filePath, EncodingPolicy policy) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void revokeEncoding(String filePath, short replication) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public LocatedBlock getRepairedBlockLocations(String sourcePath, String parityPath, LocatedBlock block, boolean isParity) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void checkAccess(String path, FsAction mode) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public LastUpdatedContentSummary getLastUpdatedContentSummary(String path) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void modifyAclEntries(String src, List<AclEntry> aclSpec) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void removeAclEntries(String src, List<AclEntry> aclSpec) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void removeDefaultAcl(String src) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void removeAcl(String src) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void setAcl(String src, List<AclEntry> aclSpec) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public AclStatus getAclStatus(String src) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void createEncryptionZone(String src, String keyName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public EncryptionZone getEZForPath(String src) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public BatchedRemoteIterator.BatchedEntries<EncryptionZone> listEncryptionZones(long prevId) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void setXAttr(String src, XAttr xAttr, EnumSet<XAttrSetFlag> flag) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public List<XAttr> getXAttrs(String src, List<XAttr> xAttrs) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public List<XAttr> listXAttrs(String src) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void removeXAttr(String src, XAttr xAttr) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
@@ -612,87 +612,87 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void modifyCacheDirective(CacheDirectiveInfo directive, EnumSet<CacheFlag> flags) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void removeCacheDirective(long id) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public BatchedRemoteIterator.BatchedEntries<CacheDirectiveEntry> listCacheDirectives(long prevId, CacheDirectiveInfo filter) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void addCachePool(CachePoolInfo info) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void modifyCachePool(CachePoolInfo req) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void removeCachePool(String pool) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public BatchedRemoteIterator.BatchedEntries<CachePoolEntry> listCachePools(String prevPool) throws IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void addUser(String userName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void addGroup(String groupName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void addUserToGroup(String userName, String groupName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void removeUser(String userName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void removeGroup(String groupName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void removeUserFromGroup(String userName, String groupName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void invCachesUserRemoved(String userName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void invCachesGroupRemoved(String groupName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void invCachesUserRemovedFromGroup(String userName, String groupName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
     public void invCachesUserAddedToGroup(String userName, String groupName) throws IOException {
-		throw new NotImplementedException("Function has not yet been implemented.");
+		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override

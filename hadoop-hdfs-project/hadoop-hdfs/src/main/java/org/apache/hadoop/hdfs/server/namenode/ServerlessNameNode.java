@@ -44,7 +44,6 @@ import io.hops.transaction.handler.RequestHandler;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
@@ -912,7 +911,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void appendOperation(JsonObject fsArgs) {
-    throw new NotImplementedException("Operation `append` has not been implemented yet.");
+    throw new UnsupportedOperationException("Operation `append` has not been implemented yet.");
   }
 
   private boolean completeOperation(JsonObject fsArgs) throws IOException {
@@ -951,7 +950,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void concatOperation(JsonObject fsArgs) {
-    throw new NotImplementedException("Operation `concat` has not been implemented yet.");
+    throw new UnsupportedOperationException("Operation `concat` has not been implemented yet.");
   }
 
   private HdfsFileStatus getFileInfoOperation(JsonObject fsArgs) throws IOException {
@@ -1041,11 +1040,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void deleteOperation(JsonObject fsArgs) {
-    throw new NotImplementedException("Delete has not yet been implemented.");
+    throw new UnsupportedOperationException("Delete has not yet been implemented.");
   }
 
   private void renameOperation(JsonObject fsArgs) {
-    throw new NotImplementedException("Rename has not yet been implemented.");
+    throw new UnsupportedOperationException("Rename has not yet been implemented.");
   }
 
   private static CommandLine parseMainArguments(String[] args) {
