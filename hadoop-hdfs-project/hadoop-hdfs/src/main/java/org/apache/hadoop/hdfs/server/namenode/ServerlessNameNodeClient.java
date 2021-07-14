@@ -7,7 +7,6 @@ import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang3.UnsupportedOperationException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
