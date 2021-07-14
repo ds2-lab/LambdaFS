@@ -20,7 +20,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.hops.StorageConnector;
 import io.hops.exception.StorageException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
@@ -199,6 +198,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *  Major.Minor.Build.Revision
    */
   private static String versionNumber = "0.1.1.11";
+
+  private Map<String, CheckedFunction<JsonObject, ?>> operations;
 
   /**
    * HDFS configuration can have three types of parameters:
@@ -439,80 +440,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     try {
       List<DatanodeRegistration> datanodeRegistrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
-
-      // TODO: Retrieve storage reports.
-
-      // Procedure:
-      // 1) Retrieve StorageReport instances
-      // 2) Retrieve DatanodeStorage instances.
-      // 3) Convert these objects from the DAL versions to the HopsFS versions.
-      // 4) Pass them off to the handler method in FSFilesystem.
-
-      // Create a mapping from each DataNode UUID to the map containing all of its converted DatanodeStorage instances.
-      // This is simply a map of maps. The keys of the outer map are datanode UUIDs. The values are HashMaps.
-      // The keys of the inner map are storageIds. The values of the inner map are DatanodeStorage instances.
-      HashMap<String, HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage>> datanodeStorageMaps
-              = new HashMap<>();
-
-      // Iterate over each DatanodeRegistration, representing a registered DataNode. Retrieve its DatanodeStorage
-      // instances from intermediate storage. Create a mapping of them & store the mapping in the HashMap defined above.
-      for (DatanodeRegistration registration : datanodeRegistrations) {
-        String datanodeUuid = registration.getDatanodeUuid();
-
-        LOG.info("Retrieving DatanodeRegistration instances for datanode " + datanodeUuid);
-        HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorageMap
-                = nameNodeInstance.retrieveAndConvertDatanodeStorages(registration);
-
-        datanodeStorageMaps.put(datanodeUuid, datanodeStorageMap);
-      }
-
-      HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap
-              = nameNodeInstance.retrieveStorageReports(datanodeRegistrations);
-
-      HashMap<String, List<org.apache.hadoop.hdfs.server.protocol.StorageReport>> convertedStorageReportMap
-              = new HashMap<>();
-
-      // Iterate over all of the storage reports. The keys are datanodeUuids and the values are storage reports.
-      for (Map.Entry<String, List<StorageReport>> entry : storageReportMap.entrySet()) {
-        String datanodeUuid = entry.getKey();
-        List<StorageReport> storageReports = entry.getValue();
-        LOG.debug("Storage Reports for Data Node: " + datanodeUuid);
-
-        // Get the mapping of storageIds to DatanodeStorage instances for this particular datanode.
-        HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorageMap
-                = datanodeStorageMaps.get(datanodeUuid);
-
-        ArrayList<org.apache.hadoop.hdfs.server.protocol.StorageReport> convertedStorageReports =
-                new ArrayList<>();
-
-        // For each storage report associated with the current datanode, convert it to a HopsFS storage report (they
-        // are currently the DAL storage reports, which are just designed to be used with intermediate storage).
-        for (StorageReport report : storageReports) {
-          LOG.debug(report.toString());
-
-          org.apache.hadoop.hdfs.server.protocol.StorageReport convertedReport
-                  = new org.apache.hadoop.hdfs.server.protocol.StorageReport(
-                          datanodeStorageMap.get(report.getDatanodeStorageId()), report.getFailed(),
-                    report.getCapacity(), report.getDfsUsed(), report.getRemaining(), report.getBlockPoolUsed());
-
-          convertedStorageReports.add(convertedReport);
-        }
-
-        convertedStorageReportMap.put(datanodeUuid, convertedStorageReports);
-      }
-
-      LOG.debug("Processing storage reports from " + convertedStorageReportMap.size() + " data nodes now...");
-
-      for (DatanodeRegistration registration : datanodeRegistrations) {
-
-        // For each registration, we call the `handleServerlessStorageReports()` function. We pass the given
-        // registration, then we trieve the list of storage reports from the mapping, convert it to an Object[],
-        // and cast it to an array of HopsFS StorageReport[].
-        nameNodeInstance.namesystem.handleServerlessStorageReports(
-                registration, convertedStorageReportMap.get(
-                        registration.getDatanodeUuid()).toArray(
-                                new org.apache.hadoop.hdfs.server.protocol.StorageReport[0]));
-      }
+      nameNodeInstance.retrieveAndProcessStorageReports(datanodeRegistrations);
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
 
@@ -533,6 +461,44 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             srcPath.depth() <= MAX_PATH_DEPTH);
   }
 
+  /**
+   * Wrapper interface so we can embed all of the operation-functions in a HashMap for easy calling.
+   *
+   * Sources:
+   *  - https://stackoverflow.com/questions/18198176/java-8-lambda-function-that-throws-exception
+   *  - https://stackoverflow.com/questions/4480334/how-to-call-a-method-stored-in-a-hashmap-java
+   */
+  @FunctionalInterface
+  public interface CheckedFunction<T, R> {
+    R apply(T t) throws IOException, ClassNotFoundException;
+  }
+
+  private void populateOperationsMap() {
+    operations = new HashMap<String, CheckedFunction<JsonObject, ?>>();
+
+    operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) args -> addBlockOperation(args));
+    operations.put("append", null);
+    operations.put("complete", (CheckedFunction<JsonObject, Boolean>) args -> completeOperation(args));
+    operations.put("concat", (CheckedFunction<JsonObject, Void>) args -> {
+      concatOperation(args);
+      return null;
+    });
+    operations.put("create", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> createOperation(args));
+    operations.put("delete", (CheckedFunction<JsonObject, Void>) args -> {
+      deleteOperation(args);
+      return null;
+    });
+    operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileInfoOperation(args));
+    operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileLinkInfoOperation(args));
+    operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) args -> getServerDefaultsOperation(args));
+    operations.put("rename", null);
+    operations.put("versionRequest", null);
+  }
+
+  /**
+   * Perform the operation specified by the String (which will contain the operations name). Pass the arguments
+   * contained in fsArgs to the function.
+   */
   public JsonObject performOperation(String op, JsonObject fsArgs) throws IOException, ClassNotFoundException {
     LOG.info("Specified operation: " + op);
 
@@ -541,11 +507,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return new JsonObject(); // empty
     }
 
-    Object returnValue = null;
+    Object returnValue = this.operations.get(op).apply(fsArgs);
     JsonObject result = null;
 
     // Now we perform the desired/specified operation.
-    switch(op) {
+    /*switch(op) {
       case "addBlock":
         returnValue = addBlockOperation(fsArgs);
         break;
@@ -564,6 +530,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       case "delete":
         deleteOperation(fsArgs);
         break;
+      case "getFileInfo":
+        break;
       case "getServerDefaults":
         returnValue = getServerDefaultsOperation(fsArgs);
         break;
@@ -575,7 +543,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         break;
       default:
         LOG.info("Unknown operation: " + op);
-    }
+    }*/
 
     // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64 so we
     // can include it in the JSON response sent back to the invoker of this serverless function.
@@ -642,6 +610,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       } else {
         LOG.info("Successfully created and initialized Serverless NameNode.");
       }
+
+      nameNode.populateOperationsMap();
 
       initialized = true;
       return nameNode;
@@ -723,6 +693,86 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             = dataAccess.getLatestStorageReports(registration.getDatanodeUuid());
 
     return storageReports;
+  }
+
+  /**
+   * Get the StorageReport and DatanodeStorage instances from intermediate storage and perform the necessary
+   * processing in order to populate the NameNode with the relevant information.
+   */
+  private void retrieveAndProcessStorageReports(List<DatanodeRegistration> datanodeRegistrations) throws IOException {
+    // TODO: Retrieve storage reports.
+
+    // Procedure:
+    // 1) Retrieve StorageReport instances
+    // 2) Retrieve DatanodeStorage instances.
+    // 3) Convert these objects from the DAL versions to the HopsFS versions.
+    // 4) Pass them off to the handler method in FSFilesystem.
+
+    // Create a mapping from each DataNode UUID to the map containing all of its converted DatanodeStorage instances.
+    // This is simply a map of maps. The keys of the outer map are datanode UUIDs. The values are HashMaps.
+    // The keys of the inner map are storageIds. The values of the inner map are DatanodeStorage instances.
+    HashMap<String, HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage>> datanodeStorageMaps
+            = new HashMap<>();
+
+    // Iterate over each DatanodeRegistration, representing a registered DataNode. Retrieve its DatanodeStorage
+    // instances from intermediate storage. Create a mapping of them & store the mapping in the HashMap defined above.
+    for (DatanodeRegistration registration : datanodeRegistrations) {
+      String datanodeUuid = registration.getDatanodeUuid();
+
+      LOG.info("Retrieving DatanodeRegistration instances for datanode " + datanodeUuid);
+      HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorageMap
+              = this.retrieveAndConvertDatanodeStorages(registration);
+
+      datanodeStorageMaps.put(datanodeUuid, datanodeStorageMap);
+    }
+
+    HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap
+            = this.retrieveStorageReports(datanodeRegistrations);
+
+    HashMap<String, List<org.apache.hadoop.hdfs.server.protocol.StorageReport>> convertedStorageReportMap
+            = new HashMap<>();
+
+    // Iterate over all of the storage reports. The keys are datanodeUuids and the values are storage reports.
+    for (Map.Entry<String, List<StorageReport>> entry : storageReportMap.entrySet()) {
+      String datanodeUuid = entry.getKey();
+      List<StorageReport> storageReports = entry.getValue();
+      LOG.debug("Storage Reports for Data Node: " + datanodeUuid);
+
+      // Get the mapping of storageIds to DatanodeStorage instances for this particular datanode.
+      HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorageMap
+              = datanodeStorageMaps.get(datanodeUuid);
+
+      ArrayList<org.apache.hadoop.hdfs.server.protocol.StorageReport> convertedStorageReports =
+              new ArrayList<>();
+
+      // For each storage report associated with the current datanode, convert it to a HopsFS storage report (they
+      // are currently the DAL storage reports, which are just designed to be used with intermediate storage).
+      for (StorageReport report : storageReports) {
+        LOG.debug(report.toString());
+
+        org.apache.hadoop.hdfs.server.protocol.StorageReport convertedReport
+                = new org.apache.hadoop.hdfs.server.protocol.StorageReport(
+                datanodeStorageMap.get(report.getDatanodeStorageId()), report.getFailed(),
+                report.getCapacity(), report.getDfsUsed(), report.getRemaining(), report.getBlockPoolUsed());
+
+        convertedStorageReports.add(convertedReport);
+      }
+
+      convertedStorageReportMap.put(datanodeUuid, convertedStorageReports);
+    }
+
+    LOG.debug("Processing storage reports from " + convertedStorageReportMap.size() + " data nodes now...");
+
+    for (DatanodeRegistration registration : datanodeRegistrations) {
+
+      // For each registration, we call the `handleServerlessStorageReports()` function. We pass the given
+      // registration, then we trieve the list of storage reports from the mapping, convert it to an Object[],
+      // and cast it to an array of HopsFS StorageReport[].
+      this.namesystem.handleServerlessStorageReports(
+              registration, convertedStorageReportMap.get(
+                      registration.getDatanodeUuid()).toArray(
+                      new org.apache.hadoop.hdfs.server.protocol.StorageReport[0]));
+    }
   }
 
   /**
@@ -904,6 +954,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     throw new NotImplementedException("Operation `concat` has not been implemented yet.");
   }
 
+  private HdfsFileStatus getFileInfoOperation(JsonObject fsArgs) throws IOException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+
+    return namesystem.getFileInfo(src, true);
+  }
+
+  private HdfsFileStatus getFileLinkInfoOperation(JsonObject fsArgs) throws IOException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+
+    return namesystem.getFileInfo(src, false);
+  }
+
   private NamespaceInfo versionRequestOperation(JsonObject fsArgs) throws IOException {
     LOG.info("Performing versionRequest operation now...");
     namesystem.checkSuperuserPrivilege();
@@ -979,11 +1041,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void deleteOperation(JsonObject fsArgs) {
-
+    throw new NotImplementedException("Delete has not yet been implemented.");
   }
 
   private void renameOperation(JsonObject fsArgs) {
-
+    throw new NotImplementedException("Rename has not yet been implemented.");
   }
 
   private static CommandLine parseMainArguments(String[] args) {

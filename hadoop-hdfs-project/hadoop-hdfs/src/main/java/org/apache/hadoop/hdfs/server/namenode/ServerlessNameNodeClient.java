@@ -380,7 +380,28 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public HdfsFileStatus getFileInfo(String src) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "getFileInfo",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        Object result = null;
+        try {
+            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+        }
+        if (result != null)
+            return (HdfsFileStatus)result;
+
+        return null;
     }
 
     @Override
@@ -390,7 +411,28 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public HdfsFileStatus getFileLinkInfo(String src) throws AccessControlException, UnresolvedLinkException, IOException {
-        throw new NotImplementedException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "getFileLinkInfo",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        Object result = null;
+        try {
+            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+        }
+        if (result != null)
+            return (HdfsFileStatus)result;
+
+        return null;
     }
 
     @Override
