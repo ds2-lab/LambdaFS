@@ -553,6 +553,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         appendOperation(fsArgs);
         break;
       case "complete":
+        returnValue = completeOperation(fsArgs);
         break;
       case "concat":
         concatOperation(fsArgs);
