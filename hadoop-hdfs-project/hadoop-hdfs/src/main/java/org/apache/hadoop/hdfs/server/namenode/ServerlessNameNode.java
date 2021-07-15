@@ -440,6 +440,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     try {
       List<DatanodeRegistration> datanodeRegistrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
       nameNodeInstance.retrieveAndProcessStorageReports(datanodeRegistrations);
+      nameNodeInstance.populateOperationsMap();
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
 
@@ -504,7 +505,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return null;
     });
     operations.put("truncate", (CheckedFunction<JsonObject, Boolean>) args -> truncateOperation(args));
-    operations.put("versionRequest", null);
+    operations.put("versionRequest", (CheckedFunction<JsonObject, NamespaceInfo>) args -> versionRequestOperation(args));
   }
 
   /**
@@ -622,8 +623,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       } else {
         LOG.info("Successfully created and initialized Serverless NameNode.");
       }
-
-      nameNode.populateOperationsMap();
 
       initialized = true;
       return nameNode;
