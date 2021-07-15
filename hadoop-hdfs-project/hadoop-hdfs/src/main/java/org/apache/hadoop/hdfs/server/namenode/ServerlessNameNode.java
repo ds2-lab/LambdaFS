@@ -950,8 +950,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return namesystem.completeFile(src, clientName, last, fileId, data);
   }
 
-  private void concatOperation(JsonObject fsArgs) {
-    throw new UnsupportedOperationException("Operation `concat` has not been implemented yet.");
+  private void concatOperation(JsonObject fsArgs) throws IOException {
+    LOG.info("Unpacking arguments for the CONCAT operation now...");
+
+    String trg = fsArgs.getAsJsonPrimitive("trg").getAsString();
+
+    JsonArray srcsArr = fsArgs.getAsJsonPrimitive("srcsArr").getAsJsonArray();
+    String[] srcs = new String[srcsArr.size()];
+
+    for (int i = 0; i < srcs.length; i++) {
+      String src = srcsArr.get(i).getAsString();
+      srcs[i] = src;
+    }
+
+    namesystem.concat(trg, srcs);
   }
 
   private HdfsFileStatus getFileInfoOperation(JsonObject fsArgs) throws IOException {

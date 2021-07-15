@@ -295,7 +295,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void concat(String trg, String[] srcs) throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("trg", trg);
+        opArguments.put("srcs", srcs);
+
+        serverlessInvoker.invokeNameNodeViaHttpPost(
+                "concat",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
@@ -313,7 +322,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("options", optionsArr);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+        serverlessInvoker.invokeNameNodeViaHttpPost(
                 "rename",
                 serverlessEndpoint.toString(),
                 null, // We do not have any additional/non-default arguments to pass to the NN.
