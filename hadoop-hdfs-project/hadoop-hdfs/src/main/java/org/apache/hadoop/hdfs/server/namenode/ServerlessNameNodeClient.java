@@ -202,7 +202,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public LastBlockWithStatus append(String src, String clientName, EnumSetWritable<CreateFlag> flag) throws AccessControlException, DSQuotaExceededException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
         LastBlockWithStatus stat = null;
 
-        // Arguments for the 'create' filesystem operation.
+        // Arguments for the 'append' filesystem operation.
         HashMap<String, Object> opArguments = new HashMap<>();
 
         // Serialize the `EnumSetWritable<CreateFlag> flag` argument.
@@ -363,12 +363,57 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean truncate(String src, long newLength, String clientName) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        return false;
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("newLength", newLength);
+        opArguments.put("clientName", clientName);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "truncate",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        Object result = null;
+        try {
+            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+        }
+        if (result != null)
+            return (boolean)result;
+
+        return true;
     }
 
     @Override
     public boolean delete(String src, boolean recursive) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        return false;
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("recursive", recursive);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "delete",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        Object result = null;
+        try {
+            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+        }
+        if (result != null)
+            return (boolean)result;
+
+        return true;
     }
 
     @Override
@@ -705,32 +750,76 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void addUser(String userName) throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+        opArguments.put("userName", userName);
+
+        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "addUser",
+                dfsClient.serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
     public void addGroup(String groupName) throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+        opArguments.put("groupName", groupName);
+
+        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "addGroup",
+                dfsClient.serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
     public void addUserToGroup(String userName, String groupName) throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+        opArguments.put("userName", userName);
+        opArguments.put("groupName", groupName);
+
+        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "addUserToGroup",
+                dfsClient.serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
     public void removeUser(String userName) throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+        opArguments.put("userName", userName);
+
+        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "removeUser",
+                dfsClient.serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
     public void removeGroup(String groupName) throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+        opArguments.put("groupName", groupName);
+
+        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "removeGroup",
+                dfsClient.serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
     public void removeUserFromGroup(String userName, String groupName) throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+        opArguments.put("userName", userName);
+        opArguments.put("groupName", groupName);
+
+        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "removeUserFromGroup",
+                dfsClient.serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override

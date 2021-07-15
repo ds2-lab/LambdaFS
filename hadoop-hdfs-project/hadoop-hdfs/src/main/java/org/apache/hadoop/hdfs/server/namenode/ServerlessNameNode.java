@@ -76,6 +76,7 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.util.MBeans;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.net.Node;
+import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.RefreshUserMappingsProtocol;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -123,6 +124,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.HADOOP_USER_GROUP_METRICS_PER
 import static org.apache.hadoop.hdfs.protocol.HdfsConstants.MAX_PATH_DEPTH;
 import static org.apache.hadoop.hdfs.protocol.HdfsConstants.MAX_PATH_LENGTH;
 import static org.apache.hadoop.util.ExitUtil.terminate;
+import static org.apache.hadoop.util.Time.now;
 
 import org.apache.htrace.core.Tracer;
 
@@ -474,6 +476,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations = new HashMap<String, CheckedFunction<JsonObject, ?>>();
 
     operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) args -> addBlockOperation(args));
+    operations.put("addUser", (CheckedFunction<JsonObject, Void>) args -> {
+      concatOperation(args);
+      return null;
+    });
+    operations.put("addGroup", (CheckedFunction<JsonObject, Void>) args -> {
+      concatOperation(args);
+      return null;
+    });
+    operations.put("addUserToGroup", (CheckedFunction<JsonObject, Void>) args -> {
+      concatOperation(args);
+      return null;
+    });
     operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) args -> appendOperation(args));
     operations.put("complete", (CheckedFunction<JsonObject, Boolean>) args -> completeOperation(args));
     operations.put("concat", (CheckedFunction<JsonObject, Void>) args -> {
@@ -481,10 +495,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return null;
     });
     operations.put("create", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> createOperation(args));
-    operations.put("delete", (CheckedFunction<JsonObject, Void>) args -> {
-      deleteOperation(args);
-      return null;
-    });
+    operations.put("delete", (CheckedFunction<JsonObject, Boolean>) args -> deleteOperation(args));
     operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileInfoOperation(args));
     operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileLinkInfoOperation(args));
     operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) args -> getServerDefaultsOperation(args));
@@ -492,6 +503,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       renameOperation(args);
       return null;
     });
+    operations.put("truncate", (CheckedFunction<JsonObject, Boolean>) args -> truncateOperation(args));
     operations.put("versionRequest", null);
   }
 
@@ -892,6 +904,50 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return namesystem.getAdditionalBlock(src, fileId, clientName, previous, excludedNodesSet, favoredNodesList);
   }
 
+  private void addUserOperation(JsonObject fsArgs) throws IOException {
+    String userName = fsArgs.getAsJsonPrimitive("userName").getAsString();
+
+    namesystem.checkSuperuserPrivilege();
+    UsersGroups.addUser(userName);
+  }
+
+  private void addGroupOperation(JsonObject fsArgs) throws IOException {
+    String groupName = fsArgs.getAsJsonPrimitive("groupName").getAsString();
+
+    namesystem.checkSuperuserPrivilege();
+    UsersGroups.addGroup(groupName);
+  }
+
+  private void addUserToGroupOperation(JsonObject fsArgs) throws IOException {
+    String userName = fsArgs.getAsJsonPrimitive("userName").getAsString();
+    String groupName = fsArgs.getAsJsonPrimitive("groupName").getAsString();
+
+    namesystem.checkSuperuserPrivilege();
+    UsersGroups.addUserToGroup(userName, groupName);
+  }
+
+  public void removeUserOperation(JsonObject fsArgs) throws IOException {
+    String userName = fsArgs.getAsJsonPrimitive("userName").getAsString();
+
+    namesystem.checkSuperuserPrivilege();
+    UsersGroups.removeUser(userName);
+  }
+
+  public void removeGroupOperation(JsonObject fsArgs) throws IOException {
+    String groupName = fsArgs.getAsJsonPrimitive("groupName").getAsString();
+
+    namesystem.checkSuperuserPrivilege();
+    UsersGroups.removeGroup(groupName);
+  }
+
+  public void removeUserFromGroupOperation(JsonObject fsArgs) throws IOException {
+    String userName = fsArgs.getAsJsonPrimitive("userName").getAsString();
+    String groupName = fsArgs.getAsJsonPrimitive("groupName").getAsString();
+
+    namesystem.checkSuperuserPrivilege();
+    UsersGroups.removeUserFromGroup(userName, groupName);
+  }
+
   private LastBlockWithStatus appendOperation(JsonObject fsArgs) throws IOException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
@@ -1047,8 +1103,42 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return this.namesystem.getServerDefaults();
   }
 
-  private void deleteOperation(JsonObject fsArgs) {
-    throw new UnsupportedOperationException("Delete has not yet been implemented.");
+  private boolean deleteOperation(JsonObject fsArgs) throws IOException {
+    LOG.info("Unpacking arguments for the DELETE operation now...");
+
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    boolean recursive = fsArgs.getAsJsonPrimitive("recursive").getAsBoolean();
+
+    if (stateChangeLog.isDebugEnabled()) {
+      stateChangeLog.debug(
+              "*DIR* Namenode.delete: src=" + src + ", recursive=" + recursive);
+    }
+
+    boolean ret;
+    ret = namesystem.delete(src, recursive);
+
+    if (ret) {
+      metrics.incrDeleteFileOps();
+    }
+    return ret;
+  }
+
+  public boolean truncateOperation(JsonObject fsArgs) throws IOException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
+    long newLength = fsArgs.getAsJsonPrimitive("newLength").getAsLong();
+
+    if(stateChangeLog.isDebugEnabled()) {
+      stateChangeLog.debug("*DIR* NameNode.truncate: " + src + " to " +
+              newLength);
+    }
+    String clientMachine = NameNodeRpcServer.getClientMachine();
+    try {
+      return namesystem.truncate(
+              src, newLength, clientName, clientMachine, now());
+    } finally {
+      metrics.incrFilesTruncated();
+    }
   }
 
   private void renameOperation(JsonObject fsArgs) throws IOException {
