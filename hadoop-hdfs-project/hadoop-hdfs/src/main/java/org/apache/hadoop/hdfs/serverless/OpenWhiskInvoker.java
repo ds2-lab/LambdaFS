@@ -287,7 +287,11 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
 
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
             ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-            return objectInputStream.readObject();
+            Object toReturn = objectInputStream.readObject();
+
+            LOG.debug("Returning object of type " + toReturn.getClass().getSimpleName() + ": " + toReturn.toString());
+
+            return toReturn;
         } else if (response.has("EXCEPTION")) {
             String exception = response.getAsJsonPrimitive("EXCEPTION").getAsString();
             LOG.error("Exception encountered during Serverless NameNode execution.");
