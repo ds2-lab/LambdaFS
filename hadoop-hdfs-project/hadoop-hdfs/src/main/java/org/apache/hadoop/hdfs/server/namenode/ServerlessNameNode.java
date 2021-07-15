@@ -967,7 +967,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return info;
   }
 
-  private boolean completeOperation(JsonObject fsArgs) throws IOException {
+  private boolean completeOperation(JsonObject fsArgs) throws IOException, ClassNotFoundException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
 
@@ -983,9 +983,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (fsArgs.has("last")) {
       String lastBase64 = fsArgs.getAsJsonPrimitive("last").getAsString();
       byte[] lastBytes = Base64.decodeBase64(lastBase64);
-      DataInputBuffer dataInput = new DataInputBuffer();
+
+      // TODO: Try using SerializationUtils from Commons Lang library.
+      //  Reference: https://stackoverflow.com/questions/2836646/java-serializable-object-to-byte-array
+      ByteArrayInputStream bis = new ByteArrayInputStream(lastBytes);
+
+      try (ObjectInput in = new ObjectInputStream(bis)) {
+        Object o = in.readObject();
+        last = (ExtendedBlock) o;
+      }
+
+      /*DataInputBuffer dataInput = new DataInputBuffer();
       dataInput.reset(lastBytes, lastBytes.length);
-      last = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);
+      last = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);*/
     }
 
     byte[] data = null;
