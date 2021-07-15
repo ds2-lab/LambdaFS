@@ -156,7 +156,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("enumSetBase64", enumSetBase64);
         opArguments.put("createParent", createParent);
-        opArguments.put("replication", replication);
+        LOG.warn("Using hard-coded replication value of 1.");
+        opArguments.put("replication", 1);
         opArguments.put("blockSize", blockSize);
 
         // Include a flag to indicate whether or not the policy is non-null.
