@@ -48,6 +48,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <version>20140107</version>
     </dependency>
     <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-annotations</artifactId>
       <!--<scope>provided</scope>-->
