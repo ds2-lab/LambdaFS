@@ -31,10 +31,8 @@ import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
 import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
 import io.hops.metadata.hdfs.dal.LeaseCreationLocksDataAccess;
 import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
-import io.hops.metadata.hdfs.entity.DataNodeMeta;
+import io.hops.metadata.hdfs.entity.*;
 import io.hops.metadata.hdfs.entity.DatanodeStorage;
-import io.hops.metadata.hdfs.entity.EncodingPolicy;
-import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.StorageReport;
 import io.hops.security.HopsUGException;
 import io.hops.security.UsersGroups;
@@ -490,7 +488,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileInfoOperation(args));
     operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileLinkInfoOperation(args));
     operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) args -> getServerDefaultsOperation(args));
-    operations.put("rename", null);
+    operations.put("rename", (CheckedFunction<JsonObject, Void>) args -> {
+      renameOperation(args);
+      return null;
+    });
     operations.put("versionRequest", null);
   }
 
@@ -989,8 +990,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     DataInputBuffer dataInput = new DataInputBuffer();
     dataInput.reset(enumSetSerialized, enumSetSerialized.length);
-        /*ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(enumSetSerialized);
-        DataInput dataInput = new ObjectInputStream(byteArrayInputStream);*/
     EnumSet<CreateFlag> flag = ((EnumSetWritable<CreateFlag>) ObjectWritable.readObject(dataInput, null)).get();
 
     boolean createParent = fsArgs.getAsJsonPrimitive("createParent").getAsBoolean();
@@ -1043,8 +1042,42 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     throw new UnsupportedOperationException("Delete has not yet been implemented.");
   }
 
-  private void renameOperation(JsonObject fsArgs) {
-    throw new UnsupportedOperationException("Rename has not yet been implemented.");
+  private void renameOperation(JsonObject fsArgs) throws IOException {
+    LOG.info("Unpacking arguments for the RENAME operation now...");
+
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    String dst = fsArgs.getAsJsonPrimitive("dst").getAsString();
+
+    JsonArray optionsArr = fsArgs.getAsJsonPrimitive("options").getAsJsonArray();
+
+    org.apache.hadoop.fs.Options.Rename[] options = new org.apache.hadoop.fs.Options.Rename[optionsArr.size()];
+
+    for (int i = 0; i < optionsArr.size(); i++) {
+      int renameOptionOrdinal = optionsArr.get(i).getAsInt();
+      options[i] = org.apache.hadoop.fs.Options.Rename.values()[renameOptionOrdinal];
+    }
+
+    if (stateChangeLog.isDebugEnabled()) {
+      stateChangeLog.debug("*DIR* NameNode.rename: " + src + " to " + dst);
+    }
+    if (!checkPathLength(dst)) {
+      throw new IOException("rename: Pathname too long.  Limit " + MAX_PATH_LENGTH +
+                      " characters, " + MAX_PATH_DEPTH + " levels.");
+    }
+
+    RetryCacheEntry cacheEntry = LightWeightCacheDistributed.getTransactional();
+    if (cacheEntry != null && cacheEntry.isSuccess()) {
+      return; // Return previous response
+    }
+
+    boolean success = false;
+    try {
+      namesystem.renameTo(src, dst, options);
+      success = true;
+    } finally {
+      LightWeightCacheDistributed.putTransactional(success);
+    }
+    metrics.incrFilesRenamed();
   }
 
   private static CommandLine parseMainArguments(String[] args) {

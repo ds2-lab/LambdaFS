@@ -33,6 +33,7 @@ import org.apache.hadoop.security.token.Token;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -293,13 +294,30 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public void concat(String trg, String[] srcs) throws IOException, UnresolvedLinkException {
+    public void concat(String trg, String[] srcs) throws IOException {
 		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
-    public void rename2(String src, String dst, Options.Rename... options) throws AccessControlException, DSQuotaExceededException, FileAlreadyExistsException, FileNotFoundException, NSQuotaExceededException, ParentNotDirectoryException, SafeModeException, UnresolvedLinkException, IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+    public void rename2(String src, String dst, Options.Rename... options) throws IOException {
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("dst", dst);
+
+        Integer[] optionsArr = new Integer[options.length];
+
+        for (int i = 0; i < options.length; i++) {
+            optionsArr[i] = options[i].ordinal();
+        }
+
+        opArguments.put("options", optionsArr);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "rename",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
