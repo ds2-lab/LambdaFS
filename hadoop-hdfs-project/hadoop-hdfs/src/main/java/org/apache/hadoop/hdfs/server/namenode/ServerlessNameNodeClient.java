@@ -200,7 +200,39 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public LastBlockWithStatus append(String src, String clientName, EnumSetWritable<CreateFlag> flag) throws AccessControlException, DSQuotaExceededException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        throw new UnsupportedOperationException("Function has not yet been implemented.");
+        LastBlockWithStatus stat = null;
+
+        // Arguments for the 'create' filesystem operation.
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        // Serialize the `EnumSetWritable<CreateFlag> flag` argument.
+        DataOutputBuffer out = new DataOutputBuffer();
+        ObjectWritable.writeObject(out, flag, flag.getClass(), null);
+        byte[] objectBytes = out.getData();
+        String enumSetBase64 = Base64.encodeBase64String(objectBytes);
+
+        opArguments.put("src", src);
+        opArguments.put("clientName", clientName);
+        opArguments.put("flag", enumSetBase64);
+
+        JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "append",
+                dfsClient.serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        // Extract the result from the Json response.
+        // If there's an exception, then it will be logged by this function.
+        Object result = null;
+        try {
+            result = this.serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        if (result != null)
+            stat = (LastBlockWithStatus)result;
+
+        return stat;
     }
 
     @Override

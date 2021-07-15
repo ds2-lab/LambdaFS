@@ -474,7 +474,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations = new HashMap<String, CheckedFunction<JsonObject, ?>>();
 
     operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) args -> addBlockOperation(args));
-    operations.put("append", null);
+    operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) args -> appendOperation(args));
     operations.put("complete", (CheckedFunction<JsonObject, Boolean>) args -> completeOperation(args));
     operations.put("concat", (CheckedFunction<JsonObject, Void>) args -> {
       concatOperation(args);
@@ -858,25 +858,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       previous = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);
     }
 
-    /*boolean blockIncluded = fsArgs.getAsJsonPrimitive("blockIncluded").getAsBoolean();
-
-    if (blockIncluded) {
-      LOG.info("Block variable WAS included in payload. Extracting now...");
-
-      // First the block poolID (the order we extract doesn't matter).
-      String blockPoolId = fsArgs.getAsJsonPrimitive("block.poolId").getAsString();
-
-      // Decode and deserialize the block.
-      String blockBase64 = fsArgs.getAsJsonPrimitive("blockBase64").getAsString();
-      byte[] blockBytes = Base64.decodeBase64(blockBase64);
-      DataInputBuffer dataInput = new DataInputBuffer();
-      dataInput.reset(blockBytes, blockBytes.length);
-      Block block = (Block) ObjectWritable.readObject(dataInput, null);
-      previous = new ExtendedBlock(blockPoolId, block);
-    } else {
-      LOG.info("Block variable was NOT included in payload.");
-    }*/
-
     DatanodeInfo[] excludeNodes = null;
     if (fsArgs.has("excludeNodes")) {
       // Decode and deserialize the DatanodeInfo[].
@@ -911,8 +892,24 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return namesystem.getAdditionalBlock(src, fileId, clientName, previous, excludedNodesSet, favoredNodesList);
   }
 
-  private void appendOperation(JsonObject fsArgs) {
-    throw new UnsupportedOperationException("Operation `append` has not been implemented yet.");
+  private LastBlockWithStatus appendOperation(JsonObject fsArgs) throws IOException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
+
+    byte[] enumSetSerialized = Base64.decodeBase64(fsArgs.getAsJsonPrimitive("enumSetBase64").getAsString());
+
+    DataInputBuffer dataInput = new DataInputBuffer();
+    dataInput.reset(enumSetSerialized, enumSetSerialized.length);
+    EnumSetWritable<CreateFlag> flag = ((EnumSetWritable<CreateFlag>) ObjectWritable.readObject(dataInput, null));
+
+    String clientMachine = NameNodeRpcServer.getClientMachine();
+    if (stateChangeLog.isDebugEnabled()) {
+      stateChangeLog.debug("*DIR* NameNode.append: file "
+              +src+" for "+clientName+" at "+clientMachine);
+    }
+    LastBlockWithStatus info = namesystem.appendFile(src, clientName, clientMachine, flag.get());
+    metrics.incrFilesAppended();
+    return info;
   }
 
   private boolean completeOperation(JsonObject fsArgs) throws IOException {

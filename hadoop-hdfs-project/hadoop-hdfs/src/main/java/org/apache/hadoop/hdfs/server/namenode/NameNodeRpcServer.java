@@ -1464,7 +1464,7 @@ class NameNodeRpcServer implements NamenodeProtocols {
     }
   }
 
-  private static String getClientMachine() {
+  public static String getClientMachine() {
     String clientMachine = NamenodeWebHdfsMethods.getRemoteAddress();
     if (clientMachine == null) { //not a web client
       clientMachine = Server.getRemoteAddress();
