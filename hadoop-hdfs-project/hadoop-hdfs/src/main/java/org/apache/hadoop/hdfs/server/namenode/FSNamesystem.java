@@ -3246,8 +3246,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             "Trying to store the file data in the database. Last block of the file should" +
                 " have been null");
       }
+      LOG.debug("Calling completeFileStoredInDataBase() now...");
       return completeFileStoredInDataBase(src, holder,fileId, data);
     } else {
+      LOG.debug("Calling completeFileStoredOnDataNodes() now...");
       return completeFileStoredOnDataNodes(src, holder, last, fileId);
     }
   }

@@ -477,16 +477,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations = new HashMap<String, CheckedFunction<JsonObject, ?>>();
 
     operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) args -> addBlockOperation(args));
-    operations.put("addUser", (CheckedFunction<JsonObject, Void>) args -> {
-      concatOperation(args);
+    operations.put("addGroup", (CheckedFunction<JsonObject, Void>) args -> {
+      addGroupOperation(args);
       return null;
     });
-    operations.put("addGroup", (CheckedFunction<JsonObject, Void>) args -> {
-      concatOperation(args);
+    operations.put("addUser", (CheckedFunction<JsonObject, Void>) args -> {
+      addUserOperation(args);
       return null;
     });
     operations.put("addUserToGroup", (CheckedFunction<JsonObject, Void>) args -> {
-      concatOperation(args);
+      addUserToGroupOperation(args);
       return null;
     });
     operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) args -> appendOperation(args));
@@ -499,7 +499,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("delete", (CheckedFunction<JsonObject, Boolean>) args -> deleteOperation(args));
     operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileInfoOperation(args));
     operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileLinkInfoOperation(args));
+    operations.put("getListingOperation", (CheckedFunction<JsonObject, DirectoryListing>) args -> getListingOperation(args));
     operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) args -> getServerDefaultsOperation(args));
+    operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) args -> isFileClosedOperation(args));
+    operations.put("removeUser", (CheckedFunction<JsonObject, Void>) args -> {
+      removeUserOperation(args);
+      return null;
+    });
+    operations.put("removeGroup", (CheckedFunction<JsonObject, Void>) args -> {
+      removeGroupOperation(args);
+      return null;
+    });
+    operations.put("removeUserFromGroup", (CheckedFunction<JsonObject, Void>) args -> {
+      removeUserFromGroupOperation(args);
+      return null;
+    });
     operations.put("rename", (CheckedFunction<JsonObject, Void>) args -> {
       renameOperation(args);
       return null;
@@ -1010,6 +1024,31 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     return namesystem.completeFile(src, clientName, last, fileId, data);
+  }
+
+  private DirectoryListing getListingOperation(JsonObject fsArgs) throws IOException {
+    LOG.info("Unpacking arguments for the GET-LISTING operation now...");
+
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    boolean needLocation = fsArgs.getAsJsonPrimitive("needLocation").getAsBoolean();
+
+    String startAfterBase64 = fsArgs.getAsJsonPrimitive("startAfter").getAsString();
+    byte[] startAfter = Base64.decodeBase64(startAfterBase64);
+
+    DirectoryListing files =
+            namesystem.getListing(src, startAfter, needLocation);
+    if (files != null) {
+      metrics.incrGetListingOps();
+      metrics.incrFilesInGetListingOps(files.getPartialListing().length);
+    }
+    return files;
+  }
+
+  private boolean isFileClosedOperation(JsonObject fsArgs) throws IOException {
+    LOG.info("Unpacking arguments for the IS-FILE-CLOSED operation now...");
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+
+    return namesystem.isFileClosed(src);
   }
 
   private void concatOperation(JsonObject fsArgs) throws IOException {

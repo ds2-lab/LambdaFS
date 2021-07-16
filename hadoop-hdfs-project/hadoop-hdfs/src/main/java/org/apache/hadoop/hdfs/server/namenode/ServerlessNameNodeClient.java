@@ -424,7 +424,30 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public DirectoryListing getListing(String src, byte[] startAfter, boolean needLocation) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("startAfter", startAfter);
+        opArguments.put("needLocation", needLocation);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "getListing",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        Object result = null;
+        try {
+            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+        }
+        if (result != null)
+            return (DirectoryListing)result;
+
+        return null;
     }
 
     @Override
@@ -510,6 +533,29 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean isFileClosed(String src) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "isFileClosed",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        Object result = null;
+        try {
+            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+            throw new IOException("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+        }
+        if (result != null)
+            return (boolean)result;
+
         return false;
     }
 
