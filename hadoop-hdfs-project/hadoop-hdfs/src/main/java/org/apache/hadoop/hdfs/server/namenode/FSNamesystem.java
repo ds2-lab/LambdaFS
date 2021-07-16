@@ -118,7 +118,7 @@ import org.apache.hadoop.util.*;
 import org.apache.log4j.Appender;
 import org.apache.log4j.AsyncAppender;
 import org.apache.log4j.Logger;
-import org.codehaus.jackson.map.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.jetty.util.ajax.JSON;
 
 import javax.management.NotCompliantMBeanException;
