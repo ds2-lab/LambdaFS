@@ -926,6 +926,8 @@ public class DFSOutputStream extends FSOutputSummer
         throw e;
       }
     }
+
+    LOG.debug("File complete = " + fileComplete);
     return fileComplete;
   }
 
