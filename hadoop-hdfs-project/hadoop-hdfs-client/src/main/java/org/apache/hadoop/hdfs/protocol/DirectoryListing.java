@@ -19,13 +19,16 @@ package org.apache.hadoop.hdfs.protocol;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 
+import java.io.Serializable;
+
 /**
  * This class defines a partial listing of a directory to support
  * iterative directory listing.
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class DirectoryListing {
+public class DirectoryListing implements Serializable {
+  private static final long serialVersionUID = -824636529351562996L;
   private HdfsFileStatus[] partialListing;
   private int remainingEntries;
 
