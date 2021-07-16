@@ -499,7 +499,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("delete", (CheckedFunction<JsonObject, Boolean>) args -> deleteOperation(args));
     operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileInfoOperation(args));
     operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileLinkInfoOperation(args));
-    operations.put("getListingOperation", (CheckedFunction<JsonObject, DirectoryListing>) args -> getListingOperation(args));
+    operations.put("getListing", (CheckedFunction<JsonObject, DirectoryListing>) args -> getListingOperation(args));
     operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) args -> getServerDefaultsOperation(args));
     operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) args -> isFileClosedOperation(args));
     operations.put("removeUser", (CheckedFunction<JsonObject, Void>) args -> {
