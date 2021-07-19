@@ -73,6 +73,48 @@ public class StorageReportClusterJ
     private final ClusterjConnector connector = ClusterjConnector.getInstance();
     private MysqlServerConnector mysqlConnector = MysqlServerConnector.getInstance();
 
+    /**
+     * Source: https://stackoverflow.com/questions/7745609/sql-select-only-rows-with-max-value-on-a-column
+     *
+     * This is the second method described by the top answer. That is, Left Joining with self,
+     * tweaking join conditions and filters.
+     *
+     * When formatting this String, the parameters to String.format() should be as follows:
+     *
+     * String.format(LATEST_REPORT_QUERY, TABLE_NAME, TABLE_NAME, DATANODE_UUID, DATANODE_UUID, REPORT_ID, REPORT_ID,
+     *                  GROUP_ID, GROUP_ID, ...
+     */
+    private static final String LATEST_REPORT_QUERY =
+            "SELECT a.* FROM %s a LEFT OUTER JOIN %s b ON a.%s = b.%s AND a.%s = b.%s AND a.%s < b.%s WHERE b.%s IS NULL;";
+
+    /**
+     * Query to retrieve the maximum groupId for a particular DataNode UUID.
+     *
+     * When formatting this String, the parameters to String.format() should be as follows:
+     *      String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, DATANODE_UUID, datanodeUuid)
+     */
+    private static final String MAX_GROUP_ID_QUERY =
+            "SELECT max(%s) FROM %s WHERE %s = \"%s\"";
+
+    /**
+     * This is used to retrieve all StorageReport instances with a groupId strictly greater than the one specified
+     * by the caller.
+     *
+     * When formatting this String, the parameters to String.format() should be as follows:
+     *      String.format(GREATER_THAN_GROUP_ID_QUERY, TABLE_NAME, GROUP_ID, groupId)
+     */
+    private static final String GREATER_THAN_GROUP_ID_QUERY =
+            "SELECT * from %s WHERE %s > %d";
+
+    /**
+     * Used to delete all StorageReport instances associated with a given DataNode.
+     *
+     * When formatting this String, the parameters to String.format() should be as follows:
+     *      String.format(DELETE_STORAGE_REPORTS_QUERY, TABLE_NAME, DATANODE_UUID, datanodeUuid)
+     */
+    private static final String DELETE_STORAGE_REPORTS_QUERY =
+            "DELETE FROM %s WHERE %s = %s";
+
     @Override
     public StorageReport getStorageReport(int groupId, int reportId, String datanodeUuid) throws StorageException {
         LOG.info("GET StorageReport groupId = " + groupId + ", reportId = " + reportId);
@@ -124,6 +166,43 @@ public class StorageReportClusterJ
 
         session.deletePersistentAll(storeReportDTOs);
         session.release(storeReportDTOs);
+    }
+
+    @Override
+    public void removeStorageReports(String datanodeUuid) throws StorageException {
+        LOG.info("DELETE StorageReports for DN " + datanodeUuid);
+
+        PreparedStatement s = null;
+        ResultSet result = null;
+
+        String query = String.format(DELETE_STORAGE_REPORTS_QUERY, TABLE_NAME, DATANODE_UUID, datanodeUuid);
+        LOG.debug("Executing MySQL query: " + query);
+
+        try {
+            Connection conn = mysqlConnector.obtainSession();
+            s = conn.prepareStatement(query);
+            result = s.executeQuery();
+        } catch (SQLException ex) {
+            throw HopsSQLExceptionHelper.wrap(ex);
+        } finally {
+            if (s != null) {
+                try {
+                    s.close();
+                } catch (SQLException ex) {
+                    LOG.warn("Exception when closing the PrepareStatement", ex);
+                }
+            }
+
+            if (result != null) {
+                try {
+                    result.close();
+                } catch (SQLException ex) {
+                    LOG.warn("Exception when closing the ResultSet", ex);
+                }
+            }
+
+            mysqlConnector.closeSession();
+        }
     }
 
     @Override
@@ -228,39 +307,6 @@ public class StorageReportClusterJ
 
         return resultList;
     }
-
-    /**
-     * Source: https://stackoverflow.com/questions/7745609/sql-select-only-rows-with-max-value-on-a-column
-     *
-     * This is the second method described by the top answer. That is, Left Joining with self,
-     * tweaking join conditions and filters.
-     *
-     * When formatting this String, the parameters to String.format() should be as follows:
-     *
-     * String.format(LATEST_REPORT_QUERY, TABLE_NAME, TABLE_NAME, DATANODE_UUID, DATANODE_UUID, REPORT_ID, REPORT_ID,
-     *                  GROUP_ID, GROUP_ID, ...
-     */
-    private static final String LATEST_REPORT_QUERY =
-            "SELECT a.* FROM %s a LEFT OUTER JOIN %s b ON a.%s = b.%s AND a.%s = b.%s AND a.%s < b.%s WHERE b.%s IS NULL;";
-
-    /**
-     * Query to retrieve the maximum groupId for a particular DataNode UUID.
-     *
-     * When formatting this String, the parameters to String.format() should be as follows:
-     *      String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, DATANODE_UUID, datanodeUuid)
-     */
-    private static final String MAX_GROUP_ID_QUERY =
-            "SELECT max(%s) FROM %s WHERE %s = \"%s\"";
-
-    /**
-     * This is used to retrieve all StorageReport instances with a groupId strictly greater than the one specified
-     * by the caller.
-     *
-     * When formatting this String, the parameters to String.format() should be as follows:
-     *      String.format(GREATER_THAN_GROUP_ID_QUERY, TABLE_NAME, GROUP_ID, groupId)
-     */
-    private static final String GREATER_THAN_GROUP_ID_QUERY =
-            "SELECT * from %s WHERE %s > %d";
 
     private int getMaxGroupId(String datanodeUuid) throws StorageException {
         String query = String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, DATANODE_UUID, datanodeUuid);

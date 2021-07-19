@@ -31,6 +31,11 @@ public interface StorageReportDataAccess<T> extends EntityDataAccess {
     void removeStorageReports(int groupId, String datanodeUuid) throws StorageException;
 
     /**
+     * Remove all StorageReport instances associated with the datanode identified by the given UUID.
+     */
+    void removeStorageReports(String datanodeUuid) throws StorageException;
+
+    /**
      * Store the given StorageReport instance in NDB.
      * @param storageReport The instance to store in NDB.
      */

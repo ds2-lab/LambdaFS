@@ -130,6 +130,23 @@ public class DatanodeStorageClusterJ
     }
 
     @Override
+    public void removeDatanodeStorages(String datanodeUuid) throws StorageException {
+        HopsSession session = connector.obtainSession();
+
+        HopsQueryBuilder qb = session.getQueryBuilder();
+        HopsQueryDomainType<DatanodeStorageDTO> dobj = qb.createQueryDefinition(DatanodeStorageDTO.class);
+        HopsPredicate pred1 = dobj.get("datanodeUuid").equal(dobj.param("datanodeUuidParam"));
+        dobj.where(pred1);
+
+        HopsQuery<DatanodeStorageDTO> query = session.createQuery(dobj);
+        query.setParameter("datanodeUuidParam", datanodeUuid);
+        List<DatanodeStorageDTO> dtos = query.getResultList();
+
+        session.deletePersistentAll(dtos);
+        session.release(dtos);
+    }
+
+    @Override
     public void addDatanodeStorage(DatanodeStorage datanodeStorage) throws StorageException {
         LOG.info("ADD DatanodeStorage " + datanodeStorage.toString());
         DatanodeStorageDTO toAdd = null;

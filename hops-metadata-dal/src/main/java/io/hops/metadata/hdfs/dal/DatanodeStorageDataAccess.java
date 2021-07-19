@@ -27,6 +27,11 @@ public interface DatanodeStorageDataAccess<T> extends EntityDataAccess {
     void removeDatanodeStorage(String storageId, String datanodeUuid) throws StorageException;
 
     /**
+     * Remove all DatanodeStorage instances associated with the datanode identified by the given UUID.
+     */
+    void removeDatanodeStorages(String datanodeUuid) throws StorageException;
+
+    /**
      * Store the given DatanodeStorage instance in NDB.
      * @param datanodeStorage The DatanodeStorage instance to store in NDB.
      */
