@@ -297,6 +297,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private static long nameNodeID = -1;
 
   /**
+   * This variable is used to keep track of the last storage report retrieved from intermediate storage.
+   */
+  private int lastStorageReportGroupId = 0;
+
+  /**
    * Source: https://stackoverflow.com/questions/1660501/what-is-a-good-64bit-hash-function-in-java-for-textual-strings
    * Used to convert the activation ID of this serverless function to a long to use as the NameNode ID.
    *
@@ -438,8 +443,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     try {
+      LOG.debug("Last groupId processed by the NameNode: " + nameNodeInstance.lastStorageReportGroupId);
       List<DatanodeRegistration> datanodeRegistrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
-      nameNodeInstance.retrieveAndProcessStorageReports(datanodeRegistrations);
+      nameNodeInstance.lastStorageReportGroupId = nameNodeInstance.retrieveAndProcessStorageReports(datanodeRegistrations);
       nameNodeInstance.populateOperationsMap();
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
@@ -688,9 +694,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           List<DatanodeRegistration> registrations) throws IOException {
     LOG.info("Retrieving StorageReport instances for " + registrations.size() + " data nodes now...");
 
-    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
-            (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
-
     HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap = new HashMap<>();
 
     for (DatanodeRegistration registration : registrations) {
@@ -703,8 +706,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    * Retrieve the storage reports associated with one particular DataNode.
+   *
    * @param registration
-   * @return
+   * @return List of converted StorageReport instances (converted from DAL representation to internal HopsFS representation)
    * @throws IOException
    */
   private List<io.hops.metadata.hdfs.entity.StorageReport> retrieveStorageReports(DatanodeRegistration registration)
@@ -723,8 +727,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Get the StorageReport and DatanodeStorage instances from intermediate storage and perform the necessary
    * processing in order to populate the NameNode with the relevant information.
+   *
+   * @return The largest groupId processes during this operation.
    */
-  private void retrieveAndProcessStorageReports(List<DatanodeRegistration> datanodeRegistrations) throws IOException {
+  private int retrieveAndProcessStorageReports(List<DatanodeRegistration> datanodeRegistrations) throws IOException {
     // TODO: Retrieve storage reports.
 
     // Procedure:

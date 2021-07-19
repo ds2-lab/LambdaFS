@@ -146,6 +146,62 @@ public class StorageReportClusterJ
     }
 
     @Override
+    public List<StorageReport> getStorageReportsAfterGroupId(int groupId, String datanodeUuid) throws StorageException {
+        LOG.info("GET StorageReports after group " + groupId + ", DN UUID: " + datanodeUuid);
+
+        PreparedStatement s = null;
+        ResultSet result = null;
+
+        String query = String.format(GREATER_THAN_GROUP_ID_QUERY, TABLE_NAME, GROUP_ID, groupId);
+        LOG.debug("Executing MySQL query: " + query);
+
+        ArrayList<StorageReport> resultList = new ArrayList<>();
+
+        try {
+            Connection conn = mysqlConnector.obtainSession();
+            s = conn.prepareStatement(query);
+            result = s.executeQuery();
+
+            LOG.debug("Result = " + result.toString());
+
+            while (result.next()) {
+                StorageReport report = new StorageReport(
+                    result.getInt(GROUP_ID), result.getInt(REPORT_ID), result.getString(DATANODE_UUID),
+                        result.getBoolean(FAILED), result.getLong(CAPACITY), result.getLong(DFS_USED),
+                        result.getLong(REMAINING), result.getLong(BLOCK_POOL_USED),
+                        result.getString(DATANODE_STORAGE_ID)
+                );
+
+                LOG.debug("Retrieved StorageReport instance: " + report.toString());
+
+                resultList.add(report);
+            }
+        } catch (SQLException ex) {
+            throw HopsSQLExceptionHelper.wrap(ex);
+        } finally {
+            if (s != null) {
+                try {
+                    s.close();
+                } catch (SQLException ex) {
+                    LOG.warn("Exception when closing the PrepareStatement", ex);
+                }
+            }
+
+            if (result != null) {
+                try {
+                    result.close();
+                } catch (SQLException ex) {
+                    LOG.warn("Exception when closing the ResultSet", ex);
+                }
+            }
+
+            mysqlConnector.closeSession();
+        }
+
+        return resultList;
+    }
+
+    @Override
     public List<StorageReport> getStorageReports(int groupId, String datanodeUuid) throws StorageException {
         LOG.info("GET StorageReport group " + groupId + ", DN UUID: " + datanodeUuid);
 
@@ -191,14 +247,23 @@ public class StorageReportClusterJ
      * Query to retrieve the maximum groupId for a particular DataNode UUID.
      *
      * When formatting this String, the parameters to String.format() should be as follows:
-     *
-     * String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, datanodeUuid)
+     *      String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, DATANODE_UUID, datanodeUuid)
      */
     private static final String MAX_GROUP_ID_QUERY =
-            "SELECT max(%s) FROM %s WHERE datanode_uuid = \"%s\"";
+            "SELECT max(%s) FROM %s WHERE %s = \"%s\"";
+
+    /**
+     * This is used to retrieve all StorageReport instances with a groupId strictly greater than the one specified
+     * by the caller.
+     *
+     * When formatting this String, the parameters to String.format() should be as follows:
+     *      String.format(GREATER_THAN_GROUP_ID_QUERY, TABLE_NAME, GROUP_ID, groupId)
+     */
+    private static final String GREATER_THAN_GROUP_ID_QUERY =
+            "SELECT * from %s WHERE %s > %d";
 
     private int getMaxGroupId(String datanodeUuid) throws StorageException {
-        String query = String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, datanodeUuid);
+        String query = String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, DATANODE_UUID, datanodeUuid);
 
         LOG.debug("Executing MySQL query: " + query);
 
