@@ -89,7 +89,31 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public LocatedBlocks getBlockLocations(String src, long offset, long length) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        throw new UnsupportedOperationException("Function has not yet been implemented.");
+        LocatedBlocks locatedBlocks = null;
+
+        // Arguments for the 'create' filesystem operation.
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("offset", offset);
+        opArguments.put("length", length);
+
+        JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "getBlockLocations",
+                dfsClient.serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        Object result = null;
+        try {
+            result = this.serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        if (result != null)
+            locatedBlocks = (LocatedBlocks)result;
+
+        return locatedBlocks;
     }
 
     @Override

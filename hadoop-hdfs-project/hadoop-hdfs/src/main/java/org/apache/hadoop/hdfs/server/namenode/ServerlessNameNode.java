@@ -502,6 +502,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     });
     operations.put("create", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> createOperation(args));
     operations.put("delete", (CheckedFunction<JsonObject, Boolean>) args -> deleteOperation(args));
+    operations.put("getBlockLocations", (CheckedFunction<JsonObject, LocatedBlocks>) args -> getBlockLocationsOperation(args));
     operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileInfoOperation(args));
     operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileLinkInfoOperation(args));
     operations.put("getListing", (CheckedFunction<JsonObject, DirectoryListing>) args -> getListingOperation(args));
@@ -1077,6 +1078,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
 
     return namesystem.isFileClosed(src);
+  }
+
+  private LocatedBlocks getBlockLocationsOperation(JsonObject fsArgs) throws IOException {
+    LOG.info("Unpacking arguments for the GET-BLOCK-LOCATIONS operation now...");
+
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    long offset = fsArgs.getAsJsonPrimitive("offset").getAsLong();
+    long length = fsArgs.getAsJsonPrimitive("length").getAsLong();
+
+    metrics.incrGetBlockLocations();
+
+    return namesystem.getBlockLocations(NameNodeRpcServer.getClientMachine(), src, offset, length);
   }
 
   private void concatOperation(JsonObject fsArgs) throws IOException {
