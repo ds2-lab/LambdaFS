@@ -299,7 +299,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * This variable is used to keep track of the last storage report retrieved from intermediate storage.
    */
-  private int lastStorageReportGroupId = 0;
+  private HashMap<String, Integer> lastStorageReportGroupIds = new HashMap<>();
 
   /**
    * Source: https://stackoverflow.com/questions/1660501/what-is-a-good-64bit-hash-function-in-java-for-textual-strings
@@ -443,9 +443,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     try {
-      LOG.debug("Last groupId processed by the NameNode: " + nameNodeInstance.lastStorageReportGroupId);
       List<DatanodeRegistration> datanodeRegistrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
-      nameNodeInstance.lastStorageReportGroupId = nameNodeInstance.retrieveAndProcessStorageReports(datanodeRegistrations);
+      nameNodeInstance.retrieveAndProcessStorageReports(datanodeRegistrations);
       nameNodeInstance.populateOperationsMap();
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
@@ -718,6 +717,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
             (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
 
+    // Get the largest groupId retrieved for this particular DataNode.
+    // We default to 0 if there is no value stored yet as 0 is the starting value for groupIds.
+    int lastStorageReportGroupId = lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(), 0);
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
         = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId - 1, registration.getDatanodeUuid());
         // = dataAccess.getLatestStorageReports(registration.getDatanodeUuid());
@@ -733,7 +735,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * @return The largest groupId processes during this operation.
    */
-  private int retrieveAndProcessStorageReports(List<DatanodeRegistration> datanodeRegistrations) throws IOException {
+  private void retrieveAndProcessStorageReports(List<DatanodeRegistration> datanodeRegistrations) throws IOException {
     // TODO: Retrieve storage reports.
 
     // Procedure:
@@ -759,6 +761,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       datanodeStorageMaps.put(datanodeUuid, datanodeStorageMap);
     }
+
+    // Map to keep track of the largest groupId retrieved for each DataNode. Specifically, this maps
+    // the DataNode's UUID to the largest groupId retrieved during this operation.
+    HashMap<String, Integer> largestGroupIds = new HashMap<>();
 
     HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap
             = this.retrieveStorageReports(datanodeRegistrations);
@@ -790,6 +796,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
                 report.getCapacity(), report.getDfsUsed(), report.getRemaining(), report.getBlockPoolUsed());
 
         convertedStorageReports.add(convertedReport);
+
+        if (report.getGroupId() > largestGroupIds.getOrDefault(report.getDatanodeUuid(), -1))
+          largestGroupIds.put(report.getDatanodeUuid(), report.getGroupId());
       }
 
       convertedStorageReportMap.put(datanodeUuid, convertedStorageReports);
@@ -806,6 +815,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               registration, convertedStorageReportMap.get(
                       registration.getDatanodeUuid()).toArray(
                       new org.apache.hadoop.hdfs.server.protocol.StorageReport[0]));
+    }
+
+    // Update the groupIds map.
+    for (Map.Entry<String, Integer> entry : largestGroupIds.entrySet()) {
+      String datanodeUuid = entry.getKey();
+      int groupId = entry.getValue();
+
+      lastStorageReportGroupIds.put(datanodeUuid, groupId);
+
+      LOG.debug("Largest groupId retrieved for DataNode " + datanodeUuid + ": " + groupId);
     }
   }
 
