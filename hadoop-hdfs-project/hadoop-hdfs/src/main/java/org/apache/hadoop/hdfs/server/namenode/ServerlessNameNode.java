@@ -719,7 +719,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
 
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
-            = dataAccess.getLatestStorageReports(registration.getDatanodeUuid());
+        = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId - 1, registration.getDatanodeUuid());
+        // = dataAccess.getLatestStorageReports(registration.getDatanodeUuid());
+
+    LOG.debug("Retrieved " + storageReports.size() + " storage report instances from intermediate storage...");
 
     return storageReports;
   }
