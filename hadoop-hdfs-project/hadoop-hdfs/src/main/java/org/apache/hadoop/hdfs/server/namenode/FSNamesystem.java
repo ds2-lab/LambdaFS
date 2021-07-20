@@ -877,8 +877,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   private NamespaceInfo unprotectedGetNamespaceInfo() throws IOException {
     StorageInfo storageInfo = StorageInfo.getStorageInfoFromDB();
 
-    this.serverlessNameNode.
-
     return new NamespaceInfo(storageInfo.getNamespaceID(), getClusterId(),
         getBlockPoolId(), storageInfo.getCTime());
   }
