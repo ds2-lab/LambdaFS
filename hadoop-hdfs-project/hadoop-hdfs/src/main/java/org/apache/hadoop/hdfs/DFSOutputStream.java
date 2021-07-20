@@ -851,6 +851,7 @@ public class DFSOutputStream extends FSOutputSummer
     flushInternal();             // flush all data to Datanodes
     // get last block before destroying the streamer
     ExtendedBlock lastBlock = streamer.getBlock();
+    LOG.debug("Last Block: Name: " + lastBlock.getBlockName() + ", ID: " + lastBlock.getBlockId());
     TraceScope scope = dfsClient.getTracer().newScope("completeFile");
     try {
       completeFile(lastBlock);
@@ -913,6 +914,8 @@ public class DFSOutputStream extends FSOutputSummer
     }
 
     try {
+      LOG.debug("Client " + dfsClient.clientName + " attempting to complete file: " + src);
+
       fileComplete =
               dfsClient.namenode.complete(src, dfsClient.clientName, last, fileId, data);
     } catch (RemoteException e) {

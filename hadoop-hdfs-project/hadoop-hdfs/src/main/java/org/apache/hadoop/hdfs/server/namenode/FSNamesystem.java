@@ -3208,7 +3208,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
                   .skipReadingQuotaAttr(!dir.isQuotaEnabled());
               locks.add(il);
             }
-            //we have to lock all leasse for the client becuase the file could have been renamed
+            //we have to lock all leases for the client because the file could have been renamed
             LeaseLock leaseLock = (LeaseLock)lf.getLeaseLockAllPaths(LockType.WRITE, holder,
                     leaseCreationLockRows);
             locks.add(leaseLock).add(lf.getLeasePathLock(LockType.WRITE))
@@ -3261,6 +3261,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     INode inode = null;
     try {
       if (fileId == HdfsConstantsClient.GRANDFATHER_INODE_ID) {
+        LOG.debug("Attempting to resolve the path of the file: " + src);
         // Older clients may not have given us an inode ID to work with.
         // In this case, we have to try to resolve the path and hope it
         // hasn't changed or been deleted since the file was opened for write.

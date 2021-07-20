@@ -547,52 +547,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     Object returnValue = this.operations.get(op).apply(fsArgs);
     JsonObject result = null;
 
-    // Now we perform the desired/specified operation.
-    /*switch(op) {
-      case "addBlock":
-        returnValue = addBlockOperation(fsArgs);
-        break;
-      case "append":
-        appendOperation(fsArgs);
-        break;
-      case "complete":
-        returnValue = completeOperation(fsArgs);
-        break;
-      case "concat":
-        concatOperation(fsArgs);
-        break;
-      case "create":
-        returnValue = createOperation(fsArgs);
-        break;
-      case "delete":
-        deleteOperation(fsArgs);
-        break;
-      case "getFileInfo":
-        break;
-      case "getServerDefaults":
-        returnValue = getServerDefaultsOperation(fsArgs);
-        break;
-      case "rename":
-        renameOperation(fsArgs);
-        break;
-      case "versionRequest":
-        returnValue = versionRequestOperation(fsArgs);
-        break;
-      default:
-        LOG.info("Unknown operation: " + op);
-    }*/
-
     // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64 so we
     // can include it in the JSON response sent back to the invoker of this serverless function.
     if (returnValue != null) {
-      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      ObjectOutputStream objectOutputStream = null;
 
-      try {
+      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+        ObjectOutputStream objectOutputStream;
         LOG.info("-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
         LOG.info("returnValue.getClass() = " + returnValue.getClass());
         LOG.info("returnValue instanceof Serializable: " + (returnValue instanceof Serializable));
-        LOG.info("returnValue BEFORE being serialized:\n" + returnValue.toString());
+        LOG.info("returnValue BEFORE being serialized:\n" + returnValue);
+        LOG.info("Operation performed: " + op);
         LOG.info("-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
         objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
         objectOutputStream.writeObject(returnValue);
@@ -608,13 +573,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         ex.printStackTrace();
         result = new JsonObject();
         result.addProperty("EXCEPTION", ex.toString());
-      } finally {
-        try {
-          byteArrayOutputStream.close();
-        } catch (IOException ex) {
-          // Ignore close exception.
-        }
       }
+      // Ignore close exception.
     }
 
     // Create this object if it wasn't already created.
@@ -876,7 +836,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               dnId, storageInfo, new ExportedBlockKeys(), VersionInfo.getVersion());
 
       try {
-        namesystem.registerDatanode(datanodeRegistration);
+        if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
+                datanodeRegistration.getDatanodeUuid()) != null) {
+          LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
+        } else {
+          LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
+          namesystem.registerDatanode(datanodeRegistration);
+        }
 
         datanodeRegistrations.add(datanodeRegistration);
       } catch (IOException ex) {

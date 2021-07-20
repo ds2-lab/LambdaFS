@@ -558,6 +558,9 @@ public class DatanodeDescriptor extends DatanodeInfo {
     setLastUpdateMonotonic(Time.monotonicNow());
     this.volumeFailures = volFailures;
     this.volumeFailureSummary = volumeFailureSummary;
+
+    LOG.debug("Processing " + reports.length + " Storage Reports now...");
+
     for (StorageReport report : reports) {
       try {
         DatanodeStorageInfo storage = updateStorage(report.getStorage());
