@@ -380,6 +380,7 @@ class BPServiceActor implements Runnable {
 
     int reportId = 0;
     int groupId = dn.getAndIncrementStorageReportGroupCounter();
+    // Check NDB for the last-used groupId.
 
     HashSet<DatanodeStorage> datanodeStorages = new HashSet<>();
 

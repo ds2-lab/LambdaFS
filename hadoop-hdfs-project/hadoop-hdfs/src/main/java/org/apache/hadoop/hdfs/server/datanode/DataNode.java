@@ -57,8 +57,10 @@ import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
 import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
+import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
 import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.metadata.hdfs.entity.DatanodeStorage;
+import io.hops.metadata.hdfs.entity.StorageReport;
 import io.hops.security.CertificateLocalizationCtx;
 import io.hops.security.CertificateLocalizationService;
 import io.hops.security.HopsSecurityActionsFactory;
@@ -121,12 +123,8 @@ import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsVolumeSpi;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.FsVolumeImpl;
 import org.apache.hadoop.hdfs.server.datanode.metrics.DataNodeMetrics;
 import org.apache.hadoop.hdfs.server.datanode.web.DatanodeHttpServer;
+import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.BlockRecoveryCommand.RecoveringBlock;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeProtocol;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
-import org.apache.hadoop.hdfs.server.protocol.InterDatanodeProtocol;
-import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
-import org.apache.hadoop.hdfs.server.protocol.ReplicaRecoveryInfo;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.ReadaheadPool;
 import org.apache.hadoop.ipc.ProtobufRpcEngine;
@@ -262,7 +260,7 @@ public class DataNode extends ReconfigurableBase
   /**
    * Each time a new group of StorageReport instances is written to NDB, this variable is incremented.
    */
-  private volatile int storageReportGroupCounter = 0;
+  private volatile int storageReportGroupCounter = -1;
 
   static {
     HdfsConfiguration.init();
@@ -506,6 +504,19 @@ public class DataNode extends ReconfigurableBase
    * BEFORE it was incremented during this method's execution.
    */
   public synchronized int getAndIncrementStorageReportGroupCounter() {
+    if (storageReportGroupCounter == -1) {
+      StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> reportAccess =
+              (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+      try {
+        this.storageReportGroupCounter = reportAccess.getLastGroupId(getDatanodeUuid()) + 1;
+      } catch (StorageException e) {
+        LOG.error("Encountered exception whilst querying intermediate storage for the largest groupId used.", e);
+        e.printStackTrace();
+
+        LOG.error("Defaulting to an initial groupId of 0 for now...");
+        this.storageReportGroupCounter = 0;
+      }
+    }
     int tmp = storageReportGroupCounter;
     storageReportGroupCounter += 1;
     return tmp;

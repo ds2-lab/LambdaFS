@@ -198,6 +198,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private static String versionNumber = "0.1.1.11";
 
+  /**
+   * A mapping from operation/function name to the respective functions. We use this to call FS operations and whatever
+   * other functions as directed by clients and DataNodes.
+   */
   private Map<String, CheckedFunction<JsonObject, ?>> operations;
 
   /**
@@ -299,7 +303,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * This variable is used to keep track of the last storage report retrieved from intermediate storage.
    */
-  private HashMap<String, Integer> lastStorageReportGroupIds = new HashMap<>();
+  private final HashMap<String, Integer> lastStorageReportGroupIds = new HashMap<>();
 
   /**
    * Source: https://stackoverflow.com/questions/1660501/what-is-a-good-64bit-hash-function-in-java-for-textual-strings

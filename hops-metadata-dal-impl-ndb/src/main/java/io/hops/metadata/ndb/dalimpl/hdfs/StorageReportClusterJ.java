@@ -225,6 +225,13 @@ public class StorageReportClusterJ
     }
 
     @Override
+    public int getLastGroupId(String datanodeUuid) throws StorageException {
+        LOG.info("GET largest groupId for DN: " + datanodeUuid);
+
+        return getMaxGroupId(datanodeUuid);
+    }
+
+    @Override
     public List<StorageReport> getStorageReportsAfterGroupId(int groupId, String datanodeUuid) throws StorageException {
         LOG.info("GET StorageReports after group " + groupId + ", DN UUID: " + datanodeUuid);
 
