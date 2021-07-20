@@ -54,6 +54,7 @@ import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -164,46 +165,22 @@ class BPServiceActor implements Runnable {
       try {
         LOG.debug("Attempting to invoke NameNode for DN-NN handshake now...");
 
+        HashMap<String, Object> fsArgs = new HashMap<>();
+
+        String uuid = dn.getDatanodeUuid();
+
+        if (uuid == null) {
+          LOG.warn("DataNode does not have a UUID yet...");
+        }
+
+        fsArgs.put("uuid", "N/A"); // This will always result in a groupId of 0 being assigned...
+
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "versionRequest",
                 dnConf.serverlessEndpoint,
                 null,
-                null
+                fsArgs
         );
-
-        /*CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-        // Instead of using RPC to call the create() function, we perform a serverless invocation.
-        String uri = dnConf.serverlessEndpoint;
-        LOG.info("OpenWhisk URI: \"" + uri + "\"");
-        HttpPost request = new HttpPost(uri);
-        request.addHeader("content-type", "application/json");
-
-        // Arguments for the NameNode program itself.
-        JsonObject namenodeArgs = new JsonObject();
-
-        // Arguments for the particular operation we're performing.
-        JsonObject opArguments = new JsonObject();
-
-        // Add the function arguments to the invocation request arguments.
-        namenodeArgs.add("fsArgs", opArguments);
-        namenodeArgs.addProperty("op", "versionRequest");
-        namenodeArgs.addProperty("command-line-arguments", "-regular");
-
-        JsonObject requestArguments = new JsonObject();
-        // It looks like OpenWhisk expects the arguments for the serverless
-        // function to be stored with the key/property "value".
-        requestArguments.add("value", namenodeArgs);
-
-        StringEntity params = new StringEntity(requestArguments.toString());
-        request.setEntity(params);
-
-        LOG.debug("Issuing request now...");
-        HttpResponse response = httpClient.execute(request);
-
-        String json = EntityUtils.toString(response.getEntity(), "UTF-8");
-        //LOG.info("json = " + json);
-        Gson gson = new Gson();
-        JsonObject responseJson = gson.fromJson(json, JsonObject.class);*/
 
         LOG.info("responseJson = " + responseJson.toString());
 
@@ -211,20 +188,6 @@ class BPServiceActor implements Runnable {
         if (result != null)
           nsInfo = (NamespaceInfo)result;
 
-        /*if (responseJson.has("RESULT")) {
-          String resultBase64 = responseJson.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
-          byte[] resultSerialized = Base64.decodeBase64(resultBase64);
-
-          ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
-          ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-          nsInfo = (NamespaceInfo) objectInputStream.readObject();
-        } else if (responseJson.has("EXCEPTION")) {
-          String exception = responseJson.getAsJsonPrimitive("EXCEPTION").getAsString();
-          LOG.error("Exception encountered during Serverless NameNode execution.");
-          LOG.error(exception);
-        }*/
-
-        //nsInfo = bpNamenode.versionRequest();
         LOG.debug(this + " received versionRequest response: " + nsInfo);
         break;
       } catch (SocketTimeoutException e) {  // namenode is busy
@@ -619,7 +582,7 @@ class BPServiceActor implements Runnable {
     if(!bpos.otherActorsConnectedToNNs(this) && bpos.firstActor(this)) {
       bpos.scheduleBlockReport(dnConf.initialBlockReportDelay);
     } else {
-      LOG.info("Block Report skipped as other BPServiceActors are connected to the namenodes ");
+      LOG.info("Block Report skipped as other BPServiceActors are connected to the namenodes.");
     }
   }
 

@@ -500,11 +500,19 @@ public class DataNode extends ReconfigurableBase
   }
 
   /**
+   * Set the Storage Report groupId counter to a specific value. This is used during registration.
+   */
+  public synchronized void setStorageReportGroupCounter(int groupCounter) {
+    this.storageReportGroupCounter = groupCounter;
+  }
+
+  /**
    * Increments the `storageReportGroupCounter` instance variable and returns the value of this variable
    * BEFORE it was incremented during this method's execution.
    */
   public synchronized int getAndIncrementStorageReportGroupCounter() {
     if (storageReportGroupCounter == -1) {
+      LOG.debug("Retrieving Storage Report groupId from NDB...");
       StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> reportAccess =
               (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
       try {

@@ -1126,8 +1126,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private NamespaceInfo versionRequestOperation(JsonObject fsArgs) throws IOException {
     LOG.info("Performing versionRequest operation now...");
+
+    String datanodeUuid = fsArgs.get("uuid").getAsString();
+
     namesystem.checkSuperuserPrivilege();
-    return namesystem.getNamespaceInfo();
+    NamespaceInfo nsInfo = namesystem.getNamespaceInfo();
+
+    // Check for an existing groupId associated with this DataNode.
+    // This would exist if the DN had crashed and is restarting or something to that effect.
+    int groupId = this.lastStorageReportGroupIds.getOrDefault(datanodeUuid, 0);
+    LOG.debug("Assigning groupId " + groupId + " to DN " + datanodeUuid);
+    nsInfo.setGroupId(groupId);
+
+    return nsInfo;
   }
 
   /**
