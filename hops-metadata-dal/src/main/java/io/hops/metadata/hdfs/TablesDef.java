@@ -53,6 +53,14 @@ public class TablesDef {
     String STORAGE_TYPE = "storage_type";
   }
 
+  public interface IntermediateBlockReportsTableDef {
+    String TABLE_NAME = "intermediate_block_reports";
+    String REPORT_ID = "report_id";
+    String DATANODE_UUID = "datanode_uuid";
+    String POOL_ID = "pool_id";
+    String RECEIVED_AND_DELETED_BLOCKS = "received_and_deleted_blocks";
+  }
+
   public interface BlockLookUpTableDef {
     String TABLE_NAME = "hdfs_block_lookup_table";
     String BLOCK_ID = "block_id";

@@ -1597,7 +1597,7 @@ class BPOfferService implements Runnable {
     }
   }
   
-    /**
+  /**
    * Utility class that wraps the timestamp computations for scheduling
    * heartbeats and block reports.
    */

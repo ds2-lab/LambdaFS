@@ -21,6 +21,7 @@ package org.apache.hadoop.security.token.delegation;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Arrays;
 
 import javax.crypto.SecretKey;
@@ -36,7 +37,8 @@ import org.apache.hadoop.io.WritableUtils;
  */
 @InterfaceAudience.LimitedPrivate({"HDFS", "MapReduce"})
 @InterfaceStability.Evolving
-public class DelegationKey implements Writable {
+public class DelegationKey implements Writable, Serializable {
+  private static final long serialVersionUID = 8687833037144033207L;
   private int keyId;
   private long expiryDate;
   @Nullable

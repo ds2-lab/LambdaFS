@@ -60,6 +60,16 @@ CREATE TABLE `datanode_storages` (
     FOREIGN KEY (`datanode_uuid`) REFERENCES `datanodes` (`datanode_uuid`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
+-- This table stores intermediate block reports (i.e., blocks received and deleted).
+CREATE TABLE `intermediate_block_reports` (
+    `report_id` int(11) NOT NULL,
+    `datanode_uuid` varchar(36) NOT NULL,
+    `pool_id` varchar(255) NOT NULL,
+    `received_and_deleted_blocks` varchar(500) NOT NULL,
+    PRIMARY KEY (`report_id`, `datanode_uuid`),
+    FOREIGN KEY (`datanode_uuid`) REFERENCES `datanodes` (`datanode_uuid`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
 CREATE TABLE `hdfs_block_infos` (
   `inode_id` int(11) NOT NULL,
   `block_id` bigint(20) NOT NULL,

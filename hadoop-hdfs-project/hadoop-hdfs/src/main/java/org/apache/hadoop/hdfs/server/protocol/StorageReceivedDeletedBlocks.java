@@ -18,11 +18,14 @@
 
 package org.apache.hadoop.hdfs.server.protocol;
 
+import java.io.Serializable;
+
 /**
  * Report of block received and deleted per Datanode
  * storage.
  */
-public class StorageReceivedDeletedBlocks {
+public class StorageReceivedDeletedBlocks implements Serializable {
+  private static final long serialVersionUID = 182632306676696814L;
   final DatanodeStorage storage;
   private final ReceivedDeletedBlockInfo[] blocks;
 
