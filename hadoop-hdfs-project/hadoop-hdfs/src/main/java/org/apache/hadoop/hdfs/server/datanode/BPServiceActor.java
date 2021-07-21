@@ -26,13 +26,13 @@ import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import static org.apache.hadoop.util.Time.monotonicNow;
 
-import java.io.ByteArrayInputStream;
-import java.io.EOFException;
+import java.io.*;
 
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
+import io.hops.metadata.hdfs.dal.IntermediateBlockReportDataAccess;
 import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
-import org.apache.commons.codec.binary.Base64;
+import io.hops.metadata.hdfs.entity.IntermediateBlockReport;
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.StorageType;
@@ -49,14 +49,9 @@ import org.apache.hadoop.util.Time;
 import org.apache.hadoop.util.VersionInfo;
 import org.apache.hadoop.util.VersionUtil;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -740,8 +735,22 @@ class BPServiceActor implements Runnable {
       String poolId, StorageReceivedDeletedBlocks[] receivedAndDeletedBlocks)
       throws IOException {
     if (bpNamenode != null) {
-      bpNamenode.blockReceivedAndDeleted(registration, poolId,
-          receivedAndDeletedBlocks);
+      IntermediateBlockReportDataAccess<IntermediateBlockReport> dataAccess =
+              (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
+
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      ObjectOutputStream oos = new ObjectOutputStream( baos );
+      oos.writeObject(receivedAndDeletedBlocks);
+      oos.close();
+      String encoded = Base64.getEncoder().encodeToString(baos.toByteArray());
+
+      int reportId = dn.getAndIncrementIntermediateBlockReportCounter();
+      LOG.debug("Storing intermediate block report " + reportId + " in intermediate storage now...");
+
+      dataAccess.addReport(reportId, registration.getDatanodeUuid(), poolId, encoded);
+
+      /*bpNamenode.blockReceivedAndDeleted(registration, poolId,
+          receivedAndDeletedBlocks);*/
     }
   }
 

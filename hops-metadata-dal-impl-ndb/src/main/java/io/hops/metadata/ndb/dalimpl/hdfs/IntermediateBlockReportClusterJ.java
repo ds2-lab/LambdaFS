@@ -116,6 +116,28 @@ public class IntermediateBlockReportClusterJ
         return resultList;
     }
 
+    @Override
+    public void addReport(int reportId, String datanodeUuid, String poolId, String receivedAndDeletedBlocks) throws StorageException {
+        LOG.info("ADD IntermediateStorageReport -- reportId: " + reportId + ", datanodeUuid: " + datanodeUuid
+            + ", poolId: " + poolId);
+
+        HopsSession session = connector.obtainSession();
+        IntermediateBlockReportDTO dtoObject = null;
+
+        try {
+            dtoObject = session.newInstance(IntermediateBlockReportDTO.class);
+            dtoObject.setReportId(reportId);
+            dtoObject.setDatanodeUuid(datanodeUuid);
+            dtoObject.setPoolId(poolId);
+            dtoObject.setReceivedAndDeletedBlocks(receivedAndDeletedBlocks);
+
+            session.savePersistent(dtoObject);
+        } finally {
+            session.release(dtoObject);
+        }
+
+    }
+
     private IntermediateBlockReport convert(IntermediateBlockReportDTO src) {
         return new IntermediateBlockReport(src.getReportId(), src.getDatanodeUuid(), src.getPoolId(),
                 src.getReceivedAndDeletedBlocks());

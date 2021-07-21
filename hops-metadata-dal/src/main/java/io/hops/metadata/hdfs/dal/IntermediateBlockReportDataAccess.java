@@ -24,4 +24,9 @@ public interface IntermediateBlockReportDataAccess<T> extends EntityDataAccess {
      * the given minimum reportId.
      */
     List<T> getReports(String datanodeUuid, int minimumReportId) throws StorageException;
+
+    /**
+     * Add the necessary information to imitate the blockReceivedAndDeleted() RPC call.
+     */
+    void addReport(int reportId, String datanodeUuid, String poolId, String receivedAndDeletedBlocks) throws StorageException;
 }

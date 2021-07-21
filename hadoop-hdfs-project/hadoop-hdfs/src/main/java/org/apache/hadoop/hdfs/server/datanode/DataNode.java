@@ -262,6 +262,11 @@ public class DataNode extends ReconfigurableBase
    */
   private volatile int storageReportGroupCounter = -1;
 
+  /**
+   * Used to assign reportId values to intermediate block reports.
+   */
+  private volatile int intermediateBlockReportCounter = 0;
+
   static {
     HdfsConfiguration.init();
   }
@@ -504,6 +509,15 @@ public class DataNode extends ReconfigurableBase
    */
   public synchronized void setStorageReportGroupCounter(int groupCounter) {
     this.storageReportGroupCounter = groupCounter;
+  }
+
+  /**
+   * Used to assign reportId values to intermediate block reports when storing them in intermediate storage.
+   */
+  public synchronized int getAndIncrementIntermediateBlockReportCounter() {
+    int tmp = intermediateBlockReportCounter;
+    intermediateBlockReportCounter += 1;
+    return tmp;
   }
 
   /**
