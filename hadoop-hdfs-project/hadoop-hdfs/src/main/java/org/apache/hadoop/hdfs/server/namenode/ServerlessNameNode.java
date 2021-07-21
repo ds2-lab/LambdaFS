@@ -27,10 +27,7 @@ import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.HdfsVariables;
-import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
-import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
-import io.hops.metadata.hdfs.dal.LeaseCreationLocksDataAccess;
-import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
+import io.hops.metadata.hdfs.dal.*;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.metadata.hdfs.entity.DatanodeStorage;
 import io.hops.metadata.hdfs.entity.StorageReport;
@@ -304,6 +301,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * This variable is used to keep track of the last storage report retrieved from intermediate storage.
    */
   private final HashMap<String, Integer> lastStorageReportGroupIds = new HashMap<>();
+
+  /**
+   * Used to keep track of the most recent reportId obtained for each data node.
+   */
+  private final HashMap<String, Integer> lastIntermediateBlockReportIds = new HashMap<>();
 
   /**
    * Source: https://stackoverflow.com/questions/1660501/what-is-a-good-64bit-hash-function-in-java-for-textual-strings
@@ -790,6 +792,30 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       lastStorageReportGroupIds.put(datanodeUuid, groupId);
 
       LOG.debug("Largest groupId retrieved for DataNode " + datanodeUuid + ": " + groupId);
+    }
+  }
+
+  private void getAndProcessIntermediateBlockReports() throws IOException, ClassNotFoundException {
+    IntermediateBlockReportDataAccess<IntermediateBlockReport> dataAccess =
+            (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
+
+    for (Map.Entry<String, Integer> entry : lastIntermediateBlockReportIds.entrySet()) {
+      String datanodeUuid = entry.getKey();
+      int lastReportId = entry.getValue();
+
+      List<IntermediateBlockReport> reports = dataAccess.getReports(datanodeUuid, lastReportId + 1);
+
+      for (IntermediateBlockReport report : reports) {
+        byte[] serialized = Base64.decodeBase64(report.getReceivedAndDeletedBlocks());
+
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(serialized);
+        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+        StorageReceivedDeletedBlocks[] blocksArr = (StorageReceivedDeletedBlocks[]) objectInputStream.readObject();
+
+        for (StorageReceivedDeletedBlocks blocks : blocksArr) {
+          namesystem.processIncrementalBlockReport(report.getDatanodeUuid(), blocks);
+        }
+      }
     }
   }
 

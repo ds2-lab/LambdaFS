@@ -5558,6 +5558,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       blockManager.processIncrementalBlockReport(nodeReg, r);
   }
 
+  public void processIncrementalBlockReport(String datanodeUuid, StorageReceivedDeletedBlocks r)
+          throws IOException {
+    blockManager.processIncrementalBlockReport(datanodeUuid, r);
+  }
+
   PermissionStatus createFsOwnerPermissions(FsPermission permission) {
     return new PermissionStatus(fsOwner.getShortUserName(), superGroup,
         permission);
