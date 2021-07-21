@@ -742,6 +742,8 @@ public class DFSOutputStream extends FSOutputSummer
    * received from datanodes.
    */
   protected void flushInternal() throws IOException {
+    LOG.debug("flushInternal() called. Waiting until all existing data is flushed and confirmations have been " +
+            "received from datanodes.");
     long toWaitFor;
     synchronized (this) {
       dfsClient.checkOpen();
@@ -754,6 +756,7 @@ public class DFSOutputStream extends FSOutputSummer
       toWaitFor = streamer.getLastQueuedSeqno();
     }
 
+    LOG.debug("Waiting for sequence number " + toWaitFor);
     streamer.waitForAckedSeqno(toWaitFor);
   }
 
@@ -837,11 +840,13 @@ public class DFSOutputStream extends FSOutputSummer
     flushBuffer();       // flush from all upper layers
 
     if (currentPacket != null) {
+      LOG.debug("Waiting and enqueuing current packet now...");
       streamer.waitAndQueuePacket(currentPacket);
       currentPacket = null;
     }
 
     if (streamer.getBytesCurBlock() != 0) {
+      LOG.debug("Sending an empty packet to mark the end of the current block...");
       // send an empty packet to mark the end of the block
       currentPacket = createPacket(0, 0, streamer.getBytesCurBlock(),
               streamer.getAndIncCurrentSeqno(), true);

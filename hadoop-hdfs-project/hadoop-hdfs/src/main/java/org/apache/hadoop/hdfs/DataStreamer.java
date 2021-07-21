@@ -752,6 +752,7 @@ class DataStreamer extends Daemon {
           }
         }
         checkClosed();
+        LOG.debug("Attempting to queue packet now...");
         queuePacket(packet);
       } catch (ClosedChannelException e) {
       }
@@ -1819,6 +1820,7 @@ class DataStreamer extends Daemon {
         smallFileDataQueue.addLast(packet);
       } else {
         //Some condition for storing the data in the database has failed. Store the data on the datanodes
+        LOG.debug("Storing the packet/data on the DataNodes...");
         forwardSmallFilesPacketsToDataNodes();
         dataQueue.addLast(packet);
         if (LOG.isDebugEnabled()) {
