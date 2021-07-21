@@ -981,10 +981,7 @@ class BPOfferService implements Runnable {
       return null;
     }
 
-    //LOG.warn("DataNode skipping the sending of a block report...");
-    return null;
-    
-    /*scheduler.setNextBlockReportOverwritten(false);
+    scheduler.setNextBlockReportOverwritten(false);
     
     ArrayList<DatanodeCommand> cmds = new ArrayList<DatanodeCommand>();
 
@@ -1007,6 +1004,7 @@ class BPOfferService implements Runnable {
 
     for(Map.Entry<DatanodeStorage, BlockReport> kvPair : perVolumeBlockLists.entrySet()) {
       BlockReport blockList = kvPair.getValue();
+      LOG.debug("blockList.getBuckets()[0].getBlocks().getClass().getSimpleName() = " + blockList.getBuckets()[0].getBlocks().getClass().getSimpleName());
       reports[i] = new StorageBlockReport(kvPair.getKey(), blockList);
       totalBlockCount += blockList.getNumberOfBlocks();
       storages[i] = kvPair.getKey();
@@ -1097,7 +1095,7 @@ class BPOfferService implements Runnable {
     }
 
     scheduler.scheduleNextBlockReport();
-    return cmds.size() == 0 ? null : cmds;*/
+    return cmds.size() == 0 ? null : cmds;
   }
 
   StorageBlockReport[] slimBlockReports(StorageBlockReport[] reports){
