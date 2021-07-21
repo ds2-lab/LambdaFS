@@ -451,6 +451,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     try {
       List<DatanodeRegistration> datanodeRegistrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
       nameNodeInstance.retrieveAndProcessStorageReports(datanodeRegistrations);
+      nameNodeInstance.getAndProcessIntermediateBlockReports();
       nameNodeInstance.populateOperationsMap();
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
