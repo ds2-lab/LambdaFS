@@ -23,6 +23,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
+import com.mysql.clusterj.ClusterJDatastoreException;
 import io.hops.exception.StorageInitializtionException;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.ActiveNodePBImpl;
@@ -884,7 +885,13 @@ class BPOfferService implements Runnable {
     try {
       blockReceivedAndDeletedWithRetry(reports.toArray(new StorageReceivedDeletedBlocks[reports.size()]));
       success = true;
-    } finally {
+    } catch (ClusterJDatastoreException ex) {
+      LOG.error("Encountered ClusterJDatastoreException exception while storing intermediate block reports in " +
+              "intermediate storage...", ex);
+      ex.printStackTrace();
+      throw new IOException("Failed to store intermediate block reports in intermediate storage...");
+    }
+    finally {
       dn.getMetrics().addIncrementalBlockReport(monotonicNow() - startTime);
       if (!success) {
         synchronized (pendingIncrementalBRperStorage) {
