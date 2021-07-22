@@ -207,7 +207,7 @@ public class StorageReportClusterJ
 
     @Override
     public void addStorageReport(StorageReport storageReport) throws StorageException {
-        LOG.info("ADD StorageReport " + storageReport.toString());
+        // LOG.info("ADD StorageReport " + storageReport.toString());
 
         StorageReportDTO dtoObject = null;
         HopsSession session = connector.obtainSession();
