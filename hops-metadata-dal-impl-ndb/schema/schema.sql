@@ -65,7 +65,7 @@ CREATE TABLE `intermediate_block_reports` (
     `report_id` int(11) NOT NULL,
     `datanode_uuid` varchar(36) NOT NULL,
     `pool_id` varchar(255) NOT NULL,
-    `received_and_deleted_blocks` varchar(500) NOT NULL,
+    `received_and_deleted_blocks` varchar(5000) NOT NULL,
     PRIMARY KEY (`report_id`, `datanode_uuid`),
     FOREIGN KEY (`datanode_uuid`) REFERENCES `datanodes` (`datanode_uuid`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;

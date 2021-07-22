@@ -119,7 +119,7 @@ public class IntermediateBlockReportClusterJ
     @Override
     public void addReport(int reportId, String datanodeUuid, String poolId, String receivedAndDeletedBlocks) throws StorageException {
         LOG.info("ADD IntermediateStorageReport -- reportId: " + reportId + ", datanodeUuid: " + datanodeUuid
-            + ", poolId: " + poolId);
+            + ", poolId: " + poolId + ", length of encoded blocks string: " + receivedAndDeletedBlocks.length());
 
         HopsSession session = connector.obtainSession();
         IntermediateBlockReportDTO dtoObject = null;
