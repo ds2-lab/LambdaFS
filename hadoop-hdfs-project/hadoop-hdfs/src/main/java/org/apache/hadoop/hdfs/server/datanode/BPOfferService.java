@@ -1639,7 +1639,10 @@ class BPOfferService implements Runnable {
     }
     
     boolean isBlockReportDue() {
-      return nextBlockReportTime - monotonicNow() <= 0;
+      // TODO: Implement full block reports.
+      LOG.warn("Returning hard-coded 'false' for isBlockReportDue()");
+      return false;
+      //return nextBlockReportTime - monotonicNow() <= 0;
     }
 
     /**
