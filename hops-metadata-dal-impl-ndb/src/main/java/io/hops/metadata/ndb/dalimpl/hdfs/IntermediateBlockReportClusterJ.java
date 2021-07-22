@@ -122,7 +122,7 @@ public class IntermediateBlockReportClusterJ
             + ", poolId: " + poolId + ", length of encoded blocks string: " + receivedAndDeletedBlocks.length());
 
         HopsSession session = connector.obtainSession();
-        LOG.info("Obtained session...")''
+        LOG.info("Obtained session...");
         IntermediateBlockReportDTO dtoObject = null;
 
         try {
