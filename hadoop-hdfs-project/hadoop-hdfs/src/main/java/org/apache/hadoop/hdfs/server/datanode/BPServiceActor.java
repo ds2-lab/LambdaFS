@@ -334,7 +334,7 @@ class BPServiceActor implements Runnable {
     DatanodeStorageDataAccess<io.hops.metadata.hdfs.entity.DatanodeStorage> storageAccess =
             (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
 
-    LOG.info("Storing " + reports.length + " StorageReport instance(s) in intermediate storage now...");
+    //LOG.info("Storing " + reports.length + " StorageReport instance(s) in intermediate storage now...");
 
     int reportId = 0;
     int groupId = dn.getAndIncrementStorageReportGroupCounter();
@@ -745,7 +745,7 @@ class BPServiceActor implements Runnable {
       String encoded = Base64.getEncoder().encodeToString(baos.toByteArray());
 
       int reportId = dn.getAndIncrementIntermediateBlockReportCounter();
-      LOG.debug("Storing intermediate block report " + reportId + " in intermediate storage now...");
+      LOG.info("Storing intermediate block report " + reportId + " in intermediate storage now...");
 
       dataAccess.addReport(reportId, registration.getDatanodeUuid(), poolId, encoded);
 

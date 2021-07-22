@@ -148,7 +148,7 @@ public class DatanodeStorageClusterJ
 
     @Override
     public void addDatanodeStorage(DatanodeStorage datanodeStorage) throws StorageException {
-        LOG.info("ADD DatanodeStorage " + datanodeStorage.toString());
+        // LOG.info("ADD DatanodeStorage " + datanodeStorage.toString());
         DatanodeStorageDTO toAdd = null;
         HopsSession session = connector.obtainSession();
 
@@ -157,7 +157,7 @@ public class DatanodeStorageClusterJ
             copyState(toAdd, datanodeStorage);
             session.savePersistent(toAdd);
 
-            LOG.debug("Wrote/persisted DatanodeStorage " + toAdd.getStorageId() + " to MySQL NDB storage.");
+            // LOG.debug("Wrote/persisted DatanodeStorage " + toAdd.getStorageId() + " to MySQL NDB storage.");
         } finally {
             session.release(toAdd);
         }
