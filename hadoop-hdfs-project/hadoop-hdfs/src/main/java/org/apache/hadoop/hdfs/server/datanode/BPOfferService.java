@@ -1415,7 +1415,14 @@ class BPOfferService implements Runnable {
       if (exception != null) {
         if (exception instanceof RemoteException) {
           throw (RemoteException) exception;
-        } else {
+        }
+        else if (exception instanceof ClusterJDatastoreException) {
+            LOG.error("Encountered ClusterJDatastoreException exception while storing intermediate block reports " +
+                    "in intermediate storage...", exception);
+            exception.printStackTrace();
+            throw new IOException("Failed to store intermediate block reports in intermediate storage...");
+        }
+        else {
           throw (IOException) exception;
         }
       }
