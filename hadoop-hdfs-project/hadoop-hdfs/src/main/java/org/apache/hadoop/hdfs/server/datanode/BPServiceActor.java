@@ -732,26 +732,25 @@ class BPServiceActor implements Runnable {
   }
 
   public void blockReceivedAndDeleted(DatanodeRegistration registration,
-      String poolId, StorageReceivedDeletedBlocks[] receivedAndDeletedBlocks)
-      throws IOException {
-    if (bpNamenode != null) {
-      IntermediateBlockReportDataAccess<IntermediateBlockReport> dataAccess =
-              (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
+      String poolId, StorageReceivedDeletedBlocks[] receivedAndDeletedBlocks) throws IOException {
+    IntermediateBlockReportDataAccess<IntermediateBlockReport> dataAccess =
+            (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
 
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      ObjectOutputStream oos = new ObjectOutputStream( baos );
-      oos.writeObject(receivedAndDeletedBlocks);
-      oos.close();
-      String encoded = Base64.getEncoder().encodeToString(baos.toByteArray());
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ObjectOutputStream oos = new ObjectOutputStream( baos );
+    oos.writeObject(receivedAndDeletedBlocks);
+    oos.close();
+    String encoded = Base64.getEncoder().encodeToString(baos.toByteArray());
 
-      int reportId = dn.getAndIncrementIntermediateBlockReportCounter();
-      LOG.info("Storing intermediate block report " + reportId + " in intermediate storage now...");
+    int reportId = dn.getAndIncrementIntermediateBlockReportCounter();
+    LOG.info("Storing intermediate block report " + reportId + " in intermediate storage now...");
 
-      dataAccess.addReport(reportId, registration.getDatanodeUuid(), poolId, encoded);
+    dataAccess.addReport(reportId, registration.getDatanodeUuid(), poolId, encoded);
 
-      /*bpNamenode.blockReceivedAndDeleted(registration, poolId,
-          receivedAndDeletedBlocks);*/
-    }
+    /*if (bpNamenode != null) {
+      bpNamenode.blockReceivedAndDeleted(registration, poolId,
+          receivedAndDeletedBlocks);
+    }*/
   }
 
   public DatanodeCommand reportHashes(DatanodeRegistration registration,
