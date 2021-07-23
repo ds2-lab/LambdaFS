@@ -122,22 +122,22 @@ public class IntermediateBlockReportClusterJ
             + ", poolId: " + poolId + ", length of encoded blocks string: " + receivedAndDeletedBlocks.length());
 
         HopsSession session = connector.obtainSession();
-        LOG.info("Obtained session...");
+        //LOG.info("Obtained session...");
         IntermediateBlockReportDTO dtoObject = null;
 
         try {
             dtoObject = session.newInstance(IntermediateBlockReportDTO.class);
-            LOG.info("Created instance of class IntermediateBlockReportDTO...");
+            //LOG.info("Created instance of class IntermediateBlockReportDTO...");
             dtoObject.setReportId(reportId);
             dtoObject.setDatanodeUuid(datanodeUuid);
             dtoObject.setPoolId(poolId);
             dtoObject.setReceivedAndDeletedBlocks(receivedAndDeletedBlocks);
 
             session.savePersistent(dtoObject);
-            LOG.info("Saved IntermediateBlockReportDTO instance to intermediate storage...");
+            //LOG.info("Saved IntermediateBlockReportDTO instance to intermediate storage...");
         } finally {
             session.release(dtoObject);
-            LOG.info("Released IntermediateBlockReportDTO instance...");
+            //LOG.info("Released IntermediateBlockReportDTO instance...");
         }
 
     }

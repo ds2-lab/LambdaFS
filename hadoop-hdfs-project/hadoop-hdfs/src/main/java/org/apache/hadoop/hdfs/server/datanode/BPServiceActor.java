@@ -747,6 +747,8 @@ class BPServiceActor implements Runnable {
 
     dataAccess.addReport(reportId, registration.getDatanodeUuid(), poolId, encoded);
 
+    LOG.info("Successfully stored intermediate block report " + reportId + " in intermediate storage.");
+
     /*if (bpNamenode != null) {
       bpNamenode.blockReceivedAndDeleted(registration, poolId,
           receivedAndDeletedBlocks);
