@@ -853,6 +853,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     List<DatanodeRegistration> datanodeRegistrations = new ArrayList<>();
 
     for (DataNodeMeta dataNodeMeta : dataNodes) {
+      String datanodeUuid = dataNodeMeta.getDatanodeUuid();
       LOG.info("Discovered " + dataNodeMeta.toString());
       LOG.info("IP Address: {}, Hostname: {}, Xfer Port: {}, Info Port: {}, Info Secure Port: {}, IPC Port: {}",
               dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(), dataNodeMeta.getXferPort(),
@@ -860,7 +861,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
-              dataNodeMeta.getDatanodeUuid(), dataNodeMeta.getXferPort(), dataNodeMeta.getInfoPort(),
+                  datanodeUuid, dataNodeMeta.getXferPort(), dataNodeMeta.getInfoPort(),
                   dataNodeMeta.getInfoSecurePort(), dataNodeMeta.getIpcPort());
 
       StorageInfo storageInfo = new StorageInfo(
@@ -873,6 +874,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       DatanodeRegistration datanodeRegistration = new DatanodeRegistration(
               dnId, storageInfo, new ExportedBlockKeys(), VersionInfo.getVersion());
+
+      // Create an entry for this DataNode.
+      // TODO: What if this DataNode has been around for a while and this NameNode is only just now being invoked?
+      //       The BlockReports starting at 0 will be old, won't they? Need to figure out how to address this.
+      if (!lastIntermediateBlockReportIds.containsKey(datanodeUuid)) {
+        lastIntermediateBlockReportIds.put(datanodeUuid, 0);
+      }
 
       try {
         if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
