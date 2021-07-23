@@ -800,11 +800,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     IntermediateBlockReportDataAccess<IntermediateBlockReport> dataAccess =
             (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
 
+    LOG.info("Retrieving intermediate block reports from intermediate storage now...");
+
     for (Map.Entry<String, Integer> entry : lastIntermediateBlockReportIds.entrySet()) {
       String datanodeUuid = entry.getKey();
       int lastReportId = entry.getValue();
 
+      LOG.info("Retrieving all reports with reportId >= " + (lastReportId + 1) + " for DataNode "
+              + datanodeUuid + " now...");
+
       List<IntermediateBlockReport> reports = dataAccess.getReports(datanodeUuid, lastReportId + 1);
+
+      LOG.info("Retrieved " + reports.size() + " intermediate block reports published by DataNode "
+              + datanodeUuid + ".");
 
       for (IntermediateBlockReport report : reports) {
         byte[] serialized = Base64.decodeBase64(report.getReceivedAndDeletedBlocks());
@@ -812,6 +820,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(serialized);
         ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
         StorageReceivedDeletedBlocks[] blocksArr = (StorageReceivedDeletedBlocks[]) objectInputStream.readObject();
+
+        LOG.info("Processing " + blocksArr.length + " StorageReceivedDeletedBlocks instances from intermediate " +
+                "block report " + report.getReportId() + ", DataNode UUID = " + datanodeUuid + " now...");
 
         for (StorageReceivedDeletedBlocks blocks : blocksArr) {
           namesystem.processIncrementalBlockReport(report.getDatanodeUuid(), blocks);
