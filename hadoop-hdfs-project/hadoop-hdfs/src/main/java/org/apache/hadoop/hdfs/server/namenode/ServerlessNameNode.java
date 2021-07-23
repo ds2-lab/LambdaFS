@@ -881,7 +881,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       //       The BlockReports starting at 0 will be old, won't they? Need to figure out how to address this.
       if (!lastIntermediateBlockReportIds.containsKey(datanodeUuid)) {
         LOG.debug("Adding entry in `lastIntermediateBlockReportIds` for DataNode " + datanodeUuid);
-        lastIntermediateBlockReportIds.put(datanodeUuid, 0);
+        lastIntermediateBlockReportIds.put(datanodeUuid, -1);
       } else {
         LOG.debug("Entry for DataNode " + datanodeUuid + " already exists in `lastIntermediateBlockReportIds`");
       }
