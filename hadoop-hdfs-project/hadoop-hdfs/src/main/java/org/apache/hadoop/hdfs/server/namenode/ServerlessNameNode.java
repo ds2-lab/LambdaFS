@@ -802,6 +802,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
 
     LOG.info("Retrieving intermediate block reports from intermediate storage now...");
+    LOG.info("There are " + lastIntermediateBlockReportIds.size() + " DataNodes for which reports must be retrieved.");
 
     for (Map.Entry<String, Integer> entry : lastIntermediateBlockReportIds.entrySet()) {
       String datanodeUuid = entry.getKey();
@@ -879,7 +880,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // TODO: What if this DataNode has been around for a while and this NameNode is only just now being invoked?
       //       The BlockReports starting at 0 will be old, won't they? Need to figure out how to address this.
       if (!lastIntermediateBlockReportIds.containsKey(datanodeUuid)) {
+        LOG.debug("Adding entry in `lastIntermediateBlockReportIds` for DataNode " + datanodeUuid);
         lastIntermediateBlockReportIds.put(datanodeUuid, 0);
+      } else {
+        LOG.debug("Entry for DataNode " + datanodeUuid + " already exists in `lastIntermediateBlockReportIds`");
       }
 
       try {
