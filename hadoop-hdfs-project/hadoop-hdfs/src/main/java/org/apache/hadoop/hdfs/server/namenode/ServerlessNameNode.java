@@ -734,6 +734,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // the DataNode's UUID to the largest groupId retrieved during this operation.
     HashMap<String, Integer> largestGroupIds = new HashMap<>();
 
+    // Retrieve the storage reports from intermediate storage.
     HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap
             = this.retrieveStorageReports(datanodeRegistrations);
 
@@ -744,7 +745,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     for (Map.Entry<String, List<StorageReport>> entry : storageReportMap.entrySet()) {
       String datanodeUuid = entry.getKey();
       List<StorageReport> storageReports = entry.getValue();
-      LOG.debug("Storage Reports for Data Node: " + datanodeUuid);
+      //LOG.debug("Storage Reports for Data Node: " + datanodeUuid);
 
       // Get the mapping of storageIds to DatanodeStorage instances for this particular datanode.
       HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorageMap
@@ -756,7 +757,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // For each storage report associated with the current datanode, convert it to a HopsFS storage report (they
       // are currently the DAL storage reports, which are just designed to be used with intermediate storage).
       for (StorageReport report : storageReports) {
-        LOG.debug(report.toString());
+        //LOG.debug(report.toString());
 
         org.apache.hadoop.hdfs.server.protocol.StorageReport convertedReport
                 = new org.apache.hadoop.hdfs.server.protocol.StorageReport(
