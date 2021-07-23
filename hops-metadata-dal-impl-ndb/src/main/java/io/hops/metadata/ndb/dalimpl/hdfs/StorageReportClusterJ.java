@@ -248,7 +248,7 @@ public class StorageReportClusterJ
             s = conn.prepareStatement(query);
             result = s.executeQuery();
 
-            LOG.debug("Result = " + result.toString());
+            //LOG.debug("Result = " + result.toString());
 
             while (result.next()) {
                 StorageReport report = new StorageReport(
@@ -258,7 +258,7 @@ public class StorageReportClusterJ
                         result.getString(DATANODE_STORAGE_ID)
                 );
 
-                LOG.debug("Retrieved StorageReport instance: " + report.toString());
+                //LOG.debug("Retrieved StorageReport instance: " + report.toString());
 
                 resultList.add(report);
             }
