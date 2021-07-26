@@ -2474,11 +2474,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public boolean isLeader() {
-    if (leaderElection != null) {
+    /*if (leaderElection != null) {
       return leaderElection.isLeader();
     } else {
       return false;
-    }
+    }*/
+
+    LOG.warn("Returning hard-coded `true` for isLeader().");
+    return true;
   }
 
   public ActiveNode getNextNamenodeToSendBlockReport(final long noOfBlks, DatanodeID nodeID) throws IOException {
