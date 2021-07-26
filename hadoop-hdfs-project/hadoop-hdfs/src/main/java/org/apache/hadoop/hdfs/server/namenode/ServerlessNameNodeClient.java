@@ -282,17 +282,45 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void setMetaStatus(String src, MetaStatus metaStatus) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("metaStatus", metaStatus.ordinal());
+
+        serverlessInvoker.invokeNameNodeViaHttpPost(
+                "setMetaStatus",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
     public void setPermission(String src, FsPermission permission) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("permission", permission);
+
+        serverlessInvoker.invokeNameNodeViaHttpPost(
+                "setPermission",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
     public void setOwner(String src, String username, String groupname) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("username", username);
+        opArguments.put("groupname", groupname);
+
+        serverlessInvoker.invokeNameNodeViaHttpPost(
+                "setOwner",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
@@ -301,8 +329,34 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public LocatedBlock addBlock(String src, String clientName, ExtendedBlock previous, DatanodeInfo[] excludeNodes, long fileId, String[] favoredNodes) throws AccessControlException, FileNotFoundException, NotReplicatedYetException, SafeModeException, UnresolvedLinkException, IOException {
-        throw new UnsupportedOperationException("Function has not yet been implemented.");
+    public LocatedBlock addBlock(String src, String clientName, ExtendedBlock previous, DatanodeInfo[] excludeNodes, long fileId, String[] favoredNodes) throws AccessControlException, FileNotFoundException, NotReplicatedYetException, SafeModeException, UnresolvedLinkException, IOException, ClassNotFoundException {
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("clientName", clientName);
+        opArguments.put("previous", previous);
+        opArguments.put("fileId", fileId);
+        opArguments.put("favoredNodes", favoredNodes);
+        opArguments.put("excludeNodes", excludeNodes);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "addBlock",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+
+        if (result != null) {
+            LocatedBlock locatedBlock = (LocatedBlock) result;
+
+            LOG.debug("Result returned from addBlock() is of type: " + result.getClass().getSimpleName());
+            LOG.debug("LocatedBlock returned by addBlock(): " + locatedBlock.toString());
+
+            return locatedBlock;
+        }
+
+        return null;
     }
 
     @Override
@@ -443,7 +497,28 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean mkdirs(String src, FsPermission masked, boolean createParent) throws AccessControlException, FileAlreadyExistsException, FileNotFoundException, NSQuotaExceededException, ParentNotDirectoryException, SafeModeException, UnresolvedLinkException, IOException {
-        return false;
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("masked", masked);
+        opArguments.put("createParent", createParent);
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "mkdirs",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        boolean result = false;
+        try {
+            result = (boolean) serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+        }
+
+        return result;
     }
 
     @Override

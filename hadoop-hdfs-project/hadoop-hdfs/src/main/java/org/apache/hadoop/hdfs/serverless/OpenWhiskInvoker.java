@@ -21,6 +21,7 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import javax.xml.ws.spi.Invoker;
 import java.io.*;
 import java.security.*;
 import java.security.cert.X509Certificate;
@@ -67,6 +68,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         httpClient = getHttpClient();
     }
 
+    @Override
     public JsonObject invokeNameNodeViaHttpPost(
         String operationName,
         String functionUri,
@@ -98,12 +100,12 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
 
         // Populate the NameNode arguments JSON with any additional arguments specified by the user.
         if (nameNodeArguments != null)
-            populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
+            InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
 
         // Populate the file system operation arguments JSON.
         if (fileSystemOperationArguments != null) {
             LOG.debug("Populating HTTP request with FS operation arguments now...");
-            populateJsonObjectWithArguments(fileSystemOperationArguments, fileSystemOperationArgumentsJson);
+            InvokerUtilities.populateJsonObjectWithArguments(fileSystemOperationArguments, fileSystemOperationArgumentsJson);
             LOG.debug("Populated " + fileSystemOperationArgumentsJson.size() + " arguments.");
         }
         else {
@@ -116,7 +118,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         nameNodeArgumentsJson.add("fsArgs", fileSystemOperationArgumentsJson);
         nameNodeArgumentsJson.addProperty("op", operationName);
 
-        addStandardArguments(nameNodeArgumentsJson);
+        InvokerUtilities.addStandardArguments(nameNodeArgumentsJson);
 
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
         // within the HTTP POST request. They should be included with the key "value".
@@ -144,116 +146,9 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
     }
 
     /**
-     * Convert the given Serializable object to a Base64-encoded String.
-     * @param obj The object to encode as a Base64 String.
-     * @return The Base64-encoded String of the given object.
-     * @throws IOException May be thrown when Serializing the object.
-     */
-    private static String serializableToBase64String(Serializable obj) throws IOException {
-        // Source: https://stackoverflow.com/questions/134492/how-to-serialize-an-object-into-a-string
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream( baos );
-        oos.writeObject(obj);
-        oos.close();
-        return Base64.getEncoder().encodeToString(baos.toByteArray());
-        /*DataOutputBuffer out = new DataOutputBuffer();
-        try {
-            ObjectWritable.writeObject(out, obj, obj.getClass(), null);
-        } catch (IOException ex) {
-            LOG.error("Encountered IOException while serializing object of type "
-                    + obj.getClass().getSimpleName() + ".");
-            throw ex;
-        }
-        byte[] objectBytes = out.getData();
-        return org.apache.commons.codec.binary.Base64.encodeBase64String(objectBytes);*/
-    }
-
-    /**
-     * Process the arguments passed in the given HashMap. Attempt to add them to the JsonObject.
-     *
-     * Throws an exception if one of the arguments is not a String, Number, Boolean, or Character.
-     * @param arguments The HashMap of arguments to add to the JsonObject.
-     * @param dest The JsonObject to which we are adding arguments.
-     */
-    private void populateJsonObjectWithArguments(Map<String, Object> arguments, JsonObject dest) throws IOException {
-        for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-
-            if (value instanceof String)
-                dest.addProperty(key, (String)value);
-            else if (value instanceof Number)
-                dest.addProperty(key, (Number)value);
-            else if (value instanceof Boolean)
-                dest.addProperty(key, (Boolean)value);
-            else if (value instanceof Character)
-                dest.addProperty(key, (Character)value);
-            else if (value instanceof Map) {
-                JsonObject innerMap = new JsonObject();
-                populateJsonObjectWithArguments((Map<String, Object>) value, innerMap);
-                dest.add(key, innerMap);
-            }
-            else if (value instanceof Collection) {
-                JsonArray arr = new JsonArray();
-
-                // We want to check what type of array/list this is. If it is an array/list
-                // of byte, we will simply convert the entire array/list to a base64 string.
-                Class<?> clazz = value.getClass().getComponentType();
-
-                if (clazz == Byte.class) {
-                    Collection<?> valueAsCollection = (Collection<?>)value;
-                    Byte[] valueAsByteArray = (Byte[])valueAsCollection.toArray();
-                    String encoded = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(valueAsByteArray));
-                    dest.addProperty(key, encoded);
-                }
-                else { // Note an array or list of byte.
-                    for (Object obj : (List<?>) value) {
-                        if (obj instanceof String)
-                            arr.add((String) obj);
-                        else if (obj instanceof Number)
-                            arr.add((Number) obj);
-                        else if (obj instanceof Boolean)
-                            arr.add((Boolean) obj);
-                        else if (obj instanceof Character)
-                            arr.add((Character) obj);
-                        else if (value instanceof Serializable) {
-                            String base64Encoded = serializableToBase64String((Serializable)value);
-                            arr.add(base64Encoded);
-                        }
-                        else
-                            throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
-                                    + obj.getClass().toString());
-                    }
-                }
-            }
-            else if (value instanceof Serializable) {
-                String base64Encoded = serializableToBase64String((Serializable)value);
-                dest.addProperty(key, base64Encoded);
-            }
-            else if (value == null)
-                LOG.warn("Value associated with key \"" + key + "\" is null.");
-            else
-                throw new IllegalArgumentException("Value associated with key \"" + key + "\" is not of a valid type: "
-                        + value.getClass().toString());
-        }
-    }
-
-    /**
-     * There are some arguments that will be included every single time with the same values. This function
-     * adds those arguments.
-     *
-     * This is implemented as a separate function so as to provide a centralized place to modify these
-     * consistent arguments.
-     *
-     * @param nameNodeArgumentsJson The arguments to be passed to the ServerlessNameNode itself.
-     */
-    private void addStandardArguments(JsonObject nameNodeArgumentsJson) {
-        nameNodeArgumentsJson.addProperty("command-line-arguments", "-regular");
-    }
-
-    /**
      * Return an HTTP client configured appropriately for the OpenWhisk serverless platform.
      */
+    @Override
     public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException {
         // We create the client in this way in order to avoid SSL certificate validation/verification errors.
         // The solution here is provided by:
@@ -282,30 +177,16 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
     @Override
     public Object extractResultFromJsonResponse(JsonObject response) throws IOException, ClassNotFoundException {
         if (response.has("RESULT")) {
-            String resultBase64 = response.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
-            byte[] resultSerialized = org.apache.commons.codec.binary.Base64.decodeBase64(resultBase64);
-
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
-            ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-            Object toReturn = objectInputStream.readObject();
-
-            LOG.debug("Returning object of type " + toReturn.getClass().getSimpleName() + ": " + toReturn.toString());
-
-            return toReturn;
+            String resultBase64 =
+                    response.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
+            Object result = InvokerUtilities.base64StringToObject(resultBase64);
+            LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result.toString());
+            return result;
         } else if (response.has("EXCEPTION")) {
             String exception = response.getAsJsonPrimitive("EXCEPTION").getAsString();
             LOG.error("Exception encountered during Serverless NameNode execution.");
             LOG.error(exception);
         }
         return null;
-    }
-
-    /**
-     * Returns true if the given object is an array.
-     *
-     * Source: https://stackoverflow.com/questions/2725533/how-to-see-if-an-object-is-an-array-without-using-reflection
-     */
-    private static boolean isArray(Object obj) {
-        return obj != null && obj.getClass().isArray();
     }
 }

@@ -798,33 +798,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public LocatedBlock addBlock(String src, String clientName,
                                ExtendedBlock previous, DatanodeInfo[] excludeNodes,
                                long fileId, String[] favoredNodes) throws IOException, ClassNotFoundException {
-    HashMap<String, Object> opArguments = new HashMap<>();
-
-    opArguments.put("src", src);
-    opArguments.put("clientName", clientName);
-    opArguments.put("previous", previous);
-    opArguments.put("fileId", fileId);
-    opArguments.put("favoredNodes", favoredNodes);
-    opArguments.put("excludeNodes", excludeNodes);
-
-    JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-            "addBlock",
-            serverlessEndpoint.toString(),
-            null, // We do not have any additional/non-default arguments to pass to the NN.
-            opArguments);
-
-    Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-
-    if (result != null) {
-      LocatedBlock locatedBlock = (LocatedBlock) result;
-
-      LOG.debug("Result returned from addBlock() is of type: " + result.getClass().getSimpleName());
-      LOG.debug("LocatedBlock returned by addBlock(): " + locatedBlock.toString());
-
-      return locatedBlock;
-    }
-
-    return null;
+    return this.namenode.addBlock(src, clientName, previous, excludeNodes, fileId, favoredNodes);
   }
 
   /**

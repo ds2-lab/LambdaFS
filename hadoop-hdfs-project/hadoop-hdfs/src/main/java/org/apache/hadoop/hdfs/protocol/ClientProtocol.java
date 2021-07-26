@@ -550,9 +550,9 @@ public interface ClientProtocol {
   @Idempotent
   public LocatedBlock addBlock(String src, String clientName,
       ExtendedBlock previous, DatanodeInfo[] excludeNodes, long fileId, String[] favoredNodes)
-      throws AccessControlException, FileNotFoundException,
-      NotReplicatedYetException, SafeModeException, UnresolvedLinkException,
-      IOException;
+          throws AccessControlException, FileNotFoundException,
+          NotReplicatedYetException, SafeModeException, UnresolvedLinkException,
+          IOException, ClassNotFoundException;
 
   /**
    * Get a datanode for an existing pipeline.

@@ -20,6 +20,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import io.hops.exception.StorageException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
@@ -65,6 +66,7 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.InvokerUtilities;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
@@ -493,51 +495,64 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private void populateOperationsMap() {
     operations = new HashMap<String, CheckedFunction<JsonObject, ?>>();
 
-    operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) args -> addBlockOperation(args));
+    operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) this::addBlock);
     operations.put("addGroup", (CheckedFunction<JsonObject, Void>) args -> {
-      addGroupOperation(args);
+      addGroup(args);
       return null;
     });
     operations.put("addUser", (CheckedFunction<JsonObject, Void>) args -> {
-      addUserOperation(args);
+      addUser(args);
       return null;
     });
     operations.put("addUserToGroup", (CheckedFunction<JsonObject, Void>) args -> {
-      addUserToGroupOperation(args);
+      addUserToGroup(args);
       return null;
     });
-    operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) args -> appendOperation(args));
-    operations.put("complete", (CheckedFunction<JsonObject, Boolean>) args -> completeOperation(args));
+    operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) this::append);
+    operations.put("complete", (CheckedFunction<JsonObject, Boolean>) this::complete);
     operations.put("concat", (CheckedFunction<JsonObject, Void>) args -> {
-      concatOperation(args);
+      concat(args);
       return null;
     });
-    operations.put("create", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> createOperation(args));
-    operations.put("delete", (CheckedFunction<JsonObject, Boolean>) args -> deleteOperation(args));
-    operations.put("getBlockLocations", (CheckedFunction<JsonObject, LocatedBlocks>) args -> getBlockLocationsOperation(args));
-    operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileInfoOperation(args));
-    operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) args -> getFileLinkInfoOperation(args));
-    operations.put("getListing", (CheckedFunction<JsonObject, DirectoryListing>) args -> getListingOperation(args));
-    operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) args -> getServerDefaultsOperation(args));
-    operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) args -> isFileClosedOperation(args));
+    operations.put("create", (CheckedFunction<JsonObject, HdfsFileStatus>) this::create);
+    operations.put("delete", (CheckedFunction<JsonObject, Boolean>) this::delete);
+    operations.put("getBlockLocations", (CheckedFunction<JsonObject, LocatedBlocks>) this::getBlockLocations);
+    operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::getFileInfo);
+    operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::getFileLinkInfo);
+    operations.put("getListing", (CheckedFunction<JsonObject, DirectoryListing>) this::getListing);
+    operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) this::getServerDefaults);
+    operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) this::isFileClosed);
+    operations.put("mkdirs", (CheckedFunction<JsonObject, Boolean>) this::mkdirs);
     operations.put("removeUser", (CheckedFunction<JsonObject, Void>) args -> {
-      removeUserOperation(args);
+      removeUser(args);
       return null;
     });
     operations.put("removeGroup", (CheckedFunction<JsonObject, Void>) args -> {
-      removeGroupOperation(args);
+      removeGroup(args);
       return null;
     });
     operations.put("removeUserFromGroup", (CheckedFunction<JsonObject, Void>) args -> {
-      removeUserFromGroupOperation(args);
+      removeUserFromGroup(args);
       return null;
     });
     operations.put("rename", (CheckedFunction<JsonObject, Void>) args -> {
-      renameOperation(args);
+      rename(args);
       return null;
     });
-    operations.put("truncate", (CheckedFunction<JsonObject, Boolean>) args -> truncateOperation(args));
-    operations.put("versionRequest", (CheckedFunction<JsonObject, NamespaceInfo>) args -> versionRequestOperation(args));
+    operations.put("setMetaStatus", (CheckedFunction<JsonObject, Void>) args -> {
+      setMetaStatus(args);
+      return null;
+    });
+    operations.put("setOwner", (CheckedFunction<JsonObject, Void>) args -> {
+      setOwner(args);
+      return null;
+    });
+    operations.put("setPermission", (CheckedFunction<JsonObject, Void>) args -> {
+      setPermission(args);
+      return null;
+    });
+    operations.put("truncate", (CheckedFunction<JsonObject, Boolean>) this::truncate);
+    operations.put("versionRequest", (CheckedFunction<JsonObject, NamespaceInfo>) this::versionRequest);
   }
 
   /**
@@ -822,11 +837,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               + datanodeUuid + ".");
 
       for (IntermediateBlockReport report : reports) {
-        byte[] serialized = Base64.decodeBase64(report.getReceivedAndDeletedBlocks());
-
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(serialized);
-        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-        StorageReceivedDeletedBlocks[] blocksArr = (StorageReceivedDeletedBlocks[]) objectInputStream.readObject();
+        StorageReceivedDeletedBlocks[] blocksArr =
+                (StorageReceivedDeletedBlocks[])InvokerUtilities.base64StringToObject(report.getReceivedAndDeletedBlocks());
 
         LOG.info("Processing " + blocksArr.length + " StorageReceivedDeletedBlocks instances from intermediate " +
                 "block report " + report.getReportId() + ", DataNode UUID = " + datanodeUuid + " now...");
@@ -911,7 +923,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return datanodeRegistrations;
   }
 
-  private LocatedBlock addBlockOperation(JsonObject fsArgs) throws IOException, ClassNotFoundException {
+  private LocatedBlock addBlock(JsonObject fsArgs) throws IOException, ClassNotFoundException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
 
@@ -932,10 +944,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     if (fsArgs.has("previous")) {
       String previousBase64 = fsArgs.getAsJsonPrimitive("previous").getAsString();
-      byte[] previousBytes = Base64.decodeBase64(previousBase64);
+      /*byte[] previousBytes = Base64.decodeBase64(previousBase64);
       DataInputBuffer dataInput = new DataInputBuffer();
       dataInput.reset(previousBytes, previousBytes.length);
-      previous = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);
+      previous = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);*/
+      previous = (ExtendedBlock) InvokerUtilities.base64StringToObject(previousBase64);
     }
 
     DatanodeInfo[] excludeNodes = null;
@@ -946,10 +959,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       for (int i = 0; i < excludedNodesJsonArray.size(); i++) {
         String excludedNodeBase64 = excludedNodesJsonArray.get(i).getAsString();
-        byte[] excludedNodeBytes = Base64.decodeBase64(excludedNodeBase64);
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(excludedNodeBytes);
-        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-        DatanodeInfo excludedNode = (DatanodeInfo)objectInputStream.readObject();
+        DatanodeInfo excludedNode = (DatanodeInfo) InvokerUtilities.base64StringToObject(excludedNodeBase64);
         excludeNodes[i] = excludedNode;
       }
     }
@@ -972,21 +982,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return namesystem.getAdditionalBlock(src, fileId, clientName, previous, excludedNodesSet, favoredNodesList);
   }
 
-  private void addUserOperation(JsonObject fsArgs) throws IOException {
+  private void addUser(JsonObject fsArgs) throws IOException {
     String userName = fsArgs.getAsJsonPrimitive("userName").getAsString();
 
     namesystem.checkSuperuserPrivilege();
     UsersGroups.addUser(userName);
   }
 
-  private void addGroupOperation(JsonObject fsArgs) throws IOException {
+  private void addGroup(JsonObject fsArgs) throws IOException {
     String groupName = fsArgs.getAsJsonPrimitive("groupName").getAsString();
 
     namesystem.checkSuperuserPrivilege();
     UsersGroups.addGroup(groupName);
   }
 
-  private void addUserToGroupOperation(JsonObject fsArgs) throws IOException {
+  private void addUserToGroup(JsonObject fsArgs) throws IOException {
     String userName = fsArgs.getAsJsonPrimitive("userName").getAsString();
     String groupName = fsArgs.getAsJsonPrimitive("groupName").getAsString();
 
@@ -994,21 +1004,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     UsersGroups.addUserToGroup(userName, groupName);
   }
 
-  public void removeUserOperation(JsonObject fsArgs) throws IOException {
+  public void removeUser(JsonObject fsArgs) throws IOException {
     String userName = fsArgs.getAsJsonPrimitive("userName").getAsString();
 
     namesystem.checkSuperuserPrivilege();
     UsersGroups.removeUser(userName);
   }
 
-  public void removeGroupOperation(JsonObject fsArgs) throws IOException {
+  public void removeGroup(JsonObject fsArgs) throws IOException {
     String groupName = fsArgs.getAsJsonPrimitive("groupName").getAsString();
 
     namesystem.checkSuperuserPrivilege();
     UsersGroups.removeGroup(groupName);
   }
 
-  public void removeUserFromGroupOperation(JsonObject fsArgs) throws IOException {
+  public void removeUserFromGroup(JsonObject fsArgs) throws IOException {
     String userName = fsArgs.getAsJsonPrimitive("userName").getAsString();
     String groupName = fsArgs.getAsJsonPrimitive("groupName").getAsString();
 
@@ -1016,7 +1026,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     UsersGroups.removeUserFromGroup(userName, groupName);
   }
 
-  private LastBlockWithStatus appendOperation(JsonObject fsArgs) throws IOException {
+  private LastBlockWithStatus append(JsonObject fsArgs) throws IOException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
 
@@ -1036,7 +1046,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return info;
   }
 
-  private boolean completeOperation(JsonObject fsArgs) throws IOException, ClassNotFoundException {
+  private boolean complete(JsonObject fsArgs) throws IOException, ClassNotFoundException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
 
@@ -1051,7 +1061,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     //       - https://stackoverflow.com/questions/17400850/is-jackson-really-unable-to-deserialize-json-into-a-generic-type
     if (fsArgs.has("last")) {
       String lastBase64 = fsArgs.getAsJsonPrimitive("last").getAsString();
-      byte[] lastBytes = Base64.decodeBase64(lastBase64);
+      last = (ExtendedBlock) InvokerUtilities.base64StringToObject(lastBase64);
+      /*byte[] lastBytes = Base64.decodeBase64(lastBase64);
 
       // TODO: Try using SerializationUtils from Commons Lang library.
       //  Reference: https://stackoverflow.com/questions/2836646/java-serializable-object-to-byte-array
@@ -1060,7 +1071,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       try (ObjectInput in = new ObjectInputStream(bis)) {
         Object o = in.readObject();
         last = (ExtendedBlock) o;
-      }
+      }*/
 
       /*DataInputBuffer dataInput = new DataInputBuffer();
       dataInput.reset(lastBytes, lastBytes.length);
@@ -1081,7 +1092,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return namesystem.completeFile(src, clientName, last, fileId, data);
   }
 
-  private DirectoryListing getListingOperation(JsonObject fsArgs) throws IOException {
+  private DirectoryListing getListing(JsonObject fsArgs) throws IOException {
     LOG.info("Unpacking arguments for the GET-LISTING operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
@@ -1099,14 +1110,58 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return files;
   }
 
-  private boolean isFileClosedOperation(JsonObject fsArgs) throws IOException {
+  private void setMetaStatus(JsonObject fsArgs) throws IOException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+
+    int metaStatusOrdinal = fsArgs.getAsJsonPrimitive("metaStatus").getAsInt();
+    MetaStatus metaStatus = MetaStatus.values()[metaStatusOrdinal];
+
+    namesystem.setMetaStatus(src, metaStatus);
+  }
+
+  private void setPermission(JsonObject fsArgs) throws IOException, ClassNotFoundException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    String permissionBase64 = fsArgs.getAsJsonArray("permission").getAsString();
+    FsPermission permission = (FsPermission) InvokerUtilities.base64StringToObject(permissionBase64);
+
+    namesystem.setPermission(src, permission);
+  }
+
+  private void setOwner(JsonObject fsArgs) throws IOException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    String username = fsArgs.getAsJsonPrimitive("username").getAsString();
+    String groupname = fsArgs.getAsJsonPrimitive("groupname").getAsString();
+
+    namesystem.setOwner(src, username, groupname);
+  }
+
+  private boolean mkdirs(JsonObject fsArgs) throws IOException, ClassNotFoundException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    String maskedBase64 = fsArgs.getAsJsonArray("maskedBase64").getAsString();
+    FsPermission masked = (FsPermission) InvokerUtilities.base64StringToObject(maskedBase64);
+    boolean createParent = fsArgs.getAsJsonPrimitive("createParent").getAsBoolean();
+
+    if (stateChangeLog.isDebugEnabled()) {
+      stateChangeLog.debug("*DIR* NameNode.mkdirs: " + src);
+    }
+    if (!checkPathLength(src)) {
+      throw new IOException(
+              "mkdirs: Pathname too long.  Limit " + MAX_PATH_LENGTH +
+                      " characters, " + MAX_PATH_DEPTH + " levels.");
+    }
+    return namesystem.mkdirs(src, new PermissionStatus(
+            getRemoteUser().getShortUserName(), null,
+            masked), createParent);
+  }
+
+  private boolean isFileClosed(JsonObject fsArgs) throws IOException {
     LOG.info("Unpacking arguments for the IS-FILE-CLOSED operation now...");
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
 
     return namesystem.isFileClosed(src);
   }
 
-  private LocatedBlocks getBlockLocationsOperation(JsonObject fsArgs) throws IOException {
+  private LocatedBlocks getBlockLocations(JsonObject fsArgs) throws IOException {
     LOG.info("Unpacking arguments for the GET-BLOCK-LOCATIONS operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
@@ -1118,7 +1173,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return namesystem.getBlockLocations(NameNodeRpcServer.getClientMachine(), src, offset, length);
   }
 
-  private void concatOperation(JsonObject fsArgs) throws IOException {
+  private void concat(JsonObject fsArgs) throws IOException {
     LOG.info("Unpacking arguments for the CONCAT operation now...");
 
     String trg = fsArgs.getAsJsonPrimitive("trg").getAsString();
@@ -1134,19 +1189,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     namesystem.concat(trg, srcs);
   }
 
-  private HdfsFileStatus getFileInfoOperation(JsonObject fsArgs) throws IOException {
+  private HdfsFileStatus getFileInfo(JsonObject fsArgs) throws IOException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
 
     return namesystem.getFileInfo(src, true);
   }
 
-  private HdfsFileStatus getFileLinkInfoOperation(JsonObject fsArgs) throws IOException {
+  private HdfsFileStatus getFileLinkInfo(JsonObject fsArgs) throws IOException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
 
     return namesystem.getFileInfo(src, false);
   }
 
-  private NamespaceInfo versionRequestOperation(JsonObject fsArgs) throws IOException {
+  private NamespaceInfo versionRequest(JsonObject fsArgs) throws IOException {
     LOG.info("Performing versionRequest operation now...");
 
     String datanodeUuid = fsArgs.get("uuid").getAsString();
@@ -1169,7 +1224,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    short replication, long blockSize, CryptoProtocolVersion[] supportedVersions, EncodingPolicy policy)
    */
 
-  private HdfsFileStatus createOperation(JsonObject fsArgs) throws IOException {
+  private HdfsFileStatus create(JsonObject fsArgs) throws IOException {
     LOG.info("Unpacking arguments for the CREATE operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
@@ -1225,11 +1280,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return stat;
   }
 
-  private FsServerDefaults getServerDefaultsOperation(JsonObject fsArgs) {
+  private FsServerDefaults getServerDefaults(JsonObject fsArgs) {
     return this.namesystem.getServerDefaults();
   }
 
-  private boolean deleteOperation(JsonObject fsArgs) throws IOException {
+  private boolean delete(JsonObject fsArgs) throws IOException {
     LOG.info("Unpacking arguments for the DELETE operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
@@ -1249,7 +1304,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return ret;
   }
 
-  public boolean truncateOperation(JsonObject fsArgs) throws IOException {
+  public boolean truncate(JsonObject fsArgs) throws IOException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
     long newLength = fsArgs.getAsJsonPrimitive("newLength").getAsLong();
@@ -1267,7 +1322,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
   }
 
-  private void renameOperation(JsonObject fsArgs) throws IOException {
+  private void rename(JsonObject fsArgs) throws IOException {
     LOG.info("Unpacking arguments for the RENAME operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
