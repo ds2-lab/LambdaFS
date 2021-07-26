@@ -454,6 +454,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       nameNodeInstance.getAndProcessIntermediateBlockReports();
       nameNodeInstance.populateOperationsMap();
 
+      if (nameNodeInstance.namesystem.isInSafeMode()) {
+        LOG.debug("NameNode is in SafeMode. Leaving SafeMode now...");
+        nameNodeInstance.namesystem.leaveSafeMode();
+      }
+
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
 
       response.add("RESULT", result);
