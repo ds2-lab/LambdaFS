@@ -1822,11 +1822,13 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public boolean delete(String src, boolean recursive) throws IOException {
     checkOpen();
     try (TraceScope ignored = newPathTraceScope("delete", src)) {
-      if (getServerDefaults().getQuotaEnabled()) {
+      /*if (getServerDefaults().getQuotaEnabled()) {
         return leaderNN.delete(src, recursive);
       } else {
         return namenode.delete(src, recursive);
-      }
+      }*/
+      // Serverless version does not have a leader name node.
+      return namenode.delete(src, recursive);
     } catch(RemoteException re) {
       throw re.unwrapRemoteException(AccessControlException.class,
               FileNotFoundException.class,
