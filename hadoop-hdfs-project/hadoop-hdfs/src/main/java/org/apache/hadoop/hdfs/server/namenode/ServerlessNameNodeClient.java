@@ -438,7 +438,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (result != null)
             return (boolean)result;
 
-        return true;
+        return false;
     }
 
     @Override
