@@ -105,7 +105,7 @@ public class InvokerUtilities {
                 populateJsonObjectWithArguments((Map<String, Object>) value, innerMap);
                 dest.add(key, innerMap);
             }
-            else if (value instanceof Collection) {
+            else if (value instanceof Collection || value.getClass().isArray()) {
                 LOG.debug("Serializing Collection argument now...");
                 JsonArray arr = new JsonArray();
 
