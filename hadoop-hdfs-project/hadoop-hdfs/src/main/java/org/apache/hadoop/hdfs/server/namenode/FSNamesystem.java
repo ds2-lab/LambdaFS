@@ -8779,13 +8779,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             long lastDeletedEpochSec = HdfsVariables.getRetryCacheCleanerEpoch();
             long toBeDeletedEpochSec = lastDeletedEpochSec + 1L;
             if (toBeDeletedEpochSec < ((timer.now() - entryExpiryMillis) / 1000)) {
-              cleanerLog.debug("Current epoch " + (System.currentTimeMillis() / 1000) +
+              /*cleanerLog.debug("Current epoch " + (System.currentTimeMillis() / 1000) +
                       " Last deleted epoch is " + lastDeletedEpochSec +
-                      " To be deleted epoch " + toBeDeletedEpochSec);
+                      " To be deleted epoch " + toBeDeletedEpochSec);*/
               int countDeleted = deleteAllForEpoch(toBeDeletedEpochSec);
               //save the epoch
               HdfsVariables.setRetryCacheCleanerEpoch(toBeDeletedEpochSec);
-              cleanerLog.debug("Deleted " + countDeleted + " entries for epoch " + toBeDeletedEpochSec);
+              //cleanerLog.debug("Deleted " + countDeleted + " entries for epoch " + toBeDeletedEpochSec);
               continue;
             }
           }

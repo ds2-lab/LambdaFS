@@ -114,8 +114,7 @@ public class InvokerUtilities {
                     Byte[] valueAsByteArray = (Byte[])valueAsCollection.toArray();
                     String encoded = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(valueAsByteArray));
                     dest.addProperty(key, encoded);
-                }
-                else { // Note an array or list of byte.
+                } else { // Note an array or list of byte.
                     for (Object obj : (List<?>) value) {
                         if (obj instanceof String)
                             arr.add((String) obj);
@@ -133,6 +132,8 @@ public class InvokerUtilities {
                             throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
                                     + obj.getClass().toString());
                     }
+
+                    dest.add(key, arr);
                 }
             }
             else if (value instanceof Serializable) {
