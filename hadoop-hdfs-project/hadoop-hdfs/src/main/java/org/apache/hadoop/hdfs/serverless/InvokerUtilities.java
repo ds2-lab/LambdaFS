@@ -120,6 +120,7 @@ public class InvokerUtilities {
                 }
                 else {
                     valueAsCollection = Arrays.asList(Array.newInstance(clazz, Array.getLength(value)));
+                    LOG.debug("valueAsCollection = " + valueAsCollection.toString());
                 }
 
                 LOG.debug("Component type of array/collection: " + clazz.getSimpleName());
