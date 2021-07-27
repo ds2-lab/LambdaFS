@@ -106,6 +106,13 @@ public class InvokerUtilities {
                 dest.add(key, innerMap);
             }
             else if (value instanceof Collection || value.getClass().isArray()) {
+                List<Object> valueAsList;
+
+                if (value instanceof Collection)
+                    valueAsList = new ArrayList<Object>((Collection<?>)value);
+                else
+                    valueAsList = new ArrayList<Object>(Arrays.asList((Object[]) value));
+
                 LOG.debug("Serializing Collection argument now...");
                 JsonArray arr = new JsonArray();
 
@@ -114,12 +121,11 @@ public class InvokerUtilities {
                 Class<?> clazz = value.getClass().getComponentType();
 
                 if (clazz == Byte.class) {
-                    Collection<?> valueAsCollection = (Collection<?>)value;
-                    Byte[] valueAsByteArray = (Byte[])valueAsCollection.toArray();
+                    Byte[] valueAsByteArray = (Byte[])valueAsList.toArray();
                     String encoded = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(valueAsByteArray));
                     dest.addProperty(key, encoded);
                 } else { // Note an array or list of byte.
-                    for (Object obj : (List<?>) value) {
+                    for (Object obj : valueAsList) {
                         if (obj instanceof String)
                             arr.add((String) obj);
                         else if (obj instanceof Number)
