@@ -89,6 +89,8 @@ public class InvokerUtilities {
             String key = entry.getKey();
             Object value = entry.getValue();
 
+            LOG.info("Serializing argument with key \"" + key + "\" and type " + value.getClass().getSimpleName());
+
             if (value instanceof String)
                 dest.addProperty(key, (String)value);
             else if (value instanceof Number)
