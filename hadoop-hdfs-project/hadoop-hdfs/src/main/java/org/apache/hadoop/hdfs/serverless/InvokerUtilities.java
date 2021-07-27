@@ -14,6 +14,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.io.*;
+import java.lang.reflect.Array;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -106,8 +107,7 @@ public class InvokerUtilities {
                 dest.add(key, innerMap);
             }
             else if (value instanceof Collection || value.getClass().isArray()) {
-                List<Object> valueAsList;
-
+                List<Object> valueAsCollection;
                 LOG.debug("Serializing Collection/Array argument now...");
                 JsonArray arr = new JsonArray();
 
@@ -115,17 +115,22 @@ public class InvokerUtilities {
                 // of byte, we will simply convert the entire array/list to a base64 string.
                 Class<?> clazz = value.getClass().getComponentType();
 
-                if (value instanceof Collection)
-                    valueAsList = new ArrayList<Object>((Collection<?>)value);
-                else
-                    valueAsList = new ArrayList<Object>(Collections.singletonList(value));
+                if (value instanceof Collection) {
+                    valueAsCollection = new ArrayList<Object>((Collection<?>)value);
+                }
+                else {
+                    valueAsCollection = Arrays.asList(Array.newInstance(clazz, Array.getLength(value)));
+                }
+
+                LOG.debug("Component type of array/collection: " + clazz.getSimpleName());
+
 
                 if (clazz == Byte.class) {
-                    Byte[] valueAsByteArray = (Byte[])valueAsList.toArray();
+                    Byte[] valueAsByteArray = (Byte[])valueAsCollection.toArray();
                     String encoded = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(valueAsByteArray));
                     dest.addProperty(key, encoded);
                 } else { // Note an array or list of byte.
-                    for (Object obj : valueAsList) {
+                    for (Object obj : valueAsCollection) {
                         if (obj instanceof String)
                             arr.add((String) obj);
                         else if (obj instanceof Number)
