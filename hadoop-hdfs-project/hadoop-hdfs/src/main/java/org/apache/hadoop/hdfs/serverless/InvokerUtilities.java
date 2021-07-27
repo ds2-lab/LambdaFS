@@ -117,10 +117,11 @@ public class InvokerUtilities {
 
                 if (value instanceof Collection) {
                     valueAsList = new ArrayList<Object>((Collection<?>)value);
+                    LOG.debug("Created list from collection. valueAsList = " + valueAsList);
                 }
                 else {
                     valueAsList = Arrays.asList(Array.newInstance(clazz, Array.getLength(value)));
-                    LOG.debug("valueAsCollection = " + valueAsList.toString());
+                    LOG.debug("Created list from array. valueAsList = " + valueAsList);
                 }
 
                 LOG.debug("Component type of array/collection: " + clazz.getSimpleName());
