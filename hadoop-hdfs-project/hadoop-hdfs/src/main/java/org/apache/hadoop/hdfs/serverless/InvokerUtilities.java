@@ -89,7 +89,7 @@ public class InvokerUtilities {
             String key = entry.getKey();
             Object value = entry.getValue();
 
-            LOG.info("Serializing argument with key \"" + key + "\" and type " + value.getClass().getSimpleName());
+            LOG.debug("Serializing argument with key \"" + key + "\" and type " + value.getClass().getSimpleName());
 
             if (value instanceof String)
                 dest.addProperty(key, (String)value);
@@ -100,11 +100,13 @@ public class InvokerUtilities {
             else if (value instanceof Character)
                 dest.addProperty(key, (Character)value);
             else if (value instanceof Map) {
+                LOG.debug("Serializing Map argument now...");
                 JsonObject innerMap = new JsonObject();
                 populateJsonObjectWithArguments((Map<String, Object>) value, innerMap);
                 dest.add(key, innerMap);
             }
             else if (value instanceof Collection) {
+                LOG.debug("Serializing Collection argument now...");
                 JsonArray arr = new JsonArray();
 
                 // We want to check what type of array/list this is. If it is an array/list
