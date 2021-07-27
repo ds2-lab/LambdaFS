@@ -401,7 +401,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean rename(String src, String dst) throws UnresolvedLinkException, IOException {
-        return false;
+        HashMap<String, Object> opArguments = new HashMap<>();
+
+        opArguments.put("src", src);
+        opArguments.put("dst", dst);
+
+        serverlessInvoker.invokeNameNodeViaHttpPost(
+                "rename",
+                serverlessEndpoint.toString(),
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        return true;
     }
 
     @Override
