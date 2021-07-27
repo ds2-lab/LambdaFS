@@ -108,17 +108,17 @@ public class InvokerUtilities {
             else if (value instanceof Collection || value.getClass().isArray()) {
                 List<Object> valueAsList;
 
-                if (value instanceof Collection)
-                    valueAsList = new ArrayList<Object>((Collection<?>)value);
-                else
-                    valueAsList = new ArrayList<Object>(Arrays.asList((Object[]) value));
-
-                LOG.debug("Serializing Collection argument now...");
+                LOG.debug("Serializing Collection/Array argument now...");
                 JsonArray arr = new JsonArray();
 
                 // We want to check what type of array/list this is. If it is an array/list
                 // of byte, we will simply convert the entire array/list to a base64 string.
                 Class<?> clazz = value.getClass().getComponentType();
+
+                if (value instanceof Collection)
+                    valueAsList = new ArrayList<Object>((Collection<?>)value);
+                else
+                    valueAsList = new ArrayList<Object>(Collections.singletonList(value));
 
                 if (clazz == Byte.class) {
                     Byte[] valueAsByteArray = (Byte[])valueAsList.toArray();
