@@ -406,6 +406,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("src", src);
         opArguments.put("dst", dst);
 
+        Integer[] optionsArr = new Integer[1];
+
+        optionsArr[0] = 0; // 0 is the Options.Rename ordinal/value for `NONE`
+
+        opArguments.put("options", optionsArr);
+
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "rename",
                 serverlessEndpoint.toString(),
