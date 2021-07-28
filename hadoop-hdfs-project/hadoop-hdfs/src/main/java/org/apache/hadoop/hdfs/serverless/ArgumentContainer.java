@@ -49,6 +49,8 @@ public class ArgumentContainer {
      * @param value The argument itself.
      */
     public void put(String key, Object value) {
+        LOG.debug("Adding arguments. Key: \"" + key + "\", value: " + value.toString());
+
         // Check if `value` is a primitive.
         if (value.getClass().isPrimitive())
             addPrimitive(key, value);
@@ -75,6 +77,7 @@ public class ArgumentContainer {
      * @param value The argument itself.
      */
     public void addByteArray(String key, byte[] value) {
+        LOG.debug("Adding byte[] argument \"" + key + "\"");
         byteArrayArguments.put(key, value);
     }
 
@@ -90,6 +93,8 @@ public class ArgumentContainer {
             throw new IllegalArgumentException("Argument `value` must not be an array of byte/Byte.");
         }
 
+        LOG.debug("Adding non-byte array argument \"" + key + "\"");
+
         nonByteArrayArguments.put(key, value);
     }
 
@@ -102,6 +107,7 @@ public class ArgumentContainer {
      * @param <T> The type of the value being added.
      */
     public <T> void addPrimitive(String key, T value) {
+        LOG.debug("Adding primitive argument \"" + key + "\"");
         primitiveArguments.put(key, value);
     }
 
@@ -111,6 +117,7 @@ public class ArgumentContainer {
      * @param value The argument itself.
      */
     public void addObject(String key, Serializable value) {
+        LOG.debug("Adding object argument \"" + key + "\"");
         objectArguments.put(key, value);
     }
 
