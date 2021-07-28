@@ -99,14 +99,16 @@ public class ArgumentContainer {
     }
 
     /**
-     * Add a primitive object to the argument list. This object should be an integer, float, double, String, boolean,
-     * or character.
+     * Add a primitive object to the argument list. Value should be an integer, float, double, boolean,
+     * or character. Value can also be a String.
      *
      * @param key The name of the argument.
      * @param value The argument itself.
      * @param <T> The type of the value being added.
      */
     public <T> void addPrimitive(String key, T value) {
+        assert(value.getClass().isPrimitive() || value instanceof String);
+
         LOG.debug("Adding primitive argument \"" + key + "\"");
         primitiveArguments.put(key, value);
     }
@@ -117,6 +119,11 @@ public class ArgumentContainer {
      * @param value The argument itself.
      */
     public void addObject(String key, Serializable value) {
+        // We do not want to Base64-encode a String, so instead we treat it like it is a primitive.
+        // This works fine since Json can handle Strings.
+        if (value instanceof String)
+            addPrimitive(key, value);
+
         LOG.debug("Adding object argument \"" + key + "\"");
         objectArguments.put(key, value);
     }
