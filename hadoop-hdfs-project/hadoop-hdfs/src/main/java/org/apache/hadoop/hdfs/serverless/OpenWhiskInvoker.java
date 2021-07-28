@@ -75,6 +75,49 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         HashMap<String, Object> nameNodeArguments,
         HashMap<String, Object> fileSystemOperationArguments) throws IOException
     {
+        // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
+        // object itself. That is, these are NOT the arguments for the particular file system operation that we
+        // would like to perform (e.g., create, delete, append, etc.).
+        JsonObject nameNodeArgumentsJson = new JsonObject();
+
+        // These are the arguments passed to the file system operation that we'd like to perform (e.g., create).
+        JsonObject fileSystemOperationArgumentsJson = new JsonObject();
+
+        // Populate the file system operation arguments JSON.
+        if (fileSystemOperationArguments != null) {
+            LOG.debug("Populating HTTP request with FS operation arguments now...");
+            InvokerUtilities.populateJsonObjectWithArguments(
+                    fileSystemOperationArguments, fileSystemOperationArgumentsJson);
+            LOG.debug("Populated " + fileSystemOperationArgumentsJson.size() + " arguments.");
+        }
+        else {
+            LOG.debug("No FS operation arguments specified.");
+            fileSystemOperationArgumentsJson = new JsonObject();
+        }
+
+        // Populate the NameNode arguments JSON with any additional arguments specified by the user.
+        if (nameNodeArguments != null)
+            InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
+
+        return invokeNameNodeViaHttpInternal(operationName, functionUri, nameNodeArgumentsJson,
+                fileSystemOperationArgumentsJson);
+    }
+
+    /**
+     * This performs all of the logic. The public versions of this function accept parameters that are convenient
+     * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
+     * @param operationName The FS operation being performed.
+     * @param functionUri The URI of the serverless function. We issue an HTTP request to this URI
+     *                    in order to invoke the function.
+     * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
+     *                          arguments when using a serverful name node.
+     * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
+     *                                     to the Java function which performs the FS operation.
+     * @return The response from the Serverless NameNode.
+     */
+    private JsonObject invokeNameNodeViaHttpInternal(String operationName, String functionUri,
+                                                     JsonObject nameNodeArguments,
+                                                     JsonObject fileSystemOperationArguments) throws IOException {
         LOG.debug("invokeNameNodeViaHttpPost() function called for operation \"" + operationName
                 + "\". Printing call stack now...");
         StackTraceElement[] elements = Thread.currentThread().getStackTrace();
@@ -87,42 +130,19 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
 
         HttpPost request = new HttpPost(functionUri);
 
-        // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
-        // object itself. That is, these are NOT the arguments for the particular file system operation that we
-        // would like to perform (e.g., create, delete, append, etc.).
-        JsonObject nameNodeArgumentsJson = new JsonObject();
-
-        // These are the arguments passed to the file system operation that we'd like to perform (e.g., create).
-        JsonObject fileSystemOperationArgumentsJson = new JsonObject();
-
         // This is the top-level JSON object passed along with the HTTP POST request.
         JsonObject requestArguments = new JsonObject();
 
-        // Populate the NameNode arguments JSON with any additional arguments specified by the user.
-        if (nameNodeArguments != null)
-            InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
-
-        // Populate the file system operation arguments JSON.
-        if (fileSystemOperationArguments != null) {
-            LOG.debug("Populating HTTP request with FS operation arguments now...");
-            InvokerUtilities.populateJsonObjectWithArguments(fileSystemOperationArguments, fileSystemOperationArgumentsJson);
-            LOG.debug("Populated " + fileSystemOperationArgumentsJson.size() + " arguments.");
-        }
-        else {
-            LOG.debug("No FS operation arguments specified.");
-            fileSystemOperationArgumentsJson = new JsonObject();
-        }
-
         // We pass the file system operation arguments to the NameNode, as it
         // will hand them off to the intended file system operation function.
-        nameNodeArgumentsJson.add("fsArgs", fileSystemOperationArgumentsJson);
-        nameNodeArgumentsJson.addProperty("op", operationName);
+        nameNodeArguments.add("fsArgs", fileSystemOperationArguments);
+        nameNodeArguments.addProperty("op", operationName);
 
-        InvokerUtilities.addStandardArguments(nameNodeArgumentsJson);
+        InvokerUtilities.addStandardArguments(nameNodeArguments);
 
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
         // within the HTTP POST request. They should be included with the key "value".
-        requestArguments.add("value", nameNodeArgumentsJson);
+        requestArguments.add("value", nameNodeArguments);
 
         // Prepare the HTTP POST request.
         StringEntity parameters = new StringEntity(requestArguments.toString());
@@ -143,6 +163,23 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         String json = EntityUtils.toString(response.getEntity(), "UTF-8");
         Gson gson = new Gson();
         return gson.fromJson(json, JsonObject.class);
+    }
+
+    @Override
+    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUri,
+                                                HashMap<String, Object> nameNodeArguments,
+                                                ArgumentContainer fileSystemOperationArguments) throws IOException {
+        // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
+        // object itself. That is, these are NOT the arguments for the particular file system operation that we
+        // would like to perform (e.g., create, delete, append, etc.).
+        JsonObject nameNodeArgumentsJson = new JsonObject();
+
+        // Populate the NameNode arguments JSON with any additional arguments specified by the user.
+        if (nameNodeArguments != null)
+            InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
+
+        return invokeNameNodeViaHttpInternal(operationName, functionUri, nameNodeArgumentsJson,
+                fileSystemOperationArguments.convertToJsonObject());
     }
 
     /**

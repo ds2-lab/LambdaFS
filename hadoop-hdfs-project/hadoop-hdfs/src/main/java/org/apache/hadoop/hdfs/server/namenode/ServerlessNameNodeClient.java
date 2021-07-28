@@ -21,6 +21,7 @@ import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
+import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.ServerlessInvoker;
 import org.apache.hadoop.hdfs.serverless.ServerlessInvokerFactory;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -29,6 +30,7 @@ import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
+import org.kohsuke.args4j.Argument;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -92,7 +94,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LocatedBlocks locatedBlocks = null;
 
         // Arguments for the 'create' filesystem operation.
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("offset", offset);
@@ -100,7 +102,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "getBlockLocations",
-                dfsClient.serverlessEndpoint.toString(),
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -135,11 +137,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public FsServerDefaults getServerDefaults() throws IOException {
         FsServerDefaults serverDefaults = null;
 
+        // We do not have any additional/non-default arguments to pass to the NN.
         JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "getServerDefaults",
-                dfsClient.serverlessEndpoint.toString(),
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                null);
+                dfsClient.serverlessEndpoint, new HashMap<>(), new HashMap<>());
 
         Object result = null;
         try {
@@ -166,7 +167,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         HdfsFileStatus stat = null;
 
         // Arguments for the 'create' filesystem operation.
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("masked", masked.toShort());
@@ -195,7 +196,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "create",
-                dfsClient.serverlessEndpoint.toString(),
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -228,7 +229,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LastBlockWithStatus stat = null;
 
         // Arguments for the 'append' filesystem operation.
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         // Serialize the `EnumSetWritable<CreateFlag> flag` argument.
         DataOutputBuffer out = new DataOutputBuffer();
@@ -242,7 +243,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "append",
-                dfsClient.serverlessEndpoint.toString(),
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -282,35 +283,35 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void setMetaStatus(String src, MetaStatus metaStatus) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("metaStatus", metaStatus.ordinal());
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "setMetaStatus",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
     public void setPermission(String src, FsPermission permission) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("permission", permission);
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "setPermission",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
     public void setOwner(String src, String username, String groupname) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("username", username);
@@ -318,19 +319,21 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "setOwner",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
-    public void abandonBlock(ExtendedBlock b, long fileId, String src, String holder) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
+    public void abandonBlock(ExtendedBlock b, long fileId, String src, String holder) throws IOException {
 		throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 
     @Override
-    public LocatedBlock addBlock(String src, String clientName, ExtendedBlock previous, DatanodeInfo[] excludeNodes, long fileId, String[] favoredNodes) throws AccessControlException, FileNotFoundException, NotReplicatedYetException, SafeModeException, UnresolvedLinkException, IOException, ClassNotFoundException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+    public LocatedBlock addBlock(String src, String clientName, ExtendedBlock previous, DatanodeInfo[] excludeNodes,
+                                 long fileId, String[] favoredNodes) throws IOException, ClassNotFoundException {
+        // HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("clientName", clientName);
@@ -341,7 +344,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "addBlock",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -351,7 +354,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             LocatedBlock locatedBlock = (LocatedBlock) result;
 
             LOG.debug("Result returned from addBlock() is of type: " + result.getClass().getSimpleName());
-            LOG.debug("LocatedBlock returned by addBlock(): " + locatedBlock.toString());
+            LOG.debug("LocatedBlock returned by addBlock(): " + locatedBlock);
 
             return locatedBlock;
         }
@@ -366,7 +369,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean complete(String src, String clientName, ExtendedBlock last, long fileId, byte[] data) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("clientName", clientName);
@@ -376,7 +379,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "complete",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -401,7 +404,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean rename(String src, String dst) throws UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("dst", dst);
@@ -414,7 +417,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "rename",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -423,21 +426,21 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void concat(String trg, String[] srcs) throws IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("trg", trg);
         opArguments.put("srcs", srcs);
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "concat",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
     public void rename2(String src, String dst, Options.Rename... options) throws IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("dst", dst);
@@ -452,14 +455,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "rename",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
     public boolean truncate(String src, long newLength, String clientName) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("newLength", newLength);
@@ -467,7 +470,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "truncate",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -487,14 +490,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean delete(String src, boolean recursive) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("recursive", recursive);
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "delete",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -514,7 +517,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean mkdirs(String src, FsPermission masked, boolean createParent) throws AccessControlException, FileAlreadyExistsException, FileNotFoundException, NSQuotaExceededException, ParentNotDirectoryException, SafeModeException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("masked", masked);
@@ -522,7 +525,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "mkdirs",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -540,7 +543,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public DirectoryListing getListing(String src, byte[] startAfter, boolean needLocation) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
         opArguments.put("startAfter", startAfter);
@@ -548,7 +551,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "getListing",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -623,13 +626,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public HdfsFileStatus getFileInfo(String src) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "getFileInfo",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -649,13 +652,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public boolean isFileClosed(String src) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "isFileClosed",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -677,13 +680,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public HdfsFileStatus getFileLinkInfo(String src) throws AccessControlException, UnresolvedLinkException, IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put("src", src);
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "getFileLinkInfo",
-                serverlessEndpoint.toString(),
+                serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -913,74 +916,74 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void addUser(String userName) throws IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("userName", userName);
 
         dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "addUser",
-                dfsClient.serverlessEndpoint.toString(),
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
     public void addGroup(String groupName) throws IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("groupName", groupName);
 
         dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "addGroup",
-                dfsClient.serverlessEndpoint.toString(),
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
     public void addUserToGroup(String userName, String groupName) throws IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("userName", userName);
         opArguments.put("groupName", groupName);
 
         dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "addUserToGroup",
-                dfsClient.serverlessEndpoint.toString(),
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
     public void removeUser(String userName) throws IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("userName", userName);
 
         dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "removeUser",
-                dfsClient.serverlessEndpoint.toString(),
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
     public void removeGroup(String groupName) throws IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("groupName", groupName);
 
         dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "removeGroup",
-                dfsClient.serverlessEndpoint.toString(),
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
 
     @Override
     public void removeUserFromGroup(String userName, String groupName) throws IOException {
-        HashMap<String, Object> opArguments = new HashMap<>();
+        ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("userName", userName);
         opArguments.put("groupName", groupName);
 
         dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "removeUserFromGroup",
-                dfsClient.serverlessEndpoint.toString(),
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }

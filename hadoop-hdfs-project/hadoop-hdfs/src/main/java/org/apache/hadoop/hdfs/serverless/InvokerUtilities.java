@@ -3,24 +3,10 @@ package org.apache.hadoop.hdfs.serverless;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import com.sun.org.apache.xpath.internal.operations.Bool;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.*;
 import java.lang.reflect.Array;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.util.*;
 
 /**
@@ -91,9 +77,8 @@ public class InvokerUtilities {
      * @param key The name of the argument/parameter. This name comes from the argument name in the Serverless NameNode
      *            function that performs the desired FS operation.
      */
-    private static void populateWithArrayOrCollection(Object value, JsonObject dest, String key) {
-
-        List<Object> valueAsList;
+    public static void populateWithArray(String key, Object[] value, JsonObject dest) {
+        List<Object> valueAsList = Arrays.asList(value);
         JsonArray arr = new JsonArray();
 
         // We want to check what type of array/list this is. If it is an array/list
@@ -102,24 +87,7 @@ public class InvokerUtilities {
 
         LOG.debug("Serializing Collection/Array argument with component type: " + clazz.getSimpleName());
 
-        if (value instanceof Collection) {
-            valueAsList = new ArrayList<Object>((Collection<?>)value);
-            LOG.debug("Created list from collection. valueAsList = " + valueAsList);
-        }
-        else if (value.getClass().isArray()) {
-            // TODO: Fix this function call as it does not work correctly.
-            //       Does not create proper array from primitives, at least.
-            valueAsList = Arrays.asList(Array.newInstance(clazz, Array.getLength(value)));
-            LOG.debug("Created list from array. valueAsList = " + valueAsList);
-        } else {
-            throw new IllegalArgumentException("Parameter `value` must be either a Collection or an array.");
-        }
-
-        if (Byte.class.isAssignableFrom(clazz)) {
-            String encoded = Base64.getEncoder().encodeToString((byte[])value);
-            dest.addProperty(key, encoded);
-        }
-        else if (String.class.isAssignableFrom(clazz))
+        if (String.class.isAssignableFrom(clazz))
             valueAsList.forEach(e -> arr.add(new JsonPrimitive((String) e)));
         else if (Number.class.isAssignableFrom(clazz))
             valueAsList.forEach(e -> arr.add(new JsonPrimitive((Number) e)));
@@ -173,8 +141,8 @@ public class InvokerUtilities {
                 populateJsonObjectWithArguments((Map<String, Object>) value, innerMap);
                 dest.add(key, innerMap);
             }
-            else if (value instanceof Collection || value.getClass().isArray()) {
-                populateWithArrayOrCollection(value, dest, key);
+            else if (value.getClass().isArray()) {
+                populateWithArray(key, (Object[])value, dest);
             }
             else if (value instanceof Serializable) {
                 String base64Encoded = InvokerUtilities.serializableToBase64String((Serializable)value);
