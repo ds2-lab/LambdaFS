@@ -55,8 +55,7 @@ public class ArgumentContainer {
         Class<?> clazz = value.getClass().getComponentType();
 
         // Check if `value` is a primitive.
-        if (value.getClass().isPrimitive() || Number.class.isAssignableFrom(clazz) ||
-                Boolean.class.isAssignableFrom(clazz) || value instanceof String ||
+        if (Number.class.isAssignableFrom(clazz) || Boolean.class.isAssignableFrom(clazz) || value instanceof String ||
                 Character.class.isAssignableFrom(clazz))
             addPrimitive(key, value);
         // Check if `value` is an array. If it is, first check if it is byte[].
