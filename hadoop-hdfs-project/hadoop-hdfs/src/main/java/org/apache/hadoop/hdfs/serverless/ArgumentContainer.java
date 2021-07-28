@@ -52,7 +52,7 @@ public class ArgumentContainer {
         LOG.debug("Adding arguments. Key: \"" + key + "\", value: " + value.toString() + ", value's class: "
                 + value.getClass().getSimpleName());
 
-        Class<?> clazz = value.getClass().getComponentType();
+        Class<?> clazz = value.getClass();
 
         // Check if `value` is a primitive.
         if (Number.class.isAssignableFrom(clazz) || Boolean.class.isAssignableFrom(clazz) || value instanceof String ||
