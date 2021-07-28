@@ -115,9 +115,8 @@ public class InvokerUtilities {
             throw new IllegalArgumentException("Parameter `value` must be either a Collection or an array.");
         }
 
-        if (clazz == Byte.class) {
-            Byte[] valueAsByteArray = (Byte[])valueAsList.toArray();
-            String encoded = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(valueAsByteArray));
+        if (Byte.class.isAssignableFrom(clazz)) {
+            String encoded = Base64.getEncoder().encodeToString((byte[])value);
             dest.addProperty(key, encoded);
         }
         else if (String.class.isAssignableFrom(clazz))
