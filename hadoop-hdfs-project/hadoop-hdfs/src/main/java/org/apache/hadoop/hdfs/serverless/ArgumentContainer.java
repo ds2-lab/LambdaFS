@@ -49,16 +49,21 @@ public class ArgumentContainer {
      * @param value The argument itself.
      */
     public void put(String key, Object value) {
-        LOG.debug("Adding arguments. Key: \"" + key + "\", value: " + value.toString());
+        LOG.debug("Adding arguments. Key: \"" + key + "\", value: " + value.toString() + ", value's class: "
+                + value.getClass().getSimpleName());
+
+        Class<?> clazz = value.getClass().getComponentType();
 
         // Check if `value` is a primitive.
-        if (value.getClass().isPrimitive())
+        if (value.getClass().isPrimitive() || Number.class.isAssignableFrom(clazz) ||
+                Boolean.class.isAssignableFrom(clazz) || value instanceof String ||
+                Character.class.isAssignableFrom(clazz))
             addPrimitive(key, value);
         // Check if `value` is an array. If it is, first check if it is byte[].
         else if (value.getClass().isArray()) {
-            Class<?> clazz = value.getClass().getComponentType();
+            Class<?> componentClazz = value.getClass().getComponentType();
 
-            if (byte.class.isAssignableFrom(clazz))
+            if (byte.class.isAssignableFrom(componentClazz))
                 addByteArray(key, (byte[])value);
             else
                 addNonByteArray(key, (Object[])value);
@@ -108,7 +113,6 @@ public class ArgumentContainer {
      */
     public <T> void addPrimitive(String key, T value) {
         assert(value.getClass().isPrimitive() || value instanceof String);
-
         LOG.debug("Adding primitive argument \"" + key + "\"");
         primitiveArguments.put(key, value);
     }
