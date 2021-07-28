@@ -2,6 +2,8 @@ package org.apache.hadoop.hdfs.serverless;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -79,6 +81,72 @@ public class InvokerUtilities {
     }
 
     /**
+     * This function is used to add an array argument to the JsonObject containing the arguments for a particular
+     * file system operation. This function will process a given array or Collection and add each element contained
+     * therein to the destination JsonObject. This function will check the types of the objects within the Collection
+     * or array. If necessary, the objects will be serialized and base64-encoded before being stored in the JsonObject.
+     *
+     * @param value The array or collection that is being serialized.
+     * @param dest The JsonObject to store the array in.
+     * @param key The name of the argument/parameter. This name comes from the argument name in the Serverless NameNode
+     *            function that performs the desired FS operation.
+     */
+    private static void populateWithArrayOrCollection(Object value, JsonObject dest, String key) {
+
+        List<Object> valueAsList;
+        JsonArray arr = new JsonArray();
+
+        // We want to check what type of array/list this is. If it is an array/list
+        // of byte, we will simply convert the entire array/list to a base64 string.
+        Class<?> clazz = value.getClass().getComponentType();
+
+        LOG.debug("Serializing Collection/Array argument with component type: " + clazz.getSimpleName());
+
+        if (value instanceof Collection) {
+            valueAsList = new ArrayList<Object>((Collection<?>)value);
+            LOG.debug("Created list from collection. valueAsList = " + valueAsList);
+        }
+        else if (value.getClass().isArray()) {
+            // TODO: Fix this function call as it does not work correctly.
+            //       Does not create proper array from primitives, at least.
+            valueAsList = Arrays.asList(Array.newInstance(clazz, Array.getLength(value)));
+            LOG.debug("Created list from array. valueAsList = " + valueAsList);
+        } else {
+            throw new IllegalArgumentException("Parameter `value` must be either a Collection or an array.");
+        }
+
+        if (clazz == Byte.class) {
+            Byte[] valueAsByteArray = (Byte[])valueAsList.toArray();
+            String encoded = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(valueAsByteArray));
+            dest.addProperty(key, encoded);
+        }
+        else if (String.class.isAssignableFrom(clazz))
+            valueAsList.forEach(e -> arr.add(new JsonPrimitive((String) e)));
+        else if (Number.class.isAssignableFrom(clazz))
+            valueAsList.forEach(e -> arr.add(new JsonPrimitive((Number) e)));
+        else if (Boolean.class.isAssignableFrom(clazz))
+            valueAsList.forEach(e -> arr.add(new JsonPrimitive((Boolean) e)));
+        else if (Character.class.isAssignableFrom(clazz))
+            valueAsList.forEach(e -> arr.add(new JsonPrimitive((Character) e)));
+        else if (Serializable.class.isAssignableFrom(clazz)) {
+            valueAsList.forEach(e -> {
+                try {
+                    String base64Encoded = InvokerUtilities.serializableToBase64String((Serializable)e);
+                    arr.add(base64Encoded);
+                } catch (IOException ioException) {
+                    ioException.printStackTrace();
+                }
+            });
+        }
+        else {
+            throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
+                    + clazz.getSimpleName());
+        }
+
+        dest.add(key, arr);
+    }
+
+    /**
      * Process the arguments passed in the given HashMap. Attempt to add them to the JsonObject.
      *
      * Throws an exception if one of the arguments is not a String, Number, Boolean, or Character.
@@ -107,51 +175,7 @@ public class InvokerUtilities {
                 dest.add(key, innerMap);
             }
             else if (value instanceof Collection || value.getClass().isArray()) {
-                List<Object> valueAsList;
-                LOG.debug("Serializing Collection/Array argument now...");
-                JsonArray arr = new JsonArray();
-
-                // We want to check what type of array/list this is. If it is an array/list
-                // of byte, we will simply convert the entire array/list to a base64 string.
-                Class<?> clazz = value.getClass().getComponentType();
-
-                if (value instanceof Collection) {
-                    valueAsList = new ArrayList<Object>((Collection<?>)value);
-                    LOG.debug("Created list from collection. valueAsList = " + valueAsList);
-                }
-                else {
-                    valueAsList = Arrays.asList(Array.newInstance(clazz, Array.getLength(value)));
-                    LOG.debug("Created list from array. valueAsList = " + valueAsList);
-                }
-
-                LOG.debug("Component type of array/collection: " + clazz.getSimpleName());
-
-
-                if (clazz == Byte.class) {
-                    Byte[] valueAsByteArray = (Byte[])valueAsList.toArray();
-                    String encoded = Base64.getEncoder().encodeToString(ArrayUtils.toPrimitive(valueAsByteArray));
-                    dest.addProperty(key, encoded);
-                } else { // Note an array or list of byte.
-                    for (Object obj : valueAsList) {
-                        if (obj instanceof String)
-                            arr.add((String) obj);
-                        else if (obj instanceof Number)
-                            arr.add((Number) obj);
-                        else if (obj instanceof Boolean)
-                            arr.add((Boolean) obj);
-                        else if (obj instanceof Character)
-                            arr.add((Character) obj);
-                        else if (value instanceof Serializable) {
-                            String base64Encoded = InvokerUtilities.serializableToBase64String((Serializable)value);
-                            arr.add(base64Encoded);
-                        }
-                        else
-                            throw new IllegalArgumentException("Argument " + key + " is not of a valid type: "
-                                    + obj.getClass().toString());
-                    }
-
-                    dest.add(key, arr);
-                }
+                populateWithArrayOrCollection(value, dest, key);
             }
             else if (value instanceof Serializable) {
                 String base64Encoded = InvokerUtilities.serializableToBase64String((Serializable)value);
