@@ -58,7 +58,7 @@ public class ArgumentContainer {
         else if (value.getClass().isArray()) {
             Class<?> clazz = value.getClass().getComponentType();
 
-            if (Byte.class.isAssignableFrom(clazz))
+            if (byte.class.isAssignableFrom(clazz))
                 addByteArray(key, (byte[])value);
             else
                 addNonByteArray(key, (Object[])value);
