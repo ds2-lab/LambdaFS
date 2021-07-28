@@ -121,8 +121,10 @@ public class ArgumentContainer {
     public void addObject(String key, Serializable value) {
         // We do not want to Base64-encode a String, so instead we treat it like it is a primitive.
         // This works fine since Json can handle Strings.
-        if (value instanceof String)
+        if (value instanceof String) {
             addPrimitive(key, value);
+            return;
+        }
 
         LOG.debug("Adding object argument \"" + key + "\"");
         objectArguments.put(key, value);
