@@ -1137,7 +1137,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private boolean mkdirs(JsonObject fsArgs) throws IOException, ClassNotFoundException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
-    String maskedBase64 = fsArgs.getAsJsonArray("maskedBase64").getAsString();
+    String maskedBase64 = fsArgs.getAsJsonPrimitive("masked").getAsString();
     FsPermission masked = (FsPermission) InvokerUtilities.base64StringToObject(maskedBase64);
     boolean createParent = fsArgs.getAsJsonPrimitive("createParent").getAsBoolean();
 
@@ -2540,7 +2540,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return false;
     }*/
 
-    LOG.warn("Returning hard-coded `true` for isLeader().");
+    // LOG.warn("Returning hard-coded `true` for isLeader().");
     return true;
   }
 
