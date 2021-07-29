@@ -944,10 +944,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     if (fsArgs.has("previous")) {
       String previousBase64 = fsArgs.getAsJsonPrimitive("previous").getAsString();
-      /*byte[] previousBytes = Base64.decodeBase64(previousBase64);
-      DataInputBuffer dataInput = new DataInputBuffer();
-      dataInput.reset(previousBytes, previousBytes.length);
-      previous = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);*/
       previous = (ExtendedBlock) InvokerUtilities.base64StringToObject(previousBase64);
     }
 

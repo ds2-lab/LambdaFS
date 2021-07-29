@@ -49,6 +49,11 @@ public class ArgumentContainer {
      * @param value The argument itself.
      */
     public void put(String key, Object value) {
+        if (value == null) {
+            LOG.warn("Argument for key \"" + key + "\" is null!");
+            return;
+        }
+
         LOG.debug("Adding arguments. Key: \"" + key + "\", value: " + value.toString() + ", value's class: "
                 + value.getClass().getSimpleName());
 
