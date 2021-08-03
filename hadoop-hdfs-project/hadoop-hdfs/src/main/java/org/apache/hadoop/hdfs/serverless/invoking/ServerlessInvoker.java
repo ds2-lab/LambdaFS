@@ -22,7 +22,6 @@ import java.util.HashMap;
  * to provide flexibility.
  */
 public interface ServerlessInvoker<T> {
-
     /**
      * Invoke a serverless NameNode function via an HTTP POST request and return the response to the user.
      * @param operationName The name of the file system operation to be performed by the ServerlessNameNode.
