@@ -38,11 +38,41 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * Configuration name for specifying the endpoint to issue HTTP requests to invoke serverless functions.
    */
   public static final String SERVERLESS_ENDPOINT = "serverless.endpoint";
-  // public static final String SERVERLESS_ENDPOINT_DEFAULT = "http://127.0.0.1/api/v1/namespaces/whisk.system/actions/namenode?blocking=true";
+
+  /**
+   * The default endpoint/URI for invoking a serverless function (i.e., namenode).
+   */
   public static final String SERVERLESS_ENDPOINT_DEFAULT = "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
 
+  /**
+   * Configuration property for defining the serverless platform in use.
+   */
   public static final String SERVERLESS_PLATFORM = "serverless.platform";
+
+  /**
+   * The default serverless platform of Serverless HopsFS.
+   */
   public static final String SERVERLESS_PLATFORM_DEFAULT = "openwhisk";
+
+  /**
+   * Configuration property for the baseline number of unique serverless functions deployed for use in this
+   * particular Serverless HopsFS cluster. This is different from the max number of deployments, which is the hard
+   * limit for the number of unique serverless functions at disposal.
+   */
+  public static final String SERVERLESS_DEPLOYMENTS_BASELINE = "serverless.deployments.baseline";
+
+  /**
+   * The default number of serverless functions associated with this particular Serverless HopsFS cluster.
+   */
+  public static final int SERVERLESS_DEPLOYMENTS_BASELINE_DEFAULT = 1;
+
+  /**
+   * The maximum number of uniquely-deployed serverless functions available for use with this particular
+   * Serverless HopsFS cluster.
+   */
+  public static final String SERVERLESS_MAX_DEPLOYMENTS = "serverless.deployments.max";
+
+  public static final int SERVERLESS_DEPLOYMENTS_MAX_DEFAULT = 1;
 
   //db storage
   public static final String DFS_STORAGE_DRIVER_JAR_FILE = "dfs.storage.driver.jarFile";

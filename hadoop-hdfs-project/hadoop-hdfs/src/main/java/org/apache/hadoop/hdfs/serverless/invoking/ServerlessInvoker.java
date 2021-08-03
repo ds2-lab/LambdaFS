@@ -45,6 +45,13 @@ public interface ServerlessInvoker<T> {
             ArgumentContainer fileSystemOperationArguments) throws IOException;
 
     /**
+     * Return the FunctionMetadataMap instance associated with this serverless invoker.
+     *
+     * FunctionMetadataMap objects maintain a cache of file/directory-to-serverless-function mappings.
+     */
+    public FunctionMetadataMap getFunctionMetadataMap();
+
+    /**
      * Return an HTTP client configured appropriately for the serverless platform associated with the
      * concrete implementation of this interface.
      */

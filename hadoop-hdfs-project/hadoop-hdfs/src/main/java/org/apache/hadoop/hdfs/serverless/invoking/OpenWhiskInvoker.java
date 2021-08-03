@@ -34,9 +34,15 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
     private final CloseableHttpClient httpClient;
 
     /**
+     * Maintains a mapping of files and directories to the serverless functions responsible for caching the
+     * metadata of the file/directory in question.
+     */
+    private final FunctionMetadataMap cache;
+
+    /**
      * Default constructor.
      */
-    public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+    public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager() {
@@ -61,6 +67,12 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         }
 
         httpClient = getHttpClient();
+        cache = new FunctionMetadataMap();
+    }
+
+    @Override
+    public FunctionMetadataMap getFunctionMetadataMap() {
+        return cache;
     }
 
     @Override
