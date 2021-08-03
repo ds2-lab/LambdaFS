@@ -6,7 +6,6 @@ import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 import com.google.gson.JsonObject;
-import io.hops.leader_election.node.ActiveNode;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
@@ -110,8 +109,8 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.protocol.HdfsBlocksMetadata;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNodeClient;
-import org.apache.hadoop.hdfs.serverless.ServerlessInvoker;
-import org.apache.hadoop.hdfs.serverless.ServerlessInvokerFactory;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;

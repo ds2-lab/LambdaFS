@@ -18,13 +18,10 @@
 package org.apache.hadoop.hdfs.server.datanode;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.hops.exception.StorageException;
 import io.hops.exception.StorageInitializtionException;
 import io.hops.leader_election.node.ActiveNode;
-import io.hops.leader_election.node.SortedActiveNodeList;
-import static org.apache.hadoop.util.Time.monotonicNow;
 
 import java.io.*;
 
@@ -39,10 +36,9 @@ import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
-import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.protocol.*;
-import org.apache.hadoop.hdfs.serverless.ServerlessInvoker;
-import org.apache.hadoop.hdfs.serverless.ServerlessInvokerFactory;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.Time;
@@ -52,15 +48,6 @@ import org.apache.hadoop.util.VersionUtil;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.*;
-
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
-
-import javax.xml.stream.events.Namespace;
 
 /**
  * A thread per active or standby namenode to perform:

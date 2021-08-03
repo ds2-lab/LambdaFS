@@ -58,8 +58,10 @@ public class AccessControlList implements Writable {
 
   // Set of users who are granted access.
   private Collection<String> users;
+
   // Set of groups which are granted access
   private Collection<String> groups;
+
   // Whether all users are granted access.
   private boolean allAllowed;
 

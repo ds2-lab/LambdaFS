@@ -1,11 +1,9 @@
-package org.apache.hadoop.hdfs.serverless;
+package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
 import io.hops.exception.StorageInitializtionException;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
 
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 
 public class ServerlessInvokerFactory {
@@ -21,7 +19,7 @@ public class ServerlessInvokerFactory {
     private static String getInvokerClassName(String serverlessPlatformName) throws StorageInitializtionException {
         if (serverlessPlatformName.toLowerCase(Locale.ROOT).equals("openwhisk") ||
                 serverlessPlatformName.toLowerCase(Locale.ROOT).equals("open whisk"))
-            return "org.apache.hadoop.hdfs.serverless.OpenWhiskInvoker";
+            return "org.apache.hadoop.hdfs.serverless.invoking.OpenWhiskInvoker";
         else
             throw new StorageInitializtionException(
                     "Unsupported serverless platform specified: \"" + serverlessPlatformName + "\"");

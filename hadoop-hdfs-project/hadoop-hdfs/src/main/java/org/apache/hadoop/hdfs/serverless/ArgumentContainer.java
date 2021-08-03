@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.kerby.util.Base64;
 
 import java.io.IOException;
