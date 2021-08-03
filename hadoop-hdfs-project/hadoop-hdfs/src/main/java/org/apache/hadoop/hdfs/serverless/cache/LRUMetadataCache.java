@@ -7,22 +7,47 @@ import java.util.Map;
  * Used by Serverless NameNodes to store and retrieve cached metadata.
  */
 public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
-
-    private static final int MAX_ENTRIES = 100;
-    private static final float LOAD_FACTOR = 0.75f;
+    private static final int DEFAULT_MAX_ENTRIES = 100;         // Default maximum capacity.
+    private static final float DEFAULT_LOAD_FACTOR = 0.75f;     // Default load factor.
 
     private static final long serialVersionUID = -8140463703331613827L;
 
+    // The maximum capacity.
     private final int maxSize;
 
+    /**
+     * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
+     */
     public LRUMetadataCache() {
-        super(MAX_ENTRIES, 0.75f, true);
+        super(DEFAULT_MAX_ENTRIES, 0.75f, true);
 
-        this.maxSize = MAX_ENTRIES;
+        this.maxSize = DEFAULT_MAX_ENTRIES;
     }
 
+    /**
+     * Create an LRU Metadata Cache using the default load factor value and a specified maximum capacity.
+     */
     public LRUMetadataCache(int capacity) {
-        super(capacity, 0.75f, true);
+        super(capacity, DEFAULT_LOAD_FACTOR, true);
+
+        this.maxSize = capacity;
+    }
+
+
+    /**
+     * Create an LRU Metadata Cache using the default maximum capacity and a specified load factor value.
+     */
+    public LRUMetadataCache(float loadFactor) {
+        super(DEFAULT_MAX_ENTRIES, loadFactor, true);
+
+        this.maxSize = DEFAULT_MAX_ENTRIES;
+    }
+
+    /**
+     * Create an LRU Metadata Cache using a specified maximum capacity and load factor.
+     */
+    public LRUMetadataCache(int capacity, float loadFactor) {
+        super(capacity, loadFactor, true);
 
         this.maxSize = capacity;
     }

@@ -57,15 +57,15 @@ public class AccessControlList implements Writable {
   private static final int INITIAL_CAPACITY = 256;
 
   // Set of users who are granted access.
-  private Collection<String> users;
+  protected Collection<String> users;
 
   // Set of groups which are granted access
-  private Collection<String> groups;
+  protected Collection<String> groups;
 
   // Whether all users are granted access.
-  private boolean allAllowed;
+  protected boolean allAllowed;
 
-  private Groups groupsMapping = Groups.getUserToGroupsMappingService(new Configuration());
+  protected Groups groupsMapping = Groups.getUserToGroupsMappingService(new Configuration());
 
   /**
    * This constructor exists primarily for AccessControlList to be Writable.
@@ -85,12 +85,12 @@ public class AccessControlList implements Writable {
   public AccessControlList(String aclString) {
     buildACL(aclString.split(" ", 2));
   }
-  
+
   /**
    * Construct a new ACL from String representation of users and groups
-   * 
+   *
    * The arguments are comma separated lists
-   * 
+   *
    * @param users comma separated list of users
    * @param groups comma separated list of groups
    */
@@ -101,8 +101,6 @@ public class AccessControlList implements Writable {
   /**
    * Build ACL from the given two Strings.
    * The Strings contain comma separated values.
-   *
-   * @param aclString build ACL from array of Strings
    */
   private void buildACL(String[] userGroupStrings) {
     users = new HashSet<String>();
