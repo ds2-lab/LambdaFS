@@ -27,7 +27,7 @@ if __name__ == "__main__":
         default = "namenode",
         help = "The base name of the serverless functions. Default: \"namenode\". The created functions will be named <prefix>1, <prefix>2, etc.")
 
-    parser.add_argument("i", "--image",
+    parser.add_argument("-i", "--image",
         dest = "docker_image",
         type = str,
         default = "scusemua/java8action:latest",
