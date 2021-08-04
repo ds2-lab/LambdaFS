@@ -15,10 +15,10 @@ import java.util.HashMap;
 public class FunctionMetadataMap {
     private static final Log LOG = LogFactory.getLog(FunctionMetadataMap.class);
 
-    private final HashMap<String, String> cache;
+    private final HashMap<String, Integer> cache;
 
     public FunctionMetadataMap() {
-        cache = new HashMap<String, String>();
+        cache = new HashMap<String, Integer>();
     }
 
     /**
@@ -32,18 +32,18 @@ public class FunctionMetadataMap {
 
     /**
      * Return the particular serverless functions responsible for caching the metadata for the given file or directory.
-     * @return the name of the associated serverless function, or null if no
+     * @return the number of the associated serverless function, or -1 if no
      *         entry exists in the map for this function yet.
      */
-    public String getFunction(String file) {
+    public int getFunction(String file) {
         if (cache.containsKey(file)) {
-            String functionName = cache.get(file);
+            int functionName = cache.get(file);
             LOG.debug(String.format("Returning function %s for file %s", file, functionName));
             return functionName;
         }
         else {
             LOG.debug("No entry associated with file " + file);
-            return null;
+            return -1;
         }
     }
 
@@ -54,7 +54,7 @@ public class FunctionMetadataMap {
      * @param overwriteExisting Overwrite an existing entry.
      * @return `true` if entry was added to the cache, otherwise `false`.
      */
-    public boolean addEntry(String path, String function, boolean overwriteExisting) {
+    public boolean addEntry(String path, int function, boolean overwriteExisting) {
         // Only add the file to the cache if we're supposed to overwrite existing entries or
         // if there does not already exist an entry for the given file/directory.
         if (overwriteExisting || !cache.containsKey(path)) {

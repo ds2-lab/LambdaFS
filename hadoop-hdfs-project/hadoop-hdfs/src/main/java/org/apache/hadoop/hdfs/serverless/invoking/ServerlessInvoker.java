@@ -34,13 +34,13 @@ public interface ServerlessInvoker<T> {
      */
     public T invokeNameNodeViaHttpPost(
             String operationName,
-            String functionUri,
+            String functionUriBase,
             HashMap<String, Object> nameNodeArguments,
             HashMap<String, Object> fileSystemOperationArguments) throws IOException;
 
     public T invokeNameNodeViaHttpPost(
             String operationName,
-            String functionUri,
+            String functionUriBase,
             HashMap<String, Object> nameNodeArguments,
             ArgumentContainer fileSystemOperationArguments) throws IOException;
 

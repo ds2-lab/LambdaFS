@@ -42,7 +42,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   /**
    * The default endpoint/URI for invoking a serverless function (i.e., namenode).
    */
-  public static final String SERVERLESS_ENDPOINT_DEFAULT = "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
+  public static final String SERVERLESS_ENDPOINT_DEFAULT = "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode";
 
   /**
    * Configuration property for defining the serverless platform in use.
@@ -72,7 +72,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    */
   public static final String SERVERLESS_MAX_DEPLOYMENTS = "serverless.deployments.max";
 
-  public static final int SERVERLESS_DEPLOYMENTS_MAX_DEFAULT = 1;
+  public static final int SERVERLESS_MAX_DEPLOYMENTS_DEFAULT = 1;
 
   //db storage
   public static final String DFS_STORAGE_DRIVER_JAR_FILE = "dfs.storage.driver.jarFile";

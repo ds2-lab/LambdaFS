@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -13,6 +15,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
+import java.util.concurrent.ThreadLocalRandom;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -40,9 +43,16 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
     private final FunctionMetadataMap cache;
 
     /**
-     * Default constructor.
+     * This is appended to the end of the serverlessEndpointBase AFTER the number is added.
      */
-    public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
+    private final String blockingParameter = "?blocking=true";
+
+    /**
+     * The number of uniquely-deployed serverless functions available for use.
+     */
+    private int numUniqueFunctions;
+
+    private void instantiateTrustManager() {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager() {
@@ -65,7 +75,29 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         } catch (GeneralSecurityException e) {
             LOG.error(e);
         }
+    }
 
+    /**
+     * Default constructor.
+     */
+    public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
+        instantiateTrustManager();
+        httpClient = getHttpClient();
+        cache = new FunctionMetadataMap();
+
+        LOG.warn("No configuration provided for OpenWhiskInvoker. Defaulting to " +
+                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT + " available serverless functions.");
+        // If we're not given a Configuration object to use, then just assume the default...
+        numUniqueFunctions = DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT;
+    }
+
+    /**
+     * Default constructor.
+     */
+    public OpenWhiskInvoker(Configuration conf) throws NoSuchAlgorithmException, KeyManagementException {
+        numUniqueFunctions = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
+                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        instantiateTrustManager();
         httpClient = getHttpClient();
         cache = new FunctionMetadataMap();
     }
@@ -78,7 +110,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
     @Override
     public JsonObject invokeNameNodeViaHttpPost(
         String operationName,
-        String functionUri,
+        String functionUriBase,
         HashMap<String, Object> nameNodeArguments,
         HashMap<String, Object> fileSystemOperationArguments) throws IOException
     {
@@ -106,7 +138,26 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         if (nameNodeArguments != null)
             InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
 
-        return invokeNameNodeViaHttpInternal(operationName, functionUri, nameNodeArgumentsJson,
+        StringBuilder builder = new StringBuilder();
+        builder.append(functionUriBase);
+
+        int functionNumber = cache.getFunction(null);
+
+        // If we have a cache entry for this function, then we'll invoke that specific function.
+        // Otherwise, we'll just select a function at random.
+        if (functionNumber < 0) {
+            functionNumber = ThreadLocalRandom.current().nextInt(0, numUniqueFunctions + 1);
+            LOG.debug("Randomly selected serverless function " + functionNumber);
+        } else {
+            LOG.debug("Retrieved serverless function " + functionNumber + " from cache.");
+        }
+
+        builder.append(functionNumber);
+
+        // Add the blocking parameter to the end of the URI so the function blocks until it completes
+        // and the full result can be returned to the user.
+        builder.append(blockingParameter);
+        return invokeNameNodeViaHttpInternal(operationName, builder.toString(), nameNodeArgumentsJson,
                 fileSystemOperationArgumentsJson);
     }
 

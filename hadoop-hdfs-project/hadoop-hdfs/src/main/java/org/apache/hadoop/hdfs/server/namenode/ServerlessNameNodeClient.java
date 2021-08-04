@@ -58,22 +58,26 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     /**
      * Issue HTTP requests to this to invoke serverless functions.
+     *
+     * This is the BASE endpoint, meaning we must append a number to the end of it to reach
+     * an actual function. This is because functions are named as PREFIX1, PREFIX2, ..., where
+     * PREFIX is user-specified/user-configured.
      */
-    public String serverlessEndpoint;
+    public String serverlessEndpointBase;
 
     /**
      * The name of the serverless platform being used for the Serverless NameNodes.
      */
     public String serverlessPlatformName;
 
-    private DFSClient dfsClient;
+    private final DFSClient dfsClient;
 
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws StorageInitializtionException {
-        // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true"; //
-        serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+        // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
+        serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
-        LOG.info("Serverless endpoint: " + serverlessEndpoint);
+        LOG.info("Serverless endpoint: " + serverlessEndpointBase);
         LOG.info("Serverless platform: " + serverlessPlatformName);
 
         this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
@@ -288,7 +292,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "setMetaStatus",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
@@ -302,7 +306,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "setPermission",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
@@ -317,7 +321,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "setOwner",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
@@ -342,7 +346,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "addBlock",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -377,7 +381,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "complete",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -415,7 +419,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "rename",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -431,7 +435,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "concat",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
@@ -453,7 +457,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         serverlessInvoker.invokeNameNodeViaHttpPost(
                 "rename",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
     }
@@ -468,7 +472,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "truncate",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -495,7 +499,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "delete",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -523,7 +527,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "mkdirs",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -549,7 +553,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "getListing",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -630,7 +634,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "getFileInfo",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -656,7 +660,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "isFileClosed",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 
@@ -684,7 +688,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
                 "getFileLinkInfo",
-                serverlessEndpoint,
+                serverlessEndpointBase,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
 

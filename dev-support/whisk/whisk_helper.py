@@ -72,4 +72,6 @@ if __name__ == "__main__":
 
         split_command = command.split(" ")
 
+        logger.debug("Executing command: " + str(split_command))
+
         subprocess.run(split_command)
