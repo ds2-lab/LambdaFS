@@ -1,0 +1,75 @@
+import argparse
+import subprocess
+
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(formatter)
+
+logger.addHandler(ch)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-n", "--num-functions",
+        dest = "num_functions",
+        type = int,
+        default = 5,
+        help = "The number of serverless functions to create. Default: 5")
+
+    parser.add_argument("-p", "--prefix",
+        dest = "prefix",
+        type = str,
+        default = "namenode"
+        help = "The base name of the serverless functions. Default: \"namenode\". The created functions will be named <prefix>1, <prefix>2, etc.")
+
+    parser.add_argument("i", "--image",
+        dest = "docker_image",
+        type = str,
+        default = "scusemua/java8action:latest"
+        help = "The name of the docker image to use. Default: \"scusemua/java8action:latest\"")
+
+    parser.add_argument("-c", "--create",
+        action = "store_true",
+        help = "Create new functions (rather than update existing functions. Only one of `create` and `update` should be true.")
+
+    parser.add_argument("-u", "--update",
+        action = "store_true",
+        help = "Update existing functions (rather than create new functions. Only one of `create` and `update` should be true.")
+
+    arguments = parser.parse_args()
+
+    num_functions = arguments.num_functions
+    prefix = arguments.prefix
+    do_update = arguments.update
+    do_create = arguments.create
+    docker_image = arguments.docker_image
+
+    # Only one of `do_create` and `do_update` should be true.
+    if (do_create and do_update):
+        logger.error("Exactly one of `create` and `update` must be true, NOT both.")
+        exit(1)
+    elif (not do_create and not do_update):
+        logger.error("Exactly one of `create` and `update` must be true.")
+        exit(1)
+
+    logger.debug("Number of functions to create: %d" % num_functions)
+    logger.debug("Function prefix: \"%s\"" % prefix)
+    logger.debug("Docker image: \"%s\"" % docker_image)
+
+    for p in range(prefix):
+        function_name = "%s%d" % (prefix, p)
+        logger.debug("Creating function with name \"%s\"" % function_name)
+
+        if do_create:
+            command = "wsk -i action create /whisk.system/%s /home/ben/ben-hopsfs/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar --main org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode --web true --docker %s" % (function_name, docker_image)
+        else:
+            command = "wsk -i action update /whisk.system/%s /home/ben/ben-hopsfs/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar --main org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode --web true --docker %s" % (function_name, docker_image)
+
+        split_command = command.split(" ")
+
+        subprocess.run(split_command)

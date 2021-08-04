@@ -8700,7 +8700,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       @Override
       public Object performTask() throws IOException {
         INode subtreeRoot = getINode(path);
-        if(subtreeRoot instanceof INodeDirectory){
+        if (subtreeRoot instanceof INodeDirectory) {
           INodeDirectory quotaDir = (INodeDirectory) subtreeRoot;
           final DirectoryWithQuotaFeature q = quotaDir.getDirectoryWithQuotaFeature();
           if (q != null) {

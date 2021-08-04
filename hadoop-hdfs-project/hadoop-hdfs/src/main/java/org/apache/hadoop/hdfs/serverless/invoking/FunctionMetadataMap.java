@@ -7,8 +7,10 @@ import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
 import java.util.HashMap;
 
 /**
- * Maintains a cache that maps files to the particular serverless functions which cache that file's (or directory's)
- * metadata.
+ * Maintains a cache that maps files to the particular serverless functions which cache that
+ * file's (or directory's) metadata.
+ *
+ * Objects of this class are utilized by clients of Serverless HopsFS.
  */
 public class FunctionMetadataMap {
     private static final Log LOG = LogFactory.getLog(FunctionMetadataMap.class);

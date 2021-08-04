@@ -17,7 +17,7 @@ import java.util.Collection;
  * a technical description.
  */
 public class DualEntryAccessControlList extends AccessControlList {
-    // register a ctor
+    // Register a ctor.
     static {
         WritableFactories.setFactory
                 (DualEntryAccessControlList.class,
