@@ -95,6 +95,7 @@ import java.security.PrivilegedExceptionAction;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static com.google.common.hash.Hashing.consistentHash;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import org.apache.hadoop.tracing.TraceUtils;
 import org.apache.hadoop.tracing.TracerConfigurationManager;
@@ -193,7 +194,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Syntax:
    *  Major.Minor.Build.Revision
    */
-  private static String versionNumber = "0.1.1.11";
+  private static final String versionNumber = "0.1.2.0";
+
+  /**
+   * The number of uniquely-deployed serverless name nodes associated with this particular Serverless HopsFS cluster.
+   *
+   * This is used when hashing parent inode IDs to particular serverless name nodes.
+   */
+  private int numUniqueServerlessNameNodes;
 
   /**
    * A mapping from operation/function name to the respective functions. We use this to call FS operations and whatever
@@ -460,6 +468,25 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
+
+      if (fsArgs.has("src")) {
+        String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+        INode iNode = nameNodeInstance.namesystem.getINode(src);
+
+        LOG.debug("Parent INode ID for \"" + src + "\": " + iNode.parentId);
+
+        int function = consistentHash(iNode.parentId, nameNodeInstance.numUniqueServerlessNameNodes);
+
+        LOG.debug("Consistently hashed parent INode ID " + iNode.parentId + " to serverless function " + function);
+
+        // Embed all the information about the serverless function mapping in the Json response.
+        JsonObject functionMapping = new JsonObject();
+        functionMapping.addProperty("fileOrDirectory", src);
+        functionMapping.addProperty("parentId", iNode.parentId);
+        functionMapping.addProperty("function", function);
+
+        response.add("functionMapping", functionMapping);
+      }
 
       response.add("RESULT", result);
     }
@@ -1733,18 +1760,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           intervals);
       }
     }
+
+   numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS,
+           SERVERLESS_DEPLOYMENTS_BASELINE_DEFAULT);
     
     UserGroupInformation.setConfiguration(conf);
     loginAsNameNodeUser(conf);
-
-    //LOG.debug("Setting up the configuration for the HdfsStorageFactory now...");
-
-    //LOG.debug(HdfsStorageFactory.class.getSimpleName() + ".class");
-    //LOG.debug(String.valueOf(HdfsStorageFactory.class.getResource("HdfsStorageFactory.class")));
-
-    ClassLoader loader = HdfsStorageFactory.class.getClassLoader();
-    //LOG.debug(String.valueOf(loader.getResource("io/hops/metadata/HdfsStorageFactory.class")));
-    //LOG.debug(String.valueOf(HdfsStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));
     
     HdfsStorageFactory.setConfiguration(conf);
 
@@ -1764,7 +1785,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
      this.brTrackingService = new BRTrackingService(updateThreshold, maxConcurrentBRs,
              brMaxProcessingTime);
     this.mdCleaner = MDCleaner.getInstance();
-    this.failedSTOCleanDelay = conf.getLong(
+    failedSTOCleanDelay = conf.getLong(
             DFSConfigKeys.DFS_SUBTREE_CLEAN_FAILED_OPS_LOCKS_DELAY_KEY,
             DFSConfigKeys.DFS_SUBTREE_CLEAN_FAILED_OPS_LOCKS_DELAY_DEFAULT);
     this.slowSTOCleanDelay = conf.getLong(

@@ -62,6 +62,7 @@ public interface ServerlessInvoker<T> {
      * the serverless name node.
      *
      * This function will also check for an Exception. If one is found, then it will be logged.
+     * This function will also update the serverless function cache mapping automatically.
      * @param response The response obtained from the HttpPost request used to invoke the serverless name node.
      */
     public Object extractResultFromJsonResponse(JsonObject response) throws IOException, ClassNotFoundException;

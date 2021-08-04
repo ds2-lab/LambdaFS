@@ -279,6 +279,25 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
 
     @Override
     public Object extractResultFromJsonResponse(JsonObject response) throws IOException, ClassNotFoundException {
+        // First, let's check and see if there's any information about file/directory-to-function mappings.
+        if (response.has("functionMapping")) {
+            LOG.debug("Json response from serverless name node contains function mapping information.");
+            JsonObject functionMapping = response.getAsJsonObject("functionMapping");
+
+            String src = functionMapping.getAsJsonPrimitive("src").getAsString();
+            long parentINodeId = functionMapping.getAsJsonPrimitive("parentId").getAsLong();
+            int function = functionMapping.getAsJsonPrimitive("function").getAsInt();
+
+            LOG.debug("File or directory: \"" + src + "\", parent INode ID: " + parentINodeId +
+                    ", function: " + function);
+
+            cache.addEntry(src, function, false);
+
+            LOG.debug("Added entry to function-mapping cache. File/directory \"" + src + "\" --> " + function);
+        }
+
+        // Now we'll check for a result from the name node.
+        // If there's no result, then there may have been an exception, which we'd need to log.
         if (response.has("RESULT")) {
             String resultBase64 =
                     response.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
