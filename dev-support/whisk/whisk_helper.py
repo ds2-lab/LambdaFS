@@ -24,13 +24,13 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--prefix",
         dest = "prefix",
         type = str,
-        default = "namenode"
+        default = "namenode",
         help = "The base name of the serverless functions. Default: \"namenode\". The created functions will be named <prefix>1, <prefix>2, etc.")
 
     parser.add_argument("i", "--image",
         dest = "docker_image",
         type = str,
-        default = "scusemua/java8action:latest"
+        default = "scusemua/java8action:latest",
         help = "The name of the docker image to use. Default: \"scusemua/java8action:latest\"")
 
     parser.add_argument("-c", "--create",
