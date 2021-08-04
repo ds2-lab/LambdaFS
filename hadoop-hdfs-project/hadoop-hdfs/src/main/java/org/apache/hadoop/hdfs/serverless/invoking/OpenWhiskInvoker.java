@@ -141,7 +141,15 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);
 
-        int functionNumber = cache.getFunction(null);
+        int functionNumber = -1;
+
+        // Attempt to get the serverless function associated with the particular file/directory, if one exists.
+        if (fileSystemOperationArguments != null && fileSystemOperationArguments.containsKey("src")) {
+            String sourceFileOrDirectory = (String) fileSystemOperationArguments.get("src");
+            LOG.debug("Checking serverless function cache for entry associated with file/directory \"" +
+                    sourceFileOrDirectory + "\" now...");
+            functionNumber = cache.getFunction(sourceFileOrDirectory);
+        }
 
         // If we have a cache entry for this function, then we'll invoke that specific function.
         // Otherwise, we'll just select a function at random.
