@@ -61,8 +61,8 @@ if __name__ == "__main__":
     logger.debug("Function prefix: \"%s\"" % prefix)
     logger.debug("Docker image: \"%s\"" % docker_image)
 
-    for p in range(prefix):
-        function_name = "%s%d" % (prefix, p)
+    for i in range(num_functions):
+        function_name = "%s%d" % (prefix, i)
         logger.debug("Creating function with name \"%s\"" % function_name)
 
         if do_create:
