@@ -65,6 +65,32 @@ public class AccessControlList implements Writable {
   // Whether all users are granted access.
   protected boolean allAllowed;
 
+  /**
+   * Set of users which are granted access to this path.
+   */
+  private Collection<String> pathUsers;
+
+  /**
+   * Set of groups which are granted access to this path.
+   */
+  private Collection<String> pathGroups;
+
+  /**
+   * Get the names of users allowed for this service. This is from the path ACL (rather than the file ACL).
+   * @return the set of user names. the set must not be modified.
+   */
+  public Collection<String> getPathUsers() {
+    return pathUsers;
+  }
+
+  /**
+   * Get the names of user groups allowed for this service. This is from the path ACL (rather than the file ACL).
+   * @return the set of group names. the set must not be modified.
+   */
+  public Collection<String> getPathGroups() {
+    return pathGroups;
+  }
+
   protected Groups groupsMapping = Groups.getUserToGroupsMappingService(new Configuration());
 
   /**
@@ -76,7 +102,7 @@ public class AccessControlList implements Writable {
   /**
    * Construct a new ACL from a String representation of the same.
    * 
-   * The String is a a comma separated list of users and groups.
+   * The String is a comma separated list of users and groups.
    * The user list comes first and is separated by a space followed 
    * by the group list. For e.g. "user1,user2 group1,group2"
    * 

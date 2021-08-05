@@ -66,6 +66,7 @@ import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
@@ -89,6 +90,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.management.ObjectName;
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.PrivilegedExceptionAction;
@@ -1194,8 +1197,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return namesystem.getBlockLocations(NameNodeRpcServer.getClientMachine(), src, offset, length);
   }
 
-  private void concat(JsonObject fsArgs) throws IOException {
+  private void concat(JsonObject fsArgs) throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     LOG.info("Unpacking arguments for the CONCAT operation now...");
+
+    //Method method = FSNamesystem.class.getMethod("concat");
+    //method.invoke(ServerlessUtilities.extractArguments(fsArgs, method, new String[] {"target", "srcs"}));
 
     String trg = fsArgs.getAsJsonPrimitive("trg").getAsString();
 
