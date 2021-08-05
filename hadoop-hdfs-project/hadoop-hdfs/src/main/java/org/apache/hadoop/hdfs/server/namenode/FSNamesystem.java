@@ -91,6 +91,7 @@ import org.apache.hadoop.hdfs.server.namenode.top.window.RollingWindowManager;
 import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMethods;
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 import org.apache.hadoop.hdfs.util.EnumCounters;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -238,6 +239,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
   static final int DEFAULT_MAX_CORRUPT_FILEBLOCKS_RETURNED = 100;
   static int BLOCK_DELETION_INCREMENT = 1000;
+
+  /**
+   * Used to cache file system metadata locally within a serverless name node.
+   */
+  private final LRUMetadataCache<String, Object> metadataCache;
 
   private final boolean isPermissionEnabled;
   private final UserGroupInformation fsOwner;
@@ -470,6 +476,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       resourceRecheckInterval =
           conf.getLong(DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_KEY,
               DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_DEFAULT);
+
+      this.metadataCache = new LRUMetadataCache<>();
 
       this.blockManager = new BlockManager(this, conf);
       this.erasureCodingEnabled =
