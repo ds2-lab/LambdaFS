@@ -302,6 +302,8 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
             cache.addEntry(src, function, false);
 
             LOG.debug("Added entry to function-mapping cache. File/directory \"" + src + "\" --> " + function);
+        } else {
+            LOG.warn("No INode function mapping information contained within response from serverless name node...");
         }
 
         // Now we'll check for a result from the name node.
