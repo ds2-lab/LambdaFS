@@ -292,7 +292,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
             LOG.debug("Json response from serverless name node contains function mapping information.");
             JsonObject functionMapping = response.getAsJsonObject("functionMapping");
 
-            String src = functionMapping.getAsJsonPrimitive("src").getAsString();
+            String src = functionMapping.getAsJsonPrimitive("fileOrDirectory").getAsString();
             long parentINodeId = functionMapping.getAsJsonPrimitive("parentId").getAsLong();
             int function = functionMapping.getAsJsonPrimitive("function").getAsInt();
 
