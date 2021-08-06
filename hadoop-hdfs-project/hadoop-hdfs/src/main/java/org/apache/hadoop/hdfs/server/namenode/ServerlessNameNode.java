@@ -34,8 +34,13 @@ import io.hops.metadata.hdfs.entity.StorageReport;
 import io.hops.security.HopsUGException;
 import io.hops.security.UsersGroups;
 import io.hops.transaction.handler.HDFSOperationType;
+import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.handler.LightWeightRequestHandler;
 import io.hops.transaction.handler.RequestHandler;
+import io.hops.transaction.lock.INodeLock;
+import io.hops.transaction.lock.LockFactory;
+import io.hops.transaction.lock.TransactionLockTypes;
+import io.hops.transaction.lock.TransactionLocks;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
@@ -75,6 +80,7 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.util.MBeans;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.net.Node;
+import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.RefreshUserMappingsProtocol;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -99,6 +105,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.hash.Hashing.consistentHash;
+import static io.hops.transaction.lock.LockFactory.getInstance;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import org.apache.hadoop.tracing.TraceUtils;
 import org.apache.hadoop.tracing.TracerConfigurationManager;
@@ -474,7 +481,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       if (fsArgs.has("src")) {
         String src = fsArgs.getAsJsonPrimitive("src").getAsString();
-        INode iNode = nameNodeInstance.namesystem.getINode(src);
+        INode iNode = nameNodeInstance.getINodeForCache(src);
 
         LOG.debug("Parent INode ID for \"" + src + "\": " + iNode.parentId);
 
@@ -500,6 +507,46 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     return response;
+  }
+
+  /**
+   * Create a transaction to read the INode for the specified file from NDB.
+   * @return
+   */
+  private INode getINodeForCache(final String srcArg) throws IOException {
+    final FSPermissionChecker pc = namesystem.getPermissionChecker();
+    byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
+    final String src = namesystem.dir.resolvePath(pc, srcArg, pathComponents);
+    final boolean isSuperUser =  namesystem.dir.getPermissionChecker().isSuperUser();
+
+    HopsTransactionalRequestHandler getINodeRequestHandler = new HopsTransactionalRequestHandler(
+            HDFSOperationType.GET_BLOCK_LOCATIONS, src) {
+      @Override
+      public void acquireLock(TransactionLocks locks) throws IOException {
+        LockFactory lf = getInstance();
+        INodeLock il = lf.getINodeLock(
+                TransactionLockTypes.INodeLockType.READ,
+                        TransactionLockTypes.INodeResolveType.PATH, src)
+                .setNameNodeID(getId())
+                .setActiveNameNodes(getActiveNameNodes().getActiveNodes());
+        locks.add(il).add(lf.getBlockLock()).add(lf.getBlockRelated(
+                LockFactory.BLK.RE, LockFactory.BLK.ER, LockFactory.BLK.CR,
+                LockFactory.BLK.UC, LockFactory.BLK.CA));
+        locks.add(lf.getEZLock());
+        if (isSuperUser) {
+          locks.add(lf.getXAttrLock());
+        } else {
+          locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
+        }
+      }
+
+      @Override
+      public Object performTask() throws IOException {
+        return namesystem.getINode(src);
+      }
+    };
+
+    return (INode) getINodeRequestHandler.handle();
   }
 
   private boolean checkPathLength(String src) {
