@@ -138,17 +138,42 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         if (nameNodeArguments != null)
             InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
 
+        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
+                fileSystemOperationArgumentsJson);
+    }
+
+    /**
+     * This performs all of the logic. The public versions of this function accept parameters that are convenient
+     * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
+     * @param operationName The FS operation being performed.
+     * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
+     *                        in order to invoke the function. Before the request is issued, a number is appended
+     *                        to the end of the URI to target a particular serverless name node. After the number is
+     *                        appended, we also append a string ?blocking=true to ensure that the operation blocks
+     *                        until it is completed so that the result may be returned to the caller.
+     * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
+     *                          arguments when using a serverful name node.
+     * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
+     *                                     to the Java function which performs the FS operation.
+     * @return The response from the Serverless NameNode.
+     */
+    private JsonObject invokeNameNodeViaHttpInternal(String operationName, String functionUriBase,
+                                                     JsonObject nameNodeArguments,
+                                                     JsonObject fileSystemOperationArguments) throws IOException {
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);
 
         int functionNumber = -1;
 
         // Attempt to get the serverless function associated with the particular file/directory, if one exists.
-        if (fileSystemOperationArguments != null && fileSystemOperationArguments.containsKey("src")) {
-            String sourceFileOrDirectory = (String) fileSystemOperationArguments.get("src");
+        if (fileSystemOperationArguments != null && fileSystemOperationArguments.has("src")) {
+            String sourceFileOrDirectory =
+                    (String) fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
             LOG.debug("Checking serverless function cache for entry associated with file/directory \"" +
                     sourceFileOrDirectory + "\" now...");
             functionNumber = cache.getFunction(sourceFileOrDirectory);
+        } else {
+            LOG.debug("No `src` property found in file system arguments... skipping the checking of INode cache...");
         }
 
         // If we have a cache entry for this function, then we'll invoke that specific function.
@@ -165,25 +190,8 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         // Add the blocking parameter to the end of the URI so the function blocks until it completes
         // and the full result can be returned to the user.
         builder.append(blockingParameter);
-        return invokeNameNodeViaHttpInternal(operationName, builder.toString(), nameNodeArgumentsJson,
-                fileSystemOperationArgumentsJson);
-    }
+        String functionUri = builder.toString();
 
-    /**
-     * This performs all of the logic. The public versions of this function accept parameters that are convenient
-     * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
-     * @param operationName The FS operation being performed.
-     * @param functionUri The URI of the serverless function. We issue an HTTP request to this URI
-     *                    in order to invoke the function.
-     * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
-     *                          arguments when using a serverful name node.
-     * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
-     *                                     to the Java function which performs the FS operation.
-     * @return The response from the Serverless NameNode.
-     */
-    private JsonObject invokeNameNodeViaHttpInternal(String operationName, String functionUri,
-                                                     JsonObject nameNodeArguments,
-                                                     JsonObject fileSystemOperationArguments) throws IOException {
         LOG.debug("invokeNameNodeViaHttpPost() function called for operation \"" + operationName
                 + "\". Printing call stack now...");
         StackTraceElement[] elements = Thread.currentThread().getStackTrace();
