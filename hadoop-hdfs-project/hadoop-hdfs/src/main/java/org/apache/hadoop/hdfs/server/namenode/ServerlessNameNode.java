@@ -1807,20 +1807,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *     the configuration
    */
   protected void initialize(Configuration conf) throws IOException {
-   if (conf.get(HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS) == null) {
+    if (conf.get(HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS) == null) {
       String intervals = conf.get(DFS_METRICS_PERCENTILES_INTERVALS_KEY);
-      if (intervals != null) {
-        conf.set(HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS,
-          intervals);
+        if (intervals != null)
+          conf.set(HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS, intervals);
       }
-    }
 
-   numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS,
-           SERVERLESS_DEPLOYMENTS_BASELINE_DEFAULT);
-    
+    numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+    LOG.debug("Number of unique serverless name nodes: " + numUniqueServerlessNameNodes);
+
     UserGroupInformation.setConfiguration(conf);
     loginAsNameNodeUser(conf);
-    
+
     HdfsStorageFactory.setConfiguration(conf);
 
     int baseWaitTime = conf.getInt(DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_KEY,
@@ -1887,7 +1885,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     pauseMonitor.start();
 
     metrics.getJvmMetrics().setPauseMonitor(pauseMonitor);
-    
+
     startCommonServices(conf);
 
     if(isLeader()){ //if the newly started namenode is the leader then it means
