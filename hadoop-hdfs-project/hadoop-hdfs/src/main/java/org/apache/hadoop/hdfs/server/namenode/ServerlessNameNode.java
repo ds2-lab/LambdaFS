@@ -517,7 +517,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   @FunctionalInterface
   public interface CheckedFunction<T, R> {
-    R apply(T t) throws IOException, ClassNotFoundException;
+    R apply(T t) throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException;
   }
 
   private void populateOperationsMap() {
@@ -587,7 +587,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Perform the operation specified by the String (which will contain the operations name). Pass the arguments
    * contained in fsArgs to the function.
    */
-  public JsonObject performOperation(String op, JsonObject fsArgs) throws IOException, ClassNotFoundException {
+  public JsonObject performOperation(String op, JsonObject fsArgs)
+          throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException {
     LOG.info("Specified operation: " + op);
 
     if (op == null) {
