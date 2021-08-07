@@ -234,6 +234,8 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   @Override
   public INode findInodeByIdFTIS(long inodeId) throws StorageException {
+    printCallStackDebug("findInodeByIdFTIS(" + inodeId + ")");
+
     HopsSession session = connector.obtainSession();
 
     HopsQueryBuilder qb = session.getQueryBuilder();
@@ -266,6 +268,8 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   @Override
   public Collection<INode> findInodesByIdsFTIS(long[] inodeId) throws StorageException {
+    printCallStackDebug("findInodesByIdsFTIS(" + Arrays.toString(inodeId) + ")");
+
     HopsSession session = connector.obtainSession();
 
     HopsQueryBuilder qb = session.getQueryBuilder();
@@ -294,7 +298,8 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public List<INode> findInodesByParentIdFTIS(long parentId)
           throws StorageException {
-    //System.out.println("*** indexScanFindInodesByParentId ");
+    printCallStackDebug("findInodesByParentIdFTIS(" + parentId + ")");
+
     HopsSession session = connector.obtainSession();
 
     HopsQueryBuilder qb = session.getQueryBuilder();
@@ -319,6 +324,9 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public List<INode> findInodesByParentIdAndPartitionIdPPIS(long parentId, long partitionId)
           throws StorageException {
+    printCallStackDebug("findInodesByParentIdAndPartitionIdPPIS(" + parentId + ", " +
+            partitionId + ")");
+
     HopsSession session = connector.obtainSession();
 
     HopsQueryBuilder qb = session.getQueryBuilder();
@@ -344,6 +352,8 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public List<ProjectedINode> findInodesFTISTx(
           long parentId, EntityContext.LockMode lock) throws StorageException {
+    printCallStackDebug("findInodesFTISTx(" + parentId + ", " + lock.toString() + ")");
+
     HopsSession session = connector.obtainSession();
     List<InodeDTO> results = null;
     try {
@@ -465,6 +475,9 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public List<ProjectedINode> findInodesPPISTx(
           long parentId, long partitionId, EntityContext.LockMode lock) throws StorageException {
+    printCallStackDebug("findInodesPPISTx(" + parentId + ", " + partitionId + ", "
+            + lock.toString() + ")");
+
     HopsSession session = connector.obtainSession();
     List<InodeDTO>  results = null;
     try {
@@ -535,6 +548,9 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public INode findInodeByNameParentIdAndPartitionIdPK(String name, long parentId, long partitionId)
           throws StorageException {
+    printCallStackDebug("findInodeByNameParentIdAndPartitionIdPK(" + name + ", " + parentId +
+            ", " + partitionId + ")");
+
     HopsSession session = connector.obtainSession();
 
     Object[] pk = new Object[3];
@@ -555,6 +571,9 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public List<INode> getINodesPkBatched(String[] names, long[] parentIds, long[] partitionIds)
           throws StorageException {
+    printCallStackDebug("getINodesPkBatched(" + Arrays.toString(names) + ", " +
+            Arrays.toString(parentIds) + ", " + Arrays.toString(partitionIds) + ")");
+
     HopsSession session = connector.obtainSession();
 
     List<InodeDTO> dtos = new ArrayList<>();
@@ -582,6 +601,8 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public List<INodeIdentifier> getAllINodeFiles(long startId, long endId)
           throws StorageException {
+    printCallStackDebug("getAllINodeFiles(" + startId + ", " + endId + ")");
+
     HopsSession session = connector.obtainSession();
     HopsQueryBuilder qb = session.getQueryBuilder();
     HopsQueryDomainType<InodeDTO> dobj =
@@ -640,6 +661,8 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   @Override
   public List<INode> findINodes(String name) throws StorageException {
+    printCallStackDebug("findINodes(" + name + ")");
+
     HopsSession session = connector.obtainSession();
 
     HopsQueryBuilder qb = session.getQueryBuilder();
@@ -827,6 +850,21 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
         return LockMode.READ_COMMITTED;
       default:
         throw new UnsupportedOperationException("Lock Type is not supported");
+    }
+  }
+
+  /**
+   * I'm using this to figure out who is trying to read/write INode instances from NDB.
+   * The goal is to determine where to add code related to the caching of metadata on Serverless NNs.
+   * @param callingMethodName The name of the function that got called. I don't wanna stick this
+   *                          for-loop print snippet everywhere, so I'm just putting it in this method
+   *                          and inserting this method call everywhere.
+   */
+  private static void printCallStackDebug(String callingMethodName) {
+    LOG.debug(callingMethodName + " function called. Printing call stack now...");
+    StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+    for (StackTraceElement element : elements) {
+      LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
     }
   }
 
