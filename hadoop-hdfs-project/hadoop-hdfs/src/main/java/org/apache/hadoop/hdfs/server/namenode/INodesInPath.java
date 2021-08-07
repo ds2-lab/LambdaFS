@@ -29,6 +29,8 @@ import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import com.google.common.base.Preconditions;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -109,16 +111,50 @@ public class INodesInPath {
    * @return the specified number of existing INodes in the path
    */
   // TODO: Eliminate null elements from inodes (to be provided by HDFS-7104)
-  static INodesInPath resolve(final INodeDirectory startingDir,
-      final byte[][] components, final boolean resolveLink) throws UnresolvedLinkException, StorageException,
-      TransactionContextException {
+  static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components, final boolean resolveLink)
+          throws UnresolvedLinkException, StorageException, TransactionContextException {
+    return resolve(startingDir, components, resolveLink, null);
+  }
+
+
+  /**
+   * Retrieve existing INodes from a path. For non-snapshot path,
+   * the number of INodes is equal to the number of path components. For
+   * snapshot path (e.g., /foo/.snapshot/s1/bar), the number of INodes is
+   * (number_of_path_components - 1).
+   * <p>
+   * An UnresolvedPathException is always thrown when an intermediate path
+   * component refers to a symbolic link. If the final path component refers
+   * to a symbolic link then an UnresolvedPathException is only thrown if
+   * resolveLink is true.
+   * <p>
+   * <p>
+   * Example: <br>
+   * Given the path /c1/c2/c3 where only /c1/c2 exists, resulting in the
+   * following path components: ["","c1","c2","c3"]
+   * <p>
+   * <p>
+   * <code>getExistingPathINodes(["","c1","c2"])</code> should fill
+   * the array with [rootINode,c1,c2], <br>
+   * <code>getExistingPathINodes(["","c1","c2","c3"])</code> should
+   * fill the array with [rootINode,c1,c2,null]
+   *
+   * @param startingDir the starting directory
+   * @param components array of path component name
+   * @param resolveLink indicates whether UnresolvedLinkException should be thrown when the path refers to a symbolic link.
+   * @param metadataCache The metadata cache of this serverless name node.
+   * @return the specified number of existing INodes in the path
+   */
+  static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components,
+                              final boolean resolveLink, final LRUMetadataCache<String, Object> metadataCache)
+          throws UnresolvedLinkException, StorageException, TransactionContextException {
     Preconditions.checkArgument(startingDir.compareTo(components[0]) == 0);
 
     INode curNode = startingDir;
     int count = 0;
     int inodeNum = 0;
     INode[] inodes = new INode[components.length];
-    
+
     while (count < components.length && curNode != null) {
       final boolean lastComp = (count == components.length - 1);
       inodes[inodeNum++] = curNode;
@@ -132,7 +168,7 @@ public class INodesInPath {
         final String target = curNode.asSymlink().getSymlinkString();
         if (LOG.isDebugEnabled()) {
           LOG.debug("UnresolvedPathException " + " path: " + path + " preceding: " + preceding + " count: " + count
-              + " link: " + link + " target: " + target + " remainder: " + remainder);
+                  + " link: " + link + " target: " + target + " remainder: " + remainder);
         }
         throw new UnresolvedPathException(path, preceding, remainder, target);
       }
@@ -141,8 +177,17 @@ public class INodesInPath {
       }
       final byte[] childName = components[count + 1];
 
-      // normal case, and also for resolving file/dir under snapshot root
-      curNode = dir.getChildINode(childName);
+      // Convert the byte[] representation to a String representation.
+      String childNameAsString = DFSUtil.bytes2String(childName);
+
+      // Check the metadata cache for this particular INode.
+      if (metadataCache != null && metadataCache.containsKey(childNameAsString)) {
+        LOG.debug("INode \"" + childNameAsString + "\" is already cached locally. Using cached INode.");
+        curNode = (INode) metadataCache.get(childNameAsString);
+      } else {
+        // normal case, and also for resolving file/dir under snapshot root
+        curNode = dir.getChildINode(childName);
+      }
       count++;
     }
     return new INodesInPath(inodes, components);

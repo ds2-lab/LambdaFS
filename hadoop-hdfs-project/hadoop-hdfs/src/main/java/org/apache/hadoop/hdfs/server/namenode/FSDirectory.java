@@ -1630,9 +1630,35 @@ public class FSDirectory implements Closeable {
     /** @return the {@link INodesInPath} containing all inodes in the path. */
   public INodesInPath getINodesInPath(String path, boolean resolveLink) throws UnresolvedLinkException, StorageException,
       TransactionContextException {
-    final byte[][] components = INode.getPathComponents(path);
-    return INodesInPath.resolve(getRootDir(), components, resolveLink);
+    // In this new strategy, we first check for INodes in our local cache.
+    // We retrieve any missing INodes from intermediate storage.
+    String[] paths = INode.getPathNames(path);
+
+    StringBuilder builder = new StringBuilder();
+    builder.append("Need to retrieve INodes for the following directories/files:\n");
+    for (String s : paths) {
+      boolean cached = namesystem.getMetadataCache().containsKey(s);
+      String msg = "\tPath: \"" + s + "\", INode already in cache: " + cached + "\n";
+      builder.append(msg);
+    }
+    LOG.debug(builder.toString());
+
+    final byte[][] components = INode.getPathComponents(paths);
+    INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), components, resolveLink, namesystem.getMetadataCache());
+
+    for (int i = 0; i < pathINodes.length(); i++) {
+      String nodePath = paths[i];
+      INode node = pathINodes.getINode(i);
+
+      if (node != null) {
+        LOG.debug("Caching INode \"" + nodePath + "\" in metadata cache now...");
+        namesystem.getMetadataCache().put(nodePath, node);
+      }
+    }
+
+    return pathINodes;
   }
+
   /** @return the last inode in the path. */
   INode getINode(String path, boolean resolveLink)
           throws UnresolvedLinkException, StorageException, TransactionContextException {

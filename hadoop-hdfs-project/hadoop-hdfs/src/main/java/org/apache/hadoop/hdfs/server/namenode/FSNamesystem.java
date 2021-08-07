@@ -973,6 +973,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     logAuditEvent(true, "setOwner", src, null, auditStat);
   }
 
+  public LRUMetadataCache<String, Object> getMetadataCache() {
+    return metadataCache;
+  }
+
   public static class GetBlockLocationsResult {
     final boolean updateAccessTime;
     public final LocatedBlocks blocks;
