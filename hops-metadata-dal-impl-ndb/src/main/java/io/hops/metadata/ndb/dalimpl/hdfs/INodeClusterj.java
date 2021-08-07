@@ -195,6 +195,9 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public void prepare(Collection<INode> removed, Collection<INode> newEntries,
                       Collection<INode> modified) throws StorageException {
+    printCallStackDebug("prepare(" + removed.toString() + ", " + newEntries.toString() + ", " +
+            modified.toString() + ")");
+
     HopsSession session = connector.obtainSession();
     List<InodeDTO> changes = new ArrayList<>();
     List<InodeDTO> deletions = new ArrayList<>();
