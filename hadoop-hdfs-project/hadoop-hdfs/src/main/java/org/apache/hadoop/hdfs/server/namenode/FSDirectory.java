@@ -1650,14 +1650,27 @@ public class FSDirectory implements Closeable {
 
     int smallestLength = Math.min(paths.length, pathINodes.length());
 
+    // We initially assign the root partition ID to `lastPartitionId`.
+    long partitionId = INode.calculatePartitionId(HdfsConstantsClient.GRANDFATHER_INODE_ID,
+            INodeDirectory.ROOT_NAME, INodeDirectory.ROOT_DIR_DEPTH);
     for (int i = 0; i < smallestLength; i++) {
       String nodePath = paths[i];
       INode node = pathINodes.getINode(i);
 
-      if (node != null) {
-        LOG.debug("Caching INode \"" + nodePath + "\" in metadata cache now...");
-        namesystem.getMetadataCache().put(nodePath, node);
+      if (i == 0) {
+        LOG.debug("First INode in path is root: " + node.isRoot());
+
+        // If it isn't the root, then print its information (for debugging), as I expect it to be the root...
+        if (!node.isRoot()) {
+          LOG.debug("First INode in path: " + node.toDetailString());
+        }
       }
+
+      LOG.debug("Caching INode \"" + nodePath + "\" in metadata cache now...");
+      namesystem.getMetadataCache().put(partitionId, node);
+
+      // Update the value of partitionId for the next INode.
+      partitionId = INode.calculatePartitionId(partitionId, nodePath, node.myDepth());
     }
 
     return pathINodes;
@@ -1698,7 +1711,7 @@ public class FSDirectory implements Closeable {
     return this.quotaEnabled;
   }
   
-  //add root inode if its not there
+  // add root inode if its not there
   public INodeDirectory createRoot(
       final PermissionStatus ps, final boolean overwrite) throws IOException {
     LightWeightRequestHandler addRootINode =
@@ -1734,6 +1747,17 @@ public class FSDirectory implements Closeable {
               ida.prepare(attrList, null);
               LOG.info("Added new root inode");
             }
+
+            // Update the metadata cache.
+            //
+            // It seems that HopsFS uses "" to refer to the root directory rather than "/",
+            // probably because splitting the path "/" on the directory separator (which is '/')
+            // yields the String "". So we cache the root INode under the empty String key.
+            final long rootPartitionId = INode.calculatePartitionId(HdfsConstantsClient.GRANDFATHER_INODE_ID,
+                    INodeDirectory.ROOT_NAME, INodeDirectory.ROOT_DIR_DEPTH);
+            LOG.debug("Caching the root INode under the key " + rootPartitionId + " now...");
+            namesystem.getMetadataCache().put(rootPartitionId, newRootINode);
+
             return newRootINode;
           }
         };

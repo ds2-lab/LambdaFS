@@ -146,7 +146,7 @@ public class INodesInPath {
    * @return the specified number of existing INodes in the path
    */
   static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components,
-                              final boolean resolveLink, final LRUMetadataCache<String, Object> metadataCache)
+                              final boolean resolveLink, final LRUMetadataCache<Long, Object> metadataCache)
           throws UnresolvedLinkException, StorageException, TransactionContextException {
     Preconditions.checkArgument(startingDir.compareTo(components[0]) == 0);
 

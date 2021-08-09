@@ -551,7 +551,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public INode findInodeByNameParentIdAndPartitionIdPK(String name, long parentId, long partitionId)
           throws StorageException {
-    printCallStackDebug("findInodeByNameParentIdAndPartitionIdPK(" + name + ", " + parentId +
+    printCallStackDebug("findInodeByNameParentIdAndPartitionIdPK(\"" + name + "\", " + parentId +
             ", " + partitionId + ")");
 
     HopsSession session = connector.obtainSession();
@@ -664,7 +664,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
 
   @Override
   public List<INode> findINodes(String name) throws StorageException {
-    printCallStackDebug("findINodes(" + name + ")");
+    printCallStackDebug("findINodes(\"" + name + "\")");
 
     HopsSession session = connector.obtainSession();
 
