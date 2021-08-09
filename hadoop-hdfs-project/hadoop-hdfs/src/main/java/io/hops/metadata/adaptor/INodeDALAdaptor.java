@@ -120,12 +120,12 @@ public class INodeDALAdaptor
   public org.apache.hadoop.hdfs.server.namenode.INode findInodeByNameParentIdAndPartitionIdPK(
       String name, long parentId, long partitionId) throws StorageException {
 
-    LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + name + "\", " + parentId +
+    /*LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + name + "\", " + parentId +
             ", " + partitionId + ") now. Printing call stack...");
     StackTraceElement[] elements = Thread.currentThread().getStackTrace();
     for (StackTraceElement element : elements) {
       LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
-    }
+    }*/
 
     return convertDALtoHDFS(
         dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId));
