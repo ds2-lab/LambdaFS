@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.hdfs.DFSUtil;
+import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 
 import com.google.common.base.Preconditions;
@@ -155,6 +156,9 @@ public class INodesInPath {
     int inodeNum = 0;
     INode[] inodes = new INode[components.length];
 
+    // Initialize value to root partition ID.
+    long partitionId = INode.calculatePartitionId(HdfsConstantsClient.GRANDFATHER_INODE_ID,
+            INodeDirectory.ROOT_NAME, INodeDirectory.ROOT_DIR_DEPTH);
     while (count < components.length && curNode != null) {
       final boolean lastComp = (count == components.length - 1);
       inodes[inodeNum++] = curNode;
@@ -179,16 +183,23 @@ public class INodesInPath {
 
       // Convert the byte[] representation to a String representation.
       String childNameAsString = DFSUtil.bytes2String(childName);
+      int currentDepth = curNode.myDepth() + 1;
 
       // Check the metadata cache for this particular INode.
-      if (metadataCache != null && metadataCache.containsKey(childNameAsString)) {
-        LOG.debug("INode \"" + childNameAsString + "\" is already cached locally. Using cached INode.");
-        curNode = (INode) metadataCache.get(childNameAsString);
+      if (metadataCache != null && metadataCache.containsKey(partitionId)) {
+        LOG.debug("INode \"" + childNameAsString + "\" is already cached locally with partition id "
+                + partitionId + ". Using cached INode.");
+        curNode = (INode) metadataCache.get(partitionId);
       } else {
-        LOG.debug("INode \"" + childNameAsString + "\" is not in cache. Retrieving from intermediate storage now...");
+        LOG.debug("INode \"" + childNameAsString
+                + "\" is not in cache. Retrieving from intermediate storage now...");
         // normal case, and also for resolving file/dir under snapshot root
         curNode = dir.getChildINode(childName);
       }
+
+      // I am not too sure about this part.
+      // In particular, I am not sure if the depth parameter should be handled like this.
+      partitionId = INode.calculatePartitionId(partitionId, childNameAsString, (short)(currentDepth + 1));
       count++;
     }
     return new INodesInPath(inodes, components);
