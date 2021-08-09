@@ -483,7 +483,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         String src = fsArgs.getAsJsonPrimitive("src").getAsString();
         INode iNode = nameNodeInstance.getINodeForCache(src);
 
-        LOG.debug("Parent INode ID for \"" + src + "\": " + iNode.parentId);
+        LOG.debug("Parent INode ID for " + '"' + src + '"' + ": " + iNode.parentId);
 
         int function = consistentHash(iNode.parentId, nameNodeInstance.numUniqueServerlessNameNodes);
 

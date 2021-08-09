@@ -185,6 +185,7 @@ public class INodesInPath {
         LOG.debug("INode \"" + childNameAsString + "\" is already cached locally. Using cached INode.");
         curNode = (INode) metadataCache.get(childNameAsString);
       } else {
+        LOG.debug("INode \"" + childNameAsString + "\" is not in cache. Retrieving from intermediate storage now...");
         // normal case, and also for resolving file/dir under snapshot root
         curNode = dir.getChildINode(childName);
       }
