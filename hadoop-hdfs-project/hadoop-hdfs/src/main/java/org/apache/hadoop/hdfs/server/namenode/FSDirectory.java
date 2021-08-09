@@ -1678,6 +1678,10 @@ public class FSDirectory implements Closeable {
       LOG.debug("Caching INode " + '"' + nodePath + '"' + " in metadata cache now...");
       namesystem.getMetadataCache().put(partitionId, node);
 
+      if (node == null) {
+        LOG.error("ERROR: INode is null!");
+      }
+
       // Update the value of partitionId for the next INode.
       partitionId = INode.calculatePartitionId(partitionId, nodePath, node.myDepth());
     }
