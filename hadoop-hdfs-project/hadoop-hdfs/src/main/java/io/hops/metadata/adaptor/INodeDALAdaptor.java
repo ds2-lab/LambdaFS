@@ -26,6 +26,8 @@ import io.hops.security.GroupNotFoundException;
 import io.hops.security.UserNotFoundException;
 import io.hops.security.UsersGroups;
 import io.hops.transaction.context.EntityContext;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.hdfs.DFSUtil;
@@ -36,6 +38,7 @@ import org.apache.hadoop.hdfs.server.namenode.INodeFile;
 import org.apache.hadoop.hdfs.server.namenode.INodeSymlink;
 import org.apache.hadoop.hdfs.server.namenode.INodeWithAdditionalFields;
 import org.apache.hadoop.hdfs.server.namenode.XAttrFeature;
+import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -45,6 +48,8 @@ import java.util.List;
 public class INodeDALAdaptor
     extends DalAdaptor<org.apache.hadoop.hdfs.server.namenode.INode, INode>
     implements INodeDataAccess<org.apache.hadoop.hdfs.server.namenode.INode> {
+
+  private static final Log LOG = LogFactory.getLog(INodeDALAdaptor.class);
 
   private INodeDataAccess<INode> dataAccess;
 
@@ -114,6 +119,14 @@ public class INodeDALAdaptor
   @Override
   public org.apache.hadoop.hdfs.server.namenode.INode findInodeByNameParentIdAndPartitionIdPK(
       String name, long parentId, long partitionId) throws StorageException {
+
+    LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + name + "\", " + parentId +
+            ", " + partitionId + ") now. Printing call stack...");
+    StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+    for (StackTraceElement element : elements) {
+      LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
+    }
+
     return convertDALtoHDFS(
         dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId));
   }

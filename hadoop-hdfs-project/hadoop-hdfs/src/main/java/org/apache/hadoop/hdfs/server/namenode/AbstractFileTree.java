@@ -307,6 +307,15 @@ abstract class AbstractFileTree {
         INodeDataAccess<INode> dataAccess =
             (INodeDataAccess) HdfsStorageFactory
                 .getDataAccess(INodeDataAccess.class);
+
+        LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + subtreeRootId.getName()
+                + "\", " + subtreeRootId.getPid() + ", " + subtreeRootId.getPartitionId()
+                + ") now. Printing call stack...");
+        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+        for (StackTraceElement element : elements) {
+          LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
+        }
+
         // No need to acquire a lock as the locking flag was already set
         INode subtreeRoot = null;
         subtreeRoot = dataAccess.findInodeByNameParentIdAndPartitionIdPK(subtreeRootId.getName(), subtreeRootId

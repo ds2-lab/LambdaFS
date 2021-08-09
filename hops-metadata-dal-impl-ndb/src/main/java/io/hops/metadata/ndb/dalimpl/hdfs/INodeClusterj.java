@@ -551,8 +551,11 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
   @Override
   public INode findInodeByNameParentIdAndPartitionIdPK(String name, long parentId, long partitionId)
           throws StorageException {
-    printCallStackDebug("findInodeByNameParentIdAndPartitionIdPK(\"" + name + "\", " + parentId +
-            ", " + partitionId + ")");
+    // This gets called too much because the RootINodeCache calls this on an interval. So I am commenting
+    // it out and just adding separate prints to other locations where this is called.
+
+    //printCallStackDebug("findInodeByNameParentIdAndPartitionIdPK(\"" + name + "\", " + parentId +
+    //        ", " + partitionId + ")");
 
     HopsSession session = connector.obtainSession();
 
