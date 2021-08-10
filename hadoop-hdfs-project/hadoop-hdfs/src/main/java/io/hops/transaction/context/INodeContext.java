@@ -264,12 +264,12 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         //trying to upgrade lock. re-read the row from DB
         aboutToAccessStorage(inodeFinder, params);
 
-        LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + name + "\", " + parentId +
+        /*LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + name + "\", " + parentId +
                 ", " + partitionId + ") now. Printing call stack...");
         StackTraceElement[] elements = Thread.currentThread().getStackTrace();
         for (StackTraceElement element : elements) {
           LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
-        }
+        }*/
 
         result = dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);
         gotFromDBWithPossibleInodeId(result, possibleInodeId);
@@ -286,12 +286,12 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
        } else {
           aboutToAccessStorage(inodeFinder, params);
 
-          LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + name + "\", " + parentId +
+          /*LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + name + "\", " + parentId +
                   ", " + partitionId + ") now. Printing call stack...");
           StackTraceElement[] elements = Thread.currentThread().getStackTrace();
           for (StackTraceElement element : elements) {
             LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
-          }
+          }*/
 
           result = dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);
         }

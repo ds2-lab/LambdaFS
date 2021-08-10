@@ -156,6 +156,8 @@ public class INodesInPath {
     int inodeNum = 0;
     INode[] inodes = new INode[components.length];
 
+    LOG.debug("resolve() function called. components.length: " + components.length);
+
     while (count < components.length && curNode != null) {
       final boolean lastComp = (count == components.length - 1);
       inodes[inodeNum++] = curNode;
@@ -181,7 +183,7 @@ public class INodesInPath {
       // Convert the byte[] representation to a String representation.
       String childNameAsString = DFSUtil.bytes2String(childName);
 
-      final String fullPathToCurrentComponent = constructPath(components, 0, count + 1);
+      final String fullPathToCurrentComponent = constructPath(components, 0, count + 2);
 
       // Check the metadata cache for this particular INode.
       if (metadataCache != null && metadataCache.containsKey(fullPathToCurrentComponent)) {
