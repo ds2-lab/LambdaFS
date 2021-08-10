@@ -1,5 +1,9 @@
 package org.apache.hadoop.hdfs.serverless.cache;
 
+import org.apache.hadoop.hdfs.server.namenode.FSDirectory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -7,6 +11,8 @@ import java.util.Map;
  * Used by Serverless NameNodes to store and retrieve cached metadata.
  */
 public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
+    static final Logger LOG = LoggerFactory.getLogger(LRUMetadataCache.class);
+
     private static final int DEFAULT_MAX_ENTRIES = 100;         // Default maximum capacity.
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;     // Default load factor.
 
@@ -62,7 +68,11 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
                     + key);
         }
 
-        return super.put(key, value);
+        T returnValue = super.put(key, value);
+
+        LOG.debug("Inserted metadata object into cache under key " + key + ". Cache size: " + this.size());
+
+        return returnValue;
     }
 
     @Override
