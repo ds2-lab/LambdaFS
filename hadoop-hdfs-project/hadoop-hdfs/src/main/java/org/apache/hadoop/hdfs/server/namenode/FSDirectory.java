@@ -1765,16 +1765,19 @@ public class FSDirectory implements Closeable {
               LOG.info("Added new root inode");
             }
 
-            // Update the metadata cache.
-            //
-            // It seems that HopsFS uses "" to refer to the root directory rather than "/",
-            // probably because splitting the path "/" on the directory separator (which is '/')
-            // yields the String "". So we cache the root INode under the empty String key.
-            final long rootPartitionId = INode.calculatePartitionId(HdfsConstantsClient.GRANDFATHER_INODE_ID,
-                    INodeDirectory.ROOT_NAME, INodeDirectory.ROOT_DIR_DEPTH);
-            LOG.debug("Caching the root INode under the key " + rootPartitionId + " now...");
-            namesystem.getMetadataCache().put(rootPartitionId, newRootINode);
-
+            if (newRootINode != null) {
+              // Update the metadata cache.
+              //
+              // It seems that HopsFS uses "" to refer to the root directory rather than "/",
+              // probably because splitting the path "/" on the directory separator (which is '/')
+              // yields the String "". So we cache the root INode under the empty String key.
+              final long rootPartitionId = INode.calculatePartitionId(HdfsConstantsClient.GRANDFATHER_INODE_ID,
+                      INodeDirectory.ROOT_NAME, INodeDirectory.ROOT_DIR_DEPTH);
+              LOG.debug("Caching the root INode under the key " + rootPartitionId + " now...");
+              namesystem.getMetadataCache().put(rootPartitionId, newRootINode);
+            } else {
+              LOG.warn("New root INode is null. Cannot cache the INode.");
+            }
             return newRootINode;
           }
         };
