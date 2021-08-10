@@ -867,11 +867,11 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
    *                          and inserting this method call everywhere.
    */
   private static void printCallStackDebug(String callingMethodName) {
-    LOG.debug(callingMethodName + " function called. Printing call stack now...");
+    /*LOG.debug(callingMethodName + " function called. Printing call stack now...");
     StackTraceElement[] elements = Thread.currentThread().getStackTrace();
     for (StackTraceElement element : elements) {
       LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
-    }
+    }*/
   }
 
 }
