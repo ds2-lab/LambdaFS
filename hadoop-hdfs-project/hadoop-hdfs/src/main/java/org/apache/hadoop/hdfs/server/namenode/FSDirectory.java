@@ -1636,9 +1636,10 @@ public class FSDirectory implements Closeable {
 
     StringBuilder builder = new StringBuilder();
     builder.append("Need to retrieve INodes for the following directories/files:\n");
-    final long rootPartitionId = INode.calculatePartitionId(HdfsConstantsClient.GRANDFATHER_INODE_ID,
+
+    // Initialize to root partition ID.
+    long partitionId = INode.calculatePartitionId(HdfsConstantsClient.GRANDFATHER_INODE_ID,
             INodeDirectory.ROOT_NAME, INodeDirectory.ROOT_DIR_DEPTH);
-    long partitionId = rootPartitionId;
     for (short i = 0; i < paths.length; i++) {
       String component = paths[i];
 
@@ -1667,15 +1668,14 @@ public class FSDirectory implements Closeable {
       INode node = pathINodes.getINode(i);
 
       if (i == 0) {
-        LOG.debug("First INode in path is root: " + node.isRoot());
-
-        // If it isn't the root, then print its information (for debugging), as I expect it to be the root...
-        if (!node.isRoot()) {
+        if (node.isRoot())
+          LOG.debug("First INode in path is root.");
+        else
           LOG.debug("First INode in path: " + node.toDetailString());
-        }
       }
 
-      LOG.debug("Caching INode " + '"' + nodePath + '"' + " in metadata cache now...");
+      LOG.debug("Caching INode " + '"' + nodePath + '"'
+              + " in metadata cache under key " + partitionId + " now...");
       namesystem.getMetadataCache().put(partitionId, node);
 
       if (node == null)

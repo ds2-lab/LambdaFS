@@ -52,6 +52,19 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
         this.maxSize = capacity;
     }
 
+    /**
+     * Override `put()` to disallow null values from being added to the cache.
+     */
+    @Override
+    public T put(String key, T value) {
+        if (value == null) {
+            throw new IllegalArgumentException("LRUMetadataCache does NOT support null values. Associated key: "
+                    + key);
+        }
+
+        return super.put(key, value);
+    }
+
     @Override
     protected boolean removeEldestEntry(Map.Entry<String, T> eldest) {
         // This method must be overridden if used in a fixed cache.
