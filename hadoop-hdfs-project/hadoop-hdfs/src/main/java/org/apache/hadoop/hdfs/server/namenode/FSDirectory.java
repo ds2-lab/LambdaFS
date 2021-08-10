@@ -1667,22 +1667,27 @@ public class FSDirectory implements Closeable {
       String nodePath = paths[i];
       INode node = pathINodes.getINode(i);
 
-      if (i == 0) {
-        if (node.isRoot())
-          LOG.debug("First INode in path is root.");
-        else
-          LOG.debug("First INode in path: " + node.toDetailString());
+      LOG.debug("Processing INode " + '"' + nodePath + '"' + " now. INode is null: " + (node == null));
+
+      if (node != null) {
+        // Just used for debugging. Will eventually remove this code.
+        if (i == 0) {
+          if (node.isRoot())
+            LOG.debug("First INode in path is root.");
+          else
+            LOG.debug("First INode in path: " + node.toDetailString());
+        }
+
+        LOG.debug("Caching INode " + '"' + nodePath + '"'
+                + " in metadata cache under key " + partitionId + " now...");
+        namesystem.getMetadataCache().put(partitionId, node);
+      }
+      else {
+        LOG.warn("INode is null. Path component: " + nodePath);
       }
 
-      LOG.debug("Caching INode " + '"' + nodePath + '"'
-              + " in metadata cache under key " + partitionId + " now...");
-      namesystem.getMetadataCache().put(partitionId, node);
-
-      if (node == null)
-        throw new NullPointerException("ERROR: INode is null when it shouldn't be. Path component: " + nodePath);
-
       // Update the value of partitionId for the next INode.
-      partitionId = INode.calculatePartitionId(partitionId, nodePath, node.myDepth());
+      partitionId = INode.calculatePartitionId(partitionId, nodePath, (short) i);
     }
 
     return pathINodes;
