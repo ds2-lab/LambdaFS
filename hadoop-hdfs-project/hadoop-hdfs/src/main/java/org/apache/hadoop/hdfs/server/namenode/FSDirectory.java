@@ -1640,7 +1640,7 @@ public class FSDirectory implements Closeable {
     final byte[][] components = INode.getPathComponents(paths);
     INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), components, resolveLink, namesystem.getMetadataCache());
 
-    int smallestLength = Math.min(paths.length, pathINodes.length());
+    int smallestLength = Math.min(components.length, pathINodes.length());
 
     LOG.debug("Finished resolving INodes. INodesInPath contains " + pathINodes.length()
             + " INodes. Processing INodes for caching purposes now...");
@@ -1649,7 +1649,7 @@ public class FSDirectory implements Closeable {
 
     // We initially assign the root partition ID to `lastPartitionId`.
     for (int i = 0; i < smallestLength; i++) {
-      String component = paths[i];
+      String component = DFSUtil.bytes2String(components[i]);
       INode node = pathINodes.getINode(i);
       String fullPathToComponent = constructPath(components, 0, i + 1);
 
