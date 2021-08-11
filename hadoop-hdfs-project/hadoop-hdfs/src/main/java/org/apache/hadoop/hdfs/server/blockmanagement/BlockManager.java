@@ -4929,7 +4929,7 @@ public class BlockManager {
       while (namesystem.isRunning()) {
         try {
           if (namesystem.isLeader()) {
-            LOG.debug("Running replication monitor");
+            // LOG.debug("Running replication monitor");
             // Process replication work only when active NN is out of safe mode.
             if (namesystem.isPopulatingReplQueues()) {
               computeDatanodeWork();
