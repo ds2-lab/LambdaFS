@@ -1649,7 +1649,15 @@ public class FSDirectory implements Closeable {
 
     // We initially assign the root partition ID to `lastPartitionId`.
     for (int i = 0; i < smallestLength; i++) {
-      String component = DFSUtil.bytes2String(components[i]);
+      String component;
+
+      // When paths is length 0, components[0] will be null. We need to account for this, as this
+      // scenario will occur with the path is "/" (i.e., the root directory).
+      if (components[i] != null)
+        component = DFSUtil.bytes2String(components[i]);
+      else
+        component = "";
+
       INode node = pathINodes.getINode(i);
       String fullPathToComponent = constructPath(components, 0, i + 1);
 
