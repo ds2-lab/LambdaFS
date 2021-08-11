@@ -44,6 +44,8 @@ import static org.apache.hadoop.hdfs.DFSUtilClient.percent2String;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class DatanodeInfo extends DatanodeID implements Node {
+  private static final long serialVersionUID = 6714932850744847535L;
+
   private long capacity;
   private long dfsUsed;
   private long remaining;
