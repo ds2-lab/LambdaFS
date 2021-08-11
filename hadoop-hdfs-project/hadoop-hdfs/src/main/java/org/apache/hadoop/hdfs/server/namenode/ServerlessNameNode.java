@@ -614,6 +614,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       rename(args);
       return null;
     });
+    operations.put("renewLease", (CheckedFunction<JsonObject, Void>) args -> {
+      renewLease(args);
+      return null;
+    });
     operations.put("setMetaStatus", (CheckedFunction<JsonObject, Void>) args -> {
       setMetaStatus(args);
       return null;
@@ -1116,6 +1120,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LastBlockWithStatus info = namesystem.appendFile(src, clientName, clientMachine, flag.get());
     metrics.incrFilesAppended();
     return info;
+  }
+
+  private void renewLease(JsonObject fsArgs) throws IOException {
+    String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
+
+    namesystem.renewLease(clientName);
   }
 
   private boolean complete(JsonObject fsArgs) throws IOException, ClassNotFoundException {

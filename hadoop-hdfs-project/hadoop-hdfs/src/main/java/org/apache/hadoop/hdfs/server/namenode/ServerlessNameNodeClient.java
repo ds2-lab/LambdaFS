@@ -573,7 +573,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void renewLease(String clientName) throws AccessControlException, IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        ArgumentContainer opArguments = new ArgumentContainer();
+
+        opArguments.put("clientName", clientName);
+
+        serverlessInvoker.invokeNameNodeViaHttpPost(
+            "renewLease",
+            serverlessEndpointBase,
+            null, // We do not have any additional/non-default arguments to pass to the NN.
+            opArguments);
     }
 
     @Override
