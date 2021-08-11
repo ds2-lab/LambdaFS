@@ -1644,7 +1644,8 @@ public class FSDirectory implements Closeable {
 
     LOG.debug("Finished resolving INodes. INodesInPath contains " + pathINodes.length()
             + " INodes. Processing INodes for caching purposes now...");
-    LOG.debug("paths.length: " + paths.length + ", pathINodes.length(): " + pathINodes.length());
+    LOG.debug("paths.length: " + paths.length + ", pathINodes.length(): " + pathINodes.length()
+            + ", components.length: " + components.length);
 
     // We initially assign the root partition ID to `lastPartitionId`.
     for (int i = 0; i < smallestLength; i++) {
