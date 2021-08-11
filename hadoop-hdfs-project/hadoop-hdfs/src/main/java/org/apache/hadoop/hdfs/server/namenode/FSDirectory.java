@@ -1659,7 +1659,12 @@ public class FSDirectory implements Closeable {
         component = "";
 
       INode node = pathINodes.getINode(i);
-      String fullPathToComponent = constructPath(components, 0, i + 1);
+
+      String fullPathToComponent;
+      if (components.length == 1 && components[0] == null)
+         fullPathToComponent = INodeDirectory.ROOT_NAME;
+      else
+        fullPathToComponent = constructPath(components, 0, i + 1);
 
       LOG.debug("Processing INode " + '"' + component + '"' + " now. INode is null: " + (node == null));
 
