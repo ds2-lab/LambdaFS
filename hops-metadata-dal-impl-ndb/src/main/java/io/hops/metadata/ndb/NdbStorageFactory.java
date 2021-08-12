@@ -56,6 +56,8 @@ import java.util.Properties;
 import java.util.Set;
 
 import io.hops.metadata.yarn.dal.ReservationStateDataAccess;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class NdbStorageFactory implements DalStorageFactory {
 
@@ -66,6 +68,8 @@ public class NdbStorageFactory implements DalStorageFactory {
 
   private final Map<Class, EntityDataAccess> dataAccessMap =
       new HashMap<>();
+
+  private static final Log LOG = LogFactory.getLog(NdbStorageFactory.class);
 
   /**
    * Default constructor.
@@ -80,9 +84,15 @@ public class NdbStorageFactory implements DalStorageFactory {
     System.out.println("NdbStorageFactory Version Number: " + versionNumber);
 
     try {
+      LOG.debug("Preparing to set configuration for ClusterJConnector now...");
       ClusterjConnector.getInstance().setConfiguration(conf);
+      LOG.debug("Successfully set configuration for ClusterJConnector. Next, setting configuration for " +
+              "MySQLServerConnector now...");
       MysqlServerConnector.getInstance().setConfiguration(conf);
+      LOG.debug("Successfully set configuration for MySQLServerConnector. Next, initializing " +
+              "data access map now...");
       initDataAccessMap();
+      LOG.debug("Successfully initialized data access map.");
     } catch (IOException ex) {
       //ClusterJ dumps username and password in the exception
       throw new StorageInitializtionException("Error getting connection to cluster");
