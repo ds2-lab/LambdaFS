@@ -41,7 +41,6 @@ import io.hops.transaction.lock.INodeLock;
 import io.hops.transaction.lock.LockFactory;
 import io.hops.transaction.lock.TransactionLockTypes;
 import io.hops.transaction.lock.TransactionLocks;
-import org.apache.avro.data.Json;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
