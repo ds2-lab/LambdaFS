@@ -2,6 +2,8 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSyntaxException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -230,14 +232,29 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         LOG.debug("HttpRequest (before issuing it): " + request.toString());
         LOG.debug("Request URI/URL: " + request.getURI().toURL());
 
-        HttpResponse response = httpClient.execute(request);
+        HttpResponse httpResponse = httpClient.execute(request);
 
-        LOG.info("HTTP Response from OpenWhisk function:\n" + response.toString());
-        LOG.info("response.getEntity() = " + response.getEntity());
+        LOG.info("HTTP Response from OpenWhisk function:\n" + httpResponse.toString());
+        LOG.info("response.getEntity() = " + httpResponse.getEntity());
 
-        String json = EntityUtils.toString(response.getEntity(), "UTF-8");
+        String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
         Gson gson = new Gson();
-        return gson.fromJson(json, JsonObject.class);
+
+        JsonObject jsonObjectResponse = null;
+        JsonPrimitive jsonPrimitiveResponse = null;
+
+        // If there was an OpenWhisk error, like a 502 Bad Gateway (for example), then this will
+        // be a JsonPrimitive object. Specifically, it'd be a String containing the error message.
+        try {
+            jsonObjectResponse = gson.fromJson(json, JsonObject.class);
+        } catch (JsonSyntaxException ex) {
+            jsonPrimitiveResponse = gson.fromJson(json, JsonPrimitive.class);
+
+            throw new IOException("Unexpected response from OpenWhisk function invocation: "
+                    + jsonPrimitiveResponse.getAsString());
+        }
+
+        return jsonObjectResponse;
     }
 
     @Override
