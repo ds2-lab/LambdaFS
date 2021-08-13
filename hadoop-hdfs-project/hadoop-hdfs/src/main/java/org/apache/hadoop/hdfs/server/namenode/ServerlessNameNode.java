@@ -41,6 +41,7 @@ import io.hops.transaction.lock.INodeLock;
 import io.hops.transaction.lock.LockFactory;
 import io.hops.transaction.lock.TransactionLockTypes;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.avro.data.Json;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
@@ -570,6 +571,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private void populateOperationsMap() {
     operations = new HashMap<String, CheckedFunction<JsonObject, ?>>();
 
+    operations.put("abandonBlock", (CheckedFunction<JsonObject, Void>) args -> {
+      abandonBlock(args);
+      return null;
+    });
     operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) this::addBlock);
     operations.put("addGroup", (CheckedFunction<JsonObject, Void>) args -> {
       addGroup(args);
@@ -1253,6 +1258,27 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     metrics.incrGetBlockLocations();
 
     return namesystem.getBlockLocations(NameNodeRpcServer.getClientMachine(), src, offset, length);
+  }
+
+  private void abandonBlock(JsonObject fsArgs) throws IOException, ClassNotFoundException {
+    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+    String holder = fsArgs.getAsJsonPrimitive("holder").getAsString();
+    long fileId = fsArgs.getAsJsonPrimitive("fileId").getAsLong();
+
+    ExtendedBlock b = null;
+
+    if (fsArgs.has("b")) {
+      String previousBase64 = fsArgs.getAsJsonPrimitive("b").getAsString();
+      b = (ExtendedBlock) InvokerUtilities.base64StringToObject(previousBase64);
+    }
+
+    if (stateChangeLog.isDebugEnabled()) {
+      stateChangeLog
+              .debug("*BLOCK* NameNode.abandonBlock: " + b + " of file " + src);
+    }
+    if (!namesystem.abandonBlock(b, fileId, src, holder)) {
+      throw new IOException("Cannot abandon block during write to " + src);
+    }
   }
 
   private void concat(JsonObject fsArgs) throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {

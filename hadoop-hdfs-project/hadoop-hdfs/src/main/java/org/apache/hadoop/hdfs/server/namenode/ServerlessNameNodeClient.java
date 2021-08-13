@@ -328,7 +328,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void abandonBlock(ExtendedBlock b, long fileId, String src, String holder) throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+        ArgumentContainer opArguments = new ArgumentContainer();
+
+        opArguments.put("src", src);
+        opArguments.put("holder", holder);
+        opArguments.put("fileId", fileId);
+        opArguments.put("b", b);
+
+        serverlessInvoker.invokeNameNodeViaHttpPost(
+                "abandonBlock",
+                serverlessEndpointBase,
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
     }
 
     @Override
