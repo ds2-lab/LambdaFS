@@ -81,7 +81,7 @@ public class NdbStorageFactory implements DalStorageFactory {
   @Override
   public void setConfiguration(Properties conf)
           throws StorageInitializtionException {
-    System.out.println("NdbStorageFactory Version Number: " + versionNumber);
+    LOG.debug("NdbStorageFactory Version Number: " + versionNumber);
 
     try {
       LOG.debug("Preparing to set configuration for ClusterJConnector now...");
