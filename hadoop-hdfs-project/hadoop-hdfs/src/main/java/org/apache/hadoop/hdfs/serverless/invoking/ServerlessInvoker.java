@@ -2,9 +2,8 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
 import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
-import org.apache.hadoop.ipc.RemoteException;
+import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.kohsuke.args4j.Argument;
 
 import java.io.IOException;
 import java.security.KeyManagementException;
@@ -66,4 +65,9 @@ public interface ServerlessInvoker<T> {
      * @param response The response obtained from the HttpPost request used to invoke the serverless name node.
      */
     public Object extractResultFromJsonResponse(JsonObject response) throws IOException, ClassNotFoundException;
+
+    /**
+     * Performs any necessary cleanup.
+     */
+    public void terminate();
 }

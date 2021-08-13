@@ -74,6 +74,14 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
 
   public static final int SERVERLESS_MAX_DEPLOYMENTS_DEFAULT = 1;
 
+  public static final String SERVERLESS_METADATA_CACHE_REDIS_ENDPOINT = "serverless.redis.endpoint";
+
+  public static final String SERVERLESS_METADATA_CACHE_REDIS_ENDPOINT_DEFAULT = "127.0.0.1";
+
+  public static final String SERVERLESS_METADATA_CACHE_REDIS_PORT = "serverless.redis.port";
+
+  public static final int SERVERLESS_METADATA_CACHE_REDIS_PORT_DEFAULT = 6379;
+
   //db storage
   public static final String DFS_STORAGE_DRIVER_JAR_FILE = "dfs.storage.driver.jarFile";
   public static final String DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT = "";

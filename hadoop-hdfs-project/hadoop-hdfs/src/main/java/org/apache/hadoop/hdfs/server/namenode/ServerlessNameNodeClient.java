@@ -80,7 +80,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LOG.info("Serverless endpoint: " + serverlessEndpointBase);
         LOG.info("Serverless platform: " + serverlessPlatformName);
 
-        this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
+        this.serverlessInvoker = dfsClient.serverlessInvoker;
 
         this.dfsClient = dfsClient;
     }

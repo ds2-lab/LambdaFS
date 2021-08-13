@@ -393,13 +393,12 @@ class BPServiceActor implements Runnable {
 
   //Cleanup method to be called by current thread before exiting.
   private synchronized void cleanUp() {
-
     shouldServiceRun = false;
     IOUtils.cleanup(LOG, bpNamenode);
 
+    this.serverlessInvoker.terminate();
+
     bpos.shutdownActor(this);
-
-
   }
 
   private void handleRollingUpgradeStatus(HeartbeatResponse resp) throws IOException {

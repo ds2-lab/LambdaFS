@@ -7,6 +7,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
+import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
@@ -320,5 +321,13 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
             LOG.error(exception);
         }
         return null;
+    }
+
+    /**
+     * Calls the `terminate()` function of the "INode mapping" cache.
+     */
+    @Override
+    public void terminate() {
+        cache.terminate();
     }
 }

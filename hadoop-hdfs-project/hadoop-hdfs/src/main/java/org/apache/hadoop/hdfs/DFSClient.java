@@ -787,6 +787,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
       // close connections to the namenode
       closeConnectionsToNamenodes();
+
+      serverlessInvoker.terminate();
     }
   }
 

@@ -137,6 +137,12 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>commons-logging</artifactId>
       <scope>compile</scope>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
+    <dependency>
+      <groupId>redis.clients</groupId>
+      <artifactId>jedis</artifactId>
+      <version>3.6.0</version>
+    </dependency>
     <dependency>
       <groupId>commons-daemon</groupId>
       <artifactId>commons-daemon</artifactId>
