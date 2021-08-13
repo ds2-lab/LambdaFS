@@ -100,7 +100,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
         instantiateTrustManager();
         httpClient = getHttpClient();
-        cache = new FunctionMetadataMap();
+        cache = new FunctionMetadataMap(conf);
     }
 
     @Override
