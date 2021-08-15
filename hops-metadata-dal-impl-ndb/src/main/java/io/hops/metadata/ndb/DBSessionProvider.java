@@ -53,13 +53,14 @@ public class DBSessionProvider implements Runnable {
   private boolean automaticRefresh = false;
   private Thread thread;
 
-  public DBSessionProvider(Properties conf, int reuseCount, int initialPoolSize)
-      throws StorageException {
+  public DBSessionProvider(Properties conf, int reuseCount, int initialPoolSize) throws StorageException {
     this.conf = conf;
+
     if (reuseCount <= 0) {
       System.err.println("Invalid value for session reuse count");
       System.exit(-1);
     }
+
     this.MAX_REUSE_COUNT = reuseCount;
     rand = new Random(System.currentTimeMillis());
     rollingAvg = new long[initialPoolSize];
@@ -67,22 +68,23 @@ public class DBSessionProvider implements Runnable {
   }
 
   private void start(int initialPoolSize) throws StorageException {
-    LOG.info("Database connect string: " +
-        conf.get(Constants.PROPERTY_CLUSTER_CONNECTSTRING));
-    LOG.info(
-        "Database name: " + conf.get(Constants.PROPERTY_CLUSTER_DATABASE));
-    LOG.info("Max Transactions: " +
-        conf.get(Constants.PROPERTY_CLUSTER_MAX_TRANSACTIONS));
+    LOG.info("Database connect string: " + conf.get(Constants.PROPERTY_CLUSTER_CONNECTSTRING));
+    LOG.info("Database name: " + conf.get(Constants.PROPERTY_CLUSTER_DATABASE));
+    LOG.info("Max Transactions: " + conf.get(Constants.PROPERTY_CLUSTER_MAX_TRANSACTIONS));
     try {
-      sessionFactory =
-          new HopsSessionFactory(ClusterJHelper.getSessionFactory(conf));
+      LOG.debug("Instantiation HopsSessionFactory object now...");
+      sessionFactory = new HopsSessionFactory(ClusterJHelper.getSessionFactory(conf));
+      LOG.debug("Instantiation of HopsSessionFactory was successful!");
     } catch (ClusterJException ex) {
+      LOG.error("Exception encountered while instantiation HopsSessionFactory instance: ", ex);
       throw HopsExceptionHelper.wrap(ex);
     }
 
+    LOG.debug("Initializing " + initialPoolSize + " session(s) now...");
     for (int i = 0; i < initialPoolSize; i++) {
       sessionPool.add(initSession());
     }
+    LOG.debug("Successfully initialized " + initialPoolSize + " session(s)!");
 
     thread = new Thread(this, "Session Pool Refresh Daemon");
     thread.setDaemon(true);

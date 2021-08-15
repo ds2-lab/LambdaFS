@@ -94,6 +94,8 @@ public class NdbStorageFactory implements DalStorageFactory {
       initDataAccessMap();
       LOG.debug("Successfully initialized data access map.");
     } catch (IOException ex) {
+      LOG.error("Encountered IOException while establishing network connections to NDB cluster: ", ex);
+
       //ClusterJ dumps username and password in the exception
       throw new StorageInitializtionException("Error getting connection to cluster");
     }
