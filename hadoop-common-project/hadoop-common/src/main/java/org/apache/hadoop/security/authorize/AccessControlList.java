@@ -20,11 +20,14 @@ package org.apache.hadoop.security.authorize;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -41,7 +44,10 @@ import org.apache.hadoop.util.StringUtils;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class AccessControlList implements Writable {
+public class AccessControlList implements Writable, Serializable {
+  private static final Log LOG = LogFactory.getLog(AccessControlList.class);
+
+  private static final long serialVersionUID = 7854059381806186863L;
 
   static {                                      // register a ctor
     WritableFactories.setFactory
@@ -97,6 +103,7 @@ public class AccessControlList implements Writable {
    * This constructor exists primarily for AccessControlList to be Writable.
    */
   public AccessControlList() {
+    LOG.debug("Default ACL constructor called.");
   }
 
   /**
@@ -109,6 +116,7 @@ public class AccessControlList implements Writable {
    * @param aclString String representation of the ACL
    */
   public AccessControlList(String aclString) {
+    LOG.debug("ACL constructor called. ACL String: " + aclString);
     buildACL(aclString.split(" ", 2));
   }
 
@@ -121,6 +129,7 @@ public class AccessControlList implements Writable {
    * @param groups comma separated list of groups
    */
   public AccessControlList(String users, String groups) {
+    LOG.debug("ACL constructor called. Users: " + users + ", Groups: " + groups);
     buildACL(new String[] {users, groups});
   }
 
