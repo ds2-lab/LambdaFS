@@ -479,23 +479,26 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
 
-      if (fsArgs.has("src")) {
+      if (fsArgs != null && fsArgs.has("src")) {
         String src = fsArgs.getAsJsonPrimitive("src").getAsString();
         INode iNode = nameNodeInstance.getINodeForCache(src);
 
-        LOG.debug("Parent INode ID for " + '"' + src + '"' + ": " + iNode.parentId);
+        // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
+        if (iNode != null) {
+          LOG.debug("Parent INode ID for " + '"' + src + '"' + ": " + iNode.parentId);
 
-        int function = consistentHash(iNode.parentId, nameNodeInstance.numUniqueServerlessNameNodes);
+          int function = consistentHash(iNode.parentId, nameNodeInstance.numUniqueServerlessNameNodes);
 
-        LOG.debug("Consistently hashed parent INode ID " + iNode.parentId + " to serverless function " + function);
+          LOG.debug("Consistently hashed parent INode ID " + iNode.parentId + " to serverless function " + function);
 
-        // Embed all the information about the serverless function mapping in the Json response.
-        JsonObject functionMapping = new JsonObject();
-        functionMapping.addProperty("fileOrDirectory", src);
-        functionMapping.addProperty("parentId", iNode.parentId);
-        functionMapping.addProperty("function", function);
+          // Embed all the information about the serverless function mapping in the Json response.
+          JsonObject functionMapping = new JsonObject();
+          functionMapping.addProperty("fileOrDirectory", src);
+          functionMapping.addProperty("parentId", iNode.parentId);
+          functionMapping.addProperty("function", function);
 
-        response.add("functionMapping", functionMapping);
+          response.add("functionMapping", functionMapping);
+        }
       }
 
       response.add("RESULT", result);
