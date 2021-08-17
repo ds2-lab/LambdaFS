@@ -206,7 +206,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Syntax:
    *  Major.Minor.Build.Revision
    */
-  private static final String versionNumber = "0.1.2.0";
+  private static final String versionNumber = "0.2.2.0";
 
   /**
    * The number of uniquely-deployed serverless name nodes associated with this particular Serverless HopsFS cluster.
