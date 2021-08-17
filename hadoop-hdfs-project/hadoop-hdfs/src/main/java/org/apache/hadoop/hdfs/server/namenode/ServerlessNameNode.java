@@ -72,6 +72,7 @@ import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMet
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
+import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
@@ -340,6 +341,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private final String functionName;
 
   /**
+   * Used to communicate with Serverless HopsFS clients via TCP.
+   */
+  private final NameNodeTCPClient nameNodeTCPClient;
+
+  /**
    * Source: https://stackoverflow.com/questions/1660501/what-is-a-good-64bit-hash-function-in-java-for-textual-strings
    * Used to convert the activation ID of this serverless function to a long to use as the NameNode ID.
    *
@@ -484,6 +490,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     response.add("headers", headers);
     response.add("body", result);
+
+    // TODO: Get IP address of the client and attempt to establish a connection with the client.
 
     return response;
   }
@@ -2179,6 +2187,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
     this.functionName = functionName;
+    this.nameNodeTCPClient = new NameNodeTCPClient();
     this.tracer = new Tracer.Builder("NameNode").
       conf(TraceUtils.wrapHadoopConf(NAMENODE_HTRACE_PREFIX, conf)).
       build();

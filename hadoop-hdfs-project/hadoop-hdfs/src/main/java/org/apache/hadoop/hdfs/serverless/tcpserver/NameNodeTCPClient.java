@@ -13,6 +13,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Encapsulates a Kryonet TCP client. Used to communicate directly with Serverless HopsFS clients.
+ *
+ * This is used on the NameNode side.
  */
 public class NameNodeTCPClient {
     private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(NameNodeTCPClient.class);

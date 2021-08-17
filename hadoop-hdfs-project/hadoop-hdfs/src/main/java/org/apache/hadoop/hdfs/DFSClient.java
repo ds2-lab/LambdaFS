@@ -272,9 +272,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public DFSClient(URI nameNodeUri, Configuration conf,
                    FileSystem.Statistics stats)
           throws IOException {
-
-    ClientProtocol rpcNamenode = null;
-
     // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true"; //
     serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);

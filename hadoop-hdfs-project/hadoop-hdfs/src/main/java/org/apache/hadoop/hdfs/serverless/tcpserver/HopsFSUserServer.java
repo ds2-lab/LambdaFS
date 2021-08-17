@@ -18,6 +18,8 @@ import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServer
  * Clients of Serverless HopsFS expose a TCP server that serverless NameNodes can connect to.
  *
  * Clients will then issue TCP requests to the serverless NameNodes in order to perform file system operations.
+ *
+ * This is used on the client side (i.e., NOT on the NameNode side).
  */
 public class HopsFSUserServer {
     private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(HopsFSUserServer.class);
@@ -39,10 +41,8 @@ public class HopsFSUserServer {
 
     /**
      * Constructor.
-     *
-     * @param tcpPort The TCP port on which the server will listen.
      */
-    public HopsFSUserServer(Configuration conf, int tcpPort) {
+    public HopsFSUserServer(Configuration conf) {
         server = new Server() {
           protected Connection newConnection() {
               /**
@@ -62,14 +62,20 @@ public class HopsFSUserServer {
      * Start the TCP server.
      */
     public void startServer() throws IOException {
+        LOG.debug("Starting HopsFS Client TCP Server now...");
+
         // First, register the JsonObject class with the Kryo serializer.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(server.getKryo());
 
         server.start();
+
+        LOG.debug("HopsFS Client TCP Server binding to port " + tcpPort + " now...");
         server.bind(tcpPort);
 
         server.addListener(new Listener() {
-            public void received(Connection connection, Object object) {
+            public void received(Connection conn, Object object) {
+                NameNodeConnection connection = (NameNodeConnection)conn;
+
                 LOG.debug("Received message from connection " + connection.toString());
 
                 // If we received a JsonObject, then add it to the queue for processing.
@@ -88,15 +94,17 @@ public class HopsFSUserServer {
                     switch (operation) {
                         case OPERATION_REGISTER:
                             LOG.debug("Received registration operation from NameNode " + functionName);
+                            registerNameNode(connection, functionName);
                             break;
                         case OPERATION_RESULT:
                             LOG.debug("Received result from NameNode " + functionName);
+
+                            // TODO: Somehow return the result back to the client
+                            //       who issued the request in the first place.
                             break;
                         default:
                             LOG.warn("Unknown operation received from NameNode " + functionName + ": " + operation);
                     }
-
-                    cacheConnection(connection, functionName);
                 }
                 else {
                     throw new IllegalArgumentException("Received object of unexpected type from remote client "
@@ -109,13 +117,13 @@ public class HopsFSUserServer {
              *
              * Remove the associated connection from the active connections cache.
              */
-            public void disconnected(Connection connection) {
-                NameNodeConnection conn = (NameNodeConnection)connection;
+            public void disconnected(Connection conn) {
+                NameNodeConnection connection = (NameNodeConnection)conn;
 
-                if (conn.name != null) {
-                    LOG.debug("Connection to " + conn.name + " lost.");
+                if (connection.name != null) {
+                    LOG.debug("Connection to " + connection.name + " lost.");
 
-                    activeConnections.remove(conn.name);
+                    activeConnections.remove(connection.name);
                 } else {
                     LOG.warn("Lost connection to unknown NameNode...");
                 }
@@ -124,25 +132,34 @@ public class HopsFSUserServer {
     }
 
     /**
-     * Cache an active connection with a serverless name node locally.
+     * Register the remote serverless NameNode locally. This involves assigning a name to the connection
+     * object as well as caching the active connection locally.
+     * @param connection The connection to the serverless name node.
+     * @param functionName The (unique) name of the serverless name node.
+     */
+    private void registerNameNode(NameNodeConnection connection, String functionName) {
+        connection.name = functionName;
+
+        cacheConnection(connection, functionName);
+    }
+
+    /**
+     * Cache an active connection with a serverless name node locally. This will fail (and return false) if there
+     * is already a connection associated with the given functionName cached.
+     *
      * @param connection The connection with the name node.
      * @param functionName The name of the function to which we are connected.
      * @return true if the function was cached successfully, false if we already have this connection cached.
      */
-    private boolean cacheConnection(Connection connection, String functionName) {
-        NameNodeConnection conn = (NameNodeConnection)connection;
-
-        if (!activeConnections.containsKey(functionName)) {
-            LOG.debug("Caching active connection with serverless function \"" +
-                    functionName + "\" now...");
-            activeConnections.put(functionName, conn);
-
-            conn.name = functionName;
-
-            return true;
+    private void cacheConnection(NameNodeConnection connection, String functionName) {
+        if (activeConnections.containsKey(functionName)) {
+            throw new IllegalStateException("Connection with NameNode " + functionName + " already cached locally. "
+                    + "Currently cached connection: " + activeConnections.get(functionName).toString()
+                    + ", new connection: " + connection.toString());
         }
 
-        return false;
+        LOG.debug("Caching active connection with serverless function \"" + functionName + "\" now...");
+        activeConnections.put(functionName, connection);
     }
 
     /**

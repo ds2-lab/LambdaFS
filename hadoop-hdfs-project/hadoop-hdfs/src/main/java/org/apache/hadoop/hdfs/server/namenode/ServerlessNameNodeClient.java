@@ -24,6 +24,7 @@ import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
+import org.apache.hadoop.hdfs.serverless.tcpserver.HopsFSUserServer;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
@@ -72,7 +73,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     private final DFSClient dfsClient;
 
-    public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws StorageInitializtionException {
+    private final HopsFSUserServer tcpServer;
+
+    public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
         serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
@@ -83,6 +86,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.serverlessInvoker = dfsClient.serverlessInvoker;
 
         this.dfsClient = dfsClient;
+
+        this.tcpServer = new HopsFSUserServer(conf);
+        this.tcpServer.startServer();
     }
 
 

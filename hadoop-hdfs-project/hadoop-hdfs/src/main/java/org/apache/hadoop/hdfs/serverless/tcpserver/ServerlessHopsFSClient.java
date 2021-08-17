@@ -9,6 +9,8 @@ import java.util.UUID;
 
 /**
  * Encapsulates the information needed to communicate with a Serverless HopsFS client/user via TCP.
+ *
+ * This is used on the NameNode side.
  */
 public class ServerlessHopsFSClient implements Serializable {
     private static final Log LOG = LogFactory.getLog(ServerlessHopsFSClient.class);
