@@ -335,6 +335,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private final HashSet<String> processedRequestIds = new HashSet<String>();
 
   /**
+   * The name of the serverless function in which this NameNode instance is running.
+   */
+  private final String functionName;
+
+  /**
    * Source: https://stackoverflow.com/questions/1660501/what-is-a-good-64bit-hash-function-in-java-for-textual-strings
    * Used to convert the activation ID of this serverless function to a long to use as the NameNode ID.
    *
@@ -351,9 +356,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
-   * Currently implemented for OpenWhisk.
+   * Currently implemented for OpenWhisk. This function returns the name of the serverless function.
    */
-  private static void platformSpecificInitialization() {
+  private static String platformSpecificInitialization() {
     // TODO: Make this generic so that it can be readily reimplemented for arbitrary serverless platforms.
     String activationId = System.getenv("__OW_ACTIVATION_ID");
 
@@ -365,6 +370,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       openWhiskInitialization(activationId);
     else
       ServerlessNameNode.nameNodeID = 1;
+
+    return System.getenv("__OW_ACTION_NAME");
   }
 
   /**
@@ -384,9 +391,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * OpenWhisk function handler. This is the main entrypoint for the serverless name node.
    */
   public static JsonObject main(JsonObject args) {
-    LOG.info("=================================================================");
+    LOG.info("============================================================");
     LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
-    LOG.info("=================================================================");
+    LOG.info("============================================================");
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
     if (LOG.isDebugEnabled())
@@ -400,7 +407,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("Top-level OpenWhisk arguments = " + args);
     LOG.debug("User-passed OpenWhisk arguments = " + userArguments.toString());
 
-    platformSpecificInitialization();
+    String functionName = platformSpecificInitialization();
+
+    LOG.debug("Serverless function name: " + functionName);
 
     String[] commandLineArguments;
 
@@ -426,13 +435,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     JsonObject result = null;
 
-    if (nameNodeInstance.processedRequestIds.contains(requestId)) {
+    // The NameNode may be null at this point, in which case we should just proceed into the else block.
+    if (nameNodeInstance != null && nameNodeInstance.processedRequestIds.contains(requestId)) {
       LOG.warn("Received duplicate request. ID = " + requestId + ".");
       result = new JsonObject();
     }
     else {
       LOG.debug("Received request " + requestId + " for the first time. Processing now...");
-      result = nameNodeDriver(op, fsArgs, commandLineArguments);
+      result = nameNodeDriver(op, fsArgs, commandLineArguments, functionName);
       nameNodeInstance.processedRequestIds.add(requestId);
     }
 
@@ -481,7 +491,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * This is called by both main methods.
    */
-  private static JsonObject nameNodeDriver(String op, JsonObject fsArgs, String[] commandLineArguments) {
+  private static JsonObject nameNodeDriver(String op, JsonObject fsArgs,
+                                           String[] commandLineArguments, String functionName) {
     JsonObject response = new JsonObject();
 
     LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
@@ -498,7 +509,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (!initialized) {
       try {
         LOG.debug("This is a COLD START. Creating the NameNode now...");
-        nameNodeInstance = startServerlessNameNode(commandLineArguments);
+        nameNodeInstance = startServerlessNameNode(commandLineArguments, functionName);
       } catch (Exception ex) {
         LOG.error("Encountered exception while initializing the name node.", ex);
         response.addProperty("EXCEPTION", ex.toString());
@@ -747,7 +758,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param commandLineArgs Command-line arguments formatted as if the NameNode was being executed from the commandline.
    * @throws Exception
    */
-  public static ServerlessNameNode startServerlessNameNode(String[] commandLineArgs) throws Exception {
+  public static ServerlessNameNode startServerlessNameNode(String[] commandLineArgs, String functionName)
+          throws Exception {
     if (DFSUtil.parseHelpArgument(commandLineArgs, ServerlessNameNode.USAGE, System.out, true)) {
       System.exit(0);
     }
@@ -756,7 +768,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     try {
       StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
-      ServerlessNameNode nameNode = createNameNode(commandLineArgs, null);
+      ServerlessNameNode nameNode = createNameNode(commandLineArgs, null, functionName);
 
       if (nameNode == null) {
         LOG.info("ERROR: NameNode is null. Failed to create and/or initialize the Serverless NameNode.");
@@ -1584,7 +1596,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       fsArgs = parser.parse(fsArgsAsString).getAsJsonObject(); // Convert to JsonObject.
     }
 
-    JsonObject response = nameNodeDriver(op, fsArgs, commandLineArguments);
+    // Just pass `CommandLine` for the function name...
+    JsonObject response = nameNodeDriver(op, fsArgs, commandLineArguments, "CommandLine");
     LOG.info("Response = " + response);
   }
 
@@ -2160,11 +2173,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *     confirguration
    * @throws IOException
    */
-  public ServerlessNameNode(Configuration conf) throws IOException {
-    this(conf, NamenodeRole.NAMENODE);
+  public ServerlessNameNode(Configuration conf, String functionName) throws IOException {
+    this(conf, NamenodeRole.NAMENODE, functionName);
   }
 
-  protected ServerlessNameNode(Configuration conf, NamenodeRole role) throws IOException {
+  protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
+    this.functionName = functionName;
     this.tracer = new Tracer.Builder("NameNode").
       conf(TraceUtils.wrapHadoopConf(NAMENODE_HTRACE_PREFIX, conf)).
       build();
@@ -2511,7 +2525,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
 
-  public static ServerlessNameNode createNameNode(String argv[], Configuration conf)
+  public static ServerlessNameNode createNameNode(String argv[], Configuration conf, String functionName)
       throws IOException {
     LOG.info("createNameNode " + Arrays.asList(argv));
     if (conf == null) {
@@ -2572,7 +2586,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
       default: {
         DefaultMetricsSystem.initialize("NameNode");
-        return new ServerlessNameNode(conf);
+        return new ServerlessNameNode(conf, functionName);
       }
     }
   }

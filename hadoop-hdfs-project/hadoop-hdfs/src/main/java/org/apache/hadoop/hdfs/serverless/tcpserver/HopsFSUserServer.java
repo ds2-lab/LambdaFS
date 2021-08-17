@@ -76,7 +76,7 @@ public class HopsFSUserServer {
                 if (object instanceof JsonObject) {
                     JsonObject body = (JsonObject)object;
 
-                    LOG.debug("Message contents: " + body.toString());
+                    LOG.debug("Message contents: " + body);
 
                     String functionName = body.getAsJsonPrimitive("functionName").getAsString();
                     String operation = body.getAsJsonPrimitive("op").getAsString();
@@ -112,15 +112,13 @@ public class HopsFSUserServer {
             public void disconnected(Connection connection) {
                 NameNodeConnection conn = (NameNodeConnection)connection;
 
-                String name;
-
                 if (conn.name != null) {
                     LOG.debug("Connection to " + conn.name + " lost.");
+
+                    activeConnections.remove(conn.name);
                 } else {
                     LOG.warn("Lost connection to unknown NameNode...");
                 }
-
-                activeConnections.remove(conn.name);
             }
         });
     }
