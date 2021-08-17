@@ -134,7 +134,7 @@ class FSDirMkdirOp {
     return (HdfsFileStatus) mkdirsHandler.handle();
   }
 
-    /**
+  /**
    * For a given absolute path, create all ancestors as directories along the
    * path. All ancestors inherit their parent's permission plus an implicit
    * u+wx permission. This is used by create() and addSymlink() for
@@ -152,8 +152,7 @@ class FSDirMkdirOp {
       throws IOException {
     final String last = new String(iip.getLastLocalName(), Charsets.UTF_8);
     INodesInPath existing = iip.getExistingINodes();
-    List<String> children = iip.getPath(existing.length(),
-        iip.length() - existing.length());
+    List<String> children = iip.getPath(existing.length(), iip.length() - existing.length());
     int size = children.size();
     if (size > 1) { // otherwise all ancestors have been created
       List<String> directories = children.subList(0, size - 1);
