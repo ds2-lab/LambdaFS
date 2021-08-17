@@ -59,7 +59,7 @@ public class NameNodeTCPClient {
         tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
 
         // We need to register whatever classes will be serialized BEFORE any network activity is performed.
-        registerClassesToBeTransferred(tcpClient.getKryo());
+        ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
 
         tcpClient.addListener(new Listener() {
             public void received(Connection connection, Object object) {
@@ -68,6 +68,9 @@ public class NameNodeTCPClient {
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof JsonObject) {
                     JsonObject args = (JsonObject)object;
+
+                    LOG.debug("Message contents: " + args.toString());
+
                     workQueue.add(args);
                 }
                 else {
@@ -120,18 +123,5 @@ public class NameNodeTCPClient {
      */
     public ConcurrentLinkedQueue<JsonObject> getWorkQueue() {
         return workQueue;
-    }
-
-    /**
-     * Register all the classes that are going to be sent over the network.
-     *
-     * This must be done on both the client and the server before any network communication occurs.
-     * The exact same classes are to be registered in the exact same order.
-     * @param kryo The Kryo object obtained from a given Kryo TCP client/server via getKryo().
-     */
-    public static void registerClassesToBeTransferred(Kryo kryo) {
-        // Register the JsonObject class with the Kryo serializer, as this is the object
-        // that clients will use to invoke operations on the NN via TCP requests.
-        kryo.register(JsonObject.class);
     }
 }

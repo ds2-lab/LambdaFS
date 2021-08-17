@@ -82,6 +82,14 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
 
   public static final int SERVERLESS_METADATA_CACHE_REDIS_PORT_DEFAULT = 6379;
 
+  /**
+   * Serverless HopsFS clients expose a TCP server that NameNodes establish connections with.
+   * Clients can then use TCP requests to communicate with NameNodes.
+   */
+  public static final String SERVERLESS_TCP_SERVER_PORT = "serverless.tcpserver.port";
+
+  public static final int SERVERLESS_TCP_SERVER_PORT_DEFAULT = 6000;
+
   //db storage
   public static final String DFS_STORAGE_DRIVER_JAR_FILE = "dfs.storage.driver.jarFile";
   public static final String DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT = "";

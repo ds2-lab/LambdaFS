@@ -397,7 +397,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // The arguments passed by the user are included under the 'value' key.
     JsonObject userArguments = args.get("value").getAsJsonObject();
 
-    LOG.debug("Top-level OpenWhisk arguments = " + args.toString());
+    LOG.debug("Top-level OpenWhisk arguments = " + args);
     LOG.debug("User-passed OpenWhisk arguments = " + userArguments.toString());
 
     platformSpecificInitialization();
