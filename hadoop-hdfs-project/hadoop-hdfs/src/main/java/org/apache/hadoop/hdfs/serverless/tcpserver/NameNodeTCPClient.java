@@ -1,12 +1,15 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
+import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
+import com.google.gson.JsonObject;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Encapsulates a Kryonet TCP client. Used to communicate directly with Serverless HopsFS clients.
@@ -25,8 +28,14 @@ public class NameNodeTCPClient {
      */
     private final HashMap<ServerlessHopsFSClient, Client> tcpClients;
 
+    /**
+     * Queue of JsonObject objects sent from Serverless HopsFS clients to this NameNode.
+     */
+    private final ConcurrentLinkedQueue<JsonObject> workQueue;
+
     public NameNodeTCPClient() {
         tcpClients = new HashMap<>();
+        workQueue = new ConcurrentLinkedQueue<>();
     }
 
     /**
@@ -49,9 +58,22 @@ public class NameNodeTCPClient {
         tcpClient.start();
         tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
 
+        // We need to register whatever classes will be serialized BEFORE any network activity is performed.
+        registerClassesToBeTransferred(tcpClient.getKryo());
+
         tcpClient.addListener(new Listener() {
             public void received(Connection connection, Object object) {
                 LOG.debug("Received message from connection " + connection.toString());
+
+                // If we received a JsonObject, then add it to the queue for processing.
+                if (object instanceof JsonObject) {
+                    JsonObject args = (JsonObject)object;
+                    workQueue.add(args);
+                }
+                else {
+                    throw new IllegalArgumentException("Received object of unexpected type from client "
+                            + tcpClient.toString() + ". Object type: " + object.getClass().getSimpleName() + ".");
+                }
             }
         });
 
@@ -79,5 +101,37 @@ public class NameNodeTCPClient {
         tcpClients.remove(client);
 
         return true;
+    }
+
+    /**
+     * @return The number of active TCP clients connected to the NameNode.
+     */
+    public int numClients() {
+        return tcpClients.size();
+    }
+
+    public int workQueueSize() {
+        return workQueue.size();
+    }
+
+    /**
+     * Return the work queue object (which is of type ConcurrentLinkedQueue<JsonObject>).
+     * @return the work queue object (which is of type ConcurrentLinkedQueue<JsonObject>).
+     */
+    public ConcurrentLinkedQueue<JsonObject> getWorkQueue() {
+        return workQueue;
+    }
+
+    /**
+     * Register all the classes that are going to be sent over the network.
+     *
+     * This must be done on both the client and the server before any network communication occurs.
+     * The exact same classes are to be registered in the exact same order.
+     * @param kryo The Kryo object obtained from a given Kryo TCP client/server via getKryo().
+     */
+    public static void registerClassesToBeTransferred(Kryo kryo) {
+        // Register the JsonObject class with the Kryo serializer, as this is the object
+        // that clients will use to invoke operations on the NN via TCP requests.
+        kryo.register(JsonObject.class);
     }
 }

@@ -326,6 +326,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private final HashMap<String, Integer> lastIntermediateBlockReportIds = new HashMap<>();
 
   /**
+   * HashSet containing all the IDs of requests that have already been processed.
+   *
+   * This is used so we do not process a duplicate request in the form of a TCP/HTTP request
+   * (i.e., we do not want to process both of corresponding TCP/HTTP requests, rather we want
+   * to process just one of the two).
+   */
+  private final HashSet<String> processedRequestIds = new HashSet<String>();
+
+  /**
    * Source: https://stackoverflow.com/questions/1660501/what-is-a-good-64bit-hash-function-in-java-for-textual-strings
    * Used to convert the activation ID of this serverless function to a long to use as the NameNode ID.
    *
@@ -380,6 +389,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("=================================================================");
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
+    if (LOG.isDebugEnabled())
+      LOG.info("Debug-logging IS enabled.");
+    else
+      LOG.info("Debug-logging is NOT enabled.");
+
     // The arguments passed by the user are included under the 'value' key.
     JsonObject userArguments = args.get("value").getAsJsonObject();
 
@@ -397,16 +411,31 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       commandLineArguments = new String[0];
 
     String op = null;
+    String requestId = null;
     JsonObject fsArgs = null;
 
     if (userArguments.has("op"))
       op = userArguments.getAsJsonPrimitive("op").getAsString();
 
+    if (userArguments.has("requestId"))
+      requestId = userArguments.getAsJsonPrimitive("requestId").getAsString();
+
     // JSON dictionary containing the arguments/parameters for the specified filesystem operation.
     if (userArguments.has("fsArgs"))
       fsArgs = userArguments.getAsJsonObject("fsArgs");
 
-    JsonObject result = nameNodeDriver(op, fsArgs, commandLineArguments);
+    JsonObject result = null;
+
+    if (nameNodeInstance.processedRequestIds.contains(requestId)) {
+      LOG.warn("Received duplicate request. ID = " + requestId + ".");
+      result = new JsonObject();
+    }
+    else {
+      LOG.debug("Received request " + requestId + " for the first time. Processing now...");
+      result = nameNodeDriver(op, fsArgs, commandLineArguments);
+      nameNodeInstance.processedRequestIds.add(requestId);
+    }
+
     LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
     LOG.debug("Result to be returned to the caller:\n" + result);
     LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
@@ -419,7 +448,30 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     JsonObject headers = new JsonObject();
     headers.addProperty("content-type", "application/json");
 
-    response.addProperty("statusCode", 200);
+    if (result.has("EXCEPTION")) {
+      /*
+        https://stackoverflow.com/a/3291292/5937661
+
+        "The 422 (Unprocessable Entity) status code means the server understands the content type of the
+        request entity (hence a 415(Unsupported Media Type) status code is inappropriate), and the syntax
+        of the request entity is correct (thus a 400 (Bad Request) status code is inappropriate) but was unable
+        to process the contained instructions. For example, this error condition may occur if an XML request
+        body contains well-formed (i.e., syntactically correct), but semantically erroneous, XML instructions."
+
+        Several things could have gone wrong here, but for now I am just using 422 because it mostly fits...
+       */
+      response.addProperty("statusCode", 422);
+      LOG.debug("Adding statusCode 422 to response.");
+    } else if (result.has("RESULT")) {
+      response.addProperty("statusCode", 200);
+      LOG.debug("Adding statusCode 200 to response.");
+    } else {
+      // https://stackoverflow.com/a/3290369/5937661
+      // "The request could not be completed due to a conflict with the current state of the resource."
+      response.addProperty("statusCode", 409);
+      LOG.debug("Adding statusCode 409 to response.");
+    }
+
     response.add("headers", headers);
     response.add("body", result);
 
@@ -431,11 +483,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private static JsonObject nameNodeDriver(String op, JsonObject fsArgs, String[] commandLineArguments) {
     JsonObject response = new JsonObject();
-
-    if (LOG.isDebugEnabled())
-      LOG.info("Debug-logging IS enabled.");
-    else
-      LOG.info("Debug-logging is NOT enabled.");
 
     LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
     LOG.info("NameNode Argument Information:");

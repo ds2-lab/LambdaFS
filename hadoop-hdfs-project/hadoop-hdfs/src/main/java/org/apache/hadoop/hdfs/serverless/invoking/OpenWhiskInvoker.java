@@ -207,6 +207,8 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
 
         HttpPost request = new HttpPost(functionUri);
 
+        String requestId = UUID.randomUUID().toString();
+
         // This is the top-level JSON object passed along with the HTTP POST request.
         JsonObject requestArguments = new JsonObject();
 
@@ -214,6 +216,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         // will hand them off to the intended file system operation function.
         nameNodeArguments.add("fsArgs", fileSystemOperationArguments);
         nameNodeArguments.addProperty("op", operationName);
+        nameNodeArguments.addProperty("requestId", requestId);
 
         InvokerUtilities.addStandardArguments(nameNodeArguments);
 

@@ -144,10 +144,17 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>commons-logging</artifactId>
       <scope>compile</scope>
     </dependency>
+    <!-- Used for NameNode TCP client/server -->
     <dependency>
       <groupId>kryonet</groupId>
       <artifactId>kryonet</artifactId>
       <version>2.21</version>
+    </dependency>
+    <!-- Used by NN TCP client/server. Handles serialization. -->
+    <dependency>
+      <groupId>com.esotericsoftware</groupId>
+      <artifactId>kryo</artifactId>
+      <version>5.2.0</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-pool2 -->
     <dependency>
