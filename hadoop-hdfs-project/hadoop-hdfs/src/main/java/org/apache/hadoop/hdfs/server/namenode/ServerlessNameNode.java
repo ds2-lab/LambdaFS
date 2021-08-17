@@ -73,6 +73,7 @@ import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
+import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
@@ -421,7 +422,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
     if (userArguments.has("command-line-arguments"))
-      commandLineArguments = userArguments.getAsJsonPrimitive("command-line-arguments").getAsString().split("\\s+");
+      commandLineArguments = userArguments.getAsJsonPrimitive("command-line-arguments")
+              .getAsString().split("\\s+");
     else
       commandLineArguments = new String[0];
 
@@ -492,6 +494,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     response.add("body", result);
 
     // TODO: Get IP address of the client and attempt to establish a connection with the client.
+    ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient();
+    try {
+      nameNodeInstance.nameNodeTCPClient.addClient(serverlessHopsFSClient);
+    } catch (IOException e) {
+      LOG.error("Encountered exception while trying to establish TCP connection with client.", e);
+    }
 
     return response;
   }
