@@ -415,6 +415,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("User-passed OpenWhisk arguments = " + userArguments.toString());
 
     String functionName = platformSpecificInitialization();
+    String clientIPAddress = null;
+
+    if (args.has("client_remote_address")) {
+      clientIPAddress = args.getAsJsonPrimitive("client_remote_address").getAsString();
+      LOG.debug("Extracted client IP address from top-level OpenWhisk arguments: " + clientIPAddress);
+    } else {
+      LOG.warn("Top-level OpenWhisk arguments do NOT contain entry for client IP address.");
+    }
 
     LOG.debug("Serverless function name: " + functionName);
 
@@ -429,6 +437,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     String op = null;
     String requestId = null;
+    String clientName = null;
     JsonObject fsArgs = null;
 
     if (userArguments.has("op"))
@@ -441,18 +450,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (userArguments.has("fsArgs"))
       fsArgs = userArguments.getAsJsonObject("fsArgs");
 
-    JsonObject result = null;
+    if (userArguments.has("clientName"))
+      clientName = userArguments.getAsJsonPrimitive("clientName").getAsString();
 
-    // The NameNode may be null at this point, in which case we should just proceed into the else block.
-    if (nameNodeInstance != null && nameNodeInstance.processedRequestIds.contains(requestId)) {
-      LOG.warn("Received duplicate request. ID = " + requestId + ".");
-      result = new JsonObject();
-    }
-    else {
-      LOG.debug("Received request " + requestId + " for the first time. Processing now...");
-      result = nameNodeDriver(op, fsArgs, commandLineArguments, functionName);
-      nameNodeInstance.processedRequestIds.add(requestId);
-    }
+    JsonObject result = nameNodeDriver(op, fsArgs, commandLineArguments, functionName,
+            clientIPAddress, requestId, clientName);
+    nameNodeInstance.processedRequestIds.add(requestId);
 
     LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
     LOG.debug("Result to be returned to the caller:\n" + result);
@@ -493,26 +496,23 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     response.add("headers", headers);
     response.add("body", result);
 
-    // TODO: Get IP address of the client and attempt to establish a connection with the client.
-    ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient();
-    try {
-      nameNodeInstance.nameNodeTCPClient.addClient(serverlessHopsFSClient);
-    } catch (IOException e) {
-      LOG.error("Encountered exception while trying to establish TCP connection with client.", e);
-    }
-
     return response;
   }
 
   /**
    * This is called by both main methods.
    */
-  private static JsonObject nameNodeDriver(String op, JsonObject fsArgs,
-                                           String[] commandLineArguments, String functionName) {
+  private static JsonObject nameNodeDriver(String op, JsonObject fsArgs, String[] commandLineArguments,
+                                           String functionName, String clientIPAddress, String requestId,
+                                           String clientName) {
     JsonObject response = new JsonObject();
 
     LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
     LOG.info("NameNode Argument Information:");
+    LOG.info("Request ID: " + requestId);
+    LOG.info("Serverless Function Name: " + functionName);
+    LOG.info("Client IP Address: " + clientIPAddress);
+    LOG.info("Client Name/ID: " + clientName);
     LOG.info("Op = " + op);
     if (fsArgs != null)
       LOG.info("fsArgs = " + fsArgs.toString());
@@ -534,11 +534,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     else
       LOG.debug("NameNode is already initialized. Skipping initialization step.");
 
+    // Make sure that the NameNode was actually created.
     if (nameNodeInstance == null) {
       LOG.error("NameNodeInstance is null despite having been initialized.");
-      response.addProperty("ERROR-MESSAGE", "Failed to initialize NameNode. Unknown error. Review logs for details.");
+      response.addProperty("EXCEPTION", "Failed to initialize NameNode. Unknown error. Review logs for details.");
       return response;
     }
+
+    // Check to see if this is a duplicate request, in which case we should not return anything of substance.
+    if (nameNodeInstance.processedRequestIds.contains(requestId)) {
+      LOG.warn("Received duplicate request. ID = " + requestId + ".");
+      return new JsonObject();
+    }
+
+    LOG.debug("Received request " + requestId + " for the first time. Processing now...");
+    nameNodeInstance.processedRequestIds.add(requestId);
 
     try {
       List<DatanodeRegistration> datanodeRegistrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
@@ -553,6 +563,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
 
+      // Check if there is a particular file or directory identified by the `src` parameter.
+      // This is the file/directory that should be hashed to a particular serverless function.
+      // We calculate this here and include the information for the client in our response.
       if (fsArgs != null && fsArgs.has("src")) {
         String src = fsArgs.getAsJsonPrimitive("src").getAsString();
         INode iNode = nameNodeInstance.getINodeForCache(src);
@@ -581,6 +594,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.error("Exception encountered during execution of Serverless NameNode.");
       ex.printStackTrace();
       response.addProperty("EXCEPTION", ex.toString());
+    }
+
+    // TODO: Eventually stop using default port.
+    ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
+            clientName, clientIPAddress, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+    try {
+      nameNodeInstance.nameNodeTCPClient.addClient(serverlessHopsFSClient);
+    } catch (IOException e) {
+      LOG.error("Encountered exception while trying to establish TCP connection with client.", e);
     }
 
     return response;
@@ -1579,7 +1601,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return cmd;
   }
 
-  public static void main(String[] args) throws Exception {
+  /*public static void main(String[] args) throws Exception {
     LOG.info("=================================================================");
     LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
     LOG.info("=================================================================");
@@ -1615,7 +1637,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // Just pass `CommandLine` for the function name...
     JsonObject response = nameNodeDriver(op, fsArgs, commandLineArguments, "CommandLine");
     LOG.info("Response = " + response);
-  }
+  }*/
 
   /**
    * httpServer

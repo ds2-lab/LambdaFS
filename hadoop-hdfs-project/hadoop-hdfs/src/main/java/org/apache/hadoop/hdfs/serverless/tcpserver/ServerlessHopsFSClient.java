@@ -77,6 +77,9 @@ public class ServerlessHopsFSClient implements Serializable {
         clientId = id;
         clientIp = ip;
         clientPort = port;
+
+        LOG.debug("Created new Serverless HopsFS Client object with ID = " + id + ", IP = " + ip
+                + ", port = " + port);
     }
 
     public String getClientIp() { return clientIp; }

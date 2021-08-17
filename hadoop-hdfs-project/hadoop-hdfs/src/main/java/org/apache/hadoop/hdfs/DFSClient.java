@@ -303,6 +303,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
     this.clientName = clientNamePrefix+ "_" + dfsClientConf.getTaskId() + "_" +
             DFSUtil.getRandom().nextInt() + "_" + Thread.currentThread().getId();
+    this.serverlessInvoker.setClientName(this.clientName);
     int numResponseToDrop = conf.getInt(
             DFSConfigKeys.DFS_CLIENT_TEST_DROP_NAMENODE_RESPONSE_NUM_KEY,
             DFSConfigKeys.DFS_CLIENT_TEST_DROP_NAMENODE_RESPONSE_NUM_DEFAULT);
@@ -437,6 +438,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
     this.clientName = clientNamePrefix+ "_" + dfsClientConf.getTaskId() + "_" +
             DFSUtil.getRandom().nextInt() + "_" + Thread.currentThread().getId();
+    this.serverlessInvoker.setClientName(this.clientName);
     int numResponseToDrop = conf.getInt(
             DFSConfigKeys.DFS_CLIENT_TEST_DROP_NAMENODE_RESPONSE_NUM_KEY,
             DFSConfigKeys.DFS_CLIENT_TEST_DROP_NAMENODE_RESPONSE_NUM_DEFAULT);

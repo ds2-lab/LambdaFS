@@ -55,6 +55,11 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
      */
     private int numUniqueFunctions;
 
+    /**
+     * Unique identifier of the particular client using this class.
+     */
+    private String clientName;
+
     private void instantiateTrustManager() {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[] {
@@ -217,6 +222,7 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
         nameNodeArguments.add("fsArgs", fileSystemOperationArguments);
         nameNodeArguments.addProperty("op", operationName);
         nameNodeArguments.addProperty("requestId", requestId);
+        nameNodeArguments.addProperty("clientName", clientName);
 
         InvokerUtilities.addStandardArguments(nameNodeArguments);
 
@@ -341,6 +347,10 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
             LOG.error(exception);
         }
         return null;
+    }
+
+    public void setClientName(String clientName) {
+        this.clientName = clientName;
     }
 
     /**

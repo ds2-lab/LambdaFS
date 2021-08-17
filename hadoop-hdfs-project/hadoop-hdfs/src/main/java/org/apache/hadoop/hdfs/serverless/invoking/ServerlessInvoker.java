@@ -70,4 +70,11 @@ public interface ServerlessInvoker<T> {
      * Performs any necessary cleanup.
      */
     public void terminate();
+
+    /**
+     * Set the clientName associated with the invoker. This is the `clientName` field from DFSClient.
+     * This is used to uniquely identify each Serverless HopsFS client.
+     * @param clientName The value of the `clientName` variable from the DFSClient class.
+     */
+    public void setClientName(String clientName);
 }
