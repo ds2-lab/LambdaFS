@@ -93,6 +93,7 @@ class BPServiceActor implements Runnable {
     this.nnAddr = nnAddr;
     this.dnConf = dn.getDnConf();
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(dn.getDnConf().serverlessPlatformName);
+    this.serverlessInvoker.setIsClientInvoker(false);
     scheduler = new Scheduler(dnConf.heartBeatInterval);
   }
 

@@ -281,6 +281,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     LOG.info("Serverless platform: " + serverlessPlatformName);
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
+    this.serverlessInvoker.setIsClientInvoker(true);
 
     // Copy only the required DFSClient configuration
     this.tracer = FsTracer.get(conf);
@@ -422,6 +423,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     LOG.info("Serverless platform: " + serverlessPlatformName);
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
+    this.serverlessInvoker.setIsClientInvoker(true);
 
     this.ugi = UserGroupInformation.getCurrentUser();
 

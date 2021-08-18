@@ -86,6 +86,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         this.serverlessInvoker = dfsClient.serverlessInvoker;
 
+        // This should already be set to true in the DFSClient class.
+        this.serverlessInvoker.setIsClientInvoker(true);
+
         this.dfsClient = dfsClient;
 
         this.tcpServer = new HopsFSUserServer(conf);

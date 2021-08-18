@@ -438,23 +438,30 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String op = null;
     String requestId = null;
     String clientName = null;
+    boolean isClientInvoker = false;
     JsonObject fsArgs = null;
 
-    if (userArguments.has("op"))
-      op = userArguments.getAsJsonPrimitive("op").getAsString();
+    //if (userArguments.has("op"))
+    //  op = userArguments.getAsJsonPrimitive("op").getAsString();
 
-    if (userArguments.has("requestId"))
-      requestId = userArguments.getAsJsonPrimitive("requestId").getAsString();
+    //if (userArguments.has("requestId"))
+    //  requestId = userArguments.getAsJsonPrimitive("requestId").getAsString();
 
     // JSON dictionary containing the arguments/parameters for the specified filesystem operation.
-    if (userArguments.has("fsArgs"))
-      fsArgs = userArguments.getAsJsonObject("fsArgs");
+    //if (userArguments.has("fsArgs"))
+    //  fsArgs = userArguments.getAsJsonObject("fsArgs");
 
-    if (userArguments.has("clientName"))
-      clientName = userArguments.getAsJsonPrimitive("clientName").getAsString();
+    //if (userArguments.has("clientName"))
+    //  clientName = userArguments.getAsJsonPrimitive("clientName").getAsString();
+
+    op = userArguments.getAsJsonPrimitive("op").getAsString();
+    requestId = userArguments.getAsJsonPrimitive("requestId").getAsString();
+    fsArgs = userArguments.getAsJsonObject("fsArgs");
+    clientName = userArguments.getAsJsonPrimitive("clientName").getAsString();
+    isClientInvoker = userArguments.getAsJsonArray("isClientInvoker").getAsBoolean();
 
     JsonObject result = nameNodeDriver(op, fsArgs, commandLineArguments, functionName,
-            clientIPAddress, requestId, clientName);
+            clientIPAddress, requestId, clientName, isClientInvoker);
     nameNodeInstance.processedRequestIds.add(requestId);
 
     LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
@@ -504,7 +511,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private static JsonObject nameNodeDriver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                            String functionName, String clientIPAddress, String requestId,
-                                           String clientName) {
+                                           String clientName, boolean isClientInvoker) {
     JsonObject response = new JsonObject();
 
     LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
@@ -600,11 +607,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
             clientName, clientIPAddress, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
 
-    // TODO: Only attempt this for clients, NOT for DataNodes.
-    try {
-      nameNodeInstance.nameNodeTCPClient.addClient(serverlessHopsFSClient);
-    } catch (IOException e) {
-      LOG.error("Encountered exception while trying to establish TCP connection with client.", e);
+    if (isClientInvoker) {
+      try {
+        nameNodeInstance.nameNodeTCPClient.addClient(serverlessHopsFSClient);
+      } catch (IOException e) {
+        LOG.error("Encountered exception while trying to establish TCP connection with client.", e);
+      }
+    } else {
+      LOG.debug("Request was issued by DataNode. Skipping connection-establishment step.");
     }
 
     return response;

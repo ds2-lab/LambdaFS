@@ -54,6 +54,12 @@ public abstract class ServerlessInvokerBase<T> {
     protected int numUniqueFunctions;
 
     /**
+     * Indicates whether this Invoker instance is used by a client/user. When false, indicates that this
+     * Invoker is useb by a DataNode.
+     */
+    protected boolean isClientInvoker;
+
+    /**
      * Unique identifier of the particular client using this class.
      */
     protected String clientName;
@@ -141,5 +147,14 @@ public abstract class ServerlessInvokerBase<T> {
      */
     public void terminate() {
         cache.terminate();
+    }
+
+    /**
+     * Sets the flag indicating whether this Invoker is used by a client/user.
+     *
+     * True indicates client/user, false indicates datanode.
+     */
+    public void setIsClientInvoker(boolean isClientInvoker) {
+        this.isClientInvoker = isClientInvoker;
     }
 }
