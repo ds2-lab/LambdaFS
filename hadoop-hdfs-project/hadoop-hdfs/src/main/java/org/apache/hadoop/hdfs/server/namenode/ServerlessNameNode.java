@@ -458,7 +458,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     requestId = userArguments.getAsJsonPrimitive("requestId").getAsString();
     fsArgs = userArguments.getAsJsonObject("fsArgs");
     clientName = userArguments.getAsJsonPrimitive("clientName").getAsString();
-    isClientInvoker = userArguments.getAsJsonArray("isClientInvoker").getAsBoolean();
+    isClientInvoker = userArguments.getAsJsonPrimitive("isClientInvoker").getAsBoolean();
 
     JsonObject result = nameNodeDriver(op, fsArgs, commandLineArguments, functionName,
             clientIPAddress, requestId, clientName, isClientInvoker);
