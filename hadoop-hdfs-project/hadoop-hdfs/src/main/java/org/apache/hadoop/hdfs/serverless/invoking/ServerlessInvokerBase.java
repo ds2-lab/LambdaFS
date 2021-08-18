@@ -61,8 +61,10 @@ public abstract class ServerlessInvokerBase<T> {
 
     /**
      * Unique identifier of the particular client using this class.
+     *
+     * This name will be set automatically if a client/user is invoking. Otherwise we default to DataNode.
      */
-    protected String clientName;
+    protected String clientName = "DataNode";
 
     private void instantiateTrustManager() {
         // Create a trust manager that does not validate certificate chains
