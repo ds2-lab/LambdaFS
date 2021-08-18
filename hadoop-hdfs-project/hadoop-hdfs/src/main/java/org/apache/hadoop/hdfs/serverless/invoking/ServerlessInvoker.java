@@ -20,11 +20,12 @@ import java.util.HashMap;
  * {@link com.google.gson.JsonObject}, but this interface is defined generically
  * to provide flexibility.
  */
+@Deprecated
 public interface ServerlessInvoker<T> {
     /**
      * Invoke a serverless NameNode function via an HTTP POST request and return the response to the user.
      * @param operationName The name of the file system operation to be performed by the ServerlessNameNode.
-     * @param functionUri The web-enabled URI of the serverless NameNode function. We issue an HTTP POST request
+     * @param functionUriBase The web-enabled URI of the serverless NameNode function. We issue an HTTP POST request
      *                    to this URI to invoke the function.
      * @param nameNodeArguments Any additional arguments to pass to the NameNode itself. This function will handle
      *                          adding the default/bare minimum/required arguments.

@@ -38,6 +38,7 @@ import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.ipc.RemoteException;
@@ -64,7 +65,7 @@ class BPServiceActor implements Runnable {
   /**
    * Used to invoke serverless name nodes.
    */
-  private final ServerlessInvoker<JsonObject> serverlessInvoker;
+  private final ServerlessInvokerBase<JsonObject> serverlessInvoker;
 
   static final Log LOG = DataNode.LOG;
   final InetSocketAddress nnAddr;

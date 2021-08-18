@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSyntaxException;
+import org.apache.avro.data.Json;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -31,34 +32,13 @@ import java.util.*;
 /**
  * Concrete implementation of the {@link ServerlessInvoker} interface for the OpenWhisk serverless platform.
  */
-public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
+public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     private static final Log LOG = LogFactory.getLog(OpenWhiskInvoker.class);
-
-    /**
-     * HTTPClient used to invoke serverless functions.
-     */
-    private final CloseableHttpClient httpClient;
-
-    /**
-     * Maintains a mapping of files and directories to the serverless functions responsible for caching the
-     * metadata of the file/directory in question.
-     */
-    private final FunctionMetadataMap cache;
 
     /**
      * This is appended to the end of the serverlessEndpointBase AFTER the number is added.
      */
     private final String blockingParameter = "?blocking=true";
-
-    /**
-     * The number of uniquely-deployed serverless functions available for use.
-     */
-    private int numUniqueFunctions;
-
-    /**
-     * Unique identifier of the particular client using this class.
-     */
-    private String clientName;
 
     private void instantiateTrustManager() {
         // Create a trust manager that does not validate certificate chains
@@ -89,30 +69,11 @@ public class OpenWhiskInvoker implements ServerlessInvoker<JsonObject> {
      * Default constructor.
      */
     public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
-        instantiateTrustManager();
-        httpClient = getHttpClient();
-        cache = new FunctionMetadataMap();
-
-        LOG.warn("No configuration provided for OpenWhiskInvoker. Defaulting to " +
-                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT + " available serverless functions.");
-        // If we're not given a Configuration object to use, then just assume the default...
-        numUniqueFunctions = DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT;
+        super();
     }
 
-    /**
-     * Default constructor.
-     */
     public OpenWhiskInvoker(Configuration conf) throws NoSuchAlgorithmException, KeyManagementException {
-        numUniqueFunctions = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
-                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
-        instantiateTrustManager();
-        httpClient = getHttpClient();
-        cache = new FunctionMetadataMap(conf);
-    }
-
-    @Override
-    public FunctionMetadataMap getFunctionMetadataMap() {
-        return cache;
+        super(conf);
     }
 
     @Override

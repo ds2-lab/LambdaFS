@@ -23,6 +23,7 @@ import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifie
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.hdfs.serverless.tcpserver.HopsFSUserServer;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -55,7 +56,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * Responsible for invoking the Serverless NameNode(s).
      */
-    public ServerlessInvoker<JsonObject> serverlessInvoker;
+    public ServerlessInvokerBase<JsonObject> serverlessInvoker;
 
     /**
      * Issue HTTP requests to this to invoke serverless functions.

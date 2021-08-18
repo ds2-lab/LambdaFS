@@ -599,6 +599,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // TODO: Eventually stop using default port.
     ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
             clientName, clientIPAddress, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+
+    // TODO: Only attempt this for clients, NOT for DataNodes.
     try {
       nameNodeInstance.nameNodeTCPClient.addClient(serverlessHopsFSClient);
     } catch (IOException e) {
@@ -908,8 +910,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return The largest groupId processes during this operation.
    */
   private void retrieveAndProcessStorageReports(List<DatanodeRegistration> datanodeRegistrations) throws IOException {
-    // TODO: Retrieve storage reports.
-
     // Procedure:
     // 1) Retrieve StorageReport instances
     // 2) Retrieve DatanodeStorage instances.

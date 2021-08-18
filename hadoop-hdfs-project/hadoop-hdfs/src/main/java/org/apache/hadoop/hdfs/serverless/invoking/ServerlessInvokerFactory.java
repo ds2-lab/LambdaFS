@@ -28,11 +28,22 @@ public class ServerlessInvokerFactory {
     /**
      * Return an instance of the specified serverless invoker class.
      */
-    public static ServerlessInvoker<JsonObject> getServerlessInvoker(String serverlessPlatformName) throws StorageInitializtionException {
+//    public static ServerlessInvoker<JsonObject> getServerlessInvoker(String serverlessPlatformName) throws StorageInitializtionException {
+//        String invokerClassName = getInvokerClassName(serverlessPlatformName);
+//
+//        try {
+//            return (ServerlessInvoker<JsonObject>) Class.forName(invokerClassName).newInstance();
+//        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e1) {
+//            throw new StorageInitializtionException(e1);
+//        }
+//    }
+
+    public static ServerlessInvokerBase<JsonObject> getServerlessInvoker(String serverlessPlatformName)
+            throws StorageInitializtionException {
         String invokerClassName = getInvokerClassName(serverlessPlatformName);
 
         try {
-            return (ServerlessInvoker<JsonObject>) Class.forName(invokerClassName).newInstance();
+            return (ServerlessInvokerBase<JsonObject>) Class.forName(invokerClassName).newInstance();
         } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e1) {
             throw new StorageInitializtionException(e1);
         }

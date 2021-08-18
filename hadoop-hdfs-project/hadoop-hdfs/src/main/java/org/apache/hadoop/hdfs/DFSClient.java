@@ -110,6 +110,7 @@ import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.protocol.HdfsBlocksMetadata;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
@@ -183,7 +184,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   /**
    * Responsible for invoking the Serverless NameNode(s).
    */
-  public ServerlessInvoker<JsonObject> serverlessInvoker;
+  public ServerlessInvokerBase<JsonObject> serverlessInvoker;
 
   /**
    * Issue HTTP requests to this to invoke serverless functions.
