@@ -2609,7 +2609,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
     setStartupOption(conf, startOpt);
 
-    LOG.debug("Start Option given as: " + startOpt.getName() + ", " + startOpt.toString());
+    LOG.debug("Start Option given as: " + startOpt.getName() + ", " + startOpt);
 
     switch (startOpt) {
       //HOP

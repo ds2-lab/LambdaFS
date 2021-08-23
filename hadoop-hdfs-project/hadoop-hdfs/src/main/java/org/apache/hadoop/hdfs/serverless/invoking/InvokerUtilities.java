@@ -33,7 +33,11 @@ public class InvokerUtilities {
      * @param nameNodeArgumentsJson The arguments to be passed to the ServerlessNameNode itself.
      */
     public static void addStandardArguments(JsonObject nameNodeArgumentsJson) {
-        nameNodeArgumentsJson.addProperty("command-line-arguments", "-regular");
+        // If there is not already a command-line-arguments entry, then we'll add one with the "-regular" flag
+        // so that the name node performs standard execution. If there already is such an entry, then we do
+        // not want to overwrite it.
+        if (!nameNodeArgumentsJson.has("command-line-arguments"))
+            nameNodeArgumentsJson.addProperty("command-line-arguments", "-regular");
     }
 
     /**
