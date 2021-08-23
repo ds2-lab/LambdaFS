@@ -71,6 +71,8 @@ import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
@@ -220,6 +222,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * other functions as directed by clients and DataNodes.
    */
   private Map<String, CheckedFunction<JsonObject, ?>> operations;
+
+  /**
+   * When the 'op' field is set to this in the invocation payload, no operation is performed.
+   */
+  private static final String DEFAULT_OPERATION = "default";
 
   /**
    * HDFS configuration can have three types of parameters:
@@ -757,8 +764,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException {
     LOG.info("Specified operation: " + op);
 
-    if (op == null) {
-      LOG.info("User did not specify an operation.");
+    if (op == null || op.equals(DEFAULT_OPERATION)) {
+      LOG.info("User did not specify an operation (or specified the default operation " + DEFAULT_OPERATION + ").");
       return new JsonObject(); // empty
     }
 
@@ -1611,15 +1618,28 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return cmd;
   }
 
-  /*public static void main(String[] args) throws Exception {
+  public static void main(String[] args) throws Exception {
     LOG.info("=================================================================");
     LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
     LOG.info("=================================================================");
     System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
-    LOG.debug("JsonObject args = " + args.toString());
+    HashMap<String, Object> nameNodeArguments = new HashMap<String, Object>();
+    nameNodeArguments.put("command-line-arguments", args);
 
-    platformSpecificInitialization();
+    Configuration conf = new Configuration();
+
+    ServerlessInvokerBase<JsonObject> serverlessInvoker =
+            ServerlessInvokerFactory.getServerlessInvoker(conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
+
+    String serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+
+    LOG.debug("Invoking serverless NameNode with commandline arguments: " + Arrays.toString(args));
+
+    serverlessInvoker.invokeNameNodeViaHttpPost("default", serverlessEndpoint,
+            nameNodeArguments, new HashMap<String, Object>());
+
+    /*platformSpecificInitialization();
 
     CommandLine cmd = parseMainArguments(args);
 
@@ -1646,8 +1666,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Just pass `CommandLine` for the function name...
     JsonObject response = nameNodeDriver(op, fsArgs, commandLineArguments, "CommandLine");
-    LOG.info("Response = " + response);
-  }*/
+    LOG.info("Response = " + response);*/
+  }
 
   /**
    * httpServer
