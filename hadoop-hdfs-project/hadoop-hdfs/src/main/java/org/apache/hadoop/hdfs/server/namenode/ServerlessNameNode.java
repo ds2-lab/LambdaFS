@@ -436,11 +436,23 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String[] commandLineArguments;
 
     // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
-    if (userArguments.has("command-line-arguments"))
-      commandLineArguments = userArguments.getAsJsonPrimitive("command-line-arguments")
-              .getAsString().split("\\s+");
-    else
+    if (userArguments.has("command-line-arguments")) {
+      try {
+        commandLineArguments = userArguments.getAsJsonPrimitive("command-line-arguments")
+                .getAsString().split("\\s+");
+      } catch (ClassCastException ex) {
+        // If it was included as a JsonArray, then unpack it that way.
+        JsonArray commandLineArgumentsJson = userArguments.getAsJsonArray("command-line-arguments");
+        commandLineArguments = new String[commandLineArgumentsJson.size()];
+
+        for (int i = 0; i < commandLineArgumentsJson.size(); i++) {
+          commandLineArguments[i] = commandLineArgumentsJson.get(i).getAsString();
+        }
+      }
+    }
+    else {
       commandLineArguments = new String[0];
+    }
 
     String op = null;
     String requestId = null;
