@@ -2609,6 +2609,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
     setStartupOption(conf, startOpt);
 
+    LOG.debug("Start Option given as: " + startOpt.getName() + ", " + startOpt.toString());
+
     switch (startOpt) {
       //HOP
       case NO_OF_CONCURRENT_BLOCK_REPORTS:
