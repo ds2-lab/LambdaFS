@@ -59,6 +59,14 @@ public class HopsFSUserServer {
     }
 
     /**
+     * Stop the TCP server.
+     */
+    public void stop() {
+        LOG.debug("HopsFSUserServer stopping now...");
+        this.server.stop();
+    }
+
+    /**
      * Start the TCP server.
      */
     public void startServer() throws IOException {

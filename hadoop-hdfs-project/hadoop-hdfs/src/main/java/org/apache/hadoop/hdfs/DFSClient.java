@@ -791,6 +791,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       closeConnectionsToNamenodes();
 
       serverlessInvoker.terminate();
+
+      // Stop the ServerlessNameNodeClient if that is what we're using as our ClientAPI name node.
+      if (this.namenode instanceof ServerlessNameNodeClient) {
+        ServerlessNameNodeClient serverlessNameNodeClient = (ServerlessNameNodeClient)this.namenode;
+        serverlessNameNodeClient.stop();
+      }
     }
   }
 

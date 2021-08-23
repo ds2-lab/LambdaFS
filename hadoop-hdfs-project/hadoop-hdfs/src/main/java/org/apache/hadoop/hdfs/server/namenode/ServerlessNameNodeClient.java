@@ -95,6 +95,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.tcpServer.startServer();
     }
 
+    public void stop() {
+        LOG.debug("ServerlessNameNodeClient stopping now...");
+        this.tcpServer.stop();
+    }
+
     @Override
     public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException, IOException {
         throw new UnsupportedOperationException("Function has not yet been implemented.");
