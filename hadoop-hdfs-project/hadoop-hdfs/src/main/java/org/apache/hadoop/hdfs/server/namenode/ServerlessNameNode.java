@@ -2369,6 +2369,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private static boolean formatHdfs(Configuration conf, boolean force,
       boolean isInteractive) throws IOException {
+    LOG.debug("Formatting HDFS now...");
+
     initializeGenericKeys(conf);
     checkAllowFormat(conf);
 
