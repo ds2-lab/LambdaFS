@@ -1641,14 +1641,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     Configuration conf = new Configuration();
 
-    ServerlessInvokerBase<JsonObject> serverlessInvoker =
-            ServerlessInvokerFactory.getServerlessInvoker(conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
+    ServerlessInvokerBase<JsonObject> serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
+            conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
+    serverlessInvoker.setClientName("CommandLine");
 
     String serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 
     LOG.debug("Invoking serverless NameNode with commandline arguments: " + Arrays.toString(args));
 
-    serverlessInvoker.invokeNameNodeViaHttpPost("default", serverlessEndpoint,
+    serverlessInvoker.invokeNameNodeViaHttpPost(DEFAULT_OPERATION, serverlessEndpoint,
             nameNodeArguments, new HashMap<String, Object>());
 
     /*platformSpecificInitialization();
@@ -2623,6 +2624,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("Start Option given as: " + startOpt.getName() + ", " + startOpt);
 
+    // TODO: We could eventually have some of these NOT terminate and instead return a message that could
+    //       then be passed all the way back to the user/client who invoked the serverless NN initially.
     switch (startOpt) {
       //HOP
       case NO_OF_CONCURRENT_BLOCK_REPORTS:
