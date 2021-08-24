@@ -129,6 +129,13 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>commons-cli</artifactId>
       <scope>compile</scope>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/com.esotericsoftware/reflectasm -->
+    <!-- Needed by the Kryo TCP library. -->
+    <dependency>
+      <groupId>com.esotericsoftware</groupId>
+      <artifactId>reflectasm</artifactId>
+      <version>1.11.9</version>
+    </dependency>
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>

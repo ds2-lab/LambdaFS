@@ -8,6 +8,8 @@ import com.google.gson.JsonObject;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -58,7 +60,16 @@ public class NameNodeTCPClient {
         // The call to connect() may produce an IOException if it times out.
         Client tcpClient = new Client();
         tcpClient.start();
+
+        Instant connectStart = Instant.now();
         tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
+        Instant connectEnd = Instant.now();
+
+        Duration connectDuration = Duration.between(connectStart, connectEnd);
+        float connectMilliseconds = connectDuration.getSeconds() * 1000.0f;
+
+        LOG.debug("Successfully established connection with client " + newClient.getClientId()
+                + " in " + connectMilliseconds + " milliseconds!");
 
         // We need to register whatever classes will be serialized BEFORE any network activity is performed.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
