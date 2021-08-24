@@ -6,6 +6,10 @@ import com.google.gson.JsonPrimitive;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import java.io.*;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.*;
 
 /**
@@ -27,17 +31,28 @@ public class InvokerUtilities {
      * There are some arguments that will be included every single time with the same values. This function
      * adds those arguments.
      *
-     * This is implemented as a separate function so as to provide a centralized place to modify these
+     * This is implemented as a separate function to provide a centralized place to modify these
      * consistent arguments.
+     *
+     * The standard arguments are currently:
+     *  - Command-line arguments for the NN (if none are provided already)
+     *  - Request ID
+     *  - Internal IP address of the node on which the client is running.
      *
      * @param nameNodeArgumentsJson The arguments to be passed to the ServerlessNameNode itself.
      */
-    public static void addStandardArguments(JsonObject nameNodeArgumentsJson) {
+    public static void addStandardArguments(JsonObject nameNodeArgumentsJson)
+            throws SocketException, UnknownHostException {
         // If there is not already a command-line-arguments entry, then we'll add one with the "-regular" flag
         // so that the name node performs standard execution. If there already is such an entry, then we do
         // not want to overwrite it.
         if (!nameNodeArgumentsJson.has("command-line-arguments"))
             nameNodeArgumentsJson.addProperty("command-line-arguments", "-regular");
+
+        String requestId = UUID.randomUUID().toString();
+        nameNodeArgumentsJson.addProperty("requestId", requestId);
+
+        nameNodeArgumentsJson.addProperty("clientInternalIp", getInternalIpAddress());
     }
 
     /**
@@ -156,6 +171,18 @@ public class InvokerUtilities {
             else
                 throw new IllegalArgumentException("Value associated with key \"" + key + "\" is not of a valid type: "
                         + value.getClass().toString());
+        }
+    }
+
+    /**
+     * This function gets the internal IP address of the current node.
+     *
+     * This is useful when we're running on a VM within GCP.
+     */
+    public static String getInternalIpAddress() throws SocketException, UnknownHostException {
+        try(final DatagramSocket socket = new DatagramSocket()){
+            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+            return socket.getLocalAddress().getHostAddress();
         }
     }
 }

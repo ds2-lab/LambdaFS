@@ -424,8 +424,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String functionName = platformSpecificInitialization();
     String clientIPAddress = null;
 
-    if (args.has("client_remote_address")) {
-      clientIPAddress = args.getAsJsonPrimitive("client_remote_address").getAsString();
+    if (args.has("clientInternalIp")) {
+      clientIPAddress = args.getAsJsonPrimitive("clientInternalIp").getAsString();
       LOG.debug("Extracted client IP address from top-level OpenWhisk arguments: " + clientIPAddress);
     } else {
       LOG.warn("Top-level OpenWhisk arguments do NOT contain entry for client IP address.");
