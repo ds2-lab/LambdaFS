@@ -1,5 +1,6 @@
 import argparse
 import subprocess
+import time
 
 import logging
 logger = logging.getLogger(__name__)
@@ -75,3 +76,5 @@ if __name__ == "__main__":
         logger.debug("Executing command: " + str(split_command))
 
         subprocess.run(split_command)
+
+        time.sleep(1)
