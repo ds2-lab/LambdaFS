@@ -13,6 +13,11 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
+# Example:
+#
+# wsk -i action create /whisk.system/namenode1 /home/ben/ben-hopsfs/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar --main org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode --web true --docker scusemua/java8action:latest
+#
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
