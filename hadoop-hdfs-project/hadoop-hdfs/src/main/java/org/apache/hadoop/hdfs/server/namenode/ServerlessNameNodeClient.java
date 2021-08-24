@@ -95,6 +95,28 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.tcpServer.startServer();
     }
 
+    /**
+     * Perform an HTTP invocation of a serverless name node function.
+     *
+     * This will also issue a TCP request to the same name node if a connection to that name node already exists.
+     *
+     * TODO: This should probably be moved to the serverless invoker's class. Like, the serverless invoker should
+     *       have a HopsFSUserServer instance variable, I guess.
+     */
+    private JsonObject doInvocation(String operationName, String serverlessEndpoint,
+                                    HashMap<String, Object> nameNodeArguments, ArgumentContainer opArguments)
+            throws IOException {
+        JsonObject responseJson;
+
+        responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "getBlockLocations",
+                dfsClient.serverlessEndpoint,
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments);
+
+        return responseJson;
+    }
+
     public void stop() {
         LOG.debug("ServerlessNameNodeClient stopping now...");
         this.tcpServer.stop();

@@ -173,7 +173,7 @@ public class HdfsStorageFactory {
       throws IOException {
     String configFile = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE,
         DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE_DEFAULT);
-    LOG.debug("Attempting to read metadata cluster configuration from " + configFile + " now...");
+    LOG.info("Attempting to read metadata cluster configuration from " + configFile + " now...");
     Properties clusterConf = new Properties();
     //InputStream inStream = StorageConnector.class.getClassLoader().getResourceAsStream(configFile);
 

@@ -509,13 +509,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
        */
       response.addProperty("statusCode", 422);
       LOG.debug("Adding statusCode 422 to response.");
+      response.addProperty("status", "exception");
+      response.addProperty("success", false);
     } else if (result.has("RESULT")) {
       response.addProperty("statusCode", 200);
+      response.addProperty("status", "success");
+      response.addProperty("success", true);
       LOG.debug("Adding statusCode 200 to response.");
     } else {
       // https://stackoverflow.com/a/3290369/5937661
       // "The request could not be completed due to a conflict with the current state of the resource."
       response.addProperty("statusCode", 409);
+      response.addProperty("status", "unknown failure");
+      response.addProperty("success", false);
       LOG.debug("Adding statusCode 409 to response.");
     }
 
