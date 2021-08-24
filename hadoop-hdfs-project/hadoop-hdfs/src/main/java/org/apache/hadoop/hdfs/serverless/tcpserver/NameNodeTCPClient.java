@@ -66,7 +66,8 @@ public class NameNodeTCPClient {
         Instant connectEnd = Instant.now();
 
         Duration connectDuration = Duration.between(connectStart, connectEnd);
-        float connectMilliseconds = connectDuration.getSeconds() * 1000.0f;
+        double connectMilliseconds = ((double)connectDuration.getNano() / 1000.0) +
+                ((double)connectDuration.getSeconds() * 1000);
 
         LOG.debug("Successfully established connection with client " + newClient.getClientId()
                 + " in " + connectMilliseconds + " milliseconds!");
