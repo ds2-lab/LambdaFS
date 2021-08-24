@@ -64,11 +64,12 @@ if __name__ == "__main__":
 
     for i in range(num_functions):
         function_name = "%s%d" % (prefix, i)
-        logger.debug("Creating function with name \"%s\"" % function_name)
 
         if do_create:
+            logger.debug("Creating function with name \"%s\"" % function_name)
             command = "wsk -i action create /whisk.system/%s /home/ben/ben-hopsfs/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar --main org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode --web true --docker %s" % (function_name, docker_image)
         else:
+            logger.debug("Updating function with name \"%s\"" % function_name)
             command = "wsk -i action update /whisk.system/%s /home/ben/ben-hopsfs/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar --main org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode --web true --docker %s" % (function_name, docker_image)
 
         split_command = command.split(" ")
