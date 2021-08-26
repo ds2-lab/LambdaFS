@@ -624,7 +624,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
 
   @Override
   public AddBlockResponseProto addBlock(RpcController controller,
-      AddBlockRequestProto req) throws ServiceException, ClassNotFoundException {
+      AddBlockRequestProto req) throws ServiceException {
 
     try {
       List<DatanodeInfoProto> excl = req.getExcludeNodesList();
