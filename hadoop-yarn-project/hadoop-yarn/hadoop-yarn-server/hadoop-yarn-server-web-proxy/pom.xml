@@ -44,14 +44,14 @@
       <scope>provided</scope>
     </dependency>
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
-    <<!--dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>-->
+    </dependency>
 
-    <!--<dependency>
+    <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-auth</artifactId>
       <type>test-jar</type>
