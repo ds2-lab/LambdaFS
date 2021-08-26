@@ -625,7 +625,6 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
   @Override
   public AddBlockResponseProto addBlock(RpcController controller,
       AddBlockRequestProto req) throws ServiceException {
-
     try {
       List<DatanodeInfoProto> excl = req.getExcludeNodesList();
       List<String> favor = req.getFavoredNodesList();
@@ -638,7 +637,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
 
       return AddBlockResponseProto.newBuilder()
           .setBlock(PBHelper.convert(result)).build();
-    } catch (IOException e) {
+    } catch (IOException | ClassNotFoundException e) {
       throw new ServiceException(e);
     }
   }
