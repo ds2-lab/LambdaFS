@@ -103,17 +103,17 @@
       <artifactId>hadoop-yarn-client</artifactId>
     </dependency>
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-nodemanager</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
+    &lt;!&ndash; 'mvn dependency:analyze' fails to detect use of this dependency &ndash;&gt;
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-resourcemanager</artifactId>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
     <dependency>
       <groupId>io.hops</groupId>
@@ -130,19 +130,19 @@
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-timeline-pluginstorage</artifactId>
     </dependency>
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-timeline-pluginstorage</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
     <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-common</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>-->
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <scope>test</scope>
@@ -157,7 +157,7 @@
       <artifactId>hadoop-hdfs</artifactId>
       <scope>test</scope>
       <type>test-jar</type>
-    </dependency>
+    </dependency>-->
   </dependencies>
 
   <build>
