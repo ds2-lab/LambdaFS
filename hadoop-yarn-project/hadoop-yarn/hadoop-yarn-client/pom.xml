@@ -94,38 +94,38 @@
   		<groupId>io.hops</groupId>
   		<artifactId>hadoop-yarn-common</artifactId>
   	</dependency>
-    <dependency>
+    <!--<dependency>
         <groupId>io.hops</groupId>
         <artifactId>hadoop-yarn-common</artifactId>
         <type>test-jar</type>
         <scope>test</scope>
-    </dependency>
+    </dependency>-->
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-common</artifactId>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
-    <dependency>
+    <<!--dependency>
   		<groupId>io.hops</groupId>
   		<artifactId>hadoop-yarn-server-resourcemanager</artifactId>
       <scope>test</scope>
-  	</dependency>
+  	</dependency>-->
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
-    <dependency>
+    <!--<dependency>
   		<groupId>io.hops</groupId>
   		<artifactId>hadoop-yarn-server-tests</artifactId>
       <scope>test</scope>
       <type>test-jar</type>
-  	</dependency>
+  	</dependency>-->
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
-    <dependency>
+    <!--<dependency>
     <groupId>io.hops</groupId>
     <artifactId>hadoop-yarn-server-resourcemanager</artifactId>
       <scope>test</scope>
       <type>test-jar</type>
-    </dependency>
+    </dependency>-->
 
   </dependencies>
 
