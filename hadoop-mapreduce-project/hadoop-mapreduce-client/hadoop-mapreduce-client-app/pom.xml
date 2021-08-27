@@ -72,12 +72,12 @@
       <groupId>io.hops</groupId>
       <artifactId>hadoop-mapreduce-client-shuffle</artifactId>
     </dependency>
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-tests</artifactId>

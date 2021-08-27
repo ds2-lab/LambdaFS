@@ -221,12 +221,12 @@
     </dependency>
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
 
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
     <dependency>

@@ -60,12 +60,12 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>-->
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
     <dependency>
       <groupId>org.fusesource.leveldbjni</groupId>
       <artifactId>leveldbjni-all</artifactId>
