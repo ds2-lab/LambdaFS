@@ -107,7 +107,7 @@
       <scope>test</scope>
     </dependency>-->
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
-    <<!--dependency>
+    <!--dependency>
   		<groupId>io.hops</groupId>
   		<artifactId>hadoop-yarn-server-resourcemanager</artifactId>
       <scope>test</scope>
