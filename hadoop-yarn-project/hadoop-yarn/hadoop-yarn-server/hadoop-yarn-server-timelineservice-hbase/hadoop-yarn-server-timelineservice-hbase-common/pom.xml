@@ -62,12 +62,12 @@
 
     <!-- 'mvn dependency:analyze' fails to detect use of this direct
         dependency -->
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
 
     <dependency>
       <groupId>org.apache.hbase</groupId>
