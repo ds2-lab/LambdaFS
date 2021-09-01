@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.esotericsoftware.kryonet.Connection;
+import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.google.gson.JsonObject;
@@ -113,6 +114,10 @@ public class HopsFSUserServer {
                         default:
                             LOG.warn("Unknown operation received from NameNode " + functionName + ": " + operation);
                     }
+                }
+                else if (object instanceof FrameworkMessage.KeepAlive) {
+                    // The server periodically sends KeepAlive objects to prevent the client from disconnecting
+                    // due to timeouts. Just ignore these (i.e., do nothing).
                 }
                 else {
                     throw new IllegalArgumentException("Received object of unexpected type from remote client "
