@@ -294,11 +294,23 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         // Now we'll check for a result from the name node.
         // If there's no result, then there may have been an exception, which we'd need to log.
         if (response.has("RESULT")) {
-            String resultBase64 =
-                    response.getAsJsonObject("RESULT").getAsJsonPrimitive("base64result").getAsString();
-            Object result = InvokerUtilities.base64StringToObject(resultBase64);
-            LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result.toString());
-            return result;
+            JsonObject resultJson = response.getAsJsonObject("RESULT");
+
+            // Now we need to check if there's an entry for the key "base64result".
+            // If there is, great! That means there is a result returned by the Serverless NN.
+            // We'll extract it, deserialize it, and return it to the caller.
+            // If there is NOT an entry for the key "base64result", then there is no result. Return null.
+            if (resultJson.has("base64result")) {
+                String resultBase64 = resultJson.getAsJsonPrimitive("base64result").getAsString();
+
+                Object result = InvokerUtilities.base64StringToObject(resultBase64);
+                LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result.toString());
+                return result;
+            }
+            else {
+                LOG.warn("Serverless function is returning null value to caller.");
+                return null;
+            }
         } else if (response.has("EXCEPTION")) {
             String exception = response.getAsJsonPrimitive("EXCEPTION").getAsString();
             LOG.error("Exception encountered during Serverless NameNode execution.");
