@@ -17,13 +17,42 @@
 <!-- Put site-specific property overrides in this file. -->
 
 <configuration>
+    <!-- Enable POSIX ACLs. They are disabled by default. -->
+    <property>
+        <name>dfs.namenode.acls.enabled</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>dfs.heartbeat.interval</name>
+        <value>5</value>
+    </property>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+    <property>
+        <name>serverless.deployments.baseline</name>
+        <value>3</value>
+    </property>
+    <property>
+        <name>serverless.deployments.max</name>
+        <value>3</value>
+    </property>
+    <property>
+        <name>serverless.endpoint</name>
+        <value>https://openwhisk.serverless-mds-cluster-243065a7719552ad2f4388dc81e46642-0000.us-east.containers.appdomain.cloud:443/api/v1/web/whisk.system/default/namenode</value>
+    </property>
+    <property>
+        <name>serverless.platform</name>
+        <value>openwhisk</value>
+    </property>
     <property>
         <name>dfs.storage.driver.configfile</name>
         <value>ndb-config.properties</value>
     </property>
     <property>
         <name>dfs.storage.driver.jarFile</name>
-        <value>/home/ben/ben-hopsfs/hops-metadata-dal-impl-ndb/target/hops-metadata-dal-impl-ndb-3.2.0.4-SNAPSHOT.jar</value>
+        <value>/home/ubuntu/repos/hops/hops-metadata-dal-impl-ndb/target/hops-metadata-dal-impl-ndb-3.2.0.3-SNAPSHOT.jar</value>
     </property>
     <property>
         <name>dfs.storage.driver.class</name>
