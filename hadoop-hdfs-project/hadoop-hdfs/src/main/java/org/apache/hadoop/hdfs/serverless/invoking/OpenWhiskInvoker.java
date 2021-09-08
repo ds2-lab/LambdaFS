@@ -1,9 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -291,9 +288,31 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             LOG.warn("No INode function mapping information contained within response from serverless name node...");
         }
 
+        // Print any exceptions that were encountered first.
+        if (response.has("EXCEPTIONS")) {
+            JsonArray exceptionsJson = response.get("EXCEPTIONS").getAsJsonArray();
+
+            LOG.warn("The ServerlessNameNode encountered " + exceptionsJson.size()
+                    + (exceptionsJson.size() == 1 ? "exception" : "exceptions") + ".");
+
+            for (int i = 0; i < exceptionsJson.size(); i++)
+                LOG.error(exceptionsJson.get(i).getAsString());
+        }
+
+        // Now we'll check for a result from the name node.
+        if (response.has("RESULT")) {
+            String resultBase64 = response.getAsJsonPrimitive("base64result").getAsString();
+
+            Object result = InvokerUtilities.base64StringToObject(resultBase64);
+            LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result.toString());
+            return result;
+        }
+
+        return null;
+
         // Now we'll check for a result from the name node.
         // If there's no result, then there may have been an exception, which we'd need to log.
-        if (response.has("RESULT")) {
+        /*if (response.has("RESULT")) {
             JsonObject resultJson = response.getAsJsonObject("RESULT");
 
             // Now we need to check if there's an entry for the key "base64result".
@@ -316,7 +335,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             LOG.error("Exception encountered during Serverless NameNode execution.");
             LOG.error(exception);
         }
-        return null;
+        return null;*/
     }
 
     public void setClientName(String clientName) {

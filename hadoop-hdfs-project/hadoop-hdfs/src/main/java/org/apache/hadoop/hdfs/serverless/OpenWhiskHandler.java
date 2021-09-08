@@ -6,7 +6,6 @@ import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
-import org.apache.hadoop.ipc.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

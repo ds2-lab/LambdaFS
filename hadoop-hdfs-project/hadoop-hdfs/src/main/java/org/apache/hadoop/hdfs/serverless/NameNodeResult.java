@@ -104,7 +104,7 @@ public class NameNodeResult {
             byte[] objectBytes = byteArrayOutputStream.toByteArray();
             String base64Object = Base64.encodeBase64String(objectBytes);
 
-            json.addProperty("base64result", base64Object);
+            json.addProperty("RESULT", base64Object);
         } catch (Exception ex) {
             LOG.error("Exception encountered whilst serializing result of file system operation: ", ex);
             addException(ex);
