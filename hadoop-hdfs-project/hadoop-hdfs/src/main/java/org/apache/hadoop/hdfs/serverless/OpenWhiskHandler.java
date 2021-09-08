@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
+import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
 import org.apache.hadoop.ipc.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +14,15 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
 import static com.google.common.hash.Hashing.consistentHash;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT;
 
+/**
+ * This class encapsulates the behavior and functionality of the serverless function handler for OpenWhisk.
+ *
+ * The handler itself is actually just a single function, but there are lots of things that this handler does,
+ * and it is cleaner to encapsulate all of this into a single class than to include it in the
+ * ServerlessNameNode class directly, as was done previously.
+ */
 public class OpenWhiskHandler {
     public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class.getName());
 
@@ -135,6 +144,8 @@ public class OpenWhiskHandler {
                                      String clientName, boolean isClientInvoker) {
         NameNodeResult result = new NameNodeResult();
 
+        // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
+        // If this container was cold prior to this invocation, then we'll actually be creating the instance now.
         ServerlessNameNode serverlessNameNode;
         try {
             serverlessNameNode = getOrCreateInstance(commandLineArguments, functionName);
@@ -199,23 +210,41 @@ public class OpenWhiskHandler {
         // serverless function. We calculate this here and include the information for the client in our response.
         if (fsArgs != null && fsArgs.has("src")) {
             String src = fsArgs.getAsJsonPrimitive("src").getAsString();
-            INode iNode = serverlessNameNode.getINodeForCache(src);
+
+            INode iNode = null;
+            try {
+                iNode = serverlessNameNode.getINodeForCache(src);
+            }
+            catch (IOException ex) {
+                LOG.error("Encountered IOException while retrieving INode associated with target directory "
+                        + src + ": ", ex);
+                result.addException(ex);
+            }
 
             // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
             if (iNode != null) {
                 LOG.debug("Parent INode ID for " + '"' + src + '"' + ": " + iNode.getParentId());
 
-                int function = consistentHash(iNode.getParentId(), serverlessNameNode.getNumUniqueServerlessNameNodes());
+                int functionNumber = consistentHash(iNode.getParentId(), serverlessNameNode.getNumUniqueServerlessNameNodes());
 
-                LOG.debug("Consistently hashed parent INode ID " + iNode.getParentId() + " to serverless function " + function);
+                LOG.debug("Consistently hashed parent INode ID " + iNode.getParentId()
+                        + " to serverless function " + functionNumber);
 
-                // Embed all the information about the serverless function mapping in the Json response.
-                JsonObject functionMapping = new JsonObject();
-                functionMapping.addProperty("fileOrDirectory", src);
-                functionMapping.addProperty("parentId", iNode.getParentId());
-                functionMapping.addProperty("function", function);
+                result.addFunctionMapping(src, iNode.getParentId(), functionNumber);
+            }
+        }
 
-                response.add("functionMapping", functionMapping);
+        // The last step is to establish a TCP connection to the client that invoked us.
+        if (isClientInvoker) {
+            ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
+                    clientName, clientIPAddress, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+
+            try {
+                serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
+            }
+            catch (IOException ex) {
+                LOG.error("Encountered IOException while trying to establish TCP connection with client: ", ex);
+                result.addException(ex);
             }
         }
 

@@ -58,7 +58,7 @@ public class NameNodeResult {
      * @param parentId The ID of the file or directory's parent iNode.
      * @param mappedFunctionName The name of the serverless function to which the file or directory was mapped.
      */
-    public void addFunctionMapping(String fileOrDirectory, long parentId, String mappedFunctionName) {
+    public void addFunctionMapping(String fileOrDirectory, long parentId, int mappedFunctionName) {
         this.serverlessFunctionMapping = new ServerlessFunctionMapping(fileOrDirectory, parentId, mappedFunctionName);
     }
 
@@ -120,6 +120,16 @@ public class NameNodeResult {
             json.add("EXCEPTIONS", exceptionsJson);
         }
 
+        if (serverlessFunctionMapping != null) {
+            // Embed all the information about the serverless function mapping in the Json response.
+            JsonObject functionMapping = new JsonObject();
+            functionMapping.addProperty("fileOrDirectory", serverlessFunctionMapping.fileOrDirectory);
+            functionMapping.addProperty("parentId", serverlessFunctionMapping.parentId);
+            functionMapping.addProperty("function", serverlessFunctionMapping.mappedFunctionNumber);
+
+            json.add("functionMapping", functionMapping);
+        }
+
         return json;
     }
 
@@ -138,14 +148,14 @@ public class NameNodeResult {
         long parentId;
 
         /**
-         * The name of the serverless function to which the file or directory was mapped.
+         * The number of the serverless function to which the file or directory was mapped.
          */
-        String mappedFunctionName;
+        int mappedFunctionNumber;
 
-        public ServerlessFunctionMapping(String fileOrDirectory, long parentId, String mappedFunctionName) {
+        public ServerlessFunctionMapping(String fileOrDirectory, long parentId, int mappedFunctionNumber) {
             this.fileOrDirectory = fileOrDirectory;
             this.parentId = parentId;
-            this.mappedFunctionName = mappedFunctionName;
+            this.mappedFunctionNumber = mappedFunctionNumber;
         }
     }
 }

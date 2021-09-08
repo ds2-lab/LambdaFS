@@ -528,6 +528,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return numUniqueServerlessNameNodes;
   }
 
+  public NameNodeTCPClient getNameNodeTcpClient() {
+    return nameNodeTCPClient;
+  }
+
   /**
    * Record the given request (identified by its ID) as 'processed'.
    * @param requestId The unique ID of the request.
