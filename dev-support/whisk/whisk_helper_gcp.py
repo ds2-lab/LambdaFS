@@ -47,6 +47,13 @@ if __name__ == "__main__":
         action = "store_true",
         help = "Update existing functions (rather than create new functions. Only one of `create` and `update` should be true.")
 
+    parser.add_argument("-m", "--main-class",
+        dest = "main_class", type = str, default = "org.apache.hadoop.hdfs.serverless.OpenWhiskHandler",
+        help = "The fully-qualified class name containing the OpenWhisk function handler.")
+
+    parser.add_argument("-p", "--path", dest = "jar_path", type = str, default = "/home/ben/ben-hopsfs/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar",
+        help = "Path to the JAR file containing the ServerlessNameNode code.");
+
     arguments = parser.parse_args()
 
     num_functions = arguments.num_functions
@@ -54,6 +61,8 @@ if __name__ == "__main__":
     do_update = arguments.update
     do_create = arguments.create
     docker_image = arguments.docker_image
+    main_class = arguments.main_class
+    jar_path = arguments.jar_path
 
     # Only one of `do_create` and `do_update` should be true.
     if (do_create and do_update):
@@ -72,10 +81,10 @@ if __name__ == "__main__":
 
         if do_create:
             logger.debug("Creating function with name \"%s\"" % function_name)
-            command = "wsk -i action create /whisk.system/%s /home/ben/ben-hopsfs/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar --main org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode --web true --docker %s" % (function_name, docker_image)
+            command = "wsk -i action create /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
         else:
             logger.debug("Updating function with name \"%s\"" % function_name)
-            command = "wsk -i action update /whisk.system/%s /home/ben/ben-hopsfs/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar --main org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode --web true --docker %s" % (function_name, docker_image)
+            command = "wsk -i action update /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
 
         split_command = command.split(" ")
 
