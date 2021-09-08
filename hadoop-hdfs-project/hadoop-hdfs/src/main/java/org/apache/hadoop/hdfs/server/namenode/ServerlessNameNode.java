@@ -70,6 +70,7 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
@@ -208,7 +209,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Syntax:
    *  Major.Minor.Build.Revision
    */
-  private static final String versionNumber = "0.2.2.0";
+  public static final String versionNumber = "0.3.0.0";
 
   /**
    * The number of uniquely-deployed serverless name nodes associated with this particular Serverless HopsFS cluster.
@@ -301,12 +302,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public static final int DEFAULT_PORT = 8020;
-  public static final Logger LOG =
-      LoggerFactory.getLogger(ServerlessNameNode.class.getName());
-  public static final Logger stateChangeLog =
-      LoggerFactory.getLogger("org.apache.hadoop.hdfs.StateChange");
-  public static final Logger blockStateChangeLog =
-      LoggerFactory.getLogger("BlockStateChange");
+  public static final Logger LOG = LoggerFactory.getLogger(ServerlessNameNode.class.getName());
+  public static final Logger stateChangeLog = LoggerFactory.getLogger("org.apache.hadoop.hdfs.StateChange");
+  public static final Logger blockStateChangeLog = LoggerFactory.getLogger("BlockStateChange");
  
   private static final String NAMENODE_HTRACE_PREFIX = "namenode.htrace.";
   
@@ -322,7 +320,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * The value is computed by hashing the activation ID of the OpenWhisk function.
    */
-  private static long nameNodeID = -1;
+  public static long nameNodeID = -1;
 
   /**
    * This variable is used to keep track of the last storage report retrieved from intermediate storage.
@@ -353,21 +351,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private final NameNodeTCPClient nameNodeTCPClient;
 
-  /**
-   * Source: https://stackoverflow.com/questions/1660501/what-is-a-good-64bit-hash-function-in-java-for-textual-strings
-   * Used to convert the activation ID of this serverless function to a long to use as the NameNode ID.
-   *
-   * In theory, this is done only when the function is cold.
-   */
-  public static long hash(String string) {
-    long h = 1125899906842597L; // prime
-    int len = string.length();
 
-    for (int i = 0; i < len; i++) {
-      h = 31*h + string.charAt(i);
-    }
-    return h;
-  }
 
   /**
    * Currently implemented for OpenWhisk. This function returns the name of the serverless function.
@@ -394,7 +378,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private static void openWhiskInitialization(String activationId) {
     if (ServerlessNameNode.nameNodeID == -1) {
-      ServerlessNameNode.nameNodeID = hash(activationId);
+      ServerlessNameNode.nameNodeID = ServerlessUtilities.hash(activationId);
       LOG.info("Set name node ID to " + ServerlessNameNode.nameNodeID);
     } else {
       LOG.info("Name node ID already set to " + ServerlessNameNode.nameNodeID);
@@ -404,7 +388,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * OpenWhisk function handler. This is the main entrypoint for the serverless name node.
    */
-  public static JsonObject main(JsonObject args) {
+  /*public static JsonObject main(JsonObject args) {
     LOG.info("============================================================");
     LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
     LOG.info("============================================================");
@@ -496,7 +480,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     headers.addProperty("content-type", "application/json");
 
     if (result.has("EXCEPTION")) {
-      /*
+      *//*
         https://stackoverflow.com/a/3291292/5937661
 
         "The 422 (Unprocessable Entity) status code means the server understands the content type of the
@@ -506,7 +490,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         body contains well-formed (i.e., syntactically correct), but semantically erroneous, XML instructions."
 
         Several things could have gone wrong here, but for now I am just using 422 because it mostly fits...
-       */
+       *//*
       response.addProperty("statusCode", 422);
       LOG.debug("Adding statusCode 422 to response.");
       response.addProperty("status", "exception");
@@ -529,127 +513,49 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     response.add("body", result);
 
     return response;
+  }*/
+
+  /**
+   * Determines if the given request (identified by its request ID) has already been received and processed by the NN.
+   * @param requestId The ID of the request.
+   * @return true if the request has been received and processed already, otherwise false.
+   */
+  public boolean checkIfRequestProcessedAlready(String requestId) {
+    return processedRequestIds.contains(requestId);
+  }
+
+  public int getNumUniqueServerlessNameNodes() {
+    return numUniqueServerlessNameNodes;
   }
 
   /**
-   * This is called by both main methods.
+   * Record the given request (identified by its ID) as 'processed'.
+   * @param requestId The unique ID of the request.
+   * @throws IllegalStateException If the request has already been processed.
    */
-  private static JsonObject nameNodeDriver(String op, JsonObject fsArgs, String[] commandLineArguments,
-                                           String functionName, String clientIPAddress, String requestId,
-                                           String clientName, boolean isClientInvoker) {
-    JsonObject response = new JsonObject();
+  public void designateRequestAsProcessed(String requestId) {
+    boolean alreadyContained = processedRequestIds.add(requestId);
 
-    LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-    LOG.info("NameNode Argument Information:");
-    LOG.info("Request ID: " + requestId);
-    LOG.info("Serverless Function Name: " + functionName);
-    LOG.info("Client IP Address: " + clientIPAddress);
-    LOG.info("Client Name/ID: " + clientName);
-    LOG.info("Op = " + op);
-    if (fsArgs != null)
-      LOG.info("fsArgs = " + fsArgs.toString());
-    else
-      LOG.info("fsArgs = NULL");
-    LOG.info("commandLineArguments = " + Arrays.toString(commandLineArguments));
-    LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    if (alreadyContained)
+      throw new IllegalStateException("Given request (ID = " + requestId + ") has already been processed.");
+  }
 
-    // Check if we need to initialize the namenode.
-    if (!initialized) {
-      try {
-        LOG.debug("This is a COLD START. Creating the NameNode now...");
-        nameNodeInstance = startServerlessNameNode(commandLineArguments, functionName);
-      } catch (Exception ex) {
-        LOG.error("Encountered exception while initializing the name node.", ex);
-        response.addProperty("EXCEPTION", ex.toString());
-      }
-    }
-    else
-      LOG.debug("NameNode is already initialized. Skipping initialization step.");
-
-    // Make sure that the NameNode was actually created.
-    if (nameNodeInstance == null) {
-      LOG.error("NameNodeInstance is null despite having been initialized.");
-      response.addProperty("EXCEPTION", "Failed to initialize NameNode. Unknown error. Review logs for details.");
-      return response;
-    }
-
-    // Check to see if this is a duplicate request, in which case we should not return anything of substance.
-    if (nameNodeInstance.processedRequestIds.contains(requestId)) {
-      LOG.warn("Received duplicate request. ID = " + requestId + ".");
-      return new JsonObject();
-    }
-
-    LOG.debug("Received request " + requestId + " for the first time. Processing now...");
-    nameNodeInstance.processedRequestIds.add(requestId);
-
-    try {
-      List<DatanodeRegistration> datanodeRegistrations = nameNodeInstance.getDataNodesFromIntermediateStorage();
-      nameNodeInstance.retrieveAndProcessStorageReports(datanodeRegistrations);
-      nameNodeInstance.getAndProcessIntermediateBlockReports();
-      nameNodeInstance.populateOperationsMap();
-
-      if (nameNodeInstance.namesystem.isInSafeMode()) {
-        LOG.debug("NameNode is in SafeMode. Leaving SafeMode now...");
-        nameNodeInstance.namesystem.leaveSafeMode();
-      }
-
-      JsonObject result = nameNodeInstance.performOperation(op, fsArgs);
-
-      // Check if there is a particular file or directory identified by the `src` parameter.
-      // This is the file/directory that should be hashed to a particular serverless function.
-      // We calculate this here and include the information for the client in our response.
-      if (fsArgs != null && fsArgs.has("src")) {
-        String src = fsArgs.getAsJsonPrimitive("src").getAsString();
-        INode iNode = nameNodeInstance.getINodeForCache(src);
-
-        // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
-        if (iNode != null) {
-          LOG.debug("Parent INode ID for " + '"' + src + '"' + ": " + iNode.parentId);
-
-          int function = consistentHash(iNode.parentId, nameNodeInstance.numUniqueServerlessNameNodes);
-
-          LOG.debug("Consistently hashed parent INode ID " + iNode.parentId + " to serverless function " + function);
-
-          // Embed all the information about the serverless function mapping in the Json response.
-          JsonObject functionMapping = new JsonObject();
-          functionMapping.addProperty("fileOrDirectory", src);
-          functionMapping.addProperty("parentId", iNode.parentId);
-          functionMapping.addProperty("function", function);
-
-          response.add("functionMapping", functionMapping);
-        }
-      }
-
-      response.add("RESULT", result);
-    }
-    catch (Exception ex) {
-      LOG.error("Exception encountered during execution of Serverless NameNode.");
-      ex.printStackTrace();
-      response.addProperty("EXCEPTION", ex.toString());
-    }
-
-    // TODO: Eventually stop using default port.
-    ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
-            clientName, clientIPAddress, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
-
-    if (isClientInvoker) {
-      try {
-        nameNodeInstance.nameNodeTCPClient.addClient(serverlessHopsFSClient);
-      } catch (IOException e) {
-        LOG.error("Encountered exception while trying to establish TCP connection with client.", e);
-      }
-    } else {
-      LOG.debug("Request was issued by DataNode. Skipping connection-establishment step.");
-    }
-
-    return response;
+  /**
+   * Retrieve and process the various updates that are stored in intermediate storage.
+   *
+   * These updates include newly-registered DataNodes, storage reports, and intermediate block reports.
+   */
+  public void getAndProcessUpdatesFromIntermediateStorage() throws IOException, ClassNotFoundException {
+    List<DatanodeRegistration> datanodeRegistrations = getDataNodesFromIntermediateStorage();
+    retrieveAndProcessStorageReports(datanodeRegistrations);
+    getAndProcessIntermediateBlockReports();
   }
 
   /**
    * Create a transaction to read the INode for the specified file from NDB.
    * @return
    */
-  private INode getINodeForCache(final String srcArg) throws IOException {
+  public INode getINodeForCache(final String srcArg) throws IOException {
     final FSPermissionChecker pc = namesystem.getPermissionChecker();
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = namesystem.dir.resolvePath(pc, srcArg, pathComponents);
@@ -703,7 +609,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     R apply(T t) throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException;
   }
 
-  private void populateOperationsMap() {
+  /**
+   * Populate the operations HashMap with all the functions.
+   * Each supported FS operation has a function mapped to the operation's name.
+   */
+  public void populateOperationsMap() {
     operations = new HashMap<String, CheckedFunction<JsonObject, ?>>();
 
     operations.put("abandonBlock", (CheckedFunction<JsonObject, Void>) args -> {
@@ -777,54 +687,27 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Perform the operation specified by the String (which will contain the operations name). Pass the arguments
    * contained in fsArgs to the function.
+   *
+   * @param result Encapsulates the result to be returned to whoever invoked us.
+   * @param fsArgs The arguments to be passed to the desired FS operation.
+   * @param op The name of the desired FS operation to be performed.
    */
-  public JsonObject performOperation(String op, JsonObject fsArgs)
+  public void performOperation(String op, JsonObject fsArgs, NameNodeResult result)
           throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException {
     LOG.info("Specified operation: " + op);
 
     if (op == null || op.equals(DEFAULT_OPERATION)) {
       LOG.info("User did not specify an operation (or specified the default operation " + DEFAULT_OPERATION + ").");
-      return new JsonObject(); // empty
+      return;
     }
 
     Object returnValue = this.operations.get(op).apply(fsArgs);
-    JsonObject result = null;
 
     // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64 so we
     // can include it in the JSON response sent back to the invoker of this serverless function.
     if (returnValue != null) {
-
-      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-        ObjectOutputStream objectOutputStream;
-        LOG.info("-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
-        LOG.info("returnValue.getClass() = " + returnValue.getClass());
-        LOG.info("returnValue instanceof Serializable: " + (returnValue instanceof Serializable));
-        LOG.info("returnValue BEFORE being serialized:\n" + returnValue);
-        LOG.info("Operation performed: " + op);
-        LOG.info("-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
-        objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-        objectOutputStream.writeObject(returnValue);
-        objectOutputStream.flush();
-
-        byte[] objectBytes = byteArrayOutputStream.toByteArray();
-        String base64Object = Base64.encodeBase64String(objectBytes);
-
-        result = new JsonObject();
-        result.addProperty("base64result", base64Object);
-      } catch (Exception ex) {
-        LOG.error("Exception encountered whilst serializing result of file system operation.");
-        ex.printStackTrace();
-        result = new JsonObject();
-        result.addProperty("EXCEPTION", ex.toString());
-      }
-      // Ignore close exception.
+      result.addResult(returnValue, true);
     }
-
-    // Create this object if it wasn't already created.
-    if (result == null)
-      result = new JsonObject(); // empty
-
-    return result;
   }
 
   /**

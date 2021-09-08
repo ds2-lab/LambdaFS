@@ -5530,7 +5530,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    *
    * @throws IOException
    */
-  void leaveSafeMode() throws IOException {
+  public void leaveSafeMode() throws IOException {
     if (!isInSafeMode()) {
       ServerlessNameNode.stateChangeLog.info("STATE* Safe mode is already OFF");
       return;
