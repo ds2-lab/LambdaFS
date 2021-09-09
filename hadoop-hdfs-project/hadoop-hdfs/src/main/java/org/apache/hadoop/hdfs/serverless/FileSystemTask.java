@@ -12,6 +12,8 @@ import java.util.concurrent.*;
  * Encapsulates a user-specified File System operation to be executed by the NameNode.
  *
  * This is used to avoid duplicate requests from being processed when clients issue concurrent TCP and HTTP requests.
+ *
+ * This is used on the NameNode side.
  */
 public class FileSystemTask<T extends Serializable> implements Future<T> {
     private static final Log LOG = LogFactory.getLog(FileSystemTask.class);

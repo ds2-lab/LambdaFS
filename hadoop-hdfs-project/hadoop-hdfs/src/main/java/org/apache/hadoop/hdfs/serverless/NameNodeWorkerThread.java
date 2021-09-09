@@ -18,6 +18,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * This thread actually executes file system operations. Tasks (i.e., file system operations wrapped in a Future
  * interface) are added to a work queue. This thread consumes those tasks and returns results to whomever is
  * waiting on them (one of the HTTP or TCP request handlers).
+ *
+ * This is used on the NameNode side.
  */
 public class NameNodeWorkerThread implements Runnable {
     public static final Logger LOG = LoggerFactory.getLogger(NameNodeWorkerThread.class.getName());

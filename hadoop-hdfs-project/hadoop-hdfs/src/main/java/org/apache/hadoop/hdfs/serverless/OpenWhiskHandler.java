@@ -23,6 +23,8 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DE
  * The handler itself is actually just a single function, but there are lots of things that this handler does,
  * and it is cleaner to encapsulate all of this into a single class than to include it in the
  * ServerlessNameNode class directly, as was done previously.
+ *
+ * This is used on the NameNode side (obviously).
  */
 public class OpenWhiskHandler {
     public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class.getName());

@@ -13,6 +13,16 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 
+/**
+ * This encapsulates all the information that may be returned to the user after the NameNode executes.
+ *
+ * This includes final results from FS operations, exceptions, INode mapping information, etc.
+ *
+ * As the NameNode executes, it adds any exceptions it encounters to this class' list. When it comes time to
+ * return to the client, this class dumps all of its data into a JsonObject that the client will know how to process.
+ *
+ * This is used on the NameNode side.
+ */
 public class NameNodeResult {
     private static final Logger LOG = LoggerFactory.getLogger(NameNodeResult.class);
 
