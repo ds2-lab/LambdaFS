@@ -8,9 +8,15 @@ import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.plugin.dom.exception.InvalidStateException;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
+import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static com.google.common.hash.Hashing.consistentHash;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT;
@@ -28,12 +34,19 @@ public class OpenWhiskHandler {
     /**
      * The singleton ServerlessNameNode instance associated with this container. There can only be one!
      */
-    private static ServerlessNameNode instance;
+    public static ServerlessNameNode instance;
 
     /**
      * Used internally to determine whether this instance is warm or cold.
      */
     private static boolean isCold = true;
+
+    /**
+     * Worker thread that actually performs the various file system operations.
+     */
+    private static ServerlessNameNodeWorkerThread workerThread;
+
+    private static BlockingQueue<ServerlessNameNodeTask<? extends Serializable>> workQueue;
 
     /**
      * Returns the singleton ServerlessNameNode instance.
@@ -53,6 +66,13 @@ public class OpenWhiskHandler {
 
         instance = ServerlessNameNode.startServerlessNameNode(commandLineArguments, functionName);
         instance.populateOperationsMap();
+
+        // Next, the NameNode needs to exit safe mode (if it is in safe mode).
+        if (instance.isInSafeMode()) {
+            LOG.debug("NameNode is in SafeMode. Leaving SafeMode now...");
+            instance.getNamesystem().leaveSafeMode();
+        }
+
         return instance;
     }
 
@@ -150,57 +170,72 @@ public class OpenWhiskHandler {
             serverlessNameNode = getOrCreateInstance(commandLineArguments, functionName);
         }
         catch (Exception ex) {
-            LOG.error("Exception encountered while creating and initializing the NameNode: ", ex);
+            LOG.error("Encountered " + ex.getClass().getSimpleName()
+                    + " while creating and initializing the NameNode: ", ex);
             result.addException(ex);
             return result.toJson();
         }
 
-        // Check to see if this is a duplicate request, in which case we should not return anything of substance.
-        if (serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
-            LOG.warn("This request (" + requestId + ") has already been processed. Returning now...");
-            return result.toJson();
+        // Create the work queue if it has not already been created. This is used to assign tasks to the worker thread.
+        if (workQueue == null) {
+            boolean everythingIsOkay = assertIsCold(result);
+
+            // If everything is NOT okay (specifically, this container is warm, yet the work queue is not
+            // already created), then abort early. Something is not right.
+            if (!everythingIsOkay)
+                return result.toJson();
+
+            workQueue = new LinkedBlockingQueue<>();
         }
 
-        // Now we need to process various updates that are stored in intermediate storage by DataNodes.
-        // These include storage reports, block reports, and new DataNode registrations.
-        try {
-            serverlessNameNode.getAndProcessUpdatesFromIntermediateStorage();
-        }
-        catch (IOException | ClassNotFoundException ex) {
-            LOG.error("Encountered exception while retrieving and processing updates from intermediate storage: ", ex);
-            result.addException(ex);
+        // Next, create the worker thread if it has not already been created. The worker thread is responsible
+        // for actually performing the various file system operations. It returns the results back to us.
+        if (workerThread == null) {
+            boolean everythingIsOkay = assertIsCold(result);
+
+            // If everything is NOT okay (specifically, this container is warm, yet the worker thread is not
+            // already created), then abort early. Something is not right.
+            if (!everythingIsOkay)
+                return result.toJson();
+
+            workerThread = new ServerlessNameNodeWorkerThread(workQueue, serverlessNameNode);
         }
 
-        // Next, the NameNode needs to exit safe mode (if it is in safe mode).
-        try {
-            if (serverlessNameNode.isInSafeMode()) {
-                LOG.debug("NameNode is in SafeMode. Leaving SafeMode now...");
-                serverlessNameNode.getNamesystem().leaveSafeMode();
+        synchronized (serverlessNameNode) {
+            LOG.debug("Checking for duplicate requests now...");
+
+            // Check to see if this is a duplicate request, in which case we should not return anything of substance.
+            if (serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
+                LOG.warn("This request (" + requestId + ") has already been processed. Returning now...");
+                return result.toJson();
             }
-        }
-        catch (IOException ex) {
-            LOG.error("Encountered exception while checking status of/exiting safe mode: ", ex);
-            result.addException(ex);
+
+            LOG.debug("Request is NOT a duplicate! Processing updates from intermediate storage now...");
+
+            // Now we need to process various updates that are stored in intermediate storage by DataNodes.
+            // These include storage reports, block reports, and new DataNode registrations.
+            try {
+                serverlessNameNode.getAndProcessUpdatesFromIntermediateStorage();
+            }
+            catch (IOException | ClassNotFoundException ex) {
+                LOG.error("Encountered exception while retrieving and processing updates from intermediate storage: ", ex);
+                result.addException(ex);
+            }
+
+            LOG.debug("Successfully processed updates from intermediate storage!");
         }
 
-        // Finally, we perform the desired file system operation as specified by whoever invoked us.
+        // Finally, create a new task and assign it to the worker thread.
+        // We wait for the result to be completed before returning it to the user.
         try {
+            String newTaskid = UUID.randomUUID().toString();
+            ServerlessNameNodeTask<Serializable> newTask = new ServerlessNameNodeTask<>(newTaskid, op, fsArgs);
+            workQueue.put(newTask);
             serverlessNameNode.performOperation(op, fsArgs, result);
         }
-        catch (IOException ex) {
-            LOG.error("Encountered IOException while checking status of/exiting safe mode: ", ex);
-            result.addException(ex);
-        } catch (ClassNotFoundException ex) {
-            LOG.error("Encountered ClassNotFoundException while checking status of/exiting safe mode: ", ex);
-            result.addException(ex);
-        } catch (InvocationTargetException ex) {
-            LOG.error("Encountered InvocationTargetException while checking status of/exiting safe mode: ", ex);
-            result.addException(ex);
-        } catch (NoSuchMethodException ex) {
-            LOG.error("Encountered NoSuchMethodException while checking status of/exiting safe mode: ", ex);
-            result.addException(ex);
-        } catch (IllegalAccessException ex) {
-            LOG.error("Encountered IllegalAccessException while checking status of/exiting safe mode: ", ex);
+        catch (Exception ex) {
+            LOG.error("Encountered " + ex.getClass().getSimpleName()
+                    + " while assigning a new task to the worker thread: ", ex);
             result.addException(ex);
         }
 
@@ -212,7 +247,9 @@ public class OpenWhiskHandler {
 
             INode iNode = null;
             try {
-                iNode = serverlessNameNode.getINodeForCache(src);
+                synchronized (serverlessNameNode) {
+                    iNode = serverlessNameNode.getINodeForCache(src);
+                }
             }
             catch (IOException ex) {
                 LOG.error("Encountered IOException while retrieving INode associated with target directory "
@@ -239,7 +276,9 @@ public class OpenWhiskHandler {
                     clientName, clientIPAddress, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
 
             try {
-                serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
+                synchronized (serverlessNameNode) {
+                    serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
+                }
             }
             catch (IOException ex) {
                 LOG.error("Encountered IOException while trying to establish TCP connection with client: ", ex);
@@ -247,9 +286,42 @@ public class OpenWhiskHandler {
             }
         }
 
+        // Now we need to mark this request as processed, so we don't reprocess it
+        // if we receive the same request via TCP.
+        try {
+            synchronized (serverlessNameNode) {
+                serverlessNameNode.designateRequestAsProcessed(requestId);
+            }
+        }
+        catch (IllegalStateException ex) {
+            LOG.error("Encountered IllegalStateException while marking request " + requestId + " as processed: ", ex);
+            result.addException(ex);
+        }
+
         result.logResultDebugInformation();
-        serverlessNameNode.designateRequestAsProcessed(requestId);
         return result.toJson();
+    }
+
+    /**
+     * Assert that the container was cold prior to the currently-running activation.
+     *
+     * If the container is warm, then this will create a new InvalidStateException and add it to the
+     * parameterized `result` object so that the client that invoked this function can see the exception
+     * and process it accordingly.
+     * @param result The result to be returned to the client.
+     * @return True if the function was cold (as is expected when this function is called). Otherwise, false will be
+     * returned, indicating that the function is warm (which is bad in the case that this function is called).
+     */
+    private static boolean assertIsCold(NameNodeResult result) {
+        if (!isCold) {
+            // Create and add the exception to the result so that it will be returned to the client.
+            InvalidStateException ex = new InvalidStateException("Expected container to be cold, but it is warm.");
+            result.addException(ex);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
