@@ -351,7 +351,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private final NameNodeTCPClient nameNodeTCPClient;
 
-
+  /**
+   * How long to wait for the serverless name node worker thread to process a given task before timing out.
+   */
+  private int workerThreadTimeoutMilliseconds;
 
   /**
    * Currently implemented for OpenWhisk. This function returns the name of the serverless function.
@@ -696,22 +699,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param fsArgs The arguments to be passed to the desired FS operation.
    * @param op The name of the desired FS operation to be performed.
    */
-  public void performOperation(String op, JsonObject fsArgs, NameNodeResult result)
+  public Object performOperation(String op, JsonObject fsArgs)
           throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException {
     LOG.info("Specified operation: " + op);
 
     if (op == null || op.equals(DEFAULT_OPERATION)) {
       LOG.info("User did not specify an operation (or specified the default operation " + DEFAULT_OPERATION + ").");
-      return;
+      return null;
     }
 
     Object returnValue = this.operations.get(op).apply(fsArgs);
 
-    // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64 so we
-    // can include it in the JSON response sent back to the invoker of this serverless function.
-    if (returnValue != null) {
-      result.addResult(returnValue, true);
-    }
+    return returnValue;
   }
 
   /**
@@ -1886,6 +1885,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
 
     numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+    workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,
+            SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT);
     LOG.debug("Number of unique serverless name nodes: " + numUniqueServerlessNameNodes);
 
     UserGroupInformation.setConfiguration(conf);
@@ -1982,6 +1983,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   protected NameNodeRpcServer createRpcServer(Configuration conf)
       throws IOException {
     return new NameNodeRpcServer(conf, this);
+  }
+
+  public int getWorkerThreadTimeoutMilliseconds() {
+    return workerThreadTimeoutMilliseconds;
   }
 
   /**

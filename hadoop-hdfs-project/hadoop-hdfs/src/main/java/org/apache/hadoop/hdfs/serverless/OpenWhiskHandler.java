@@ -14,9 +14,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
 import static com.google.common.hash.Hashing.consistentHash;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT;
@@ -226,16 +224,46 @@ public class OpenWhiskHandler {
         }
 
         // Finally, create a new task and assign it to the worker thread.
-        // We wait for the result to be completed before returning it to the user.
+        // After this, we will simply wait for the result to be completed before returning it to the user.
+        String newTaskid = UUID.randomUUID().toString();
+        ServerlessNameNodeTask<Serializable> newTask = null;
         try {
-            String newTaskid = UUID.randomUUID().toString();
-            ServerlessNameNodeTask<Serializable> newTask = new ServerlessNameNodeTask<>(newTaskid, op, fsArgs);
+            LOG.debug("Adding task " + newTaskid + " (operation = " + op + ") to work queue now...");
+            newTask= new ServerlessNameNodeTask<>(newTaskid, op, fsArgs);
             workQueue.put(newTask);
-            serverlessNameNode.performOperation(op, fsArgs, result);
+
+            // serverlessNameNode.performOperation(op, fsArgs, result);
         }
         catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName()
                     + " while assigning a new task to the worker thread: ", ex);
+            result.addException(ex);
+        }
+
+        // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
+        try {
+            // If we failed to create a new task for the desired file system operation, then we'll just throw
+            // another exception indicating that we have nothing to execute, seeing as the task doesn't exist.
+            if (newTask == null) {
+                throw new IllegalStateException("Failed to create task for operation " + op);
+            }
+
+            // In the case that we do have a task to wait on, we'll wait for the configured amount of time for the
+            // worker thread to execute the task. If the task times out, then an exception will be thrown, caught,
+            // and ultimately reported to the client. Alternatively, if the task is executed successfully, then
+            // the future will resolve, and we'll be able to return a result to the client!
+            LOG.debug("Waiting for task " + newTaskid + " (operation = " + op + ") to be executed now...");
+            Object fileSystemOperationResult = newTask.get(
+                    serverlessNameNode.getWorkerThreadTimeoutMilliseconds(), TimeUnit.MILLISECONDS);
+
+            // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64 so we
+            // can include it in the JSON response sent back to the invoker of this serverless function.
+            if (fileSystemOperationResult != null) {
+                result.addResult(fileSystemOperationResult, true);
+            }
+        } catch (Exception ex) {
+            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + newTaskid
+                    + " to be executed by the worker thread: ", ex);
             result.addException(ex);
         }
 

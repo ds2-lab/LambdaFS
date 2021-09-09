@@ -90,6 +90,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
 
   public static final int SERVERLESS_TCP_SERVER_PORT_DEFAULT = 6000;
 
+  /**
+   * How long to wait for the worker thread to execute a given task before timing out.
+   */
+  public static final String SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS = "serverless.workerthread.timeoutmillis";
+  public static final int SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT = 30000;
+
   //db storage
   public static final String DFS_STORAGE_DRIVER_JAR_FILE = "dfs.storage.driver.jarFile";
   public static final String DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT = "";
