@@ -40,6 +40,7 @@ import java.util.List;
 @InterfaceStability.Evolving
 public class LocatedBlock implements Serializable {
 
+  private static final long serialVersionUID = -8886456043413622280L;
   private ExtendedBlock b; // Should be fine
   private long offset;  // offset of the first byte of the block in the file
   private final DatanodeInfoWithStorage[] locs;

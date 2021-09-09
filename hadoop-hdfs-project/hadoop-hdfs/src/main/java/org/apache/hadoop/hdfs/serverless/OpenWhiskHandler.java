@@ -42,7 +42,7 @@ public class OpenWhiskHandler {
      */
     private static NameNodeWorkerThread workerThread;
 
-    private static BlockingQueue<FileSystemTask<? extends Serializable>> workQueue;
+    private static BlockingQueue<FileSystemTask<Serializable>> workQueue;
 
     /**
      * Returns the singleton ServerlessNameNode instance.

@@ -222,7 +222,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * A mapping from operation/function name to the respective functions. We use this to call FS operations and whatever
    * other functions as directed by clients and DataNodes.
    */
-  private Map<String, CheckedFunction<JsonObject, ?>> operations;
+  private Map<String, CheckedFunction<JsonObject, ? extends Serializable>> operations;
 
   /**
    * When the 'op' field is set to this in the invocation payload, no operation is performed.
@@ -612,7 +612,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *  - https://stackoverflow.com/questions/4480334/how-to-call-a-method-stored-in-a-hashmap-java
    */
   @FunctionalInterface
-  public interface CheckedFunction<T, R> {
+  public interface CheckedFunction<T, R extends Serializable> {
     R apply(T t) throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException;
   }
 
@@ -621,28 +621,28 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Each supported FS operation has a function mapped to the operation's name.
    */
   public void populateOperationsMap() {
-    operations = new HashMap<String, CheckedFunction<JsonObject, ?>>();
+    operations = new HashMap<String, CheckedFunction<JsonObject, ? extends Serializable>>();
 
-    operations.put("abandonBlock", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("abandonBlock", (CheckedFunction<JsonObject, Serializable>) args -> {
       abandonBlock(args);
       return null;
     });
     operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) this::addBlock);
-    operations.put("addGroup", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("addGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
       addGroup(args);
       return null;
     });
-    operations.put("addUser", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("addUser", (CheckedFunction<JsonObject, Serializable>) args -> {
       addUser(args);
       return null;
     });
-    operations.put("addUserToGroup", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("addUserToGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
       addUserToGroup(args);
       return null;
     });
     operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) this::append);
     operations.put("complete", (CheckedFunction<JsonObject, Boolean>) this::complete);
-    operations.put("concat", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("concat", (CheckedFunction<JsonObject, Serializable>) args -> {
       concat(args);
       return null;
     });
@@ -655,35 +655,35 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) this::getServerDefaults);
     operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) this::isFileClosed);
     operations.put("mkdirs", (CheckedFunction<JsonObject, Boolean>) this::mkdirs);
-    operations.put("removeUser", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("removeUser", (CheckedFunction<JsonObject, Serializable>) args -> {
       removeUser(args);
       return null;
     });
-    operations.put("removeGroup", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("removeGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
       removeGroup(args);
       return null;
     });
-    operations.put("removeUserFromGroup", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("removeUserFromGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
       removeUserFromGroup(args);
       return null;
     });
-    operations.put("rename", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("rename", (CheckedFunction<JsonObject, Serializable>) args -> {
       rename(args);
       return null;
     });
-    operations.put("renewLease", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("renewLease", (CheckedFunction<JsonObject, Serializable>) args -> {
       renewLease(args);
       return null;
     });
-    operations.put("setMetaStatus", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("setMetaStatus", (CheckedFunction<JsonObject, Serializable>) args -> {
       setMetaStatus(args);
       return null;
     });
-    operations.put("setOwner", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("setOwner", (CheckedFunction<JsonObject, Serializable>) args -> {
       setOwner(args);
       return null;
     });
-    operations.put("setPermission", (CheckedFunction<JsonObject, Void>) args -> {
+    operations.put("setPermission", (CheckedFunction<JsonObject, Serializable>) args -> {
       setPermission(args);
       return null;
     });
@@ -695,11 +695,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Perform the operation specified by the String (which will contain the operations name). Pass the arguments
    * contained in fsArgs to the function.
    *
-   * @param result Encapsulates the result to be returned to whoever invoked us.
    * @param fsArgs The arguments to be passed to the desired FS operation.
    * @param op The name of the desired FS operation to be performed.
    */
-  public Object performOperation(String op, JsonObject fsArgs)
+  public Serializable performOperation(String op, JsonObject fsArgs)
           throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException {
     LOG.info("Specified operation: " + op);
 
@@ -708,7 +707,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return null;
     }
 
-    Object returnValue = this.operations.get(op).apply(fsArgs);
+    Serializable returnValue = this.operations.get(op).apply(fsArgs);
 
     return returnValue;
   }

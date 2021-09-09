@@ -16,7 +16,7 @@ import java.util.concurrent.*;
 public class FileSystemTask<T extends Serializable> implements Future<T> {
     private static final Log LOG = LogFactory.getLog(FileSystemTask.class);
 
-    private static enum State {WAITING, DONE, CANCELLED, ERROR}
+    private enum State {WAITING, DONE, CANCELLED, ERROR}
 
     private volatile State state = State.WAITING;
 
@@ -70,7 +70,13 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
 
     @Override
     public synchronized T get() throws InterruptedException, ExecutionException {
-        return this.resultQueue.take();
+        final T resultOrNull = this.resultQueue.take();
+
+        // Check if the NullResult object was placed in the queue, in which case we should return null.
+        if (resultOrNull == NameNodeWorkerThread.NullResult.getInstance())
+            return null;
+
+        return resultOrNull;
     }
 
     @Override
@@ -80,6 +86,11 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
         if (resultOrNull == null) {
             throw new TimeoutException();
         }
+
+        // Check if the NullResult object was placed in the queue, in which case we should return null.
+        if (resultOrNull == NameNodeWorkerThread.NullResult.getInstance())
+            return null;
+
         return resultOrNull;
     }
 

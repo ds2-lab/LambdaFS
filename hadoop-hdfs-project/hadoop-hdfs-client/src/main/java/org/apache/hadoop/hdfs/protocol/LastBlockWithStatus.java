@@ -20,13 +20,16 @@ package org.apache.hadoop.hdfs.protocol;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 
+import java.io.Serializable;
+
 /**
  * Class to contain Lastblock and HdfsFileStatus for the Append operation
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class LastBlockWithStatus {
+public class LastBlockWithStatus implements Serializable {
 
+  private static final long serialVersionUID = -8355830605775680891L;
   private final LocatedBlock lastBlock;
 
   private final HdfsFileStatus fileStatus;
