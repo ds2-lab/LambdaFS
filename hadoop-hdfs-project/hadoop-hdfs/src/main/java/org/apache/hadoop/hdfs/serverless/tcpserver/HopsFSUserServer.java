@@ -26,17 +26,20 @@ public class HopsFSUserServer {
     private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(HopsFSUserServer.class);
 
     /**
-     *
+     * The KryoNet server object. This is the actual server itself.
      */
     private final Server server;
 
     /**
-     *
+     * The port on which the server is listening.
      */
     private final int tcpPort;
 
     /**
+     * Cache mapping of serverless function names to the connections to that particular serverless function.
      *
+     * Each deployment of the serverless name node has a name (e.g., "namenode1", "namenode2", etc.). We map
+     * these names to the connection associated with that namenode.
      */
     private final HashMap<String, NameNodeConnection> activeConnections;
 
@@ -76,12 +79,20 @@ public class HopsFSUserServer {
         // First, register the JsonObject class with the Kryo serializer.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(server.getKryo());
 
+        // Start the TCP server.
         server.start();
 
+        // Bind to the specified TCP port so the server listens on that port.
         LOG.debug("HopsFS Client TCP Server binding to port " + tcpPort + " now...");
         server.bind(tcpPort);
 
+        // We need to add some listeners to the server. This is how we add functionality.
         server.addListener(new Listener() {
+            /**
+             * This listener handles receiving TCP messages from the name nodes.
+             * @param conn The connection to the name node.
+             * @param object The object that was sent by the name node to the client (us).
+             */
             public void received(Connection conn, Object object) {
                 NameNodeConnection connection = (NameNodeConnection)conn;
 
@@ -101,10 +112,13 @@ public class HopsFSUserServer {
                     // being cached locally by the client. The second operation is that of returning a result
                     // of a file system operation back to the user.
                     switch (operation) {
+                        // The NameNode is registering with the client (i.e., connecting for the first time,
+                        // or at least they are connecting after having previously lost connection).
                         case OPERATION_REGISTER:
                             LOG.debug("Received registration operation from NameNode " + functionName);
                             registerNameNode(connection, functionName);
                             break;
+                        // The NameNode is returning a result (of a file system operation) to the client.
                         case OPERATION_RESULT:
                             LOG.debug("Received result from NameNode " + functionName);
 
