@@ -10,6 +10,10 @@ import java.util.UUID;
 /**
  * Encapsulates the information needed to communicate with a Serverless HopsFS client/user via TCP.
  *
+ * This keeps track of some state associated with a particular HopsFS client. It is used in conjunction with the
+ * NameNodeTCPClient class. The NameNodeTCPClient is responsible for handling the networking aspect of things,
+ * while this class maintains some state.
+ *
  * This is used on the NameNode side.
  */
 public class ServerlessHopsFSClient implements Serializable {

@@ -16,6 +16,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * Encapsulates a Kryonet TCP client. Used to communicate directly with Serverless HopsFS clients.
  *
+ * Used in conjunction with the ServerlessHopsFSClient class. The NameNodeTCPClient class is responsible
+ * for handling the networking operations. The ServerlessHopsFSClient class tracks state associated with a particular
+ * client.
+ *
  * This is used on the NameNode side.
  */
 public class NameNodeTCPClient {
