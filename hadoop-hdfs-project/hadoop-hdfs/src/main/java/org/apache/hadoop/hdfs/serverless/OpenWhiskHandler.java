@@ -115,10 +115,21 @@ public class OpenWhiskHandler {
             commandLineArguments = new String[0];
         }
 
+        // The name of the client. This originates from the DFSClient class.
         String clientName = userArguments.getAsJsonPrimitive("clientName").getAsString();
+
+        // The name of the file system operation that the client wants us to perform.
         String operation = userArguments.getAsJsonPrimitive("op").getAsString();
+
+        // This is NOT the OpenWhisk activation ID. The request ID originates at the client who invoked us.
+        // That way, the corresponding TCP request (to this HTTP request) would have the same request ID.
+        // This is used to prevent duplicate requests from being processed.
         String requestId = userArguments.getAsJsonPrimitive("requestId").getAsString();
+
+        // The arguments to the file system operation.
         JsonObject fsArgs = userArguments.getAsJsonObject("fsArgs");
+
+        // Flag that indicates whether this action was invoked by a client or a DataNode.
         boolean isClientInvoker = userArguments.getAsJsonPrimitive("isClientInvoker").getAsBoolean();
 
         LOG.info("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
@@ -151,7 +162,10 @@ public class OpenWhiskHandler {
      * @param commandLineArguments The command-line arguments to be consumed by the NameNode during its creation.
      * @param functionName The name of this particular OpenWhisk action (i.e., serverless function).
      * @param clientIPAddress The IP address of the client who invoked this OpenWhisk action.
-     * @param requestId The OpenWhisk request ID for this particular action activation.
+     * @param requestId The request ID for this particular action activation. This is NOT the OpenWhisk activation ID.
+     *                  The request ID originates at the client who invoked us. That way, the corresponding TCP request
+     *                  (to this HTTP request) would have the same request ID. This is used to prevent duplicate
+     *                  requests from being processed.
      * @param clientName The name of the client who invoked this OpenWhisk action. Comes from the DFSClient class.
      * @param isClientInvoker Flag which indicates whether this activation was invoked by a client or a DataNode.
      * @return Result of executing NameNode code/operation/function execution.
@@ -225,11 +239,10 @@ public class OpenWhiskHandler {
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
-        String newTaskid = UUID.randomUUID().toString();
         ServerlessNameNodeTask<Serializable> newTask = null;
         try {
-            LOG.debug("Adding task " + newTaskid + " (operation = " + op + ") to work queue now...");
-            newTask= new ServerlessNameNodeTask<>(newTaskid, op, fsArgs);
+            LOG.debug("Adding task " + requestId + " (operation = " + op + ") to work queue now...");
+            newTask= new ServerlessNameNodeTask<>(requestId, op, fsArgs);
             workQueue.put(newTask);
 
             // serverlessNameNode.performOperation(op, fsArgs, result);
@@ -252,7 +265,7 @@ public class OpenWhiskHandler {
             // worker thread to execute the task. If the task times out, then an exception will be thrown, caught,
             // and ultimately reported to the client. Alternatively, if the task is executed successfully, then
             // the future will resolve, and we'll be able to return a result to the client!
-            LOG.debug("Waiting for task " + newTaskid + " (operation = " + op + ") to be executed now...");
+            LOG.debug("Waiting for task " + requestId + " (operation = " + op + ") to be executed now...");
             Object fileSystemOperationResult = newTask.get(
                     serverlessNameNode.getWorkerThreadTimeoutMilliseconds(), TimeUnit.MILLISECONDS);
 
@@ -262,7 +275,7 @@ public class OpenWhiskHandler {
                 result.addResult(fileSystemOperationResult, true);
             }
         } catch (Exception ex) {
-            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + newTaskid
+            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);
             result.addException(ex);
         }
