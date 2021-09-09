@@ -12,12 +12,13 @@ import java.util.UUID;
  *
  * There is an important distinction between this class and ServerlessHopsFSClient:
  *
- * There is generally just one instance of this class (NameNodeTCPClient) per NameNode. This class handles the actual
- * networking/TCP operations on behalf of the NameNode. That is, it sends/receives messages to the HopsFS clients.
+ * There is generally just one instance of the NameNodeTCPClient class per NameNode. The NameNodeTCPClient class handles
+ * the actual networking/TCP operations on behalf of the NameNode. That is, it sends/receives messages to the HopsFS
+ * clients.
  *
- * The ServerlessHopsFSClient represents a particular client of HopsFS that we may be communicating with. There may be
- * several of these objects created on a single NameNode. Each time a new client begins interacting with HopsFS, the
- * NameNode may create an instance of ServerlessHopsFSClient to maintain state about that client.
+ * The ServerlessHopsFSClient class represents a particular client of HopsFS that we may be communicating with.
+ * There may be several of these objects created on a single NameNode. Each time a new client begins interacting with
+ * HopsFS, the NameNode may create an instance of ServerlessHopsFSClient to maintain state about that client.
  *
  * The NameNodeTCPClient uses the ServerlessHopsFSClient objects to keep track of who it is talking to.
  *
