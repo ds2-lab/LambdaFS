@@ -32,14 +32,9 @@ public class NameNodeTCPClient {
      */
     private final HashMap<ServerlessHopsFSClient, Client> tcpClients;
 
-    /**
-     * Queue of JsonObject objects sent from Serverless HopsFS clients to this NameNode.
-     */
-    private final ConcurrentLinkedQueue<JsonObject> workQueue;
 
     public NameNodeTCPClient() {
         tcpClients = new HashMap<>();
-        workQueue = new ConcurrentLinkedQueue<>();
     }
 
     /**
@@ -85,7 +80,8 @@ public class NameNodeTCPClient {
 
                     LOG.debug("Message contents: " + args.toString());
 
-                    workQueue.add(args);
+                    // TODO: Extract desired FS operation from message, add it to worker thread queue,
+                    //       then block on task future and return result to client when it resolves.
                 }
                 else {
                     throw new IllegalArgumentException("Received object of unexpected type from client "
@@ -127,15 +123,15 @@ public class NameNodeTCPClient {
         return tcpClients.size();
     }
 
-    public int workQueueSize() {
+    /*public int workQueueSize() {
         return workQueue.size();
     }
 
-    /**
+    *//**
      * Return the work queue object (which is of type ConcurrentLinkedQueue<JsonObject>).
      * @return the work queue object (which is of type ConcurrentLinkedQueue<JsonObject>).
-     */
+     *//*
     public ConcurrentLinkedQueue<JsonObject> getWorkQueue() {
         return workQueue;
-    }
+    }*/
 }
