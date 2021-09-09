@@ -12,8 +12,6 @@ import sun.plugin.dom.exception.InvalidStateException;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.InvocationTargetException;
-import java.util.UUID;
 import java.util.concurrent.*;
 
 import static com.google.common.hash.Hashing.consistentHash;
@@ -42,9 +40,9 @@ public class OpenWhiskHandler {
     /**
      * Worker thread that actually performs the various file system operations.
      */
-    private static ServerlessNameNodeWorkerThread workerThread;
+    private static NameNodeWorkerThread workerThread;
 
-    private static BlockingQueue<ServerlessNameNodeTask<? extends Serializable>> workQueue;
+    private static BlockingQueue<FileSystemTask<? extends Serializable>> workQueue;
 
     /**
      * Returns the singleton ServerlessNameNode instance.
@@ -190,6 +188,7 @@ public class OpenWhiskHandler {
 
         // Create the work queue if it has not already been created. This is used to assign tasks to the worker thread.
         if (workQueue == null) {
+            // Make sure that the container was cold prior to this invocation...
             boolean everythingIsOkay = assertIsCold(result);
 
             // If everything is NOT okay (specifically, this container is warm, yet the work queue is not
@@ -203,6 +202,7 @@ public class OpenWhiskHandler {
         // Next, create the worker thread if it has not already been created. The worker thread is responsible
         // for actually performing the various file system operations. It returns the results back to us.
         if (workerThread == null) {
+            // Make sure that the container was cold prior to this invocation...
             boolean everythingIsOkay = assertIsCold(result);
 
             // If everything is NOT okay (specifically, this container is warm, yet the worker thread is not
@@ -210,7 +210,7 @@ public class OpenWhiskHandler {
             if (!everythingIsOkay)
                 return result.toJson();
 
-            workerThread = new ServerlessNameNodeWorkerThread(workQueue, serverlessNameNode);
+            workerThread = new NameNodeWorkerThread(workQueue, serverlessNameNode);
         }
 
         synchronized (serverlessNameNode) {
@@ -239,13 +239,16 @@ public class OpenWhiskHandler {
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
-        ServerlessNameNodeTask<Serializable> newTask = null;
+        FileSystemTask<Serializable> newTask = null;
         try {
             LOG.debug("Adding task " + requestId + " (operation = " + op + ") to work queue now...");
-            newTask= new ServerlessNameNodeTask<>(requestId, op, fsArgs);
+            newTask= new FileSystemTask<>(requestId, op, fsArgs);
             workQueue.put(newTask);
 
-            // serverlessNameNode.performOperation(op, fsArgs, result);
+            // We wait for the task to finish executing in a separate try-catch block so that, if there is
+            // an exception, then we can log a specific message indicating where the exception occurred. If we
+            // waited for the task in this block, we wouldn't be able to indicate in the log whether the
+            // exception occurred when creating/scheduling the task or while waiting for it to complete.
         }
         catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName()

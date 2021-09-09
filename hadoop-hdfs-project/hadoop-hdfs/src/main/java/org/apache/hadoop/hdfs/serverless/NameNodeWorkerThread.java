@@ -7,8 +7,13 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.util.concurrent.BlockingQueue;
 
-public class ServerlessNameNodeWorkerThread implements Runnable {
-    public static final Logger LOG = LoggerFactory.getLogger(ServerlessNameNodeWorkerThread.class.getName());
+/**
+ * This thread actually executes file system operations. Tasks (i.e., file system operations wrapped in a Future
+ * interface) are added to a work queue. This thread consumes those tasks and returns results to whomever is
+ * waiting on them (one of the HTTP or TCP request handlers).
+ */
+public class NameNodeWorkerThread implements Runnable {
+    public static final Logger LOG = LoggerFactory.getLogger(NameNodeWorkerThread.class.getName());
 
     /**
      * Reference to the Serverless NameNode instance created in the OpenWhiskHandler class.
@@ -18,10 +23,10 @@ public class ServerlessNameNodeWorkerThread implements Runnable {
     /**
      * HTTP and TCP requests will add work to this queue.
      */
-    private final BlockingQueue<ServerlessNameNodeTask<? extends Serializable>> workQueue;
+    private final BlockingQueue<FileSystemTask<? extends Serializable>> workQueue;
 
-    public ServerlessNameNodeWorkerThread(BlockingQueue<ServerlessNameNodeTask<? extends Serializable>> workQueue,
-                                          ServerlessNameNode serverlessNameNodeInstance) {
+    public NameNodeWorkerThread(BlockingQueue<FileSystemTask<? extends Serializable>> workQueue,
+                                ServerlessNameNode serverlessNameNodeInstance) {
         this.serverlessNameNodeInstance = serverlessNameNodeInstance;
         this.workQueue = workQueue;
     }
@@ -32,7 +37,10 @@ public class ServerlessNameNodeWorkerThread implements Runnable {
 
         try {
             while(true) {
-                ServerlessNameNodeTask nextTask = workQueue.take();
+                FileSystemTask<? extends Serializable> task = workQueue.take();
+
+                LOG.debug("Worker thread: dequeued task " + task.getTaskId() + "(operation = "
+                                + task.getOperationName() + ").");
 
                 // Do something with the task.
             }
