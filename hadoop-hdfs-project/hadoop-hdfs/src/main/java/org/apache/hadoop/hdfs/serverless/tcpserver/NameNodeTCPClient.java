@@ -39,7 +39,9 @@ public class NameNodeTCPClient {
     private static final int CONNECTION_TIMEOUT = 5000;
 
     /**
-     * Mapping from instances of ServerlessHopsFSClient to their associated TCP client object.
+     * Mapping from instances of ServerlessHopsFSClient to their associated TCP client object. Recall that each
+     * ServerlessHopsFSClient represents a particular client of HopsFS that the NameNode is talking to. We map
+     * each of these "HopsFS client" representations to the TCP Client associated with them.
      */
     private final HashMap<ServerlessHopsFSClient, Client> tcpClients;
 
@@ -67,10 +69,12 @@ public class NameNodeTCPClient {
         Client tcpClient = new Client();
         tcpClient.start();
 
+        // We time how long it takes to establish the TCP connection for debugging/metric-collection purposes.
         Instant connectStart = Instant.now();
         tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
         Instant connectEnd = Instant.now();
 
+        // Compute the duration of the TCP connection establishment.
         Duration connectDuration = Duration.between(connectStart, connectEnd);
         double connectMilliseconds = ((double)connectDuration.getNano() / 1000.0) +
                 ((double)connectDuration.getSeconds() * 1000);
@@ -82,6 +86,14 @@ public class NameNodeTCPClient {
         ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
 
         tcpClient.addListener(new Listener() {
+            /**
+             * This listener is responsible for handling messages received from HopsFS clients. These messages will
+             * generally be file system operation requests/directions. We will extract the information about the
+             * operation, create a task, submit the task to be executed by our worker thread, then return the result
+             * back to the HopsFS client.
+             * @param connection The connection with the HopsFS client.
+             * @param object The object that the client sent to us.
+             */
             public void received(Connection connection, Object object) {
                 LOG.debug("Received message from connection " + connection.toString());
 
