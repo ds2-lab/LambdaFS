@@ -1,18 +1,14 @@
-package org.apache.hadoop.hdfs.serverless;
+package org.apache.hadoop.hdfs.serverless.operation;
 
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.eclipse.jetty.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
-import java.util.HashSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This thread actually executes file system operations. Tasks (i.e., file system operations wrapped in a Future

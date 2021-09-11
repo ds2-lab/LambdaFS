@@ -4,9 +4,6 @@ import com.google.gson.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
-import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
@@ -103,8 +100,10 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         if (nameNodeArguments != null)
             InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
 
+        String requestId = UUID.randomUUID().toString();
+
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-                fileSystemOperationArgumentsJson);
+                fileSystemOperationArgumentsJson, requestId);
     }
 
     /**
@@ -124,7 +123,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      */
     private JsonObject invokeNameNodeViaHttpInternal(String operationName, String functionUriBase,
                                                      JsonObject nameNodeArguments,
-                                                     JsonObject fileSystemOperationArguments) throws IOException {
+                                                     JsonObject fileSystemOperationArguments,
+                                                     String requestId) throws IOException {
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);
 
@@ -179,7 +179,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         nameNodeArguments.addProperty("clientName", clientName);
         nameNodeArguments.addProperty("isClientInvoker", isClientInvoker);
 
-        InvokerUtilities.addStandardArguments(nameNodeArguments);
+        InvokerUtilities.addStandardArguments(nameNodeArguments, requestId);
 
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
         // within the HTTP POST request. They should be included with the key "value".
@@ -234,8 +234,28 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         if (nameNodeArguments != null)
             InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
 
+        String requestId = UUID.randomUUID().toString();
+
         return invokeNameNodeViaHttpInternal(operationName, functionUri, nameNodeArgumentsJson,
-                fileSystemOperationArguments.convertToJsonObject());
+                fileSystemOperationArguments.convertToJsonObject(), requestId);
+    }
+
+    @Override
+    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUri,
+                                                HashMap<String, Object> nameNodeArguments,
+                                                ArgumentContainer fileSystemOperationArguments,
+                                                String requestId) throws IOException {
+        // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
+        // object itself. That is, these are NOT the arguments for the particular file system operation that we
+        // would like to perform (e.g., create, delete, append, etc.).
+        JsonObject nameNodeArgumentsJson = new JsonObject();
+
+        // Populate the NameNode arguments JSON with any additional arguments specified by the user.
+        if (nameNodeArguments != null)
+            InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
+
+        return invokeNameNodeViaHttpInternal(operationName, functionUri, nameNodeArgumentsJson,
+                fileSystemOperationArguments.convertToJsonObject(), requestId);
     }
 
     /**

@@ -1,16 +1,14 @@
-package org.apache.hadoop.hdfs.serverless;
+package org.apache.hadoop.hdfs.serverless.operation;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.hadoop.hdfs.server.namenode.FSDirectory;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.ArrayList;
 
 /**

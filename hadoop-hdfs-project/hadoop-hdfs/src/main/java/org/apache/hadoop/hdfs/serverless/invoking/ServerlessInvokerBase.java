@@ -1,24 +1,13 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSyntaxException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
 
-import java.util.concurrent.ThreadLocalRandom;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -65,6 +54,21 @@ public abstract class ServerlessInvokerBase<T> {
      * This name will be set automatically if a client/user is invoking. Otherwise we default to DataNode.
      */
     protected String clientName = "DataNode";
+
+    /**
+     * Return the INode-NN mapping cache entry for the given file or directory.
+     *
+     * This function returns -1 if no such entry exists.
+     * @param fileOrDirectory The file or directory in question.
+     * @return The number of the NN to which the file or directory is mapped, if an entry exists in the cache. If no
+     * entry exists, then -1 is returned.
+     */
+    public int getFunctionNumberForFileOrDirectory(String fileOrDirectory) {
+        if (cache.containsEntry(fileOrDirectory))
+            return cache.getFunction(fileOrDirectory);
+
+        return -1;
+    }
 
     private void instantiateTrustManager() {
         // Create a trust manager that does not validate certificate chains
@@ -127,6 +131,16 @@ public abstract class ServerlessInvokerBase<T> {
     public abstract T invokeNameNodeViaHttpPost(String operationName, String functionUri,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments)
+            throws IOException;
+
+    /**
+     * Issue an HTTP request to invoke the NameNode. This version accepts a requestId to use rather than
+     * generating one itself.
+     */
+    public abstract T invokeNameNodeViaHttpPost(String operationName, String functionUri,
+                                                HashMap<String, Object> nameNodeArguments,
+                                                ArgumentContainer fileSystemOperationArguments,
+                                                String requestId)
             throws IOException;
 
 

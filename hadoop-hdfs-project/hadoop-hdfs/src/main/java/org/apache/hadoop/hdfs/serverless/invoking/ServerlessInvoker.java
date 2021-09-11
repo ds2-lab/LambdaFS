@@ -1,7 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
-import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.http.impl.client.CloseableHttpClient;
 

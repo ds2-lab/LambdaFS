@@ -1,11 +1,11 @@
-package org.apache.hadoop.hdfs.server.namenode;
+package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
-import io.hops.exception.StorageInitializtionException;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
+import org.apache.avro.data.Json;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -20,11 +20,8 @@ import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
+import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
-import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
-import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
-import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
-import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.hdfs.serverless.tcpserver.HopsFSUserServer;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
@@ -39,6 +36,8 @@ import java.sql.SQLException;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT;
@@ -96,27 +95,130 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     /**
-     * Perform an HTTP invocation of a serverless name node function.
+     * Perform an HTTP invocation of a serverless name node function concurrently with a TCP request to the same
+     * Serverless NameNode, if a connection to that NameNode already exists. If no such connection exists, then only
+     * the HTTP request will be issued.
      *
-     * This will also issue a TCP request to the same name node if a connection to that name node already exists.
-     *
-     * TODO: This should probably be moved to the serverless invoker's class. Like, the serverless invoker should
-     *       have a HopsFSUserServer instance variable, I guess.
+     * @param operationName The name of the FS operation that the NameNode should perform.
+     * @param serverlessEndpoint The (base) OpenWhisk URI of the serverless NameNode(s).
+     * @param nameNodeArguments The command-line arguments to be given to the NN, should it be created within the NN
+     *                          function container (i.e., during a cold start).
+     * @param opArguments The arguments to be passed to the specified file system operation.
+     * @return The result of executing the desired FS operation on the NameNode.
      */
-    private JsonObject doInvocation(String operationName, String serverlessEndpoint,
-                                    HashMap<String, Object> nameNodeArguments, ArgumentContainer opArguments)
-            throws IOException {
-        JsonObject responseJson;
+    private JsonObject submitOperationToNameNode(String operationName,
+                                                      String serverlessEndpoint,
+                                                      HashMap<String, Object> nameNodeArguments,
+                                                      ArgumentContainer opArguments)
+            throws IOException, InterruptedException, ExecutionException {
+        // Check if there's a source directory parameter, as this is the file or directory that could
+        // potentially be mapped to a serverless function.
+        Object sourceObject = opArguments.has("src");
+        if (sourceObject instanceof String) {
+            String sourceFileOrDirectory = (String)sourceObject;
 
-        responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "getBlockLocations",
+            // Next, let's see if we have an entry in our cache for this file/directory.
+            int mappedFunctionNumber = serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
+
+            // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
+            // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
+            if (mappedFunctionNumber != -1 && tcpServer.connectionExists(mappedFunctionNumber)) {
+                return issueConcurrentTcpHttpRequests(
+                        operationName,
+                        serverlessEndpoint,
+                        nameNodeArguments,
+                        opArguments,
+                        mappedFunctionNumber);
+            }
+        }
+
+        LOG.debug("Issuing HTTP request only for operation " + operationName);
+
+        // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
+        // file/directory, then we'll just use an HTTP request.
+        return dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                operationName,
                 dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
-
-        return responseJson;
     }
 
+    /**
+     * Concurrently issue an HTTP request and a TCP request to a particular serverless NameNode.
+     * @param operationName The name of the FS operation that the NameNode should perform.
+     * @param serverlessEndpoint The (base) OpenWhisk URI of the serverless NameNode(s).
+     * @param nameNodeArguments The command-line arguments to be given to the NN, should it be created within the NN
+     *                          function container (i.e., during a cold start).
+     * @param opArguments The arguments to be passed to the specified file system operation.
+     * @param mappedFunctionNumber The function number of the serverless NameNode deployment associated with the
+     *                             target file or directory.
+     * @return The result of executing the desired FS operation on the NameNode.
+     */
+    private JsonObject issueConcurrentTcpHttpRequests(String operationName,
+                                                      String serverlessEndpoint,
+                                                      HashMap<String, Object> nameNodeArguments,
+                                                      ArgumentContainer opArguments,
+                                                      int mappedFunctionNumber)
+            throws InterruptedException, ExecutionException {
+
+        long opStart = System.nanoTime();
+        String requestId = UUID.randomUUID().toString();
+        LOG.debug("Issuing concurrent HTTP/TCP request for operation " + operationName + " now. Request ID = "
+            + requestId);
+
+        // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+
+        // Create a CompletionService to listen for results from the futures we're going to create.
+        CompletionService<JsonObject> completionService = new ExecutorCompletionService<JsonObject>(executorService);
+
+        // Submit the TCP request here.
+        completionService.submit(() -> {
+            JsonObject payload = new JsonObject();
+            payload.addProperty("requestId", requestId);
+            payload.addProperty("op", operationName);
+            payload.add("fsArgs", opArguments.convertToJsonObject());
+
+            // We're effectively wrapping a Future in a Future here...
+            return tcpServer.issueTcpRequestAndWait(mappedFunctionNumber, false, payload);
+        });
+
+        LOG.debug("Successfully submitted TCP request. Submitting HTTP request now...");
+
+        // Submit the HTTP request here.
+        completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                operationName,
+                dfsClient.serverlessEndpoint,
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                opArguments,
+                requestId));
+
+        LOG.debug("Successfully submitted HTTP request. Waiting for first result now...");
+
+        Future<JsonObject> firstResult = completionService.take();
+
+        try {
+            JsonObject responseJson = firstResult.get();
+            executorService.shutdown(); // Could use .shutdownNow() to attempt to cancel the other request?
+            long opEnd = System.nanoTime();
+            long opDuration = opEnd - opStart;
+            long durationMilliseconds = TimeUnit.NANOSECONDS.toMillis(opDuration);
+            LOG.debug("Successfully obtained response from HTTP/TCP request for operation " +
+                    operationName + " in " + durationMilliseconds + " milliseconds.");
+            return responseJson;
+        } catch (ExecutionException | InterruptedException ex) {
+            // Log it.
+            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while extracting result from Future " +
+                    "for operation " + operationName + ":", ex);
+
+            // Throw it again.
+            throw ex;
+        }
+    }
+
+    /**
+     * Shuts down this client. Currently, the only steps taken during shut-down is the stopping of the TCP server.
+     */
     public void stop() {
         LOG.debug("ServerlessNameNodeClient stopping now...");
         this.tcpServer.stop();
@@ -128,7 +230,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public LocatedBlocks getBlockLocations(String src, long offset, long length) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
+    public LocatedBlocks getBlockLocations(String src, long offset, long length) throws IOException {
         LocatedBlocks locatedBlocks = null;
 
         // Arguments for the 'create' filesystem operation.

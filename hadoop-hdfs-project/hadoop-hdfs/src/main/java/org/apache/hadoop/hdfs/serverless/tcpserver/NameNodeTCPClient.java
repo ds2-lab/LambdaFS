@@ -101,14 +101,14 @@ public class NameNodeTCPClient {
                 if (object instanceof JsonObject) {
                     JsonObject args = (JsonObject)object;
 
-                    LOG.debug("Message contents: " + args.toString());
+                    LOG.debug("Message contents: " + args);
 
                     // TODO: Extract desired FS operation from message, add it to worker thread queue,
                     //       then block on task future and return result to client when it resolves.
                 }
                 else {
                     throw new IllegalArgumentException("Received object of unexpected type from client "
-                            + tcpClient.toString() + ". Object type: " + object.getClass().getSimpleName() + ".");
+                            + tcpClient + ". Object type: " + object.getClass().getSimpleName() + ".");
                 }
             }
         });

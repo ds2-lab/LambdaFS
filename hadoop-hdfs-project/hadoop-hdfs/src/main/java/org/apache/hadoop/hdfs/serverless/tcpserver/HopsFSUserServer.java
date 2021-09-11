@@ -11,6 +11,9 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_RESULT;
@@ -36,12 +39,34 @@ public class HopsFSUserServer {
     private final int tcpPort;
 
     /**
+     * The base name of the NameNode deployments. This is used to query our active connections.
+     * We can provide the function number of a name node, which will be appended to this base name in order to
+     * query our connections.
+     */
+    private final String baseFunctionName;
+
+    /**
      * Cache mapping of serverless function names to the connections to that particular serverless function.
      *
      * Each deployment of the serverless name node has a name (e.g., "namenode1", "namenode2", etc.). We map
      * these names to the connection associated with that namenode.
+     *
+     * This is a concurrent hash map as it will be referenced both by the main thread and background
+     * threads when issuing TCP requests to NameNodes.
      */
-    private final HashMap<String, NameNodeConnection> activeConnections;
+    private final ConcurrentHashMap<String, NameNodeConnection> activeConnections;
+
+    /**
+     * The TCP Server maintains a collection of Futures for clients that are awaiting a response from
+     * the NameNode to which they issued a request.
+     */
+    private final ConcurrentHashMap<String, RequestResponseFuture> activeFutures;
+
+    /**
+     * A collection of all the futures that we've completed in one way or another (either they
+     * were cancelled or we received a result for them).
+     */
+    private final ConcurrentHashMap<String, RequestResponseFuture> completedFutures;
 
     /**
      * Constructor.
@@ -59,7 +84,16 @@ public class HopsFSUserServer {
 
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
-        this.activeConnections = new HashMap<>();
+        this.activeConnections = new ConcurrentHashMap<>();
+        this.activeFutures = new ConcurrentHashMap<>();
+        this.completedFutures = new ConcurrentHashMap<>();
+
+        String functionEndpoint = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT,
+                DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
+
+        // The format of the endpoint is something like https://domain:443/api/v1/web/whisk.system/default/<base_name>
+        String[] endpointSplit = functionEndpoint.split("/");
+        this.baseFunctionName = endpointSplit[endpointSplit.length - 1];
     }
 
     /**
@@ -102,10 +136,12 @@ public class HopsFSUserServer {
                 if (object instanceof JsonObject) {
                     JsonObject body = (JsonObject)object;
 
-                    LOG.debug("Message contents: " + body);
-
                     String functionName = body.getAsJsonPrimitive("functionName").getAsString();
+                    String requestId = body.getAsJsonPrimitive("requestId").getAsString();
                     String operation = body.getAsJsonPrimitive("op").getAsString();
+
+                    LOG.debug("FunctionName: " + functionName + ", RequestID: " + requestId + ", Operation: "
+                            + operation);
 
                     // There are currently two different operations that a NameNode may perform.
                     // The first is registration. This operation results in the connection to the NameNode
@@ -122,8 +158,18 @@ public class HopsFSUserServer {
                         case OPERATION_RESULT:
                             LOG.debug("Received result from NameNode " + functionName);
 
-                            // TODO: Somehow return the result back to the client
-                            //       who issued the request in the first place.
+                            RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
+
+                            if (future == null) {
+                                throw new IllegalStateException("TCP Server received response for request "
+                                        + requestId + ", but there is no associated future registered with the server.");
+                            }
+
+                            future.postResult(body.getAsJsonObject("result"));
+
+                            // Update state pertaining to futures.
+                            activeFutures.remove(requestId);
+                            completedFutures.put(requestId, future);
                             break;
                         default:
                             LOG.warn("Unknown operation received from NameNode " + functionName + ": " + operation);
@@ -187,6 +233,149 @@ public class HopsFSUserServer {
 
         LOG.debug("Caching active connection with serverless function \"" + functionName + "\" now...");
         activeConnections.put(functionName, connection);
+    }
+
+    /**
+     * Get the TCP connection associated with the NameNode deployment identified by the given function number.
+     *
+     * Returns null if no such connection exists.
+     * @param functionNumber The NameNode deployment for which the connection is desired.
+     * @return TCP connection to the desired NameNode if it exists, otherwise null.
+     */
+    private Connection getConnection(int functionNumber) {
+        String serverlessFunctionName = baseFunctionName + functionNumber;
+
+        return activeConnections.getOrDefault(serverlessFunctionName, null);
+    }
+
+    /**
+     * Remove the connection to the NameNode identified by the given functionNumber from the connection cache.
+     *
+     * If the connection is still active, it will only be removed if the `deleteIfActive` flag is set to true.
+     * In this scenario, the connection will first be closed before it is removed from the connection cache.
+     * @param functionNumber The deployment number of the name node in question.
+     * @param deleteIfActive Flag indicating whether the connection should still be closed if it is currently
+     *                       active.
+     * @param errorIfActive Throw an error if the function is found to be active. This is useful if we believe the
+     *                      connection is already closed and that is why we are removing it.
+     * @return True if a connection was removed, otherwise false.
+     */
+    private boolean deleteConnection(int functionNumber, boolean deleteIfActive, boolean errorIfActive) {
+        String functionName = baseFunctionName + functionNumber;
+
+        Connection conn = activeConnections.getOrDefault(functionName, null);
+
+        if (conn != null) {
+            if (conn.isConnected()) {
+
+                if (errorIfActive) {
+                    throw new IllegalStateException("Connection to " + functionName + " was found to be active.");
+                }
+
+                if (deleteIfActive) {
+                    conn.close();
+                    activeConnections.remove(functionName);
+                    LOG.debug("Closed and removed connection to " + functionName);
+                    return true;
+                } else {
+                    LOG.debug("Cannot remove connection to " + functionName + " because it is still active " +
+                            "(and the override flag was not set to true).");
+                    return false;
+                }
+            } else {
+                activeConnections.remove(functionName);
+                LOG.debug("Removed already-closed connection to " + functionName);
+                return true;
+            }
+        } else {
+            LOG.warn("Cannot remove connection to " + functionName + ". No such connection exists!");
+            return false;
+        }
+    }
+
+    /**
+     * Checks if there is an active connection established to the NameNode with the given function number.
+     *
+     * @param functionNumber The function number of the desired NameNode.
+     * @return True if a connection currently exists, otherwise false.
+     */
+    public boolean connectionExists(int functionNumber) {
+        Connection tcpConnection = getConnection(functionNumber);
+
+        if(tcpConnection != null) {
+            if (tcpConnection.isConnected())
+                return true;
+
+            // If the connection is NOT active, then we need to remove it from our cache of connections.
+            deleteConnection(functionNumber, false, true);
+        }
+
+        return false;
+    }
+
+    /**
+     * Register a RequestResponseFuture with the server. The server will post the NameNode's response for the
+     * associated request to the Future.
+     *
+     * Checks for duplicate futures before registering it.
+     * @return True if the Future was registered successfully.
+     */
+    public boolean registerRequestResponseFuture(RequestResponseFuture requestResponseFuture) {
+        if (activeFutures.containsKey(requestResponseFuture.getRequestId()) ||
+            completedFutures.containsKey(requestResponseFuture.getRequestId())) {
+            return false;
+        }
+
+        activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
+        return true;
+    }
+
+    /**
+     * Issue a TCP request to the given NameNode. Ths function will check to ensure that the connection exists
+     * first before issuing the connection.
+     * @param functionNumber The NameNode to issue a request to.
+     * @param bypassCheck Do not check if the connection exists.
+     * @param payload The payload to send to the NameNode in the TCP request.
+     * @return A Future representing the eventual response from the NameNode.
+     */
+    public RequestResponseFuture issueTcpRequest(int functionNumber, boolean bypassCheck, JsonObject payload) {
+        if (!bypassCheck && !connectionExists(functionNumber)) {
+            LOG.warn("Was about to issue TCP request to NameNode deployment " + functionNumber +
+                    ", but connection no longer exists...");
+            return null;
+        }
+
+        // Send the TCP request to the NameNode.
+        Connection tcpConnection = getConnection(functionNumber);
+        tcpConnection.sendTCP(payload);
+
+        // Create and register a future to keep track of this request and provide a means for the client to obtain
+        // a response from the NameNode, should the client deliver one to us.
+        String requestId = payload.get("requestId").getAsString();
+        String operation = payload.get("op").getAsString();
+        RequestResponseFuture requestResponseFuture = new RequestResponseFuture(requestId, operation);
+        registerRequestResponseFuture(requestResponseFuture);
+
+        return requestResponseFuture;
+    }
+
+    /**
+     * Issue a TCP request to the given NameNode. Ths function will check to ensure that the connection exists
+     * first before issuing the connection.
+     *
+     * This function then waits for a response from the NameNode to be returned.
+     *
+     * This should NOT be called from the main thread.
+     * @param functionNumber The NameNode to issue a request to.
+     * @param bypassCheck Do not check if the connection exists.
+     * @param payload The payload to send to the NameNode in the TCP request.
+     * @return The response from the NameNode, or null if the request failed for some reason.
+     */
+    public JsonObject issueTcpRequestAndWait(int functionNumber, boolean bypassCheck, JsonObject payload)
+            throws ExecutionException, InterruptedException {
+        RequestResponseFuture requestResponseFuture = issueTcpRequest(functionNumber, bypassCheck, payload);
+
+        return requestResponseFuture.get();
     }
 
     /**

@@ -1,9 +1,8 @@
-package org.apache.hadoop.hdfs.serverless;
+package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.kerby.util.Base64;
 
 import java.io.IOException;
@@ -42,6 +41,20 @@ public class ArgumentContainer {
         byteArrayArguments = new HashMap<>();
         nonByteArrayArguments = new HashMap<>();
         objectArguments = new HashMap<>();
+    }
+
+    /**
+     * Return the parameter associated with the given key, or null if no such parameter exists.
+     */
+    public Object has(String key) {
+        if (primitiveArguments.containsKey(key))
+            return primitiveArguments.get(key);
+        else if (objectArguments.containsKey(key))
+            return objectArguments.get(key);
+        else if (nonByteArrayArguments.containsKey(key))
+            return nonByteArrayArguments.containsKey(key);
+
+        return byteArrayArguments.getOrDefault(key, null);
     }
 
     /**

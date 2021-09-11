@@ -38,7 +38,6 @@ import org.apache.hadoop.hdfs.server.namenode.INodeFile;
 import org.apache.hadoop.hdfs.server.namenode.INodeSymlink;
 import org.apache.hadoop.hdfs.server.namenode.INodeWithAdditionalFields;
 import org.apache.hadoop.hdfs.server.namenode.XAttrFeature;
-import org.apache.hadoop.hdfs.serverless.ArgumentContainer;
 
 import java.io.IOException;
 import java.util.Collection;

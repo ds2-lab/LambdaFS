@@ -1,6 +1,5 @@
-package org.apache.hadoop.hdfs.serverless;
+package org.apache.hadoop.hdfs.serverless.operation;
 
-import com.google.common.base.Throwables;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

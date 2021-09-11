@@ -40,8 +40,9 @@ public class InvokerUtilities {
      *  - Internal IP address of the node on which the client is running.
      *
      * @param nameNodeArgumentsJson The arguments to be passed to the ServerlessNameNode itself.
+     * @param requestId The request ID to use for this request. This will be added to the arguments.
      */
-    public static void addStandardArguments(JsonObject nameNodeArgumentsJson)
+    public static void addStandardArguments(JsonObject nameNodeArgumentsJson, String requestId)
             throws SocketException, UnknownHostException {
         // If there is not already a command-line-arguments entry, then we'll add one with the "-regular" flag
         // so that the name node performs standard execution. If there already is such an entry, then we do
@@ -49,7 +50,6 @@ public class InvokerUtilities {
         if (!nameNodeArgumentsJson.has("command-line-arguments"))
             nameNodeArgumentsJson.addProperty("command-line-arguments", "-regular");
 
-        String requestId = UUID.randomUUID().toString();
         nameNodeArgumentsJson.addProperty("requestId", requestId);
 
         nameNodeArgumentsJson.addProperty("clientInternalIp", getInternalIpAddress());

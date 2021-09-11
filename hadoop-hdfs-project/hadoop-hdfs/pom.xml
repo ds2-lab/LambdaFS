@@ -61,6 +61,17 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <version>20140107</version>
     </dependency>
     <dependency>
+      <groupId>org.asynchttpclient</groupId>
+      <artifactId>async-http-client-bom</artifactId>
+      <version>LATEST_VERSION</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.asynchttpclient</groupId>
+      <artifactId>async-http-client</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
       <scope>compile</scope>
