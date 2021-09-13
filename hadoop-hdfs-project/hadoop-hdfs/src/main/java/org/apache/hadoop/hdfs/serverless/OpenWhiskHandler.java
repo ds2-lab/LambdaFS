@@ -217,7 +217,9 @@ public class OpenWhiskHandler {
             if (!everythingIsOkay)
                 return result.toJson();
 
+            // Create the thread and tell it to run!
             workerThread = new NameNodeWorkerThread(workQueue, serverlessNameNode);
+            workerThread.run();
         }
 
         synchronized (serverlessNameNode) {
@@ -342,6 +344,7 @@ public class OpenWhiskHandler {
         try {
             synchronized (serverlessNameNode) {
                 serverlessNameNode.designateRequestAsProcessed(requestId);
+                LOG.debug("Successfully designated request " + requestId + " as processed!");
             }
         }
         catch (IllegalStateException ex) {

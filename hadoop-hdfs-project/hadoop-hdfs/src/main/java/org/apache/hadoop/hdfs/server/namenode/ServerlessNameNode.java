@@ -386,136 +386,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
-   * OpenWhisk function handler. This is the main entrypoint for the serverless name node.
-   */
-  /*public static JsonObject main(JsonObject args) {
-    LOG.info("============================================================");
-    LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
-    LOG.info("============================================================");
-    System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
-
-    if (LOG.isDebugEnabled())
-      LOG.info("Debug-logging IS enabled.");
-    else
-      LOG.info("Debug-logging is NOT enabled.");
-
-    // The arguments passed by the user are included under the 'value' key.
-    JsonObject userArguments = args.get("value").getAsJsonObject();
-
-    LOG.debug("Top-level OpenWhisk arguments = " + args);
-    LOG.debug("User-passed OpenWhisk arguments = " + userArguments.toString());
-
-    String functionName = platformSpecificInitialization();
-    String clientIPAddress = null;
-
-    if (userArguments.has("clientInternalIp")) {
-      clientIPAddress = userArguments.getAsJsonPrimitive("clientInternalIp").getAsString();
-      LOG.debug("Extracted client IP address from top-level OpenWhisk arguments: " + clientIPAddress);
-    } else {
-      LOG.warn("Top-level OpenWhisk arguments do NOT contain entry for client IP address.");
-    }
-
-    LOG.debug("Serverless function name: " + functionName);
-
-    String[] commandLineArguments;
-
-    // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
-    if (userArguments.has("command-line-arguments")) {
-      try {
-        commandLineArguments = userArguments.getAsJsonPrimitive("command-line-arguments")
-                .getAsString().split("\\s+");
-      } catch (ClassCastException ex) {
-        // If it was included as a JsonArray, then unpack it that way.
-        JsonArray commandLineArgumentsJson = userArguments.getAsJsonArray("command-line-arguments");
-        commandLineArguments = new String[commandLineArgumentsJson.size()];
-
-        for (int i = 0; i < commandLineArgumentsJson.size(); i++) {
-          commandLineArguments[i] = commandLineArgumentsJson.get(i).getAsString();
-        }
-      }
-    }
-    else {
-      commandLineArguments = new String[0];
-    }
-
-    String op = null;
-    String requestId = null;
-    String clientName = null;
-    boolean isClientInvoker = false;
-    JsonObject fsArgs = null;
-
-    //if (userArguments.has("op"))
-    //  op = userArguments.getAsJsonPrimitive("op").getAsString();
-
-    //if (userArguments.has("requestId"))
-    //  requestId = userArguments.getAsJsonPrimitive("requestId").getAsString();
-
-    // JSON dictionary containing the arguments/parameters for the specified filesystem operation.
-    //if (userArguments.has("fsArgs"))
-    //  fsArgs = userArguments.getAsJsonObject("fsArgs");
-
-    //if (userArguments.has("clientName"))
-    //  clientName = userArguments.getAsJsonPrimitive("clientName").getAsString();
-
-    op = userArguments.getAsJsonPrimitive("op").getAsString();
-    requestId = userArguments.getAsJsonPrimitive("requestId").getAsString();
-    fsArgs = userArguments.getAsJsonObject("fsArgs");
-    clientName = userArguments.getAsJsonPrimitive("clientName").getAsString();
-    isClientInvoker = userArguments.getAsJsonPrimitive("isClientInvoker").getAsBoolean();
-
-    JsonObject result = nameNodeDriver(op, fsArgs, commandLineArguments, functionName,
-            clientIPAddress, requestId, clientName, isClientInvoker);
-    nameNodeInstance.processedRequestIds.add(requestId);
-
-    LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-    LOG.debug("Result to be returned to the caller:\n" + result);
-    LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-
-    // Resource: https://medium.com/openwhisk/web-actions-serverless-web-apps-with-openwhisk-f21db459f9ba
-    // Resource: https://github.com/apache/openwhisk/blob/master/docs/webactions.md
-
-    JsonObject response = new JsonObject();
-
-    JsonObject headers = new JsonObject();
-    headers.addProperty("content-type", "application/json");
-
-    if (result.has("EXCEPTION")) {
-      *//*
-        https://stackoverflow.com/a/3291292/5937661
-
-        "The 422 (Unprocessable Entity) status code means the server understands the content type of the
-        request entity (hence a 415(Unsupported Media Type) status code is inappropriate), and the syntax
-        of the request entity is correct (thus a 400 (Bad Request) status code is inappropriate) but was unable
-        to process the contained instructions. For example, this error condition may occur if an XML request
-        body contains well-formed (i.e., syntactically correct), but semantically erroneous, XML instructions."
-
-        Several things could have gone wrong here, but for now I am just using 422 because it mostly fits...
-       *//*
-      response.addProperty("statusCode", 422);
-      LOG.debug("Adding statusCode 422 to response.");
-      response.addProperty("status", "exception");
-      response.addProperty("success", false);
-    } else if (result.has("RESULT")) {
-      response.addProperty("statusCode", 200);
-      response.addProperty("status", "success");
-      response.addProperty("success", true);
-      LOG.debug("Adding statusCode 200 to response.");
-    } else {
-      // https://stackoverflow.com/a/3290369/5937661
-      // "The request could not be completed due to a conflict with the current state of the resource."
-      response.addProperty("statusCode", 409);
-      response.addProperty("status", "unknown failure");
-      response.addProperty("success", false);
-      LOG.debug("Adding statusCode 409 to response.");
-    }
-
-    response.add("headers", headers);
-    response.add("body", result);
-
-    return response;
-  }*/
-
-  /**
    * Determines if the given request (identified by its request ID) has already been received and processed by the NN.
    * @param requestId The ID of the request.
    * @return true if the request has been received and processed already, otherwise false.
@@ -538,6 +408,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @throws IllegalStateException If the request has already been processed.
    */
   public void designateRequestAsProcessed(String requestId) {
+    LOG.debug("Attempting to designate request " + requestId + " as processed now...");
+
     boolean alreadyContained = processedRequestIds.add(requestId);
 
     if (alreadyContained)
