@@ -41,6 +41,7 @@ import io.hops.transaction.lock.INodeLock;
 import io.hops.transaction.lock.LockFactory;
 import io.hops.transaction.lock.TransactionLockTypes;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.avro.data.Json;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
@@ -137,6 +138,7 @@ import static org.apache.hadoop.util.ExitUtil.terminate;
 import static org.apache.hadoop.util.Time.now;
 
 import org.apache.htrace.core.Tracer;
+import org.xbill.DNS.Serial;
 
 /**
  * ********************************************************
@@ -219,7 +221,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * A mapping from operation/function name to the respective functions. We use this to call FS operations and whatever
    * other functions as directed by clients and DataNodes.
    */
-  private Map<String, CheckedFunction<JsonObject, ? extends Serializable>> operations;
+  private Map<String, CheckedFunction<JsonObject>> operations;
 
   /**
    * When the 'op' field is set to this in the invocation payload, no operation is performed.
@@ -609,8 +611,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *  - https://stackoverflow.com/questions/4480334/how-to-call-a-method-stored-in-a-hashmap-java
    */
   @FunctionalInterface
-  public interface CheckedFunction<T, R extends Serializable> {
-    R apply(T t) throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException;
+  public interface CheckedFunction<T> {
+    Serializable apply(T arg) throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException;
   }
 
   /**
@@ -618,74 +620,74 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Each supported FS operation has a function mapped to the operation's name.
    */
   public void populateOperationsMap() {
-    operations = new HashMap<String, CheckedFunction<JsonObject, ? extends Serializable>>();
+    operations = new HashMap<String, CheckedFunction<JsonObject>>();
 
-    operations.put("abandonBlock", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("abandonBlock", args -> {
       abandonBlock(args);
       return null;
     });
-    operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) this::addBlock);
-    operations.put("addGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("addBlock", this::addBlock);
+    operations.put("addGroup", args -> {
       addGroup(args);
       return null;
     });
-    operations.put("addUser", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("addUser", args -> {
       addUser(args);
       return null;
     });
-    operations.put("addUserToGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("addUserToGroup", args -> {
       addUserToGroup(args);
       return null;
     });
-    operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) this::append);
-    operations.put("complete", (CheckedFunction<JsonObject, Boolean>) this::complete);
-    operations.put("concat", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("append", this::append);
+    operations.put("complete", this::complete);
+    operations.put("concat", args -> {
       concat(args);
       return null;
     });
-    operations.put("create", (CheckedFunction<JsonObject, HdfsFileStatus>) this::create);
-    operations.put("delete", (CheckedFunction<JsonObject, Boolean>) this::delete);
-    operations.put("getBlockLocations", (CheckedFunction<JsonObject, LocatedBlocks>) this::getBlockLocations);
-    operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::getFileInfo);
-    operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::getFileLinkInfo);
-    operations.put("getListing", (CheckedFunction<JsonObject, DirectoryListing>) this::getListing);
-    operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) this::getServerDefaults);
-    operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) this::isFileClosed);
-    operations.put("mkdirs", (CheckedFunction<JsonObject, Boolean>) this::mkdirs);
-    operations.put("removeUser", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("create", this::create);
+    operations.put("delete", this::delete);
+    operations.put("getBlockLocations", this::getBlockLocations);
+    operations.put("getFileInfo", this::getFileInfo);
+    operations.put("getFileLinkInfo", this::getFileLinkInfo);
+    operations.put("getListing", this::getListing);
+    operations.put("getServerDefaults", this::getServerDefaults);
+    operations.put("isFileClosed", this::isFileClosed);
+    operations.put("mkdirs", this::mkdirs);
+    operations.put("removeUser", args -> {
       removeUser(args);
       return null;
     });
-    operations.put("removeGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("removeGroup", args -> {
       removeGroup(args);
       return null;
     });
-    operations.put("removeUserFromGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("removeUserFromGroup", args -> {
       removeUserFromGroup(args);
       return null;
     });
-    operations.put("rename", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("rename", args -> {
       rename(args);
       return null;
     });
-    operations.put("renewLease", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("renewLease", args -> {
       renewLease(args);
       return null;
     });
-    operations.put("setMetaStatus", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("setMetaStatus", args -> {
       setMetaStatus(args);
       return null;
     });
-    operations.put("setOwner", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("setOwner", args -> {
       setOwner(args);
       return null;
     });
-    operations.put("setPermission", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("setPermission", args -> {
       setPermission(args);
       return null;
     });
-    operations.put("truncate", (CheckedFunction<JsonObject, Boolean>) this::truncate);
-    operations.put("versionRequest", (CheckedFunction<JsonObject, NamespaceInfo>) this::versionRequest);
+    operations.put("truncate", this::truncate);
+    operations.put("versionRequest", this::versionRequest);
   }
 
   /**
