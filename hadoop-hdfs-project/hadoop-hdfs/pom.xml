@@ -70,6 +70,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>org.asynchttpclient</groupId>
       <artifactId>async-http-client</artifactId>
+      <version>LATEST_VERSION</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
