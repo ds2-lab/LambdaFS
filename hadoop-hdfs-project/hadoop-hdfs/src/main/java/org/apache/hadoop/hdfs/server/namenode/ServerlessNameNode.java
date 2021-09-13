@@ -624,7 +624,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       abandonBlock(args);
       return null;
     });
-    operations.put("addBlock", args -> addBlock(args));
+    operations.put("addBlock", args -> (Serializable)addBlock(args));
     operations.put("addGroup", args -> {
       addGroup(args);
       return null;
