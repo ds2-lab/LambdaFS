@@ -624,7 +624,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       abandonBlock(args);
       return null;
     });
-    operations.put("addBlock", args -> (Serializable)addBlock(args));
+    operations.put("addBlock", args -> addBlock(args));
     operations.put("addGroup", args -> {
       addGroup(args);
       return null;
@@ -644,14 +644,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return null;
     });
     operations.put("create", args -> (Serializable)create(args));
-    operations.put("delete", (CheckedFunction<JsonObject, Boolean>) this::delete);
-    operations.put("getBlockLocations", (CheckedFunction<JsonObject, LocatedBlocks>) this::getBlockLocations);
-    operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::getFileInfo);
-    operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::getFileLinkInfo);
-    operations.put("getListing", (CheckedFunction<JsonObject, DirectoryListing>) this::getListing);
-    operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) this::getServerDefaults);
-    operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) this::isFileClosed);
-    operations.put("mkdirs", (CheckedFunction<JsonObject, Boolean>) this::mkdirs);
+    operations.put("delete", args -> (Serializable)delete(args));
+    operations.put("getBlockLocations", args -> (Serializable)getBlockLocations(args));
+    operations.put("getFileInfo", args -> (Serializable)getFileInfo(args));
+    operations.put("getFileLinkInfo", args -> (Serializable)getFileLinkInfo(args));
+    operations.put("getListing", args -> (Serializable)getListing(args));
+    operations.put("getServerDefaults", args -> (Serializable)getServerDefaults(args));
+    operations.put("isFileClosed", args -> (Serializable)isFileClosed(args));
+    operations.put("mkdirs", args -> (Serializable)mkdirs(args));
     operations.put("removeUser", args -> {
       removeUser(args);
       return null;
@@ -684,8 +684,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       setPermission(args);
       return null;
     });
-    operations.put("truncate", (CheckedFunction<JsonObject, Boolean>) this::truncate);
-    operations.put("versionRequest", (CheckedFunction<JsonObject, NamespaceInfo>) this::versionRequest);
+    operations.put("truncate", args -> (Serializable)truncate(args));
+    operations.put("versionRequest", args -> (Serializable)versionRequest(args));
   }
 
   /**
