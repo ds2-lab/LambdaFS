@@ -618,28 +618,28 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Each supported FS operation has a function mapped to the operation's name.
    */
   public void populateOperationsMap() {
-    operations = new HashMap<String, CheckedFunction<JsonObject, ? extends Serializable>>();
+    operations = new HashMap<>();
 
-    operations.put("abandonBlock", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("abandonBlock", args -> {
       abandonBlock(args);
       return null;
     });
-    operations.put("addBlock", (CheckedFunction<JsonObject, LocatedBlock>) this::addBlock);
-    operations.put("addGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("addBlock", this::<LocatedBlock>addBlock);
+    operations.put("addGroup", args -> {
       addGroup(args);
       return null;
     });
-    operations.put("addUser", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("addUser", args -> {
       addUser(args);
       return null;
     });
-    operations.put("addUserToGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("addUserToGroup", args -> {
       addUserToGroup(args);
       return null;
     });
     operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) this::append);
     operations.put("complete", (CheckedFunction<JsonObject, Boolean>) this::complete);
-    operations.put("concat", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("concat", args -> {
       concat(args);
       return null;
     });
@@ -652,35 +652,35 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) this::getServerDefaults);
     operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) this::isFileClosed);
     operations.put("mkdirs", (CheckedFunction<JsonObject, Boolean>) this::mkdirs);
-    operations.put("removeUser", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("removeUser", args -> {
       removeUser(args);
       return null;
     });
-    operations.put("removeGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("removeGroup", args -> {
       removeGroup(args);
       return null;
     });
-    operations.put("removeUserFromGroup", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("removeUserFromGroup", args -> {
       removeUserFromGroup(args);
       return null;
     });
-    operations.put("rename", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("rename", args -> {
       rename(args);
       return null;
     });
-    operations.put("renewLease", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("renewLease", args -> {
       renewLease(args);
       return null;
     });
-    operations.put("setMetaStatus", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("setMetaStatus", args -> {
       setMetaStatus(args);
       return null;
     });
-    operations.put("setOwner", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("setOwner", args -> {
       setOwner(args);
       return null;
     });
-    operations.put("setPermission", (CheckedFunction<JsonObject, Serializable>) args -> {
+    operations.put("setPermission", args -> {
       setPermission(args);
       return null;
     });
