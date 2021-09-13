@@ -1,7 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.google.gson.JsonObject;
-import jdk.internal.org.objectweb.asm.tree.analysis.Value;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
