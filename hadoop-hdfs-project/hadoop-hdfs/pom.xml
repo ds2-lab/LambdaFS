@@ -193,6 +193,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>kryonet</artifactId>
       <version>2.21</version>
     </dependency>
+    <dependency>
+      <groupId>com.logicalclocks</groupId>
+      <artifactId>service-discovery-client</artifactId>
+      <version>0.5-SNAPSHOT</version>
+    </dependency>
     <!-- Used by NN TCP client/server. Handles serialization. -->
     <dependency>
       <groupId>com.esotericsoftware</groupId>
