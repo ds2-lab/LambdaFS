@@ -11,7 +11,6 @@ import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.plugin.dom.exception.InvalidStateException;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -357,7 +356,7 @@ public class OpenWhiskHandler {
     /**
      * Assert that the container was cold prior to the currently-running activation.
      *
-     * If the container is warm, then this will create a new InvalidStateException and add it to the
+     * If the container is warm, then this will create a new IllegalStateException and add it to the
      * parameterized `result` object so that the client that invoked this function can see the exception
      * and process it accordingly.
      * @param result The result to be returned to the client.
@@ -367,7 +366,7 @@ public class OpenWhiskHandler {
     private static boolean assertIsCold(NameNodeResult result) {
         if (!isCold) {
             // Create and add the exception to the result so that it will be returned to the client.
-            InvalidStateException ex = new InvalidStateException("Expected container to be cold, but it is warm.");
+            IllegalStateException ex = new IllegalStateException("Expected container to be cold, but it is warm.");
             result.addException(ex);
 
             return false;
