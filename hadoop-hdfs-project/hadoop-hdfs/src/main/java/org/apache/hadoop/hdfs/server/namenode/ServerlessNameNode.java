@@ -637,21 +637,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       addUserToGroup(args);
       return null;
     });
-    operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) this::append);
-    operations.put("complete", (CheckedFunction<JsonObject, Boolean>) this::complete);
+    operations.put("append", (CheckedFunction<JsonObject, LastBlockWithStatus>) this::<LastBlockWithStatus>append);
+    operations.put("complete", (CheckedFunction<JsonObject, Boolean>) this::<Boolean>complete);
     operations.put("concat", args -> {
       concat(args);
       return null;
     });
-    operations.put("create", (CheckedFunction<JsonObject, HdfsFileStatus>) this::create);
-    operations.put("delete", (CheckedFunction<JsonObject, Boolean>) this::delete);
-    operations.put("getBlockLocations", (CheckedFunction<JsonObject, LocatedBlocks>) this::getBlockLocations);
-    operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::getFileInfo);
-    operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::getFileLinkInfo);
-    operations.put("getListing", (CheckedFunction<JsonObject, DirectoryListing>) this::getListing);
-    operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) this::getServerDefaults);
-    operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) this::isFileClosed);
-    operations.put("mkdirs", (CheckedFunction<JsonObject, Boolean>) this::mkdirs);
+    operations.put("create", (CheckedFunction<JsonObject, HdfsFileStatus>) this::<HdfsFileStatus>create);
+    operations.put("delete", (CheckedFunction<JsonObject, Boolean>) this::<Boolean>delete);
+    operations.put("getBlockLocations", (CheckedFunction<JsonObject, LocatedBlocks>) this::<LocatedBlocks>getBlockLocations);
+    operations.put("getFileInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::<HdfsFileStatus>getFileInfo);
+    operations.put("getFileLinkInfo", (CheckedFunction<JsonObject, HdfsFileStatus>) this::<HdfsFileStatus>getFileLinkInfo);
+    operations.put("getListing", (CheckedFunction<JsonObject, DirectoryListing>) this::<DirectoryListing>getListing);
+    operations.put("getServerDefaults", (CheckedFunction<JsonObject, FsServerDefaults>) this::<FsServerDefaults>getServerDefaults);
+    operations.put("isFileClosed", (CheckedFunction<JsonObject, Boolean>) this::<Boolean>isFileClosed);
+    operations.put("mkdirs", (CheckedFunction<JsonObject, Boolean>) this::<Boolean>mkdirs);
     operations.put("removeUser", args -> {
       removeUser(args);
       return null;
@@ -684,8 +684,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       setPermission(args);
       return null;
     });
-    operations.put("truncate", (CheckedFunction<JsonObject, Boolean>) this::truncate);
-    operations.put("versionRequest", (CheckedFunction<JsonObject, NamespaceInfo>) this::versionRequest);
+    operations.put("truncate", (CheckedFunction<JsonObject, Boolean>) this::<Boolean>truncate);
+    operations.put("versionRequest", (CheckedFunction<JsonObject, NamespaceInfo>) this::<NamespaceInfo>versionRequest);
   }
 
   /**
