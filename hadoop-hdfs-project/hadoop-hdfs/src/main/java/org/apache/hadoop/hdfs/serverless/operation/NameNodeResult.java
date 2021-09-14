@@ -121,12 +121,15 @@ public class NameNodeResult {
             StringBuilder builder = new StringBuilder();
             builder.append("Exceptions:\n");
 
+            int counter = 1;
             for (Throwable ex : exceptions) {
-                builder.append("\t\t");
+                builder.append(counter);
+                builder.append(": ");
                 builder.append(ex.getClass().getSimpleName());
                 builder.append(": ");
                 builder.append(ex.getCause());
                 builder.append("\n");
+                counter++;
             }
 
             LOG.info(builder.toString());
