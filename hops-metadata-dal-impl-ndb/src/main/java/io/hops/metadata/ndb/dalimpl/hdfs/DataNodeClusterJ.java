@@ -15,7 +15,6 @@ import io.hops.metadata.ndb.wrapper.HopsSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import javax.xml.crypto.Data;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -96,7 +95,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
 
         DataNodeDTO deleteMe = session.find(DataNodeDTO.class, uuid);
 
-        session.deletePersistent(DataNodeDTO.class, deleteMe);
+        session.deletePersistent(deleteMe);
 
         LOG.debug("Successfully deleted metadata for DataNode " + uuid);
     }
@@ -139,7 +138,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
         HopsQuery<DataNodeDTO> query = session.createQuery(queryDomainType);
         List<DataNodeDTO> resultsRaw = query.getResultList();
 
-        List<DataNodeMeta> results = new ArrayList<DataNodeMeta>();
+        List<DataNodeMeta> results = new ArrayList<>();
 
         // Convert each DataNodeDTO object to a DataNodeMeta object and add it to the list.
         for (DataNodeDTO dataNodeDTO : resultsRaw) {
