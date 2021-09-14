@@ -149,7 +149,7 @@ public class NameNodeResult {
             functionMapping.addProperty("parentId", serverlessFunctionMapping.parentId);
             functionMapping.addProperty("function", serverlessFunctionMapping.mappedFunctionNumber);
 
-            json.add("functionMapping", functionMapping);
+            json.add("FUNCTION_MAPPING", functionMapping);
         }
 
         return json;
