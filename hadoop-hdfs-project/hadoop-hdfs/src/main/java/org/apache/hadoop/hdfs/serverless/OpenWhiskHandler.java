@@ -151,12 +151,13 @@ public class OpenWhiskHandler {
         LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
-        JsonObject result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
+        NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
                 requestId, clientName, isClientInvoker);
 
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
 
+        LOG.debug("ServerlessNameNode is exiting now...");
         return createJsonResponse(result);
     }
 
@@ -175,7 +176,7 @@ public class OpenWhiskHandler {
      * @param isClientInvoker Flag which indicates whether this activation was invoked by a client or a DataNode.
      * @return Result of executing NameNode code/operation/function execution.
      */
-    private static JsonObject driver(String op, JsonObject fsArgs, String[] commandLineArguments,
+    private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                      String functionName, String clientIPAddress, String requestId,
                                      String clientName, boolean isClientInvoker) {
         NameNodeResult result = new NameNodeResult();
@@ -190,7 +191,7 @@ public class OpenWhiskHandler {
             LOG.error("Encountered " + ex.getClass().getSimpleName()
                     + " while creating and initializing the NameNode: ", ex);
             result.addException(ex);
-            return result.toJson();
+            return result;
         }
 
         // Create the work queue if it has not already been created. This is used to assign tasks to the worker thread.
@@ -201,7 +202,7 @@ public class OpenWhiskHandler {
             // If everything is NOT okay (specifically, this container is warm, yet the work queue is not
             // already created), then abort early. Something is not right.
             if (!everythingIsOkay)
-                return result.toJson();
+                return result;
 
             LOG.debug("Creating the Work Queue now...");
             workQueue = new LinkedBlockingQueue<>();
@@ -216,7 +217,7 @@ public class OpenWhiskHandler {
             // If everything is NOT okay (specifically, this container is warm, yet the worker thread is not
             // already created), then abort early. Something is not right.
             if (!everythingIsOkay)
-                return result.toJson();
+                return result;
 
             LOG.debug("Creating the Worker Thread now...");
 
@@ -231,7 +232,7 @@ public class OpenWhiskHandler {
             // Check to see if this is a duplicate request, in which case we should not return anything of substance.
             if (serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
                 LOG.warn("This request (" + requestId + ") has already been processed. Returning now...");
-                return result.toJson();
+                return result;
             }
 
             LOG.debug("Request is NOT a duplicate! Processing updates from intermediate storage now...");
@@ -356,7 +357,7 @@ public class OpenWhiskHandler {
         }
 
         result.logResultDebugInformation();
-        return result.toJson();
+        return result;
     }
 
     /**
@@ -401,21 +402,27 @@ public class OpenWhiskHandler {
      * @param result The result returned from by `nameNodeDriver()`.
      * @return JsonObject to return as result of this OpenWhisk activation (i.e., serverless function execution).
      */
-    private static JsonObject createJsonResponse(JsonObject result) {
+    private static JsonObject createJsonResponse(NameNodeResult result) {
+        JsonObject resultJson = result.toJson();
+
         JsonObject response = new JsonObject();
         JsonObject headers = new JsonObject();
         headers.addProperty("content-type", "application/json");
 
-        if (result.has("EXCEPTION")) {
-            response.addProperty("statusCode", 422);
-            response.addProperty("status", "exception");
-            response.addProperty("success", false);
-        }
-        else if (response.has("RESULT")) {
+        // Only indicate that this failed if there is no result and there are exceptions.
+        // If there are exceptions, but we managed to compute a result, then we'll consider it a succcess.
+        if (result.getHasResult()) {
             response.addProperty("statusCode", 200);
             response.addProperty("status", "success");
             response.addProperty("success", true);
         }
+        // No result and exceptions? Indicate a failure.
+        else if (result.numExceptions() > 0) {
+            response.addProperty("statusCode", 422);
+            response.addProperty("status", "exception");
+            response.addProperty("success", false);
+        }
+        // No result but no exceptions? Something weird happened.
         else {
             // https://stackoverflow.com/a/3290369/5937661
             // "The request could not be completed due to a conflict with the current state of the resource."
@@ -425,7 +432,7 @@ public class OpenWhiskHandler {
         }
 
         response.add("headers", headers);
-        response.add("body", result);
+        response.add("body", resultJson);
         return response;
     }
 

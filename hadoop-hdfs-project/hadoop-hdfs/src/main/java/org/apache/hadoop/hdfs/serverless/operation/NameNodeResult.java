@@ -40,6 +40,11 @@ public class NameNodeResult {
      */
     private ServerlessFunctionMapping serverlessFunctionMapping;
 
+    /**
+     * Flag which indicates whether there is a result.
+     */
+    private boolean hasResult = false;
+
     public NameNodeResult() {
         exceptions = new ArrayList<Throwable>();
     }
@@ -53,6 +58,7 @@ public class NameNodeResult {
     public boolean addResult(Object result, boolean forceOverwrite) {
         if (result == null || forceOverwrite) {
             this.result = result;
+            hasResult = true;
             return true;
         }
 
@@ -77,6 +83,13 @@ public class NameNodeResult {
      */
     public void addException(Exception ex) {
         exceptions.add(ex);
+    }
+
+    /**
+     * Returns true if there's a result, otherwise false.
+     */
+    public boolean getHasResult() {
+        return hasResult;
     }
 
     /**
@@ -140,6 +153,13 @@ public class NameNodeResult {
         }
 
         return json;
+    }
+
+    /**
+     * Return the number of exceptions contained within this result.
+     */
+    public int numExceptions() {
+        return exceptions.size();
     }
 
     /**
