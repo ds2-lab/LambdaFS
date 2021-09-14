@@ -36,6 +36,7 @@ import com.google.common.base.Preconditions;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class NamespaceInfo extends StorageInfo {
+  private static final long serialVersionUID = -5251381730772142979L;
   String buildVersion;
   String blockPoolID = "";    // id of the block pool
   String softwareVersion;

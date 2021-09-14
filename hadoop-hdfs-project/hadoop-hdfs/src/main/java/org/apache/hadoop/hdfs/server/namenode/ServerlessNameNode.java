@@ -407,12 +407,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param requestId The unique ID of the request.
    * @throws IllegalStateException If the request has already been processed.
    */
-  public void designateRequestAsProcessed(String requestId) {
+  public void designateRequestAsProcessed(String requestId)
+          throws IllegalStateException {
     LOG.debug("Attempting to designate request " + requestId + " as processed now...");
 
-    boolean alreadyContained = processedRequestIds.add(requestId);
+    boolean newlyAdded = processedRequestIds.add(requestId);
 
-    if (alreadyContained)
+    // If the requestId was not newly-added, meaning `processedRequestIds` already contained
+    // that request ID, then we throw an exception.
+    if (!newlyAdded)
       throw new IllegalStateException("Given request (ID = " + requestId + ") has already been processed.");
   }
 

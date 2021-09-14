@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -92,7 +93,7 @@ public class NameNodeResult {
     public void logResultDebugInformation() {
         LOG.info("+-+-+-+-+-+-+ Result Debug Information +-+-+-+-+-+-+");
         LOG.info("Type: " + result.getClass());
-        LOG.info("Result " + (result instanceof ServerlessNameNode ? "IS " : "is NOT ") + "serializable.");
+        LOG.info("Result " + (result instanceof Serializable ? "IS " : "is NOT ") + "serializable.");
         LOG.info("Value: " + result);
         LOG.info("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+");
     }
