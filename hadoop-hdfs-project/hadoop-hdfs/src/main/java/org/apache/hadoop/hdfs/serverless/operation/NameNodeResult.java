@@ -105,9 +105,43 @@ public class NameNodeResult {
      */
     public void logResultDebugInformation() {
         LOG.info("+-+-+-+-+-+-+ Result Debug Information +-+-+-+-+-+-+");
-        LOG.info("Type: " + result.getClass());
-        LOG.info("Result " + (result instanceof Serializable ? "IS " : "is NOT ") + "serializable.");
-        LOG.info("Value: " + result);
+        if (hasResult) {
+            LOG.info("Type: " + result.getClass());
+            LOG.info("Result " + (result instanceof Serializable ? "IS " : "is NOT ") + "serializable.");
+            LOG.info("Value: " + result);
+        } else {
+            LOG.info("There is NO result value present.");
+        }
+
+        LOG.info("----------------------------------------------------");
+
+        LOG.info("Number of exceptions: " + exceptions.size());
+
+        if (exceptions.size() > 0) {
+            StringBuilder builder = new StringBuilder();
+            builder.append("Exceptions:\n");
+
+            for (Throwable ex : exceptions) {
+                builder.append("\t\t");
+                builder.append(ex.getClass().getSimpleName());
+                builder.append(": ");
+                builder.append(ex.getCause());
+                builder.append("\n");
+            }
+
+            LOG.info(builder.toString());
+        } else {
+            LOG.info("Number of exceptions: 0");
+        }
+
+        LOG.info("----------------------------------------------------");
+
+        if (serverlessFunctionMapping != null) {
+            LOG.info(serverlessFunctionMapping.toString());
+        } else {
+            LOG.info("No serverless function mapping data contained within this result.");
+        }
+
         LOG.info("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+");
     }
 
@@ -185,6 +219,12 @@ public class NameNodeResult {
             this.fileOrDirectory = fileOrDirectory;
             this.parentId = parentId;
             this.mappedFunctionNumber = mappedFunctionNumber;
+        }
+
+        @Override
+        public String toString() {
+            return "FunctionMapping: [src=" + fileOrDirectory + ", parentId=" + parentId
+                    + ", targetFunctionNumber=" + mappedFunctionNumber + "]";
         }
     }
 }
