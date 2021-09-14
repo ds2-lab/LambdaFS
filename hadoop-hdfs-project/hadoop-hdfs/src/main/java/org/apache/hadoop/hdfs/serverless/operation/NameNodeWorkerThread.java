@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * This is used on the NameNode side.
  */
-public class NameNodeWorkerThread implements Runnable {
+public class NameNodeWorkerThread extends Thread {
     public static final Logger LOG = LoggerFactory.getLogger(NameNodeWorkerThread.class.getName());
 
     /**

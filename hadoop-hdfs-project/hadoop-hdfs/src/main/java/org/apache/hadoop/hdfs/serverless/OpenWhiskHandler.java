@@ -203,6 +203,7 @@ public class OpenWhiskHandler {
             if (!everythingIsOkay)
                 return result.toJson();
 
+            LOG.debug("Creating the Work Queue now...");
             workQueue = new LinkedBlockingQueue<>();
         }
 
@@ -217,9 +218,11 @@ public class OpenWhiskHandler {
             if (!everythingIsOkay)
                 return result.toJson();
 
+            LOG.debug("Creating the Worker Thread now...");
+
             // Create the thread and tell it to run!
             workerThread = new NameNodeWorkerThread(workQueue, serverlessNameNode);
-            workerThread.run();
+            workerThread.start();
         }
 
         synchronized (serverlessNameNode) {
