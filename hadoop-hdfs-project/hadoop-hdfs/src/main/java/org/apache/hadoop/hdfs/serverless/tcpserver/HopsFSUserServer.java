@@ -232,7 +232,7 @@ public class HopsFSUserServer {
 
                     activeConnections.remove(connection.name);
                 } else {
-                    LOG.warn("[TCP SERVER] Lost connection to unknown NameNode...");
+                    LOG.warn("[TCP SERVER] Lost connection to unregistered NameNode at " + conn.getRemoteAddressTCP());
                 }
             }
         });
