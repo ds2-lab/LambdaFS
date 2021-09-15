@@ -150,8 +150,12 @@ public class NameNodeResult {
 
     /**
      * Convert this object to a JsonObject so that it can be returned directly to the invoker.
+     *
+     * @param operation If non-null, will be included as a top-level entry in the result under the key "op".
+     *                  This is used by TCP connections in particular, as TCP messages generally contain an "op"
+     *                  field to designate the request as one containing a result or one used for registration.
      */
-    public JsonObject toJson() {
+    public JsonObject toJson(String operation) {
         JsonObject json = new JsonObject();
 
         try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
@@ -188,6 +192,9 @@ public class NameNodeResult {
 
             json.add("FUNCTION_MAPPING", functionMapping);
         }
+
+        if (operation != null)
+            json.add("op", operation);
 
         return json;
     }

@@ -12,6 +12,8 @@ import java.util.concurrent.*;
 /**
  * These are created when issuing TCP requests to NameNodes. They are registered with the TCP Server so that
  * the server can return results for particular operations back to the client waiting on the result.
+ *
+ * These are used on the client side.
  */
 public class RequestResponseFuture implements Future<JsonObject> {
     private static final Log LOG = LogFactory.getLog(FileSystemTask.class);

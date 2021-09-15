@@ -57,7 +57,7 @@ public class OpenWhiskHandler {
      * @param commandLineArguments The command-line arguments given to the NameNode during initialization.
      * @param functionName The name of this particular OpenWhisk action.
      */
-    public static ServerlessNameNode getOrCreateInstance(String[] commandLineArguments, String functionName)
+    public static synchronized ServerlessNameNode getOrCreateNameNodeInstance(String[] commandLineArguments, String functionName)
             throws Exception {
         if (instance != null) {
             LOG.debug("Using existing NameNode instance.");
@@ -77,6 +77,22 @@ public class OpenWhiskHandler {
         }
 
         return instance;
+    }
+
+    /**
+     * Attempt to get the singleton ServerlessNameNode instance. This function will throw an exception if the
+     * instance does not exist. This is useful for trying to get the instance when you expect/need it to exist.
+     * This should be used when the caller feels that the ServerlessNameNode instance SHOULD exist, and that it would
+     * be an error if it did not exist when this function is called.
+     * @return The ServerlessNameNode instance, if it exists.
+     * @throws IllegalStateException Thrown if the ServerlessNameNode instance does not exist.
+     */
+    public static synchronized ServerlessNameNode tryGetNameNodeInstance() throws IllegalStateException {
+        if (instance != null) {
+            return instance;
+        }
+
+        throw new IllegalStateException("ServerlessNameNode instance does not exist!");
     }
 
     /**
@@ -185,7 +201,7 @@ public class OpenWhiskHandler {
         // If this container was cold prior to this invocation, then we'll actually be creating the instance now.
         ServerlessNameNode serverlessNameNode;
         try {
-            serverlessNameNode = getOrCreateInstance(commandLineArguments, functionName);
+            serverlessNameNode = getOrCreateNameNodeInstance(commandLineArguments, functionName);
         }
         catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName()
@@ -194,38 +210,20 @@ public class OpenWhiskHandler {
             return result;
         }
 
-        // Create the work queue if it has not already been created. This is used to assign tasks to the worker thread.
-        if (workQueue == null) {
-            // Make sure that the container was cold prior to this invocation...
-            boolean everythingIsOkay = assertIsCold(result);
+        // Create the work queue (if necessary). If the function is warm but the work queue is not created,
+        // then something is wrong, and we'll just abort completely.
+        boolean everythingIsOkay = tryCreateWorkQueue(result);
+        if (!everythingIsOkay)
+            return result;
 
-            // If everything is NOT okay (specifically, this container is warm, yet the work queue is not
-            // already created), then abort early. Something is not right.
-            if (!everythingIsOkay)
-                return result;
+        // Create the worker thread (if necessary). If the function is warm but the worker thread is not created,
+        // then something is wrong, and we'll just abort completely.
+        everythingIsOkay = tryCreateWorkerThread(result, serverlessNameNode);
+        if (!everythingIsOkay)
+            return result;
 
-            LOG.debug("Creating the Work Queue now...");
-            workQueue = new LinkedBlockingQueue<>();
-        }
-
-        // Next, create the worker thread if it has not already been created. The worker thread is responsible
-        // for actually performing the various file system operations. It returns the results back to us.
-        if (workerThread == null) {
-            // Make sure that the container was cold prior to this invocation...
-            boolean everythingIsOkay = assertIsCold(result);
-
-            // If everything is NOT okay (specifically, this container is warm, yet the worker thread is not
-            // already created), then abort early. Something is not right.
-            if (!everythingIsOkay)
-                return result;
-
-            LOG.debug("Creating the Worker Thread now...");
-
-            // Create the thread and tell it to run!
-            workerThread = new NameNodeWorkerThread(workQueue, serverlessNameNode);
-            workerThread.start();
-        }
-
+        // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
+        // from intermediate storage.
         synchronized (serverlessNameNode) {
             LOG.debug("Checking for duplicate requests now...");
 
@@ -283,11 +281,12 @@ public class OpenWhiskHandler {
             // the future will resolve, and we'll be able to return a result to the client!
             LOG.debug("Waiting for task " + requestId + " (operation = " + op + ") to be executed now...");
             Object fileSystemOperationResult = newTask.get(
-                    serverlessNameNode.getWorkerThreadTimeoutMilliseconds(), TimeUnit.MILLISECONDS);
+                    serverlessNameNode.getWorkerThreadTimeoutMs(), TimeUnit.MILLISECONDS);
 
-            // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64 so we
-            // can include it in the JSON response sent back to the invoker of this serverless function.
+            // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64,
+            // so we can include it in the JSON response sent back to the invoker of this serverless function.
             if (fileSystemOperationResult != null) {
+                LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
                 result.addResult(fileSystemOperationResult, true);
             }
         } catch (Exception ex) {
@@ -296,36 +295,8 @@ public class OpenWhiskHandler {
             result.addException(ex);
         }
 
-        // After performing the desired FS operation, we check if there is a particular file or directory
-        // identified by the `src` parameter. This is the file/directory that should be hashed to a particular
-        // serverless function. We calculate this here and include the information for the client in our response.
-        if (fsArgs != null && fsArgs.has("src")) {
-            String src = fsArgs.getAsJsonPrimitive("src").getAsString();
-
-            INode iNode = null;
-            try {
-                synchronized (serverlessNameNode) {
-                    iNode = serverlessNameNode.getINodeForCache(src);
-                }
-            }
-            catch (IOException ex) {
-                LOG.error("Encountered IOException while retrieving INode associated with target directory "
-                        + src + ": ", ex);
-                result.addException(ex);
-            }
-
-            // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
-            if (iNode != null) {
-                LOG.debug("Parent INode ID for " + '"' + src + '"' + ": " + iNode.getParentId());
-
-                int functionNumber = consistentHash(iNode.getParentId(), serverlessNameNode.getNumUniqueServerlessNameNodes());
-
-                LOG.debug("Consistently hashed parent INode ID " + iNode.getParentId()
-                        + " to serverless function " + functionNumber);
-
-                result.addFunctionMapping(src, iNode.getParentId(), functionNumber);
-            }
-        }
+        // Check if a function mapping should be created and returned to the client.
+        tryCreateFunctionMapping(result, fsArgs, serverlessNameNode);
 
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker) {
@@ -358,6 +329,114 @@ public class OpenWhiskHandler {
 
         result.logResultDebugInformation();
         return result;
+    }
+
+    /**
+     * Check if there is a single target file/directory specified within the file system arguments passed by the client.
+     * If there is, then we will create a function mapping for the client, so they know which NameNode is responsible
+     * for caching the metadata associated with that particular file/directory.
+     * @param result The current NameNodeResult, which will ultimately be returned to the user.
+     * @param fsArgs The file system operation arguments passed in by the client (i.e., the individual who invoked us).
+     * @param serverlessNameNode The current serverless name node instance, as we need this to determine the mapping.
+     */
+    public static void tryCreateFunctionMapping(NameNodeResult result,
+                                                JsonObject fsArgs,
+                                                ServerlessNameNode serverlessNameNode) {
+        // After performing the desired FS operation, we check if there is a particular file or directory
+        // identified by the `src` parameter. This is the file/directory that should be hashed to a particular
+        // serverless function. We calculate this here and include the information for the client in our response.
+        if (fsArgs != null && fsArgs.has("src")) {
+            String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+
+            INode iNode = null;
+            try {
+                synchronized (serverlessNameNode) {
+                    iNode = serverlessNameNode.getINodeForCache(src);
+                }
+            }
+            catch (IOException ex) {
+                LOG.error("Encountered IOException while retrieving INode associated with target directory "
+                        + src + ": ", ex);
+                result.addException(ex);
+            }
+
+            // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
+            if (iNode != null) {
+                LOG.debug("Parent INode ID for " + '"' + src + '"' + ": " + iNode.getParentId());
+
+                int functionNumber = consistentHash(iNode.getParentId(), serverlessNameNode.getNumUniqueServerlessNameNodes());
+
+                LOG.debug("Consistently hashed parent INode ID " + iNode.getParentId()
+                        + " to serverless function " + functionNumber);
+
+                result.addFunctionMapping(src, iNode.getParentId(), functionNumber);
+            }
+        }
+    }
+
+    /**
+     * Check if the work queue needs to be created. If it does, then create it.
+     *
+     * This also checks if this function instance is warm/cold. If it is warm but the work queue is not already
+     * created, then something has gone very wrong. Warm function instances should already have a work queue.
+     *
+     * @param result The current NameNodeResult object that will eventually be returned to the user.
+     * @return True, if everything is okay (i.e., it was NOT the case that function is warm but work queue does not
+     * exist).
+     */
+    private static boolean tryCreateWorkQueue(NameNodeResult result) {
+        // Create the work queue if it has not already been created. This is used to assign tasks to the worker thread.
+        if (workQueue == null) {
+            // Make sure that the container was cold prior to this invocation...
+            boolean everythingIsOkay = assertIsCold(result);
+
+            // If everything is NOT okay (specifically, this container is warm, yet the work queue is not
+            // already created), then abort early. Something is not right.
+            if (!everythingIsOkay)
+                return false;
+
+            LOG.debug("Creating the Work Queue now...");
+            workQueue = new LinkedBlockingQueue<>();
+        }
+
+        // Everything is okay!
+        return true;
+    }
+
+    /**
+     * Check if the worker thread needs to be created (and then started). If it does, then create and start it.
+     *
+     * This also checks if this function instance is warm/cold. If it is warm but the worker thread is not already
+     * created, then something has gone very wrong. Warm function instances should already have a work queue.
+     *
+     * @param result The current NameNodeResult object that will eventually be returned to the user.
+     * @param serverlessNameNode The instance of ServerlessNameNode running within this function. This is needed as it
+     *                           must be passed to the worker thread.
+     * @return True, if everything is okay (i.e., it was NOT the case that function is warm but worker thread does not
+     * exist).
+     */
+    private static boolean tryCreateWorkerThread(NameNodeResult result, ServerlessNameNode serverlessNameNode) {
+        // Next, create the worker thread if it has not already been created. The worker thread is responsible
+        // for actually performing the various file system operations. It returns the results back to us.
+        if (workerThread == null) {
+            // Make sure that the container was cold prior to this invocation...
+            boolean everythingIsOkay = assertIsCold(result);
+
+            // If everything is NOT okay (specifically, this container is warm, yet the worker thread is not
+            // already created), then abort early. Something is not right.
+            if (!everythingIsOkay)
+                // This just looks more readable to me, but we could just directly return everythingIsOkay here.
+                return false;
+
+            LOG.debug("Creating the Worker Thread now...");
+
+            // Create the thread and tell it to run!
+            workerThread = new NameNodeWorkerThread(workQueue, serverlessNameNode);
+            workerThread.start();
+        }
+
+        // Everything is okay!
+        return true;
     }
 
     /**
@@ -403,7 +482,7 @@ public class OpenWhiskHandler {
      * @return JsonObject to return as result of this OpenWhisk activation (i.e., serverless function execution).
      */
     private static JsonObject createJsonResponse(NameNodeResult result) {
-        JsonObject resultJson = result.toJson();
+        JsonObject resultJson = result.toJson(null);
 
         JsonObject response = new JsonObject();
         JsonObject headers = new JsonObject();

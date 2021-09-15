@@ -1,17 +1,22 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
-import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
+import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
+import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Encapsulates a Kryonet TCP client. Used to communicate directly with Serverless HopsFS clients.
@@ -45,8 +50,18 @@ public class NameNodeTCPClient {
      */
     private final HashMap<ServerlessHopsFSClient, Client> tcpClients;
 
+    /**
+     * The name of the serverless function in which this TCP client exists.
+     */
+    private final String functionName;
 
-    public NameNodeTCPClient() {
+
+    /**
+     * Constructor.
+     * @param functionName The name of the serverless function in which this TCP client exists.
+     */
+    public NameNodeTCPClient(String functionName) {
+        this.functionName = functionName;
         tcpClients = new HashMap<>();
     }
 
@@ -82,6 +97,8 @@ public class NameNodeTCPClient {
         LOG.debug("Successfully established connection with client " + newClient.getClientId()
                 + " in " + connectMilliseconds + " milliseconds!");
 
+        registerWithClient(tcpClient);
+
         // We need to register whatever classes will be serialized BEFORE any network activity is performed.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
 
@@ -95,27 +112,107 @@ public class NameNodeTCPClient {
              * @param object The object that the client sent to us.
              */
             public void received(Connection connection, Object object) {
-                LOG.debug("Received message from connection " + connection.toString());
+                LOG.debug("[TCP Client] Received message from connection " + connection.toString());
+
+                NameNodeResult tcpResult = new NameNodeResult();
 
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof JsonObject) {
-                    JsonObject args = (JsonObject)object;
-
-                    LOG.debug("Message contents: " + args);
-
-                    // TODO: Extract desired FS operation from message, add it to worker thread queue,
-                    //       then block on task future and return result to client when it resolves.
+                    handleWorkAssignment((JsonObject) object, tcpResult);
                 }
                 else {
-                    throw new IllegalArgumentException("Received object of unexpected type from client "
-                            + tcpClient + ". Object type: " + object.getClass().getSimpleName() + ".");
+                    // Create and log the exception to be returned to the client,
+                    // so they know they sent the wrong thing.
+                    IllegalArgumentException ex = new IllegalArgumentException(
+                            "[TCP Client] Received object of unexpected type from client " + tcpClient
+                                    + ". Object type: " + object.getClass().getSimpleName() + ".");
+                    tcpResult.addException(ex);
                 }
+
+                connection.sendTCP(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT));
             }
         });
 
         tcpClients.put(newClient, tcpClient);
 
         return true;
+    }
+
+    private void handleWorkAssignment(JsonObject args, NameNodeResult result) {
+        String requestId = args.getAsJsonPrimitive("requestId").getAsString();
+        String op = args.getAsJsonPrimitive("op").getAsString();
+        JsonObject fsArgs = args.getAsJsonObject("fsArgs");
+
+        LOG.debug("================ TCP Message Contents ================");
+        LOG.debug("Request ID: " + requestId);
+        LOG.debug("Operation name: " + op);
+        LOG.debug("FS operation arguments: ");
+        for (Map.Entry<String, JsonElement> entry : fsArgs.entrySet())
+            LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
+        LOG.debug("======================================================");
+
+        NameNodeResult tcpResult = new NameNodeResult();
+
+        // Create a new task and assign it to the worker thread.
+        // After this, we will simply wait for the result to be completed before returning it to the user.
+        FileSystemTask<Serializable> newTask = null;
+        try {
+            LOG.debug("[TCP] Adding task " + requestId + " (operation = " + op + ") to work queue now...");
+            newTask= new FileSystemTask<>(requestId, op, fsArgs);
+            OpenWhiskHandler.workQueue.put(newTask);
+
+            // We wait for the task to finish executing in a separate try-catch block so that, if there is
+            // an exception, then we can log a specific message indicating where the exception occurred. If we
+            // waited for the task in this block, we wouldn't be able to indicate in the log whether the
+            // exception occurred when creating/scheduling the task or while waiting for it to complete.
+        }
+        catch (Exception ex) {
+            LOG.error("[TCP] Encountered " + ex.getClass().getSimpleName()
+                    + " while assigning a new task to the worker thread: ", ex);
+            tcpResult.addException(ex);
+        }
+
+        // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
+        try {
+            // If we failed to create a new task for the desired file system operation, then we'll just throw
+            // another exception indicating that we have nothing to execute, seeing as the task doesn't exist.
+            if (newTask == null) {
+                throw new IllegalStateException("[TCP] Failed to create task for operation " + op);
+            }
+
+            // In the case that we do have a task to wait on, we'll wait for the configured amount of time for the
+            // worker thread to execute the task. If the task times out, then an exception will be thrown, caught,
+            // and ultimately reported to the client. Alternatively, if the task is executed successfully, then
+            // the future will resolve, and we'll be able to return a result to the client!
+            LOG.debug("[TCP] Waiting for task " + requestId + " (operation = " + op + ") to be executed now...");
+            Object fileSystemOperationResult = newTask.get(
+                    OpenWhiskHandler.tryGetNameNodeInstance().getWorkerThreadTimeoutMs(), TimeUnit.MILLISECONDS);
+
+            // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64 so we
+            // can include it in the JSON response sent back to the invoker of this serverless function.
+            if (fileSystemOperationResult != null) {
+                LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
+                result.addResult(fileSystemOperationResult, true);
+            }
+        } catch (Exception ex) {
+            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
+                    + " to be executed by the worker thread: ", ex);
+            result.addException(ex);
+        }
+    }
+
+    /**
+     * Complete the registration phase with the client's TCP server.
+     * @param tcpClient The TCP connection established with the client.
+     */
+    private void registerWithClient(Client tcpClient) {
+        // Complete the registration with the TCP server.
+        JsonObject registration = new JsonObject();
+        registration.addProperty("op", ServerlessClientServerUtilities.OPERATION_REGISTER);
+        registration.addProperty("functionName", functionName);
+
+        LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP());
+        tcpClient.sendTCP(registration);
     }
 
     /**
@@ -145,16 +242,4 @@ public class NameNodeTCPClient {
     public int numClients() {
         return tcpClients.size();
     }
-
-    /*public int workQueueSize() {
-        return workQueue.size();
-    }
-
-    *//**
-     * Return the work queue object (which is of type ConcurrentLinkedQueue<JsonObject>).
-     * @return the work queue object (which is of type ConcurrentLinkedQueue<JsonObject>).
-     *//*
-    public ConcurrentLinkedQueue<JsonObject> getWorkQueue() {
-        return workQueue;
-    }*/
 }

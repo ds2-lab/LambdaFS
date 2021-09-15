@@ -74,12 +74,14 @@ public class HopsFSUserServer {
      */
     public HopsFSUserServer(Configuration conf) {
         server = new Server() {
+          /**
+           * By providing our own connection implementation, we can store per-connection state
+           * without a connection ID to perform state look-up.
+           */
+          @Override
           protected Connection newConnection() {
-              /**
-               * By providing our own connection implementation, we can store per-connection state
-               * without a connection ID to perform state look-up.
-               */
-              return new NameNodeConnection();
+            LOG.debug("[TCP Server] Creating new NameNodeConnection.");
+            return new NameNodeConnection();
           }
         };
 
@@ -118,18 +120,26 @@ public class HopsFSUserServer {
         server.start();
 
         // Bind to the specified TCP port so the server listens on that port.
-        LOG.debug("HopsFS Client TCP Server binding to port " + tcpPort + " now...");
+        LOG.debug("[TCP SERVER] HopsFS Client TCP Server binding to port " + tcpPort + " now...");
 
         try {
             server.bind(tcpPort);
         }
         catch (BindException ex) {
-            throw new IOException("TCP Server encountered BindException while attempting to bind to port " + tcpPort
-                    + ". Do you already have a serving running on that port?");
+            throw new IOException("[TCP SERVER] TCP Server encountered BindException while attempting to bind to port "
+                    + tcpPort + ". Do you already have a serving running on that port?");
         }
 
         // We need to add some listeners to the server. This is how we add functionality.
         server.addListener(new Listener() {
+            /**
+             * Listener handles connection establishment with remote NameNodes.
+             */
+            public void connected(Connection conn) {
+                LOG.debug("[TCP Server] Connection established with remote NameNode at "
+                        + conn.getRemoteAddressTCP());
+            }
+
             /**
              * This listener handles receiving TCP messages from the name nodes.
              * @param conn The connection to the name node.
@@ -138,18 +148,23 @@ public class HopsFSUserServer {
             public void received(Connection conn, Object object) {
                 NameNodeConnection connection = (NameNodeConnection)conn;
 
-                LOG.debug("Received message from connection " + connection.toString());
+                LOG.debug("[TCP SERVER] Received message from connection " + connection.toString());
 
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof JsonObject) {
                     JsonObject body = (JsonObject)object;
 
                     String functionName = body.getAsJsonPrimitive("functionName").getAsString();
-                    String requestId = body.getAsJsonPrimitive("requestId").getAsString();
                     String operation = body.getAsJsonPrimitive("op").getAsString();
 
-                    LOG.debug("FunctionName: " + functionName + ", RequestID: " + requestId + ", Operation: "
-                            + operation);
+                    String requestId = null;
+
+                    // There won't be a requestId during registration attempts, just when results are being returned.
+                    if (body.has("requestId"))
+                        requestId = body.getAsJsonPrimitive("requestId").getAsString();
+
+                    LOG.debug("[TCP SERVER] FunctionName: " + functionName + ", RequestID: " + requestId
+                            + ", Operation: " + operation);
 
                     // There are currently two different operations that a NameNode may perform.
                     // The first is registration. This operation results in the connection to the NameNode
@@ -159,17 +174,27 @@ public class HopsFSUserServer {
                         // The NameNode is registering with the client (i.e., connecting for the first time,
                         // or at least they are connecting after having previously lost connection).
                         case OPERATION_REGISTER:
-                            LOG.debug("Received registration operation from NameNode " + functionName);
+                            LOG.debug("[TCP SERVER] Received registration operation from NameNode " + functionName);
                             registerNameNode(connection, functionName);
                             break;
                         // The NameNode is returning a result (of a file system operation) to the client.
                         case OPERATION_RESULT:
-                            LOG.debug("Received result from NameNode " + functionName);
+                            LOG.debug("[TCP SERVER] Received result from NameNode " + functionName);
 
                             RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
 
+                            // If there is no request ID, then we have no idea which operation this result is
+                            // associated with, and thus we cannot do anything with it.
+                            if (requestId == null) {
+                                throw new IllegalArgumentException("[TCP Server] TCP Server received response " +
+                                        "containing result of FS operation, but response did not contain a " +
+                                        "request ID.");
+                            }
+
+                            // If there is no future associated with this operation, then we have no means to return
+                            // the result back to the client who issued the file system operation.
                             if (future == null) {
-                                throw new IllegalStateException("TCP Server received response for request "
+                                throw new IllegalStateException("[TCP SERVER] TCP Server received response for request "
                                         + requestId + ", but there is no associated future registered with the server.");
                             }
 
@@ -180,7 +205,8 @@ public class HopsFSUserServer {
                             completedFutures.put(requestId, future);
                             break;
                         default:
-                            LOG.warn("Unknown operation received from NameNode " + functionName + ": " + operation);
+                            LOG.warn("[TCP SERVER] Unknown operation received from NameNode " + functionName + ": "
+                                    + operation);
                     }
                 }
                 else if (object instanceof FrameworkMessage.KeepAlive) {
@@ -188,7 +214,7 @@ public class HopsFSUserServer {
                     // due to timeouts. Just ignore these (i.e., do nothing).
                 }
                 else {
-                    throw new IllegalArgumentException("Received object of unexpected type from remote client "
+                    throw new IllegalArgumentException("[TCP SERVER] Received object of unexpected type from remote client "
                             + connection + ". Object type: " + object.getClass().getSimpleName() + ".");
                 }
             }
@@ -202,11 +228,11 @@ public class HopsFSUserServer {
                 NameNodeConnection connection = (NameNodeConnection)conn;
 
                 if (connection.name != null) {
-                    LOG.debug("Connection to " + connection.name + " lost.");
+                    LOG.debug("[TCP SERVER] Connection to " + connection.name + " lost.");
 
                     activeConnections.remove(connection.name);
                 } else {
-                    LOG.warn("Lost connection to unknown NameNode...");
+                    LOG.warn("[TCP SERVER] Lost connection to unknown NameNode...");
                 }
             }
         });
@@ -234,9 +260,9 @@ public class HopsFSUserServer {
      */
     private void cacheConnection(NameNodeConnection connection, String functionName) {
         if (activeConnections.containsKey(functionName)) {
-            throw new IllegalStateException("Connection with NameNode " + functionName + " already cached locally. "
-                    + "Currently cached connection: " + activeConnections.get(functionName).toString()
-                    + ", new connection: " + connection.toString());
+            throw new IllegalStateException("[TCP SERVER] Connection with NameNode " + functionName
+                    + " already cached locally. " + "Currently cached connection: "
+                    + activeConnections.get(functionName).toString() + ", new connection: " + connection.toString());
         }
 
         LOG.debug("Caching active connection with serverless function \"" + functionName + "\" now...");
@@ -277,26 +303,27 @@ public class HopsFSUserServer {
             if (conn.isConnected()) {
 
                 if (errorIfActive) {
-                    throw new IllegalStateException("Connection to " + functionName + " was found to be active.");
+                    throw new IllegalStateException("[TCP SERVER] Connection to " + functionName
+                            + " was found to be active.");
                 }
 
                 if (deleteIfActive) {
                     conn.close();
                     activeConnections.remove(functionName);
-                    LOG.debug("Closed and removed connection to " + functionName);
+                    LOG.debug("[TCP SERVER] Closed and removed connection to " + functionName);
                     return true;
                 } else {
-                    LOG.debug("Cannot remove connection to " + functionName + " because it is still active " +
-                            "(and the override flag was not set to true).");
+                    LOG.debug("[TCP SERVER] Cannot remove connection to " + functionName
+                            + " because it is still active " + "(and the override flag was not set to true).");
                     return false;
                 }
             } else {
                 activeConnections.remove(functionName);
-                LOG.debug("Removed already-closed connection to " + functionName);
+                LOG.debug("[TCP SERVER] Removed already-closed connection to " + functionName);
                 return true;
             }
         } else {
-            LOG.warn("Cannot remove connection to " + functionName + ". No such connection exists!");
+            LOG.warn("[TCP SERVER] Cannot remove connection to " + functionName + ". No such connection exists!");
             return false;
         }
     }
@@ -361,7 +388,7 @@ public class HopsFSUserServer {
      */
     public RequestResponseFuture issueTcpRequest(int functionNumber, boolean bypassCheck, JsonObject payload) {
         if (!bypassCheck && !connectionExists(functionNumber)) {
-            LOG.warn("Was about to issue TCP request to NameNode deployment " + functionNumber +
+            LOG.warn("[TCP SERVER] Was about to issue TCP request to NameNode deployment " + functionNumber +
                     ", but connection no longer exists...");
             return null;
         }
@@ -396,6 +423,8 @@ public class HopsFSUserServer {
             throws ExecutionException, InterruptedException {
         RequestResponseFuture requestResponseFuture = issueTcpRequest(functionNumber, bypassCheck, payload);
 
+        LOG.debug("[TCP SERVER] Waiting for result from future for request " + requestResponseFuture.getRequestId()
+                + "," + "associated serverless function number = " + functionNumber);
         return requestResponseFuture.get();
     }
 
