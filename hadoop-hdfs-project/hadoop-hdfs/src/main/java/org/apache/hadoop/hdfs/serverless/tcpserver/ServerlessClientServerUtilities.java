@@ -31,5 +31,6 @@ public class ServerlessClientServerUtilities {
         // Register the JsonObject class with the Kryo serializer, as this is the object
         // that clients will use to invoke operations on the NN via TCP requests.
         kryo.register(JsonObject.class);
+        kryo.register(com.google.gson.internal.LinkedTreeMap.class);
     }
 }
