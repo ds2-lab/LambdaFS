@@ -554,27 +554,30 @@ public class DatanodeManager {
               " StorageID " + nodeInfo.getDatanodeUuid() +
               " index " + nodeInfo.getHostName());
       blockManager.datanodeRemoved(nodeInfo, async);
-
     }
     networktopology.remove(nodeInfo);
     decrementVersionCount(nodeInfo.getSoftwareVersion());
 
-    // Remove the metadata of the datanode from intermediate storage.
-    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
-            HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     String dataNodeUuid = nodeInfo.getDatanodeUuid();
-    LOG.info("Removing metadata of DataNode " + dataNodeUuid + " from intermediate storage.");
-    dataNodeDataAccess.removeDataNode(dataNodeUuid);
 
-    // Delete all of the storage reports associated with this DataNode.
+    // First, delete all the storage reports associated with this DataNode.
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> storageReportDataAccess =
             (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     storageReportDataAccess.removeStorageReports(dataNodeUuid);
 
-    // Remove the DatanodeStorage instances associated with this DataNode.
+    // Next, remove the DatanodeStorage instances associated with this DataNode.
     DatanodeStorageDataAccess<DatanodeStorage> datanodeStorageDataAccess =
             (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
+
+    // Finally, remove the metadata of the datanode from intermediate storage. There are foreign key constraints
+    // in place that require us to perform this step last (i.e., after the entries referencing this datanode have
+    // been removed, thereby ensuring that no foreign key constraints are violated).
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
+            HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+
+    LOG.info("Removing metadata of DataNode " + dataNodeUuid + " from intermediate storage.");
+    dataNodeDataAccess.removeDataNode(dataNodeUuid);
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("removed datanode " + nodeInfo);
@@ -838,6 +841,7 @@ public class DatanodeManager {
       // nodeN previously served a different data storage,
       // which is not served by anybody anymore.
       removeDatanode(nodeN, false);
+
       // physically remove node from datanodeMap
       wipeDatanode(nodeN);
       nodeN = null;
