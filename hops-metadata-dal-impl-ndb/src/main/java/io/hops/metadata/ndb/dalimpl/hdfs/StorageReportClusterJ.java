@@ -172,37 +172,21 @@ public class StorageReportClusterJ
     public void removeStorageReports(String datanodeUuid) throws StorageException {
         LOG.info("DELETE StorageReports for DN " + datanodeUuid);
 
-        PreparedStatement s = null;
-        ResultSet result = null;
+        HopsSession session = connector.obtainSession();
+        HopsQueryBuilder queryBuilder = session.getQueryBuilder();
+        HopsQueryDomainType<StorageReportDTO> domainType = queryBuilder.createQueryDefinition(StorageReportDTO.class);
 
-        String query = String.format(DELETE_STORAGE_REPORTS_QUERY, TABLE_NAME, DATANODE_UUID, datanodeUuid);
-        LOG.debug("Executing MySQL query: " + query);
+        HopsPredicate predicateDatanodeUuid =
+                domainType.get("datanodeUuid").equal(domainType.param("datanodeUuidParam"));
+        domainType.where(predicateDatanodeUuid);
 
-        try {
-            Connection conn = mysqlConnector.obtainSession();
-            s = conn.prepareStatement(query);
-            result = s.executeQuery();
-        } catch (SQLException ex) {
-            throw HopsSQLExceptionHelper.wrap(ex);
-        } finally {
-            if (s != null) {
-                try {
-                    s.close();
-                } catch (SQLException ex) {
-                    LOG.warn("Exception when closing the PrepareStatement", ex);
-                }
-            }
+        HopsQuery<StorageReportDTO> query = session.createQuery(domainType);
+        query.setParameter("datanodeUuidParam", datanodeUuid);
 
-            if (result != null) {
-                try {
-                    result.close();
-                } catch (SQLException ex) {
-                    LOG.warn("Exception when closing the ResultSet", ex);
-                }
-            }
+        List<StorageReportDTO> storeReportDTOs = query.getResultList();
 
-            mysqlConnector.closeSession();
-        }
+        session.deletePersistentAll(storeReportDTOs);
+        session.release(storeReportDTOs);
     }
 
     @Override
