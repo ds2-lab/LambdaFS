@@ -194,7 +194,7 @@ public class NameNodeResult {
         }
 
         if (operation != null)
-            json.add("op", operation);
+            json.addProperty("op", operation);
 
         return json;
     }
