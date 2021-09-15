@@ -1,7 +1,10 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.esotericsoftware.kryo.Kryo;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import org.apache.commons.logging.LogFactory;
 
 /**
@@ -32,5 +35,8 @@ public class ServerlessClientServerUtilities {
         // that clients will use to invoke operations on the NN via TCP requests.
         kryo.register(JsonObject.class);
         kryo.register(com.google.gson.internal.LinkedTreeMap.class);
+        kryo.register(JsonElement.class);
+        kryo.register(JsonPrimitive.class);
+        kryo.register(JsonArray.class);
     }
 }
