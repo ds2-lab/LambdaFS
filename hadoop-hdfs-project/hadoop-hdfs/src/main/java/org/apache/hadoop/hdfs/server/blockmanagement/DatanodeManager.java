@@ -562,12 +562,12 @@ public class DatanodeManager {
 
     // First, delete all the storage reports associated with this DataNode.
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> storageReportDataAccess =
-            (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+            (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
     storageReportDataAccess.removeStorageReports(dataNodeUuid);
 
     // Next, remove the DatanodeStorage instances associated with this DataNode.
     DatanodeStorageDataAccess<DatanodeStorage> datanodeStorageDataAccess =
-            (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+            (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
     datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
 
     // Finally, remove the metadata of the datanode from intermediate storage. There are foreign key constraints
