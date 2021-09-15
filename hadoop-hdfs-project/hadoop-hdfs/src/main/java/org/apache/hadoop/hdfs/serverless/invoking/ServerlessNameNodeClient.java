@@ -93,6 +93,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.tcpServer.startServer();
     }
 
+    public void printDebugInformation() {
+        this.tcpServer.printDebugInformation();
+    }
+
     /**
      * Perform an HTTP invocation of a serverless name node function concurrently with a TCP request to the same
      * Serverless NameNode, if a connection to that NameNode already exists. If no such connection exists, then only

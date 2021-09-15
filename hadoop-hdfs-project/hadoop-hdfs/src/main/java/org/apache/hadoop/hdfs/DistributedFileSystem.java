@@ -142,11 +142,17 @@ public class DistributedFileSystem extends FileSystem {
   private class AlternativeDistributedFileSystem extends DistributedFileSystem{
     
   }
+
+  public void printDebugInformation() {
+    this.dfs.printDebugInformation();
+  }
+
   
   @Override
   public void initialize(URI uri, Configuration conf) throws IOException {
     super.initialize(uri, conf);
     getAlternativeSchemeStatistics(getAlternativeScheme(), AlternativeDistributedFileSystem.class, statistics);
+    setConf(conf);
     setConf(conf);
 
     String host = uri.getHost();

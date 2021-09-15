@@ -313,6 +313,19 @@ public class HopsFSUserServer {
         return false;
     }
 
+    public void printDebugInformation() {
+        LOG.debug("========== TCP Server Debug Information ==========");
+        LOG.debug("CONNECTIONS:");
+        LOG.debug("     Number of active connections: " + activeConnections.size());
+        ConcurrentHashMap.KeySetView<String, NameNodeConnection> keySetView = activeConnections.keySet();
+        LOG.debug("     Connected to:");
+        keySetView.forEach(funcName -> LOG.debug("         " + funcName));
+        LOG.debug("FUTURES:");
+        LOG.debug("     Number of active futures: " + activeFutures.size());
+        LOG.debug("     Number of completed futures: " + completedFutures.size());
+        LOG.debug("==================================================");
+    }
+
     /**
      * Register a RequestResponseFuture with the server. The server will post the NameNode's response for the
      * associated request to the Future.
