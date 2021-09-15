@@ -10,6 +10,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -118,7 +119,14 @@ public class HopsFSUserServer {
 
         // Bind to the specified TCP port so the server listens on that port.
         LOG.debug("HopsFS Client TCP Server binding to port " + tcpPort + " now...");
-        server.bind(tcpPort);
+
+        try {
+            server.bind(tcpPort);
+        }
+        catch (BindException ex) {
+            throw new IOException("TCP Server encountered BindException while attempting to bind to port " + tcpPort
+                    + ". Do you already have a serving running on that port?");
+        }
 
         // We need to add some listeners to the server. This is how we add functionality.
         server.addListener(new Listener() {
