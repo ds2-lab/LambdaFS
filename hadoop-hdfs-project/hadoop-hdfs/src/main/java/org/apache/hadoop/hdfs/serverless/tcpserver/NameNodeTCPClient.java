@@ -97,10 +97,11 @@ public class NameNodeTCPClient {
         LOG.debug("Successfully established connection with client " + newClient.getClientId()
                 + " in " + connectMilliseconds + " milliseconds!");
 
-        registerWithClient(tcpClient);
-
         // We need to register whatever classes will be serialized BEFORE any network activity is performed.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
+
+        // Now that we've registered the classes to be transferred, we can register with the server.
+        registerWithClient(tcpClient);
 
         tcpClient.addListener(new Listener() {
             /**
