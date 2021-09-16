@@ -167,10 +167,6 @@ public class NameNodeWorkerThread extends Thread {
 
             return instance;
         }
-
-        private NullResult() {
-
-        }
     }
 
     /**
@@ -187,10 +183,6 @@ public class NameNodeWorkerThread extends Thread {
                 instance = new DuplicateRequest();
 
             return instance;
-        }
-
-        private DuplicateRequest() {
-
         }
     }
 }
