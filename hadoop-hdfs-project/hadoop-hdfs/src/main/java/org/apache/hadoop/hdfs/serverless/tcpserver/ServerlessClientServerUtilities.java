@@ -24,6 +24,13 @@ public class ServerlessClientServerUtilities {
     public static final String OPERATION_RESULT = "RESULT";
 
     /**
+     * This operation is used when the NameNode just wants to report some information to the client.
+     *
+     * As of right now, this information will just be logged/use for debugging purposes.
+     */
+    public static final String OPERATION_INFO = "INFO";
+
+    /**
      * Register all the classes that are going to be sent over the network.
      *
      * This must be done on both the client and the server before any network communication occurs.

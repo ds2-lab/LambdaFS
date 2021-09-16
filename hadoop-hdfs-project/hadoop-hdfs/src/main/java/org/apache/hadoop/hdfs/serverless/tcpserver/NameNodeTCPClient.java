@@ -146,6 +146,7 @@ public class NameNodeTCPClient {
                 else if (object instanceof FrameworkMessage.KeepAlive) {
                     // The server periodically sends KeepAlive objects to prevent the client from disconnecting
                     // due to timeouts. Just ignore these (i.e., do nothing).
+                    return; // Make sure to return, or else we'll send an empty message to the client.
                 }
                 else {
                     // Create and log the exception to be returned to the client,
@@ -158,7 +159,9 @@ public class NameNodeTCPClient {
 
                 String jsonString = new Gson().toJson(tcpResult.toJson(
                         ServerlessClientServerUtilities.OPERATION_RESULT));
-                tcpClient.sendTCP(jsonString);
+                int bytesSent = tcpClient.sendTCP(jsonString);
+
+                LOG.debug("Sent " + bytesSent + " bytes to HopsFS client at " + tcpClient.getRemoteAddressTCP());
             }
 
             public void disconnected (Connection connection) {

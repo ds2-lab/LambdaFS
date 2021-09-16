@@ -192,21 +192,22 @@ public class HopsFSUserServer {
                         case OPERATION_RESULT:
                             LOG.debug("[TCP SERVER] Received result from NameNode " + functionName);
 
-                            RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
-
                             // If there is no request ID, then we have no idea which operation this result is
                             // associated with, and thus we cannot do anything with it.
                             if (requestId == null) {
-                                throw new IllegalArgumentException("[TCP Server] TCP Server received response " +
-                                        "containing result of FS operation, but response did not contain a " +
-                                        "request ID.");
+                                LOG.warn("[TCP Server] TCP Server received response containing result of FS " +
+                                        "operation, but response did not contain a request ID.");
+                                break;
                             }
+
+                            RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
 
                             // If there is no future associated with this operation, then we have no means to return
                             // the result back to the client who issued the file system operation.
                             if (future == null) {
-                                throw new IllegalStateException("[TCP SERVER] TCP Server received response for request "
-                                        + requestId + ", but there is no associated future registered with the server.");
+                                LOG.warn("[TCP SERVER] TCP Server received response for request " + requestId +
+                                        ", but there is no associated future registered with the server.");
+                                break;
                             }
 
                             future.postResult(body.getAsJsonObject("result"));
@@ -406,7 +407,9 @@ public class HopsFSUserServer {
 
         // Send the TCP request to the NameNode.
         Connection tcpConnection = getConnection(functionNumber);
-        tcpConnection.sendTCP(payload.toString());
+        int bytesSent = tcpConnection.sendTCP(payload.toString());
+
+        LOG.debug("Sent " + bytesSent + " bytes to NameNode" + functionNumber + ".");
 
         // Create and register a future to keep track of this request and provide a means for the client to obtain
         // a response from the NameNode, should the client deliver one to us.
