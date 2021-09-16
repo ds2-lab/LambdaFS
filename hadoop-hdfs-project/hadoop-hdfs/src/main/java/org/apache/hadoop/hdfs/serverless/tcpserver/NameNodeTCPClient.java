@@ -116,32 +116,8 @@ public class NameNodeTCPClient {
         Client tcpClient = new Client();
         tcpClient.start();
 
-        // We time how long it takes to establish the TCP connection for debugging/metric-collection purposes.
-        Instant connectStart = Instant.now();
-        tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
-        Instant connectEnd = Instant.now();
-
-        // Compute the duration of the TCP connection establishment.
-        Duration connectDuration = Duration.between(connectStart, connectEnd);
-
-        double connectMilliseconds = TimeUnit.NANOSECONDS.toMillis(connectDuration.getNano()) +
-                TimeUnit.SECONDS.toMillis(connectDuration.getSeconds());
-
-        LOG.debug("Successfully established connection with client " + newClient.getClientId()
-                + " in " + connectMilliseconds + " milliseconds!");
-
         // We need to register whatever classes will be serialized BEFORE any network activity is performed.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
-
-        // Now that we've registered the classes to be transferred, we can register with the server.
-        registerWithClient(tcpClient);
-
-        // Try sleeping for five seconds just to see if the client TCP server sees the registration.
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException ex) {
-            ex.printStackTrace();
-        }
 
         tcpClient.addListener(new Listener() {
             /**
@@ -179,6 +155,23 @@ public class NameNodeTCPClient {
                 tcpClients.remove(newClient);
             }
         });
+
+        // We time how long it takes to establish the TCP connection for debugging/metric-collection purposes.
+        Instant connectStart = Instant.now();
+        tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
+        Instant connectEnd = Instant.now();
+
+        // Compute the duration of the TCP connection establishment.
+        Duration connectDuration = Duration.between(connectStart, connectEnd);
+
+        double connectMilliseconds = TimeUnit.NANOSECONDS.toMillis(connectDuration.getNano()) +
+                TimeUnit.SECONDS.toMillis(connectDuration.getSeconds());
+
+        LOG.debug("Successfully established connection with client " + newClient.getClientId()
+                + " in " + connectMilliseconds + " milliseconds!");
+
+        // Now that we've registered the classes to be transferred, we can register with the server.
+        registerWithClient(tcpClient);
 
         tcpClients.put(newClient, tcpClient);
 

@@ -85,6 +85,11 @@ public class HopsFSUserServer {
           }
         };
 
+        // First, register the JsonObject class with the Kryo serializer.
+        ServerlessClientServerUtilities.registerClassesToBeTransferred(server.getKryo());
+
+        addListenersToServer();
+
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
         this.activeConnections = new ConcurrentHashMap<>();
@@ -113,9 +118,6 @@ public class HopsFSUserServer {
     public void startServer() throws IOException {
         LOG.debug("Starting HopsFS Client TCP Server now...");
 
-        // First, register the JsonObject class with the Kryo serializer.
-        ServerlessClientServerUtilities.registerClassesToBeTransferred(server.getKryo());
-
         // Start the TCP server.
         server.start();
 
@@ -129,7 +131,12 @@ public class HopsFSUserServer {
             throw new IOException("[TCP SERVER] TCP Server encountered BindException while attempting to bind to port "
                     + tcpPort + ". Do you already have a serving running on that port?");
         }
+    }
 
+    /**
+     * Add the various Listeners/network handlers to the TCP server.
+     */
+    private void addListenersToServer() {
         // We need to add some listeners to the server. This is how we add functionality.
         server.addListener(new Listener() {
             /**
