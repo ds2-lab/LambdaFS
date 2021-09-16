@@ -157,12 +157,12 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         builder.append(blockingParameter);
         String functionUri = builder.toString();
 
-        LOG.debug("invokeNameNodeViaHttpPost() function called for operation \"" + operationName
+        /*LOG.debug("invokeNameNodeViaHttpPost() function called for operation \"" + operationName
                 + "\". Printing call stack now...");
         StackTraceElement[] elements = Thread.currentThread().getStackTrace();
         for (StackTraceElement element : elements) {
             LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
-        }
+        }*/
 
         LOG.info(String.format("Preparing to invoke OpenWhisk serverless function with URI \"%s\" \nfor FS operation \"%s\" now...",
                 functionUri, operationName));

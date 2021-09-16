@@ -140,7 +140,7 @@ public class NameNodeTCPClient {
 
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
-                    JsonObject jsonObject = JsonParser.parseString((String)object).getAsJsonObject();
+                    JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
                     handleWorkAssignment(jsonObject, tcpResult);
                 }
                 else if (object instanceof FrameworkMessage.KeepAlive) {
