@@ -165,8 +165,7 @@ public class HopsFSUserServer {
                             //JsonParser.parseString((String)object).getAsJsonObject();
 
                     LOG.debug("[TCP Server] Received message from NameNode at " + connection.toString() + " at " +
-                            connection.getRemoteAddressTCP() + ": " + object);
-                    LOG.debug(body);
+                            connection.getRemoteAddressTCP() + ".");
 
                     String functionName = body.getAsJsonPrimitive("functionName").getAsString();
                     String operation = body.getAsJsonPrimitive("op").getAsString();
@@ -213,7 +212,7 @@ public class HopsFSUserServer {
                                 break;
                             }
 
-                            future.postResult(body.getAsJsonObject("RESULT"));
+                            future.postResult(body);
 
                             // Update state pertaining to futures.
                             activeFutures.remove(requestId);
