@@ -50,8 +50,15 @@ public class NameNodeResult {
      */
     private boolean hasResult = false;
 
-    public NameNodeResult(String functionName) {
+    /**
+     * Request ID associated with this result.
+     */
+    private final String requestId;
+
+
+    public NameNodeResult(String functionName, String requestId) {
         this.functionName = functionName;
+        this.requestId = requestId;
         this.exceptions = new ArrayList<>();
     }
 
@@ -201,6 +208,8 @@ public class NameNodeResult {
             json.addProperty("op", operation);
 
         json.addProperty("functionName", functionName);
+
+        json.addProperty("requestId", requestId);
 
         return json;
     }

@@ -195,7 +195,7 @@ public class OpenWhiskHandler {
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                      String functionName, String clientIPAddress, String requestId,
                                      String clientName, boolean isClientInvoker) {
-        NameNodeResult result = new NameNodeResult(functionName);
+        NameNodeResult result = new NameNodeResult(functionName, requestId);
 
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
         // If this container was cold prior to this invocation, then we'll actually be creating the instance now.

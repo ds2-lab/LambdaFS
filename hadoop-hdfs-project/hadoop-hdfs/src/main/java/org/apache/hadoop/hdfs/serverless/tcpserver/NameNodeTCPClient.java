@@ -136,12 +136,11 @@ public class NameNodeTCPClient {
             public void received(Connection connection, Object object) {
                 LOG.debug("[TCP Client] Received message from connection " + connection.toString());
 
-                NameNodeResult tcpResult = new NameNodeResult(functionName);
-
+                NameNodeResult tcpResult;
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
                     JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
-                    handleWorkAssignment(jsonObject, tcpResult);
+                    tcpResult = handleWorkAssignment(jsonObject);
                 }
                 else if (object instanceof FrameworkMessage.KeepAlive) {
                     // The server periodically sends KeepAlive objects to prevent the client from disconnecting
@@ -154,6 +153,7 @@ public class NameNodeTCPClient {
                     IllegalArgumentException ex = new IllegalArgumentException(
                             "[TCP Client] Received object of unexpected type from client " + tcpClient
                                     + ". Object type: " + object.getClass().getSimpleName() + ".");
+                    tcpResult = new NameNodeResult(functionName, "N/A");
                     tcpResult.addException(ex);
                 }
 
@@ -193,7 +193,7 @@ public class NameNodeTCPClient {
         return true;
     }
 
-    private void handleWorkAssignment(JsonObject args, NameNodeResult result) {
+    private NameNodeResult handleWorkAssignment(JsonObject args) {
         String requestId = args.getAsJsonPrimitive("requestId").getAsString();
         String op = args.getAsJsonPrimitive("op").getAsString();
         JsonObject fsArgs = args.getAsJsonObject("fsArgs");
@@ -206,7 +206,7 @@ public class NameNodeTCPClient {
             LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
         LOG.debug("======================================================");
 
-        NameNodeResult tcpResult = new NameNodeResult(functionName);
+        NameNodeResult tcpResult = new NameNodeResult(functionName, requestId);
 
         // Create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.

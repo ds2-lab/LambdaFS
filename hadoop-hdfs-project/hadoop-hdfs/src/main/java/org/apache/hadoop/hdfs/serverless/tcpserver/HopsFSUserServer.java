@@ -161,7 +161,8 @@ public class HopsFSUserServer {
 
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
-                    JsonObject body = JsonParser.parseString((String)object).getAsJsonObject();
+                    JsonObject body = new JsonParser().parse((String)object).getAsJsonObject();
+                            //JsonParser.parseString((String)object).getAsJsonObject();
 
                     LOG.debug("[TCP Server] Received message from NameNode at " + connection.toString() + " at " +
                             connection.getRemoteAddressTCP() + ": " + object);
