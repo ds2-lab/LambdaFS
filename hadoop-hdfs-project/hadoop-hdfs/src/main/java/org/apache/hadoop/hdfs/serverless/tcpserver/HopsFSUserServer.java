@@ -5,6 +5,8 @@ import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import jdk.nashorn.internal.runtime.regexp.joni.ast.StringNode;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -158,8 +160,8 @@ public class HopsFSUserServer {
                 LOG.debug("[TCP SERVER] Received message from connection " + connection.toString());
 
                 // If we received a JsonObject, then add it to the queue for processing.
-                if (object instanceof JsonObject) {
-                    JsonObject body = (JsonObject)object;
+                if (object instanceof String) {
+                    JsonObject body = JsonParser.parseString((String)object).getAsJsonObject();
 
                     String functionName = body.getAsJsonPrimitive("functionName").getAsString();
                     String operation = body.getAsJsonPrimitive("op").getAsString();
@@ -401,7 +403,7 @@ public class HopsFSUserServer {
 
         // Send the TCP request to the NameNode.
         Connection tcpConnection = getConnection(functionNumber);
-        tcpConnection.sendTCP(payload);
+        tcpConnection.sendTCP(payload.toString());
 
         // Create and register a future to keep track of this request and provide a means for the client to obtain
         // a response from the NameNode, should the client deliver one to us.

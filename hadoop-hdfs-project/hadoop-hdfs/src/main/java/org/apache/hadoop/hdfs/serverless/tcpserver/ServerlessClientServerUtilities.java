@@ -33,10 +33,10 @@ public class ServerlessClientServerUtilities {
     public static void registerClassesToBeTransferred(Kryo kryo) {
         // Register the JsonObject class with the Kryo serializer, as this is the object
         // that clients will use to invoke operations on the NN via TCP requests.
-        kryo.register(JsonObject.class);
+        /*kryo.register(JsonObject.class);
         kryo.register(com.google.gson.internal.LinkedTreeMap.class);
         kryo.register(JsonElement.class);
-        // kryo.register(JsonPrimitive.class);
-        kryo.register(JsonArray.class);
+        kryo.register(JsonPrimitive.class);
+        kryo.register(JsonArray.class);*/
     }
 }

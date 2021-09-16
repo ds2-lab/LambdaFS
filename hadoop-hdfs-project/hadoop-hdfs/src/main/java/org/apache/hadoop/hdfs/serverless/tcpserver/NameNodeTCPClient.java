@@ -3,8 +3,10 @@ package org.apache.hadoop.hdfs.serverless.tcpserver;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
@@ -136,8 +138,9 @@ public class NameNodeTCPClient {
                 NameNodeResult tcpResult = new NameNodeResult();
 
                 // If we received a JsonObject, then add it to the queue for processing.
-                if (object instanceof JsonObject) {
-                    handleWorkAssignment((JsonObject) object, tcpResult);
+                if (object instanceof String) {
+                    JsonObject jsonObject = JsonParser.parseString((String)object).getAsJsonObject();
+                    handleWorkAssignment(jsonObject, tcpResult);
                 }
                 else {
                     // Create and log the exception to be returned to the client,
@@ -148,7 +151,9 @@ public class NameNodeTCPClient {
                     tcpResult.addException(ex);
                 }
 
-                tcpClient.sendTCP(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT));
+                String jsonString = new Gson().toJson(tcpResult.toJson(
+                        ServerlessClientServerUtilities.OPERATION_RESULT));
+                tcpClient.sendTCP(jsonString);
             }
 
             public void disconnected (Connection connection) {
@@ -254,7 +259,7 @@ public class NameNodeTCPClient {
         registration.addProperty("functionName", functionName);
 
         LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP() + " now...");
-        int bytesSent = tcpClient.sendTCP(registration);
+        int bytesSent = tcpClient.sendTCP(registration.toString());
         LOG.debug("Sent " + bytesSent + " bytes to HopsFS client at " +  tcpClient.getRemoteAddressTCP() +
                 " during registration.");
     }
