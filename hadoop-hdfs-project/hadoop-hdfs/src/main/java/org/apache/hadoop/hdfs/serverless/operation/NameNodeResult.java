@@ -41,12 +41,18 @@ public class NameNodeResult {
     private ServerlessFunctionMapping serverlessFunctionMapping;
 
     /**
+     * The name of the serverless function all of this is running in/on.
+     */
+    private final String functionName;
+
+    /**
      * Flag which indicates whether there is a result.
      */
     private boolean hasResult = false;
 
-    public NameNodeResult() {
-        exceptions = new ArrayList<Throwable>();
+    public NameNodeResult(String functionName) {
+        this.functionName = functionName;
+        this.exceptions = new ArrayList<>();
     }
 
     /**
@@ -193,6 +199,8 @@ public class NameNodeResult {
 
         if (operation != null)
             json.addProperty("op", operation);
+
+        json.addProperty("functionName", functionName);
 
         return json;
     }

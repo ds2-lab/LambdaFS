@@ -157,15 +157,12 @@ public class HopsFSUserServer {
             public void received(Connection conn, Object object) {
                 NameNodeConnection connection = (NameNodeConnection)conn;
 
-                LOG.debug("[TCP SERVER] Received message from connection " + connection.toString() + " at " +
-                        conn.getRemoteAddressTCP() + ": " + object.toString());
-
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
                     JsonObject body = JsonParser.parseString((String)object).getAsJsonObject();
 
-                    LOG.debug("[TCP Server] Received message from NameNode at " + conn.toString() + " at " +
-                            conn.getRemoteAddressTCP() + ": " + object);
+                    LOG.debug("[TCP Server] Received message from NameNode at " + connection.toString() + " at " +
+                            connection.getRemoteAddressTCP() + ": " + object);
                     LOG.debug(body);
 
                     String functionName = body.getAsJsonPrimitive("functionName").getAsString();
@@ -228,8 +225,9 @@ public class HopsFSUserServer {
                     // due to timeouts. Just ignore these (i.e., do nothing).
                 }
                 else {
-                    throw new IllegalArgumentException("[TCP SERVER] Received object of unexpected type from remote client "
-                            + connection + ". Object type: " + object.getClass().getSimpleName() + ".");
+                    LOG.warn("[TCP SERVER] Received object of unexpected type from remote client " + connection +
+                            " at " + connection.getRemoteAddressTCP() + ". Object type: " +
+                            object.getClass().getSimpleName() + ".");
                 }
             }
 

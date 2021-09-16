@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
+import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -135,12 +136,16 @@ public class NameNodeTCPClient {
             public void received(Connection connection, Object object) {
                 LOG.debug("[TCP Client] Received message from connection " + connection.toString());
 
-                NameNodeResult tcpResult = new NameNodeResult();
+                NameNodeResult tcpResult = new NameNodeResult(functionName);
 
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
                     JsonObject jsonObject = JsonParser.parseString((String)object).getAsJsonObject();
                     handleWorkAssignment(jsonObject, tcpResult);
+                }
+                else if (object instanceof FrameworkMessage.KeepAlive) {
+                    // The server periodically sends KeepAlive objects to prevent the client from disconnecting
+                    // due to timeouts. Just ignore these (i.e., do nothing).
                 }
                 else {
                     // Create and log the exception to be returned to the client,
@@ -198,7 +203,7 @@ public class NameNodeTCPClient {
             LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
         LOG.debug("======================================================");
 
-        NameNodeResult tcpResult = new NameNodeResult();
+        NameNodeResult tcpResult = new NameNodeResult(functionName);
 
         // Create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
