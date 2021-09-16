@@ -91,8 +91,9 @@ public class NameNodeTCPClient {
 
         // Compute the duration of the TCP connection establishment.
         Duration connectDuration = Duration.between(connectStart, connectEnd);
-        double connectMilliseconds = ((double)connectDuration.getNano() / 1000.0) +
-                ((double)connectDuration.getSeconds() * 1000);
+
+        double connectMilliseconds = TimeUnit.NANOSECONDS.toMillis(connectDuration.getNano()) +
+                TimeUnit.SECONDS.toMillis(connectDuration.getSeconds());
 
         LOG.debug("Successfully established connection with client " + newClient.getClientId()
                 + " in " + connectMilliseconds + " milliseconds!");
@@ -102,6 +103,13 @@ public class NameNodeTCPClient {
 
         // Now that we've registered the classes to be transferred, we can register with the server.
         registerWithClient(tcpClient);
+
+        // Try sleeping for five seconds just to see if the client TCP server sees the registration.
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
 
         tcpClient.addListener(new Listener() {
             /**
@@ -217,9 +225,9 @@ public class NameNodeTCPClient {
         registration.addProperty("op", ServerlessClientServerUtilities.OPERATION_REGISTER);
         registration.addProperty("functionName", functionName);
 
-        LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP());
+        LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP() + " now...");
         int bytesSent = tcpClient.sendTCP(registration);
-        LOG.debug("Sent " + bytesSent + " to HopsFS client at " +  tcpClient.getRemoteAddressTCP() +
+        LOG.debug("Sent " + bytesSent + " bytes to HopsFS client at " +  tcpClient.getRemoteAddressTCP() +
                 " during registration.");
     }
 

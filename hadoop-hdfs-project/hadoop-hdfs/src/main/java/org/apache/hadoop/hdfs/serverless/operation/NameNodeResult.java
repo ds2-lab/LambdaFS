@@ -133,8 +133,6 @@ public class NameNodeResult {
             }
 
             LOG.info(builder.toString());
-        } else {
-            LOG.info("Number of exceptions: 0");
         }
 
         LOG.info("----------------------------------------------------");
