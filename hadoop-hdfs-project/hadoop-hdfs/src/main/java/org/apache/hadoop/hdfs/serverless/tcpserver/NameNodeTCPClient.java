@@ -132,6 +132,11 @@ public class NameNodeTCPClient {
 
                 connection.sendTCP(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT));
             }
+
+            public void disconnected (Connection connection) {
+                LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
+                        " at " + newClient.getClientIp());
+            }
         });
 
         tcpClients.put(newClient, tcpClient);
