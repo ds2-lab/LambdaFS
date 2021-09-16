@@ -28,6 +28,7 @@ import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
+import org.codehaus.jackson.impl.JsonReadContext;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -243,11 +244,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("offset", offset);
         opArguments.put("length", length);
 
-        JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "getBlockLocations",
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "getBlockLocations",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation getBlockLocations to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation getBlockLocations to NameNode.");
+        }
 
         Object result = null;
         try {
@@ -280,10 +287,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public FsServerDefaults getServerDefaults() throws IOException {
         FsServerDefaults serverDefaults = null;
 
-        // We do not have any additional/non-default arguments to pass to the NN.
-        JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "getServerDefaults",
-                dfsClient.serverlessEndpoint, new HashMap<>(), new HashMap<>());
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "getServerDefaults",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    new ArgumentContainer());
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation getServerDefaults to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation getServerDefaults to NameNode.");
+        }
 
         Object result = null;
         try {
@@ -337,11 +351,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             opArguments.put("targetReplication", policy.getTargetReplication());
         }
 
-        JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "create",
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "create",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation create to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation create to NameNode.");
+        }
 
         // Extract the result from the Json response.
         // If there's an exception, then it will be logged by this function.
@@ -384,11 +404,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("clientName", clientName);
         opArguments.put("flag", enumSetBase64);
 
-        JsonObject responseJson = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "append",
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "append",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation append to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation append to NameNode.");
+        }
 
         // Extract the result from the Json response.
         // If there's an exception, then it will be logged by this function.
@@ -431,11 +457,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("src", src);
         opArguments.put("metaStatus", metaStatus.ordinal());
 
-        serverlessInvoker.invokeNameNodeViaHttpPost(
-                "setMetaStatus",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "setMetaStatus",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation setMetaStatus to NameNode:", ex);
+        }
     }
 
     @Override
@@ -445,11 +475,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("src", src);
         opArguments.put("permission", permission);
 
-        serverlessInvoker.invokeNameNodeViaHttpPost(
-                "setPermission",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "setPermission",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation setPermission to NameNode:", ex);
+        }
     }
 
     @Override
@@ -460,11 +494,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("username", username);
         opArguments.put("groupname", groupname);
 
-        serverlessInvoker.invokeNameNodeViaHttpPost(
-                "setOwner",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "setOwner",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation setOwner to NameNode:", ex);
+        }
     }
 
     @Override
@@ -476,11 +514,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("fileId", fileId);
         opArguments.put("b", b);
 
-        serverlessInvoker.invokeNameNodeViaHttpPost(
-                "abandonBlock",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "abandonBlock",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation abandonBlock to NameNode:", ex);
+        }
     }
 
     @Override
@@ -496,11 +538,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("favoredNodes", favoredNodes);
         opArguments.put("excludeNodes", excludeNodes);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "addBlock",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "addBlock",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation addBlock to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation addBlock to NameNode.");
+        }
 
         Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
 
@@ -531,11 +579,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("fileId", fileId);
         opArguments.put("data", data);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "complete",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "complete",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation complete to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation complete to NameNode.");
+        }
 
         Object result = null;
         try {
@@ -569,11 +623,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("options", optionsArr);
 
-        serverlessInvoker.invokeNameNodeViaHttpPost(
-                "rename",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "rename",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation rename to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation rename to NameNode.");
+        }
 
         return true;
     }
@@ -585,11 +644,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("trg", trg);
         opArguments.put("srcs", srcs);
 
-        serverlessInvoker.invokeNameNodeViaHttpPost(
-                "concat",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "concat",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation concat to NameNode:", ex);
+        }
     }
 
     @Override
@@ -607,11 +670,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("options", optionsArr);
 
-        serverlessInvoker.invokeNameNodeViaHttpPost(
-                "rename",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "rename", // Not rename2, we just map 'rename' to 'renameTo' or 'rename2' or whatever
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation rename to NameNode:", ex);
+        }
     }
 
     @Override
@@ -622,11 +689,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("newLength", newLength);
         opArguments.put("clientName", clientName);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "truncate",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "truncate",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation truncate to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation truncate to NameNode.");
+        }
 
         Object result = null;
         try {
@@ -649,11 +722,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("src", src);
         opArguments.put("recursive", recursive);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "delete",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "delete",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation delete to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation delete to NameNode.");
+        }
 
         Object result = null;
         try {
@@ -677,11 +756,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("masked", masked);
         opArguments.put("createParent", createParent);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "mkdirs",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "mkdirs",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation mkdirs to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation mkdirs to NameNode.");
+        }
 
         boolean result = false;
         try {
@@ -703,11 +788,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("startAfter", startAfter);
         opArguments.put("needLocation", needLocation);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "getListing",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "getListing",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation getListing to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
+        }
 
         Object result = null;
         try {
@@ -729,11 +820,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("clientName", clientName);
 
-        serverlessInvoker.invokeNameNodeViaHttpPost(
-            "renewLease",
-            serverlessEndpointBase,
-            null, // We do not have any additional/non-default arguments to pass to the NN.
-            opArguments);
+        try {
+            submitOperationToNameNode(
+                    "renewLease",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation renewLease to NameNode:", ex);
+        }
     }
 
     @Override
@@ -792,11 +887,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("src", src);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "getFileInfo",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "getFileInfo",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation getFileInfo to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation getFileInfo to NameNode.");
+        }
 
         Object result = null;
         try {
@@ -818,11 +919,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("src", src);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "isFileClosed",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "isFileClosed",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation isFileClosed to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation isFileClosed to NameNode.");
+        }
 
         Object result = null;
         try {
@@ -846,11 +953,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("src", src);
 
-        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "getFileLinkInfo",
-                serverlessEndpointBase,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "getFileLinkInfo",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation getFileLinkInfo to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation isFileClosed to NameNode.");
+        }
 
         Object result = null;
         try {
@@ -1081,11 +1194,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("userName", userName);
 
-        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "addUser",
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "addUser",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation addUser to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation addUser to NameNode.");
+        }
     }
 
     @Override
@@ -1093,11 +1211,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("groupName", groupName);
 
-        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "addGroup",
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "addGroup",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation addGroup to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation addGroup to NameNode.");
+        }
     }
 
     @Override
@@ -1106,11 +1229,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("userName", userName);
         opArguments.put("groupName", groupName);
 
-        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "addUserToGroup",
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "addUserToGroup",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation addUserToGroup to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation addUserToGroup to NameNode.");
+        }
     }
 
     @Override
@@ -1118,11 +1246,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("userName", userName);
 
-        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "removeUser",
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "removeUser",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation removeUser to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation removeUser to NameNode.");
+        }
     }
 
     @Override
@@ -1130,11 +1263,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         ArgumentContainer opArguments = new ArgumentContainer();
         opArguments.put("groupName", groupName);
 
-        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "removeGroup",
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "removeGroup",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation removeGroup to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation removeGroup to NameNode.");
+        }
     }
 
     @Override
@@ -1143,11 +1281,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("userName", userName);
         opArguments.put("groupName", groupName);
 
-        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                "removeUserFromGroup",
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+        try {
+            submitOperationToNameNode(
+                    "removeUserFromGroup",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation removeUserFromGroup to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation removeUserFromGroup to NameNode.");
+        }
     }
 
     @Override
