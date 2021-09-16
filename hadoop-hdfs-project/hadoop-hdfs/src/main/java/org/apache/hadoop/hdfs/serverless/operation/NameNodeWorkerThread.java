@@ -80,6 +80,7 @@ public class NameNodeWorkerThread extends Thread {
                 if (isTaskDuplicate(task)) {
                     LOG.warn("Encountered duplicate task " + task.getTaskId() + " (operation = "
                             + task.getOperationName() + ").");
+                    task.postResult(DuplicateRequest.getInstance());
                     continue;
                 }
 
@@ -158,13 +159,38 @@ public class NameNodeWorkerThread extends Thread {
     public static class NullResult implements Serializable {
         private static final long serialVersionUID = -1663521618378958991L;
 
-        static NullResult instance;
+        private static NullResult instance;
 
         public static NullResult getInstance() {
             if (instance == null)
                 instance = new NullResult();
 
             return instance;
+        }
+
+        private NullResult() {
+
+        }
+    }
+
+    /**
+     * Used to indicate that the request was a duplicate and therefore no result will be returned.
+     */
+    public static class DuplicateRequest implements Serializable {
+
+        private static final long serialVersionUID = 7192661459086515520L;
+
+        private static DuplicateRequest instance;
+
+        public static DuplicateRequest getInstance() {
+            if (instance == null)
+                instance = new DuplicateRequest();
+
+            return instance;
+        }
+
+        private DuplicateRequest() {
+
         }
     }
 }

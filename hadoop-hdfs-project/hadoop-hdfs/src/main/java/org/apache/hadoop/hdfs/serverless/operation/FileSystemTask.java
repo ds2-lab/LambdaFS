@@ -74,7 +74,8 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
         final T resultOrNull = this.resultQueue.take();
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
-        if (resultOrNull == NameNodeWorkerThread.NullResult.getInstance())
+        if (resultOrNull == NameNodeWorkerThread.NullResult.getInstance() ||
+                resultOrNull == NameNodeWorkerThread.DuplicateRequest.getInstance())
             return null;
 
         return resultOrNull;
@@ -83,13 +84,16 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
     @Override
     public synchronized T get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
+
         final T resultOrNull = this.resultQueue.poll(timeout, unit);
+
         if (resultOrNull == null) {
             throw new TimeoutException();
         }
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
-        if (resultOrNull == NameNodeWorkerThread.NullResult.getInstance())
+        if ((resultOrNull == NameNodeWorkerThread.NullResult.getInstance() ||
+                resultOrNull == NameNodeWorkerThread.DuplicateRequest.getInstance()))
             return null;
 
         return resultOrNull;
