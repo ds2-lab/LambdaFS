@@ -36,7 +36,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(JsonObject.class);
         kryo.register(com.google.gson.internal.LinkedTreeMap.class);
         kryo.register(JsonElement.class);
-        kryo.register(JsonPrimitive.class);
+        // kryo.register(JsonPrimitive.class);
         kryo.register(JsonArray.class);
     }
 }

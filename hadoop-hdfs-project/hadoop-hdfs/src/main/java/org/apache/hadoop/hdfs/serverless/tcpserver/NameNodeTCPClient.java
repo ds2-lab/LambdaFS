@@ -148,7 +148,7 @@ public class NameNodeTCPClient {
                     tcpResult.addException(ex);
                 }
 
-                connection.sendTCP(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT));
+                tcpClient.sendTCP(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT));
             }
 
             public void disconnected (Connection connection) {
