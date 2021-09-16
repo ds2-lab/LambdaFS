@@ -771,15 +771,36 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("Processing storage reports from " + convertedStorageReportMap.size() + " data nodes now...");
 
-    for (DatanodeRegistration registration : datanodeRegistrations) {
+    int numSuccess = 0;
 
-      // For each registration, we call the `handleServerlessStorageReports()` function. We pass the given
-      // registration, then we trieve the list of storage reports from the mapping, convert it to an Object[],
-      // and cast it to an array of HopsFS StorageReport[].
-      this.namesystem.handleServerlessStorageReports(
-              registration, convertedStorageReportMap.get(
-                      registration.getDatanodeUuid()).toArray(
-                      new org.apache.hadoop.hdfs.server.protocol.StorageReport[0]));
+    // For each registration, we call the `handleServerlessStorageReports()` function. We pass the given
+    // registration, then we retrieve the list of storage reports from the mapping, convert it to an Object[],
+    // and cast it to an array of HopsFS StorageReport[].
+    for (DatanodeRegistration registration : datanodeRegistrations) {
+      try {
+        this.namesystem.handleServerlessStorageReports(registration, convertedStorageReportMap.get(
+                        registration.getDatanodeUuid()).toArray(
+                        org.apache.hadoop.hdfs.server.protocol.StorageReport.EMPTY_ARRAY));
+        numSuccess++; // We successfully processed those reports, so increment this counter.
+      } catch (IOException ex) {
+        // We catch this exception so that the entire NameNode doesn't fail if just one of the DataNodes fails
+        // to register. There can also be issues where an old DataNode crashed completely and wasn't able to remove
+        // its metadata from intermediate storage before exiting.
+
+        // TODO: Keep track of failures to register DN entries in intermediate storage. If enough NNs fail to
+        //       register a particular DataNode, we could just consider than DN to have failed, and one of the NNs
+        //       could remove the metadata from intermediate storage, and possibly update a separate table to indicate
+        //       that the DN failed. That DataNode, if it is in-fact running, could watch for NNs reporting its own
+        //       failure, and then try to resolve the issue and eventually rewrite its metadata to intermediate storage.
+        LOG.warn("Failed to handle storage reports for DataNode " + registration.getDatanodeUuid() + ": ", ex);
+      }
+    }
+
+    // If we didn't register ANY DataNodes, then we should raise an exception here,
+    // as we won't have any DataNodes with which to complete file system operations.
+    if (numSuccess == 0) {
+      throw new IOException("Failed to successfully process any of the " + datanodeRegistrations.size() +
+              " registration(s).");
     }
 
     // Update the groupIds map.
@@ -793,6 +814,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
   }
 
+  /**
+   * Retrieve Intermediate Block Reports from intermediate storage and process them.
+   */
   private void getAndProcessIntermediateBlockReports() throws IOException, ClassNotFoundException {
     IntermediateBlockReportDataAccess<IntermediateBlockReport> dataAccess =
             (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
@@ -848,10 +872,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     for (DataNodeMeta dataNodeMeta : dataNodes) {
       String datanodeUuid = dataNodeMeta.getDatanodeUuid();
-      LOG.info("Discovered " + dataNodeMeta.toString());
-      LOG.info("IP Address: {}, Hostname: {}, Xfer Port: {}, Info Port: {}, Info Secure Port: {}, IPC Port: {}",
-              dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(), dataNodeMeta.getXferPort(),
-              dataNodeMeta.getInfoPort(), dataNodeMeta.getInfoSecurePort(), dataNodeMeta.getIpcPort());
+      LOG.info("Discovered DataNode: " + dataNodeMeta);
 
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),

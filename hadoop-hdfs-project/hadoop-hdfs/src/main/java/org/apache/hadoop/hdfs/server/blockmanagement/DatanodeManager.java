@@ -31,10 +31,7 @@ import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
 import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
 import io.hops.metadata.hdfs.dal.IntermediateBlockReportDataAccess;
 import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
-import io.hops.metadata.hdfs.entity.DataNodeMeta;
-import io.hops.metadata.hdfs.entity.DatanodeStorage;
-import io.hops.metadata.hdfs.entity.INodeIdentifier;
-import io.hops.metadata.hdfs.entity.IntermediateBlockReport;
+import io.hops.metadata.hdfs.entity.*;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.LockFactory;
@@ -633,7 +630,7 @@ public class DatanodeManager {
         removeDatanode = true;
       }
     }
-    //HOP removeDatanode might take verylong time. taking it out of the synchronized section.
+    //HOP removeDatanode might take very long time. taking it out of the synchronized section.
     if (removeDatanode) {
       removeDatanode(d, true);
     }
@@ -850,7 +847,8 @@ public class DatanodeManager {
         .getDatanodeByXferAddr(nodeReg.getIpAddr(), nodeReg.getXferPort());
 
     if (nodeN != null && nodeN != nodeS) {
-      ServerlessNameNode.LOG.info("BLOCK* registerDatanode: " + nodeN);
+      ServerlessNameNode.LOG.info("BLOCK* registerDatanode: " + nodeN
+              + " (Node ID = " + nodeN.getDatanodeUuid() + ")");
       // nodeN previously served a different data storage,
       // which is not served by anybody anymore.
       removeDatanode(nodeN, false);
@@ -1325,28 +1323,36 @@ public class DatanodeManager {
                                              StorageReport[] reports) throws IOException {
     synchronized (heartbeatManager) {
       synchronized (datanodeMap) {
-        DatanodeDescriptor nodeinfo = null;
+        DatanodeDescriptor nodeInfo = null;
+        String dataNodeUuid = nodeReg.getDatanodeUuid();
 
         try {
-          nodeinfo = getDatanode(nodeReg);
+          nodeInfo = getDatanode(nodeReg);
         } catch (UnregisteredNodeException e) {
-          LOG.error("DataNode " + nodeReg.getDatanodeUuid() + " appears to be unregistered!");
+          LOG.error("DataNode " + dataNodeUuid + " appears to be unregistered!");
           throw e;
         }
 
         // Check if this datanode should actually be shutdown instead.
-        if (nodeinfo != null && nodeinfo.isDisallowed()) {
-          setDatanodeDead(nodeinfo);
-          throw new DisallowedDatanodeException(nodeinfo);
+        if (nodeInfo != null && nodeInfo.isDisallowed()) {
+          setDatanodeDead(nodeInfo);
+          throw new DisallowedDatanodeException(nodeInfo);
         }
 
-        if (nodeinfo == null || !nodeinfo.isAlive) {
-          LOG.error("DataNode " + nodeReg.getDatanodeUuid() + " appears to be unregistered and not alive!");
+        if (nodeInfo == null || !nodeInfo.isAlive) {
+          LOG.error("DataNode " + dataNodeUuid + " appears to be unregistered and not alive!");
         }
 
-        LOG.info("Calling the `updateHeartbeat()` function now...");
-        heartbeatManager.updateHeartbeat(nodeinfo, reports, 0, 0, 0, 0,
-                null);
+        try {
+          heartbeatManager.updateHeartbeat(nodeInfo, reports, 0, 0,
+                  0, 0, null);
+        } catch (NullPointerException ex) {
+          LOG.error("Encountered NullPointerException while updating heartbeat for DataNode " + dataNodeUuid, ex);
+
+          // This will be caught and handled/logged.
+          throw new IOException("Unable to process registration for DataNode " + dataNodeUuid +
+                  ". The DataNode appears to be unregistered and/or not alive.");
+        }
       }
     }
   }

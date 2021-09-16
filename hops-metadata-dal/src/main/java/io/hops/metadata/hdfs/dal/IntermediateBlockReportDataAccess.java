@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface IntermediateBlockReportDataAccess<T> extends EntityDataAccess {
     /**
-     * Find and retun the intermediate block report identified by the given reportId and associated with the
+     * Find and return the intermediate block report identified by the given reportId and associated with the
      * datanode identified by the given UUID.
      * @param reportId ID of the desired report.
      * @param datanodeUuid The datanode with which the report is associated/originiated from.
