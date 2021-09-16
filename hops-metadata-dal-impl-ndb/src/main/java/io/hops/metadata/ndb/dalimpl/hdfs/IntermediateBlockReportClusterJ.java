@@ -58,11 +58,15 @@ public class IntermediateBlockReportClusterJ
         return convert(reportDTO);
     }
 
-    @Override
-    public List<IntermediateBlockReport> getReports(String datanodeUuid) throws StorageException {
-        LOG.info("GET IntermediateStorageReports -- datanodeUuid: " + datanodeUuid);
-
-        HopsSession session = connector.obtainSession();
+    /**
+     * Internal function used to retrieve all the IntermediateBlockReportDTO instances associated with a particular
+     * DataNode identified by the given UUID.
+     * @param session HopsSession instance used to query the database.
+     * @param datanodeUuid The DataNode whose associated IntermediateBlockReportDTO are to be retrieved.
+     * @return A list of all IntermediateBlockReportDTO instances associated with the specified DataNode.
+     */
+    private List<IntermediateBlockReportDTO> getIntermediateBlockReportDTOs(HopsSession session, String datanodeUuid)
+        throws StorageException {
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
         HopsQueryDomainType<IntermediateBlockReportDTO> domainType =
                 queryBuilder.createQueryDefinition(IntermediateBlockReportDTO.class);
@@ -74,7 +78,15 @@ public class IntermediateBlockReportClusterJ
         HopsQuery<IntermediateBlockReportDTO> query = session.createQuery(domainType);
         query.setParameter("datanodeUuidParam", datanodeUuid);
 
-        List<IntermediateBlockReportDTO> storeReportDTOs = query.getResultList();
+        return query.getResultList();
+    }
+
+    @Override
+    public List<IntermediateBlockReport> getReports(String datanodeUuid) throws StorageException {
+        LOG.info("GET IntermediateStorageReports -- datanodeUuid: " + datanodeUuid);
+
+        List<IntermediateBlockReportDTO> storeReportDTOs = getIntermediateBlockReportDTOs(
+                connector.obtainSession(), datanodeUuid);
 
         ArrayList<IntermediateBlockReport> resultList = new ArrayList<>();
 
@@ -83,6 +95,18 @@ public class IntermediateBlockReportClusterJ
         }
 
         return resultList;
+    }
+
+    @Override
+    public int deleteReports(String datanodeUuid) throws StorageException {
+        HopsSession session = connector.obtainSession();
+        List<IntermediateBlockReportDTO> storageReportDTOs = getIntermediateBlockReportDTOs(session, datanodeUuid);
+
+        session.deletePersistentAll(storageReportDTOs);
+        session.release(storageReportDTOs);
+
+        // Return the number of Storage Reports that were deleted.
+        return storageReportDTOs.size();
     }
 
     @Override

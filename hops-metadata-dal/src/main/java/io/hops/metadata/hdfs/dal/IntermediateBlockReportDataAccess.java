@@ -28,5 +28,13 @@ public interface IntermediateBlockReportDataAccess<T> extends EntityDataAccess {
     /**
      * Add the necessary information to imitate the blockReceivedAndDeleted() RPC call.
      */
-    void addReport(int reportId, String datanodeUuid, String poolId, String receivedAndDeletedBlocks) throws StorageException;
+    void addReport(int reportId, String datanodeUuid, String poolId, String receivedAndDeletedBlocks)
+            throws StorageException;
+
+    /**
+     * Delete the Intermediate Block Reports associated with the DataNode identified by the given UUID.
+     * @param datanodeUuid The UUID of the DataNode whose Intermediate Block Reports are to be deleted.
+     * @return The number of Intermediate Block Reports that were deleted.
+     */
+    int deleteReports(String datanodeUuid) throws StorageException;
 }

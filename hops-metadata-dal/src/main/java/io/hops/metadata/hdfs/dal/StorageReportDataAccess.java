@@ -26,14 +26,15 @@ public interface StorageReportDataAccess<T> extends EntityDataAccess {
     /**
      * Remove all StorageReport instances contained within the group specified by the given groupId.
      * @param groupId The ID of the group of StorageReport instances to remove.
-     * @throws StorageException
+     * @return The number of Storage Reports that were deleted.
      */
-    void removeStorageReports(int groupId, String datanodeUuid) throws StorageException;
+    int removeStorageReports(int groupId, String datanodeUuid) throws StorageException;
 
     /**
      * Remove all StorageReport instances associated with the datanode identified by the given UUID.
+     * @return The number of Storage Reports that were deleted.
      */
-    void removeStorageReports(String datanodeUuid) throws StorageException;
+    int removeStorageReports(String datanodeUuid) throws StorageException;
 
     /**
      * Store the given StorageReport instance in NDB.

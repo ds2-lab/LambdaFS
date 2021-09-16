@@ -29,10 +29,12 @@ import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.StorageMap;
 import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
 import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
+import io.hops.metadata.hdfs.dal.IntermediateBlockReportDataAccess;
 import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
 import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.metadata.hdfs.entity.DatanodeStorage;
 import io.hops.metadata.hdfs.entity.INodeIdentifier;
+import io.hops.metadata.hdfs.entity.IntermediateBlockReport;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.LockFactory;
@@ -560,28 +562,39 @@ public class DatanodeManager {
 
     String dataNodeUuid = nodeInfo.getDatanodeUuid();
 
+    LOG.debug("Deleting storage reports associated with DN " + nodeInfo.getDatanodeUuid() + " now...");
+
     // First, delete all the storage reports associated with this DataNode.
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> storageReportDataAccess =
             (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
     storageReportDataAccess.removeStorageReports(dataNodeUuid);
 
+    LOG.debug("Successfully deleted storage reports. Deleting DataNode Storages associated with DN " +
+            dataNodeUuid + " now...");
+
     // Next, remove the DatanodeStorage instances associated with this DataNode.
     DatanodeStorageDataAccess<DatanodeStorage> datanodeStorageDataAccess =
             (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
-    datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
+    int numDeleted = datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " DataNode Storages. " +
+                    " Deleting intermediate block reports associated with DN " + dataNodeUuid + " now...");
+
+    IntermediateBlockReportDataAccess<IntermediateBlockReport> intermediateBlockReportDataAccess =
+            (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
+    numDeleted = intermediateBlockReportDataAccess.deleteReports(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " Intermediate Block Report(s). " +
+            " Deleting DataNode " + dataNodeUuid + " itself from intermediate storage now...");
 
     // Finally, remove the metadata of the datanode from intermediate storage. There are foreign key constraints
     // in place that require us to perform this step last (i.e., after the entries referencing this datanode have
     // been removed, thereby ensuring that no foreign key constraints are violated).
     DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
-
-    LOG.info("Removing metadata of DataNode " + dataNodeUuid + " from intermediate storage.");
     dataNodeDataAccess.removeDataNode(dataNodeUuid);
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("removed datanode " + nodeInfo);
-    }
+    LOG.debug("Successfully removed DataNode " + nodeInfo);
     namesystem.checkSafeMode();
   }
 

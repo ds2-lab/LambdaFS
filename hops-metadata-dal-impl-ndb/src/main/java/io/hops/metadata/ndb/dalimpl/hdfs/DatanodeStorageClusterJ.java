@@ -130,7 +130,7 @@ public class DatanodeStorageClusterJ
     }
 
     @Override
-    public void removeDatanodeStorages(String datanodeUuid) throws StorageException {
+    public int removeDatanodeStorages(String datanodeUuid) throws StorageException {
         HopsSession session = connector.obtainSession();
 
         HopsQueryBuilder qb = session.getQueryBuilder();
@@ -144,6 +144,9 @@ public class DatanodeStorageClusterJ
 
         session.deletePersistentAll(dtos);
         session.release(dtos);
+
+        // Return the number of Datanode Storage instances that were deleted.
+        return dtos.size();
     }
 
     @Override

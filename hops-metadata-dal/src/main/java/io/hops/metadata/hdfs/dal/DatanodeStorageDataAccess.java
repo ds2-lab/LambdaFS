@@ -28,8 +28,10 @@ public interface DatanodeStorageDataAccess<T> extends EntityDataAccess {
 
     /**
      * Remove all DatanodeStorage instances associated with the datanode identified by the given UUID.
+     *
+     * @return The number of storage reports that were deleted.
      */
-    void removeDatanodeStorages(String datanodeUuid) throws StorageException;
+    int removeDatanodeStorages(String datanodeUuid) throws StorageException;
 
     /**
      * Store the given DatanodeStorage instance in NDB.

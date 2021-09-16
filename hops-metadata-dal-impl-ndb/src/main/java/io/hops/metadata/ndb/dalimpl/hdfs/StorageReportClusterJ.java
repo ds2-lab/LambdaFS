@@ -144,7 +144,7 @@ public class StorageReportClusterJ
     }
 
     @Override
-    public void removeStorageReports(int groupId, String datanodeUuid) throws StorageException {
+    public int removeStorageReports(int groupId, String datanodeUuid) throws StorageException {
         LOG.info("REMOVE StorageReport group " + groupId + ", datanodeUuid = " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
@@ -162,14 +162,17 @@ public class StorageReportClusterJ
         query.setParameter("groupIdParam", groupId);
         query.setParameter("datanodeUuidParam", datanodeUuid);
 
-        List<StorageReportDTO> storeReportDTOs = query.getResultList();
+        List<StorageReportDTO> storageReportDTOs = query.getResultList();
 
-        session.deletePersistentAll(storeReportDTOs);
-        session.release(storeReportDTOs);
+        session.deletePersistentAll(storageReportDTOs);
+        session.release(storageReportDTOs);
+
+        // Return the number of Storage Reports that were deleted.
+        return storageReportDTOs.size();
     }
 
     @Override
-    public void removeStorageReports(String datanodeUuid) throws StorageException {
+    public int removeStorageReports(String datanodeUuid) throws StorageException {
         LOG.info("DELETE StorageReports for DN " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
@@ -183,10 +186,13 @@ public class StorageReportClusterJ
         HopsQuery<StorageReportDTO> query = session.createQuery(domainType);
         query.setParameter("datanodeUuidParam", datanodeUuid);
 
-        List<StorageReportDTO> storeReportDTOs = query.getResultList();
+        List<StorageReportDTO> storageReportDTOs = query.getResultList();
 
-        session.deletePersistentAll(storeReportDTOs);
-        session.release(storeReportDTOs);
+        session.deletePersistentAll(storageReportDTOs);
+        session.release(storageReportDTOs);
+
+        // Return the number of Storage Reports that were deleted.
+        return storageReportDTOs.size();
     }
 
     @Override
