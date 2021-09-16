@@ -114,7 +114,9 @@ public class NameNodeTCPClient {
 
         // The call to connect() may produce an IOException if it times out.
         Client tcpClient = new Client();
-        tcpClient.start();
+
+        // Start the client in its own thread.
+        new Thread(tcpClient).start();
 
         // We need to register whatever classes will be serialized BEFORE any network activity is performed.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
