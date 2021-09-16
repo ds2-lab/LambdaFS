@@ -133,6 +133,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         nameNodeArguments,
                         opArguments,
                         mappedFunctionNumber);
+            } else {
+                LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " +
+                        mappedFunctionNumber + ". TCP connection exists: " +
+                        tcpServer.connectionExists(mappedFunctionNumber));
             }
         }
 
