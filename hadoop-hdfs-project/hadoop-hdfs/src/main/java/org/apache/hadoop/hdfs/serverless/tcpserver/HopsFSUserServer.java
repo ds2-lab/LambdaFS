@@ -213,7 +213,7 @@ public class HopsFSUserServer {
                                 break;
                             }
 
-                            future.postResult(body.getAsJsonObject("result"));
+                            future.postResult(body.getAsJsonObject("RESULT"));
 
                             // Update state pertaining to futures.
                             activeFutures.remove(requestId);
