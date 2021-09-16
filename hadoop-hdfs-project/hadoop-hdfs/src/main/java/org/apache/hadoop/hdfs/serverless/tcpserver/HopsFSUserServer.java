@@ -229,10 +229,9 @@ public class HopsFSUserServer {
 
                 if (connection.name != null) {
                     LOG.debug("[TCP SERVER] Connection to " + connection.name + " lost.");
-
                     activeConnections.remove(connection.name);
                 } else {
-                    LOG.warn("[TCP SERVER] Lost connection to unregistered NameNode at " + conn.getRemoteAddressTCP());
+                    LOG.warn("[TCP SERVER] Lost connection to unregistered NameNode.");
                 }
             }
         });

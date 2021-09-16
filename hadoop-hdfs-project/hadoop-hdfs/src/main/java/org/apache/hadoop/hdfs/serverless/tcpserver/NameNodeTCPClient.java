@@ -213,7 +213,9 @@ public class NameNodeTCPClient {
         registration.addProperty("functionName", functionName);
 
         LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP());
-        tcpClient.sendTCP(registration);
+        int bytesSent = tcpClient.sendTCP(registration);
+        LOG.debug("Sent " + bytesSent + " to HopsFS client at " +  tcpClient.getRemoteAddressTCP() +
+                " during registration.");
     }
 
     /**
