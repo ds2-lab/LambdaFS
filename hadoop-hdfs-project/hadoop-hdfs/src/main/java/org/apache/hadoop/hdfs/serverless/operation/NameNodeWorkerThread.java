@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.operation;
 
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,6 +10,7 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This thread actually executes file system operations. Tasks (i.e., file system operations wrapped in a Future
@@ -56,7 +58,20 @@ public class NameNodeWorkerThread extends Thread {
         FileSystemTask<Serializable> task = null;
         try {
             while(true) {
-                task = workQueue.take();
+                task = workQueue.poll(5000, TimeUnit.MILLISECONDS);
+
+                if (task == null) {
+                    LOG.debug("Worker thread did not find anything to do...");
+
+                    NameNodeTCPClient nameNodeTCPClient = serverlessNameNodeInstance.getNameNodeTcpClient();
+
+                    LOG.debug("======== NameNode TCP Client Debug Information ========");
+                    LOG.debug("Number of clients: " + nameNodeTCPClient.numClients());
+                    nameNodeTCPClient.checkThatClientsAreAllConnected();
+                    LOG.debug("=======================================================");
+
+                    continue;
+                }
 
                 LOG.debug("Worker thread: dequeued task " + task.getTaskId() + "(operation = "
                                 + task.getOperationName() + ").");

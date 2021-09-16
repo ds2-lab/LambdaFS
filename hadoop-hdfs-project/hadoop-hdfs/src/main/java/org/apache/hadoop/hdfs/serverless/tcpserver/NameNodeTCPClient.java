@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -55,7 +56,6 @@ public class NameNodeTCPClient {
      */
     private final String functionName;
 
-
     /**
      * Constructor.
      * @param functionName The name of the serverless function in which this TCP client exists.
@@ -63,6 +63,38 @@ public class NameNodeTCPClient {
     public NameNodeTCPClient(String functionName) {
         this.functionName = functionName;
         tcpClients = new HashMap<>();
+    }
+
+    /**
+     * Iterate over the TCP connections maintained by this client and check that all of them are still
+     * connected. If any are found that are no longer connected, remove them from the list.
+     *
+     * This is called periodically by the worker thread.
+     */
+    public synchronized void checkThatClientsAreAllConnected() {
+        ArrayList<ServerlessHopsFSClient> toRemove = new ArrayList<>();
+
+        for (Map.Entry<ServerlessHopsFSClient, Client> entry : tcpClients.entrySet()) {
+            ServerlessHopsFSClient serverlessHopsFSClient = entry.getKey();
+            Client tcpClient = entry.getValue();
+
+            if (tcpClient.isConnected()) {
+                LOG.debug("ServerlessHopsFSClient " + serverlessHopsFSClient.getClientId() + " is still connected.");
+            } else {
+                LOG.debug("ServerlessHopsFSClient " + serverlessHopsFSClient.getClientId()
+                        + " is DISCONNECTED.");
+                toRemove.add(serverlessHopsFSClient);
+            }
+        }
+
+        if (toRemove.size() > 0) {
+            LOG.warn("Found " + toRemove.size() + "ServerlessHopsFSClient instance(s) that were disconnected.");
+
+            for (ServerlessHopsFSClient hopsFSClient : toRemove)
+                tcpClients.remove(hopsFSClient);
+        } else {
+            LOG.debug("Found 0 disconnected ServerlessHopsFSClients.");
+        }
     }
 
     /**
@@ -144,6 +176,7 @@ public class NameNodeTCPClient {
             public void disconnected (Connection connection) {
                 LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
                         " at " + newClient.getClientIp());
+                tcpClients.remove(newClient);
             }
         });
 

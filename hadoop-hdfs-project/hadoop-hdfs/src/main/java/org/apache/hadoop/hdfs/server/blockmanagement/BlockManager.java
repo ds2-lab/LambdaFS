@@ -3515,7 +3515,7 @@ public class BlockManager {
         LOG.info("Total number of blocks            = " + blocksMap.size());
         LOG.info("Number of invalid blocks          = " + nrInvalid.get());
         LOG.info("Number of under-replicated blocks = " + nrUnderReplicated.get());
-        LOG.info("Number of  over-replicated blocks = " + nrOverReplicated.get()
+        LOG.info("Number of over-replicated blocks = " + nrOverReplicated.get()
             + ((nrPostponed.get() > 0) ? (" (" + nrPostponed.get() + " postponed)") : ""));
         LOG.info("Number of blocks being written    = " + nrUnderConstruction.get());
         ServerlessNameNode.stateChangeLog
