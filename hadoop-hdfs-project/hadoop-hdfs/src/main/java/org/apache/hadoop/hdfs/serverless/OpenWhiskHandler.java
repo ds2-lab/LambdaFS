@@ -488,9 +488,19 @@ public class OpenWhiskHandler {
         JsonObject headers = new JsonObject();
         headers.addProperty("content-type", "application/json");
 
+        // TODO: We cannot gauge whether or not a request was successful simply on the basis of whether there is/isn't
+        //       a result and if there are or are not any exceptions. Certain FS operations return nothing, meaning
+        //       there wouldn't be a result. And the NN can encounter exceptions but still succeed. So for now, we'll
+        //       just always return a statusCode 200, but eventually we may want to create a more robust system that
+        //       uses status codes to indicate failures.
+
+        response.addProperty("statusCode", 200);
+        response.addProperty("status", "success");
+        response.addProperty("success", true);
+
         // Only indicate that this failed if there is no result and there are exceptions.
-        // If there are exceptions, but we managed to compute a result, then we'll consider it a succcess.
-        if (result.getHasResult()) {
+        // If there are exceptions, but we managed to compute a result, then we'll consider it a success.
+        /*if (result.getHasResult()) {
             response.addProperty("statusCode", 200);
             response.addProperty("status", "success");
             response.addProperty("success", true);
@@ -500,15 +510,16 @@ public class OpenWhiskHandler {
             response.addProperty("statusCode", 422);
             response.addProperty("status", "exception");
             response.addProperty("success", false);
-        }
-        // No result but no exceptions? Something weird happened.
-        else {
+        }*/
+        // No result and no exception(s) means that there was probably just a duplicate request,
+        // or an operation than doesn't return anything!
+        /*else {
             // https://stackoverflow.com/a/3290369/5937661
             // "The request could not be completed due to a conflict with the current state of the resource."
             response.addProperty("statusCode", 409);
             response.addProperty("status", "unknown_failure");
             response.addProperty("success", false);
-        }
+        }*/
 
         response.add("headers", headers);
         response.add("body", resultJson);
