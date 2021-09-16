@@ -247,13 +247,15 @@ public class NameNodeTCPClient {
             // can include it in the JSON response sent back to the invoker of this serverless function.
             if (fileSystemOperationResult != null) {
                 LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
-                result.addResult(fileSystemOperationResult, true);
+                tcpResult.addResult(fileSystemOperationResult, true);
             }
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);
-            result.addException(ex);
+            tcpResult.addException(ex);
         }
+
+        return tcpResult;
     }
 
     /**
