@@ -57,9 +57,11 @@ import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
 import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
+import io.hops.metadata.hdfs.dal.IntermediateBlockReportDataAccess;
 import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
 import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.metadata.hdfs.entity.DatanodeStorage;
+import io.hops.metadata.hdfs.entity.IntermediateBlockReport;
 import io.hops.metadata.hdfs.entity.StorageReport;
 import io.hops.security.CertificateLocalizationCtx;
 import io.hops.security.CertificateLocalizationService;
@@ -1338,9 +1340,6 @@ public class DataNode extends ReconfigurableBase
       e.printStackTrace();
     }
 
-    //LOG.info("Printing data access map keys now...");
-    //HdfsStorageFactory.printKeysInDataAccessMap();
-
     LOG.info("HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class) == null: "
             + (HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class) == null));
 
@@ -1381,8 +1380,6 @@ public class DataNode extends ReconfigurableBase
       e.printStackTrace();
     }
 
-    //LOG.warn("Using hard-coded IP address for the DataNode's metadata: 10.150.0.6");
-
     // Create a new instance of DataNodeMeta. We pass this to the metadata abstraction layer to store
     // the associated metadata in intermediate storage.
     dataNodeMeta = new DataNodeMeta(this.id.getDatanodeUuid(), this.id.getHostName(),
@@ -1392,13 +1389,57 @@ public class DataNode extends ReconfigurableBase
     LOG.info("Creating DataNodeMeta instance: " + dataNodeMeta.toString());
 
     dataNodeDataAccess.addDataNode(dataNodeMeta);
-
-    LOG.info("Writing DatanodeStorage information to intermediate storage now...");
-
-    DatanodeStorageDataAccess<DatanodeStorage> storageDataAccess =
-            (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
   }
-  
+
+  /**
+   * This should be called when the DataNode is shutting down. This removes the DataNode and its metadata from
+   * intermediate storage, since it is no longer going to be available.
+   */
+  private synchronized boolean removeDataNodeMetadataFromIntermediateStorage() throws StorageException {
+    String dataNodeUuid = getDatanodeUuid();
+
+    if (dataNodeUuid == null) {
+      LOG.warn("Cannot delete metadata for this DataNode from intermediate storage as it does not have a UUID...");
+      return false;
+    }
+
+    LOG.debug("Deleting storage reports associated with DN " + dataNodeUuid + " now...");
+
+    // First, delete all the storage reports associated with this DataNode.
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> storageReportDataAccess =
+            (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+    int numDeleted = storageReportDataAccess.removeStorageReports(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " storage report(s). " +
+            "Deleting DataNode Storages associated with DN " + dataNodeUuid + " now...");
+
+    // Next, remove the DatanodeStorage instances associated with this DataNode.
+    DatanodeStorageDataAccess<DatanodeStorage> datanodeStorageDataAccess =
+            (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
+    numDeleted = datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " DataNode Storages. " +
+            " Deleting intermediate block reports associated with DN " + dataNodeUuid + " now...");
+
+    IntermediateBlockReportDataAccess<IntermediateBlockReport> intermediateBlockReportDataAccess =
+            (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
+    numDeleted = intermediateBlockReportDataAccess.deleteReports(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " Intermediate Block Report(s). " +
+            " Deleting DataNode " + dataNodeUuid + " itself from intermediate storage now...");
+
+    // Finally, remove the metadata of the datanode from intermediate storage. There are foreign key constraints
+    // in place that require us to perform this step last (i.e., after the entries referencing this datanode have
+    // been removed, thereby ensuring that no foreign key constraints are violated).
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
+            HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+    dataNodeDataAccess.removeDataNode(dataNodeUuid);
+
+    LOG.debug("Successfully removed DataNode " + dataNodeUuid);
+
+    return true;
+  }
+
   /**
    * Checks if the DataNode has a secure configuration if security is enabled.
    * There are 2 possible configurations that are considered secure:
@@ -2122,6 +2163,12 @@ public class DataNode extends ReconfigurableBase
           DFSConfigKeys.DEFAULT_FS_SECURITY_ACTIONS_ACTOR)).stop();
     } catch (Exception ex) {
       LOG.warn("Error while stopping FsSecurityActions", ex);
+    }
+
+    try {
+      this.removeDataNodeMetadataFromIntermediateStorage();
+    } catch (StorageException ex) {
+      LOG.warn("Encountered exception while removing DN metadata from intermediate storage:", ex);
     }
     
     LOG.info("Shutdown complete.");

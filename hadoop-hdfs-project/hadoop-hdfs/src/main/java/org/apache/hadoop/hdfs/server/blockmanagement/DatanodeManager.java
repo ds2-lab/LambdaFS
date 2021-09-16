@@ -562,20 +562,20 @@ public class DatanodeManager {
 
     String dataNodeUuid = nodeInfo.getDatanodeUuid();
 
-    LOG.debug("Deleting storage reports associated with DN " + nodeInfo.getDatanodeUuid() + " now...");
+    LOG.debug("Deleting storage reports associated with DN " + dataNodeUuid + " now...");
 
     // First, delete all the storage reports associated with this DataNode.
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> storageReportDataAccess =
             (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
-    storageReportDataAccess.removeStorageReports(dataNodeUuid);
+    int numDeleted = storageReportDataAccess.removeStorageReports(dataNodeUuid);
 
-    LOG.debug("Successfully deleted storage reports. Deleting DataNode Storages associated with DN " +
-            dataNodeUuid + " now...");
+    LOG.debug("Successfully deleted " + numDeleted + " storage report(s). " +
+            "Deleting DataNode Storages associated with DN " + dataNodeUuid + " now...");
 
     // Next, remove the DatanodeStorage instances associated with this DataNode.
     DatanodeStorageDataAccess<DatanodeStorage> datanodeStorageDataAccess =
             (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
-    int numDeleted = datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
+    numDeleted = datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
 
     LOG.debug("Successfully deleted " + numDeleted + " DataNode Storages. " +
                     " Deleting intermediate block reports associated with DN " + dataNodeUuid + " now...");
