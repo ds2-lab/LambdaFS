@@ -103,7 +103,9 @@ public class HopsFSUserServer {
 
         // The format of the endpoint is something like https://domain:443/api/v1/web/whisk.system/default/<base_name>
         String[] endpointSplit = functionEndpoint.split("/");
-        this.baseFunctionName = endpointSplit[endpointSplit.length - 1];
+
+        // TODO: Change this hard-coded solution.
+        this.baseFunctionName = "/whisk.system/" + endpointSplit[endpointSplit.length - 1];
     }
 
     /**
