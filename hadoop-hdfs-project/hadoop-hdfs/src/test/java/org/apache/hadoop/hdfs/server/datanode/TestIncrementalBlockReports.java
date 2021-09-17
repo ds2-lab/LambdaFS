@@ -31,7 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.*;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.ReceivedDeletedBlockInfo;
 import org.apache.hadoop.hdfs.server.protocol.ReceivedDeletedBlockInfo.BlockStatus;
@@ -56,7 +56,7 @@ public class TestIncrementalBlockReports {
   private MiniDFSCluster cluster = null;
   private DistributedFileSystem fs;
   private Configuration conf;
-  private NameNode singletonNn;
+  private ServerlessNameNode singletonNn;
   private DataNode singletonDn;
   private BPOfferService bpos;    // BPOS to use for block injection.
   private BPServiceActor actor;   // BPSA to use for block injection.

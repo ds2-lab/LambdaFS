@@ -38,7 +38,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.HdfsLocatedFileStatus;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.SecretManager.InvalidToken;
@@ -79,7 +79,7 @@ public class Hdfs extends AbstractFileSystem {
    */
   Hdfs(final URI theUri, final Configuration conf)
       throws IOException, URISyntaxException {
-    super(theUri, HdfsConstants.HDFS_URI_SCHEME, true, NameNode.DEFAULT_PORT,
+    super(theUri, HdfsConstants.HDFS_URI_SCHEME, true, ServerlessNameNode.DEFAULT_PORT,
         HdfsConstants.ALTERNATIVE_HDFS_URI_SCHEME);
 
     if (!theUri.getScheme().equalsIgnoreCase(HdfsConstants.HDFS_URI_SCHEME)) {
@@ -95,7 +95,7 @@ public class Hdfs extends AbstractFileSystem {
 
   @Override
   public int getUriDefaultPort() {
-    return NameNode.DEFAULT_PORT;
+    return ServerlessNameNode.DEFAULT_PORT;
   }
 
   @Override

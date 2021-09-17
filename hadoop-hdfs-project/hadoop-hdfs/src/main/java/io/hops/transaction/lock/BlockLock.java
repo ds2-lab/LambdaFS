@@ -47,7 +47,7 @@ public final class BlockLock extends IndividualBlockLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     boolean individualBlockAlreadyRead = false;
     if (locks.containsLock(Type.INode)) {
       BaseINodeLock inodeLock = (BaseINodeLock) locks.getLock(Type.INode);

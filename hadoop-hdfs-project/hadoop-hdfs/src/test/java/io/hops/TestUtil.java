@@ -23,7 +23,7 @@ import io.hops.transaction.lock.TransactionLockTypes;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.server.namenode.INode;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 
 import java.io.IOException;
 
@@ -32,25 +32,25 @@ public class TestUtil {
   /**
    * Get the inodeId for a file/directory.
    *
-   * @param nameNode the NameNode
+   * @param serverlessNameNode the NameNode
    * @param path the path to the file
    * @return the inodeId
    * @throws IOException
    */
-  public static long getINodeId(final NameNode nameNode, final Path path)
+  public static long getINodeId(final ServerlessNameNode serverlessNameNode, final Path path)
       throws IOException {
-    return getINode(nameNode, path).getId();
+    return getINode(serverlessNameNode, path).getId();
   }
   
   /**
    * Get the inode row for a file/directory.
    *
-   * @param nameNode the NameNode
+   * @param serverlessNameNode the NameNode
    * @param path the path to the file
    * @return the INode
    * @throws IOException
    */
-  public static INode getINode(final NameNode nameNode, final Path path)
+  public static INode getINode(final ServerlessNameNode serverlessNameNode, final Path path)
       throws IOException {
     final String filePath = path.toUri().getPath();
     return (INode) new HopsTransactionalRequestHandler(
@@ -59,13 +59,13 @@ public class TestUtil {
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = lf.getINodeLock(TransactionLockTypes.INodeLockType.READ_COMMITTED, TransactionLockTypes.INodeResolveType.PATH, filePath)
-            .setNameNodeID(nameNode.getId()).setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+            .setNameNodeID(serverlessNameNode.getId()).setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
         locks.add(il);
       }
       
       @Override
       public Object performTask() throws IOException {
-        INode targetNode = nameNode.getNamesystem().getINode(filePath);
+        INode targetNode = serverlessNameNode.getNamesystem().getINode(filePath);
         return targetNode;
       }
     }.handle();

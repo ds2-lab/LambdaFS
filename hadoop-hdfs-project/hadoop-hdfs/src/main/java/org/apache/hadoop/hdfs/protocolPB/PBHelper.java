@@ -441,7 +441,7 @@ public class PBHelper {
     StorageInfoProto storage = info.getStorageInfo();
     return new NamespaceInfo(storage.getNamespaceID(), storage.getClusterID(),
         info.getBlockPoolID(), storage.getCTime(), info.getBuildVersion(),
-        info.getSoftwareVersion(), info.getCapabilities());
+        info.getSoftwareVersion(), Math.toIntExact(info.getCapabilities()));
   }
 
   public static NamenodeCommand convert(NamenodeCommandProto cmd) {

@@ -75,8 +75,8 @@ class FSDirRenameOp {
     
     String src = srcArg;
     String dst = dstArg;
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* NameSystem.renameTo: " + src +
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.renameTo: " + src +
           " to " + dst);
     }
     if (!DFSUtil.isValidName(dst)) {
@@ -194,14 +194,14 @@ class FSDirRenameOp {
     }
     INodesInPath dstIIP = dstInfo.getINodesInPath();
     if (dstIIP.getLastINode() != null) {
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
           "failed to rename " + src + " to " + dst + " because destination " +
           "exists");
       return false;
     }
     INode dstParent = dstIIP.getINode(-2);
     if (dstParent == null) {
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
           "failed to rename " + src + " to " + dst + " because destination's " +
           "parent does not exist");
       return false;
@@ -353,8 +353,8 @@ class FSDirRenameOp {
           // add src to the destination
           added = tx.addSourceToDestination();
           if (added) {
-            if (NameNode.stateChangeLog.isDebugEnabled()) {
-              NameNode.stateChangeLog.debug(
+            if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+              ServerlessNameNode.stateChangeLog.debug(
                   "DIR* FSDirectory.unprotectedRenameTo: " + src + " is renamed to " + dst);
             }
 
@@ -371,7 +371,7 @@ class FSDirRenameOp {
             tx.restoreSource();
           }
         }
-        NameNode.stateChangeLog.warn(
+        ServerlessNameNode.stateChangeLog.warn(
             "DIR* FSDirectory.unprotectedRenameTo: " + "failed to rename " + src + " to " + dst);
         return false;
       }
@@ -388,8 +388,8 @@ class FSDirRenameOp {
       throws IOException {
     String src = srcArg;
     String dst = dstArg;
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* NameSystem.renameTo: with options -" +
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.renameTo: with options -" +
           " " + src + " to " + dst);
     }
     if (!DFSUtil.isValidName(dst)) {
@@ -415,8 +415,8 @@ class FSDirRenameOp {
   static HdfsFileStatus renameTo(FSDirectory fsd, FSPermissionChecker pc, String src,
       String dst, BlocksMapUpdateInfo collectedBlocks,
       Options.Rename... options) throws IOException {
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* FSDirectory.renameTo: " + src + " to "
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* FSDirectory.renameTo: " + src + " to "
           + dst);
     }
     final long mtime = Time.now();
@@ -466,7 +466,7 @@ class FSDirRenameOp {
     INodesInPath dstIIP = dstInfo.getINodesInPath();
     if (dstIIP.length() == 1) {
       error = "rename destination cannot be the root";
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
           error);
       throw new IOException(error);
     }
@@ -480,13 +480,13 @@ class FSDirRenameOp {
     INode dstParent = dstIIP.getINode(-2);
     if (dstParent == null) {
       error = "rename destination parent " + dst + " not found.";
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
           error);
       throw new FileNotFoundException(error);
     }
     if (!dstParent.isDirectory()) {
       error = "rename destination parent " + dst + " is a file.";
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
           error);
       throw new ParentNotDirectoryException(error);
     }
@@ -677,8 +677,8 @@ class FSDirRenameOp {
           // add src as dst to complete rename
           if (tx.addSourceToDestination()) {
             undoRemoveSrc = false;
-            if (NameNode.stateChangeLog.isDebugEnabled()) {
-              NameNode.stateChangeLog.debug(
+            if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+              ServerlessNameNode.stateChangeLog.debug(
                   "DIR* FSDirectory.unprotectedRenameTo: " + src + " is renamed to " + dst);
             }
             tx.updateMtimeAndLease(timestamp);
@@ -710,7 +710,7 @@ class FSDirRenameOp {
             tx.restoreDst();
           }
         }
-        NameNode.stateChangeLog.warn(
+        ServerlessNameNode.stateChangeLog.warn(
             "DIR* FSDirectory.unprotectedRenameTo: " + "failed to rename " + src + " to " + dst);
         throw new IOException("rename from " + src + " to " + dst + " failed.");
 
@@ -727,8 +727,8 @@ class FSDirRenameOp {
   @SuppressWarnings("deprecation")
   private static boolean renameTo(FSDirectory fsd, FSPermissionChecker pc,
       String src, String dst) throws IOException {    
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* FSDirectory.renameTo: " + src + " to "
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* FSDirectory.renameTo: " + src + " to "
           + dst);
     }
     final long mtime = Time.now();
@@ -754,7 +754,7 @@ class FSDirRenameOp {
         && dst.charAt(src.length()) == Path.SEPARATOR_CHAR) {
       error = "Rename destination " + dst
           + " is a directory or file under source " + src;
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
           + error);
       throw new IOException(error);
     }
@@ -767,13 +767,13 @@ class FSDirRenameOp {
     if (dstInode.isDirectory() != srcInode.isDirectory()) {
       error = "Source " + src + " and destination " + dst
           + " must both be directories";
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
           + error);
       throw new IOException(error);
     }
     if (!overwrite) { // If destination exists, overwrite flag must be true
       error = "rename destination " + dst + " already exists";
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
           + error);
       throw new FileAlreadyExistsException(error);
     }
@@ -781,7 +781,7 @@ class FSDirRenameOp {
     boolean areChildrenRandomlyPartitioned = INode.isTreeLevelRandomPartitioned(depth);
     if (dstInode.isDirectory() && fsd.hasChildren(dstInode.getId(), areChildrenRandomlyPartitioned)) {
       error = "rename destination directory is not empty: " + dst;
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
           + error);
       throw new IOException(error);
 
@@ -795,13 +795,13 @@ class FSDirRenameOp {
     // validate source
     if (srcInode == null) {
       error = "rename source " + srcIIP.getPath() + " is not found.";
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
           + error);
       throw new FileNotFoundException(error);
     }
     if (srcIIP.length() == 1) {
       error = "rename source cannot be the root";
-      NameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
           + error);
       throw new IOException(error);
     }
@@ -851,7 +851,7 @@ class FSDirRenameOp {
       if (removedNum == -1) {
         String error = "Failed to rename " + src + " to " + dst +
             " because the source can not be removed";
-        NameNode.stateChangeLog.warn("DIR* FSDirRenameOp.unprotectedRenameTo:" +
+        ServerlessNameNode.stateChangeLog.warn("DIR* FSDirRenameOp.unprotectedRenameTo:" +
             error);
         throw new IOException(error);
       }
@@ -862,7 +862,7 @@ class FSDirRenameOp {
     boolean removeSrc4OldRename() throws IOException {
       final long removedSrc = fsd.removeLastINode(srcIIP, true, srcCounts);
       if (removedSrc == -1) {
-        NameNode.stateChangeLog.warn("DIR* FSDirRenameOp.unprotectedRenameTo: "
+        ServerlessNameNode.stateChangeLog.warn("DIR* FSDirRenameOp.unprotectedRenameTo: "
             + "failed to rename " + src + " to " + dst + " because the source" +
             " can not be removed");
         return false;

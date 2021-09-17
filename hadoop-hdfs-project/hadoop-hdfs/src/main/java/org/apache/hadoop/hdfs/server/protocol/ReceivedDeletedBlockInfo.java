@@ -20,10 +20,17 @@ package org.apache.hadoop.hdfs.server.protocol;
 
 import org.apache.hadoop.hdfs.protocol.Block;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+
 /**
  * A data structure to store the blocks in an incremental block report.
  */
-public class ReceivedDeletedBlockInfo {
+public class ReceivedDeletedBlockInfo implements Serializable {
+  private static final long serialVersionUID = 3114087405058633980L;
+
   Block block;
   BlockStatus status;
   String delHints;
@@ -111,5 +118,22 @@ public class ReceivedDeletedBlockInfo {
   public String toString() {
     return block.toString() + ", status: " + status +
         ", delHint: " + delHints;
+  }
+
+  /**
+   * Custom serialization to properly serialize the enum value.
+   */
+  private void writeObject(ObjectOutputStream oos) throws IOException {
+    oos.defaultWriteObject();
+    oos.writeInt(status.code);
+  }
+
+  /**
+   * Custom serialization to properly serialize the enum value.
+   */
+  private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
+    ois.defaultReadObject();
+    int statusCode = ois.readInt();
+    this.status = BlockStatus.fromCode(statusCode);
   }
 }

@@ -27,13 +27,13 @@ import javax.crypto.SecretKey;
 @InterfaceAudience.Private
 public class BlockKey extends DelegationKey {
 
+  private static final long serialVersionUID = 7983218724730805614L;
+
   public static enum KeyType {
     CurrKey,
     NextKey,
     SimpleKey
-  }
-
-  ;
+  };
   
   private KeyType keyType;
 

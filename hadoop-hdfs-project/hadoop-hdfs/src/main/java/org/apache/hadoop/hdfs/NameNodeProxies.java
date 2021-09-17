@@ -41,7 +41,7 @@ import org.apache.hadoop.hdfs.protocolPB.ClientNamenodeProtocolPB;
 import org.apache.hadoop.hdfs.protocolPB.ClientNamenodeProtocolTranslatorPB;
 import org.apache.hadoop.hdfs.protocolPB.NamenodeProtocolPB;
 import org.apache.hadoop.hdfs.protocolPB.NamenodeProtocolTranslatorPB;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.server.namenode.ha.HopsLeaderFailoverProxyProvider;
 import org.apache.hadoop.hdfs.server.namenode.ha.HopsRandomStickyFailoverProxyProvider;
@@ -156,7 +156,7 @@ public class NameNodeProxies {
   
     if (failoverProxyProviderClass == null) {
       // Non-HA case
-      return createNonHAProxy(conf, NameNode.getAddress(nameNodeUri), xface,
+      return createNonHAProxy(conf, ServerlessNameNode.getAddress(nameNodeUri), xface,
           UserGroupInformation.getCurrentUser(), true, fallbackToSimpleAuth);
     } else {
       // HA case
@@ -440,7 +440,7 @@ public class NameNodeProxies {
         // If we found a proxy provider, then this URI should be a logical NN.
         // Given that, it shouldn't have a non-default port number.
         int port = nameNodeUri.getPort();
-        if (port > 0 && port != NameNode.DEFAULT_PORT) {
+        if (port > 0 && port != ServerlessNameNode.DEFAULT_PORT) {
           throw new IOException("Port " + port + " specified in URI "
               + nameNodeUri + " but host '" + host
               + "' is a logical (HA) namenode"

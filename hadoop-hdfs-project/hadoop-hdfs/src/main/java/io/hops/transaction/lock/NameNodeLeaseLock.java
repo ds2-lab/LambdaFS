@@ -31,13 +31,13 @@ final class NameNodeLeaseLock extends Lock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     nameNodeLease = acquireLock(lockType, Lease.Finder.ByHolder,
         HdfsServerConstants.NAMENODE_LEASE_HOLDER, HdfsServerConstants.NAMENODE_LEASE_HOLDER_ID);
   }
 
   @Override
-  protected final Type getType() {
+  public final Type getType() {
     return Type.NameNodeLease;
   }
 

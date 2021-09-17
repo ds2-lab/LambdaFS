@@ -221,6 +221,7 @@ public class BlockInfoContiguous extends Block {
   public DatanodeStorageInfo[] getStorages(DatanodeManager datanodeMgr)
       throws StorageException, TransactionContextException {
     List<Replica> replicas = getReplicas(datanodeMgr);
+    LOG.debug("Number of replicas: " + replicas.size());
     return getStorages(datanodeMgr, replicas);
   }
 
@@ -253,6 +254,7 @@ public class BlockInfoContiguous extends Block {
 
   private List<Replica> getReplicasNoCheck()
       throws StorageException, TransactionContextException {
+    LOG.debug("Looking for replicas of Block " + getBlockId() + ", iNode ID: " + getInodeId());
     List<Replica> replicas = (List<Replica>) EntityManager
         .findList(Replica.Finder.ByBlockIdAndINodeId, getBlockId(),
             getInodeId());

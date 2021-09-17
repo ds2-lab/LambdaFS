@@ -37,7 +37,7 @@ import org.apache.hadoop.hdfs.server.blockmanagement.BRLoadBalancingOverloadExce
 import org.apache.hadoop.hdfs.server.blockmanagement.BRTrackingService;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
 import org.apache.hadoop.util.ExitUtil;
 import org.junit.Test;
@@ -238,7 +238,7 @@ public class TestBlockReportLoadBalancing1 {
 
     String[] argv = {"-concurrentBlkReports", DFS_BR_LB_MAX_CONCURRENT_BLK_REPORTS_PER_NN * 2 + ""};
     try {
-      NameNode.createNameNode(argv, conf);
+      ServerlessNameNode.createNameNode(argv, conf);
     } catch (ExitUtil.ExitException e) {
       assertEquals("concurrentBlkReports command should succeed", 0, e.status);
     }
@@ -302,7 +302,7 @@ public class TestBlockReportLoadBalancing1 {
 
       String[] argv = {"-concurrentBlkReports", 2 + ""};
       try {
-        NameNode.createNameNode(argv, conf);
+        ServerlessNameNode.createNameNode(argv, conf);
       } catch (ExitUtil.ExitException e) {
         assertEquals("concurrentBlkReports command should succeed", 0, e.status);
       }
@@ -344,8 +344,8 @@ public class TestBlockReportLoadBalancing1 {
     }
   }
 
-  private NameNode getLeader(MiniDFSCluster cluster, int NN_COUNT) {
-    NameNode leader = null;
+  private ServerlessNameNode getLeader(MiniDFSCluster cluster, int NN_COUNT) {
+    ServerlessNameNode leader = null;
     for (int i = 0; i < NN_COUNT; i++) {
       leader = cluster.getNameNode(i);
       if (leader.isLeader()) {
@@ -454,7 +454,7 @@ public class TestBlockReportLoadBalancing1 {
                 .bpRegistration.getXferAddr();
 
         for(int n = 0; n < NN_COUNT; n++){
-          NameNode nn = cluster.getNameNode(n);
+          ServerlessNameNode nn = cluster.getNameNode(n);
           nn.getBRTrackingService().blockReportCompleted(dnAddress);
         }
       }

@@ -47,8 +47,7 @@ import org.apache.hadoop.hdfs.TestRollingUpgrade;
 import org.apache.hadoop.hdfs.protocol.BlockLocalPathInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.tools.DFSAdmin;
 import org.junit.Ignore;
 import org.apache.hadoop.test.GenericTestUtils;
@@ -70,7 +69,7 @@ public class TestDataNodeRollingUpgrade {
   MiniDFSCluster cluster = null;
   DistributedFileSystem fs = null;
   DataNode dn0 = null;
-  NameNode nn = null;
+  ServerlessNameNode nn = null;
   String blockPoolId = null;
 
   private void startCluster() throws IOException {
@@ -277,9 +276,9 @@ public class TestDataNodeRollingUpgrade {
       String testFile2 = "/" + GenericTestUtils.getMethodName() + ".02.dat";
       String testFile3 = "/" + GenericTestUtils.getMethodName() + ".03.dat";
 
-      DFSClient client1 = new DFSClient(NameNode.getAddress(conf), conf);
-      DFSClient client2 = new DFSClient(NameNode.getAddress(conf), conf);
-      DFSClient client3 = new DFSClient(NameNode.getAddress(conf), conf);
+      DFSClient client1 = new DFSClient(ServerlessNameNode.getAddress(conf), conf);
+      DFSClient client2 = new DFSClient(ServerlessNameNode.getAddress(conf), conf);
+      DFSClient client3 = new DFSClient(ServerlessNameNode.getAddress(conf), conf);
 
       DFSOutputStream s1 = (DFSOutputStream) client1.create(testFile1, true);
       DFSOutputStream s2 = (DFSOutputStream) client2.create(testFile2, true);

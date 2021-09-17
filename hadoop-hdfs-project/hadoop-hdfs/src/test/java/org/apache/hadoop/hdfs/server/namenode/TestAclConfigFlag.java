@@ -21,7 +21,6 @@ import static org.apache.hadoop.hdfs.server.namenode.AclTestHelpers.*;
 import static org.apache.hadoop.fs.permission.AclEntryScope.*;
 import static org.apache.hadoop.fs.permission.AclEntryType.*;
 import static org.apache.hadoop.fs.permission.FsAction.*;
-import static org.junit.Assert.*;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -29,8 +28,6 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocol.AclException;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
-import org.apache.hadoop.hdfs.server.namenode.NameNodeAdapter;
 import org.apache.hadoop.io.IOUtils;
 import org.junit.After;
 import org.junit.Rule;
@@ -178,9 +175,9 @@ public class TestAclConfigFlag {
    */
   private void restart(boolean checkpoint, boolean aclsEnabled)
       throws Exception {
-    NameNode nameNode = cluster.getNameNode();
+    ServerlessNameNode serverlessNameNode = cluster.getNameNode();
     if (checkpoint) {
-      NameNodeAdapter.enterSafeMode(nameNode, false);
+      NameNodeAdapter.enterSafeMode(serverlessNameNode, false);
       //NameNodeAdapter.saveNamespace(nameNode);
     }
     shutdown();

@@ -20,10 +20,7 @@ package org.apache.hadoop.hdfs.protocol;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.hadoop.io.*;
@@ -36,9 +33,11 @@ import org.apache.hadoop.io.*;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class Block implements Writable, Comparable<Block> {
+public class Block implements Writable, Comparable<Block>, Serializable {
   public static final String BLOCK_FILE_PREFIX = "blk_";
   public static final String METADATA_EXTENSION = ".meta";
+
+  private static final long serialVersionUID = 5351540876142620731L;
 
   static {                                      // register a ctor
     WritableFactories.setFactory(Block.class, new WritableFactory() {

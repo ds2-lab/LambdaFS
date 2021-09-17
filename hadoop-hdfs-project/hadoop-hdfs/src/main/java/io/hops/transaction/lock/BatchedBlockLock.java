@@ -36,7 +36,7 @@ final class BatchedBlockLock extends BaseIndividualBlockLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     //INodes are not locked in this case
     if (unresolvedBlockIds != null && unresolvedBlockIds.length != 0) {
       long[] inodeIdsForURBlks = INodeUtil.resolveINodesFromBlockIds(unresolvedBlockIds);

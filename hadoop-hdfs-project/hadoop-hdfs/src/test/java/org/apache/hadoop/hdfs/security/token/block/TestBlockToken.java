@@ -24,7 +24,6 @@ import com.google.protobuf.ServiceException;
 import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.security.token.block.NameNodeBlockTokenSecretManager;
-import org.apache.commons.logging.impl.Log4JLogger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -46,7 +45,7 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientDatanodeProtocolProtos.GetRep
 import org.apache.hadoop.hdfs.protocol.proto.ClientDatanodeProtocolProtos.GetReplicaVisibleLengthResponseProto;
 import org.apache.hadoop.hdfs.protocolPB.ClientDatanodeProtocolPB;
 import org.apache.hadoop.hdfs.protocolPB.PBHelper;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.Namesystem;
 import org.apache.hadoop.io.TestWritable;
 import org.apache.hadoop.ipc.Client;
@@ -484,7 +483,7 @@ public class TestBlockToken {
     }
 
     @Override
-    public NameNode getNameNode() {
+    public ServerlessNameNode getNameNode() {
       throw new UnsupportedOperationException("Not supported yet.");
     }
 

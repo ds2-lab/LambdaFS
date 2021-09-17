@@ -32,7 +32,7 @@ import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.BlocksWithLocations.BlockWithLocations;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocol;
 import org.apache.hadoop.ipc.RemoteException;
@@ -44,7 +44,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import org.apache.hadoop.util.Time;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -212,7 +211,7 @@ public class TestGetBlocks {
       boolean notWritten;
       do {
         final DFSClient dfsclient =
-            new DFSClient(NameNode.getAddress(CONF), CONF);
+            new DFSClient(ServerlessNameNode.getAddress(CONF), CONF);
         locatedBlocks =
             dfsclient.getNamenode().getBlockLocations("/tmp.txt", 0, fileLen)
                 .getLocatedBlocks();
@@ -235,7 +234,7 @@ public class TestGetBlocks {
       InetSocketAddress addr =
           new InetSocketAddress("localhost", cluster.getNameNodePort());
       NamenodeProtocol namenode = NameNodeProxies
-          .createProxy(CONF, NameNode.getUri(addr), NamenodeProtocol.class)
+          .createProxy(CONF, ServerlessNameNode.getUri(addr), NamenodeProtocol.class)
           .getProxy();
 
       // get blocks of size fileLen from dataNodes[0]

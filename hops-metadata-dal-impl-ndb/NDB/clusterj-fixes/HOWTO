@@ -1,0 +1,23 @@
+
+* Download the sources from http://dev.mysql.com/downloads/cluster/
+* tar xf ...
+* cd mysql-cluster-gpl-...
+
+* the classes folder contain the modified classes. Search for these classes in the source code and merge the changes. 
+
+* mkdir bld
+* cd bld
+
+# note this also downloads boost lib to tmp folder
+* cmake .. -DBUILD_CONFIG=mysql_release -DCPACK_MONOLITHIC_INSTALL=true -DDOWNLOAD_BOOST=1 -DWITH_BOOST=/tmp
+
+* make -j #cpu_cores
+* make package
+
+# installing thrid party maven jar
+cd storage/ndb/clusterj
+mvn install:install-file -Dfile=clusterj-X.X.X.jar -DgroupId=com.mysql.ndb -DartifactId=clusterj-hops-fix -Dversion=X.X.X -Dpackaging=jar
+
+
+# libndbclient.so lib
+cd storage/ndb/src/ the libndbclient.so to LD_LIBRARY_PATH

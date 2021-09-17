@@ -47,14 +47,22 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_MAX_NUM_BLOCKS_TO_LOG_KEY
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.net.*;
 import java.nio.channels.ServerSocketChannel;
 import java.util.HashSet;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
+import io.hops.StorageConnector;
+import io.hops.exception.StorageException;
+import io.hops.metadata.HdfsStorageFactory;
+import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
+import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
+import io.hops.metadata.hdfs.dal.IntermediateBlockReportDataAccess;
+import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
+import io.hops.metadata.hdfs.entity.DataNodeMeta;
+import io.hops.metadata.hdfs.entity.DatanodeStorage;
+import io.hops.metadata.hdfs.entity.IntermediateBlockReport;
+import io.hops.metadata.hdfs.entity.StorageReport;
 import io.hops.security.CertificateLocalizationCtx;
 import io.hops.security.CertificateLocalizationService;
 import io.hops.security.HopsSecurityActionsFactory;
@@ -65,12 +73,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.ReconfigurableBase;
 import org.apache.hadoop.conf.ReconfigurationException;
 import org.apache.hadoop.conf.ReconfigurationTaskStatus;
-import org.apache.hadoop.fs.CommonConfigurationKeys;
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocalFileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.StorageType;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
@@ -119,14 +122,11 @@ import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.datanode.SecureDataNodeStarter.SecureResources;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsDatasetSpi;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsVolumeSpi;
+import org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.FsVolumeImpl;
 import org.apache.hadoop.hdfs.server.datanode.metrics.DataNodeMetrics;
 import org.apache.hadoop.hdfs.server.datanode.web.DatanodeHttpServer;
+import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.BlockRecoveryCommand.RecoveringBlock;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeProtocol;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
-import org.apache.hadoop.hdfs.server.protocol.InterDatanodeProtocol;
-import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
-import org.apache.hadoop.hdfs.server.protocol.ReplicaRecoveryInfo;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.ReadaheadPool;
 import org.apache.hadoop.ipc.ProtobufRpcEngine;
@@ -170,12 +170,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.net.URI;
-import java.net.UnknownHostException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
@@ -264,7 +258,17 @@ public class DataNode extends ReconfigurableBase
     implements InterDatanodeProtocol, ClientDatanodeProtocol,
         TraceAdminProtocol, DataNodeMXBean {
   public static final Log LOG = LogFactory.getLog(DataNode.class);
-  
+
+  /**
+   * Each time a new group of StorageReport instances is written to NDB, this variable is incremented.
+   */
+  private volatile int storageReportGroupCounter = -1;
+
+  /**
+   * Used to assign reportId values to intermediate block reports.
+   */
+  private volatile int intermediateBlockReportCounter = 0;
+
   static {
     HdfsConfiguration.init();
   }
@@ -290,6 +294,15 @@ public class DataNode extends ReconfigurableBase
       "  and rolling upgrades.";
   
   static final int CURRENT_BLOCK_FORMAT_VERSION = 1;
+
+  /**
+   * Added by Ben; mostly used for debugging (i.e., making sure the NameNode code that
+   * is running is up-to-date with the source code base).
+   *
+   * Syntax:
+   *  Major.Minor.Build.Revision
+   */
+  private static String versionNumber = "0.1.2.0";
   
   private static final String DATANODE_HTRACE_PREFIX = "datanode.htrace.";
   /**
@@ -306,6 +319,12 @@ public class DataNode extends ReconfigurableBase
   private BlockPoolManager blockPoolManager;
   volatile FsDatasetSpi<? extends FsVolumeSpi> data = null;
   private String clusterId = null;
+
+  /**
+   * This is used to prevent the BPOfferService thread from attempting to write metadata to intermediate storage
+   * before the DAL has been initialized.
+   */
+  private final Semaphore dalInitializedSemaphore = new Semaphore(0);
 
   public final static String EMPTY_DEL_HINT = "";
   AtomicInteger xmitsInProgress = new AtomicInteger();
@@ -485,6 +504,46 @@ public class DataNode extends ReconfigurableBase
                 return ret;
               }
             });
+  }
+
+  /**
+   * Set the Storage Report groupId counter to a specific value. This is used during registration.
+   */
+  public synchronized void setStorageReportGroupCounter(int groupCounter) {
+    this.storageReportGroupCounter = groupCounter;
+  }
+
+  /**
+   * Used to assign reportId values to intermediate block reports when storing them in intermediate storage.
+   */
+  public synchronized int getAndIncrementIntermediateBlockReportCounter() {
+    int tmp = intermediateBlockReportCounter;
+    intermediateBlockReportCounter += 1;
+    return tmp;
+  }
+
+  /**
+   * Increments the `storageReportGroupCounter` instance variable and returns the value of this variable
+   * BEFORE it was incremented during this method's execution.
+   */
+  public synchronized int getAndIncrementStorageReportGroupCounter() {
+    if (storageReportGroupCounter == -1) {
+      LOG.debug("Retrieving Storage Report groupId from NDB...");
+      StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> reportAccess =
+              (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+      try {
+        this.storageReportGroupCounter = reportAccess.getLastGroupId(getDatanodeUuid()) + 1;
+      } catch (StorageException e) {
+        LOG.error("Encountered exception whilst querying intermediate storage for the largest groupId used.", e);
+        e.printStackTrace();
+
+        LOG.error("Defaulting to an initial groupId of 0 for now...");
+        this.storageReportGroupCounter = 0;
+      }
+    }
+    int tmp = storageReportGroupCounter;
+    storageReportGroupCounter += 1;
+    return tmp;
   }
 
   @Override  // ReconfigurableBase
@@ -1156,8 +1215,13 @@ public class DataNode extends ReconfigurableBase
   void setHeartbeatsDisabledForTests(boolean heartbeatsDisabledForTests) {
     this.heartbeatsDisabledForTests = heartbeatsDisabledForTests;
   }
-  
+
+  /**
+   * This is enabled because we write StorageReports to NDB during a heartbeat now instead of sending
+   * a heartbeat to a namenode via RPC.
+   */
   boolean areHeartbeatsDisabledForTests() {
+    // return true;
     return this.heartbeatsDisabledForTests;
   }
 
@@ -1174,6 +1238,7 @@ public class DataNode extends ReconfigurableBase
    */
   void startDataNode(Configuration conf, AbstractList<StorageLocation> dataDirs,
       SecureResources resources) throws IOException {  
+    LOG.info("startDataNode() called!");
 
     // settings global for all BPs in the Data Node
     this.secureResources = resources;
@@ -1249,8 +1314,132 @@ public class DataNode extends ReconfigurableBase
     saslClient = new SaslDataTransferClient(dnConf.conf, 
         dnConf.saslPropsResolver, dnConf.trustedChannelResolver);
     saslServer = new SaslDataTransferServer(dnConf, blockPoolTokenSecretManager);
+
+    LOG.info("Setting configuration for HdfsStorageFactory now...");
+    HdfsStorageFactory.setConfiguration(conf);
+
+    LOG.info("Releasing the DAL-Initialization semaphore now...");
+    // The setting-up of the DAL occurs in `HdfsStorageFactory.setConfiguration()`, so at this point, the DAL has
+    // been set-up and we should release this semaphore so a potentially-waiting BPOfferService thread can write
+    // this DataNode's metadata to intermediate storage.
+    dalInitializedSemaphore.release();
   }
-  
+
+  /**
+   * Write this node's metadata to intermediate storage so that serverless NameNodes can discover this DataNode.
+   *
+   * This is called by the BPOfferService class in the registrationSucceeded() function.
+   */
+  synchronized void writeMetadataToIntermediateStorage() throws StorageException {
+
+    LOG.info("Attempting to acquire the DAL-Initialized Semaphore now...");
+    try {
+      dalInitializedSemaphore.acquire();
+    } catch (InterruptedException e) {
+      LOG.error("Encountered exception while acquiring the DAL-Initialized Semaphore. Race condition could occur.");
+      e.printStackTrace();
+    }
+
+    LOG.info("HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class) == null: "
+            + (HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class) == null));
+
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
+            HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+
+    if (dataNodeDataAccess == null)
+      LOG.error("DataNodeDataAccess class is null... the following metadata write operation will fail.");
+
+    String dataNodeUuid = this.id.getDatanodeUuid();
+
+    DataNodeMeta dataNodeMeta = null;
+
+    LOG.info("Preparing to store information of DataNode " + dataNodeUuid + " in intermediate storage...");
+
+    try {
+      dataNodeMeta = dataNodeDataAccess.getDataNode(dataNodeUuid);
+    } catch (StorageException ex) {
+      LOG.info("Did not find any DataNodes in intermediate storage with UUID " + dataNodeUuid);
+    }
+
+    // If dataNodeMeta is null, then we just write our metadata to intermediate storage.
+    // If it is non-null, then we will delete the old entry first before writing our latest metadata.
+    if (dataNodeMeta != null) {
+      LOG.info("Deleting old metadata associated with DataNode " + dataNodeUuid);
+      dataNodeDataAccess.removeDataNode(dataNodeUuid);
+    }
+
+    LOG.info("streamingAddr.getAddress().getHostAddress() = " + streamingAddr.getAddress().getHostAddress());
+    LOG.info("this.id.getIpAddr() = " + this.id.getIpAddr());
+
+    // Attempt to resolve the DN's own hostname to get its IP addr bc the IP addr field is probably "0.0.0.0"
+    String ipAddr = streamingAddr.getAddress().getHostAddress();
+    try {
+      InetAddress address = InetAddress.getByName(this.id.getHostName());
+      ipAddr = address.getHostAddress();
+    } catch (UnknownHostException e) {
+      e.printStackTrace();
+    }
+
+    // Create a new instance of DataNodeMeta. We pass this to the metadata abstraction layer to store
+    // the associated metadata in intermediate storage.
+    dataNodeMeta = new DataNodeMeta(this.id.getDatanodeUuid(), this.id.getHostName(),
+            ipAddr, this.id.getXferPort(), this.id.getInfoPort(),
+            this.id.getInfoSecurePort(), this.id.getIpcPort());
+
+    LOG.info("Creating DataNodeMeta instance: " + dataNodeMeta.toString());
+
+    dataNodeDataAccess.addDataNode(dataNodeMeta);
+  }
+
+  /**
+   * This should be called when the DataNode is shutting down. This removes the DataNode and its metadata from
+   * intermediate storage, since it is no longer going to be available.
+   */
+  private synchronized boolean removeDataNodeMetadataFromIntermediateStorage() throws StorageException {
+    String dataNodeUuid = getDatanodeUuid();
+
+    if (dataNodeUuid == null) {
+      LOG.warn("Cannot delete metadata for this DataNode from intermediate storage as it does not have a UUID...");
+      return false;
+    }
+
+    LOG.debug("Deleting storage reports associated with DN " + dataNodeUuid + " now...");
+
+    // First, delete all the storage reports associated with this DataNode.
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> storageReportDataAccess =
+            (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+    int numDeleted = storageReportDataAccess.removeStorageReports(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " storage report(s). " +
+            "Deleting DataNode Storages associated with DN " + dataNodeUuid + " now...");
+
+    // Next, remove the DatanodeStorage instances associated with this DataNode.
+    DatanodeStorageDataAccess<DatanodeStorage> datanodeStorageDataAccess =
+            (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
+    numDeleted = datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " DataNode Storages. " +
+            " Deleting intermediate block reports associated with DN " + dataNodeUuid + " now...");
+
+    IntermediateBlockReportDataAccess<IntermediateBlockReport> intermediateBlockReportDataAccess =
+            (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
+    numDeleted = intermediateBlockReportDataAccess.deleteReports(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " Intermediate Block Report(s). " +
+            " Deleting DataNode " + dataNodeUuid + " itself from intermediate storage now...");
+
+    // Finally, remove the metadata of the datanode from intermediate storage. There are foreign key constraints
+    // in place that require us to perform this step last (i.e., after the entries referencing this datanode have
+    // been removed, thereby ensuring that no foreign key constraints are violated).
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
+            HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+    dataNodeDataAccess.removeDataNode(dataNodeUuid);
+
+    LOG.debug("Successfully removed DataNode " + dataNodeUuid);
+
+    return true;
+  }
+
   /**
    * Checks if the DataNode has a secure configuration if security is enabled.
    * There are 2 possible configurations that are considered secure:
@@ -1974,6 +2163,12 @@ public class DataNode extends ReconfigurableBase
           DFSConfigKeys.DEFAULT_FS_SECURITY_ACTIONS_ACTOR)).stop();
     } catch (Exception ex) {
       LOG.warn("Error while stopping FsSecurityActions", ex);
+    }
+
+    try {
+      this.removeDataNodeMetadataFromIntermediateStorage();
+    } catch (StorageException ex) {
+      LOG.warn("Encountered exception while removing DN metadata from intermediate storage:", ex);
     }
     
     LOG.info("Shutdown complete.");
@@ -2799,6 +2994,15 @@ public class DataNode extends ReconfigurableBase
   }
   
   public static void main(String args[]) {
+    LOG.info("=================================================================");
+    LOG.info("DataNode v" + versionNumber + " has started executing.");
+    LOG.info("=================================================================");
+
+    if (LOG.isDebugEnabled())
+      LOG.info("Debug-logging IS enabled.");
+    else
+      LOG.info("Debug-logging is NOT enabled.");
+
     if (DFSUtil.parseHelpArgument(args, DataNode.USAGE, System.out, true)) {
       System.exit(0);
     }

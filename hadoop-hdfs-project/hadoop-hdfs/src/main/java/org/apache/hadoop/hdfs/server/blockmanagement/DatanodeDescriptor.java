@@ -530,7 +530,9 @@ public class DatanodeDescriptor extends DatanodeInfo {
     //    one element in storageReports and that is A. b) A failed. c) Before
     //    DN sends HB to NN to indicate A has failed, DN restarts. d) After DN
     //    restarts, storageReports has one element which is B.
-    final boolean checkFailedStorages;
+
+    //final boolean checkFailedStorages;
+    boolean checkFailedStorages;
     if (volumeFailureSummary != null && this.volumeFailureSummary != null) {
       checkFailedStorages = volumeFailureSummary.getLastVolumeFailureDate() >
           this.volumeFailureSummary.getLastVolumeFailureDate();
@@ -538,6 +540,9 @@ public class DatanodeDescriptor extends DatanodeInfo {
       checkFailedStorages = (volFailures > this.volumeFailures) ||
           !heartbeatedSinceRegistration;
     }
+
+    LOG.warn("Setting `checkFailedStorages` to false, hard-coded!");
+    checkFailedStorages = false;
 
     if (checkFailedStorages) {
       LOG.info("Number of failed storage changes from "
@@ -553,6 +558,9 @@ public class DatanodeDescriptor extends DatanodeInfo {
     setLastUpdateMonotonic(Time.monotonicNow());
     this.volumeFailures = volFailures;
     this.volumeFailureSummary = volumeFailureSummary;
+
+    LOG.debug("Processing " + reports.length + " Storage Reports now...");
+
     for (StorageReport report : reports) {
       try {
         DatanodeStorageInfo storage = updateStorage(report.getStorage());

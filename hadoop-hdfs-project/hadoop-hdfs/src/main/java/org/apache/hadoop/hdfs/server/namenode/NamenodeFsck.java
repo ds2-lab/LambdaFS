@@ -119,7 +119,7 @@ import org.apache.htrace.core.Tracer;
  */
 @InterfaceAudience.Private
 public class NamenodeFsck implements DataEncryptionKeyFactory {
-  public static final Log LOG = LogFactory.getLog(NameNode.class.getName());
+  public static final Log LOG = LogFactory.getLog(ServerlessNameNode.class.getName());
   
   // return string marking fsck status
   public static final String CORRUPT_STATUS = "is CORRUPT";
@@ -129,7 +129,7 @@ public class NamenodeFsck implements DataEncryptionKeyFactory {
   public static final String NONEXISTENT_STATUS = "does not exist";
   public static final String FAILURE_STATUS = "FAILED";
   
-  private final NameNode namenode;
+  private final ServerlessNameNode namenode;
   private final NetworkTopology networktopology;
   private final int totalDatanodes;
   private final short minReplication;
@@ -206,7 +206,7 @@ public class NamenodeFsck implements DataEncryptionKeyFactory {
    *     source address of the fsck request
    * @throws IOException
    */
-  NamenodeFsck(Configuration conf, NameNode namenode,
+  NamenodeFsck(Configuration conf, ServerlessNameNode namenode,
       NetworkTopology networktopology, Map<String, String[]> pmap,
       PrintWriter out, int totalDatanodes, short minReplication,
       InetAddress remoteAddress) {
@@ -853,7 +853,7 @@ public class NamenodeFsck implements DataEncryptionKeyFactory {
   
   private void copyBlocksToLostFound(String parent, HdfsFileStatus file,
       LocatedBlocks blocks) throws IOException {
-    final DFSClient dfs = new DFSClient(NameNode.getAddress(conf), conf);
+    final DFSClient dfs = new DFSClient(ServerlessNameNode.getAddress(conf), conf);
     final String fullName = file.getFullName(parent);
     OutputStream fos = null;
     try {

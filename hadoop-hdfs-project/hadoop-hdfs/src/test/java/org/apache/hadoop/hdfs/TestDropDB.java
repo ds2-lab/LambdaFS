@@ -16,12 +16,6 @@
  */
 package org.apache.hadoop.hdfs;
 
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Test;
-
-import java.io.IOException;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
-import org.apache.hadoop.util.ExitUtil;
 import static org.junit.Assert.assertEquals;
 
 /**

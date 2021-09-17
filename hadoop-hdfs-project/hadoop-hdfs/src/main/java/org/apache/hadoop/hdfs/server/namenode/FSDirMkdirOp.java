@@ -18,19 +18,15 @@
 package org.apache.hadoop.hdfs.server.namenode;
 
 import io.hops.common.IDsGeneratorFactory;
-import io.hops.exception.StorageException;
-import io.hops.exception.TransactionContextException;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.INodeLock;
 import io.hops.transaction.lock.LockFactory;
-import io.hops.transaction.lock.TransactionLockTypes;
 import io.hops.transaction.lock.TransactionLockTypes.INodeLockType;
 import io.hops.transaction.lock.TransactionLockTypes.INodeResolveType;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.InvalidPathException;
-import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
@@ -56,8 +52,8 @@ class FSDirMkdirOp {
       final PermissionStatus permissions, final boolean createParent) throws IOException {
     final FSDirectory fsd = fsn.getFSDirectory();
 
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* NameSystem.mkdirs: " + srcArg);
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.mkdirs: " + srcArg);
     }
     if (!DFSUtil.isValidName(srcArg)) {
       throw new InvalidPathException(srcArg);
@@ -138,7 +134,7 @@ class FSDirMkdirOp {
     return (HdfsFileStatus) mkdirsHandler.handle();
   }
 
-    /**
+  /**
    * For a given absolute path, create all ancestors as directories along the
    * path. All ancestors inherit their parent's permission plus an implicit
    * u+wx permission. This is used by create() and addSymlink() for
@@ -156,8 +152,7 @@ class FSDirMkdirOp {
       throws IOException {
     final String last = new String(iip.getLastLocalName(), Charsets.UTF_8);
     INodesInPath existing = iip.getExistingINodes();
-    List<String> children = iip.getPath(existing.length(),
-        iip.length() - existing.length());
+    List<String> children = iip.getPath(existing.length(), iip.length() - existing.length());
     int size = children.size();
     if (size > 1) { // otherwise all ancestors have been created
       List<String> directories = children.subList(0, size - 1);
@@ -228,11 +223,11 @@ class FSDirMkdirOp {
         final INode newNode = existing.getLastINode();
     // Directory creation also count towards FilesCreated
     // to match count of FilesDeleted metric.
-    NameNode.getNameNodeMetrics().incrFilesCreated();
+    ServerlessNameNode.getNameNodeMetrics().incrFilesCreated();
 
     String cur = existing.getPath();
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("mkdirs: created directory " + cur);
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("mkdirs: created directory " + cur);
     }
     return existing;
   }

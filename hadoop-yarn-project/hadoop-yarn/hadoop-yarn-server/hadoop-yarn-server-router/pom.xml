@@ -53,12 +53,12 @@
       <artifactId>hadoop-yarn-server-common</artifactId>
     </dependency>
 
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-common</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
 
     <dependency>
       <groupId>junit</groupId>
@@ -67,19 +67,19 @@
     </dependency>
 
     <!-- 'mvn dependency:analyze' fails to detect use of this dependency -->
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
 
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-resourcemanager</artifactId>
     </dependency>
 
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-nodemanager</artifactId>
       <scope>test</scope>
@@ -89,7 +89,7 @@
       <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-server-timelineservice</artifactId>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
 
     <dependency>
       <groupId>org.mockito</groupId>

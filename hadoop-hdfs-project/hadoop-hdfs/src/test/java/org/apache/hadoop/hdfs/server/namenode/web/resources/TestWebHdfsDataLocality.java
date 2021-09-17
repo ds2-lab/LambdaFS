@@ -31,7 +31,7 @@ import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeManager;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.NameNodeAdapter;
 import org.apache.hadoop.hdfs.web.WebHdfsTestUtil;
 import org.apache.hadoop.hdfs.web.resources.GetOpParam;
@@ -72,7 +72,7 @@ public class TestWebHdfsDataLocality {
       cluster.waitActive();
 
       final DistributedFileSystem dfs = cluster.getFileSystem();
-      final NameNode namenode = cluster.getNameNode();
+      final ServerlessNameNode namenode = cluster.getNameNode();
       final DatanodeManager dm =
           namenode.getNamesystem().getBlockManager().getDatanodeManager();
       LOG.info("dm=" + dm);
@@ -147,7 +147,7 @@ public class TestWebHdfsDataLocality {
     try {
       cluster.waitActive();
       final DistributedFileSystem dfs = cluster.getFileSystem();
-      final NameNode namenode = cluster.getNameNode();
+      final ServerlessNameNode namenode = cluster.getNameNode();
       final DatanodeManager dm = namenode.getNamesystem().getBlockManager(
           ).getDatanodeManager();
       LOG.info("dm=" + dm);

@@ -48,7 +48,7 @@ import org.apache.hadoop.http.HttpServer2;
 public class NameNodeHttpServer {
   private HttpServer2 httpServer;
   private final Configuration conf;
-  private final NameNode nn;
+  private final ServerlessNameNode nn;
   
   private InetSocketAddress httpAddress;
   private InetSocketAddress httpsAddress;
@@ -60,7 +60,7 @@ public class NameNodeHttpServer {
   protected static final String NAMENODE_ATTRIBUTE_KEY = "name.node";
   public static final String STARTUP_PROGRESS_ATTRIBUTE_KEY = "startup.progress";
   
-  NameNodeHttpServer(Configuration conf, NameNode nn,
+  NameNodeHttpServer(Configuration conf, ServerlessNameNode nn,
       InetSocketAddress bindAddress) {
     this.conf = conf;
     this.nn = nn;
@@ -231,8 +231,8 @@ public class NameNodeHttpServer {
         true);
   }
 
-  public static NameNode getNameNodeFromContext(ServletContext context) {
-    return (NameNode) context.getAttribute(NAMENODE_ATTRIBUTE_KEY);
+  public static ServerlessNameNode getNameNodeFromContext(ServletContext context) {
+    return (ServerlessNameNode) context.getAttribute(NAMENODE_ATTRIBUTE_KEY);
   }
 
   static Configuration getConfFromContext(ServletContext context) {

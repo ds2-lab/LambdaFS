@@ -21,6 +21,7 @@ package org.apache.hadoop.io;
 import java.io.IOException;
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -51,7 +52,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 @InterfaceAudience.Public
 @InterfaceStability.Stable
 public class Text extends BinaryComparable
-    implements WritableComparable<BinaryComparable> {
+    implements WritableComparable<BinaryComparable>, Serializable {
   
   private static final ThreadLocal<CharsetEncoder> ENCODER_FACTORY =
     new ThreadLocal<CharsetEncoder>() {
@@ -74,7 +75,8 @@ public class Text extends BinaryComparable
   };
   
   private static final byte [] EMPTY_BYTES = new byte[0];
-  
+  private static final long serialVersionUID = -8550877394753503605L;
+
   private byte[] bytes;
   private int length;
 

@@ -65,7 +65,7 @@ class FSDirStatAndListingOp {
       byte[][] startAfterComponents = FSDirectory
           .getPathComponentsForReservedPath(startAfterString);
       try {
-        String tmp = fsd.resolvePath(src, startAfterComponents, fsd);
+        String tmp = FSDirectory.resolvePath(src, startAfterComponents, fsd);
         byte[][] regularPath = INode.getPathComponents(tmp);
         startAfterArg = regularPath[regularPath.length - 1];
       } catch (IOException e) {

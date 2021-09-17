@@ -37,7 +37,20 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <require.libwebhdfs>false</require.libwebhdfs>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>clojars</id>
+      <url>http://clojars.org/repo/</url>
+    </repository>
+  </repositories>
+
   <dependencies>
+    <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.10.1</version>
+    </dependency>
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hops-leader-election</artifactId>
@@ -47,10 +60,57 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>json</artifactId>
       <version>20140107</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client-bom -->
+    <dependency>
+      <groupId>org.asynchttpclient</groupId>
+      <artifactId>async-http-client-bom</artifactId>
+      <version>2.12.3</version>
+      <type>pom</type>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client -->
+    <dependency>
+      <groupId>org.asynchttpclient</groupId>
+      <artifactId>async-http-client</artifactId>
+      <version>2.12.3</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-mapper-asl -->
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-mapper-asl</artifactId>
+      <version>1.9.13</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>2.10.1</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-core-asl -->
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-core-asl</artifactId>
+      <version>1.9.13</version>
+    </dependency>
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <scope>compile</scope>
+    </dependency>
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-annotations</artifactId>
-      <scope>provided</scope>
+      <!--<scope>provided</scope>-->
+      <scope>${dependency-scope}</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>2.8.7</version>
     </dependency>
     <dependency>
       <groupId>io.hops</groupId>
@@ -60,14 +120,15 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
-      <scope>provided</scope>
+      <!--<scope>provided</scope>-->
+      <scope>${dependency-scope}</scope>
     </dependency>
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
       <scope>test</scope>
       <type>test-jar</type>
-    </dependency>
+    </dependency>-->
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-hdfs-client</artifactId>
@@ -104,6 +165,13 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>commons-cli</artifactId>
       <scope>compile</scope>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/com.esotericsoftware/reflectasm -->
+    <!-- Needed by the Kryo TCP library. -->
+    <dependency>
+      <groupId>com.esotericsoftware</groupId>
+      <artifactId>reflectasm</artifactId>
+      <version>1.11.9</version>
+    </dependency>
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
@@ -118,6 +186,59 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <groupId>commons-logging</groupId>
       <artifactId>commons-logging</artifactId>
       <scope>compile</scope>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-text -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+      <version>1.4</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-webapp -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-webapp</artifactId>
+      <version>9.3.24.v20180605</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/commons-net/commons-net -->
+    <dependency>
+      <groupId>commons-net</groupId>
+      <artifactId>commons-net</artifactId>
+      <version>3.6</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.egit add .clipse.jetty/jetty-webapp -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-webapp</artifactId>
+      <version>9.3.24.v20180605</version>
+    </dependency>
+    <!-- Used for NameNode TCP client/server -->
+    <dependency>
+      <groupId>kryonet</groupId>
+      <artifactId>kryonet</artifactId>
+      <version>2.21</version>
+    </dependency>
+    <dependency>
+      <groupId>com.logicalclocks</groupId>
+      <artifactId>service-discovery-client</artifactId>
+      <version>0.5-SNAPSHOT</version>
+    </dependency>
+    <!-- Used by NN TCP client/server. Handles serialization. -->
+    <dependency>
+      <groupId>com.esotericsoftware</groupId>
+      <artifactId>kryo</artifactId>
+      <version>5.2.0</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-pool2 -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-pool2</artifactId>
+      <version>2.9.0</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
+    <dependency>
+      <groupId>redis.clients</groupId>
+      <artifactId>jedis</artifactId>
+      <version>3.6.0</version>
     </dependency>
     <dependency>
       <groupId>commons-daemon</groupId>
@@ -139,6 +260,24 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/com.mysql.ndb/clusterj-hops-fix -->
+    <dependency>
+      <groupId>com.mysql.ndb</groupId>
+      <artifactId>clusterj-hops-fix</artifactId>
+      <version>7.6.7</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
+    <!--<dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>8.0.21</version>
+    </dependency>-->
+    <dependency>
+      <groupId>io.hops.metadata</groupId>
+      <artifactId>hops-metadata-dal</artifactId>
+      <scope>compile</scope>
+      <version>3.2.0.3-SNAPSHOT</version>
+    </dependency>
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-minikdc</artifactId>
@@ -158,7 +297,8 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <scope>provided</scope>
+      <!--<scope>provided</scope>-->
+      <scope>${dependency-scope}</scope>
     </dependency>
     <dependency>
       <groupId>xmlenc</groupId>
@@ -192,7 +332,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <groupId>org.apache.htrace</groupId>
       <artifactId>htrace-core4</artifactId>
     </dependency>
-    <dependency>
+    <!--<dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-kms</artifactId>
       <scope>test</scope>
@@ -202,7 +342,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>hadoop-kms</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-    </dependency>
+    </dependency>-->
   </dependencies>
 
   <build>
@@ -338,13 +478,13 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
                 <loadfile property="datanode.servlet.definitions"
                           srcFile="${project.build.directory}/datanode-jsp-servlet-definitions.xml"/>
                 <echoproperties
-                    destfile="${project.build.directory}/webxml.properties">
+                        destfile="${project.build.directory}/webxml.properties">
                   <propertyset>
                     <propertyref regex=".*.servlet.definitions"/>
                   </propertyset>
                 </echoproperties>
                 <filter
-                    filtersfile="${project.build.directory}/webxml.properties"/>
+                        filtersfile="${project.build.directory}/webxml.properties"/>
                 <copy file="${basedir}/src/main/webapps/proto-hdfs-web.xml"
                       tofile="${project.build.directory}/webapps/hdfs/WEB-INF/web.xml"
                       filtering="true"/>
@@ -481,6 +621,21 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
           </excludes>
         </configuration>
       </plugin>
+      <!-- Create executeable jar with dependencies -->
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <appendAssemblyId>false</appendAssemblyId>
+          <archive>
+            <manifest>
+              <mainClass>org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode</mainClass>
+            </manifest>
+          </archive>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
@@ -533,11 +688,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
                     </condition>
                     <mkdir dir="${project.build.directory}/native"/>
                     <exec executable="cmake" dir="${project.build.directory}/native"
-                        failonerror="true">
+                          failonerror="true">
                       <arg line="${basedir}/src/ -DGENERATED_JAVAH=${project.build.directory}/native/javah -DJVM_ARCH_DATA_MODEL=${sun.arch.data.model} -DREQUIRE_LIBWEBHDFS=${require.libwebhdfs} -DREQUIRE_FUSE=${require.fuse} -G '${generator}'"/>
                     </exec>
                     <exec executable="msbuild" dir="${project.build.directory}/native"
-                        failonerror="true">
+                          failonerror="true">
                       <arg line="ALL_BUILD.vcxproj /nologo /p:Configuration=RelWithDebInfo /p:LinkIncremental=false"/>
                     </exec>
                     <!-- Copy for inclusion in distribution. -->
@@ -605,7 +760,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
                           dir="${project.build.directory}/native"
                           failonerror="true">
                       <arg
-                          line="${basedir}/src/ -DGENERATED_JAVAH=${project.build.directory}/native/javah -DJVM_ARCH_DATA_MODEL=${sun.arch.data.model} -DREQUIRE_LIBWEBHDFS=${require.libwebhdfs} -DREQUIRE_FUSE=${require.fuse}"/>
+                              line="${basedir}/src/ -DGENERATED_JAVAH=${project.build.directory}/native/javah -DJVM_ARCH_DATA_MODEL=${sun.arch.data.model} -DREQUIRE_LIBWEBHDFS=${require.libwebhdfs} -DREQUIRE_FUSE=${require.fuse}"/>
                     </exec>
                     <exec executable="make"
                           dir="${project.build.directory}/native"
@@ -662,7 +817,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
             <artifactId>maven-antrun-plugin</artifactId>
             <executions>
               <execution>
-                <id>create-parallel-tests-dirs</id>               
+                <id>create-parallel-tests-dirs</id>
                 <phase>test-compile</phase>
                 <configuration>
                   <target>

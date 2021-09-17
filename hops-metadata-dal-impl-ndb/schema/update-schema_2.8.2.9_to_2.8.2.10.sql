@@ -1,0 +1,1 @@
+ALTER TABLE hdfs_file_provenance_xattrs_buffer PARTITION BY KEY(inode_id);

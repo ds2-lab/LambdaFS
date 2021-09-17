@@ -19,12 +19,18 @@ package org.apache.hadoop.hdfs.server.protocol;
 
 import org.apache.hadoop.fs.StorageType;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.UUID;
 
 /**
  * Class captures information of a storage in Datanode.
  */
-public class DatanodeStorage {
+public class DatanodeStorage implements Serializable {
+  private static final long serialVersionUID = -3457051977557065967L;
+
   /**
    * The state of the storage.
    */
@@ -46,7 +52,7 @@ public class DatanodeStorage {
   
   private final String storageID;
   private final State state;
-  private final StorageType storageType;
+  private final StorageType storageType; // TODO: Serialize this properly.
   private static final String STORAGE_ID_PREFIX = "DS-";
 
   /**

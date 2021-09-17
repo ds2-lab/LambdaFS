@@ -42,6 +42,7 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NodeType;
 import org.apache.hadoop.hdfs.server.common.Storage.StorageDirectory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.Properties;
@@ -56,11 +57,12 @@ import org.apache.hadoop.hdfs.server.namenode.NameNodeLayoutVersion;
  * TODO namespaceID should be long and computed as hash(address + port)
  */
 @InterfaceAudience.Private
-public class StorageInfo {
+public class StorageInfo implements Serializable {
 
   public static final Log LOG = LogFactory.getLog(StorageInfo.class);
   public static final int DEFAULT_ROW_ID = 0;
-      // StorageInfo is stored as one row in the database.
+  private static final long serialVersionUID = 3131682244613847762L;
+  // StorageInfo is stored as one row in the database.
   protected String blockpoolID = "";
       // id of the block pool. moved it from NNStorage.java to here. This is where it should have been
   private static StorageInfo storageInfo = null;

@@ -24,7 +24,6 @@ import io.hops.security.UsersGroups;
 import io.hops.transaction.EntityManager;
 import org.apache.hadoop.fs.XAttr;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.util.Time;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
@@ -135,7 +134,7 @@ public class FileProvenance {
     int remoteUserId;
     String remoteUserName;
     try {
-      ugi = NameNode.getRemoteUser();
+      ugi = ServerlessNameNode.getRemoteUser();
       remoteUserId = UsersGroups.getUserID(ugi.getUserName());
       remoteUserName = ugi.getUserName();
     } catch (IOException ex) {

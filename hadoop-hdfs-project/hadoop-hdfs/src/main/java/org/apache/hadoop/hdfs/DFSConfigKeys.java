@@ -33,6 +33,69 @@ import org.apache.hadoop.http.HttpConfig;
  */
 @InterfaceAudience.Private
 public class DFSConfigKeys extends CommonConfigurationKeys {
+  //serverless
+  /**
+   * Configuration name for specifying the endpoint to issue HTTP requests to invoke serverless functions.
+   */
+  public static final String SERVERLESS_ENDPOINT = "serverless.endpoint";
+
+  /**
+   * The default endpoint/URI for invoking a serverless function (i.e., namenode).
+   */
+  public static final String SERVERLESS_ENDPOINT_DEFAULT = "https://openwhisk.serverless-mds-cluster-243065a7719552ad2f4388dc81e46642-0000.us-east.containers.appdomain.cloud:443/api/v1/web/whisk.system/default/namenode";
+
+  /**
+   * Configuration property for defining the serverless platform in use.
+   */
+  public static final String SERVERLESS_PLATFORM = "serverless.platform";
+
+  /**
+   * The default serverless platform of Serverless HopsFS.
+   */
+  public static final String SERVERLESS_PLATFORM_DEFAULT = "openwhisk";
+
+  /**
+   * Configuration property for the baseline number of unique serverless functions deployed for use in this
+   * particular Serverless HopsFS cluster. This is different from the max number of deployments, which is the hard
+   * limit for the number of unique serverless functions at disposal.
+   */
+  public static final String SERVERLESS_DEPLOYMENTS_BASELINE = "serverless.deployments.baseline";
+
+  /**
+   * The default number of serverless functions associated with this particular Serverless HopsFS cluster.
+   */
+  public static final int SERVERLESS_DEPLOYMENTS_BASELINE_DEFAULT = 1;
+
+  /**
+   * The maximum number of uniquely-deployed serverless functions available for use with this particular
+   * Serverless HopsFS cluster.
+   */
+  public static final String SERVERLESS_MAX_DEPLOYMENTS = "serverless.deployments.max";
+
+  public static final int SERVERLESS_MAX_DEPLOYMENTS_DEFAULT = 1;
+
+  public static final String SERVERLESS_METADATA_CACHE_REDIS_ENDPOINT = "serverless.redis.endpoint";
+
+  public static final String SERVERLESS_METADATA_CACHE_REDIS_ENDPOINT_DEFAULT = "127.0.0.1";
+
+  public static final String SERVERLESS_METADATA_CACHE_REDIS_PORT = "serverless.redis.port";
+
+  public static final int SERVERLESS_METADATA_CACHE_REDIS_PORT_DEFAULT = 6379;
+
+  /**
+   * Serverless HopsFS clients expose a TCP server that NameNodes establish connections with.
+   * Clients can then use TCP requests to communicate with NameNodes.
+   */
+  public static final String SERVERLESS_TCP_SERVER_PORT = "serverless.tcpserver.port";
+
+  public static final int SERVERLESS_TCP_SERVER_PORT_DEFAULT = 6000;
+
+  /**
+   * How long to wait for the worker thread to execute a given task before timing out.
+   */
+  public static final String SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS = "serverless.workerthread.timeoutmillis";
+  public static final int SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT = 30000;
+
   //db storage
   public static final String DFS_STORAGE_DRIVER_JAR_FILE = "dfs.storage.driver.jarFile";
   public static final String DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT = "";
@@ -941,8 +1004,6 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   @Deprecated
   public static final int     DEFAULT_DFSCLIENT_HEDGED_READ_THREADPOOL_SIZE
       = HdfsClientConfigKeys.HedgedRead.THREADPOOL_SIZE_DEFAULT;
-
-
 
   public static final String  DFS_CLIENT_WRITE_PACKET_SIZE_KEY = "dfs.client-write-packet-size";
   public static final int     DFS_CLIENT_WRITE_PACKET_SIZE_DEFAULT = 64*1024;

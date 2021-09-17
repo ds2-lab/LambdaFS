@@ -23,6 +23,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
+import com.mysql.clusterj.ClusterJDatastoreException;
+import io.hops.exception.StorageInitializtionException;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.ActiveNodePBImpl;
 import io.hops.leader_election.node.SortedActiveNodeList;
@@ -39,8 +41,6 @@ import org.apache.hadoop.hdfs.protocol.proto.DatanodeProtocolProtos;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.blockmanagement.BRLoadBalancingNonLeaderException;
 import org.apache.hadoop.hdfs.server.blockmanagement.BRLoadBalancingOverloadException;
-import org.apache.hadoop.hdfs.server.blockmanagement.HashBuckets;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.ReceivedDeletedBlockInfo.BlockStatus;
 import org.apache.hadoop.ipc.RemoteException;
@@ -48,7 +48,6 @@ import org.apache.hadoop.ipc.RemoteException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -77,12 +76,14 @@ import static org.apache.hadoop.util.Time.monotonicNow;
 class BPOfferService implements Runnable {
 
   static final Log LOG = DataNode.LOG;
+
   /**
    * Information about the namespace that this service is registering with.
    * This
    * is assigned after the first phase of the handshake.
    */
   NamespaceInfo bpNSInfo;
+
   /**
    * The registration information for this block pool. This is assigned after
    * the second phase of the handshake.
@@ -142,7 +143,7 @@ class BPOfferService implements Runnable {
   private BPServiceActor blkReportHander = null;
   private List<ActiveNode> nnList = Collections.synchronizedList(new ArrayList<ActiveNode>());
   private List<InetSocketAddress> blackListNN = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
-//  private Object nnListSync = new Object();
+  // private Object nnListSync = new Object();
   private AtomicInteger rpcRoundRobinIndex = new AtomicInteger(0);
   // you have bunch of NNs, which one to send the incremental block report
   private AtomicInteger refreshNNRoundRobinIndex = new AtomicInteger(0);
@@ -164,7 +165,7 @@ class BPOfferService implements Runnable {
   private Random rand = new Random(System.currentTimeMillis());
   private long prevBlockReportId;
 
-  BPOfferService(List<InetSocketAddress> nnAddrs, DataNode dn) {
+  BPOfferService(List<InetSocketAddress> nnAddrs, DataNode dn) throws StorageInitializtionException {
     Preconditions
         .checkArgument(!nnAddrs.isEmpty(), "Must pass at least one NN.");
     this.dn = dn;
@@ -401,6 +402,8 @@ class BPOfferService implements Runnable {
         // first BP to handshake, etc.
         try {
           dn.initBlockPool(this);
+          LOG.debug("Assigning groupId of " + nsInfo.getGroupId() + " to this DataNode.");
+          dn.setStorageReportGroupCounter(nsInfo.getGroupId());
           success = true;
         } finally {
           if (!success) {
@@ -446,6 +449,11 @@ class BPOfferService implements Runnable {
         dn.blockPoolTokenSecretManager.addKeys(getBlockPoolId(),
             reg.getExportedKeys());
       }
+
+      // Now that the DataNode has its ID field populated (this occurs in the bpRegistrationSucceeded() function),
+      // we can have the DataNode write its MetaData to intermediate storage.
+      dn.writeMetadataToIntermediateStorage();
+
     } finally {
       writeUnlock();
     }
@@ -766,7 +774,7 @@ class BPOfferService implements Runnable {
     }
   }
 
-  private BPServiceActor startAnActor(InetSocketAddress address) {
+  private BPServiceActor startAnActor(InetSocketAddress address) throws StorageInitializtionException {
     BPServiceActor actor = new BPServiceActor(address, this);
     actor.start();
     return actor;
@@ -877,7 +885,13 @@ class BPOfferService implements Runnable {
     try {
       blockReceivedAndDeletedWithRetry(reports.toArray(new StorageReceivedDeletedBlocks[reports.size()]));
       success = true;
-    } finally {
+    } catch (ClusterJDatastoreException ex) {
+      LOG.error("Encountered ClusterJDatastoreException exception while storing intermediate block reports in " +
+              "intermediate storage...", ex);
+      ex.printStackTrace();
+      throw new IOException("Failed to store intermediate block reports in intermediate storage...");
+    }
+    finally {
       dn.getMetrics().addIncrementalBlockReport(monotonicNow() - startTime);
       if (!success) {
         synchronized (pendingIncrementalBRperStorage) {
@@ -973,7 +987,7 @@ class BPOfferService implements Runnable {
     if (!scheduler.isBlockReportDue()) {
       return null;
     }
-    
+
     scheduler.setNextBlockReportOverwritten(false);
     
     ArrayList<DatanodeCommand> cmds = new ArrayList<DatanodeCommand>();
@@ -997,6 +1011,7 @@ class BPOfferService implements Runnable {
 
     for(Map.Entry<DatanodeStorage, BlockReport> kvPair : perVolumeBlockLists.entrySet()) {
       BlockReport blockList = kvPair.getValue();
+      LOG.debug("blockList.getBuckets()[0].getBlocks().getClass().getSimpleName() = " + blockList.getBuckets()[0].getBlocks().getClass().getSimpleName());
       reports[i] = new StorageBlockReport(kvPair.getKey(), blockList);
       totalBlockCount += blockList.getNumberOfBlocks();
       storages[i] = kvPair.getKey();
@@ -1400,7 +1415,14 @@ class BPOfferService implements Runnable {
       if (exception != null) {
         if (exception instanceof RemoteException) {
           throw (RemoteException) exception;
-        } else {
+        }
+        else if (exception instanceof ClusterJDatastoreException) {
+            LOG.error("Encountered ClusterJDatastoreException exception while storing intermediate block reports " +
+                    "in intermediate storage...", exception);
+            exception.printStackTrace();
+            throw new IOException("Failed to store intermediate block reports in intermediate storage...");
+        }
+        else {
           throw (IOException) exception;
         }
       }
@@ -1589,7 +1611,7 @@ class BPOfferService implements Runnable {
     }
   }
   
-    /**
+  /**
    * Utility class that wraps the timestamp computations for scheduling
    * heartbeats and block reports.
    */
@@ -1631,7 +1653,10 @@ class BPOfferService implements Runnable {
     }
     
     boolean isBlockReportDue() {
-      return nextBlockReportTime - monotonicNow() <= 0;
+      // TODO: Implement full block reports.
+      // LOG.warn("Returning hard-coded 'false' for isBlockReportDue()");
+      return false;
+      //return nextBlockReportTime - monotonicNow() <= 0;
     }
 
     /**

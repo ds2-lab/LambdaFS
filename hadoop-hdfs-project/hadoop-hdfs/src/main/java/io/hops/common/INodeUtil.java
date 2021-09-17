@@ -104,6 +104,14 @@ public class INodeUtil {
             parentId, name, parentId));
     INodeDataAccess<INode> da = (INodeDataAccess) HdfsStorageFactory
         .getDataAccess(INodeDataAccess.class);
+
+    /*LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + name + "\", " + parentId +
+            ", " + partitionId + ") now. Printing call stack...");
+    StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+    for (StackTraceElement element : elements) {
+      LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
+    }*/
+
     return da.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);
   }
   

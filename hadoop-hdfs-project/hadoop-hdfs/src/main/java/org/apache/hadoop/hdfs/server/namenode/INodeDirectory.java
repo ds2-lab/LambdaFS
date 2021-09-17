@@ -272,13 +272,27 @@ public class INodeDirectory extends INodeWithAdditionalFields {
     return getChildINode(DFSUtil.string2Bytes(name));
   }
 
+  /**
+   * The `name` parameter should be obtained by calling DFSUtil.bytes2String(name).
+   */
+  public INode getChildINode(String name)
+          throws StorageException, TransactionContextException {
+    short myDepth = myDepth();
+    long childPartitionId = INode.calculatePartitionId(getId(), name, (short)(myDepth+1));
+    INode existingInode = EntityManager.find(
+            Finder.ByNameParentIdAndPartitionId, name,getId(), childPartitionId);
+    if (existingInode != null && existingInode.isInTree()) {
+      return existingInode;
+    }
+    return null;
+  }
+
   public INode getChildINode(byte[] name)
       throws StorageException, TransactionContextException {
     short myDepth = myDepth();
     long childPartitionId = INode.calculatePartitionId(getId(), DFSUtil.bytes2String(name), (short)(myDepth+1));
-    INode existingInode = EntityManager
-        .find(Finder.ByNameParentIdAndPartitionId, DFSUtil.bytes2String(name),
-            getId(), childPartitionId);
+    INode existingInode = EntityManager.find(
+            Finder.ByNameParentIdAndPartitionId, DFSUtil.bytes2String(name),getId(), childPartitionId);
     if (existingInode != null && existingInode.isInTree()) {
       return existingInode;
     }

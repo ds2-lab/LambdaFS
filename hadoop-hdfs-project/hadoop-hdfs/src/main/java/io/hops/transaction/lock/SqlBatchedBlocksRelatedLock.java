@@ -34,7 +34,7 @@ final class SqlBatchedBlocksRelatedLock extends LockWithType {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     Lock inodeLock = locks.getLock(Type.INode);
     long[] inodeIds = null;
     if (inodeLock instanceof BatchedINodeLock) {

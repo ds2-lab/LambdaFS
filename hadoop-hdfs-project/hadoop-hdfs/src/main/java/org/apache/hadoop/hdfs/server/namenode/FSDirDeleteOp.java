@@ -65,8 +65,8 @@ class FSDirDeleteOp {
   static long delete(
       FSDirectory fsd, INodesInPath iip, BlocksMapUpdateInfo collectedBlocks,
       List<INode> removedINodes, long mtime) throws IOException {
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* FSDirectory.delete: " + iip.getPath());
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* FSDirectory.delete: " + iip.getPath());
     }
     final long filesRemoved;
       if (!deleteAllowed(iip, iip.getPath()) ) {
@@ -112,11 +112,11 @@ class FSDirDeleteOp {
     INode pathInode = pathInfo.getINodesInPath().getLastINode();
 
     if (pathInode == null) {
-      NameNode.stateChangeLog
+      ServerlessNameNode.stateChangeLog
           .debug("Failed to remove " + src + " because it does not exist");
       return false;
     } else if (pathInode.isRoot()) {
-      NameNode.stateChangeLog.warn("Failed to remove " + src
+      ServerlessNameNode.stateChangeLog.warn("Failed to remove " + src
           + " because the root is not allowed to be deleted");
       return false;
     }
@@ -385,8 +385,8 @@ class FSDirDeleteOp {
   static boolean deleteInternal(
       FSNamesystem fsn, String src, INodesInPath iip)
       throws IOException {
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* NameSystem.delete: " + src);
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.delete: " + src);
     }
 
     FSDirectory fsd = fsn.getFSDirectory();
@@ -406,28 +406,28 @@ class FSDirDeleteOp {
     fsn.removeBlocks(collectedBlocks); // Incremental deletion of blocks
     collectedBlocks.clear();
 
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* Namesystem.delete: "
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* Namesystem.delete: "
                                         + src +" is removed");
     }
     return true;
   }
 
   static void incrDeletedFileCount(long count) {
-    NameNode.getNameNodeMetrics().incrFilesDeleted(count);
+    ServerlessNameNode.getNameNodeMetrics().incrFilesDeleted(count);
   }
 
   private static boolean deleteAllowed(final INodesInPath iip,
       final String src) {
     if (iip.length() < 1 || iip.getLastINode() == null) {
-      if (NameNode.stateChangeLog.isDebugEnabled()) {
-        NameNode.stateChangeLog.debug(
+      if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+        ServerlessNameNode.stateChangeLog.debug(
             "DIR* FSDirectory.unprotectedDelete: failed to remove "
                 + src + " because it does not exist");
       }
       return false;
     } else if (iip.length() == 1) { // src is the root
-      NameNode.stateChangeLog.warn(
+      ServerlessNameNode.stateChangeLog.warn(
           "DIR* FSDirectory.unprotectedDelete: failed to remove " + src +
               " because the root is not allowed to be deleted");
       return false;
@@ -480,8 +480,8 @@ class FSDirDeleteOp {
     targetNode.destroyAndCollectBlocks(fsd.getBlockStoragePolicySuite(),
         collectedBlocks, removedINodes);
     
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* FSDirectory.unprotectedDelete: "
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* FSDirectory.unprotectedDelete: "
           + iip.getPath() + " is removed");
     }
     return removed;

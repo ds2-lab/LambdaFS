@@ -1289,9 +1289,9 @@ public class FSXAttrBaseTest {
    * @throws Exception if restart fails
    */
   protected static void restart(boolean checkpoint) throws Exception {
-    NameNode nameNode = dfsCluster.getNameNode();
+    ServerlessNameNode serverlessNameNode = dfsCluster.getNameNode();
     if (checkpoint) {
-      NameNodeAdapter.enterSafeMode(nameNode, false);
+      NameNodeAdapter.enterSafeMode(serverlessNameNode, false);
     }
     shutdown();
     initCluster(false);

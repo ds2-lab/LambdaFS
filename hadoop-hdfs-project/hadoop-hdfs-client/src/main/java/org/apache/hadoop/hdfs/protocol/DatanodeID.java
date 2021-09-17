@@ -22,6 +22,8 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 
+import java.io.Serializable;
+
 /**
  * This class represents the primary identifier for a Datanode.
  * Datanodes are identified by how they can be contacted (hostname
@@ -35,7 +37,7 @@ import org.apache.hadoop.classification.InterfaceStability;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class DatanodeID implements Comparable<DatanodeID> {
+public class DatanodeID implements Comparable<DatanodeID>, Serializable {
   public static final DatanodeID[] EMPTY_ARRAY = {};
 
   //HOP: name field removed [HDFS-3144]

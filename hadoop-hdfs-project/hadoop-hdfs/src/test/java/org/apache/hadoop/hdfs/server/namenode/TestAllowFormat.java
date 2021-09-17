@@ -99,7 +99,7 @@ public class TestAllowFormat {
     LOG.info("--starting mini cluster");
     // manage dirs parameter set to false 
 
-    NameNode nn;
+    ServerlessNameNode nn;
     // 1. Create a new cluster and format DFS
     config.setBoolean(DFS_NAMENODE_SUPPORT_ALLOW_FORMAT_KEY, true);
     cluster = new MiniDFSCluster.Builder(config).manageDataDfsDirs(false)
@@ -117,7 +117,7 @@ public class TestAllowFormat {
     config.setBoolean(DFS_NAMENODE_SUPPORT_ALLOW_FORMAT_KEY, false);
     try {
       cluster.shutdown();
-      NameNode.format(config);
+      ServerlessNameNode.format(config);
       fail("Format succeeded, when it should have failed");
     } catch (IOException e) { // expected to fail
       // Verify we got message we expected
@@ -132,7 +132,7 @@ public class TestAllowFormat {
     config.setBoolean(DFS_NAMENODE_SUPPORT_ALLOW_FORMAT_KEY, true);
 
     HdfsStorageFactory.reset();
-    NameNode.format(config);
+    ServerlessNameNode.format(config);
 
     LOG.info("Done verifying format will succeed with allowformat true");
   }

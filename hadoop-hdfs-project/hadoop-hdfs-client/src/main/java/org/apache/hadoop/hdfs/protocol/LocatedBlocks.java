@@ -22,6 +22,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.fs.FileEncryptionInfo;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -31,7 +32,7 @@ import java.util.List;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class LocatedBlocks {
+public class LocatedBlocks implements Serializable {
   private final long fileLength;
   private final List<LocatedBlock> blocks; // array of blocks with prioritized locations
   private final boolean underConstruction;

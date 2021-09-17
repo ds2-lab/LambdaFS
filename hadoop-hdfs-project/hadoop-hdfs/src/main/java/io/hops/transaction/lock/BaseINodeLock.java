@@ -294,7 +294,7 @@ public abstract class BaseINodeLock extends Lock {
     }
   }
 
-  protected void acquireINodeAttributes()
+  public void acquireINodeAttributes()
       throws StorageException, TransactionContextException {
     List<INodeCandidatePrimaryKey> pks =
         new ArrayList<>();
@@ -325,7 +325,7 @@ public abstract class BaseINodeLock extends Lock {
   }
 
   @Override
-  protected final Type getType() {
+  public final Type getType() {
     return Type.INode;
   }
 

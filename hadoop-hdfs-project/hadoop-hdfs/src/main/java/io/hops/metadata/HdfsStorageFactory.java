@@ -53,16 +53,14 @@ import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.blockmanagement.PendingBlockInfo;
 import org.apache.hadoop.hdfs.server.blockmanagement.ReplicaUnderConstruction;
+import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
 import org.apache.hadoop.hdfs.server.namenode.INodeFile;
 import org.apache.hadoop.hdfs.server.namenode.INodeSymlink;
 import org.apache.hadoop.hdfs.server.namenode.Lease;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -71,13 +69,20 @@ import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+
 import org.apache.hadoop.hdfs.protocol.CacheDirective;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguousUnderConstruction;
 import org.apache.hadoop.hdfs.server.namenode.CachePool;
 import org.apache.hadoop.hdfs.server.namenode.DirectoryWithQuotaFeature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HdfsStorageFactory {
+
+  public static final Logger LOG =
+          LoggerFactory.getLogger(HdfsStorageFactory.class.getName());
 
   private static boolean isDALInitialized = false;
   private static DalStorageFactory dStorageFactory;
@@ -99,6 +104,8 @@ public class HdfsStorageFactory {
   }
 
   public static void setConfiguration(Configuration conf) throws IOException {
+    LOG.info("`HdfsStorageFactory.setConfiguration() called...");
+
     IDsMonitor.getInstance().setConfiguration(conf);
     Cache.getInstance(conf);
     LockFactory.getInstance().setConfiguration(conf);
@@ -113,13 +120,35 @@ public class HdfsStorageFactory {
                 .DFS_TRANSACTION_STATS_WRITER_ROUND_DEFAULT), conf
             .getBoolean(DFSConfigKeys.DFS_TRANSACTION_STATS_DETAILED_ENABLED,
                 DFSConfigKeys.DFS_TRANSACTION_STATS_DETAILED_ENABLED_DEFAULT));
+
     if (!isDALInitialized) {
+      LOG.info("Initializing Data Access Layer (DAL) now...");
+
+      ClassLoader loader = DalDriver.class.getClassLoader();
+
+      /*System.out.println(DalDriver.class.getSimpleName() + ".class");
+      System.out.println(String.valueOf(DalDriver.class.getResource("DalDriver.class")));
+      System.out.println(String.valueOf(loader.getResource("io/hops/DalDriver.class")));
+      System.out.println(String.valueOf(DalDriver.class.getProtectionDomain().getCodeSource().getLocation()));
+
+      loader = DalStorageFactory.class.getClassLoader();
+      System.out.println(DalStorageFactory.class.getSimpleName() + ".class");
+      System.out.println(String.valueOf(DalStorageFactory.class.getResource("DalStorageFactory.class")));
+      System.out.println(String.valueOf(loader.getResource("io/hops/DalStorageFactory.class")));
+      System.out.println(String.valueOf(DalStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));*/
+
       HdfsVariables.registerDefaultValues(conf);
-      addToClassPath(conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,
-          DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT));
+
+      String metadataDalJarPath = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,
+              DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT);
+
+      LOG.info("Adding the hops-metadata-dal-impl JAR to classpath. Path: " + metadataDalJarPath);
+
+      addToClassPath(metadataDalJarPath, (URLClassLoader)loader);
       dStorageFactory = DalDriver.load(
           conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS,
               DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS_DEFAULT));
+      LOG.info("StorageFactory class loaded successfully. Setting configuration now...");
       dStorageFactory.setConfiguration(getMetadataClusterConfiguration(conf));
       initDataAccessWrappers();
       EntityManager.addContextInitializer(getContextInitializer());
@@ -135,30 +164,52 @@ public class HdfsStorageFactory {
       
       isDALInitialized = true;
     }
+    else {
+      LOG.info("DAL is already initialized.");
+    }
   }
 
   public static Properties getMetadataClusterConfiguration(Configuration conf)
       throws IOException {
     String configFile = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE,
         DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE_DEFAULT);
+    LOG.info("Attempting to read metadata cluster configuration from " + configFile + " now...");
     Properties clusterConf = new Properties();
-    InputStream inStream =
-        StorageConnector.class.getClassLoader().getResourceAsStream(configFile);
-    clusterConf.load(inStream);
-    if(inStream == null){
+    //InputStream inStream = StorageConnector.class.getClassLoader().getResourceAsStream(configFile);
+
+    // The configuration file isn't in the proper class structure or in a resources directory. So I am not sure
+    // that the getResourceAsStream() will work... it gives an error, and I think that's the reason why. So I am
+    // trying this to load it from an absolute location, that is, the location of the config file in the Docker image.
+    //
+    // Also, I wrap the FileInputStream in a BufferedInputStream for performance reasons.
+    // According to https://stackoverflow.com/a/7692316, using FileInputStream directly is very slow, and it
+    // is made faster by wrapping in a BufferedInputStream.
+    InputStream inputStream = new BufferedInputStream(new FileInputStream(configFile));
+
+    // I commented this out because the FileInputStream constructor will
+    // throw a FileNotFoundException if it cannot locate the specified file.
+    /*if (inputStream == null)
       throw new FileNotFoundException("Unable to load database configuration file");
-    }
+    else
+      LOG.debug("Database configuration file is NOT null. Reading now...");*/
+
+    LOG.debug("Database configuration file is NOT null. Reading now...");
+    clusterConf.load(inputStream);
     return clusterConf;
   }
   
   //[M]: just for testing purposes
-  private static void addToClassPath(String s)
+  private static void addToClassPath(String s, URLClassLoader urlClassLoader)
       throws StorageInitializtionException {
     try {
       File f = new File(s);
       URL u = f.toURI().toURL();
-      URLClassLoader urlClassLoader =
-          (URLClassLoader) ClassLoader.getSystemClassLoader();
+
+      if (urlClassLoader == null) {
+        LOG.debug("Provided URLClassLoader is null. Using system class loader.");
+        urlClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+      }
+
       Class urlClass = URLClassLoader.class;
       Method method =
           urlClass.getDeclaredMethod("addURL", new Class[]{URL.class});
@@ -296,6 +347,9 @@ public class HdfsStorageFactory {
             (FileProvenanceDataAccess) getDataAccess(FileProvenanceDataAccess.class)));
         entityContexts.put(FileProvXAttrBufferEntry.class, new FileProvXAttrBufferContext(
             (FileProvXAttrBufferDataAccess) getDataAccess(FileProvXAttrBufferDataAccess.class)));
+
+        // entityContexts.put(DataNode.class, (DataNodeDataAccess) getDataAccess(DataNodeDataAccess.class));
+
         return entityContexts;
       }
 
@@ -311,6 +365,20 @@ public class HdfsStorageFactory {
       return dataAccessAdaptors.get(type);
     }
     return dStorageFactory.getDataAccess(type);
+  }
+
+  /**
+   * Used for debugging.
+   */
+  public static void printKeysInDataAccessMap() {
+    Map<Class, EntityDataAccess> dataAccessMap = dStorageFactory.getDataAccessMap();
+
+    Set<Class> dataAccessMapKeys = dataAccessMap.keySet();
+
+    LOG.info("Data Access Map keys: ");
+    for (Class clazz : dataAccessMapKeys) {
+      LOG.info(clazz.getSimpleName());
+    }
   }
   
   public static boolean formatStorage() throws StorageException {

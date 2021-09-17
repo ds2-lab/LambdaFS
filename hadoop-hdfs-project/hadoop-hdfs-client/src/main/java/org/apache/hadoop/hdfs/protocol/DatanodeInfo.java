@@ -27,6 +27,7 @@ import org.apache.hadoop.net.NodeBase;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Time;
 
+import java.io.Serializable;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -43,6 +44,8 @@ import static org.apache.hadoop.hdfs.DFSUtilClient.percent2String;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class DatanodeInfo extends DatanodeID implements Node {
+  private static final long serialVersionUID = 6714932850744847535L;
+
   private long capacity;
   private long dfsUsed;
   private long remaining;
@@ -294,7 +297,7 @@ public class DatanodeInfo extends DatanodeID implements Node {
   
   /** Sets cache used. */
   public void setCacheUsed(long cacheUsed) {
-    LOG.debug("Datanode " + this.getDatanodeUuid() + " is seting cache used " + cacheUsed);
+    LOG.debug("Datanode " + this.getDatanodeUuid() + " is setting cache used " + cacheUsed);
     this.cacheUsed = cacheUsed;
   }
 

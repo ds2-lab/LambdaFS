@@ -36,10 +36,16 @@ import com.google.common.base.Preconditions;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class NamespaceInfo extends StorageInfo {
+  private static final long serialVersionUID = -5251381730772142979L;
   String buildVersion;
   String blockPoolID = "";    // id of the block pool
   String softwareVersion;
   long capabilities;
+
+  /**
+   * The groupId that the DataNode should begin using when it publishes Storage Reports to intermediate storage.
+   */
+  int groupId;
 
   // only authoritative on the server-side to determine advertisement to
   // clients.  enum will update the supported values
@@ -70,26 +76,32 @@ public class NamespaceInfo extends StorageInfo {
 
   // defaults to enabled capabilites since this ctor is for server
   public NamespaceInfo(int nsID, String clusterID, String bpID,
-      long cT, String buildVersion, String softwareVersion) {
+      long cT, String buildVersion, String softwareVersion, int groupId) {
     this(nsID, clusterID, bpID, cT, buildVersion, softwareVersion,
-        CAPABILITIES_SUPPORTED);
+        CAPABILITIES_SUPPORTED, groupId);
   }
 
   // for use by server and/or client
   public NamespaceInfo(int nsID, String clusterID, String bpID,
       long cT, String buildVersion, String softwareVersion,
-      long capabilities) {
+      long capabilities, int groupId) {
     super(HdfsConstants.NAMENODE_LAYOUT_VERSION, nsID, clusterID, cT,
         NodeType.NAME_NODE, bpID);
     blockPoolID = bpID;
     this.buildVersion = buildVersion;
     this.softwareVersion = softwareVersion;
     this.capabilities = capabilities;
+    this.groupId = groupId;
+  }
+
+  public NamespaceInfo(int nsID, String clusterID, String bpID, long cT, int groupId) {
+    this(nsID, clusterID, bpID, cT, Storage.getBuildVersion(),
+            VersionInfo.getVersion(), groupId);
   }
 
   public NamespaceInfo(int nsID, String clusterID, String bpID, long cT) {
     this(nsID, clusterID, bpID, cT, Storage.getBuildVersion(),
-        VersionInfo.getVersion());
+        VersionInfo.getVersion(), 0);
   }
   
   public long getCapabilities() {
@@ -106,6 +118,17 @@ public class NamespaceInfo extends StorageInfo {
         "cannot test for unknown capability");
     long mask = capability.getMask();
     return (capabilities & mask) == mask;
+  }
+
+  /**
+   * Set the groupId value of this NamespaceInfo object.
+   */
+  public void setGroupId(int groupId) {
+    this.groupId = groupId;
+  }
+
+  public int getGroupId() {
+    return this.groupId;
   }
 
   public String getBuildVersion() {

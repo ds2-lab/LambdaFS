@@ -67,13 +67,13 @@ abstract class DfsServlet extends HttpServlet {
   }
 
   /**
-   * Create a {@link NameNode} proxy from the current {@link ServletContext}.
+   * Create a {@link ServerlessNameNode} proxy from the current {@link ServletContext}.
    */
   protected ClientProtocol createNameNodeProxy() throws IOException {
     ServletContext context = getServletContext();
     // if we are running in the Name Node, use it directly rather than via 
     // rpc
-    NameNode nn = NameNodeHttpServer.getNameNodeFromContext(context);
+    ServerlessNameNode nn = NameNodeHttpServer.getNameNodeFromContext(context);
     if (nn != null) {
       return nn.getRpcServer();
     }
@@ -82,7 +82,7 @@ abstract class DfsServlet extends HttpServlet {
     Configuration conf =
         new HdfsConfiguration(NameNodeHttpServer.getConfFromContext(context));
     return NameNodeProxies
-        .createProxy(conf, NameNode.getUri(nnAddr), ClientProtocol.class)
+        .createProxy(conf, ServerlessNameNode.getUri(nnAddr), ClientProtocol.class)
         .getProxy();
   }
 

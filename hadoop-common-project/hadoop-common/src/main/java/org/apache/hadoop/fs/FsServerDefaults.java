@@ -20,6 +20,7 @@ package org.apache.hadoop.fs;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -35,7 +36,9 @@ import org.apache.hadoop.util.DataChecksum;
  ****************************************************/
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class FsServerDefaults implements Writable {
+public class FsServerDefaults implements Writable, Serializable {
+
+  private static final long serialVersionUID = -5328192847338075589L;
 
   static { // register a ctor
     WritableFactories.setFactory(FsServerDefaults.class, new WritableFactory() {

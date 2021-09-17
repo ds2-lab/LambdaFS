@@ -44,8 +44,9 @@ import java.util.UUID;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class Token<T extends TokenIdentifier> implements Writable {
+public class Token<T extends TokenIdentifier> implements Serializable, Writable {
   public static final Logger LOG = LoggerFactory.getLogger(Token.class);
+  private static final long serialVersionUID = -3744244084187514092L;
 
   private static Map<Text, Class<? extends TokenIdentifier>> tokenKindMap;
 
@@ -53,7 +54,7 @@ public class Token<T extends TokenIdentifier> implements Writable {
   private byte[] password;
   private Text kind;
   private Text service;
-  private TokenRenewer renewer;
+  private transient TokenRenewer renewer;
 
   /**
    * Construct a token given a token identifier and a secret manager for the

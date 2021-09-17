@@ -26,13 +26,15 @@ import org.apache.hadoop.io.WritableFactory;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 
 /**
  * Object for passing block keys
  */
 @InterfaceAudience.Private
-public class ExportedBlockKeys implements Writable {
+public class ExportedBlockKeys implements Writable, Serializable {
   public static final ExportedBlockKeys DUMMY_KEYS = new ExportedBlockKeys();
+  private static final long serialVersionUID = -5176744555698763161L;
   private boolean isBlockTokenEnabled;
   private long keyUpdateInterval;
   private long tokenLifetime;

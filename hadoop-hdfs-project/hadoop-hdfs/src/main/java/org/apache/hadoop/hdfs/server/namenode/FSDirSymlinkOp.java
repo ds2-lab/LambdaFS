@@ -58,8 +58,8 @@ class FSDirSymlinkOp {
       throw new InvalidPathException("Invalid target name: " + target);
     }
 
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* NameSystem.createSymlink: target="
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.createSymlink: target="
           + target + " link=" + linkArg);
     }
     final FSPermissionChecker pc = fsn.getPermissionChecker();
@@ -111,7 +111,7 @@ class FSDirSymlinkOp {
           // add symbolic link to namespace
           addSymlink(fsd, link, iip, target, dirPerms, createParent);
 
-          NameNode.getNameNodeMetrics().incrCreateSymlinkOps();
+          ServerlessNameNode.getNameNodeMetrics().incrCreateSymlinkOps();
           success = true;
           return fsd.getAuditFileInfo(iip);
         } finally {
@@ -155,12 +155,12 @@ class FSDirSymlinkOp {
     INodeSymlink newNode = unprotectedAddSymlink(fsd, iip.getExistingINodes(),
         localName, id, target, mtime, mtime, perm);
     if (newNode == null) {
-      NameNode.stateChangeLog.info("addSymlink: failed to add " + path);
+      ServerlessNameNode.stateChangeLog.info("addSymlink: failed to add " + path);
       return null;
     }
 
-    if(NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("addSymlink: " + path + " is added");
+    if(ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("addSymlink: " + path + " is added");
     }
     return newNode;
   }

@@ -11277,7 +11277,7 @@ order written.</p>]]>
   <package name="org.apache.hadoop.hdfs.server.namenode">
     <!-- start class org.apache.hadoop.hdfs.server.namenode.BackupNode -->
     <class name="BackupNode"
-           extends="org.apache.hadoop.hdfs.server.namenode.NameNode"
+           extends="org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode"
            abstract="false"
            static="false" final="false" visibility="public"
            deprecated="not deprecated">
@@ -13344,7 +13344,7 @@ order written.</p>]]>
       </doc>
     </class>
     <!-- end class org.apache.hadoop.hdfs.server.namenode.ListPathsServlet -->
-    <!-- start class org.apache.hadoop.hdfs.server.namenode.NameNode -->
+    <!-- start class org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode -->
     <class name="NameNode" extends="java.lang.Object"
            abstract="false"
            static="false" final="false" visibility="public"
@@ -14268,7 +14268,7 @@ order written.</p>]]>
         <exception name="IOException" type="java.io.IOException"/>
       </method>
       <method name="createNameNode"
-              return="org.apache.hadoop.hdfs.server.namenode.NameNode"
+              return="org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode"
               abstract="false" native="false" synchronized="false"
               static="true" final="false" visibility="public"
               deprecated="not deprecated">
@@ -14394,7 +14394,7 @@ order written.</p>]]>
  state, for example partial blocksMap etc.]]>
       </doc>
     </class>
-    <!-- end class org.apache.hadoop.hdfs.server.namenode.NameNode -->
+    <!-- end class org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode -->
     <!-- start class org.apache.hadoop.hdfs.server.namenode.NamenodeFsck -->
     <class name="NamenodeFsck" extends="java.lang.Object"
            abstract="false"

@@ -22,7 +22,7 @@ import io.hops.transaction.EntityManager;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.ReplicaState;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -182,7 +182,7 @@ public class BlockInfoContiguousUnderConstruction extends BlockInfoContiguous {
     for (ReplicaUnderConstruction r : replicas) {
       if (genStamp != r.getGenerationStamp()) {
         r.getExpectedStorageLocation(datanodeMgr).removeBlock(this);
-        NameNode.blockStateChangeLog.info("BLOCK* Removing stale replica "
+        ServerlessNameNode.blockStateChangeLog.info("BLOCK* Removing stale replica "
             + "from location: {} for block {}", r.getStorageId(), r.getBlockId());
       }
     }
@@ -221,7 +221,7 @@ public class BlockInfoContiguousUnderConstruction extends BlockInfoContiguous {
     List<ReplicaUnderConstruction> replicas = getExpectedReplicas();
     setBlockRecoveryId(recoveryId);
     if (replicas.isEmpty()) {
-      NameNode.blockStateChangeLog.warn(
+      ServerlessNameNode.blockStateChangeLog.warn(
           "BLOCK*" + " BlockInfoUnderConstruction.initLeaseRecovery:" +
               " No blocks found, lease removed.");
     }
@@ -264,7 +264,7 @@ public class BlockInfoContiguousUnderConstruction extends BlockInfoContiguous {
       primaryDn.addBlockToBeRecovered(this);
       primary.setChosenAsPrimary(true);
       update(primary);
-      NameNode.blockStateChangeLog.info(
+      ServerlessNameNode.blockStateChangeLog.info(
           "BLOCK* {} recovery started, primary={}", this, primary);
     }
   }

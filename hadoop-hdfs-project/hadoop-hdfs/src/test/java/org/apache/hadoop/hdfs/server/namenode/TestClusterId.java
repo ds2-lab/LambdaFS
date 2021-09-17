@@ -87,14 +87,14 @@ public class TestClusterId {
   public void testFormatClusterIdOption() throws IOException {
     
     // 1. should format without cluster id
-    NameNode.format(config);
+    ServerlessNameNode.format(config);
     // see if cluster id not empty.
     String cid = getClusterId(config);
     assertTrue("Didn't get new ClusterId", (cid != null && !cid.equals("")));
 
     // 2. successful format with given clusterid
     StartupOption.FORMAT.setClusterId("mycluster");
-    NameNode.format(config);
+    ServerlessNameNode.format(config);
     // see if cluster id matches with given clusterid.
     cid = getClusterId(config);
     assertTrue("ClusterId didn't match", cid.equals("mycluster"));
@@ -102,7 +102,7 @@ public class TestClusterId {
     // 3. format without any clusterid again. It should generate new
     //clusterid.
     StartupOption.FORMAT.setClusterId("");
-    NameNode.format(config);
+    ServerlessNameNode.format(config);
     String newCid = getClusterId(config);
     assertFalse("ClusterId should not be the same", newCid.equals(cid));
   }
@@ -116,7 +116,7 @@ public class TestClusterId {
   public void testFormat() throws IOException {
     String[] argv = {"-format"};
     try {
-      NameNode.createNameNode(argv, config);
+      ServerlessNameNode.createNameNode(argv, config);
       fail("createNameNode() did not call System.exit()");
     } catch (ExitException e) {
       assertEquals("Format should have succeeded", 0, e.status);
@@ -141,7 +141,7 @@ public class TestClusterId {
 
     String[] argv = {"-format"};
     try {
-      NameNode.createNameNode(argv, config);
+      ServerlessNameNode.createNameNode(argv, config);
       fail("createNameNode() did not call System.exit()");
     } catch (ExitException e) {
       assertEquals("Format should have succeeded", 0, e.status);
@@ -166,7 +166,7 @@ public class TestClusterId {
 
     String[] argv = {"-format", "-force"};
     try {
-      NameNode.createNameNode(argv, config);
+      ServerlessNameNode.createNameNode(argv, config);
       fail("createNameNode() did not call System.exit()");
     } catch (ExitException e) {
       assertEquals("Format should have succeeded", 0, e.status);
@@ -192,7 +192,7 @@ public class TestClusterId {
     String myId = "testFormatWithForceAndClusterId";
     String[] argv = {"-format", "-force", "-clusterid", myId};
     try {
-      NameNode.createNameNode(argv, config);
+      ServerlessNameNode.createNameNode(argv, config);
       fail("createNameNode() did not call System.exit()");
     } catch (ExitException e) {
       assertEquals("Format should have succeeded", 0, e.status);
@@ -217,7 +217,7 @@ public class TestClusterId {
     PrintStream stdErr = new PrintStream(baos);
     System.setErr(stdErr);
 
-    NameNode.createNameNode(argv, config);
+    ServerlessNameNode.createNameNode(argv, config);
 
     // Check if usage is printed
     assertTrue(baos.toString("UTF-8").contains("Usage: java NameNode"));
@@ -243,7 +243,7 @@ public class TestClusterId {
     PrintStream stdErr = new PrintStream(baos);
     System.setErr(stdErr);
 
-    NameNode.createNameNode(argv, config);
+    ServerlessNameNode.createNameNode(argv, config);
 
     // Check if usage is printed
     assertTrue(baos.toString("UTF-8").contains("Usage: java NameNode"));
@@ -270,7 +270,7 @@ public class TestClusterId {
     PrintStream stdErr = new PrintStream(baos);
     System.setErr(stdErr);
 
-    NameNode.createNameNode(argv, config);
+    ServerlessNameNode.createNameNode(argv, config);
 
     // Check if usage is printed
     assertTrue(baos.toString("UTF-8").contains("Usage: java NameNode"));
@@ -293,7 +293,7 @@ public class TestClusterId {
 
     String[] argv = {"-format", "-nonInteractive"};
     try {
-      NameNode.createNameNode(argv, config);
+      ServerlessNameNode.createNameNode(argv, config);
       fail("createNameNode() did not call System.exit()");
     } catch (ExitException e) {
       assertEquals("Format should have succeeded", 0, e.status);
@@ -318,7 +318,7 @@ public class TestClusterId {
 
     String[] argv = {"-format", "-nonInteractive", "-force"};
     try {
-      NameNode.createNameNode(argv, config);
+      ServerlessNameNode.createNameNode(argv, config);
       fail("createNameNode() did not call System.exit()");
     } catch (ExitException e) {
       assertEquals("Format should have succeeded", 0, e.status);
@@ -353,7 +353,7 @@ public class TestClusterId {
     String[] argv = {"-format"};
 
     try {
-      NameNode.createNameNode(argv, config);
+      ServerlessNameNode.createNameNode(argv, config);
       fail("createNameNode() did not call System.exit()");
     } catch (ExitException e) {
       assertEquals("Format should have succeeded", 0, e.status);

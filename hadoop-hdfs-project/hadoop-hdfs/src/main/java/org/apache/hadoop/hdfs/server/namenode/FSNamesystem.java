@@ -90,6 +90,8 @@ import org.apache.hadoop.hdfs.server.namenode.top.metrics.TopMetrics;
 import org.apache.hadoop.hdfs.server.namenode.top.window.RollingWindowManager;
 import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMethods;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.server.protocol.StorageReport;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 import org.apache.hadoop.hdfs.util.EnumCounters;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -117,7 +119,7 @@ import org.apache.hadoop.util.*;
 import org.apache.log4j.Appender;
 import org.apache.log4j.AsyncAppender;
 import org.apache.log4j.Logger;
-import org.codehaus.jackson.map.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.jetty.util.ajax.JSON;
 
 import javax.management.NotCompliantMBeanException;
@@ -238,6 +240,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   static final int DEFAULT_MAX_CORRUPT_FILEBLOCKS_RETURNED = 100;
   static int BLOCK_DELETION_INCREMENT = 1000;
 
+  /**
+   * Used to cache file system metadata locally within a serverless name node.
+   */
+  private final LRUMetadataCache<String, Object> metadataCache;
+
   private final boolean isPermissionEnabled;
   private final UserGroupInformation fsOwner;
   private final String superGroup;
@@ -310,7 +317,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   // precision of access times.
   private final long accessTimePrecision;
 
-  private NameNode nameNode;
+  private ServerlessNameNode serverlessNameNode;
   private final Configuration conf;
   private final QuotaUpdateManager quotaUpdateManager;
 
@@ -407,10 +414,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * @throws IOException
    *     if loading fails
    */
-  static FSNamesystem loadFromDisk(Configuration conf, NameNode namenode) throws IOException {
+  static FSNamesystem loadFromDisk(Configuration conf, ServerlessNameNode namenode) throws IOException {
 
     FSNamesystem namesystem = new FSNamesystem(conf, namenode);
-    StartupOption startOpt = NameNode.getStartupOption(conf);
+    StartupOption startOpt = ServerlessNameNode.getStartupOption(conf);
     if (startOpt == StartupOption.RECOVER) {
       namesystem.setSafeMode(SafeModeAction.SAFEMODE_ENTER);
     }
@@ -432,7 +439,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
     long timeTakenToLoadFSImage = monotonicNow() - loadStart;
     LOG.debug("Finished loading FSImage in " + timeTakenToLoadFSImage + " ms");
-    NameNodeMetrics nnMetrics = NameNode.getNameNodeMetrics();
+    NameNodeMetrics nnMetrics = ServerlessNameNode.getNameNodeMetrics();
     if (nnMetrics != null) {
       nnMetrics.setFsImageLoadTime((int) timeTakenToLoadFSImage);
     }
@@ -451,7 +458,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * @throws IOException
    *      on bad configuration
    */
-  FSNamesystem(Configuration conf, NameNode namenode) throws IOException {
+  FSNamesystem(Configuration conf, ServerlessNameNode namenode) throws IOException {
     try {
       provider = DFSUtil.createKeyProviderCryptoExtension(conf);
       if (provider == null) {
@@ -465,10 +472,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         enableAsyncAuditLog();
       }
       this.conf = conf;
-      this.nameNode = namenode;
+      this.serverlessNameNode = namenode;
       resourceRecheckInterval =
           conf.getLong(DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_KEY,
               DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_DEFAULT);
+
+      this.metadataCache = new LRUMetadataCache<>();
 
       this.blockManager = new BlockManager(this, conf);
       this.erasureCodingEnabled =
@@ -690,7 +699,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       HdfsVariables.setSafeModeInfo(new SafeModeInfo(conf), -1);
       inSafeMode.set(true);
       assert safeMode() != null && !isPopulatingReplQueues();
-      StartupProgress prog = NameNode.getStartupProgress();
+      StartupProgress prog = ServerlessNameNode.getStartupProgress();
       prog.beginPhase(Phase.SAFEMODE);
       prog.setTotal(Phase.SAFEMODE, STEP_AWAITING_REPORTED_BLOCKS,
           getCompleteBlocksTotal());
@@ -874,7 +883,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * Version of @see #getNamespaceInfo() that is not protected by a lock.
    */
   private NamespaceInfo unprotectedGetNamespaceInfo() throws IOException {
-
     StorageInfo storageInfo = StorageInfo.getStorageInfoFromDB();
 
     return new NamespaceInfo(storageInfo.getNamespaceID(), getClusterId(),
@@ -965,6 +973,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     logAuditEvent(true, "setOwner", src, null, auditStat);
   }
 
+  public LRUMetadataCache<String, Object> getMetadataCache() {
+    return metadataCache;
+  }
+
   public static class GetBlockLocationsResult {
     final boolean updateAccessTime;
     public final LocatedBlocks blocks;
@@ -1020,8 +1032,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
         INodeLock il = lf.getINodeLock(lockType, INodeResolveType.PATH, src)
-            .setNameNodeID(nameNode.getId())
-            .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+            .setNameNodeID(serverlessNameNode.getId())
+            .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
             .skipReadingQuotaAttr(!dir.isQuotaEnabled());
         locks.add(il).add(lf.getBlockLock())
             .add(lf.getBlockRelated(BLK.RE, BLK.ER, BLK.CR, BLK.UC, BLK.CA));
@@ -1098,8 +1110,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
         INodeLock il = lf.getINodeLock(INodeLockType.READ, INodeResolveType.PATH, src)
-            .setNameNodeID(nameNode.getId())
-            .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+            .setNameNodeID(serverlessNameNode.getId())
+            .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
         locks.add(il).add(lf.getBlockLock())
             .add(lf.getBlockRelated(BLK.RE, BLK.ER, BLK.CR, BLK.UC, BLK.CA));
         locks.add(lf.getEZLock());
@@ -1358,8 +1370,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           long stoRootINodeId = (Long) getParams()[0];
           LockFactory lf = getInstance();
           INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, src)
-                  .setNameNodeID(nameNode.getId())
-                  .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                  .setNameNodeID(serverlessNameNode.getId())
+                  .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
             il.setIgnoredSTOInodes(stoRootINodeId);
           locks.add(il);
           locks.add(lf.getAcesLock());
@@ -1494,8 +1506,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       final String clientName, final String clientMachine,
       final long mtime)
       throws IOException, UnresolvedLinkException {
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* NameSystem.truncate: src="
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.truncate: src="
           + srcArg + " newLength=" + newLength);
     }
     if (newLength < 0) {
@@ -1659,7 +1671,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       file.setLastBlock(truncatedBlockUC, blockManager.getStorages(oldBlock));
       getBlockManager().addBlockCollection(truncatedBlockUC, file);
 
-      NameNode.stateChangeLog.info("BLOCK* prepareFileForTruncate: "
+      ServerlessNameNode.stateChangeLog.info("BLOCK* prepareFileForTruncate: "
           + "Scheduling copy-on-truncate to new size "
           + truncatedBlockUC.getNumBytes() + " new block " + newBlock
           + " old block " + truncatedBlockUC.getTruncateBlock());
@@ -1675,7 +1687,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       truncatedBlockUC.getTruncateBlock().setGenerationStampNoPersistance(
           newBlock.getGenerationStamp());
 
-      NameNode.stateChangeLog.debug("BLOCK* prepareFileForTruncate: "
+      ServerlessNameNode.stateChangeLog.debug("BLOCK* prepareFileForTruncate: "
           + "Scheduling in-place block truncate to new size "
           + truncatedBlockUC.getTruncateBlock().getNumBytes()
           + " block=" + truncatedBlockUC + " recoveryID= " + newBlock.getGenerationStamp());
@@ -1844,8 +1856,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         public void acquireLock(TransactionLocks locks) throws IOException {
           LockFactory lf = getInstance();
           INodeLock il = lf.getINodeLock(INodeLockType.WRITE_ON_TARGET_AND_PARENT, INodeResolveType.PATH, src)
-              .setNameNodeID(nameNode.getId())
-              .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+              .setNameNodeID(serverlessNameNode.getId())
+              .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
               .skipReadingQuotaAttr(!dir.isQuotaEnabled());
           locks.add(il);
           locks.add(lf.getEZLock());
@@ -1888,8 +1900,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
         INodeLock il = lf.getINodeLock(INodeLockType.WRITE_ON_TARGET_AND_PARENT, INodeResolveType.PATH, src)
-            .setNameNodeID(nameNode.getId())
-            .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+            .setNameNodeID(serverlessNameNode.getId())
+            .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
             .skipReadingQuotaAttr(!dir.isQuotaEnabled());
         locks.add(il).add(lf.getBlockLock());
         LeaseLock leaseLock = (LeaseLock)lf.getLeaseLockSinglePath(LockType.WRITE, holder,
@@ -1927,7 +1939,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           HdfsFileStatus test = PBHelper.convert(HdfsProtos.HdfsFileStatusProto.parseFrom(cacheEntry.getPayload()));
           return test;
         }
-        if (NameNode.stateChangeLog.isDebugEnabled()) {
+        if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
           StringBuilder builder = new StringBuilder();
           builder.append("DIR* NameSystem.startFile: src=" + src
               + ", holder=" + holder
@@ -1942,7 +1954,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           } else {
             builder.append("null");
           }
-          NameNode.stateChangeLog.debug(builder.toString());
+          ServerlessNameNode.stateChangeLog.debug(builder.toString());
         }
         HdfsFileStatus status = null;
         try {
@@ -2104,12 +2116,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         newNode = dir.getInode(newNode.getId()).asFile();
       }
 
-      if (NameNode.stateChangeLog.isDebugEnabled()) {
-        NameNode.stateChangeLog.debug("DIR* NameSystem.startFile: added " +
+      if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+        ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.startFile: added " +
             src + " inode " + newNode.getId() + " " + holder);
       }
     } catch (IOException ie) {
-        NameNode.stateChangeLog.warn("DIR* NameSystem.startFile: " + src + " " +
+        ServerlessNameNode.stateChangeLog.warn("DIR* NameSystem.startFile: " + src + " " +
           ie.getMessage());
       throw ie;
     }
@@ -2162,7 +2174,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       }
       return prepareFileForAppend(src, iip, holder, clientMachine, newBlock);
     } catch (IOException ie) {
-      NameNode.stateChangeLog.warn("DIR* NameSystem.append: " +ie.getMessage());
+      ServerlessNameNode.stateChangeLog.warn("DIR* NameSystem.append: " +ie.getMessage());
       throw ie;
     }
    }
@@ -2294,8 +2306,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();
             INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, src)
-                    .setNameNodeID(nameNode.getId())
-                    .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                    .setNameNodeID(serverlessNameNode.getId())
+                    .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
             locks.add(il)
                     .add(lf.getLeaseLockAllPaths(LockType.WRITE, holder, leaseCreationLockRows))
                     .add(lf.getLeasePathLock(LockType.READ_COMMITTED)).add(lf.getBlockLock())
@@ -2478,8 +2490,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();
             INodeLock il = lf.getINodeLock( INodeLockType.WRITE_ON_TARGET_AND_PARENT, INodeResolveType.PATH, src)
-                    .setNameNodeID(nameNode.getId())
-                    .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+                    .setNameNodeID(serverlessNameNode.getId())
+                    .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
                     .skipReadingQuotaAttr(!dir.isQuotaEnabled());
             locks.add(il).add(lf.getBlockLock())
                     .add(lf.getLeaseLockAllPaths(LockType.WRITE, holder, leaseCreationLockRows))
@@ -2607,8 +2619,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     stat = FSDirStatAndListingOp.getFileInfo(dir, src, false,
         FSDirectory.isReservedRawName(srcArg), true);
     if (lb != null) {
-      if (NameNode.stateChangeLog.isDebugEnabled()) {
-        NameNode.stateChangeLog.debug(
+      if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+        ServerlessNameNode.stateChangeLog.debug(
             "DIR* NameSystem.appendFile: file " + src + " for " + holder +
                 " at " + clientMachine + " block " + lb.getBlock() +
                 " block size " + lb.getBlock().getNumBytes());
@@ -2648,14 +2660,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           // In this case, we have to try to resolve the path and hope it
           // hasn't changed or been deleted since the file was opened for write.
           INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, src)
-              .setNameNodeID(nameNode.getId())
-              .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+              .setNameNodeID(serverlessNameNode.getId())
+              .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
           locks.add(il)
               .add(lf.getLastTwoBlocksLock(src));
         } else {
           INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, fileId)
-              .setNameNodeID(nameNode.getId())
-              .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+              .setNameNodeID(serverlessNameNode.getId())
+              .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
           locks.add(il)
               .add(lf.getLastTwoBlocksLock(fileId));
         }
@@ -2701,8 +2713,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     Node clientNode;
     String clientMachine = null;
 
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("BLOCK* getAdditionalBlock: "
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("BLOCK* getAdditionalBlock: "
           + src + " inodeId " + fileId + " for " + clientName);
     }
 
@@ -2915,8 +2927,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           lastBlockInFile.getNumBytes() >= pendingFile.getPreferredBlockSize() &&
           lastBlockInFile.isComplete()) {
         // Case 1
-        if (NameNode.stateChangeLog.isDebugEnabled()) {
-          NameNode.stateChangeLog.debug(
+        if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+          ServerlessNameNode.stateChangeLog.debug(
               "BLOCK* NameSystem.allocateBlock: handling block allocation" +
                   " writing to a file with a complete previous block: src=" +
                   src + " lastBlock=" + lastBlockInFile);
@@ -2931,7 +2943,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
         // Case 2
         // Return the last block.
-        NameNode.stateChangeLog.info("BLOCK* allocateBlock: " +
+        ServerlessNameNode.stateChangeLog.info("BLOCK* allocateBlock: " +
             "caught retry for allocation of a new block in " +
             src + ". Returning previously allocated block " + lastBlockInFile);
         long offset = pendingFile.computeFileSize();
@@ -2980,13 +2992,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
               // In this case, we have to try to resolve the path and hope it
               // hasn't changed or been deleted since the file was opened for write.
               INodeLock il = lf.getINodeLock(INodeLockType.READ, INodeResolveType.PATH, src)
-                  .setNameNodeID(nameNode.getId())
-                  .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                  .setNameNodeID(serverlessNameNode.getId())
+                  .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
               locks.add(il);
             } else {
               INodeLock il = lf.getINodeLock(INodeLockType.READ, INodeResolveType.PATH, fileId)
-                  .setNameNodeID(nameNode.getId())
-                  .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                  .setNameNodeID(serverlessNameNode.getId())
+                  .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
               locks.add(il);
             }
 
@@ -3070,13 +3082,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
               // In this case, we have to try to resolve the path and hope it
               // hasn't changed or been deleted since the file was opened for write.
               INodeLock il = lf.getINodeLock(INodeLockType.WRITE_ON_TARGET_AND_PARENT, INodeResolveType.PATH, src)
-                  .setNameNodeID(nameNode.getId())
-                  .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                  .setNameNodeID(serverlessNameNode.getId())
+                  .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
               locks.add(il);
             } else {
               INodeLock il = lf.getINodeLock(INodeLockType.WRITE_ON_TARGET_AND_PARENT, INodeResolveType.PATH, fileId)
-                  .setNameNodeID(nameNode.getId())
-                  .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                  .setNameNodeID(serverlessNameNode.getId())
+                  .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
               locks.add(il);
             }
             locks.add(lf.getLeaseLockAllPaths(LockType.READ, leaseCreationLockRows))
@@ -3092,8 +3104,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             //
             // Remove the block from the pending creates list
             //
-            if (NameNode.stateChangeLog.isDebugEnabled()) {
-              NameNode.stateChangeLog.debug(
+            if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+              ServerlessNameNode.stateChangeLog.debug(
                   "BLOCK* NameSystem.abandonBlock: " + b + "of file " + src);
             }
             checkNameNodeSafeMode("Cannot abandon block " + b + " for file" + src);
@@ -3122,8 +3134,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             leaseManager.getLease(holder).updateLastTwoBlocksInLeasePath(srcInt,
                 file.getLastBlock(), file.getPenultimateBlock());
 
-            if (NameNode.stateChangeLog.isDebugEnabled()) {
-              NameNode.stateChangeLog.debug(
+            if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+              ServerlessNameNode.stateChangeLog.debug(
                   "BLOCK* NameSystem.abandonBlock: " + b +
                       " is removed from pendingCreates");
             }
@@ -3197,18 +3209,18 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
               // In this case, we have to try to resolve the path and hope it
               // hasn't changed or been deleted since the file was opened for write.
               INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, src)
-                  .setNameNodeID(nameNode.getId())
-                  .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+                  .setNameNodeID(serverlessNameNode.getId())
+                  .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
                   .skipReadingQuotaAttr(!dir.isQuotaEnabled());
               locks.add(il);
             } else {
               INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, fileId)
-                  .setNameNodeID(nameNode.getId())
-                  .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+                  .setNameNodeID(serverlessNameNode.getId())
+                  .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
                   .skipReadingQuotaAttr(!dir.isQuotaEnabled());
               locks.add(il);
             }
-            //we have to lock all leasse for the client becuase the file could have been renamed
+            //we have to lock all leases for the client because the file could have been renamed
             LeaseLock leaseLock = (LeaseLock)lf.getLeaseLockAllPaths(LockType.WRITE, holder,
                     leaseCreationLockRows);
             locks.add(leaseLock).add(lf.getLeasePathLock(LockType.WRITE))
@@ -3233,8 +3245,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   private boolean completeFileInternal(String src, String holder, Block last, long fileId,
       final byte[] data)
       throws IOException {
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* NameSystem.completeFile: " +
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.completeFile: " +
           src + " for " + holder);
     }
     checkNameNodeSafeMode("Cannot complete file " + src);
@@ -3245,8 +3257,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             "Trying to store the file data in the database. Last block of the file should" +
                 " have been null");
       }
+      LOG.debug("Calling completeFileStoredInDataBase() now...");
       return completeFileStoredInDataBase(src, holder,fileId, data);
     } else {
+      LOG.debug("Calling completeFileStoredOnDataNodes() now...");
       return completeFileStoredOnDataNodes(src, holder, last, fileId);
     }
   }
@@ -3259,6 +3273,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     INode inode = null;
     try {
       if (fileId == HdfsConstantsClient.GRANDFATHER_INODE_ID) {
+        LOG.debug("Attempting to resolve the path of the file: " + src);
         // Older clients may not have given us an inode ID to work with.
         // In this case, we have to try to resolve the path and hope it
         // hasn't changed or been deleted since the file was opened for write.
@@ -3283,7 +3298,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         // See HDFS-3031.
         final Block realLastBlock = ((INodeFile) inode).getLastBlock();
         if (Block.matchingIdAndGenStamp(last, realLastBlock)) {
-          NameNode.stateChangeLog.info("DIR* completeFile: " +
+          ServerlessNameNode.stateChangeLog.info("DIR* completeFile: " +
               "request from " + holder + " to complete inode " + fileId +
               "(" + src + ") which is already closed. But, it appears to be " +
               "an RPC retry. Returning success");
@@ -3307,7 +3322,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
     finalizeINodeFileUnderConstruction(src, pendingFile);
 
-    NameNode.stateChangeLog
+    ServerlessNameNode.stateChangeLog
         .info("DIR* completeFile: " + src + " is closed by " + holder);
     return true;
   }
@@ -3363,7 +3378,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
     finalizeINodeFileUnderConstruction(src, pendingFile);
 
-    NameNode.stateChangeLog
+    ServerlessNameNode.stateChangeLog
         .info("DIR* completeFile: " + src + " is closed by " + holder);
     return true;
   }
@@ -3383,7 +3398,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       Block newBlock,
       DatanodeStorageInfo targets[]) throws IOException, StorageException {
     BlockInfoContiguous b = dir.addBlock(src, inodesInPath, newBlock, targets);
-    NameNode.stateChangeLog.info("BLOCK* allocate " + b + " for " + src);
+    ServerlessNameNode.stateChangeLog.info("BLOCK* allocate " + b + " for " + src);
     DatanodeStorageInfo.incrementBlocksScheduled(targets);
   }
 
@@ -3471,7 +3486,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     //only for testing
     saveTimes();
     
-    if(!nameNode.isLeader() && dir.isQuotaEnabled()){
+    if(!serverlessNameNode.isLeader() && dir.isQuotaEnabled()){
       throw new NotALeaderException("Quota enabled. Delete operation can only be performed on a " +
               "leader namenode");
     }
@@ -3649,13 +3664,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           // In this case, we have to try to resolve the path and hope it
           // hasn't changed or been deleted since the file was opened for write.
           INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, src)
-              .setNameNodeID(nameNode.getId())
-              .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+              .setNameNodeID(serverlessNameNode.getId())
+              .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
           locks.add(il);
         } else {
           INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, fileId)
-              .setNameNodeID(nameNode.getId())
-              .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+              .setNameNodeID(serverlessNameNode.getId())
+              .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
           locks.add(il);
         }
         locks.add(lf.getLeaseLockAllPaths(LockType.READ, clientName, leaseCreationLockRows))
@@ -3665,7 +3680,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
       @Override
       public Object performTask() throws IOException {
-        NameNode.stateChangeLog
+        ServerlessNameNode.stateChangeLog
             .info("BLOCK* fsync: " + src + " for " + clientName);
         checkNameNodeSafeMode("Cannot fsync file " + src);
         final INode inode;
@@ -3736,7 +3751,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     // then reap lease immediately and close the file.
     if (nrCompleteBlocks == nrBlocks) {
       finalizeINodeFileUnderConstruction(src, pendingFile);
-      NameNode.stateChangeLog.warn("BLOCK*" +
+      ServerlessNameNode.stateChangeLog.warn("BLOCK*" +
           " internalReleaseLease: All existing blocks are COMPLETE," +
           " lease removed, file closed.");
       return true;  // closed!
@@ -3750,7 +3765,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       final String message = "DIR* NameSystem.internalReleaseLease: " +
           "attempt to release a create lock on " + src +
           " but file is already closed.";
-      NameNode.stateChangeLog.warn(message);
+      ServerlessNameNode.stateChangeLog.warn(message);
       throw new IOException(message);
     }
 
@@ -3772,7 +3787,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         if (penultimateBlockMinReplication &&
             blockManager.checkMinReplication(lastBlock)) {
           finalizeINodeFileUnderConstruction(src, pendingFile);
-          NameNode.stateChangeLog.warn("BLOCK*" +
+          ServerlessNameNode.stateChangeLog.warn("BLOCK*" +
               " internalReleaseLease: Committed blocks are minimally replicated," +
               " lease removed, file closed.");
           return true;  // closed!
@@ -3785,7 +3800,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             "Failed to release lease for file " + src +
             ". Committed blocks are waiting to be minimally replicated." +
             " Try again later.";
-        NameNode.stateChangeLog.warn(message);
+        ServerlessNameNode.stateChangeLog.warn(message);
         throw new AlreadyBeingCreatedException(message);
       case UNDER_CONSTRUCTION:
       case UNDER_RECOVERY:
@@ -3813,7 +3828,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           // We can remove this block and close the file.
           pendingFile.removeLastBlock(lastBlock);
           finalizeINodeFileUnderConstruction(src, pendingFile);
-          NameNode.stateChangeLog.warn("BLOCK* internalReleaseLease: "
+          ServerlessNameNode.stateChangeLog.warn("BLOCK* internalReleaseLease: "
               + "Removed empty last block and closed file.");
           return true;
         }
@@ -3830,7 +3845,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         // Cannot close file right now, since the last block requires recovery.
         // This may potentially cause infinite loop in lease recovery
         // if there are no valid replicas on data-nodes.
-        NameNode.stateChangeLog.warn("DIR* NameSystem.internalReleaseLease: " +
+        ServerlessNameNode.stateChangeLog.warn("DIR* NameSystem.internalReleaseLease: " +
             "File " + src + " has not been closed." +
             " Lease recovery is in progress. " +
             "RecoveryId = " + blockRecoveryId + " for block " + lastBlock);
@@ -4237,7 +4252,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   void registerDatanode(DatanodeRegistration nodeReg) throws IOException {
     getBlockManager().getDatanodeManager().registerDatanode(nodeReg);
-      checkSafeMode();
+    checkSafeMode();
   }
 
   /**
@@ -4262,9 +4277,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * @throws IOException
    */
   HeartbeatResponse handleHeartbeat(DatanodeRegistration nodeReg,
-      StorageReport[] reports, long cacheCapacity, long cacheUsed, int xceiverCount,
-      int xmitsInProgress, int failedVolumes,
-      VolumeFailureSummary volumeFailureSummary) throws IOException {
+                                    StorageReport[] reports, long cacheCapacity, long cacheUsed, int xceiverCount,
+                                    int xmitsInProgress, int failedVolumes,
+                                    VolumeFailureSummary volumeFailureSummary) throws IOException {
     //get datanode commands
     final int maxTransfer =
         blockManager.getMaxReplicationStreams() - xmitsInProgress;
@@ -4274,6 +4289,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             maxTransfer, failedVolumes, volumeFailureSummary);
 
     return new HeartbeatResponse(cmds, getRollingUpgradeInfoTX());
+  }
+
+  /**
+   * Serverless version of the `handleHeartbeat()` function.
+   */
+  public void handleServerlessStorageReports(DatanodeRegistration datanodeRegistration, StorageReport[] reports)
+          throws IOException {
+    blockManager.getDatanodeManager().handleServerlessStorageReports(datanodeRegistration, reports);
   }
 
   /**
@@ -4349,14 +4372,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   private void persistBlocks(String path, INodeFile file) throws IOException {
     Preconditions.checkArgument(file.isUnderConstruction());
-    if(NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("persistBlocks: " + path
+    if(ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("persistBlocks: " + path
               + " with " + file.getBlocks().length + " blocks is persisted to" +
               " the file system");
     }
   }
   void incrDeletedFileCount(long count) {
-    NameNode.getNameNodeMetrics().incrFilesDeleted(count);
+    ServerlessNameNode.getNameNodeMetrics().incrFilesDeleted(count);
   }
   /**
    * Close file.
@@ -4365,8 +4388,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   private void closeFile(String path, INodeFile file) throws IOException {
     // file is closed
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("closeFile: "
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("closeFile: "
               +path+" with "+ file.getBlocks().length
               +" blocks is persisted to the file system");
     }
@@ -4557,8 +4580,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   private void persistNewBlock(String path, INodeFile file) throws IOException {
     Preconditions.checkArgument(file.isUnderConstruction());
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("persistNewBlock: "
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("persistNewBlock: "
               + path + " with new block " + file.getLastBlock().toString()
               + ", current total block count is " + file.getBlocks().length);
     }
@@ -4780,28 +4803,28 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
     private void leaveInternal() throws IOException {
       long timeInSafeMode = now() - startTime;
-      NameNode.stateChangeLog.info(
+      ServerlessNameNode.stateChangeLog.info(
           "STATE* Leaving safe mode after " + timeInSafeMode / 1000 + " secs");
-      NameNode.getNameNodeMetrics().setSafeModeTime((int) timeInSafeMode);
+      ServerlessNameNode.getNameNodeMetrics().setSafeModeTime((int) timeInSafeMode);
 
       //Log the following only once (when transitioning from ON -> OFF)
       if (reached() >= 0) {
-        NameNode.stateChangeLog.info("STATE* Safe mode is OFF");
+        ServerlessNameNode.stateChangeLog.info("STATE* Safe mode is OFF");
       }
       if(isLeader()){
         HdfsVariables.exitSafeMode();
       }
       final NetworkTopology nt =
           blockManager.getDatanodeManager().getNetworkTopology();
-      NameNode.stateChangeLog.info(
+      ServerlessNameNode.stateChangeLog.info(
           "STATE* Network topology has " + nt.getNumOfRacks() + " racks and " +
               nt.getNumOfLeaves() + " datanodes");
-      NameNode.stateChangeLog.info("STATE* UnderReplicatedBlocks has " +
+      ServerlessNameNode.stateChangeLog.info("STATE* UnderReplicatedBlocks has " +
           blockManager.numOfUnderReplicatedBlocks() + " blocks");
 
       startSecretManagerIfNecessary();
       // If startup has not yet completed, end safemode phase.
-      StartupProgress prog = NameNode.getStartupProgress();
+      StartupProgress prog = ServerlessNameNode.getStartupProgress();
       if (prog.getStatus(Phase.SAFEMODE) != Status.COMPLETE) {
         prog.endStep(Phase.SAFEMODE, STEP_AWAITING_REPORTED_BLOCKS);
         prog.endPhase(Phase.SAFEMODE);
@@ -4960,7 +4983,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
         // Report startup progress only if we haven't completed startup yet.
         //todo this will not work with multiple NN
-        StartupProgress prog = NameNode.getStartupProgress();
+        StartupProgress prog = ServerlessNameNode.getStartupProgress();
         if (prog.getStatus(Phase.SAFEMODE) != Status.COMPLETE) {
           if (this.awaitingReportedBlocksCounter == null) {
             this.awaitingReportedBlocksCounter = prog.getCounter(Phase.SAFEMODE,
@@ -5098,7 +5121,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       if (!rightNow && (curTime - lastStatusReport < 20 * 1000)) {
         return;
       }
-      NameNode.stateChangeLog.error(msg + " \n" + getTurnOffTip());
+      ServerlessNameNode.stateChangeLog.error(msg + " \n" + getTurnOffTip());
       lastStatusReport = curTime;
     }
 
@@ -5187,7 +5210,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         LOG.debug("Adjusting safe blocks, added " + added +" blocks");
       }
       
-      StartupProgress prog = NameNode.getStartupProgress();
+      StartupProgress prog = ServerlessNameNode.getStartupProgress();
         if (prog.getStatus(Phase.SAFEMODE) != Status.COMPLETE) {
           if (this.awaitingReportedBlocksCounter == null) {
             this.awaitingReportedBlocksCounter = prog.getCounter(Phase.SAFEMODE,
@@ -5498,7 +5521,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       safeMode.setManual();
     }
     HdfsVariables.setSafeModeInfo(safeMode, 0);
-    NameNode.stateChangeLog
+    ServerlessNameNode.stateChangeLog
         .info("STATE* Safe mode is ON" + safeMode.getTurnOffTip());
   }
 
@@ -5507,9 +5530,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    *
    * @throws IOException
    */
-  void leaveSafeMode() throws IOException {
+  public void leaveSafeMode() throws IOException {
     if (!isInSafeMode()) {
-      NameNode.stateChangeLog.info("STATE* Safe mode is already OFF");
+      ServerlessNameNode.stateChangeLog.info("STATE* Safe mode is already OFF");
       return;
     }
     SafeModeInfo safeMode = safeMode();
@@ -5545,6 +5568,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   public void processIncrementalBlockReport(DatanodeRegistration nodeReg, StorageReceivedDeletedBlocks r)
       throws IOException {
       blockManager.processIncrementalBlockReport(nodeReg, r);
+  }
+
+  public void processIncrementalBlockReport(String datanodeUuid, StorageReceivedDeletedBlocks r)
+          throws IOException {
+    blockManager.processIncrementalBlockReport(datanodeUuid, r);
   }
 
   PermissionStatus createFsOwnerPermissions(FsPermission permission) {
@@ -5828,7 +5856,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * Client is reporting some bad block locations.
    */
   void reportBadBlocks(LocatedBlock[] blocks) throws IOException {
-    NameNode.stateChangeLog.info("*DIR* reportBadBlocks");
+    ServerlessNameNode.stateChangeLog.info("*DIR* reportBadBlocks");
     for (LocatedBlock block : blocks) {
       ExtendedBlock blk = block.getBlock();
       DatanodeInfo[] nodes = block.getLocations();
@@ -6350,7 +6378,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   // optimize ugi lookup for RPC operations to avoid a trip through
   // UGI.getCurrentUser which is synced
   private static UserGroupInformation getRemoteUser() throws IOException {
-    return NameNode.getRemoteUser();
+    return ServerlessNameNode.getRemoteUser();
   }
 
   /**
@@ -6689,12 +6717,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
   @Override  //NameNodeMXBean
   public int getNumNameNodes() {
-    return nameNode.getActiveNameNodes().size();
+    return serverlessNameNode.getActiveNameNodes().size();
   }
 
   @Override //NameNodeMXBean
   public String getLeaderNameNode(){
-    return nameNode.getActiveNameNodes().getSortedActiveNodes().get(0).getHostname();
+    return serverlessNameNode.getActiveNameNodes().getSortedActiveNodes().get(0).getHostname();
   }
 
   @Override //NameNodeMXBean
@@ -7134,12 +7162,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
   @Override
   public boolean isLeader() {
-    return nameNode.isLeader();
+    return serverlessNameNode.isLeader();
   }
 
   @Override
   public long getNamenodeId() {
-    return nameNode.getLeCurrentId();
+    return serverlessNameNode.getLeCurrentId();
   }
 
   public String getSuperGroup() {
@@ -7418,7 +7446,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = lf.getINodeLock( INodeLockType.WRITE, INodeResolveType.PATH, path);
-        il.setNameNodeID(nameNode.getId()).setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+        il.setNameNodeID(serverlessNameNode.getId()).setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
                 .skipReadingQuotaAttr(!dir.isQuotaEnabled())
                 .enableHierarchicalLocking(conf.getBoolean(DFSConfigKeys.DFS_SUBTREE_HIERARCHICAL_LOCKING_KEY,
                 DFSConfigKeys.DFS_SUBTREE_HIERARCHICAL_LOCKING_KEY_DEFAULT));
@@ -7453,7 +7481,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           }
 
           EntityManager.update(new SubTreeOperation(getSubTreeLockPathPrefix(path),
-                  inode.getId() ,nameNode.getId(), stoType,
+                  inode.getId() , serverlessNameNode.getId(), stoType,
                   System.currentTimeMillis(), pc.getUser()));
           INodeIdentifier iNodeIdentifier =  new INodeIdentifier(inode.getId(),
                   inode.getParentId(),
@@ -7500,7 +7528,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         EntityManager.findList(SubTreeOperation.Finder.ByPathPrefix,
             path);  // THIS RETURNS ONLY ONE SUBTREE OP IN THE CHILD TREE. INCREASE THE LIMIT IN IMPL LAYER IF NEEDED
     Set<Long> activeNameNodeIds = new HashSet<>();
-    for(ActiveNode node:nameNode.getActiveNameNodes().getActiveNodes()){
+    for(ActiveNode node: serverlessNameNode.getActiveNameNodes().getActiveNodes()){
       activeNameNodeIds.add(node.getId());
     }
 
@@ -7532,8 +7560,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = (INodeLock)lf.getINodeLock( INodeLockType.WRITE, INodeResolveType.PATH, path)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
                 .skipReadingQuotaAttr(!dir.isQuotaEnabled())
                 .setIgnoredSTOInodes(ignoreStoInodeId)
                 .enableHierarchicalLocking(conf.getBoolean(DFSConfigKeys.DFS_SUBTREE_HIERARCHICAL_LOCKING_KEY,
@@ -7602,8 +7630,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     return (String) tok.nextElement();
   }
 
-  public NameNode getNameNode() {
-    return nameNode;
+  public ServerlessNameNode getNameNode() {
+    return serverlessNameNode;
   }
 
   /**
@@ -7621,8 +7649,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = LockFactory.getInstance();
             INodeLock il = lf.getINodeLock(INodeLockType.READ_COMMITTED, INodeResolveType.PATH, filePath)
-                    .setNameNodeID(nameNode.getId())
-                    .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                    .setNameNodeID(serverlessNameNode.getId())
+                    .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
             locks.add(il).add(lf.getEncodingStatusLock(LockType.READ_COMMITTED, filePath));
           }
 
@@ -7740,8 +7768,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, sourcePath)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
         locks.add(il);
         locks.add(lf.getEncodingStatusLock(LockType.WRITE, sourcePath));
         if(isRetryCacheEnabled) {
@@ -7840,8 +7868,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, path)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
         locks.add(il)
             .add(lf.getEncodingStatusLock(LockType.WRITE, path));
       }
@@ -7870,8 +7898,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, filePath)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
         locks.add(il)
             .add(lf.getEncodingStatusLock(LockType.WRITE, filePath));
       }
@@ -7967,8 +7995,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, sourceFile)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
         locks.add(il).add(lf.getEncodingStatusLock(LockType.WRITE, sourceFile));
       }
 
@@ -8019,8 +8047,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH, src)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
         locks.add(il);
       }
 
@@ -8059,8 +8087,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = lf.getINodeLock(INodeLockType.READ, INodeResolveType.PATH, src)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
         locks.add(il).add(lf.getBlockChecksumLock(src, blockIndex));
       }
 
@@ -8227,8 +8255,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();
             INodeLock il = lf.getINodeLock(INodeLockType.WRITE, INodeResolveType.PATH_AND_IMMEDIATE_CHILDREN, src)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
             locks.add(il);
             locks.add(lf.getEZLock());
             List<XAttr> xAttrsToLock = new ArrayList<>();
@@ -8291,8 +8319,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             public void acquireLock(TransactionLocks locks) throws IOException {
               LockFactory lf = getInstance();
               INodeLock il = lf.getINodeLock(INodeLockType.READ, INodeResolveType.PATH, src)
-                  .setNameNodeID(nameNode.getId())
-                  .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                  .setNameNodeID(serverlessNameNode.getId())
+                  .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
               locks.add(il);
               locks.add(lf.getEZLock());
               locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
@@ -8457,14 +8485,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         LockFactory lf = LockFactory.getInstance();
         INodeLock il = lf.getINodeLock(TransactionLockTypes.INodeLockType.READ_COMMITTED,
                 TransactionLockTypes.INodeResolveType.PATH, sourcePath)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes());
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
         locks.add(il);
       }
 
       @Override
       public Object performTask() throws IOException {
-        INode targetNode = nameNode.getNamesystem().getINode(sourcePath);
+        INode targetNode = serverlessNameNode.getNamesystem().getINode(sourcePath);
         return targetNode.getLocalStoragePolicyID();
       }
     }.handle();
@@ -8502,8 +8530,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             LockFactory lf = LockFactory.getInstance();
             INodeLock il = lf.getINodeLock(INodeLockType.READ_COMMITTED,
                     INodeResolveType.PATH, path)
-                    .setNameNodeID(nameNode.getId())
-                    .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+                    .setNameNodeID(serverlessNameNode.getId())
+                    .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
                     .skipReadingQuotaAttr(!dir.isQuotaEnabled());
             locks.add(il).add(lf.getBlockLock()); // blk lock only if file
             locks.add(lf.getAcesLock());
@@ -8627,8 +8655,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();
             INodeLock il = lf.getINodeLock(INodeLockType.READ, INodeResolveType.PATH, src)
-                    .setNameNodeID(nameNode.getId())
-                    .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+                    .setNameNodeID(serverlessNameNode.getId())
+                    .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
                     .skipReadingQuotaAttr(true/*skip quota*/);
             locks.add(il);
             locks.add(lf.getAcesLock());
@@ -8675,8 +8703,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
         INodeLock il = lf.getINodeLock(INodeLockType.READ_COMMITTED, INodeResolveType.PATH, path)
-                .setNameNodeID(nameNode.getId())
-                .setActiveNameNodes(nameNode.getActiveNameNodes().getActiveNodes())
+                .setNameNodeID(serverlessNameNode.getId())
+                .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
                 .skipReadingQuotaAttr(!dir.isQuotaEnabled());
         locks.add(il);
       }
@@ -8684,7 +8712,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       @Override
       public Object performTask() throws IOException {
         INode subtreeRoot = getINode(path);
-        if(subtreeRoot instanceof INodeDirectory){
+        if (subtreeRoot instanceof INodeDirectory) {
           INodeDirectory quotaDir = (INodeDirectory) subtreeRoot;
           final DirectoryWithQuotaFeature q = quotaDir.getDirectoryWithQuotaFeature();
           if (q != null) {
@@ -8763,13 +8791,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
             long lastDeletedEpochSec = HdfsVariables.getRetryCacheCleanerEpoch();
             long toBeDeletedEpochSec = lastDeletedEpochSec + 1L;
             if (toBeDeletedEpochSec < ((timer.now() - entryExpiryMillis) / 1000)) {
-              cleanerLog.debug("Current epoch " + (System.currentTimeMillis() / 1000) +
+              /*cleanerLog.debug("Current epoch " + (System.currentTimeMillis() / 1000) +
                       " Last deleted epoch is " + lastDeletedEpochSec +
-                      " To be deleted epoch " + toBeDeletedEpochSec);
+                      " To be deleted epoch " + toBeDeletedEpochSec);*/
               int countDeleted = deleteAllForEpoch(toBeDeletedEpochSec);
               //save the epoch
               HdfsVariables.setRetryCacheCleanerEpoch(toBeDeletedEpochSec);
-              cleanerLog.debug("Deleted " + countDeleted + " entries for epoch " + toBeDeletedEpochSec);
+              //cleanerLog.debug("Deleted " + countDeleted + " entries for epoch " + toBeDeletedEpochSec);
               continue;
             }
           }

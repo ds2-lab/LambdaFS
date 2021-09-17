@@ -23,7 +23,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.test.PathUtils;
@@ -82,14 +82,14 @@ public class TestHDFSServerPorts {
     }
   }
   
-  public NameNode startNameNode() throws IOException {
+  public ServerlessNameNode startNameNode() throws IOException {
     return startNameNode(false);
   }
 
   /**
    * Start the namenode.
    */
-  public NameNode startNameNode(boolean withService) throws IOException {
+  public ServerlessNameNode startNameNode(boolean withService) throws IOException {
     hdfsDir = new File(TEST_DATA_DIR, "dfs");
     if ( hdfsDir.exists() && !FileUtil.fullyDelete(hdfsDir) ) {
       throw new IOException("Could not delete hdfs directory '" + hdfsDir + "'");
@@ -97,14 +97,14 @@ public class TestHDFSServerPorts {
     config = new HdfsConfiguration();
     FileSystem.setDefaultUri(config, "hdfs://" + THIS_HOST);
     if (withService) {
-      NameNode.setServiceAddress(config, THIS_HOST);
+      ServerlessNameNode.setServiceAddress(config, THIS_HOST);
     }
     config.set(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY, THIS_HOST);
     DFSTestUtil.formatNameNode(config);
 
     String[] args = new String[]{};
     // NameNode will modify config with the ports it bound to
-    return NameNode.createNameNode(args, config);
+    return ServerlessNameNode.createNameNode(args, config);
   }
   
   /**
@@ -129,7 +129,7 @@ public class TestHDFSServerPorts {
     }
   }
 
-  public void stopNameNode(NameNode nn) {
+  public void stopNameNode(ServerlessNameNode nn) {
     if (nn != null) {
       nn.stop();
     }
@@ -143,9 +143,9 @@ public class TestHDFSServerPorts {
    * Check whether the namenode can be started.
    */
   private boolean canStartNameNode(Configuration conf) throws IOException {
-    NameNode nn2 = null;
+    ServerlessNameNode nn2 = null;
     try {
-      nn2 = NameNode.createNameNode(new String[]{}, conf);
+      nn2 = ServerlessNameNode.createNameNode(new String[]{}, conf);
     } catch (IOException e) {
       if (e instanceof java.net.BindException) {
         return false;
@@ -187,7 +187,7 @@ public class TestHDFSServerPorts {
    * Verify namenode port usage.
    */
   public void runTestNameNodePorts(boolean withService) throws Exception {
-    NameNode nn = null;
+    ServerlessNameNode nn = null;
     try {
       nn = startNameNode(withService);
 
@@ -230,7 +230,7 @@ public class TestHDFSServerPorts {
    */
   @Test(timeout = 300000)
   public void testDataNodePorts() throws Exception {
-    NameNode nn = null;
+    ServerlessNameNode nn = null;
     try {
       nn = startNameNode();
 

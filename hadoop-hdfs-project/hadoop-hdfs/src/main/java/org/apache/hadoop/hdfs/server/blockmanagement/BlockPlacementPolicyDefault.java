@@ -549,7 +549,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
 
       if (LOG.isDebugEnabled()) {
         LOG.debug("Failed to choose from local rack (location = " + localRack
-            + "); the second replica is not found, retry choosing ramdomly", e);
+            + "); the second replica is not found, retry choosing randomly", e);
       }
       //the second replica is not found, randomly choose one from the network
       return chooseRandom(NodeBase.ROOT, excludedNodes, blocksize,
@@ -652,7 +652,7 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
     boolean badTarget = false;
     DatanodeStorageInfo firstChosen = null;
 
-    LOG.debug("@@@ -- START -- " + numOfAvailableNodes + " " + scope + " " +
+    LOG.debug("@@@ -- START -- AvailNodes: " + numOfAvailableNodes + ", Scope: " + scope + ", ExcludedNodes: " +
         Arrays.toString(excludedNodes.toArray()));
 
     while(numOfReplicas > 0 && numOfAvailableNodes > 0) {
@@ -667,14 +667,18 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
         final DatanodeStorageInfo[] storages = DFSUtil.shuffle(
             chosenNode.getStorageInfos());
 
+        LOG.debug("The chosen node " + chosenNode.getDatanodeUuid() + " has " + storages.length + " storage infos.");
+
         int i = 0;
         boolean search = true;
-        // For each storagetype that we need (starting at fastest), check if
-        // this node has it.
+        // For each storagetype that we need (starting at fastest), check if this node has it.
         for (Iterator<Map.Entry<StorageType, Integer>> iter = storageTypes
             .entrySet().iterator(); search && iter.hasNext(); ) {
           Map.Entry<StorageType, Integer> entry = iter.next();
           StorageType type = entry.getKey();
+
+          LOG.debug("Checking if target is a good fit for StorageType: " + type.name());
+
           // Check all storages on this node
           for (i = 0; i < storages.length; i++) {
             // Check if it's a good storage
@@ -790,6 +794,10 @@ public class BlockPlacementPolicyDefault extends BlockPlacementPolicy {
       List<DatanodeStorageInfo> results,
       boolean avoidStaleNodes,
       StorageType requiredStorageType) {
+
+    LOG.debug("Checking if node " + storage.getDatanodeDescriptor().getDatanodeUuid() + " is a good target...");
+    LOG.debug("DN's storage type: " + storage.getStorageType().name());
+    LOG.debug("Required storage type: " + requiredStorageType.name());
 
     if (storage.getStorageType() != requiredStorageType) {
       logNodeIsNotChosen(storage, "storage types do not match,"

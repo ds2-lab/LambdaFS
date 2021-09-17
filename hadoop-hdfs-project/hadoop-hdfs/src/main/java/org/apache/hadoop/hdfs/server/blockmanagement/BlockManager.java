@@ -75,7 +75,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -91,7 +90,7 @@ import static org.apache.hadoop.util.ExitUtil.terminate;
 public class BlockManager {
 
   public static final Logger LOG = LoggerFactory.getLogger(BlockManager.class);
-  public static final Logger blockLog = NameNode.blockStateChangeLog;
+  public static final Logger blockLog = ServerlessNameNode.blockStateChangeLog;
 
   private final Namesystem namesystem;
 
@@ -972,7 +971,7 @@ public class BlockManager {
     if (isBlockTokenEnabled()) {
       // Use cached UGI if serving RPC calls.
       b.setBlockToken(blockTokenSecretManager.generateToken(
-          NameNode.getRemoteUser().getShortUserName(),
+          ServerlessNameNode.getRemoteUser().getShortUserName(),
           b.getBlock(), EnumSet.of(mode)));
     }
   }
@@ -1865,8 +1864,6 @@ public class BlockManager {
    * In addition form a list of all nodes containing the block
    * and calculate its replication numbers.
    *
-   * @param b
-   *     Block for which a replication source is needed
    * @param containingNodes
    *     List to be populated with nodes found to contain the
    *     given block
@@ -2136,7 +2133,7 @@ public class BlockManager {
       final long endTime = Time.monotonicNow();
 
       // Log the block report processing stats from Namenode perspective
-      final NameNodeMetrics metrics = NameNode.getNameNodeMetrics();
+      final NameNodeMetrics metrics = ServerlessNameNode.getNameNodeMetrics();
       if (metrics != null) {
         metrics.addBlockReport((int) (endTime - startTime));
       }
@@ -3474,6 +3471,7 @@ public class BlockManager {
     boolean haveMore;
     final int filesToProcess = slicerBatchSize * processMisReplicatedNoOfBatchs;
 
+    // TODO: Determine more consistent way to handle NameNode IDs given the leader election system isn't used.
     addToMisReplicatedRangeQueue(new MisReplicatedRange(namesystem.getNamenodeId(), -1));
     long maxInodeId = 0;
     if(LOG.isInfoEnabled()){
@@ -3517,10 +3515,10 @@ public class BlockManager {
         LOG.info("Total number of blocks            = " + blocksMap.size());
         LOG.info("Number of invalid blocks          = " + nrInvalid.get());
         LOG.info("Number of under-replicated blocks = " + nrUnderReplicated.get());
-        LOG.info("Number of  over-replicated blocks = " + nrOverReplicated.get()
+        LOG.info("Number of over-replicated blocks = " + nrOverReplicated.get()
             + ((nrPostponed.get() > 0) ? (" (" + nrPostponed.get() + " postponed)") : ""));
         LOG.info("Number of blocks being written    = " + nrUnderConstruction.get());
-        NameNode.stateChangeLog
+        ServerlessNameNode.stateChangeLog
             .info("STATE* Replication Queue initialization "
                 + "scan for invalid, over- and under-replicated blocks "
                 + "completed in "
@@ -4255,27 +4253,26 @@ public class BlockManager {
     }
   }
 
-  /**
-   * The given node is reporting incremental information about some blocks.
-   * This includes blocks that are starting to be received, completed being
-   * received, or deleted.
-   */
-  public void processIncrementalBlockReport(final DatanodeRegistration nodeID,
-      final StorageReceivedDeletedBlocks blockInfos)
-    throws IOException {
-    //hack to have the variables final to pass then to the handler.
-    final int[] received = {0};
-    final int[] deleted = {0};
-    final int[] receiving = {0};
-
-    final DatanodeDescriptor node = datanodeManager.getDatanode(nodeID);
+  public void processIncrementalBlockReport(final String datanodeUuid,
+                                            final StorageReceivedDeletedBlocks blockInfos) throws IOException {
+    final DatanodeDescriptor node = datanodeManager.getDatanode(datanodeUuid);
 
     if (node == null || !node.isAlive) {
       blockLog.warn("BLOCK* processIncrementalBlockReport"
-              + " is received from dead or unregistered node {}", nodeID);
+              + " is received from dead or unregistered node {}", datanodeUuid);
       throw new IOException(
-          "Got incremental block report from unregistered or dead node");
+              "Got incremental block report from unregistered or dead node");
     }
+
+    processIncrementalBlockReport(node, blockInfos);
+  }
+
+  public void processIncrementalBlockReport(final DatanodeDescriptor node,
+                                            final StorageReceivedDeletedBlocks blockInfos) throws IOException {
+    // hack to have the variables final to pass then to the handler.
+    final int[] received = {0};
+    final int[] deleted = {0};
+    final int[] receiving = {0};
 
     // Little hack; since we can't reassign final s if s==null, we have to
     // declare s as a normal variable and then assign it to a statically
@@ -4293,103 +4290,103 @@ public class BlockManager {
 
 
     HopsTransactionalRequestHandler processIncrementalBlockReportHandler =
-        new HopsTransactionalRequestHandler(
-            HDFSOperationType.BLOCK_RECEIVED_AND_DELETED_INC_BLK_REPORT) {
-          INodeIdentifier inodeIdentifier;
+            new HopsTransactionalRequestHandler(
+                    HDFSOperationType.BLOCK_RECEIVED_AND_DELETED_INC_BLK_REPORT) {
+              INodeIdentifier inodeIdentifier;
 
-          @Override
-          public void setUp() throws StorageException {
-            ReceivedDeletedBlockInfo rdbi = (ReceivedDeletedBlockInfo) getParams()[0];
-            LOG.debug("reported block id=" + rdbi.getBlock().getBlockId());
-            inodeIdentifier = INodeUtil.resolveINodeFromBlock(rdbi.getBlock());
-            if (inodeIdentifier == null && !rdbi.isDeletedBlock()) {
-              LOG.warn("Invalid State. deleted blk is not recognized. bid=" +
-                  rdbi.getBlock().getBlockId());
-            }
-          }
+              @Override
+              public void setUp() throws StorageException {
+                ReceivedDeletedBlockInfo rdbi = (ReceivedDeletedBlockInfo) getParams()[0];
+                LOG.debug("reported block id=" + rdbi.getBlock().getBlockId());
+                inodeIdentifier = INodeUtil.resolveINodeFromBlock(rdbi.getBlock());
+                if (inodeIdentifier == null && !rdbi.isDeletedBlock()) {
+                  LOG.warn("Invalid State. deleted blk is not recognized. bid=" +
+                          rdbi.getBlock().getBlockId());
+                }
+              }
 
-          @Override
-          public void acquireLock(TransactionLocks locks) throws IOException {
-            LockFactory lf = LockFactory.getInstance();
-            ReceivedDeletedBlockInfo rdbi = (ReceivedDeletedBlockInfo) getParams()[0];
-            locks.add(
-                lf.getIndividualINodeLock(INodeLockType.WRITE, inodeIdentifier, true))
-                .add(lf.getIndividualBlockLock(rdbi.getBlock().getBlockId(),
-                    inodeIdentifier))
-                .add(lf.getBlockRelated(BLK.RE, BLK.ER, BLK.CR, BLK.UR));
-            if (!rdbi.isDeletedBlock()) {
-              locks.add(lf.getBlockRelated(BLK.PE, BLK.UC, BLK.IV));
-            }
-            if (((FSNamesystem) namesystem).isErasureCodingEnabled() &&
-                inodeIdentifier != null) {
-              locks.add(lf.getIndivdualEncodingStatusLock(LockType.WRITE,
-                  inodeIdentifier.getInodeId()));
-            }
-            locks.add(lf.getIndividualHashBucketLock(storage.getSid(), HashBuckets
-                .getInstance().getBucketForBlock(rdbi.getBlock())));
-          }
+              @Override
+              public void acquireLock(TransactionLocks locks) throws IOException {
+                LockFactory lf = LockFactory.getInstance();
+                ReceivedDeletedBlockInfo rdbi = (ReceivedDeletedBlockInfo) getParams()[0];
+                locks.add(
+                        lf.getIndividualINodeLock(INodeLockType.WRITE, inodeIdentifier, true))
+                        .add(lf.getIndividualBlockLock(rdbi.getBlock().getBlockId(),
+                                inodeIdentifier))
+                        .add(lf.getBlockRelated(BLK.RE, BLK.ER, BLK.CR, BLK.UR));
+                if (!rdbi.isDeletedBlock()) {
+                  locks.add(lf.getBlockRelated(BLK.PE, BLK.UC, BLK.IV));
+                }
+                if (((FSNamesystem) namesystem).isErasureCodingEnabled() &&
+                        inodeIdentifier != null) {
+                  locks.add(lf.getIndivdualEncodingStatusLock(LockType.WRITE,
+                          inodeIdentifier.getInodeId()));
+                }
+                locks.add(lf.getIndividualHashBucketLock(storage.getSid(), HashBuckets
+                        .getInstance().getBucketForBlock(rdbi.getBlock())));
+              }
 
-          @Override
-          public Object performTask() throws IOException {
-            ReceivedDeletedBlockInfo rdbi =
-                    (ReceivedDeletedBlockInfo) getParams()[0];
-            LOG.debug("BLOCK_RECEIVED_AND_DELETED_INC_BLK_REPORT " +
-                rdbi.getStatus() + " bid=" +rdbi.getBlock().getBlockId() +
-                " dataNode=" + node.getXferAddr() + " storage=" + storage.getStorageID() +
-                    " sid: " + storage.getSid() + " status=" + rdbi.getStatus());
-            HashBuckets hashBuckets = HashBuckets.getInstance();
-            addSubopName(rdbi.getStatus().toString());
-            switch (rdbi.getStatus()) {
-              case RECEIVING_BLOCK:
-                processAndHandleReportedBlock(storage, rdbi.getBlock(),
-                        ReplicaState.RBW, null);
-                received[0]++;
-                break;
-              case APPENDING:
-                processAndHandleReportedBlock(storage, rdbi.getBlock(),
-                    ReplicaState.RBW, null);
-                received[0]++;
-                break;
-              case RECOVERING_APPEND:
-                processAndHandleReportedBlock(storage, rdbi.getBlock(),
-                    ReplicaState.RBW, null);
-                received[0]++;
-                break;
-              case RECEIVED_BLOCK:
-                addBlock(storage, rdbi.getBlock(), rdbi.getDelHints());
-                hashBuckets.applyHash(storage.getSid(), ReplicaState.FINALIZED, rdbi.getBlock());
-                received[0]++;
-                break;
-              case UPDATE_RECOVERED:
-                addBlock(storage, rdbi.getBlock(), rdbi.getDelHints());
-                received[0]++;
-                break;
-              case DELETED_BLOCK:
-                removeStoredBlock(rdbi.getBlock(), storage.getDatanodeDescriptor());
-                deleted[0]++;
-                break;
-              default:
-                String msg =
-                    "Unknown block status code reported by " + storage.getStorageID() + ": " + 
-                        rdbi;
-                blockLog.warn(msg);
-                assert false : msg; // if assertions are enabled, throw.
-                break;
-            }
-            if (blockLog.isDebugEnabled()) {
-              blockLog.debug("BLOCK* block " + (rdbi.getStatus()) + ": " + rdbi.getBlock() +
-                  " is received from " + storage.getStorageID());
-            }
-            return null;
-          }
-        };
+              @Override
+              public Object performTask() throws IOException {
+                ReceivedDeletedBlockInfo rdbi =
+                        (ReceivedDeletedBlockInfo) getParams()[0];
+                LOG.debug("BLOCK_RECEIVED_AND_DELETED_INC_BLK_REPORT " +
+                        rdbi.getStatus() + " bid=" +rdbi.getBlock().getBlockId() +
+                        " dataNode=" + node.getXferAddr() + " storage=" + storage.getStorageID() +
+                        " sid: " + storage.getSid() + " status=" + rdbi.getStatus());
+                HashBuckets hashBuckets = HashBuckets.getInstance();
+                addSubopName(rdbi.getStatus().toString());
+                switch (rdbi.getStatus()) {
+                  case RECEIVING_BLOCK:
+                    processAndHandleReportedBlock(storage, rdbi.getBlock(),
+                            ReplicaState.RBW, null);
+                    received[0]++;
+                    break;
+                  case APPENDING:
+                    processAndHandleReportedBlock(storage, rdbi.getBlock(),
+                            ReplicaState.RBW, null);
+                    received[0]++;
+                    break;
+                  case RECOVERING_APPEND:
+                    processAndHandleReportedBlock(storage, rdbi.getBlock(),
+                            ReplicaState.RBW, null);
+                    received[0]++;
+                    break;
+                  case RECEIVED_BLOCK:
+                    addBlock(storage, rdbi.getBlock(), rdbi.getDelHints());
+                    hashBuckets.applyHash(storage.getSid(), ReplicaState.FINALIZED, rdbi.getBlock());
+                    received[0]++;
+                    break;
+                  case UPDATE_RECOVERED:
+                    addBlock(storage, rdbi.getBlock(), rdbi.getDelHints());
+                    received[0]++;
+                    break;
+                  case DELETED_BLOCK:
+                    removeStoredBlock(rdbi.getBlock(), storage.getDatanodeDescriptor());
+                    deleted[0]++;
+                    break;
+                  default:
+                    String msg =
+                            "Unknown block status code reported by " + storage.getStorageID() + ": " +
+                                    rdbi;
+                    blockLog.warn(msg);
+                    assert false : msg; // if assertions are enabled, throw.
+                    break;
+                }
+                if (blockLog.isDebugEnabled()) {
+                  blockLog.debug("BLOCK* block " + (rdbi.getStatus()) + ": " + rdbi.getBlock() +
+                          " is received from " + storage.getStorageID());
+                }
+                return null;
+              }
+            };
 
     try {
-      if (node == null || !node.isAlive) {
+      if (!node.isAlive) {
         blockLog.warn("BLOCK* processIncrementalBlockReport" +
-            " is received from dead or unregistered node " + nodeID);
+                " is received from dead or unregistered node " + node.getDatanodeUuid());
         throw new IOException(
-            "Got incremental block report from unregistered or dead node");
+                "Got incremental block report from unregistered or dead node");
       }
 
       for (ReceivedDeletedBlockInfo rdbi : blockInfos.getBlocks()) {
@@ -4399,10 +4396,21 @@ public class BlockManager {
     } finally {
       if (blockLog.isDebugEnabled()) {
         blockLog.debug(
-            "*BLOCK* NameNode.processIncrementalBlockReport: " + "from " + nodeID + " receiving: " + receiving[0] + ", "
-            + " received: " + received[0] + ", " + " deleted: " + deleted[0]);
+                "*BLOCK* NameNode.processIncrementalBlockReport: " + "from " + node.getDatanodeUuid() + " receiving: " + receiving[0] + ", "
+                        + " received: " + received[0] + ", " + " deleted: " + deleted[0]);
       }
     }
+  }
+
+  /**
+   * The given node is reporting incremental information about some blocks.
+   * This includes blocks that are starting to be received, completed being
+   * received, or deleted.
+   */
+  public void processIncrementalBlockReport(final DatanodeRegistration nodeID,
+      final StorageReceivedDeletedBlocks blockInfos) throws IOException {
+    final DatanodeDescriptor node = datanodeManager.getDatanode(nodeID);
+    processIncrementalBlockReport(node, blockInfos);
   }
 
   /**
@@ -4921,7 +4929,7 @@ public class BlockManager {
       while (namesystem.isRunning()) {
         try {
           if (namesystem.isLeader()) {
-            LOG.debug("Running replication monitor");
+            // LOG.debug("Running replication monitor");
             // Process replication work only when active NN is out of safe mode.
             if (namesystem.isPopulatingReplQueues()) {
               computeDatanodeWork();
@@ -4930,7 +4938,7 @@ public class BlockManager {
             }
           } else {
             updateState();
-            LOG.debug("Namesystem is not leader: will not run replication monitor");
+            //LOG.debug("Namesystem is not leader: will not run replication monitor");
           }
           Thread.sleep(replicationRecheckInterval);
         } catch (Throwable t) {

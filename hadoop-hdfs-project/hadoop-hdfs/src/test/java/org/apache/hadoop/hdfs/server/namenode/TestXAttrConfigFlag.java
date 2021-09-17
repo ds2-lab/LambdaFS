@@ -24,8 +24,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
-import org.apache.hadoop.hdfs.server.namenode.NameNodeAdapter;
 import org.apache.hadoop.io.IOUtils;
 import org.junit.After;
 import org.junit.Rule;
@@ -139,9 +137,9 @@ public class TestXAttrConfigFlag {
    */
   private void restart(boolean checkpoint, boolean xattrsEnabled)
       throws Exception {
-    NameNode nameNode = cluster.getNameNode();
+    ServerlessNameNode serverlessNameNode = cluster.getNameNode();
     if (checkpoint) {
-      NameNodeAdapter.enterSafeMode(nameNode, false);
+      NameNodeAdapter.enterSafeMode(serverlessNameNode, false);
     }
     shutdown();
     initCluster(false, xattrsEnabled);

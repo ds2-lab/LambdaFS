@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hdfs;
 
+import com.google.gson.JsonObject;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
@@ -67,7 +68,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants.RollingUpgradeAction;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.Credentials;
@@ -81,6 +82,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -140,11 +142,17 @@ public class DistributedFileSystem extends FileSystem {
   private class AlternativeDistributedFileSystem extends DistributedFileSystem{
     
   }
+
+  public void printDebugInformation() {
+    this.dfs.printDebugInformation();
+  }
+
   
   @Override
   public void initialize(URI uri, Configuration conf) throws IOException {
     super.initialize(uri, conf);
     getAlternativeSchemeStatistics(getAlternativeScheme(), AlternativeDistributedFileSystem.class, statistics);
+    setConf(conf);
     setConf(conf);
 
     String host = uri.getHost();
@@ -207,6 +215,11 @@ public class DistributedFileSystem extends FileSystem {
                                          file+" is not a valid DFS filename.");
     }
     return result;
+  }
+
+  public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id)
+          throws IOException, SQLException {
+    return dfs.latencyBenchmark(connectionUrl, dataSource, query, id);
   }
 
   @Override
@@ -1492,7 +1505,7 @@ public class DistributedFileSystem extends FileSystem {
 
   @Override
   protected int getDefaultPort() {
-    return NameNode.DEFAULT_PORT;
+    return ServerlessNameNode.DEFAULT_PORT;
   }
 
   @Override

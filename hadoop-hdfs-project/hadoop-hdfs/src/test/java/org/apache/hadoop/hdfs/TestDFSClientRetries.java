@@ -42,7 +42,7 @@ import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.NotReplicatedYetException;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
 import org.apache.hadoop.hdfs.web.WebHdfsConstants;
@@ -86,7 +86,6 @@ import org.apache.hadoop.fs.CreateFlag;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_SOCKET_TIMEOUT_KEY;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
-import org.apache.hadoop.hdfs.web.WebHdfsFileSystem;
 import org.apache.hadoop.io.EnumSetWritable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -482,10 +481,10 @@ public class TestDFSClientRetries {
           .getBlockLocations((String) args[0], (Long) args[1], (Long) args[2]);
 
       if (failuresLeft-- > 0) {
-        NameNode.LOG.info("FailNTimesAnswer injecting failure.");
+        ServerlessNameNode.LOG.info("FailNTimesAnswer injecting failure.");
         return makeBadBlockList(realAnswer);
       }
-      NameNode.LOG.info("FailNTimesAnswer no longer failing.");
+      ServerlessNameNode.LOG.info("FailNTimesAnswer no longer failing.");
       return realAnswer;
     }
 

@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.hdfs.web.resources;
 
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 
 /**
  * Namenode RPC address parameter.
@@ -48,7 +48,7 @@ public class NamenodeAddressParam extends StringParam {
   /**
    * Construct an object using the RPC address of the given namenode.
    */
-  public NamenodeAddressParam(final NameNode namenode) {
+  public NamenodeAddressParam(final ServerlessNameNode namenode) {
     super(DOMAIN, namenode.getTokenServiceName());
   }
 

@@ -37,9 +37,8 @@ import java.net.URI;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 import org.apache.hadoop.fs.shell.CommandFormat;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
@@ -521,10 +520,10 @@ public class TestFileSystem {
     
     {
       try {
-        runTestCache(NameNode.DEFAULT_PORT);
+        runTestCache(ServerlessNameNode.DEFAULT_PORT);
       } catch(java.net.BindException be) {
         LOG.warn("Cannot test NameNode.DEFAULT_PORT (="
-            + NameNode.DEFAULT_PORT + ")", be);
+            + ServerlessNameNode.DEFAULT_PORT + ")", be);
       }
 
       runTestCache(0);
@@ -548,10 +547,10 @@ public class TestFileSystem {
         }
       }
       
-      if (port == NameNode.DEFAULT_PORT) {
+      if (port == ServerlessNameNode.DEFAULT_PORT) {
         //test explicit default port
         URI uri2 = new URI(uri.getScheme(), uri.getUserInfo(),
-            uri.getHost(), NameNode.DEFAULT_PORT, uri.getPath(),
+            uri.getHost(), ServerlessNameNode.DEFAULT_PORT, uri.getPath(),
             uri.getQuery(), uri.getFragment());  
         LOG.info("uri2=" + uri2);
         FileSystem fs = FileSystem.get(uri2, conf);

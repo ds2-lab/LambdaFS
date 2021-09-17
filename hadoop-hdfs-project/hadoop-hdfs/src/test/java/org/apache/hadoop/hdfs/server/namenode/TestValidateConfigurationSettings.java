@@ -24,7 +24,6 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.After;
 import org.junit.Test;
 
@@ -53,7 +52,7 @@ public class TestValidateConfigurationSettings {
   public void testThatMatchingRPCandHttpPortsThrowException() 
       throws IOException {
 
-    NameNode nameNode = null;
+    ServerlessNameNode serverlessNameNode = null;
     try {
       Configuration conf = new HdfsConfiguration();
       File nameDir = new File(MiniDFSCluster.getBaseDirectory(), "name");
@@ -65,10 +64,10 @@ public class TestValidateConfigurationSettings {
       FileSystem.setDefaultUri(conf, "hdfs://localhost:" + port);
       conf.set(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY, "127.0.0.1:" + port);
       DFSTestUtil.formatNameNode(conf);
-      nameNode = new NameNode(conf);
+      serverlessNameNode = new ServerlessNameNode(conf);
     } finally {
-      if (nameNode != null) {
-        nameNode.stop();
+      if (serverlessNameNode != null) {
+        serverlessNameNode.stop();
       }
     }
   }
@@ -94,16 +93,16 @@ public class TestValidateConfigurationSettings {
       FileSystem.setDefaultUri(conf, "hdfs://localhost:" + port1);
       conf.set(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY, "127.0.0.1:" + port2);
       DFSTestUtil.formatNameNode(conf);
-      NameNode nameNode = null;
+      ServerlessNameNode serverlessNameNode = null;
 
       try {
-        nameNode = new NameNode(conf); // should be OK!
+        serverlessNameNode = new ServerlessNameNode(conf); // should be OK!
         break;
       } catch(BindException be) {
         continue;     // Port in use? Try another.
       } finally {
-        if (nameNode != null) {
-          nameNode.stop();
+        if (serverlessNameNode != null) {
+          serverlessNameNode.stop();
         }
       }
     }

@@ -27,7 +27,7 @@ import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.FsDatasetSpi;
 import org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.FsDatasetTestUtil;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.InterDatanodeProtocol;
 import org.mockito.Mockito;
@@ -76,7 +76,7 @@ public class DataNodeTestUtils {
    * RPC calls on the datanode->NN path.
    */
   public static DatanodeProtocolClientSideTranslatorPB spyOnBposToNN(
-      DataNode dn, NameNode nn) {
+      DataNode dn, ServerlessNameNode nn) {
     String bpid = nn.getNamesystem().getBlockPoolId();
     
     BPOfferService bpos = null;

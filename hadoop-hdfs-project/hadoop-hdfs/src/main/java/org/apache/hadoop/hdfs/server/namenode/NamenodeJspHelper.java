@@ -26,7 +26,7 @@ class NamenodeJspHelper {
   /**
    * @return a randomly chosen datanode.
    */
-  static DatanodeDescriptor getRandomDatanode(final NameNode namenode) {
+  static DatanodeDescriptor getRandomDatanode(final ServerlessNameNode namenode) {
     return (DatanodeDescriptor) namenode.getNamesystem().getBlockManager()
         .getDatanodeManager().getNetworkTopology().chooseRandom(NodeBase.ROOT);
   }

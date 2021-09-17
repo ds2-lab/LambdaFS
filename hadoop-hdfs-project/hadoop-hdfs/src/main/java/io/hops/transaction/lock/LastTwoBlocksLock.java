@@ -39,7 +39,7 @@ public final class LastTwoBlocksLock extends IndividualBlockLock{
   }
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     INodeLock iNodeLock = (INodeLock) locks.getLock(Type.INode);
     LeasePathLock leasePathLock = (LeasePathLock) locks.getLock(Type.LeasePath);
     if (path != null) {

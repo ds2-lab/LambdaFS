@@ -46,7 +46,7 @@ public class TestHARead extends junit.framework.TestCase {
   public static final Log LOG = LogFactory.getLog(TestHARead.class);
 
   {
-    ((Log4JLogger) NameNode.stateChangeLog).getLogger().setLevel(Level.ALL);
+    ((Log4JLogger) ServerlessNameNode.stateChangeLog).getLogger().setLevel(Level.ALL);
     ((Log4JLogger) LeaseManager.LOG).getLogger().setLevel(Level.ALL);
     ((Log4JLogger) LogFactory.getLog(FSNamesystem.class)).getLogger()
         .setLevel(Level.ALL);

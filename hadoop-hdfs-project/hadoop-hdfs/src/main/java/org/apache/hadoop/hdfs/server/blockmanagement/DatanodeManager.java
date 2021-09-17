@@ -25,8 +25,16 @@ import com.google.common.net.InetAddresses;
 import io.hops.common.INodeUtil;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
+import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.StorageMap;
+import io.hops.metadata.hdfs.dal.DataNodeDataAccess;
+import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
+import io.hops.metadata.hdfs.dal.IntermediateBlockReportDataAccess;
+import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
+import io.hops.metadata.hdfs.entity.DataNodeMeta;
+import io.hops.metadata.hdfs.entity.DatanodeStorage;
 import io.hops.metadata.hdfs.entity.INodeIdentifier;
+import io.hops.metadata.hdfs.entity.IntermediateBlockReport;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.LockFactory;
@@ -38,7 +46,7 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
+import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
@@ -50,7 +58,8 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants.DatanodeReportType;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.UnregisteredNodeException;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor.BlockTargetPair;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.common.StorageInfo;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.Namesystem;
 import org.apache.hadoop.hdfs.server.protocol.BalancerBandwidthCommand;
 import org.apache.hadoop.hdfs.server.protocol.BlockCommand;
@@ -511,7 +520,7 @@ public class DatanodeManager {
     if (!node.getXferAddr().equals(nodeID.getXferAddr())) {
       final UnregisteredNodeException e =
           new UnregisteredNodeException(nodeID, node);
-      NameNode.stateChangeLog
+      ServerlessNameNode.stateChangeLog
           .error("BLOCK* NameSystem.getDatanode: " + e.getLocalizedMessage());
       throw e;
     }
@@ -541,20 +550,51 @@ public class DatanodeManager {
   private void removeDatanode(DatanodeDescriptor nodeInfo, boolean async) throws IOException {
     heartbeatManager.removeDatanode(nodeInfo);
     if (namesystem.isLeader()) {
-      NameNode.stateChangeLog.info(
+      ServerlessNameNode.stateChangeLog.info(
           "DataNode is dead. Removing all replicas for" +
               " datanode " + nodeInfo +
               " StorageID " + nodeInfo.getDatanodeUuid() +
               " index " + nodeInfo.getHostName());
       blockManager.datanodeRemoved(nodeInfo, async);
-
     }
     networktopology.remove(nodeInfo);
     decrementVersionCount(nodeInfo.getSoftwareVersion());
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("removed datanode " + nodeInfo);
-    }
+    String dataNodeUuid = nodeInfo.getDatanodeUuid();
+
+    LOG.debug("Deleting storage reports associated with DN " + dataNodeUuid + " now...");
+
+    // First, delete all the storage reports associated with this DataNode.
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> storageReportDataAccess =
+            (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+    int numDeleted = storageReportDataAccess.removeStorageReports(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " storage report(s). " +
+            "Deleting DataNode Storages associated with DN " + dataNodeUuid + " now...");
+
+    // Next, remove the DatanodeStorage instances associated with this DataNode.
+    DatanodeStorageDataAccess<DatanodeStorage> datanodeStorageDataAccess =
+            (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
+    numDeleted = datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " DataNode Storages. " +
+                    " Deleting intermediate block reports associated with DN " + dataNodeUuid + " now...");
+
+    IntermediateBlockReportDataAccess<IntermediateBlockReport> intermediateBlockReportDataAccess =
+            (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
+    numDeleted = intermediateBlockReportDataAccess.deleteReports(dataNodeUuid);
+
+    LOG.debug("Successfully deleted " + numDeleted + " Intermediate Block Report(s). " +
+            " Deleting DataNode " + dataNodeUuid + " itself from intermediate storage now...");
+
+    // Finally, remove the metadata of the datanode from intermediate storage. There are foreign key constraints
+    // in place that require us to perform this step last (i.e., after the entries referencing this datanode have
+    // been removed, thereby ensuring that no foreign key constraints are violated).
+    DataNodeDataAccess<DataNodeMeta> dataNodeDataAccess = (DataNodeDataAccess)
+            HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
+    dataNodeDataAccess.removeDataNode(dataNodeUuid);
+
+    LOG.debug("Successfully removed DataNode " + nodeInfo);
     namesystem.checkSafeMode();
   }
 
@@ -569,7 +609,7 @@ public class DatanodeManager {
     if (descriptor != null) {
       removeDatanode(descriptor, async);
     } else {
-      NameNode.stateChangeLog
+      ServerlessNameNode.stateChangeLog
           .warn("BLOCK* removeDatanode: " + node + " does not exist");
     }
   }
@@ -588,7 +628,7 @@ public class DatanodeManager {
         d = null;
       }
       if (d != null && isDatanodeDead(d)) {
-        NameNode.stateChangeLog
+        ServerlessNameNode.stateChangeLog
             .info("BLOCK* removeDeadDatanode: lost heartbeat from " + d);
         removeDatanode = true;
       }
@@ -801,7 +841,7 @@ public class DatanodeManager {
       throw new DisallowedDatanodeException(nodeReg);
     }
 
-    NameNode.stateChangeLog.info(
+    ServerlessNameNode.stateChangeLog.info(
         "BLOCK* registerDatanode: from " + nodeReg + " storage " +
             nodeReg.getDatanodeUuid());
 
@@ -810,10 +850,11 @@ public class DatanodeManager {
         .getDatanodeByXferAddr(nodeReg.getIpAddr(), nodeReg.getXferPort());
 
     if (nodeN != null && nodeN != nodeS) {
-      NameNode.LOG.info("BLOCK* registerDatanode: " + nodeN);
+      ServerlessNameNode.LOG.info("BLOCK* registerDatanode: " + nodeN);
       // nodeN previously served a different data storage,
       // which is not served by anybody anymore.
       removeDatanode(nodeN, false);
+
       // physically remove node from datanodeMap
       wipeDatanode(nodeN);
       nodeN = null;
@@ -824,9 +865,13 @@ public class DatanodeManager {
         // The same datanode has been just restarted to serve the same data
         // storage. We do not need to remove old data blocks, the delta will
         // be calculated on the next block report from the datanode
-        if (NameNode.stateChangeLog.isDebugEnabled()) {
-          NameNode.stateChangeLog
+        if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+          ServerlessNameNode.stateChangeLog
               .debug("BLOCK* registerDatanode: " + "node restarted.");
+
+          DatanodeStorageInfo[] dnStorageInfos = nodeN.getStorageInfos();
+          ServerlessNameNode.LOG.debug("Newly-registered DN (nodeN & nodeS) has at least one associated storageInfo: {}",
+                  (dnStorageInfos != null) && dnStorageInfos.length > 0);
         }
       } else {
         // nodeS is found
@@ -838,7 +883,7 @@ public class DatanodeManager {
           value in "VERSION" file under the data directory of the datanode,
           but this is might not work if VERSION file format has changed
        */
-        NameNode.stateChangeLog.info("BLOCK* registerDatanode: " + nodeS
+        ServerlessNameNode.stateChangeLog.info("BLOCK* registerDatanode: " + nodeS
             + " is replaced by " + nodeReg + " with the same storageID "
             + nodeReg.getDatanodeUuid());
       }
@@ -868,6 +913,10 @@ public class DatanodeManager {
       heartbeatManager.register(nodeS);
       incrementVersionCount(nodeS.getSoftwareVersion());
       startDecommissioningIfExcluded(nodeS);
+
+      DatanodeStorageInfo[] dnStorageInfos = nodeS.getStorageInfos();
+      ServerlessNameNode.LOG.debug("Newly-registered DN (nodeS) has at least one associated storageInfo: {}",
+              (dnStorageInfos != null) && dnStorageInfos.length > 0);
       return;
     }
 
@@ -887,6 +936,10 @@ public class DatanodeManager {
     }
     nodeDescr.setSoftwareVersion(nodeReg.getSoftwareVersion());
     addDatanode(nodeDescr);
+
+    DatanodeStorageInfo[] dnStorageInfos = nodeDescr.getStorageInfos();
+    ServerlessNameNode.LOG.debug("Newly-registered (nodeDescr) DN has at least one associated storageInfo: {}",
+            (dnStorageInfos != null) && dnStorageInfos.length > 0);
 
     // also treat the registration message as a heartbeat
     // no need to update its timestamp
@@ -1263,6 +1316,39 @@ public class DatanodeManager {
   private void setDatanodeDead(DatanodeDescriptor node) {
     node.setLastUpdate(0);
     node.setLastUpdateMonotonic(0);
+  }
+
+  /**
+   * Process storage reports that were retrieved from intermediate storage.
+   */
+  public void handleServerlessStorageReports(DatanodeRegistration nodeReg,
+                                             StorageReport[] reports) throws IOException {
+    synchronized (heartbeatManager) {
+      synchronized (datanodeMap) {
+        DatanodeDescriptor nodeinfo = null;
+
+        try {
+          nodeinfo = getDatanode(nodeReg);
+        } catch (UnregisteredNodeException e) {
+          LOG.error("DataNode " + nodeReg.getDatanodeUuid() + " appears to be unregistered!");
+          throw e;
+        }
+
+        // Check if this datanode should actually be shutdown instead.
+        if (nodeinfo != null && nodeinfo.isDisallowed()) {
+          setDatanodeDead(nodeinfo);
+          throw new DisallowedDatanodeException(nodeinfo);
+        }
+
+        if (nodeinfo == null || !nodeinfo.isAlive) {
+          LOG.error("DataNode " + nodeReg.getDatanodeUuid() + " appears to be unregistered and not alive!");
+        }
+
+        LOG.info("Calling the `updateHeartbeat()` function now...");
+        heartbeatManager.updateHeartbeat(nodeinfo, reports, 0, 0, 0, 0,
+                null);
+      }
+    }
   }
 
   /**

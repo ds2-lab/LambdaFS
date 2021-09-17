@@ -123,8 +123,8 @@ class FSDirConcatOp {
           // check the srcs
           INodeFile[] srcFiles = verifySrcFiles(fsd, srcs, targetIIP, pc);
 
-          if (NameNode.stateChangeLog.isDebugEnabled()) {
-            NameNode.stateChangeLog.debug("DIR* NameSystem.concat: " + Arrays.toString(srcs) + " to " + target);
+          if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+            ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.concat: " + Arrays.toString(srcs) + " to " + target);
           }
 
           long timestamp = now();
@@ -263,8 +263,8 @@ class FSDirConcatOp {
    */
   static void unprotectedConcat(FSDirectory fsd, INodesInPath targetIIP,
       INodeFile[] srcList, long timestamp) throws IOException {
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("DIR* FSNamesystem.concat to "
+    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+      ServerlessNameNode.stateChangeLog.debug("DIR* FSNamesystem.concat to "
           + targetIIP.getPath());
     }
 

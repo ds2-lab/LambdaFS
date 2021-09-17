@@ -44,14 +44,12 @@ import org.apache.hadoop.hdfs.server.datanode.ReplicaInfo;
 import org.apache.hadoop.hdfs.server.datanode.ReplicaNotFoundException;
 import org.apache.hadoop.hdfs.server.datanode.ReplicaUnderRecovery;
 import org.apache.hadoop.hdfs.server.datanode.ReplicaWaitingToBeRecovered;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.util.DiskChecker.DiskOutOfSpaceException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * Test if FSDataset#append, writeToRbw, and writeToTmp
@@ -561,8 +559,8 @@ public class TestWriteToReplica {
         .build();
     try {
       cluster.waitActive();
-      NameNode nn1 = cluster.getNameNode(0);
-      NameNode nn2 = cluster.getNameNode(1);
+      ServerlessNameNode nn1 = cluster.getNameNode(0);
+      ServerlessNameNode nn2 = cluster.getNameNode(1);
       assertNotNull("cannot create nn1", nn1);
       assertNotNull("cannot create nn2", nn2);
       

@@ -41,7 +41,7 @@ import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.TestBlockStoragePolicy;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.net.NetworkTopology;
 import org.apache.hadoop.net.NetworkTopologyWithNodeGroup;
 import org.apache.hadoop.net.Node;
@@ -59,7 +59,7 @@ public class TestReplicationPolicyWithNodeGroup {
   private static final int NUM_OF_DATANODES_FOR_DEPENDENCIES = 6;
   private final Configuration CONF = new HdfsConfiguration();
   private NetworkTopology cluster;
-  private NameNode namenode;
+  private ServerlessNameNode namenode;
   private BlockPlacementPolicy replicator;
   private static final String filename = "/dummyfile.txt";
 
@@ -163,7 +163,7 @@ public class TestReplicationPolicyWithNodeGroup {
     File baseDir = PathUtils.getTestDir(TestReplicationPolicyWithNodeGroup.class);
     
     DFSTestUtil.formatNameNode(CONF);
-    namenode = new NameNode(CONF);
+    namenode = new ServerlessNameNode(CONF);
     final BlockManager bm = namenode.getNamesystem().getBlockManager();
     replicator = bm.getBlockPlacementPolicy();
     cluster = bm.getDatanodeManager().getNetworkTopology();

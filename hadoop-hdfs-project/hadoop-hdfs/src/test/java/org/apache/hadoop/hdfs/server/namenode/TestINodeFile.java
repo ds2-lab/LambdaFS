@@ -907,7 +907,7 @@ public class TestINodeFile {
     FSNamesystem fsn = mock(FSNamesystem.class);
     when(fsn.createFsOwnerPermissions((FsPermission) anyObject())).thenReturn(
         new PermissionStatus("root", "wheel", FsPermission.getDefault()));
-    NameNode nn = mock(NameNode.class);
+    ServerlessNameNode nn = mock(ServerlessNameNode.class);
     when(nn.getActiveNameNodes())
         .thenReturn(new SortedActiveNodeListPBImpl(Collections.EMPTY_LIST));
     when(fsn.getNameNode()).thenReturn(nn);
@@ -1047,7 +1047,7 @@ public class TestINodeFile {
       long parentId = getINode("/", fsdir, cluster).getId();
       String testPath = "/.reserved/.inodes/" + dirId + "/..";
 
-      client = new DFSClient(NameNode.getAddress(conf), conf);
+      client = new DFSClient(ServerlessNameNode.getAddress(conf), conf);
       HdfsFileStatus status = client.getFileInfo(testPath);
       assertTrue(parentId == status.getFileId());
       

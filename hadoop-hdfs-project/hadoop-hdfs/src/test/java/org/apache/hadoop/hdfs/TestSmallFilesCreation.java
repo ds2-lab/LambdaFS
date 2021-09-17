@@ -21,12 +21,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.util.ExitUtil;
 import org.junit.AfterClass;
-import org.junit.FixMethodOrder;
 import org.junit.Test;
-import org.junit.runners.MethodSorters;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -1482,7 +1480,7 @@ public class TestSmallFilesCreation {
     HdfsStorageFactory.setConfiguration(conf);
     UsersGroups.createSyncRow();
     try {
-      NameNode.createNameNode(argv, conf);
+      ServerlessNameNode.createNameNode(argv, conf);
       fail("createNameNode() did not call System.exit()");
     } catch (ExitUtil.ExitException e) {
     }

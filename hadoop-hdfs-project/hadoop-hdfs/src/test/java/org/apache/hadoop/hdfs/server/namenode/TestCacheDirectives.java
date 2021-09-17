@@ -99,7 +99,7 @@ public class TestCacheDirectives {
   static private MiniDFSCluster cluster;
   static private DistributedFileSystem dfs;
   static private NamenodeProtocols proto;
-  static private NameNode namenode;
+  static private ServerlessNameNode namenode;
   static private CacheManipulator prevCacheManipulator;
 
   static {
@@ -616,9 +616,9 @@ public class TestCacheDirectives {
    * @param expectedCachedReplicas if -1, treat as wildcard
    * @throws Exception
    */
-  private static void waitForCachedBlocks(NameNode nn,
-      final int expectedCachedBlocks, final int expectedCachedReplicas,
-      final String logString) throws Exception {
+  private static void waitForCachedBlocks(ServerlessNameNode nn,
+                                          final int expectedCachedBlocks, final int expectedCachedReplicas,
+                                          final String logString) throws Exception {
     final FSNamesystem namesystem = nn.getNamesystem();
     final CacheManager cacheManager = namesystem.getCacheManager();
     LOG.info("Waiting for " + expectedCachedBlocks + " blocks with " +

@@ -18,34 +18,37 @@
 package org.apache.hadoop.hdfs.server.datanode;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.JsonObject;
+import io.hops.exception.StorageException;
+import io.hops.exception.StorageInitializtionException;
 import io.hops.leader_election.node.ActiveNode;
-import io.hops.leader_election.node.SortedActiveNodeList;
-import static org.apache.hadoop.util.Time.monotonicNow;
 
-import java.io.EOFException;
+import java.io.*;
+
+import io.hops.metadata.HdfsStorageFactory;
+import io.hops.metadata.hdfs.dal.DatanodeStorageDataAccess;
+import io.hops.metadata.hdfs.dal.IntermediateBlockReportDataAccess;
+import io.hops.metadata.hdfs.dal.StorageReportDataAccess;
+import io.hops.metadata.hdfs.entity.IntermediateBlockReport;
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.StorageType;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
-import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.UnregisteredNodeException;
+import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
-import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.Time;
 import org.apache.hadoop.util.VersionInfo;
 import org.apache.hadoop.util.VersionUtil;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
-import java.util.Collection;
-import java.util.List;
-import org.apache.hadoop.hdfs.protocol.RollingUpgradeStatus;
+import java.util.*;
 
 /**
  * A thread per active or standby namenode to perform:
@@ -58,6 +61,11 @@ import org.apache.hadoop.hdfs.protocol.RollingUpgradeStatus;
  */
 @InterfaceAudience.Private
 class BPServiceActor implements Runnable {
+
+  /**
+   * Used to invoke serverless name nodes.
+   */
+  private final ServerlessInvokerBase<JsonObject> serverlessInvoker;
 
   static final Log LOG = DataNode.LOG;
   final InetSocketAddress nnAddr;
@@ -79,11 +87,13 @@ class BPServiceActor implements Runnable {
 
   private boolean connectedToNN = false;
 
-  BPServiceActor(InetSocketAddress nnAddr, BPOfferService bpos) {
+  BPServiceActor(InetSocketAddress nnAddr, BPOfferService bpos) throws StorageInitializtionException {
     this.bpos = bpos;
     this.dn = bpos.getDataNode();
     this.nnAddr = nnAddr;
     this.dnConf = dn.getDnConf();
+    this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(dn.getDnConf().serverlessPlatformName);
+    this.serverlessInvoker.setIsClientInvoker(false);
     scheduler = new Scheduler(dnConf.heartBeatInterval);
   }
 
@@ -137,13 +147,41 @@ class BPServiceActor implements Runnable {
     NamespaceInfo nsInfo = null;
     while (shouldRun()) {
       try {
-        nsInfo = bpNamenode.versionRequest();
+        LOG.debug("Attempting to invoke NameNode for DN-NN handshake now...");
+
+        HashMap<String, Object> fsArgs = new HashMap<>();
+
+        String uuid = dn.getDatanodeUuid();
+
+        if (uuid == null) {
+          LOG.warn("DataNode does not have a UUID yet...");
+        }
+
+        fsArgs.put("uuid", "N/A"); // This will always result in a groupId of 0 being assigned...
+
+        JsonObject responseJson = serverlessInvoker.invokeNameNodeViaHttpPost(
+                "versionRequest",
+                dnConf.serverlessEndpoint,
+                null,
+                fsArgs
+        );
+
+        LOG.info("responseJson = " + responseJson.toString());
+
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        if (result != null)
+          nsInfo = (NamespaceInfo)result;
+
         LOG.debug(this + " received versionRequest response: " + nsInfo);
         break;
       } catch (SocketTimeoutException e) {  // namenode is busy
-        LOG.warn("Problem connecting to server: " + nnAddr);
+        //LOG.warn("Problem connecting to server: " + nnAddr);
+        LOG.warn("Socket timeout encountered while performing serverless NN handshake.", e);
       } catch (IOException e) {  // namenode is not available
-        LOG.warn("Problem connecting to server: " + nnAddr);
+        LOG.warn("IOException encountered while performing serverless NN handshake.", e);
+        //LOG.warn("Problem connecting to server: " + nnAddr);
+      } catch (ClassNotFoundException e) {
+        LOG.warn("ClassNotFoundException encountered while performing serverless NN handshake.", e);
       }
 
       // try again in a second
@@ -179,11 +217,12 @@ class BPServiceActor implements Runnable {
   }
 
   private void connectToNNAndHandshake() throws IOException {
-    // get NN proxy
+    LOG.info("Performing handshake with NameNode now...");
 
-    bpNamenode = dn.connectToNN(nnAddr);
-    // First phase of the handshake with NN - get the namespace
-    // info.
+    // get NN proxy
+    // bpNamenode = dn.connectToNN(nnAddr);
+
+    // First phase of the handshake with NN - get the namespace info.
     NamespaceInfo nsInfo = retrieveNamespaceInfo();
 
     // Verify that this matches the other NN in this HA pair.
@@ -218,6 +257,43 @@ class BPServiceActor implements Runnable {
     }
   }
 
+  /**
+   * Store the given StorageReport instance in intermediate storage.
+   * @param report the report to store in intermediate storage.
+   */
+  private void storeStorageReportInIntermediateStorage(StorageReport report, int groupId, int reportId) throws StorageException {
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> access =
+            (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+
+    storeStorageReportInIntermediateStorage(report, groupId, reportId, access);
+  }
+
+  /**
+   * Store the given StorageReport instance in intermediate storage.
+   * @param originalReport the report to store in intermediate storage.
+   */
+  private void storeStorageReportInIntermediateStorage(StorageReport originalReport, int groupId, int reportId,
+      StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> access) throws StorageException {
+
+    // This is the Data Abstraction Layer report. Has some additional fields, such as groupId and reportId.
+    io.hops.metadata.hdfs.entity.StorageReport dalReport =
+            new io.hops.metadata.hdfs.entity.StorageReport(groupId, reportId, dn.getDatanodeId().getDatanodeUuid(),
+                    originalReport.isFailed(), originalReport.getCapacity(), originalReport.getDfsUsed(),
+                    originalReport.getRemaining(), originalReport.getBlockPoolUsed(),
+                    originalReport.getStorage().getStorageID());
+
+    access.addStorageReport(dalReport);
+  }
+
+  private void storeDatanodeStorageInIntermediateStorage(DatanodeStorage storage,
+       DatanodeStorageDataAccess<io.hops.metadata.hdfs.entity.DatanodeStorage> access) throws StorageException {
+    io.hops.metadata.hdfs.entity.DatanodeStorage storageDal
+            = new io.hops.metadata.hdfs.entity.DatanodeStorage(storage.getStorageID(), dn.getDatanodeUuid(),
+            storage.getState().ordinal(), storage.getStorageType().ordinal());
+
+    access.addDatanodeStorage(storageDal);
+  }
+
   @VisibleForTesting
   synchronized void triggerHeartbeatForTests() {
     final long nextHeartbeatTime = scheduler.scheduleHeartbeat();
@@ -238,8 +314,32 @@ class BPServiceActor implements Runnable {
       LOG.debug("Sending heartbeat with " + reports.length +
           " storage reports from service actor: " + this);
     }
+
+    StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> reportAccess =
+            (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
+
+    DatanodeStorageDataAccess<io.hops.metadata.hdfs.entity.DatanodeStorage> storageAccess =
+            (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
+
+    //LOG.info("Storing " + reports.length + " StorageReport instance(s) in intermediate storage now...");
+
+    int reportId = 0;
+    int groupId = dn.getAndIncrementStorageReportGroupCounter();
+    // Check NDB for the last-used groupId.
+
+    HashSet<DatanodeStorage> datanodeStorages = new HashSet<>();
+
+    // Store the StorageReport objects in NDB.
+    for (StorageReport report : reports) {
+      if (!datanodeStorages.contains(report.getStorage())) {
+        storeDatanodeStorageInIntermediateStorage(report.getStorage(), storageAccess);
+        datanodeStorages.add(report.getStorage());
+      }
+
+      storeStorageReportInIntermediateStorage(report, groupId, reportId, reportAccess);
+    }
     
-    VolumeFailureSummary volumeFailureSummary = dn.getFSDataset()
+    /*VolumeFailureSummary volumeFailureSummary = dn.getFSDataset()
         .getVolumeFailureSummary();
     int numFailedVolumes = volumeFailureSummary != null ?
         volumeFailureSummary.getFailedStorageLocations().length : 0;
@@ -250,7 +350,9 @@ class BPServiceActor implements Runnable {
         dn.getXmitsInProgress(),
         dn.getXceiverCount(),
         numFailedVolumes,
-        volumeFailureSummary);
+        volumeFailureSummary);*/
+
+    return null;
   }
 
   //This must be called only by BPOfferService
@@ -291,13 +393,12 @@ class BPServiceActor implements Runnable {
 
   //Cleanup method to be called by current thread before exiting.
   private synchronized void cleanUp() {
-
     shouldServiceRun = false;
     IOUtils.cleanup(LOG, bpNamenode);
 
+    this.serverlessInvoker.terminate();
+
     bpos.shutdownActor(this);
-
-
   }
 
   private void handleRollingUpgradeStatus(HeartbeatResponse resp) throws IOException {
@@ -353,8 +454,10 @@ class BPServiceActor implements Runnable {
           //
           scheduler.scheduleNextHeartbeat();
           if (!dn.areHeartbeatsDisabledForTests()) {
+            //LOG.warn("DataNode skipping heartbeat to NN...");
+
             HeartbeatResponse resp = sendHeartBeat();
-            assert resp != null;
+            /*assert resp != null;
 
             connectedToNN = true;
 
@@ -371,7 +474,7 @@ class BPServiceActor implements Runnable {
               LOG.info("Took " + (endProcessCommands - startProcessCommands) +
                   "ms to process " + resp.getCommands().length +
                   " commands from NN");
-            }
+            }*/
           }
         }
 
@@ -417,16 +520,15 @@ class BPServiceActor implements Runnable {
    * 2) to receive a registrationID
    * <p/>
    * issued by the namenode to recognize registered datanodes.
-   * 
-   * @param nsInfo current NamespaceInfo
-   * @see FSNamesystem#registerDatanode(DatanodeRegistration)
-   * @throws IOException
-   * @see FSNamesystem#registerDatanode(DatanodeRegistration)
    */
   void register(NamespaceInfo nsInfo) throws IOException {
     // The handshake() phase loaded the block pool storage
     // off disk - so update the bpRegistration object from that info
     bpRegistration = bpos.createRegistration();
+    bpRegistration.setNamespaceInfo(nsInfo);
+
+    /*
+    This is the old registration code. We are not registering with a serverful namenode. So we just skip this.
 
     while (shouldRun()) {
       try {
@@ -443,6 +545,7 @@ class BPServiceActor implements Runnable {
         sleepAndLogInterrupts(1000, "connecting to server");
       }
     }
+    */
 
     LOG.info("Block pool " + this + " successfully registered with NN");
     bpos.registrationSucceeded(this, bpRegistration);
@@ -460,7 +563,7 @@ class BPServiceActor implements Runnable {
     if(!bpos.otherActorsConnectedToNNs(this) && bpos.firstActor(this)) {
       bpos.scheduleBlockReport(dnConf.initialBlockReportDelay);
     } else {
-      LOG.info("Block Report skipped as other BPServiceActors are connected to the namenodes ");
+      LOG.info("Block Report skipped as other BPServiceActors are connected to the namenodes.");
     }
   }
 
@@ -607,18 +710,35 @@ class BPServiceActor implements Runnable {
       return;
     }
 
-    SortedActiveNodeList list = this.bpNamenode.getActiveNamenodes();
+    //LOG.warn("Immediately returning from `refreshNNConnections() without checking (since this is not applicable for Serverless NameNodes)...");
+
+    /*SortedActiveNodeList list = this.bpNamenode.getActiveNamenodes();
     bpos.updateNNList(list);
-    bpos.setLastNNListUpdateTime();
+    bpos.setLastNNListUpdateTime();*/
   }
 
   public void blockReceivedAndDeleted(DatanodeRegistration registration,
-      String poolId, StorageReceivedDeletedBlocks[] receivedAndDeletedBlocks)
-      throws IOException {
-    if (bpNamenode != null) {
+      String poolId, StorageReceivedDeletedBlocks[] receivedAndDeletedBlocks) throws IOException {
+    IntermediateBlockReportDataAccess<IntermediateBlockReport> dataAccess =
+            (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ObjectOutputStream oos = new ObjectOutputStream( baos );
+    oos.writeObject(receivedAndDeletedBlocks);
+    oos.close();
+    String encoded = Base64.getEncoder().encodeToString(baos.toByteArray());
+
+    int reportId = dn.getAndIncrementIntermediateBlockReportCounter();
+    LOG.info("Storing intermediate block report " + reportId + " in intermediate storage now...");
+
+    dataAccess.addReport(reportId, registration.getDatanodeUuid(), poolId, encoded);
+
+    LOG.info("Successfully stored intermediate block report " + reportId + " in intermediate storage.");
+
+    /*if (bpNamenode != null) {
       bpNamenode.blockReceivedAndDeleted(registration, poolId,
           receivedAndDeletedBlocks);
-    }
+    }*/
   }
 
   public DatanodeCommand reportHashes(DatanodeRegistration registration,

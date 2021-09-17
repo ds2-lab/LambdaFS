@@ -17,10 +17,12 @@
  */
 package org.apache.hadoop.hdfs.server.protocol;
 
+import java.io.Serializable;
+
 /**
  * Utilization report for a Datanode storage
  */
-public class StorageReport {
+public class StorageReport implements Serializable {
   public static final StorageReport[] EMPTY_ARRAY = {};
 
   private final DatanodeStorage storage;

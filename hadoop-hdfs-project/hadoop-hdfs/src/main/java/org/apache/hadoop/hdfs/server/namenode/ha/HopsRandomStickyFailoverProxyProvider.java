@@ -19,14 +19,13 @@ package org.apache.hadoop.hdfs.server.namenode.ha;
 
 import com.google.common.base.Preconditions;
 import io.hops.leader_election.node.ActiveNode;
-import io.hops.leader_election.node.SortedActiveNodeList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.NameNodeProxies;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.ha.FailoverProxyHelper.AddressRpcProxyPair;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
 import org.apache.hadoop.io.retry.FailoverProxyProvider;
@@ -123,7 +122,7 @@ public class HopsRandomStickyFailoverProxyProvider<T> implements
     try {
       if (currentProxyIndex == -1) {
         LOG.debug(name + " returning default proxy");
-        return new ProxyInfo<T>((T) NameNodeProxies.createNonHAProxy(conf, NameNode.getAddress(uri),
+        return new ProxyInfo<T>((T) NameNodeProxies.createNonHAProxy(conf, ServerlessNameNode.getAddress(uri),
                 xface, ugi, false).getProxy(), null);
 //      return new ProxyInfo<T>((T) null, null);
       }

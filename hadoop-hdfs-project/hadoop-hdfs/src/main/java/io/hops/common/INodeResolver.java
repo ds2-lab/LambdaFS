@@ -22,7 +22,7 @@ import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
 import org.apache.hadoop.hdfs.server.namenode.INodeSymlink;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 
 import java.util.NoSuchElementException;
 
@@ -70,8 +70,8 @@ public class INodeResolver {
           INodeUtil.constructPath(components, count + 1, components.length);
       final String link = DFSUtil.bytes2String(components[count]);
       final String target = ((INodeSymlink) currentInode).getSymlinkString();
-      if (NameNode.stateChangeLog.isDebugEnabled()) {
-        NameNode.stateChangeLog.debug(
+      if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+        ServerlessNameNode.stateChangeLog.debug(
             "UnresolvedPathException " + " path: " + symPath + " preceding: " +
                 preceding + " count: " + count + " link: " + link +
                 " target: " + target + " remainder: " + remainder);

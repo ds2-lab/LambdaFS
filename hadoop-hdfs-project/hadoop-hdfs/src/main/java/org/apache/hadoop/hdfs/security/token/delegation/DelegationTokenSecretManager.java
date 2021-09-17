@@ -22,7 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ipc.StandbyException;
 import org.apache.hadoop.security.Credentials;
@@ -32,12 +32,10 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager;
 import org.apache.hadoop.security.token.delegation.DelegationKey;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
-import java.util.Iterator;
+
 import org.apache.hadoop.ipc.RetriableException;
 
 //FIXME: needs to be presisted
@@ -255,7 +253,7 @@ public class DelegationTokenSecretManager
   /**
    * A utility method for creating credentials.
    */
-  public static Credentials createCredentials(final NameNode namenode,
+  public static Credentials createCredentials(final ServerlessNameNode namenode,
       final UserGroupInformation ugi, final String renewer) throws IOException {
     final Token<DelegationTokenIdentifier> token =
         namenode.getRpcServer().getDelegationToken(new Text(renewer));

@@ -58,7 +58,6 @@ import org.apache.hadoop.fs.XAttr;
 import org.apache.hadoop.hdfs.XAttrHelper;
 import org.apache.hadoop.fs.permission.AclStatus;
 import org.apache.hadoop.fs.permission.FsAction;
-import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.DirectoryListing;
@@ -70,7 +69,7 @@ import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
 import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
 import org.apache.hadoop.hdfs.server.common.JspHelper;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
 import org.apache.hadoop.hdfs.web.JsonUtil;
 import org.apache.hadoop.hdfs.web.ParamFilter;
@@ -80,7 +79,6 @@ import org.apache.hadoop.hdfs.web.resources.*;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ipc.RetriableException;
 import org.apache.hadoop.ipc.Server;
-import org.apache.hadoop.net.NetworkTopology.InvalidTopologyException;
 import org.apache.hadoop.net.Node;
 import org.apache.hadoop.net.NodeBase;
 import org.apache.hadoop.security.Credentials;
@@ -93,7 +91,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.sun.jersey.spi.container.ResourceFilters;
-import org.apache.hadoop.net.NetworkTopology;
 
 import org.apache.hadoop.hdfs.web.resources.XAttrEncodingParam;
 import org.apache.hadoop.hdfs.web.resources.XAttrNameParam;
@@ -168,7 +165,7 @@ public class NamenodeWebHdfsMethods {
     REMOTE_ADDRESS.set(null);
   }
     
-  private static NamenodeProtocols getRPCServer(NameNode namenode)
+  private static NamenodeProtocols getRPCServer(ServerlessNameNode namenode)
       throws IOException {
      final NamenodeProtocols np = namenode.getRpcServer();
      if (np == null) {
@@ -178,9 +175,9 @@ public class NamenodeWebHdfsMethods {
   }
   
   @VisibleForTesting
-  static DatanodeInfo chooseDatanode(final NameNode namenode, final String path,
-      final HttpOpParam.Op op, final long openOffset, final long blocksize,
-      final String excludeDatanodes) throws IOException {
+  static DatanodeInfo chooseDatanode(final ServerlessNameNode namenode, final String path,
+                                     final HttpOpParam.Op op, final long openOffset, final long blocksize,
+                                     final String excludeDatanodes) throws IOException {
     final BlockManager bm = namenode.getNamesystem().getBlockManager();
 
     HashSet<Node> excludes = new HashSet<Node>();
@@ -255,8 +252,8 @@ public class NamenodeWebHdfsMethods {
   }
   
   private Token<? extends TokenIdentifier> generateDelegationToken(
-      final NameNode namenode, final UserGroupInformation ugi,
-      final String renewer) throws IOException {
+          final ServerlessNameNode namenode, final UserGroupInformation ugi,
+          final String renewer) throws IOException {
     final Credentials c = DelegationTokenSecretManager.createCredentials(
         namenode, ugi, renewer != null? renewer: ugi.getShortUserName());
     if (c == null) {
@@ -269,7 +266,7 @@ public class NamenodeWebHdfsMethods {
     return t;
   }
 
-  private URI redirectURI(final NameNode namenode,
+  private URI redirectURI(final ServerlessNameNode namenode,
       final UserGroupInformation ugi, final DelegationParam delegation,
       final UserParam username, final DoAsParam doAsUser, final String path,
       final HttpOpParam.Op op, final long openOffset, final long blocksize, final String excludeDatanodes,
@@ -473,7 +470,7 @@ public class NamenodeWebHdfsMethods {
 
     final Configuration conf =
         (Configuration) context.getAttribute(JspHelper.CURRENT_CONF);
-    final NameNode namenode = (NameNode) context.getAttribute("name.node");
+    final ServerlessNameNode namenode = (ServerlessNameNode) context.getAttribute("name.node");
     final NamenodeProtocols np = getRPCServer(namenode);
 
     switch (op.getValue()) {
@@ -683,7 +680,7 @@ public class NamenodeWebHdfsMethods {
       final ExcludeDatanodesParam excludeDatanodes,
       final NewLengthParam newLength
       ) throws IOException, URISyntaxException {
-    final NameNode namenode = (NameNode)context.getAttribute("name.node");
+    final ServerlessNameNode namenode = (ServerlessNameNode)context.getAttribute("name.node");
     final NamenodeProtocols np = getRPCServer(namenode);
 
     switch(op.getValue()) {
@@ -850,7 +847,7 @@ public class NamenodeWebHdfsMethods {
       final TokenKindParam tokenKind,
       final TokenServiceParam tokenService
       ) throws IOException, URISyntaxException {
-    final NameNode namenode = (NameNode)context.getAttribute("name.node");
+    final ServerlessNameNode namenode = (ServerlessNameNode)context.getAttribute("name.node");
     final NamenodeProtocols np = getRPCServer(namenode);
 
     switch (op.getValue()) {
@@ -1079,7 +1076,7 @@ public class NamenodeWebHdfsMethods {
       final DelegationParam delegation, final UserParam username,
       final DoAsParam doAsUser, final String fullpath, final DeleteOpParam op,
       final RecursiveParam recursive) throws IOException {
-    final NameNode namenode = (NameNode) context.getAttribute("name.node");
+    final ServerlessNameNode namenode = (ServerlessNameNode) context.getAttribute("name.node");
 
     switch (op.getValue()) {
       case DELETE: {

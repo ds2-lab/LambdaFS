@@ -47,7 +47,7 @@ final class QuotaUpdateLock extends Lock {
   }
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     if (targets != null) {
       INodeLock inodeLock = (INodeLock) locks.getLock(Type.INode);
       for (String target : targets) {
@@ -84,7 +84,7 @@ final class QuotaUpdateLock extends Lock {
   }
 
   @Override
-  protected final Type getType() {
+  public final Type getType() {
     return Type.QuotaUpdate;
   }
 }

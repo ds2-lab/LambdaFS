@@ -40,7 +40,7 @@ import org.apache.hadoop.fs.XAttrSetFlag;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.client.HdfsDataOutputStream;
 import org.apache.hadoop.hdfs.server.namenode.INode;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.XAttrStorage;
 import org.apache.hadoop.hdfs.server.namenode.XAttrTestHelpers;
 import org.junit.Test;
@@ -1002,11 +1002,11 @@ public class TestMetadataLog extends TestCase {
         INodeMetadataLogEntry.Operation.ChangeDataset.getId());
   }
   
-  private void checkLogicalTimeForINodes(NameNode nameNode, Path[] inodesPaths,
-      int[] logicalTimes) throws IOException{
+  private void checkLogicalTimeForINodes(ServerlessNameNode serverlessNameNode, Path[] inodesPaths,
+                                         int[] logicalTimes) throws IOException{
     int i=0;
     for(Path path : inodesPaths){
-      assertEquals(logicalTimes[i], TestUtil.getINode(nameNode, path)
+      assertEquals(logicalTimes[i], TestUtil.getINode(serverlessNameNode, path)
           .getLogicalTime());
       i++;
     }

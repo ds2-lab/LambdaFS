@@ -28,7 +28,7 @@ import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.ipc.RetriableException;
 
 import java.io.IOException;
@@ -101,7 +101,7 @@ public class INodeLock extends BaseINodeLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     if (paths != null) {
       /*
        * Needs to be sorted in order to avoid deadlocks. Otherwise one transaction
@@ -119,7 +119,7 @@ public class INodeLock extends BaseINodeLock {
     }
   }
 
-  protected void acquireInodeIdInodeLock() throws IOException {
+  public void acquireInodeIdInodeLock() throws IOException {
     if (!resolveType.equals(TransactionLockTypes.INodeResolveType.PATH) && !resolveType.equals(
         TransactionLockTypes.INodeResolveType.PATH_AND_IMMEDIATE_CHILDREN) && !resolveType.equals(
             TransactionLockTypes.INodeResolveType.PATH_AND_ALL_CHILDREN_RECURSIVELY)) {
@@ -142,7 +142,7 @@ public class INodeLock extends BaseINodeLock {
     }
   }
 
-  protected void acquirePathsINodeLocks() throws IOException {
+  public void acquirePathsINodeLocks() throws IOException {
     if (!resolveType.equals(TransactionLockTypes.INodeResolveType.PATH) &&
             !resolveType.equals(
                     TransactionLockTypes.INodeResolveType.PATH_AND_IMMEDIATE_CHILDREN) &&
@@ -260,11 +260,11 @@ public class INodeLock extends BaseINodeLock {
       // you can ignore the lock after some time. it is possible that
       // the NN is alive and its ID just changed because it is slow to HB
       long timePassed = System.currentTimeMillis() - getStoLockTime(iNode.getId());
-      if (timePassed < NameNode.getFailedSTOCleanDelay()) {
+      if (timePassed < ServerlessNameNode.getFailedSTOCleanDelay()) {
         locked = true;
       } else {
         LOG.debug("Ignoring subtree lock as more than " + timePassed + " ms has passed.  Max " +
-                "lock retention time is:" + NameNode.getFailedSTOCleanDelay());
+                "lock retention time is:" + ServerlessNameNode.getFailedSTOCleanDelay());
       }
     }
 

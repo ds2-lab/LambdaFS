@@ -118,7 +118,7 @@ public class NNThroughputBenchmark implements Tool {
   private final int retryCount = 10;
 
   static Configuration config;
-  static NameNode nameNode;
+  static ServerlessNameNode serverlessNameNode;
   static NamenodeProtocols nameNodeProto;
 
   NNThroughputBenchmark(Configuration conf) throws IOException {
@@ -154,8 +154,8 @@ public class NNThroughputBenchmark implements Tool {
   }
 
   void close() {
-    if(nameNode != null)
-      nameNode.stop();
+    if(serverlessNameNode != null)
+      serverlessNameNode.stop();
   }
 
   static void setNameNodeLoggingLevel(Level logLevel) {
@@ -1002,7 +1002,7 @@ public class NNThroughputBenchmark implements Tool {
       final StorageBlockReport[] reports = {new StorageBlockReport(storage,
           BlockReport.builder(NUM_BUCKETS).build())};
       nameNodeProto.blockReport(dnRegistration,
-          nameNode.getNamesystem().getBlockPoolId(), reports,
+          serverlessNameNode.getNamesystem().getBlockPoolId(), reports,
           new BlockReportContext(1, 0, System.nanoTime()));
     }
 
@@ -1107,7 +1107,7 @@ public class NNThroughputBenchmark implements Tool {
                   null) };
           StorageReceivedDeletedBlocks[] report = { new StorageReceivedDeletedBlocks(
               targetStorageID, rdBlocks) };
-          nameNodeProto.blockReceivedAndDeleted(receivedDNReg, nameNode
+          nameNodeProto.blockReceivedAndDeleted(receivedDNReg, serverlessNameNode
               .getNamesystem().getBlockPoolId(), report);
         }
       }
@@ -1266,7 +1266,7 @@ public class NNThroughputBenchmark implements Tool {
       StorageBlockReport[] report =
           {new StorageBlockReport(dn.storage, dn.getBlockReportList())};
       nameNodeProto.blockReport(dn.dnRegistration,
-          nameNode.getNamesystem().getBlockPoolId(), report,
+          serverlessNameNode.getNamesystem().getBlockPoolId(), report,
           new BlockReportContext(1, 0, System.nanoTime()));
       long end = Time.now();
       return end - start;
@@ -1375,7 +1375,7 @@ public class NNThroughputBenchmark implements Tool {
 
     @Override
     void generateInputs(int[] ignore) throws IOException {
-      final FSNamesystem namesystem = nameNode.getNamesystem();
+      final FSNamesystem namesystem = serverlessNameNode.getNamesystem();
 
       // start data-nodes; create a bunch of files; generate block reports.
       blockReportObject.generateInputs(ignore);
@@ -1426,7 +1426,7 @@ public class NNThroughputBenchmark implements Tool {
       long start = Time.now();
       // compute data-node work
       int work = BlockManagerTestUtil
-          .getComputedDatanodeWork(nameNode.getNamesystem().getBlockManager());
+          .getComputedDatanodeWork(serverlessNameNode.getNamesystem().getBlockManager());
       long end = Time.now();
       numPendingBlocks += work;
       if (work == 0) {
@@ -1508,8 +1508,8 @@ public class NNThroughputBenchmark implements Tool {
 
     // Start the NameNode
     String[] argv = new String[] {};
-    nameNode = NameNode.createNameNode(argv, config);
-    nameNodeProto = nameNode.getRpcServer();
+    serverlessNameNode = ServerlessNameNode.createNameNode(argv, config);
+    nameNodeProto = serverlessNameNode.getRpcServer();
     List<OperationStatsBase> ops = new ArrayList<>();
     OperationStatsBase opStat = null;
     try {

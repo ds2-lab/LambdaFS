@@ -50,7 +50,7 @@ final class IndividualINodeLock extends BaseINodeLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     setPartitioningKey(inodeIdentifier.getInodeId());
 
     INode inode = null;

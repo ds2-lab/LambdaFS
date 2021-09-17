@@ -20,11 +20,14 @@ package org.apache.hadoop.security.authorize;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -41,7 +44,10 @@ import org.apache.hadoop.util.StringUtils;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class AccessControlList implements Writable {
+public class AccessControlList implements Writable, Serializable {
+  private static final Log LOG = LogFactory.getLog(AccessControlList.class);
+
+  private static final long serialVersionUID = 7854059381806186863L;
 
   static {                                      // register a ctor
     WritableFactories.setFactory
@@ -57,50 +63,79 @@ public class AccessControlList implements Writable {
   private static final int INITIAL_CAPACITY = 256;
 
   // Set of users who are granted access.
-  private Collection<String> users;
-  // Set of groups which are granted access
-  private Collection<String> groups;
-  // Whether all users are granted access.
-  private boolean allAllowed;
+  protected Collection<String> users;
 
-  private Groups groupsMapping = Groups.getUserToGroupsMappingService(new Configuration());
+  // Set of groups which are granted access
+  protected Collection<String> groups;
+
+  // Whether all users are granted access.
+  protected boolean allAllowed;
+
+  /**
+   * Set of users which are granted access to this path.
+   */
+  private Collection<String> pathUsers;
+
+  /**
+   * Set of groups which are granted access to this path.
+   */
+  private Collection<String> pathGroups;
+
+  /**
+   * Get the names of users allowed for this service. This is from the path ACL (rather than the file ACL).
+   * @return the set of user names. the set must not be modified.
+   */
+  public Collection<String> getPathUsers() {
+    return pathUsers;
+  }
+
+  /**
+   * Get the names of user groups allowed for this service. This is from the path ACL (rather than the file ACL).
+   * @return the set of group names. the set must not be modified.
+   */
+  public Collection<String> getPathGroups() {
+    return pathGroups;
+  }
+
+  protected Groups groupsMapping = Groups.getUserToGroupsMappingService(new Configuration());
 
   /**
    * This constructor exists primarily for AccessControlList to be Writable.
    */
   public AccessControlList() {
+    LOG.debug("Default ACL constructor called.");
   }
 
   /**
    * Construct a new ACL from a String representation of the same.
    * 
-   * The String is a a comma separated list of users and groups.
+   * The String is a comma separated list of users and groups.
    * The user list comes first and is separated by a space followed 
    * by the group list. For e.g. "user1,user2 group1,group2"
    * 
    * @param aclString String representation of the ACL
    */
   public AccessControlList(String aclString) {
+    LOG.debug("ACL constructor called. ACL String: " + aclString);
     buildACL(aclString.split(" ", 2));
   }
-  
+
   /**
    * Construct a new ACL from String representation of users and groups
-   * 
+   *
    * The arguments are comma separated lists
-   * 
+   *
    * @param users comma separated list of users
    * @param groups comma separated list of groups
    */
   public AccessControlList(String users, String groups) {
+    LOG.debug("ACL constructor called. Users: " + users + ", Groups: " + groups);
     buildACL(new String[] {users, groups});
   }
 
   /**
    * Build ACL from the given two Strings.
    * The Strings contain comma separated values.
-   *
-   * @param aclString build ACL from array of Strings
    */
   private void buildACL(String[] userGroupStrings) {
     users = new HashSet<String>();

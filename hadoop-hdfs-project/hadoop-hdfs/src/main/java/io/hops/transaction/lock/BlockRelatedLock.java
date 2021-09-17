@@ -39,7 +39,7 @@ final class BlockRelatedLock extends LockWithType {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     // FIXME handle null block
     Lock lock = locks.getLock(Type.Block);
     if (lock instanceof BaseIndividualBlockLock) {

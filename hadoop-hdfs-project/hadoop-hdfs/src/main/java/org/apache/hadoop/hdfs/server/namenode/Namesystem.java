@@ -67,7 +67,7 @@ public interface Namesystem extends SafeMode {
    * Get the associated NameNode
    * @return the @link{NameNode}
    */
-  public NameNode getNameNode();
+  public ServerlessNameNode getNameNode();
 
   /**
    * Adjust the safeblocks if the current namenode is in safemode

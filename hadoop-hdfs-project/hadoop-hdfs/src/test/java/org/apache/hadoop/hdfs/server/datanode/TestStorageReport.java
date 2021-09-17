@@ -28,7 +28,7 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
@@ -87,7 +87,7 @@ public class TestStorageReport {
     // Make sure we are not testing with the default type, that would not
     // be a very good test.
     assertNotSame(storageType, StorageType.DEFAULT);
-    NameNode nn = cluster.getNameNode();
+    ServerlessNameNode nn = cluster.getNameNode();
     DataNode dn = cluster.getDataNodes().get(0);
 
     // Insert a spy object for the NN RPC.

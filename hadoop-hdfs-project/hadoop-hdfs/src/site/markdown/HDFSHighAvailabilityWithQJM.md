@@ -184,7 +184,7 @@ The order in which you set these configurations is unimportant, but the values y
 *   **dfs.namenode.shared.edits.dir** - the URI which identifies the group of JNs where the NameNodes will write/read edits
 
     This is where one configures the addresses of the JournalNodes which provide
-    the shared edits storage, written to by the Active nameNode and read by the
+    the shared edits storage, written to by the Active serverlessNameNode and read by the
     Standby NameNode to stay up-to-date with all the file system changes the Active
     NameNode makes. Though you must specify several JournalNode addresses,
     **you should only configure one of these URIs.** The URI should be of the form:

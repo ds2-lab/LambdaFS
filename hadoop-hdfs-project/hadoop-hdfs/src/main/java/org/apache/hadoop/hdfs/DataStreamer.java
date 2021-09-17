@@ -752,6 +752,7 @@ class DataStreamer extends Daemon {
           }
         }
         checkClosed();
+        LOG.debug("Attempting to queue packet now...");
         queuePacket(packet);
       } catch (ClosedChannelException e) {
       }
@@ -1411,7 +1412,7 @@ class DataStreamer extends Daemon {
    * Must get block ID and the IDs of the destinations from the namenode.
    * Returns the list of target datanodes.
    */
-  private LocatedBlock nextBlockOutputStream() throws IOException {
+  private LocatedBlock nextBlockOutputStream() throws IOException, ClassNotFoundException {
     LocatedBlock lb = null;
     DatanodeInfo[] nodes = null;
     StorageType[] storageTypes = null;
@@ -1494,6 +1495,8 @@ class DataStreamer extends Daemon {
       accessToken = lb.getBlockToken();
       nodes = lb.getLocations();
       storageTypes = lb.getStorageTypes();
+
+      LOG.debug("Connecting to the first DataNode in the list now...");
 
       //
       // Connect to first DataNode in the list.
@@ -1685,7 +1688,7 @@ class DataStreamer extends Daemon {
   }
 
   protected LocatedBlock locateFollowingBlock(DatanodeInfo[] excludedNodes)
-      throws IOException {
+          throws IOException, ClassNotFoundException {
     final DfsClientConf conf = dfsClient.getConf(); 
     int retries = conf.getNumBlockWriteLocateFollowingRetry();
     long sleeptime = conf.getBlockWriteLocateFollowingInitialDelayMs();
@@ -1693,8 +1696,11 @@ class DataStreamer extends Daemon {
       long localstart = Time.monotonicNow();
       while (true) {
         try {
-          return dfsClient.namenode.addBlock(src, dfsClient.clientName,
-              block, excludedNodes, stat.getFileId(), favoredNodes);
+          // Call the new addBlock method of the DFSClient class, which invokes a serverless NN.
+          return dfsClient.addBlock(src, dfsClient.clientName, block, excludedNodes, stat.getFileId(), favoredNodes);
+
+          /*return dfsClient.namenode.addBlock(src, dfsClient.clientName,
+              block, excludedNodes, stat.getFileId(), favoredNodes);*/
         } catch (RemoteException e) {
           IOException ue =
               e.unwrapRemoteException(FileNotFoundException.class,
@@ -1814,6 +1820,7 @@ class DataStreamer extends Daemon {
         smallFileDataQueue.addLast(packet);
       } else {
         //Some condition for storing the data in the database has failed. Store the data on the datanodes
+        LOG.debug("Storing the packet/data on the DataNodes...");
         forwardSmallFilesPacketsToDataNodes();
         dataQueue.addLast(packet);
         if (LOG.isDebugEnabled()) {
