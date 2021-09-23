@@ -24,6 +24,11 @@ import java.util.*;
 
 /**
  * Concrete implementation of the {@link ServerlessInvoker} interface for the OpenWhisk serverless platform.
+ *
+ * The serverless platform being used is specified in the configuration files for Serverless HopsFS. Currently, it
+ * defaults to OpenWhisk. In order to obtain an invoker, you simply utilize the {@link ServerlessInvokerBase} class,
+ * passing whatever platform is specified in the configuration. The factory will provide a concrete implementation
+ * for the platform being used.
  */
 public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     private static final Log LOG = LogFactory.getLog(OpenWhiskInvoker.class);
@@ -33,6 +38,18 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      */
     private final String blockingParameter = "?blocking=true";
 
+    /**
+     * Create a TrustManager that does not validate certificate chains.
+     *
+     * This is necessary because otherwise, we may encounter SSL certificate errors when invoking serverless functions.
+     * I do not know all the details behind this, but this resolves the errors.
+     *
+     * In the future, we may want to add certificate support for increased security, with a fall-back to this being an
+     * option if the users do not want to configure SSL certificates.
+     *
+     * Per the Java documentation, TrustManagers are responsible for managing the trust material that is used when
+     * making trust decisions, and for deciding whether credentials presented by a peer should be accepted.
+     */
     private void instantiateTrustManager() {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[] {
@@ -59,16 +76,37 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     }
 
     /**
-     * Default constructor.
+     * Because invokers are generally created via the {@link ServerlessInvokerFactory} class, this constructor
+     * will not be used directly.
      */
     public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
         super();
     }
 
+    /**
+     * Allows the specification of a {@link Configuration} object; however, because invokers are generally created
+     * via the {@link ServerlessInvokerFactory} class, this constructor will not be used directly.
+     */
     public OpenWhiskInvoker(Configuration conf) throws NoSuchAlgorithmException, KeyManagementException {
         super(conf);
     }
 
+    /**
+     * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
+     * function in Serverless HopsFS. (OpenWhisk supports HTTP GET, I think? But we don't use that, in any case.)
+     *
+     * This overload of the {@link ServerlessInvokerBase#invokeNameNodeViaHttpPost} function is used when the arguments
+     * for the file system operation are passed in a HashMap, rather than a {@link ArgumentContainer} object.
+     * @param operationName The name of the file system operation to be performed.
+     * @param functionUriBase The base URI of the serverless function. This tells the invoker where to issue the
+     *                        HTTP POST request to.
+     * @param nameNodeArguments Arguments for the NameNode itself. These would normally be passed in via the
+     *                          commandline in traditional, serverful HopsFS.
+     * @param fileSystemOperationArguments The arguments for the filesystem operation. Each key should directly
+     *                                     correspond to the name of an argument, while the value should be the
+     *                                     argument itself.
+     * @return The response from the serverless NameNode.
+     */
     @Override
     public JsonObject invokeNameNodeViaHttpPost(
         String operationName,
@@ -107,7 +145,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     }
 
     /**
-     * This performs all of the logic. The public versions of this function accept parameters that are convenient
+     * This performs all the logic. The public versions of this function accept parameters that are convenient
      * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
      * @param operationName The FS operation being performed.
      * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
@@ -221,8 +259,22 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         return jsonObjectResponse;
     }
 
+    /**
+     * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
+     * function in Serverless HopsFS. (OpenWhisk supports HTTP GET, I think? But we don't use that, in any case.)
+     *
+     * This overload of the {@link ServerlessInvokerBase#invokeNameNodeViaHttpPost} function is used when the arguments
+     * for a {@link ArgumentContainer} object.
+     * @param operationName The name of the file system operation to be performed.
+     * @param functionUriBase The base URI of the serverless function. This tells the invoker where to issue the
+     *                        HTTP POST request to.
+     * @param nameNodeArguments Arguments for the NameNode itself. These would normally be passed in via the
+     *                          commandline in traditional, serverful HopsFS.
+     * @param fileSystemOperationArguments The arguments for the filesystem operation.
+     * @return The response from the serverless NameNode.
+     */
     @Override
-    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUri,
+    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments) throws IOException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
@@ -236,12 +288,33 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         String requestId = UUID.randomUUID().toString();
 
-        return invokeNameNodeViaHttpInternal(operationName, functionUri, nameNodeArgumentsJson,
+        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
                 fileSystemOperationArguments.convertToJsonObject(), requestId);
     }
 
+    /**
+     * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
+     * function in Serverless HopsFS. (OpenWhisk supports HTTP GET, I think? But we don't use that, in any case.)
+     *
+     * This overload of the {@link ServerlessInvokerBase#invokeNameNodeViaHttpPost} function is used when the arguments
+     * for a {@link ArgumentContainer} object AND when we are passing a specific requestId to the function.
+     *
+     * We pass specific requestIds when we want that function to have that requestId. This occurs when we are
+     * concurrently issuing a TCP request with the HTTP request. We want both the TCP request and the HTTP request
+     * to have the same requestID, since they both correspond to the same file system operation. The NameNode uses
+     * the requestID to ensure it only completes that particular FS operation once.
+     *
+     * @param operationName The name of the file system operation to be performed.
+     * @param functionUriBase The base URI of the serverless function. This tells the invoker where to issue the
+     *                        HTTP POST request to.
+     * @param nameNodeArguments Arguments for the NameNode itself. These would normally be passed in via the
+     *                          commandline in traditional, serverful HopsFS.
+     * @param fileSystemOperationArguments The arguments for the filesystem operation.
+     * @param requestId The unique ID used to match this request uniquely against its corresponding TCP request.
+     * @return The response from the serverless NameNode.
+     */
     @Override
-    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUri,
+    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId) throws IOException {
@@ -254,7 +327,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         if (nameNodeArguments != null)
             InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
 
-        return invokeNameNodeViaHttpInternal(operationName, functionUri, nameNodeArgumentsJson,
+        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
                 fileSystemOperationArguments.convertToJsonObject(), requestId);
     }
 
@@ -287,6 +360,11 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             .build();
     }
 
+    /**
+     * Extract the result of a file system operation from the {@link JsonObject} returned by the NameNode.
+     * @param response The response from the NameNode.
+     * @return The result contained within the JsonObject returned by the NameNode.
+     */
     @Override
     public Object extractResultFromJsonResponse(JsonObject response) throws IOException, ClassNotFoundException {
         // First, let's check and see if there's any information about file/directory-to-function mappings.
@@ -330,41 +408,21 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         }
 
         return null;
-
-        // Now we'll check for a result from the name node.
-        // If there's no result, then there may have been an exception, which we'd need to log.
-        /*if (response.has("RESULT")) {
-            JsonObject resultJson = response.getAsJsonObject("RESULT");
-
-            // Now we need to check if there's an entry for the key "base64result".
-            // If there is, great! That means there is a result returned by the Serverless NN.
-            // We'll extract it, deserialize it, and return it to the caller.
-            // If there is NOT an entry for the key "base64result", then there is no result. Return null.
-            if (resultJson.has("base64result")) {
-                String resultBase64 = resultJson.getAsJsonPrimitive("base64result").getAsString();
-
-                Object result = InvokerUtilities.base64StringToObject(resultBase64);
-                LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result.toString());
-                return result;
-            }
-            else {
-                LOG.warn("Serverless function is returning null value to caller.");
-                return null;
-            }
-        } else if (response.has("EXCEPTION")) {
-            String exception = response.getAsJsonPrimitive("EXCEPTION").getAsString();
-            LOG.error("Exception encountered during Serverless NameNode execution.");
-            LOG.error(exception);
-        }
-        return null;*/
     }
 
+    /**
+     * Assign a name to this invoker to identify it. Mostly used for debugging (so we can tell who invoked what when
+     * debugging the NameNodes).
+     *
+     * @param clientName the name of the client (e.g., the `clientName` field of the DFSClient class).
+     */
     public void setClientName(String clientName) {
         this.clientName = clientName;
     }
 
     /**
-     * Calls the `terminate()` function of the "INode mapping" cache.
+     * Calls the `terminate()` function of the "INode mapping" cache. This is needed in order to close the
+     * connection to the local Redis server. (The Redis server maintains the client-side INode cache mapping.)
      */
     @Override
     public void terminate() {

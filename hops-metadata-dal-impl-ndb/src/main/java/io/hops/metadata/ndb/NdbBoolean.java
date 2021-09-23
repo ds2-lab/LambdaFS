@@ -18,6 +18,8 @@
  */
 package io.hops.metadata.ndb;
 
+import com.mysql.ndbjtie.ndbapi.NdbDictionary;
+
 public final class NdbBoolean {
   public static final byte TRUE = 1;
   public static final byte FALSE = 0;

@@ -6,6 +6,12 @@ import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
 
 import java.util.Locale;
 
+/**
+ * The serverless platform being used is specified in the configuration files for Serverless HopsFS. Currently, it
+ * defaults to OpenWhisk. In order to obtain an invoker, you simply utilize the {@link ServerlessInvokerBase} class,
+ * passing whatever platform is specified in the configuration. The factory will provide a concrete implementation
+ * for the platform being used.
+ */
 public class ServerlessInvokerFactory {
 
     /**
@@ -26,18 +32,13 @@ public class ServerlessInvokerFactory {
     }
 
     /**
-     * Return an instance of the specified serverless invoker class.
+     * Return a concrete implementation of the abstract base class {@link ServerlessInvokerBase} for use in
+     * invoking Serverless NameNode functions.
+     * @param serverlessPlatformName The name of the serverless platform being used. This string should probably be
+     *                               obtained from the configuration files.
+     * @return Subclass of {@link ServerlessInvokerBase}.
+     * @throws StorageInitializtionException
      */
-//    public static ServerlessInvoker<JsonObject> getServerlessInvoker(String serverlessPlatformName) throws StorageInitializtionException {
-//        String invokerClassName = getInvokerClassName(serverlessPlatformName);
-//
-//        try {
-//            return (ServerlessInvoker<JsonObject>) Class.forName(invokerClassName).newInstance();
-//        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e1) {
-//            throw new StorageInitializtionException(e1);
-//        }
-//    }
-
     public static ServerlessInvokerBase<JsonObject> getServerlessInvoker(String serverlessPlatformName)
             throws StorageInitializtionException {
         String invokerClassName = getInvokerClassName(serverlessPlatformName);

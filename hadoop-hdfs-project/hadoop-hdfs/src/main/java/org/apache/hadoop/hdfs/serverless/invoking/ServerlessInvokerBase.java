@@ -21,6 +21,7 @@ import java.util.*;
  * Base class of serverless invokers. Defines some concrete state (i.e., instance variables) used by
  * all serverless invokers.
  *
+ *
  * @param <T> The type of object returned by invoking serverless functions, usually a JsonObject.
  */
 public abstract class ServerlessInvokerBase<T> {
