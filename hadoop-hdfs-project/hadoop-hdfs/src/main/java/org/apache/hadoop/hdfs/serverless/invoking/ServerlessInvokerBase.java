@@ -21,6 +21,10 @@ import java.util.*;
  * Base class of serverless invokers. Defines some concrete state (i.e., instance variables) used by
  * all serverless invokers.
  *
+ * We use this class to generically refer to a serverless invoker regardless of what platform is being used. This
+ * keeps the code cleaner/simpler. When writing code to invoke NameNodes, we don't have to consider which serverless
+ * platform is being used. Instead, we just refer to this class, and we use the {@link ServerlessInvokerFactory} class
+ * to obtain a concrete subclass in which the function logic is implemented.
  *
  * @param <T> The type of object returned by invoking serverless functions, usually a JsonObject.
  */
