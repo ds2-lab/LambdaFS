@@ -97,6 +97,10 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      *
      * This overload of the {@link ServerlessInvokerBase#invokeNameNodeViaHttpPost} function is used when the arguments
      * for the file system operation are passed in a HashMap, rather than a {@link ArgumentContainer} object.
+     *
+     * The {@link ArgumentContainer} is relatively new, and in general, all invocations will use that class for passing
+     * arguments. But I am leaving this function here in case we end up wanting to use a HashMap for whatever reason.
+     *
      * @param operationName The name of the file system operation to be performed.
      * @param functionUriBase The base URI of the serverless function. This tells the invoker where to issue the
      *                        HTTP POST request to.
@@ -147,6 +151,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient
      * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
+     *
      * @param operationName The FS operation being performed.
      * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
      *                        in order to invoke the function. Before the request is issued, a number is appended
@@ -194,13 +199,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         // and the full result can be returned to the user.
         builder.append(blockingParameter);
         String functionUri = builder.toString();
-
-        /*LOG.debug("invokeNameNodeViaHttpPost() function called for operation \"" + operationName
-                + "\". Printing call stack now...");
-        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
-        for (StackTraceElement element : elements) {
-            LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
-        }*/
 
         LOG.info(String.format("Preparing to invoke OpenWhisk serverless function with URI \"%s\" \nfor FS operation \"%s\" now...",
                 functionUri, operationName));

@@ -11,7 +11,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Serves as a wrapper for passing arguments to serverless functions.
+ * Serves as a wrapper for passing arguments to serverless functions. This class simplifies the process of passing
+ * arguments, as it handles the logic of packaging up arguments based on their type. That is, the logic for including
+ * a particular object in the invocation payload for a NameNode varies depending on the type of the object. Rather
+ * than place the burden of packaging up the arguments on the client (i.e., the entity invoking the NameNode), this
+ * class handles it.
+ *
+ * This class essentially encapsulates the argument-packing logic, which ultimately makes the code cleaner and easier
+ * to use.
  */
 public class ArgumentContainer {
     private static final Log LOG = LogFactory.getLog(ArgumentContainer.class);
@@ -36,6 +43,10 @@ public class ArgumentContainer {
      */
     private final HashMap<String, Serializable> objectArguments;
 
+    /**
+     * Constructor. Initializes the internal fields used to keep track of arguments prior to packaging them up into
+     * a format usable in the invocation request.
+     */
     public ArgumentContainer() {
         primitiveArguments = new HashMap<>();
         byteArrayArguments = new HashMap<>();
