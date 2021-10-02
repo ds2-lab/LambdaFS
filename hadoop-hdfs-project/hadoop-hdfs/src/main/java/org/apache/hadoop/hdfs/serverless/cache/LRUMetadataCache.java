@@ -1,11 +1,29 @@
 package org.apache.hadoop.hdfs.serverless.cache;
 
-import org.apache.hadoop.hdfs.server.namenode.FSDirectory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+/**
+ * TODO:
+ *
+ * Figure out what the various tables would be called in NDB.
+ * The cache (or maybe some other object) will create and maintain ClusterJ Event and EventOperation objects
+ * associated with those tables. When event notifications are received, the NameNode will optionally update its
+ * cache. May need to add a mechanism for NameNodes to determine if they were the source of the event being fired,
+ * as NameNodes should not have to go back to NDB and re-read data that they just wrote.
+ *
+ * If such a mechanism is not already possible with the current way events are implemented, then events may need
+ * to be augmented to somehow relay the identity of the client who last performed the write operation. That may not
+ * be feasible, however. In that case, a simpler solution may be to just add a column in the associated tables that
+ * denotes the last person to write the data. Then the Event listener can just compare the new value of that column
+ * against the local ID, and if they're the same, then the Event listener knows that this NameNode was the source of
+ * the Event.
+ *
+ * In fact, that second solution is probably the best/easiest.
+ */
 
 /**
  * Used by Serverless NameNodes to store and retrieve cached metadata.
