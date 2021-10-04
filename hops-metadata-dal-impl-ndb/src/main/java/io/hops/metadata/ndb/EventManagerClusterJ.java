@@ -5,17 +5,15 @@ import com.mysql.clusterj.EventDurability;
 import com.mysql.clusterj.EventReport;
 import com.mysql.clusterj.TableEvent;
 import com.mysql.clusterj.core.store.Event;
-import com.mysql.clusterj.core.store.EventOperation;
 import io.hops.EventManager;
 import io.hops.HopsEvent;
+import io.hops.HopsEventOperation;
 import io.hops.exception.StorageException;
-import io.hops.metadata.hdfs.entity.Storage;
 import io.hops.metadata.ndb.wrapper.HopsExceptionHelper;
 import io.hops.metadata.ndb.wrapper.HopsSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import javax.security.auth.login.Configuration;
 import java.util.HashMap;
 
 /**
@@ -40,12 +38,12 @@ public class EventManagerClusterJ implements EventManager {
     /**
      * All registered events are contained in here.
      */
-    private HashMap<String, Event> eventMap;
+    private HashMap<String, HopsEvent> eventMap;
 
     /**
      * All active EventOperation instances are contained in here.
      */
-    private HashMap<String, EventOperation> eventOperationMap;
+    private HashMap<String, HopsEventOperation> eventOperationMap;
 
     /**
      * The active session with the database. Used to issue operations related to events,
@@ -61,18 +59,29 @@ public class EventManagerClusterJ implements EventManager {
         this.session = DBSessionProvider.sessionFactory.getSession();
     }
 
+    public void createEventOperation() {
+
+    }
+
     /**
      * Create and register an event with the given name.
      * @param eventName Unique identifier of the event to be created.
      * @param recreateIfExisting If true, delete and recreate the event if it already exists.
-     * @return The newly-created Event if successful.
-     *
      * @throws StorageException if something goes wrong when registering the event.
+     * @return True if an event was created, otherwise false.
      */
     @Override
-    public HopsEvent registerEvent(String eventName, String tableName, boolean recreateIfExisting)
+    public boolean registerEvent(String eventName, String tableName, boolean recreateIfExisting)
             throws StorageException {
+        LOG.debug("Registering event " + eventName + " with NDB now...");
 
+        // If we're already tracking this event and we aren't supposed to recreate it, then just return.
+        if (eventMap.containsKey(eventName) && !recreateIfExisting) {
+            LOG.debug("Event " + eventName + " is already being tracked by the EventManager.");
+            return false;
+        }
+
+        // Try to create the event. If something goes wrong, we'll throw an exception.
         Event event;
         try {
             event = session.createAndRegisterEvent(eventName, tableName, eventsToSubscribeTo);
@@ -80,12 +89,18 @@ public class EventManagerClusterJ implements EventManager {
             throw HopsExceptionHelper.wrap(e);
         }
 
-        return new HopsEvent(
+        LOG.debug("Successfully registered event " + eventName + " with NDB!");
+
+        // Create a HopsEvent object so the EventManager can keep track of this event.
+        HopsEvent hopsEvent = new HopsEvent(
                 event.getName(),
                 event.getTableName(),
                 EventReport.convert(event.getReport()),
                 EventDurability.convert(event.getDurability()),
                 event.getEventColumns());
+        eventMap.put(eventName, hopsEvent);
+
+        return true;
     }
 
     /**
@@ -96,13 +111,37 @@ public class EventManagerClusterJ implements EventManager {
      * @throws StorageException if something goes wrong when unregistering the event.
      */
     @Override
-    public boolean unregisterEvent(String eventName) throws StorageException {
+    public boolean unregisterEvent(String eventName)
+            throws StorageException, IllegalArgumentException, IllegalStateException {
+        LOG.debug("Unregistering event " + eventName + " with NDB now...");
+
+        // If we aren't tracking an event with the given name, then the argument is invalid.
+        if (!eventMap.containsKey(eventName))
+            throw new IllegalArgumentException("There is no event " + eventName +
+                    " currently being tracked by the EventManager.");
+
+        // Try to drop the event. If something goes wrong, we'll throw an exception.
+        boolean dropped;
         try {
-            session.dropEvent(eventName);
+             dropped = session.dropEvent(eventName);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
-        return false;
+
+        // If we failed to drop the event (probably because NDB doesn't think it exists), then the EventManager is
+        // in an invalid state. That is, it was tracking some event called `eventName` that NDB does not know about.
+        if (!dropped) {
+            LOG.error("Failed to unregister event " + eventName +
+                    " from NDB, despite the fact that the event exists within the EventManager...");
+
+            throw new IllegalStateException("Failed to unregister event " + eventName +
+                    " from NDB, despite the fact that the event exists within the EventManager.");
+        }
+
+        // Make sure to remove the event from the eventMap now that it has been dropped by NDB.
+        LOG.debug("Successfully registered event " + eventName + " with NDB!");
+        eventMap.remove(eventName);
+        return true;
     }
 
     @Override

@@ -1,7 +1,8 @@
 package io.hops;
 
 /**
- * Exists to be used as a wrapper around ClusterJ's NDB Event.
+ * Exists to be used as a wrapper around ClusterJ's Event,
+ * which itself is a wrapper around NDB's Event class.
  */
 public class HopsEvent {
     private final String eventName;
