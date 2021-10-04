@@ -343,6 +343,12 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>-->
+    <dependency>
+      <groupId>com.gmail.benrcarver</groupId>
+      <artifactId>clusterj-modified</artifactId>
+      <version>1.0</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -362,6 +368,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <plugin>
         <groupId>org.codehaus.mojo.jspc</groupId>
         <artifactId>jspc-maven-plugin</artifactId>
+        <version>2.0-alpha-3</version>
         <executions>
           <execution>
             <id>hdfs</id>

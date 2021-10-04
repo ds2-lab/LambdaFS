@@ -47,12 +47,18 @@
             <artifactId>commons-logging</artifactId>
             <scope>compile</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/com.mysql.ndb/clusterj-hops-fix -->
         <dependency>
-            <groupId>com.mysql.ndb</groupId>
-            <artifactId>clusterj-hops-fix</artifactId>
-            <version>7.6.7</version>
+            <groupId>com.gmail.benrcarver</groupId>
+            <artifactId>clusterj-modified</artifactId>
+            <version>1.0</version>
+            <scope>provided</scope>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.mysql.ndb/clusterj-hops-fix -->
+<!--        <dependency>-->
+<!--            <groupId>com.mysql.ndb</groupId>-->
+<!--            <artifactId>clusterj-hops-fix</artifactId>-->
+<!--            <version>7.6.7</version>-->
+<!--        </dependency>-->
         <!--<dependency>
             <groupId>com.mysql.ndb</groupId>
             <artifactId>clusterj-rondb</artifactId>

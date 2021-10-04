@@ -40,7 +40,7 @@ public class JniNdbEventStreaming implements DalEventStreaming {
   }
   
   static {
-    // Try to load native hopsndbevent library and set fallback flag appropriately
+      // Try to load native hopsndbevent library and set fallback flag appropriately
 
       System.loadLibrary("hopsyarn");
       LOG.info("Loaded the native-hopsndbevent library");

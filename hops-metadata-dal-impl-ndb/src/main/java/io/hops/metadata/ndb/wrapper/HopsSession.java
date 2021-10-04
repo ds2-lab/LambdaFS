@@ -18,13 +18,21 @@
  */
 package io.hops.metadata.ndb.wrapper;
 
+import com.mysql.clusterj.*;
 import com.mysql.clusterj.ClusterJException;
 import com.mysql.clusterj.LockMode;
 import com.mysql.clusterj.Query;
 import com.mysql.clusterj.Session;
 import com.mysql.clusterj.Transaction;
+import com.mysql.clusterj.core.store.Event;
+import com.mysql.clusterj.core.store.EventOperation;
 import com.mysql.clusterj.query.QueryBuilder;
+import com.mysql.ndbjtie.ndbapi.NdbEventOperation;
 import io.hops.exception.StorageException;
+import io.hops.metadata.ndb.DBSessionProvider;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.util.Collection;
 
 public class HopsSession {
@@ -35,6 +43,8 @@ public class HopsSession {
     this.session = session;
   }
 
+  static final Log LOG = LogFactory.getLog(HopsSession.class);
+
   public HopsQueryBuilder getQueryBuilder() throws StorageException {
     try {
       QueryBuilder queryBuilder = session.getQueryBuilder();
@@ -42,6 +52,112 @@ public class HopsSession {
     } catch (ClusterJException e) {
       throw HopsExceptionHelper.wrap(e);
     }
+  }
+
+  /**
+   * Poll for events for a specified amount of time.
+   * @param timeMilliseconds The amount of time to poll for events (in milliseconds).
+   * @return True if at least one event was received, otherwise false.
+   */
+  public synchronized boolean pollForEvents(int timeMilliseconds) {
+    return session.pollEvents(timeMilliseconds, null);
+  }
+
+  /**
+   * Create and register an NDB event with the server.
+   *
+   * Note that this event does not do anything without creating an event operation with it. Also note that
+   * the event operation must have execute() called on it before it will begin reporting events.
+   *
+   * @param eventName The unique name to identify the event with.
+   * @param tableName The table with which the event should be associated.
+   * @param eventColumns The columns that are being monitored for the event.
+   * @param tableEvents The events that this event should listen for.
+   */
+  public Event createAndRegisterEvent(
+          String eventName,
+          String tableName,
+          String[] eventColumns,
+          com.mysql.clusterj.TableEvent[] tableEvents) throws StorageException {
+    LOG.debug("Attempting to create and register event " + eventName + " now...");
+
+    Event event;
+    try {
+      event = session.createAndRegisterEvent(eventName, tableName, eventColumns, tableEvents, 1);
+    } catch (ClusterJException e) {
+      throw HopsExceptionHelper.wrap(e);
+    }
+
+    return event;
+  }
+
+  /**
+   * Drop/unregister the event identified by the given name.
+   *
+   * @param eventName Unique identifier of the event.
+   * @return True if an event was dropped, otherwise False.
+   */
+  public boolean dropEvent(String eventName) {
+    return session.dropEvent(eventName, 0);
+  }
+
+  /**
+   * Drop the given event operation from the server.
+   *
+   * @param eventOp The event operation to be dropped.
+   * @return True if the operation was dropped, otherwise false.
+   */
+  public boolean dropEventOperation(EventOperation eventOp) {
+    return session.dropEventOperation(eventOp);
+  }
+
+  /**
+   * Create and register an NDB event with the server.
+   *
+   * Note that this event does not do anything without creating an event operation with it. Also note that
+   * the event operation must have execute() called on it before it will begin reporting events.
+   *
+   * When this version of the `createAndRegisterEvent()` function is used, all columns of the table are included
+   * in the event.
+   * @param eventName The unique name to identify the event with.
+   * @param tableName The table with which the event should be associated.
+   * @param tableEvents The events that this event should listen for.
+   */
+  public Event createAndRegisterEvent(String eventName, String tableName, TableEvent[] tableEvents)
+          throws StorageException {
+    LOG.debug("Attempting to create and register event " + eventName + " now...");
+
+    Event event;
+    try {
+      event = session.createAndRegisterEvent(eventName, tableName, tableEvents, 1);
+    } catch (ClusterJException e) {
+      throw HopsExceptionHelper.wrap(e);
+    }
+
+    return event;
+  }
+
+  /**
+   * Create a subscription to an event defined in the database.
+   *
+   * Subscription will not become active until `execute()` is called on the returned object!
+   *
+   * @param eventName
+   *        unique identifier of the event to subscribe to
+   *
+   * @return Object representing an event operation, NULL on failure
+   */
+  public EventOperation createEventOperation(String eventName) throws StorageException {
+    LOG.debug("Attempting to create event operation for event " + eventName + " now...");
+
+    EventOperation eventOperation;
+    try {
+      eventOperation = session.createEventOperation(eventName);
+    } catch (ClusterJException e) {
+      throw HopsExceptionHelper.wrap(e);
+    }
+
+    return eventOperation;
   }
 
   public <T> HopsQuery<T> createQuery(HopsQueryDomainType<T> queryDefinition)
