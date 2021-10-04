@@ -112,6 +112,18 @@ public class HopsSession {
   }
 
   /**
+   * Return the EventOperation associated with the next event that was received.
+   *
+   * This call will not work if:
+   *  (1) execute() has not yet been called on the event operation, and
+   *  (2) pollEvents() has been called and indicated that at least one event has been received.
+   * @return EventOperation associated with the next event that was received
+   */
+  public EventOperation nextEvent() {
+    return session.nextEvent();
+  }
+
+  /**
    * Create and register an NDB event with the server.
    *
    * Note that this event does not do anything without creating an event operation with it. Also note that

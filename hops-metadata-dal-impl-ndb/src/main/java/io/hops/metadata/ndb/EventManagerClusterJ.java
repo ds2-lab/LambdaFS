@@ -1,11 +1,16 @@
 package io.hops.metadata.ndb;
 
+import com.mysql.clusterj.ClusterJException;
+import com.mysql.clusterj.EventDurability;
+import com.mysql.clusterj.EventReport;
 import com.mysql.clusterj.TableEvent;
 import com.mysql.clusterj.core.store.Event;
 import com.mysql.clusterj.core.store.EventOperation;
 import io.hops.EventManager;
+import io.hops.HopsEvent;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.entity.Storage;
+import io.hops.metadata.ndb.wrapper.HopsExceptionHelper;
 import io.hops.metadata.ndb.wrapper.HopsSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -60,25 +65,43 @@ public class EventManagerClusterJ implements EventManager {
      * Create and register an event with the given name.
      * @param eventName Unique identifier of the event to be created.
      * @param recreateIfExisting If true, delete and recreate the event if it already exists.
-     * @return True if the event was created and registered successfully, otherwise false.
+     * @return The newly-created Event if successful.
+     *
+     * @throws StorageException if something goes wrong when registering the event.
      */
     @Override
-    public boolean registerEvent(String eventName, String tableName, boolean recreateIfExisting)
+    public HopsEvent registerEvent(String eventName, String tableName, boolean recreateIfExisting)
             throws StorageException {
 
-        Event event = session.createAndRegisterEvent(eventName, tableName, eventsToSubscribeTo);
+        Event event;
+        try {
+            event = session.createAndRegisterEvent(eventName, tableName, eventsToSubscribeTo);
+        } catch (ClusterJException e) {
+            throw HopsExceptionHelper.wrap(e);
+        }
 
-        return false;
+        return new HopsEvent(
+                event.getName(),
+                event.getTableName(),
+                EventReport.convert(event.getReport()),
+                EventDurability.convert(event.getDurability()),
+                event.getEventColumns());
     }
 
     /**
      * Delete the event with the given name.
      * @param eventName Unique identifier of the event to be deleted.
      * @return True if an event with the given name was deleted, otherwise false.
+     *
+     * @throws StorageException if something goes wrong when unregistering the event.
      */
     @Override
     public boolean unregisterEvent(String eventName) throws StorageException {
-        session.even
+        try {
+            session.dropEvent(eventName);
+        } catch (ClusterJException e) {
+            throw HopsExceptionHelper.wrap(e);
+        }
         return false;
     }
 

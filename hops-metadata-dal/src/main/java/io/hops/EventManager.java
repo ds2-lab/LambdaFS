@@ -22,16 +22,20 @@ public interface EventManager extends Runnable {
      * Create and register an event with the given name.
      * @param eventName Unique identifier of the event to be created.
      * @param recreateIfExisting If true, delete and recreate the event if it already exists.
-     * @return True if the event was created and registered successfully, otherwise false.
+     * @return The newly-created Event if successful.
+     *
+     * @throws StorageException if something goes wrong when registering the event.
      */
-    public boolean registerEvent(String eventName, String tableName, boolean recreateIfExisting) throws StorageException;
+    public HopsEvent registerEvent(String eventName, String tableName, boolean recreateIfExisting) throws StorageException;
 
     /**
      * Delete the event with the given name.
      * @param eventName Unique identifier of the event to be deleted.
      * @return True if an event with the given name was deleted, otherwise false.
+     *
+     * @throws StorageException if something goes wrong when unregistering the event.
      */
-    public boolean unregisterEvent(String eventName);
+    public boolean unregisterEvent(String eventName) throws StorageException;
 
     /**
      * Listen for events.
