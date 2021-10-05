@@ -41,4 +41,14 @@ public interface EventManager extends Runnable {
      */
     @Override
     public void run();
+
+    /**
+     * Create and register an Event Operation for the specified event.
+     *
+     * @param eventName The name of the Event for which we're creating an EventOperation.
+     * @return True if the event operation was created, otherwise false.
+     */
+    public void createEventOperation(String eventName) throws StorageException;
+
+    public boolean unregisterEventOperation(String eventName) throws StorageException;
 }

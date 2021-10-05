@@ -1,14 +1,16 @@
-package io.hops.metadata.ndb;
+package io.hops.metadata.ndb.wrapper;
 
 import com.mysql.clusterj.ClusterJException;
 import com.mysql.clusterj.EventDurability;
 import com.mysql.clusterj.EventReport;
 import com.mysql.clusterj.TableEvent;
 import com.mysql.clusterj.core.store.Event;
+import com.mysql.clusterj.core.store.EventOperation;
 import io.hops.EventManager;
 import io.hops.HopsEvent;
-import io.hops.HopsEventOperation;
 import io.hops.exception.StorageException;
+import io.hops.metadata.ndb.ClusterjConnector;
+import io.hops.metadata.ndb.wrapper.HopsEventOperation;
 import io.hops.metadata.ndb.wrapper.HopsExceptionHelper;
 import io.hops.metadata.ndb.wrapper.HopsSession;
 import org.apache.commons.logging.Log;
@@ -23,7 +25,7 @@ import java.util.HashMap;
  * from NDB on the table for which the NameNode caches data serves to inform the NameNode that its cache is now
  * out-of-date.
  */
-public class EventManagerClusterJ implements EventManager {
+public class HopsEventManager implements EventManager {
     static final Log LOG = LogFactory.getLog(EventManager.class);
 
     /**
@@ -51,16 +53,71 @@ public class EventManagerClusterJ implements EventManager {
      */
     private HopsSession session;
 
-    public EventManagerClusterJ(HopsSession session) {
+    public HopsEventManager(HopsSession session) {
         this.session = session;
     }
 
-    public EventManagerClusterJ() throws StorageException {
-        this.session = DBSessionProvider.sessionFactory.getSession();
+    public HopsEventManager() throws StorageException {
+        this.session = ClusterjConnector.getInstance().obtainSession();
     }
 
-    public void createEventOperation() {
+    /**
+     * Create and register an Event Operation for the specified event.
+     *
+     * @param eventName The name of the Event for which we're creating an EventOperation.
+     * @return True if the event operation was created, otherwise false.
+     */
+    @Override
+    public void createEventOperation(String eventName) throws StorageException {
+        LOG.debug("Creating EventOperation for event " + eventName + " now...");
 
+        EventOperation eventOperation;
+        try {
+            eventOperation = session.createEventOperation(eventName);
+        } catch (ClusterJException e) {
+            throw HopsExceptionHelper.wrap(e);
+        }
+
+        LOG.debug("Successfully created EventOperation for event " + eventName + ".");
+
+        HopsEventOperation hopsEventOperation = new HopsEventOperation(eventOperation);
+        eventOperationMap.put(eventName, hopsEventOperation);
+    }
+
+    /**
+     * Unregister and drop the EventOperation associated with the given event from NDB.
+     * @param eventName The unique identifier of the event whose EventOperation we wish to unregister.
+     * @return True if an event operation was dropped, otherwise false.
+     */
+    @Override
+    public boolean unregisterEventOperation(String eventName) throws StorageException {
+        LOG.debug("Unregistering EventOperation for event " + eventName + " with NDB now...");
+
+        // If we aren't tracking an event with the given name, then the argument is invalid.
+        if (!eventOperationMap.containsKey(eventName))
+            throw new IllegalArgumentException("There is no event operation associated with an event called "
+                    + eventName + " currently being tracked by the EventManager.");
+
+        HopsEventOperation hopsEventOperation = eventOperationMap.get(eventName);
+
+        // Try to drop the event. If something goes wrong, we'll throw an exception.
+        boolean dropped;
+        try {
+            dropped = session.dropEventOperation(hopsEventOperation.getClusterJEventOperation());
+        } catch (ClusterJException e) {
+            throw HopsExceptionHelper.wrap(e);
+        }
+
+        // If we failed to drop the event (probably because NDB doesn't think it exists), then the EventManager is
+        // in an invalid state. That is, it was tracking some event called `eventName` that NDB does not know about.
+        if (!dropped)
+            throw new IllegalStateException("Failed to unregister EventOperation associated with event " + eventName +
+                    " from NDB, despite the fact that the event operation exists within the EventManager.");
+
+        // Make sure to remove the event from the eventMap now that it has been dropped by NDB.
+        LOG.debug("Successfully unregistered EventOperation for event " + eventName + " with NDB!");
+        eventOperationMap.remove(eventName);
+        return true;
     }
 
     /**
@@ -139,7 +196,7 @@ public class EventManagerClusterJ implements EventManager {
         }
 
         // Make sure to remove the event from the eventMap now that it has been dropped by NDB.
-        LOG.debug("Successfully registered event " + eventName + " with NDB!");
+        LOG.debug("Successfully unregistered event " + eventName + " with NDB!");
         eventMap.remove(eventName);
         return true;
     }
