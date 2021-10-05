@@ -281,11 +281,32 @@ public class HopsEventManager implements EventManager {
 
         while (nextEventOp != null) {
             TableEvent eventType = nextEventOp.getEventType();
-            LOG.debug("Event #" + numEventsProcessed + " of current batch has type " + eventType.name());
+
+            // TODO:
+            //  Possibly check the pre/post values associated with the event to determine the necessity of retrieving
+            //  full values from NDB. But in any case, receiving an Event means the cache needs to be updated.
+
+            switch (eventType) {
+                case INSERT:
+                    LOG.debug("Received INSERT event from NDB.");
+                    break;
+                case DELETE:
+                    LOG.debug("Received DELETE event from NDB.");
+                    break;
+                case UPDATE:
+                    LOG.debug("Received UPDATE event from NDB.");
+                    break;
+                default:
+                    LOG.debug("Received unexpected " + eventType.name() + " event from NDB.");
+                    break;
+            }
 
             nextEventOp = session.nextEvent();
             numEventsProcessed++;
         }
+
+        LOG.debug("Finished processing batch of " + numEventsProcessed + (numEventsProcessed == 1 ?
+                " event" : " events") + " from NDB.");
 
         return numEventsProcessed;
     }
