@@ -6,13 +6,11 @@ import com.mysql.clusterj.EventReport;
 import com.mysql.clusterj.TableEvent;
 import com.mysql.clusterj.core.store.Event;
 import com.mysql.clusterj.core.store.EventOperation;
+import com.mysql.clusterj.core.store.RecordAttr;
 import io.hops.EventManager;
 import io.hops.HopsEvent;
 import io.hops.exception.StorageException;
 import io.hops.metadata.ndb.ClusterjConnector;
-import io.hops.metadata.ndb.wrapper.HopsEventOperation;
-import io.hops.metadata.ndb.wrapper.HopsExceptionHelper;
-import io.hops.metadata.ndb.wrapper.HopsSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -40,32 +38,34 @@ public class HopsEventManager implements EventManager {
     /**
      * All registered events are contained in here.
      */
-    private HashMap<String, HopsEvent> eventMap;
+    private final HashMap<String, HopsEvent> eventMap;
 
     /**
      * All active EventOperation instances are contained in here.
      */
-    private HashMap<String, HopsEventOperation> eventOperationMap;
+    private final HashMap<String, HopsEventOperation> eventOperationMap;
 
     /**
      * The active session with the database. Used to issue operations related to events,
      * and to receive events from the database.
      */
-    private HopsSession session;
+    private final HopsSession session;
 
     public HopsEventManager(HopsSession session) {
         this.session = session;
+
+        this.eventMap = new HashMap<>();
+        this.eventOperationMap = new HashMap<>();
     }
 
     public HopsEventManager() throws StorageException {
-        this.session = ClusterjConnector.getInstance().obtainSession();
+        this(ClusterjConnector.getInstance().obtainSession());
     }
 
     /**
      * Create and register an Event Operation for the specified event.
      *
      * @param eventName The name of the Event for which we're creating an EventOperation.
-     * @return True if the event operation was created, otherwise false.
      */
     @Override
     public void createEventOperation(String eventName) throws StorageException {
@@ -207,7 +207,53 @@ public class HopsEventManager implements EventManager {
 
         // Loop forever, listening for events.
         while (true) {
+            // As far as I can tell, this is NOT busy-waiting. This ultimately calls select(), or whatever
+            // the equivalent is for the given operating system. And Linux, Windows, etc. suspend the
+            // process if there are no file descriptors available, so this is not a busy wait.
+            boolean events = session.pollForEvents(-1);
 
+            if (!events) {
+                LOG.debug("Received 0 events.");
+                continue;
+            }
+
+            LOG.debug("Received at least one event!");
+            int numEventsProcessed = processEvents();
+            LOG.debug("Processed " + numEventsProcessed + " event(s).");
         }
+    }
+
+    /**
+     * Called after `session.pollForEvents()` returns true.
+     * @return the number of events that were processed.
+     */
+    @Override
+    public synchronized int processEvents() {
+        HopsEventOperation nextEventOp = session.nextEvent();
+        int numEventsProcessed = 0;
+
+        while (nextEventOp != null) {
+            TableEvent eventType = nextEventOp.getEventType();
+            LOG.debug("Event #" + numEventsProcessed + " of current batch has type " + eventType.name());
+
+            /*for (int i = 0; i < eventColumnNames.length; i++) {
+                RecordAttr postAttr = postAttrs[i];
+                RecordAttr preAttr = preAttrs[i];
+
+                // First two columns are integers, second two are strings.
+                if (i < 2) {
+                    System.out.println("Pre: " + preAttr.u_32_value());
+                    System.out.println("Post: " + postAttr.u_32_value());
+                } else {
+                    System.out.println("Pre: " + preAttr.toString());
+                    System.out.println("Post: " + postAttr.toString());
+                }
+            }*/
+
+            nextEventOp = session.nextEvent();
+            numEventsProcessed++;
+        }
+
+        return numEventsProcessed;
     }
 }

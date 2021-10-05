@@ -55,9 +55,13 @@ public class HopsSession {
   }
 
   /**
-   * Poll for events for a specified amount of time.
-   * @param timeMilliseconds The amount of time to poll for events (in milliseconds).
-   * @return True if at least one event was received, otherwise false.
+   * Wait for an event to occur. Will return as soon as an event
+   * is available on any of the created events.
+   *
+   * @param timeMilliseconds The maximum amount of time to wait for an event.
+   *                         Specifying -1 will wait for "a long time" (60 seconds, according to the NDB source code).
+   *
+   * @return True if events available, false if no events available.
    */
   public synchronized boolean pollForEvents(int timeMilliseconds) {
     return session.pollEvents(timeMilliseconds, null);
@@ -119,8 +123,10 @@ public class HopsSession {
    *  (2) pollEvents() has been called and indicated that at least one event has been received.
    * @return EventOperation associated with the next event that was received
    */
-  public EventOperation nextEvent() {
-    return session.nextEvent();
+  public HopsEventOperation nextEvent() {
+    EventOperation eventOperation = session.nextEvent();
+
+    return new HopsEventOperation(eventOperation);
   }
 
   /**

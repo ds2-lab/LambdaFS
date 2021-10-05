@@ -50,5 +50,16 @@ public interface EventManager extends Runnable {
      */
     public void createEventOperation(String eventName) throws StorageException;
 
+    /**
+     * Unregister and drop the EventOperation associated with the given event from NDB.
+     * @param eventName The unique identifier of the event whose EventOperation we wish to unregister.
+     * @return True if an event operation was dropped, otherwise false.
+     */
     public boolean unregisterEventOperation(String eventName) throws StorageException;
+
+    /**
+     * This should be called once it is known that there are events to be processed.
+     * @return the number of events that were processed.
+     */
+    public int processEvents();
 }
