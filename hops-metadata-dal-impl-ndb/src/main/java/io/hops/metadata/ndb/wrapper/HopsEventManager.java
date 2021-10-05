@@ -22,9 +22,30 @@ import java.util.HashMap;
  * The events serve as cache invalidations for NameNodes. The NameNodes cache metadata locally in-memory. An Event
  * from NDB on the table for which the NameNode caches data serves to inform the NameNode that its cache is now
  * out-of-date.
+ *
+ * Currently implements the Singleton pattern, as there's no reason for a NameNode to have more than one
+ * instance of this class at any given time.
  */
 public class HopsEventManager implements EventManager {
     static final Log LOG = LogFactory.getLog(EventManager.class);
+
+    private static HopsEventManager instance;
+
+    /**
+     * Name of the NDB table that contains the INodes.
+     */
+    private static final String INODES_TABLE_NAME = "hdfs_inodes";
+
+    /**
+     * The columns of the INode NDB table, in the order that they're defined in the schema.
+     */
+    private static final String[] INODE_TABLE_COLUMNS = new String[] {
+            "partition_id", "parent_id", "name", "id", "user_id", "group_id", "modification_time",
+            "access_time", "permission", "client_name", "client_machine", "client_node", "generation_stamp",
+            "header", "symlink", "subtree_lock_owner", "size", "quota_enabled", "meta_enabled", "is_dir",
+            "under_construction", "subtree_locked", "file_stored_in_db", "logical_time", "storage_policy",
+            "children_num", "num_aces", "num_user_xattrs", "num_sys_xattrs"
+    };
 
     /**
      * These are the events that all NameNodes subscribe to.
@@ -51,15 +72,41 @@ public class HopsEventManager implements EventManager {
      */
     private final HopsSession session;
 
-    public HopsEventManager(HopsSession session) {
+    private HopsEventManager(HopsSession session) {
         this.session = session;
 
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
     }
 
-    public HopsEventManager() throws StorageException {
+    private HopsEventManager() throws StorageException {
         this(ClusterjConnector.getInstance().obtainSession());
+    }
+
+    /**
+     * Retrieve the singleton instance of HopsEventManager.
+     *
+     * @param session Active session with NDB.
+     * @return singleton instance of HopsEventManager.
+     */
+    public HopsEventManager getInstance(HopsSession session) {
+        if (instance == null)
+            instance = new HopsEventManager(session);
+
+        return instance;
+    }
+
+    /**
+     * Retrieve the singleton instance of HopsEventManager.
+     *
+     * Creates the instance of it does not already exist.
+     * @return singleton instance of HopsEventManager.
+     */
+    public HopsEventManager getInstance() throws StorageException {
+        if (instance == null)
+            instance = new HopsEventManager();
+
+        return instance;
     }
 
     /**
@@ -235,20 +282,6 @@ public class HopsEventManager implements EventManager {
         while (nextEventOp != null) {
             TableEvent eventType = nextEventOp.getEventType();
             LOG.debug("Event #" + numEventsProcessed + " of current batch has type " + eventType.name());
-
-            /*for (int i = 0; i < eventColumnNames.length; i++) {
-                RecordAttr postAttr = postAttrs[i];
-                RecordAttr preAttr = preAttrs[i];
-
-                // First two columns are integers, second two are strings.
-                if (i < 2) {
-                    System.out.println("Pre: " + preAttr.u_32_value());
-                    System.out.println("Post: " + postAttr.u_32_value());
-                } else {
-                    System.out.println("Pre: " + preAttr.toString());
-                    System.out.println("Post: " + postAttr.toString());
-                }
-            }*/
 
             nextEventOp = session.nextEvent();
             numEventsProcessed++;
