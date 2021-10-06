@@ -3,6 +3,8 @@ package org.apache.hadoop.hdfs.serverless.cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
@@ -44,21 +46,24 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
     private final Lock _mutex = new ReentrantLock(true);
 
     /**
+     * Keys are added to this set upon being invalidated. If a key is in this set,
+     * then the data in the cache for that key is out-of-date and must be retrieved from
+     * intermediate storage, rather than from the cache.
+     */
+    private final HashSet<String> invalidatedKeys;
+
+    /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
      */
     public LRUMetadataCache() {
-        super(DEFAULT_MAX_ENTRIES, 0.75f, true);
-
-        this.maxSize = DEFAULT_MAX_ENTRIES;
+        this(DEFAULT_MAX_ENTRIES, DEFAULT_LOAD_FACTOR);
     }
 
     /**
      * Create an LRU Metadata Cache using the default load factor value and a specified maximum capacity.
      */
     public LRUMetadataCache(int capacity) {
-        super(capacity, DEFAULT_LOAD_FACTOR, true);
-
-        this.maxSize = capacity;
+        this(capacity, DEFAULT_LOAD_FACTOR);
     }
 
 
@@ -66,9 +71,7 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
      * Create an LRU Metadata Cache using the default maximum capacity and a specified load factor value.
      */
     public LRUMetadataCache(float loadFactor) {
-        super(DEFAULT_MAX_ENTRIES, loadFactor, true);
-
-        this.maxSize = DEFAULT_MAX_ENTRIES;
+        this(DEFAULT_MAX_ENTRIES, loadFactor);
     }
 
     /**
@@ -78,6 +81,7 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
         super(capacity, loadFactor, true);
 
         this.maxSize = capacity;
+        this.invalidatedKeys = new HashSet<>();
     }
 
     @Override
@@ -105,11 +109,60 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
 
         T returnValue = super.put(key, value);
 
-        LOG.debug("Inserted metadata object into cache under key " + key + ". Cache size: " + this.size());
+        boolean removed = invalidatedKeys.remove(key);
+
+        if (removed)
+            LOG.debug("Previously invalid key " + key + " updated with valid cache value. Cache size: " + size());
+        else
+            LOG.debug("Inserted metadata object into cache under key " + key + ". Cache size: " + this.size());
 
         //_mutex.unlock();
 
         return returnValue;
+    }
+
+    /**
+     * Checks that the key has not been invalidated before checking the contents of the cache.
+     */
+    @Override
+    public boolean containsKey(Object key) {
+        if (key == null)
+            return false;
+
+        if (invalidatedKeys.contains((String)key)) {
+            return false;
+        }
+
+        return super.containsKey(key);
+    }
+
+    /**
+     * Check if there is an entry for the given key in this cache, regardless of whether not that entry is
+     * marked as invalid or not.
+     */
+    public boolean containsKeySkipInvalidCheck(Object key) {
+        return super.containsKey(key);
+    }
+
+    /**
+     * Invalidate the given key. By default, this first checks to see if such an entry already exists in the cache.
+     * This check can be skipped by passing `true` for the `skipCheck` argument.
+     *
+     * This function does not check to see if the key is already in an invalidated state. If this is the case,
+     * then this function effectively does nothing.
+     *
+     * @param key The key to invalidate.
+     * @param skipCheck If true, do not bother checking to see if a cache entry exists for the key first.
+     * @return True if the key was invalidated, otherwise false.
+     */
+    public boolean invalidateKey(String key, boolean skipCheck) {
+        if (skipCheck || containsKeySkipInvalidCheck(key)) {
+            LOG.debug("Invalidated key " + key + ".");
+            invalidatedKeys.add(key);
+            return true;
+        }
+
+        return false;
     }
 
     @Override

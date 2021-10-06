@@ -26,7 +26,7 @@ public class FunctionMetadataMap {
     /**
      * The mapping is stored in here.
      *
-     * This is only used when a connection to the Redis server cannot be established.
+     * This is presently not used; instead, we use a local Redis instance.
      */
     private final HashMap<String, Integer> cache;
 

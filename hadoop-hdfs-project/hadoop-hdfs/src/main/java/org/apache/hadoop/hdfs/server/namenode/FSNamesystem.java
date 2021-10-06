@@ -1644,11 +1644,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           List<String> invalidatedKeys,
           Map<String, Object> updatedValues)
   {
-    int numInvalidatedKeys = invalidatedKeys.size();
-
     // Ensure we're using proper grammar in our debug messages.
     String entry;
-    if (numInvalidatedKeys == 1)
+    if (invalidatedKeys.size() == 1)
       entry = "entry";
     else
       entry = "entries";
@@ -1658,9 +1656,17 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     if (updatedValues.size() > 0)
       LOG.debug("Already have " + updatedValues.size() + " updated cache " + entry + " locally.");
 
-    // These are the INodes for which we'll need to query intermediate storage/NDB.
-    ArrayList<String> keysToRetrieve = new ArrayList<>();
+    // TODO:
+    //    Proactively retrieve updated values from cache?
+    //    Or simply mark the values as invalidated, and then retrieve them later?
+    //    For now, just mark them as invalidated and lazily retrieve them when they're requested.
 
+    // TODO:
+    //    Receive parentId during events so the NN can determine if the event corresponds to an
+    //    INode that it is responsible for caching. If it isn't, then the NN can just skip the
+    //    processing of that key.
+
+    int numKeysInvalidated = 0;
     for (String invalidatedKey : invalidatedKeys) {
       LOG.debug("Invalidating key: " + invalidatedKey);
 
@@ -1669,16 +1675,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         LOG.debug("Using local, updated value for entry " + invalidatedKey + ".");
         metadataCache.put(invalidatedKey, updatedValues.get(invalidatedKey));
       } else {
-        LOG.debug("Will retrieve updated value for entry " + invalidatedKey + " from intermediate storage.");
-        keysToRetrieve.add(invalidatedKey);
+        LOG.debug("Invalidating cache entry " + invalidatedKey + ".");
+        metadataCache.invalidateKey(invalidatedKey, false);
+        numKeysInvalidated++;
       }
     }
 
-    // Proper grammar.
-    if (keysToRetrieve.size() == 1)
-      LOG.debug("Retrieving updated metadata for " + keysToRetrieve.size() + " entry");
-    else
-      LOG.debug("Retrieving updated metadata for " + keysToRetrieve.size() + " entries");
+    LOG.debug("Invalidated (without updating) " + numKeysInvalidated + " key(s).");
   }
 
   /**
