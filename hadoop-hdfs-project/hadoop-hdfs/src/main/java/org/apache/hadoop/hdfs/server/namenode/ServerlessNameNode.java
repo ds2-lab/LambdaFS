@@ -19,7 +19,8 @@ package org.apache.hadoop.hdfs.server.namenode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import io.hops.DalDriver;
+import io.hops.EventManager;
 import io.hops.exception.StorageException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
@@ -74,6 +75,8 @@ import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
+import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
+import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
@@ -99,11 +102,12 @@ import org.slf4j.LoggerFactory;
 import javax.management.ObjectName;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.PrivilegedExceptionAction;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.hash.Hashing.consistentHash;
@@ -186,18 +190,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
-   * Indicates whether the initialization process has taken place yet. This will be true for warm function
-   * containers, and in that sense it also serves as a flag indicating whether or not this is running
-   * within a warm container or a new/cold container.
+   * Used to listen for events from NDB.
    */
-  private static boolean initialized = false;
+  private EventManager ndbEventManager;
 
   /**
-   * The single instance of the NameNode created by the serverless function.
-   *
-   * This is cached for future invocations.
+   * Worker thread that actually performs the various file system operations.
    */
-  private static ServerlessNameNode nameNodeInstance = null;
+  private NameNodeWorkerThread workerThread;
+
+  /**
+   * Worker queue for the worker thread. This is accessed both by this class and by NameNodeTCPClient objects.
+   *
+   * Note that BlockingQueue is thread safe.
+   */
+  public BlockingQueue<FileSystemTask<Serializable>> nameNodeWorkQueue;
 
   /**
    * Added by Ben; mostly used for debugging (i.e., making sure the NameNode code that
@@ -477,6 +484,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
+   * Enqueue the given FileSystemTask in the work queue.
+   * @param task The task to be enqueued.
+   */
+  public void enqueueFileSystemTask(FileSystemTask<Serializable> task) throws InterruptedException {
+    this.nameNodeWorkQueue.put(task);
+  }
+
+  /**
    * Wrapper interface, so we can embed all the operation-functions in a HashMap for easy calling.
    *
    * Sources:
@@ -609,14 +624,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         LOG.info("Successfully created and initialized Serverless NameNode.");
       }
 
-      initialized = true;
       return nameNode;
     } catch (Throwable e) {
       LOG.error("Failed to start namenode.", e);
       terminate(1, e);
     }
 
-    initialized = false;
     return null;
   }
 
@@ -1776,6 +1789,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           conf.set(HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS, intervals);
       }
 
+    nameNodeWorkQueue = new LinkedBlockingQueue<>();
+
+    // Create the thread and tell it to run!
+    workerThread = new NameNodeWorkerThread(nameNodeWorkQueue, this);
+    workerThread.start();
+
+    ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
+    new Thread(ndbEventManager).start();
+
     numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
     workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,
             SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT);
@@ -2050,7 +2072,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
     this.functionName = functionName;
-    this.nameNodeTCPClient = new NameNodeTCPClient(functionName);
+    this.nameNodeTCPClient = new NameNodeTCPClient(functionName, this);
     this.tracer = new Tracer.Builder("NameNode").
       conf(TraceUtils.wrapHadoopConf(NAMENODE_HTRACE_PREFIX, conf)).
       build();

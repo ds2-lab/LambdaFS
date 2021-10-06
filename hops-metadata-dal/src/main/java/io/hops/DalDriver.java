@@ -19,6 +19,19 @@ import io.hops.exception.StorageInitializtionException;
 
 public class DalDriver {
 
+  /**
+   * Load an instance of EventManager specified by the given fully-qualified class name.
+   */
+  public static EventManager loadEventManager(String eventManagerClassName)
+          throws StorageInitializtionException{
+    try {
+      Object instance = Class.forName(eventManagerClassName).newInstance();
+      return (EventManager)instance;
+    } catch (ClassNotFoundException | IllegalAccessException | InstantiationException ex) {
+      throw new StorageInitializtionException(ex);
+    }
+  }
+
   public static DalStorageFactory load(String storageFactoryClassName)
       throws StorageInitializtionException {
     try {
@@ -35,7 +48,7 @@ public class DalDriver {
       Object instance = Class.forName(storageFactoryClassName).newInstance();
 
       System.out.println("instance.getClass() = " + instance.getClass().toString());
-      System.out.println(instance.toString());
+      System.out.println(instance);
 
       return (DalStorageFactory)instance;
 

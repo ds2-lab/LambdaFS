@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * TODO:
@@ -38,6 +40,8 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
 
     // The maximum capacity.
     private final int maxSize;
+
+    private final Lock _mutex = new ReentrantLock(true);
 
     /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
@@ -76,19 +80,34 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
         this.maxSize = capacity;
     }
 
+    @Override
+    public synchronized T get(Object key) {
+        //_mutex.lock();
+
+        T returnValue = super.get(key);
+
+        LOG.debug("Retrieved value " + returnValue.toString() + " from cache using key " + key + ".");
+
+        //_mutex.unlock();
+
+        return returnValue;
+    }
+
     /**
      * Override `put()` to disallow null values from being added to the cache.
      */
     @Override
-    public T put(String key, T value) {
-        if (value == null) {
-            throw new IllegalArgumentException("LRUMetadataCache does NOT support null values. Associated key: "
-                    + key);
-        }
+    public synchronized T put(String key, T value) {
+        if (value == null)
+            throw new IllegalArgumentException("LRUMetadataCache does NOT support null values. Associated key: " + key);
+
+        //_mutex.lock();
 
         T returnValue = super.put(key, value);
 
         LOG.debug("Inserted metadata object into cache under key " + key + ". Cache size: " + this.size());
+
+        //_mutex.unlock();
 
         return returnValue;
     }

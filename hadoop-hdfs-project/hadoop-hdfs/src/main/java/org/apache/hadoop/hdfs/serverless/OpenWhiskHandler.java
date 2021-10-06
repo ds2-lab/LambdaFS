@@ -7,7 +7,6 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
-import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,16 +39,6 @@ public class OpenWhiskHandler {
      * Used internally to determine whether this instance is warm or cold.
      */
     private static boolean isCold = true;
-
-    /**
-     * Worker thread that actually performs the various file system operations.
-     */
-    private static NameNodeWorkerThread workerThread;
-
-    /**
-     * Worker queue for the worker thread. This is accessed both by this class and by NameNodeTCPClient objects.
-     */
-    public static BlockingQueue<FileSystemTask<Serializable>> workQueue;
 
     /**
      * Returns the singleton ServerlessNameNode instance.
@@ -178,6 +167,28 @@ public class OpenWhiskHandler {
     }
 
     /**
+     * Assert that the container was cold prior to the currently-running activation.
+     *
+     * If the container is warm, then this will create a new IllegalStateException and add it to the
+     * parameterized `result` object so that the client that invoked this function can see the exception
+     * and process it accordingly.
+     * @param result The result to be returned to the client.
+     * @return True if the function was cold (as is expected when this function is called). Otherwise, false will be
+     * returned, indicating that the function is warm (which is bad in the case that this function is called).
+     */
+    private static boolean assertIsCold(NameNodeResult result) {
+        if (!isCold) {
+            // Create and add the exception to the result so that it will be returned to the client.
+            IllegalStateException ex = new IllegalStateException("Expected container to be cold, but it is warm.");
+            result.addException(ex);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Executes the NameNode code/operation/function execution.
      * @param op The name of the FS operation to be performed.
      * @param fsArgs The arguments to be passed to the desired FS operation.
@@ -210,18 +221,6 @@ public class OpenWhiskHandler {
             return result;
         }
 
-        // Create the work queue (if necessary). If the function is warm but the work queue is not created,
-        // then something is wrong, and we'll just abort completely.
-        boolean everythingIsOkay = tryCreateWorkQueue(result);
-        if (!everythingIsOkay)
-            return result;
-
-        // Create the worker thread (if necessary). If the function is warm but the worker thread is not created,
-        // then something is wrong, and we'll just abort completely.
-        everythingIsOkay = tryCreateWorkerThread(result, serverlessNameNode);
-        if (!everythingIsOkay)
-            return result;
-
         // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
         // from intermediate storage.
         synchronized (serverlessNameNode) {
@@ -253,8 +252,8 @@ public class OpenWhiskHandler {
         FileSystemTask<Serializable> newTask = null;
         try {
             LOG.debug("Adding task " + requestId + " (operation = " + op + ") to work queue now...");
-            newTask= new FileSystemTask<>(requestId, op, fsArgs);
-            workQueue.put(newTask);
+            newTask = new FileSystemTask<>(requestId, op, fsArgs);
+            serverlessNameNode.enqueueFileSystemTask(newTask);
 
             // We wait for the task to finish executing in a separate try-catch block so that, if there is
             // an exception, then we can log a specific message indicating where the exception occurred. If we
@@ -372,93 +371,6 @@ public class OpenWhiskHandler {
                 result.addFunctionMapping(src, iNode.getParentId(), functionNumber);
             }
         }
-    }
-
-    /**
-     * Check if the work queue needs to be created. If it does, then create it.
-     *
-     * This also checks if this function instance is warm/cold. If it is warm but the work queue is not already
-     * created, then something has gone very wrong. Warm function instances should already have a work queue.
-     *
-     * @param result The current NameNodeResult object that will eventually be returned to the user.
-     * @return True, if everything is okay (i.e., it was NOT the case that function is warm but work queue does not
-     * exist).
-     */
-    private static boolean tryCreateWorkQueue(NameNodeResult result) {
-        // Create the work queue if it has not already been created. This is used to assign tasks to the worker thread.
-        if (workQueue == null) {
-            // Make sure that the container was cold prior to this invocation...
-            boolean everythingIsOkay = assertIsCold(result);
-
-            // If everything is NOT okay (specifically, this container is warm, yet the work queue is not
-            // already created), then abort early. Something is not right.
-            if (!everythingIsOkay)
-                return false;
-
-            LOG.debug("Creating the Work Queue now...");
-            workQueue = new LinkedBlockingQueue<>();
-        }
-
-        // Everything is okay!
-        return true;
-    }
-
-    /**
-     * Check if the worker thread needs to be created (and then started). If it does, then create and start it.
-     *
-     * This also checks if this function instance is warm/cold. If it is warm but the worker thread is not already
-     * created, then something has gone very wrong. Warm function instances should already have a work queue.
-     *
-     * @param result The current NameNodeResult object that will eventually be returned to the user.
-     * @param serverlessNameNode The instance of ServerlessNameNode running within this function. This is needed as it
-     *                           must be passed to the worker thread.
-     * @return True, if everything is okay (i.e., it was NOT the case that function is warm but worker thread does not
-     * exist).
-     */
-    private static boolean tryCreateWorkerThread(NameNodeResult result, ServerlessNameNode serverlessNameNode) {
-        // Next, create the worker thread if it has not already been created. The worker thread is responsible
-        // for actually performing the various file system operations. It returns the results back to us.
-        if (workerThread == null) {
-            // Make sure that the container was cold prior to this invocation...
-            boolean everythingIsOkay = assertIsCold(result);
-
-            // If everything is NOT okay (specifically, this container is warm, yet the worker thread is not
-            // already created), then abort early. Something is not right.
-            if (!everythingIsOkay)
-                // This just looks more readable to me, but we could just directly return everythingIsOkay here.
-                return false;
-
-            LOG.debug("Creating the Worker Thread now...");
-
-            // Create the thread and tell it to run!
-            workerThread = new NameNodeWorkerThread(workQueue, serverlessNameNode);
-            workerThread.start();
-        }
-
-        // Everything is okay!
-        return true;
-    }
-
-    /**
-     * Assert that the container was cold prior to the currently-running activation.
-     *
-     * If the container is warm, then this will create a new IllegalStateException and add it to the
-     * parameterized `result` object so that the client that invoked this function can see the exception
-     * and process it accordingly.
-     * @param result The result to be returned to the client.
-     * @return True if the function was cold (as is expected when this function is called). Otherwise, false will be
-     * returned, indicating that the function is warm (which is bad in the case that this function is called).
-     */
-    private static boolean assertIsCold(NameNodeResult result) {
-        if (!isCold) {
-            // Create and add the exception to the result so that it will be returned to the client.
-            IllegalStateException ex = new IllegalStateException("Expected container to be cold, but it is warm.");
-            result.addException(ex);
-
-            return false;
-        }
-
-        return true;
     }
 
     /**

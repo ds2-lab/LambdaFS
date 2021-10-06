@@ -9,6 +9,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
@@ -60,11 +61,18 @@ public class NameNodeTCPClient {
     private final String functionName;
 
     /**
+     * The ServerlessNameNode instance that this TCP Client is associated with.
+     */
+    private final ServerlessNameNode serverlessNameNode;
+
+    /**
      * Constructor.
      * @param functionName The name of the serverless function in which this TCP client exists.
      */
-    public NameNodeTCPClient(String functionName) {
+    public NameNodeTCPClient(String functionName, ServerlessNameNode serverlessNameNode) {
         this.functionName = functionName;
+        this.serverlessNameNode = serverlessNameNode;
+
         tcpClients = new HashMap<>();
     }
 
@@ -214,7 +222,7 @@ public class NameNodeTCPClient {
         try {
             LOG.debug("[TCP] Adding task " + requestId + " (operation = " + op + ") to work queue now...");
             newTask= new FileSystemTask<>(requestId, op, fsArgs);
-            OpenWhiskHandler.workQueue.put(newTask);
+            serverlessNameNode.enqueueFileSystemTask(newTask);
 
             // We wait for the task to finish executing in a separate try-catch block so that, if there is
             // an exception, then we can log a specific message indicating where the exception occurred. If we

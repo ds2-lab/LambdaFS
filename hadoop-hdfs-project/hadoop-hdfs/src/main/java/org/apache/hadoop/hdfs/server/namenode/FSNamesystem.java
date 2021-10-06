@@ -1629,7 +1629,57 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
     file.recomputeFileSize();  
     return onBlockBoundary;
-}
+  }
+
+  /**
+   * Invalidate a subset of keys stored in the metadata cache.
+   *
+   * @param invalidatedKeys List of keys that have been invalidated and need to be updated (via retrieving the data
+   *                        from intermediate storage/NDB).
+   * @param updatedValues Any updated cache values that have already been retrieved. This may happen in the case of
+   *                      NDB events, as the post-event values can optionally be received along with the events
+   *                      themselves.
+   */
+  public synchronized void invalidateMetadataCache(
+          List<String> invalidatedKeys,
+          Map<String, Object> updatedValues)
+  {
+    int numInvalidatedKeys = invalidatedKeys.size();
+
+    // Ensure we're using proper grammar in our debug messages.
+    String entry;
+    if (numInvalidatedKeys == 1)
+      entry = "entry";
+    else
+      entry = "entries";
+
+    LOG.debug("Invalidating " + invalidatedKeys.size() + " metadata cache " + entry + ".");
+
+    if (updatedValues.size() > 0)
+      LOG.debug("Already have " + updatedValues.size() + " updated cache " + entry + " locally.");
+
+    // These are the INodes for which we'll need to query intermediate storage/NDB.
+    ArrayList<String> keysToRetrieve = new ArrayList<>();
+
+    for (String invalidatedKey : invalidatedKeys) {
+      LOG.debug("Invalidating key: " + invalidatedKey);
+
+      // If we already have the value for this key, then update the cache.
+      if (updatedValues.containsKey(invalidatedKey)) {
+        LOG.debug("Using local, updated value for entry " + invalidatedKey + ".");
+        metadataCache.put(invalidatedKey, updatedValues.get(invalidatedKey));
+      } else {
+        LOG.debug("Will retrieve updated value for entry " + invalidatedKey + " from intermediate storage.");
+        keysToRetrieve.add(invalidatedKey);
+      }
+    }
+
+    // Proper grammar.
+    if (keysToRetrieve.size() == 1)
+      LOG.debug("Retrieving updated metadata for " + keysToRetrieve.size() + " entry");
+    else
+      LOG.debug("Retrieving updated metadata for " + keysToRetrieve.size() + " entries");
+  }
 
   /**
    * Convert current INode to UnderConstruction.

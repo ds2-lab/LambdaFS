@@ -38,6 +38,18 @@ public class HopsEventManager implements EventManager {
 
     /**
      * The columns of the INode NDB table, in the order that they're defined in the schema.
+     *
+     * TODO:
+     *  We may want to add a column to keep track of who last modified the row so that NNs can determine
+     *  whether or not they need to retrieve the data from NDB or not when receiving an event. That is, if NN 1
+     *  receives an Event that the row was updated after they (NN1) performed the update, then obviously NN1 already
+     *  has the updated metadata and shouldn't read anything from NDB. But if NN2 receives this event, then they would
+     *  see that a different NN updated the row, and thus they'd retrieve the data from NDB.
+     *
+     * TODO:
+     *  Also, only a few necessary columns should have their values read during Event reception. In addition to the
+     *  column described above, NN's could also inspect the parent_id column to determine if the Event pertains to
+     *  metadata that they are caching. If not, then the event can be safely ignored.
      */
     private static final String[] INODE_TABLE_COLUMNS = new String[] {
             "partition_id", "parent_id", "name", "id", "user_id", "group_id", "modification_time",
