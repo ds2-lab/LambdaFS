@@ -77,17 +77,19 @@ public class HopsSession {
    * @param tableName The table with which the event should be associated.
    * @param eventColumns The columns that are being monitored for the event.
    * @param tableEvents The events that this event should listen for.
+   * @param recreateIfExists If true, then drop and recreate the event if it already exists.
    */
   public Event createAndRegisterEvent(
           String eventName,
           String tableName,
           String[] eventColumns,
-          com.mysql.clusterj.TableEvent[] tableEvents) throws StorageException {
+          com.mysql.clusterj.TableEvent[] tableEvents,
+          boolean recreateIfExists) throws StorageException {
     LOG.debug("Attempting to create and register event " + eventName + " now...");
 
     Event event;
     try {
-      event = session.createAndRegisterEvent(eventName, tableName, eventColumns, tableEvents, 1);
+      event = session.createAndRegisterEvent(eventName, tableName, eventColumns, tableEvents, 1, recreateIfExists);
     } catch (ClusterJException e) {
       throw HopsExceptionHelper.wrap(e);
     }
@@ -140,14 +142,16 @@ public class HopsSession {
    * @param eventName The unique name to identify the event with.
    * @param tableName The table with which the event should be associated.
    * @param tableEvents The events that this event should listen for.
+   * @param recreateIfExists If true, then drop and recreate the event if it already exists.
    */
-  public Event createAndRegisterEvent(String eventName, String tableName, TableEvent[] tableEvents)
+  public Event createAndRegisterEvent(
+          String eventName, String tableName, TableEvent[] tableEvents, boolean recreateIfExists)
           throws StorageException {
     LOG.debug("Attempting to create and register event " + eventName + " now...");
 
     Event event;
     try {
-      event = session.createAndRegisterEvent(eventName, tableName, tableEvents, 1);
+      event = session.createAndRegisterEvent(eventName, tableName, tableEvents, 1, recreateIfExists);
     } catch (ClusterJException e) {
       throw HopsExceptionHelper.wrap(e);
     }

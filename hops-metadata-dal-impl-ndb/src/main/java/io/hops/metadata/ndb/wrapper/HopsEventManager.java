@@ -32,6 +32,11 @@ public class HopsEventManager implements EventManager {
     private static HopsEventManager instance;
 
     /**
+     * Default event name that NameNodes use in order to watch for cache invalidations from NDB.
+     */
+    private static final String DEFAULT_EVENT_NAME = "namenode_cache_watch";
+
+    /**
      * Name of the NDB table that contains the INodes.
      */
     private static final String INODES_TABLE_NAME = "hdfs_inodes";
@@ -83,6 +88,12 @@ public class HopsEventManager implements EventManager {
      * and to receive events from the database.
      */
     private final HopsSession session;
+
+    /**
+     * Used to track if default setup has been performed. In most cases, we'll want to just use the
+     * default setup method, so we display a warning when that method has not been performed.
+     */
+    private boolean defaultSetupPerformed = false;
 
     private HopsEventManager(HopsSession session) {
         this.session = session;
@@ -144,6 +155,18 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
+     * Create an event operation for the event specified by the given event name and return it.
+     *
+     * This is for internal use only.
+     * @param eventName The name of the event for which an event operation should be created.
+     */
+    private HopsEventOperation createAndReturnEventOperation(String eventName) throws StorageException {
+        createEventOperation(eventName);
+
+        return eventOperationMap.get(eventName);
+    }
+
+    /**
      * Unregister and drop the EventOperation associated with the given event from NDB.
      * @param eventName The unique identifier of the event whose EventOperation we wish to unregister.
      * @return True if an event operation was dropped, otherwise false.
@@ -182,17 +205,19 @@ public class HopsEventManager implements EventManager {
     /**
      * Create and register an event with the given name.
      * @param eventName Unique identifier of the event to be created.
-     * @param recreateIfExisting If true, delete and recreate the event if it already exists.
+     * @param recreateIfExists If true, delete and recreate the event if it already exists.
      * @throws StorageException if something goes wrong when registering the event.
-     * @return True if an event was created, otherwise false.
+     *
+     * @return True if an event was created, otherwise false. Note that returning false does not
+     * indicate that something definitely went wrong; rather, the event could just already exist.
      */
     @Override
-    public boolean registerEvent(String eventName, String tableName, boolean recreateIfExisting)
+    public boolean registerEvent(String eventName, String tableName, boolean recreateIfExists)
             throws StorageException {
         LOG.debug("Registering event " + eventName + " with NDB now...");
 
-        // If we're already tracking this event and we aren't supposed to recreate it, then just return.
-        if (eventMap.containsKey(eventName) && !recreateIfExisting) {
+        // If we're already tracking this event, and we aren't supposed to recreate it, then just return.
+        if (eventMap.containsKey(eventName) && !recreateIfExists) {
             LOG.debug("Event " + eventName + " is already being tracked by the EventManager.");
             return false;
         }
@@ -200,7 +225,7 @@ public class HopsEventManager implements EventManager {
         // Try to create the event. If something goes wrong, we'll throw an exception.
         Event event;
         try {
-            event = session.createAndRegisterEvent(eventName, tableName, eventsToSubscribeTo);
+            event = session.createAndRegisterEvent(eventName, tableName, eventsToSubscribeTo, recreateIfExists);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
@@ -264,6 +289,12 @@ public class HopsEventManager implements EventManager {
     public void run() {
         LOG.debug("The EventManager has started running.");
 
+        if (!defaultSetupPerformed)
+            LOG.warn("Default set-up has NOT been performed.");
+
+        LOG.debug("Number of events created: " + eventMap.size());
+        LOG.debug("Number of event operations created: " + eventOperationMap.size());
+
         // Loop forever, listening for events.
         while (true) {
             // As far as I can tell, this is NOT busy-waiting. This ultimately calls select(), or whatever
@@ -280,6 +311,42 @@ public class HopsEventManager implements EventManager {
             int numEventsProcessed = processEvents();
             LOG.debug("Processed " + numEventsProcessed + " event(s).");
         }
+    }
+
+    /**
+     * Perform the default setup/initialization of the event and event operation.
+     * @param eventName The name of the event to create/look for. Pass null to use the default.
+     * @param deleteIfExists Delete and recreate the event, if it already exists.
+     */
+    @Override
+    public void defaultSetup(String eventName, boolean deleteIfExists) throws StorageException {
+        if (eventName == null)
+            eventName = DEFAULT_EVENT_NAME;
+
+        if (deleteIfExists)
+            LOG.warn("Will delete and recreate event " + eventName + " if it already exists!");
+
+        // This will add the event to the event map. We do NOT recreate the event if it already exists,
+        // as the event could have been created by another NameNode. We would only want to recreate it
+        // if we were changing something about the event's definition, and if all future NameNodes
+        // expected this change, and if there were no other NameNodes currently using the event.
+        boolean registeredSuccessfully = registerEvent(eventName, INODES_TABLE_NAME, false);
+
+        if (!registeredSuccessfully) {
+            LOG.error("Failed to successfully register default event " + eventName
+                    + " on table " + INODES_TABLE_NAME);
+
+            throw new StorageException("Failed to register event " + eventName + " on table " + INODES_TABLE_NAME);
+        }
+
+        LOG.debug("Creating event operation for event " + eventName + " now...");
+        HopsEventOperation eventOperation = createAndReturnEventOperation(eventName);
+        EventOperation clusterJEventOperation = eventOperation.getClusterJEventOperation();
+
+        LOG.debug("Executing event operation for event " + eventName + " now...");
+        clusterJEventOperation.execute();
+
+        defaultSetupPerformed = true;
     }
 
     /**

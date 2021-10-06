@@ -1796,6 +1796,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     workerThread.start();
 
     ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
+    ndbEventManager.defaultSetup(null, true);
     new Thread(ndbEventManager).start();
 
     numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);

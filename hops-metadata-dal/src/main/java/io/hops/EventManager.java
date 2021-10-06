@@ -21,11 +21,11 @@ public interface EventManager extends Runnable {
     /**
      * Create and register an event with the given name.
      * @param eventName Unique identifier of the event to be created.
-     * @param recreateIfExisting If true, delete and recreate the event if it already exists.
+     * @param recreateIfExists If true, delete and recreate the event if it already exists.
      * @throws StorageException if something goes wrong when registering the event.
      * @return True if an event was created, otherwise false.
      */
-    public boolean registerEvent(String eventName, String tableName, boolean recreateIfExisting) throws StorageException;
+    public boolean registerEvent(String eventName, String tableName, boolean recreateIfExists) throws StorageException;
 
     /**
      * Delete the event with the given name.
@@ -46,9 +46,15 @@ public interface EventManager extends Runnable {
      * Create and register an Event Operation for the specified event.
      *
      * @param eventName The name of the Event for which we're creating an EventOperation.
-     * @return True if the event operation was created, otherwise false.
      */
     public void createEventOperation(String eventName) throws StorageException;
+
+    /**
+     * Perform the default setup/initialization of the event and event operation.
+     * @param eventName The name of the event to create/look for.
+     * @param deleteIfExists Delete and recreate the event, if it already exists.
+     */
+    public void defaultSetup(String eventName, boolean deleteIfExists) throws StorageException;
 
     /**
      * Unregister and drop the EventOperation associated with the given event from NDB.
