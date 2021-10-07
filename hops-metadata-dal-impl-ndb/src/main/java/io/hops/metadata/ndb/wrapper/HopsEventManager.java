@@ -6,7 +6,6 @@ import com.mysql.clusterj.EventReport;
 import com.mysql.clusterj.TableEvent;
 import com.mysql.clusterj.core.store.Event;
 import com.mysql.clusterj.core.store.EventOperation;
-import com.mysql.clusterj.core.store.RecordAttr;
 import io.hops.EventManager;
 import io.hops.HopsEvent;
 import io.hops.exception.StorageException;
@@ -25,9 +24,13 @@ import java.util.HashMap;
  *
  * Currently implements the Singleton pattern, as there's no reason for a NameNode to have more than one
  * instance of this class at any given time.
+ *
+ * TODO:
+ *  For now, I am assuming that there is just ONE active event operation, and that event operation
+ *  is using default column tables and record attributes, as defined below in the static variables.
  */
 public class HopsEventManager implements EventManager {
-    static final Log LOG = LogFactory.getLog(EventManager.class);
+    static final Log LOG = LogFactory.getLog(HopsEventManager.class);
 
     private static HopsEventManager instance;
 
@@ -65,6 +68,16 @@ public class HopsEventManager implements EventManager {
     };
 
     /**
+     * The columns of the INode table for which we wish to see the pre-/post-values
+     * when receiving an event on the INode table.
+     *
+     * These should just be numerical (32- or 64-bit integers, ideally).
+     */
+    private static final String[] INODE_TABLE_RECORD_ATTR_COLUMNS = new String[] {
+            "partition_id", "parent_id", "id"
+    };
+
+    /**
      * These are the events that all NameNodes subscribe to.
      */
     private static final TableEvent[] eventsToSubscribeTo = new TableEvent[] {
@@ -82,6 +95,13 @@ public class HopsEventManager implements EventManager {
      * All active EventOperation instances are contained in here.
      */
     private final HashMap<String, HopsEventOperation> eventOperationMap;
+
+    /**
+     * The active event operation. For now, we assume that there is just one active event
+     * operation at any given time. In the future, we may expand this functionality and support
+     * multiple concurrent event operations, assuming NDB supports this.
+     */
+    private HopsEventOperation activeEventOperation;
 
     /**
      * The active session with the database. Used to issue operations related to events,
@@ -150,7 +170,7 @@ public class HopsEventManager implements EventManager {
 
         LOG.debug("Successfully created EventOperation for event " + eventName + ".");
 
-        HopsEventOperation hopsEventOperation = new HopsEventOperation(eventOperation);
+        HopsEventOperation hopsEventOperation = new HopsEventOperation(eventOperation, eventName);
         eventOperationMap.put(eventName, hopsEventOperation);
     }
 
@@ -343,8 +363,17 @@ public class HopsEventManager implements EventManager {
         HopsEventOperation eventOperation = createAndReturnEventOperation(eventName);
         EventOperation clusterJEventOperation = eventOperation.getClusterJEventOperation();
 
+        LOG.debug("Setting up record attributes for event " + eventName + " now...");
+        for (String columnName : INODE_TABLE_RECORD_ATTR_COLUMNS) {
+            boolean success = eventOperation.addRecordAttribute(columnName);
+
+            if (!success)
+                LOG.error("Failed to create record attribute(s) for column " + columnName + ".");
+        }
+
         LOG.debug("Executing event operation for event " + eventName + " now...");
         clusterJEventOperation.execute();
+        activeEventOperation = eventOperation;
 
         defaultSetupPerformed = true;
     }
@@ -355,7 +384,7 @@ public class HopsEventManager implements EventManager {
      */
     @Override
     public synchronized int processEvents() {
-        HopsEventOperation nextEventOp = session.nextEvent();
+        HopsEventOperation nextEventOp = session.nextEvent("N/A");
         int numEventsProcessed = 0;
 
         while (nextEventOp != null) {
@@ -364,6 +393,10 @@ public class HopsEventManager implements EventManager {
             // TODO:
             //  Possibly check the pre/post values associated with the event to determine the necessity of retrieving
             //  full values from NDB. But in any case, receiving an Event means the cache needs to be updated.
+
+            // TODO:
+            //  For now, I am assuming that there is just ONE active event operation, and that event operation
+            //  is using default column tables and record attributes, as defined above in the static variables.
 
             switch (eventType) {
                 case INSERT:
@@ -380,7 +413,16 @@ public class HopsEventManager implements EventManager {
                     break;
             }
 
-            nextEventOp = session.nextEvent();
+            // Print the pre- and post-values for the columns for which record attributes were created.
+            for (String columName : INODE_TABLE_RECORD_ATTR_COLUMNS) {
+                long preValue = activeEventOperation.getLongPreValue(columName);
+                long postValue = activeEventOperation.getLongPostValue(columName);
+
+                LOG.debug("Pre-value for column " + columName + ": " + preValue);
+                LOG.debug("Post-value for column " + columName + ": " + postValue);
+            }
+
+            nextEventOp = session.nextEvent("N/A");
             numEventsProcessed++;
         }
 

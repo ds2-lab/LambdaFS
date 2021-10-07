@@ -123,12 +123,16 @@ public class HopsSession {
    * This call will not work if:
    *  (1) execute() has not yet been called on the event operation, and
    *  (2) pollEvents() has been called and indicated that at least one event has been received.
+   *
+   * @param eventName The name of the event we're checking on. It is acceptable for null to be passed if the name is
+   *                  not available. The name is just passed to the HopsEventOperation constructor, and that object
+   *                  only uses the name for debugging purposes.
    * @return EventOperation associated with the next event that was received
    */
-  public HopsEventOperation nextEvent() {
+  public HopsEventOperation nextEvent(String eventName) {
     EventOperation eventOperation = session.nextEvent();
 
-    return new HopsEventOperation(eventOperation);
+    return new HopsEventOperation(eventOperation, "N/A");
   }
 
   /**
