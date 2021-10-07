@@ -1789,12 +1789,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           conf.set(HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS, intervals);
       }
 
+    UserGroupInformation.setConfiguration(conf);
+    loginAsNameNodeUser(conf);
+
+    HdfsStorageFactory.setConfiguration(conf);
+
     nameNodeWorkQueue = new LinkedBlockingQueue<>();
 
     // Create the thread and tell it to run!
     workerThread = new NameNodeWorkerThread(nameNodeWorkQueue, this);
     workerThread.start();
 
+    // We need to do this AFTER the above call to `HdfsStorageFactory.setConfiguration(conf)`, as the ClusterJ/NDB
+    // library is loaded during that call. If we try to create the event manager before that, we will get class
+    // not found errors.
     ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
     ndbEventManager.defaultSetup(null, true);
     new Thread(ndbEventManager).start();
@@ -1803,11 +1811,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,
             SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT);
     LOG.debug("Number of unique serverless name nodes: " + numUniqueServerlessNameNodes);
-
-    UserGroupInformation.setConfiguration(conf);
-    loginAsNameNodeUser(conf);
-
-    HdfsStorageFactory.setConfiguration(conf);
 
     int baseWaitTime = conf.getInt(DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_KEY,
             DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_DEFAULT);
