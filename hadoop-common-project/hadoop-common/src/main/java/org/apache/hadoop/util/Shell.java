@@ -418,7 +418,7 @@ public abstract class Shell {
    *  Centralized logic to discover and validate the sanity of the Hadoop
    *  home directory.
    *
-   *  This does a lot of work so it should only be called
+   *  This does a lot of work, so it should only be called
    *  privately for initialization once per process.
    *
    * @return A directory that exists and via was specified on the command line
@@ -512,18 +512,25 @@ public abstract class Shell {
   static {
     File home;
     IOException ex;
-    try {
-      home = checkHadoopHome();
-      ex = null;
-    } catch (IOException ioe) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Failed to detect a valid hadoop home directory", ioe);
-      }
-      ex = ioe;
-      home = null;
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("The Serverless NameNode does not have a HADOOP_HOME directory.");
     }
-    HADOOP_HOME_FILE = home;
-    HADOOP_HOME_DIR_FAILURE_CAUSE = ex;
+
+    HADOOP_HOME_FILE = null;
+    HADOOP_HOME_DIR_FAILURE_CAUSE = null;
+//    try {
+//      home = checkHadoopHome();
+//      ex = null;
+//    } catch (IOException ioe) {
+//      if (LOG.isDebugEnabled()) {
+//        LOG.debug("Failed to detect a valid hadoop home directory", ioe);
+//      }
+//      ex = ioe;
+//      home = null;
+//    }
+//    HADOOP_HOME_FILE = home;
+//    HADOOP_HOME_DIR_FAILURE_CAUSE = ex;
   }
 
   /**

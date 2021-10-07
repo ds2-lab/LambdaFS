@@ -360,11 +360,10 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         // Now we'll check for a result from the name node.
         if (response.has("RESULT")) {
-            // String resultBase64 = response.getAsJsonPrimitive("base64result").getAsString();
             String resultBase64 = response.getAsJsonPrimitive("RESULT").getAsString();
 
             Object result = InvokerUtilities.base64StringToObject(resultBase64);
-            LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result.toString());
+            LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result);
             return result;
         }
 
