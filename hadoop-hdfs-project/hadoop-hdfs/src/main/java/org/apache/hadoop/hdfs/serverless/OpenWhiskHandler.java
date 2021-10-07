@@ -57,7 +57,7 @@ public class OpenWhiskHandler {
         }
 
         if (!isCold)
-            throw new IllegalStateException("Container is warm, but there is no existing ServerlessNameNode instance.");
+            LOG.warn("Container is warm, but there is no existing ServerlessNameNode instance.");
 
         instance = ServerlessNameNode.startServerlessNameNode(commandLineArguments, functionName);
         instance.populateOperationsMap();

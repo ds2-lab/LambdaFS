@@ -352,7 +352,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             JsonArray exceptionsJson = response.get("EXCEPTIONS").getAsJsonArray();
 
             LOG.warn("The ServerlessNameNode encountered " + exceptionsJson.size()
-                    + (exceptionsJson.size() == 1 ? "exception" : "exceptions") + ".");
+                    + (exceptionsJson.size() == 1 ? " exception" : " exceptions") + ".");
 
             for (int i = 0; i < exceptionsJson.size(); i++)
                 LOG.error(exceptionsJson.get(i).getAsString());
