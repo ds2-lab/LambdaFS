@@ -39,9 +39,9 @@ public class MutableMetricsFactory {
 
   MutableMetric newForField(Field field, Metric annotation,
                             MetricsRegistry registry) {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("field "+ field +" with annotation "+ annotation);
-    }
+//    if (LOG.isDebugEnabled()) {
+//      LOG.debug("field "+ field +" with annotation "+ annotation);
+//    }
     MetricsInfo info = getInfo(annotation, field);
     MutableMetric metric = newForField(field, annotation);
     if (metric != null) {
