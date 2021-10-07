@@ -364,6 +364,14 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
             try {
                 Object result = InvokerUtilities.base64StringToObject(resultBase64);
+
+                if (result == null) {
+                    LOG.warn("Returning null despite the NameNode returning a result...");
+                    LOG.warn("response['RESULT']=" + resultBase64);
+                    LOG.warn("After decoding from base64: " + result);
+                    return null;
+                }
+
                 LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result);
                 return result;
             } catch (Exception ex) {
