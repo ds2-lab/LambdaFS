@@ -39,48 +39,11 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     private final String blockingParameter = "?blocking=true";
 
     /**
-     * Create a TrustManager that does not validate certificate chains.
-     *
-     * This is necessary because otherwise, we may encounter SSL certificate errors when invoking serverless functions.
-     * I do not know all the details behind this, but this resolves the errors.
-     *
-     * In the future, we may want to add certificate support for increased security, with a fall-back to this being an
-     * option if the users do not want to configure SSL certificates.
-     *
-     * Per the Java documentation, TrustManagers are responsible for managing the trust material that is used when
-     * making trust decisions, and for deciding whether credentials presented by a peer should be accepted.
-     */
-    private void instantiateTrustManager() {
-        // Create a trust manager that does not validate certificate chains
-        TrustManager[] trustAllCerts = new TrustManager[] {
-                new X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[0];
-                    }
-                    public void checkClientTrusted(
-                            java.security.cert.X509Certificate[] certs, String authType) {
-                    }
-                    public void checkServerTrusted(
-                            java.security.cert.X509Certificate[] certs, String authType) {
-                    }
-                }
-        };
-
-        try {
-            SSLContext sc = SSLContext.getInstance("SSL");
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-        } catch (GeneralSecurityException e) {
-            LOG.error(e);
-        }
-    }
-
-    /**
      * Because invokers are generally created via the {@link ServerlessInvokerFactory} class, this constructor
      * will not be used directly.
      */
     public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
-        super();
+        this(new Configuration());
     }
 
     /**
@@ -215,7 +178,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         nameNodeArguments.addProperty("clientName", clientName);
         nameNodeArguments.addProperty("isClientInvoker", isClientInvoker);
 
-        InvokerUtilities.addStandardArguments(nameNodeArguments, requestId);
+        addStandardArguments(nameNodeArguments, requestId);
 
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
         // within the HTTP POST request. They should be included with the key "value".

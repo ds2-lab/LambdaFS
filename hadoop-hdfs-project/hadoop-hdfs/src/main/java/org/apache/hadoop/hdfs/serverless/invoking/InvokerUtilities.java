@@ -28,34 +28,6 @@ public class InvokerUtilities {
     }
 
     /**
-     * There are some arguments that will be included every single time with the same values. This function
-     * adds those arguments.
-     *
-     * This is implemented as a separate function to provide a centralized place to modify these
-     * consistent arguments.
-     *
-     * The standard arguments are currently:
-     *  - Command-line arguments for the NN (if none are provided already)
-     *  - Request ID
-     *  - Internal IP address of the node on which the client is running.
-     *
-     * @param nameNodeArgumentsJson The arguments to be passed to the ServerlessNameNode itself.
-     * @param requestId The request ID to use for this request. This will be added to the arguments.
-     */
-    public static void addStandardArguments(JsonObject nameNodeArgumentsJson, String requestId)
-            throws SocketException, UnknownHostException {
-        // If there is not already a command-line-arguments entry, then we'll add one with the "-regular" flag
-        // so that the name node performs standard execution. If there already is such an entry, then we do
-        // not want to overwrite it.
-        if (!nameNodeArgumentsJson.has("command-line-arguments"))
-            nameNodeArgumentsJson.addProperty("command-line-arguments", "-regular");
-
-        nameNodeArgumentsJson.addProperty("requestId", requestId);
-
-        nameNodeArgumentsJson.addProperty("clientInternalIp", getInternalIpAddress());
-    }
-
-    /**
      * Convert the given Serializable object to a Base64-encoded String.
      * @param obj The object to encode as a Base64 String.
      * @return The Base64-encoded String of the given object.

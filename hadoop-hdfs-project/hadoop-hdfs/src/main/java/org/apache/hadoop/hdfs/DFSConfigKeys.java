@@ -67,6 +67,19 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_DEPLOYMENTS_BASELINE_DEFAULT = 1;
 
   /**
+   * If true, then we'll pass an argument to the NNs indicating that they should print their
+   * debug output from the underlying NDB C++ library (libndbclient.so).
+   */
+  public static final String NDB_DEBUG = "storage.ndb.debug.enabled";
+  public static final boolean NDB_DEBUG_DEFAULT = false;
+
+  /**
+   * This string is passed to the NDB C++ library (on the NameNodes) if NDB debugging is enabled.
+   */
+  public static final String NDB_DEBUG_STRING = "storage.ndb.debug.string";
+  public static final String NDB_DEBUG_STRING_DEFAULT = "d:t:L:F";
+
+  /**
    * The maximum number of uniquely-deployed serverless functions available for use with this particular
    * Serverless HopsFS cluster.
    */

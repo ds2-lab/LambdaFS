@@ -2,6 +2,9 @@ package org.apache.hadoop.hdfs.serverless;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.mysql.clusterj.ClusterJHelper;
+import com.mysql.clusterj.Dbug;
+import com.mysql.clusterj.tie.DbugImpl;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
@@ -123,6 +126,24 @@ public class OpenWhiskHandler {
         else {
             // Empty arguments.
             commandLineArguments = new String[0];
+        }
+
+        boolean debugEnabled = false;
+        String debugString = null;
+
+        // Check if NDB debugging is enabled. If so, then attempt to extract the dbug string. If
+        // NDB debugging is enabled and a dbug string was extracted, then pass it to the ClusterJ API,
+        // which will in turn pass the dbug string to the underlying NDB API.
+        if (userArguments.has("debugNdb"))
+            debugEnabled = userArguments.getAsJsonPrimitive("debugNdb").getAsBoolean();
+
+        if (debugEnabled && userArguments.has("debugStringNdb"))
+            debugString = userArguments.getAsJsonPrimitive("debugStringNdb").getAsString();
+
+        if (debugEnabled && debugString != null) {
+            LOG.debug("NDB Debugging has been enabled. Using dbug string \"" +
+                    debugString + "\"");
+            ClusterJHelper.newDbug().push(debugString);
         }
 
         // The name of the client. This originates from the DFSClient class.

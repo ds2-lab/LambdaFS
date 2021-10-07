@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -13,6 +14,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.io.*;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.security.*;
 import java.security.cert.X509Certificate;
 import java.util.*;
@@ -56,9 +59,20 @@ public abstract class ServerlessInvokerBase<T> {
     /**
      * Unique identifier of the particular client using this class.
      *
-     * This name will be set automatically if a client/user is invoking. Otherwise we default to DataNode.
+     * This name will be set automatically if a client/user is invoking. Otherwise, we default to DataNode.
      */
     protected String clientName = "DataNode";
+
+    /**
+     * If true, then we'll pass an argument to the NNs indicating that they should print their
+     * debug output from the underlying NDB C++ library (libndbclient.so).
+     */
+    protected boolean debugEnabledNdb = false;
+
+    /**
+     * This string is passed to the NDB C++ library (on the NameNodes) if NDB debugging is enabled.
+     */
+    protected String debugStringNdb = null;
 
     /**
      * Return the INode-NN mapping cache entry for the given file or directory.
@@ -75,6 +89,18 @@ public abstract class ServerlessInvokerBase<T> {
         return -1;
     }
 
+    /**
+     * Create a TrustManager that does not validate certificate chains.
+     *
+     * This is necessary because otherwise, we may encounter SSL certificate errors when invoking serverless functions.
+     * I do not know all the details behind this, but this resolves the errors.
+     *
+     * In the future, we may want to add certificate support for increased security, with a fall-back to this being an
+     * option if the users do not want to configure SSL certificates.
+     *
+     * Per the Java documentation, TrustManagers are responsible for managing the trust material that is used when
+     * making trust decisions, and for deciding whether credentials presented by a peer should be accepted.
+     */
     private void instantiateTrustManager() {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[] {
@@ -104,19 +130,14 @@ public abstract class ServerlessInvokerBase<T> {
      * Default constructor.
      */
     public ServerlessInvokerBase() throws NoSuchAlgorithmException, KeyManagementException {
-        instantiateTrustManager();
-        httpClient = getHttpClient();
-        cache = new FunctionMetadataMap();
-
-        LOG.warn("No configuration provided for OpenWhiskInvoker. Defaulting to " +
-                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT + " available serverless functions.");
-        // If we're not given a Configuration object to use, then just assume the default...
-        numUniqueFunctions = DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT;
+        this(new Configuration());
     }
 
     public ServerlessInvokerBase(Configuration conf) throws NoSuchAlgorithmException, KeyManagementException {
         numUniqueFunctions = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);
+        debugStringNdb = conf.get(DFSConfigKeys.NDB_DEBUG_STRING, DFSConfigKeys.NDB_DEBUG_STRING_DEFAULT);
         instantiateTrustManager();
         httpClient = getHttpClient();
         cache = new FunctionMetadataMap(conf);
@@ -177,5 +198,36 @@ public abstract class ServerlessInvokerBase<T> {
      */
     public void setIsClientInvoker(boolean isClientInvoker) {
         this.isClientInvoker = isClientInvoker;
+    }
+
+    /**
+     * There are some arguments that will be included every single time with the same values. This function
+     * adds those arguments.
+     *
+     * This is implemented as a separate function to provide a centralized place to modify these
+     * consistent arguments.
+     *
+     * The standard arguments are currently:
+     *  - Command-line arguments for the NN (if none are provided already)
+     *  - Request ID
+     *  - Internal IP address of the node on which the client is running.
+     *
+     * @param nameNodeArgumentsJson The arguments to be passed to the ServerlessNameNode itself.
+     * @param requestId The request ID to use for this request. This will be added to the arguments.
+     */
+    protected void addStandardArguments(JsonObject nameNodeArgumentsJson, String requestId)
+            throws SocketException, UnknownHostException {
+        // If there is not already a command-line-arguments entry, then we'll add one with the "-regular" flag
+        // so that the name node performs standard execution. If there already is such an entry, then we do
+        // not want to overwrite it.
+        if (!nameNodeArgumentsJson.has("command-line-arguments"))
+            nameNodeArgumentsJson.addProperty("command-line-arguments", "-regular");
+
+        nameNodeArgumentsJson.addProperty("requestId", requestId);
+
+        nameNodeArgumentsJson.addProperty("debugNdb", debugEnabledNdb);
+        nameNodeArgumentsJson.addProperty("debugStringNdb", debugStringNdb);
+
+        nameNodeArgumentsJson.addProperty("clientInternalIp", InvokerUtilities.getInternalIpAddress());
     }
 }

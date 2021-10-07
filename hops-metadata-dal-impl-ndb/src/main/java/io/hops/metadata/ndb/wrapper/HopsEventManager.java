@@ -422,6 +422,10 @@ public class HopsEventManager implements EventManager {
                 LOG.debug("Post-value for column " + columName + ": " + postValue);
             }
 
+            // TODO:
+            //  Determine whether or not to handle the event based on whether the parent INode ID
+            //  caches to this INode (i.e., depending on whether this NameNode caches the relevant metadata or not).
+
             nextEventOp = session.nextEvent("N/A");
             numEventsProcessed++;
         }
