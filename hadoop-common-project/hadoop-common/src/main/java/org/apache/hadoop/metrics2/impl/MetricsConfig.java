@@ -93,7 +93,7 @@ class MetricsConfig extends SubsetConfiguration {
   }
 
   static MetricsConfig create(String prefix) {
-    return loadFirst(prefix, "hadoop-metrics2-" +
+    return loadFirst(prefix, "/conf/hadoop-metrics2-" +
         StringUtils.toLowerCase(prefix) + ".properties", DEFAULT_FILE_NAME);
   }
 
@@ -103,8 +103,7 @@ class MetricsConfig extends SubsetConfiguration {
 
   /**
    * Load configuration from a list of files until the first successful load
-   * @param conf  the configuration object
-   * @param files the list of filenames to try
+   * @param fileNames the list of filenames to try
    * @return  the configuration object
    */
   static MetricsConfig loadFirst(String prefix, String... fileNames) {
