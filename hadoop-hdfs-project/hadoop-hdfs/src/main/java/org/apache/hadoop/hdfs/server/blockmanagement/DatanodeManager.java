@@ -549,9 +549,9 @@ public class DatanodeManager {
     if (namesystem.isLeader()) {
       ServerlessNameNode.stateChangeLog.info(
           "DataNode is dead. Removing all replicas for" +
-              " datanode " + nodeInfo +
-              " StorageID " + nodeInfo.getDatanodeUuid() +
-              " index " + nodeInfo.getHostName());
+              " datanode=" + nodeInfo +
+              " StorageID (datanode UUID)=" + nodeInfo.getDatanodeUuid() +
+              " index=" + nodeInfo.getHostName());
       blockManager.datanodeRemoved(nodeInfo, async);
     }
     networktopology.remove(nodeInfo);
