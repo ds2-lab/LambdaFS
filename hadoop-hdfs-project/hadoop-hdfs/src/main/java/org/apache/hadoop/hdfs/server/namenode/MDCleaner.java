@@ -59,14 +59,14 @@ public class MDCleaner {
     public void run() {
       while (run) {
         try {
-          if (leaderElection.isRunning() && leaderElection.isLeader()) {
+          if (leaderElection != null && leaderElection.isRunning() && leaderElection.isLeader()) {
             if(LOG.isTraceEnabled()) {
               LOG.trace("Cleaning dead locks. I am th leader ");
             }
             clearLocks();
           }
         } catch (IOException e) {
-          LOG.info("Eror in metadata cleaner " + e);
+          LOG.info("Error in metadata cleaner " + e);
         }
 
         try {

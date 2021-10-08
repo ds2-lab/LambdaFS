@@ -64,12 +64,7 @@ public class NameNodeWorkerThread extends Thread {
                     LOG.debug("Worker thread did not find anything to do...");
 
                     NameNodeTCPClient nameNodeTCPClient = serverlessNameNodeInstance.getNameNodeTcpClient();
-
-                    LOG.debug("======== NameNode TCP Client Debug Information ========");
-                    LOG.debug("Number of clients: " + nameNodeTCPClient.numClients());
-                    nameNodeTCPClient.checkThatClientsAreAllConnected();
-                    LOG.debug("=======================================================");
-
+                    LOG.debug("Number of TCP Clients of the NameNode: " + nameNodeTCPClient.numClients());
                     continue;
                 }
 
