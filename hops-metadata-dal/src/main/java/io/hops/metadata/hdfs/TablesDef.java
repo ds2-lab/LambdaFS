@@ -30,6 +30,7 @@ public class TablesDef {
     String INFO_PORT = "info_port";
     String IPC_PORT = "ipc_port";
     String INFO_SECURE_PORT = "info_secure_port";
+    String CREATION_TIME = "creation_time";
   }
 
   public interface StorageReportsTableDef {

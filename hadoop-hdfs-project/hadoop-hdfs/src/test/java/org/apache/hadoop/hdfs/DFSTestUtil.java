@@ -1161,7 +1161,7 @@ public class DFSTestUtil {
         UUID.randomUUID().toString(), port,
         DFSConfigKeys.DFS_DATANODE_HTTP_DEFAULT_PORT,
         DFSConfigKeys.DFS_DATANODE_HTTPS_DEFAULT_PORT,
-        DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT);
+        DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT, Time.getUtcTime());
     return new DatanodeDescriptor(storageMap, dnId, rackLocation);
   }
 

@@ -90,6 +90,7 @@ import org.apache.hadoop.hdfs.server.protocol.BlockIdCommand;
 import org.apache.hadoop.hdfs.server.protocol.VolumeFailureSummary;
 import org.apache.hadoop.net.DNSToSwitchMappingWithDependency;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.util.Time;
 
 /**
  * Manage datanodes, include decommission and other activities.
@@ -812,6 +813,7 @@ public class DatanodeManager {
    */
   public void registerDatanode(DatanodeRegistration nodeReg)
       throws DisallowedDatanodeException, IOException {
+
     InetAddress dnAddress = Server.getRemoteIp();
     if (dnAddress != null) {
       // Mostly called inside an RPC, update ip and peer hostname
@@ -832,8 +834,7 @@ public class DatanodeManager {
 
     nodeReg.setExportedKeys(blockManager.getBlockKeys());
 
-    // Checks if the node is not on the hosts list.  If it is not, then
-    // it will be disallowed from registering.
+    // Checks if the node is not on the hosts list.  If it is not, then it will be disallowed from registering.
     if (!hostFileManager.isIncluded(nodeReg)) {
       throw new DisallowedDatanodeException(nodeReg);
     }
@@ -843,12 +844,23 @@ public class DatanodeManager {
             nodeReg.getDatanodeUuid());
 
     DatanodeDescriptor nodeS = datanodeMap.get(nodeReg.getDatanodeUuid());
-    DatanodeDescriptor nodeN = host2DatanodeMap
-        .getDatanodeByXferAddr(nodeReg.getIpAddr(), nodeReg.getXferPort());
+    DatanodeDescriptor nodeN = host2DatanodeMap.getDatanodeByXferAddr(nodeReg.getIpAddr(), nodeReg.getXferPort());
 
     if (nodeN != null && nodeN != nodeS) {
+      ServerlessNameNode.LOG.debug("Found existing DN with same UUID as the node we're registering.");
+      ServerlessNameNode.LOG.debug("Found existing DN with same IP address and port as the node we're registering.");
+
+      ServerlessNameNode.LOG.debug("Checking if already-registered DN has different 'creation time' than the node " +
+              "we're registering now...");
+
+      if (nodeReg.getCreationTime() < nodeS.getCreationTime())
+        LOG.debug("The DataNode we're registering is OLDER than the existing DN that the NN already knows about.");
+      else
+        LOG.debug("The DataNode we're registering is NEWER than the existing DN that the NN already knows about.");
+
       ServerlessNameNode.LOG.info("BLOCK* registerDatanode: " + nodeN
               + " (Node ID = " + nodeN.getDatanodeUuid() + ")");
+
       // nodeN previously served a different data storage,
       // which is not served by anybody anymore.
       removeDatanode(nodeN, false);
@@ -1210,7 +1222,7 @@ public class DatanodeManager {
       dnId = new DatanodeID(hostStr, "", "", port,
           DFSConfigKeys.DFS_DATANODE_HTTP_DEFAULT_PORT,
           DFSConfigKeys.DFS_DATANODE_HTTPS_DEFAULT_PORT,
-          DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT);
+          DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT, Time.getUtcTime());
     } else {
       String ipAddr = "";
       try {
@@ -1221,7 +1233,7 @@ public class DatanodeManager {
       dnId = new DatanodeID(ipAddr, hostStr, "", port,
           DFSConfigKeys.DFS_DATANODE_HTTP_DEFAULT_PORT,
           DFSConfigKeys.DFS_DATANODE_HTTPS_DEFAULT_PORT,
-          DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT);
+          DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT, Time.getUtcTime());
     }
     return dnId;
   }
@@ -1277,7 +1289,7 @@ public class DatanodeManager {
         DatanodeDescriptor dn = new DatanodeDescriptor(this.storageMap, new DatanodeID(addr
                 .getAddress().getHostAddress(), addr.getHostName(), "",
                 addr.getPort() == 0 ? defaultXferPort : addr.getPort(),
-                defaultInfoPort, defaultInfoSecurePort, defaultIpcPort));
+                defaultInfoPort, defaultInfoSecurePort, defaultIpcPort, Time.getUtcTime()));
         setDatanodeDead(dn);
         nodes.add(dn);
       }
@@ -1505,7 +1517,7 @@ public class DatanodeManager {
   /**
    * Convert a CachedBlockList into a DatanodeCommand with a list of blocks.
    *
-   * @param list       The {@link CachedBlocksList}.  This function 
+   * @param list       The {@link CachedBlock}.  This function
    *                   clears the list.
    * @param datanode   The datanode.
    * @param action     The action to perform in the command.

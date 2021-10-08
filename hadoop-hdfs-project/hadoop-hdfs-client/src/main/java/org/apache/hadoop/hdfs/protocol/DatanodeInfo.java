@@ -533,8 +533,7 @@ public class DatanodeInfo extends DatanodeID implements Node {
 
   @Override
   public boolean equals(Object obj) {
-    // Sufficient to use super equality as datanodes are uniquely identified
-    // by DatanodeID
+    // Sufficient to use super equality as DataNodes are uniquely identified by DatanodeID
     return (this == obj) || super.equals(obj);
   }
   

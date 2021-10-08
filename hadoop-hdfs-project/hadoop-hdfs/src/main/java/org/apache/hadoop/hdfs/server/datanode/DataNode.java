@@ -1381,10 +1381,12 @@ public class DataNode extends ReconfigurableBase
     }
 
     // Create a new instance of DataNodeMeta. We pass this to the metadata abstraction layer to store
-    // the associated metadata in intermediate storage.
+    // the associated metadata in intermediate storage. We pass the current timestamp, Time.monotonicNow(),
+    // so that NameNodes can just select the most-recent DataNode corresponding to this IP address if they
+    // find multiple. This may happen if this DataNode crashes and is unable to clean up its metadata from NDB.
     dataNodeMeta = new DataNodeMeta(this.id.getDatanodeUuid(), this.id.getHostName(),
             ipAddr, this.id.getXferPort(), this.id.getInfoPort(),
-            this.id.getInfoSecurePort(), this.id.getIpcPort());
+            this.id.getInfoSecurePort(), this.id.getIpcPort(), Time.monotonicNow());
 
     LOG.info("Creating DataNodeMeta instance: " + dataNodeMeta.toString());
 
@@ -1538,8 +1540,7 @@ public class DataNode extends ReconfigurableBase
     if (storage.getDatanodeUuid() == null) {
       storage.setDatanodeUuid(generateUuid());
       storage.writeAll();
-      LOG.info("Generated and persisted new Datanode UUID " +
-          storage.getDatanodeUuid());
+      LOG.info("Generated and persisted new Datanode UUID " + storage.getDatanodeUuid());
     }
   }
   
@@ -1561,7 +1562,8 @@ public class DataNode extends ReconfigurableBase
 
     DatanodeID dnId =
         new DatanodeID(streamingAddr.getAddress().getHostAddress(), hostName,
-            storage.getDatanodeUuid(), getXferPort(), getInfoPort(), infoSecurePort, getIpcPort());
+            storage.getDatanodeUuid(), getXferPort(), getInfoPort(), infoSecurePort, getIpcPort(),
+                Time.getUtcTime());
 
     return new DatanodeRegistration(dnId, storageInfo, new ExportedBlockKeys(),
         VersionInfo.getVersion());
@@ -2790,6 +2792,7 @@ public class DataNode extends ReconfigurableBase
   @InterfaceAudience.Private
   public static DataNode createDataNode(String args[], Configuration conf,
       SecureResources resources) throws IOException {
+    LOG.debug("Creating the DataNode instance now...");
     DataNode dn = instantiateDataNode(args, conf, resources);
     if (dn != null) {
       dn.runDatanodeDaemon();

@@ -51,6 +51,10 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
         @Column(name = IPC_PORT)
         int getIpcPort();
         void setIpcPort(int ipcPort);
+
+        @Column(name = CREATION_TIME)
+        long getCreationTime();
+        void setCreationTime(long creationTime);
     }
 
     private final ClusterjConnector connector = ClusterjConnector.getInstance();
@@ -157,7 +161,8 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
     private DataNodeMeta convert(DataNodeDTO src) {
         return new DataNodeMeta(
                 src.getDatanodeUuid(), src.getHostname(), src.getIpAddress(),
-                src.getXferPort(), src.getInfoPort(), src.getInfoSecurePort(), src.getIpcPort()
+                src.getXferPort(), src.getInfoPort(), src.getInfoSecurePort(),
+                src.getIpcPort(), src.getCreationTime()
         );
     }
 
@@ -175,5 +180,6 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
         dest.setInfoPort(src.getInfoPort());
         dest.setInfoSecurePort(src.getInfoSecurePort());
         dest.setIpcPort(src.getIpcPort());
+        dest.setCreationTime(src.getCreationTime());
     }
 }

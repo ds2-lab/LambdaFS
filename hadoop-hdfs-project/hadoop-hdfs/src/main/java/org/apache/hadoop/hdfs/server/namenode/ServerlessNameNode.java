@@ -869,7 +869,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
                   datanodeUuid, dataNodeMeta.getXferPort(), dataNodeMeta.getInfoPort(),
-                  dataNodeMeta.getInfoSecurePort(), dataNodeMeta.getIpcPort());
+                  dataNodeMeta.getInfoSecurePort(), dataNodeMeta.getIpcPort(), dataNodeMeta.getCreationTime());
 
       StorageInfo storageInfo = new StorageInfo(
               DataNodeLayoutVersion.CURRENT_LAYOUT_VERSION,

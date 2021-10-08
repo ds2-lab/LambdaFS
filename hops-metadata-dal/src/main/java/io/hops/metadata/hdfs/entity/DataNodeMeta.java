@@ -39,8 +39,10 @@ public final class DataNodeMeta {
 
     private final int infoSecurePort;
 
-    public DataNodeMeta(String datanodeUuid, String hostname, String ipAddress,
-                        int xferPort, int infoPort, int infoSecurePort, int ipcPort) {
+    private final long creationTime;
+
+    public DataNodeMeta(String datanodeUuid, String hostname, String ipAddress, int xferPort,
+                        int infoPort, int infoSecurePort, int ipcPort, long creationTime) {
         this.datanodeUuid = datanodeUuid;
         this.hostname = hostname;
         this.ipAddress = ipAddress;
@@ -48,6 +50,7 @@ public final class DataNodeMeta {
         this.infoPort = infoPort;
         this.ipcPort = ipcPort;
         this.infoSecurePort = infoSecurePort;
+        this.creationTime = creationTime;
     }
 
     public String getDatanodeUuid() {
@@ -81,5 +84,9 @@ public final class DataNodeMeta {
         return "Datanode <UUID = " + datanodeUuid + ", hostname = " + hostname + ", ipAddress = " + ipAddress
                 + ", xferPort = " + xferPort + ", infoPort = " + infoPort + ", infoSecurePort = " + infoSecurePort +
                 ", ipcPort = " + ipcPort;
+    }
+
+    public long getCreationTime() {
+        return creationTime;
     }
 }

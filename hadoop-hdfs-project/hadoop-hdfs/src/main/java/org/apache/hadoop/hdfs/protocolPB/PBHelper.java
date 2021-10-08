@@ -209,6 +209,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import org.apache.hadoop.hdfs.protocol.BlockListAsLongs;
+import org.apache.hadoop.util.Time;
 
 /**
  * Utilities for converting protobuf classes to and from implementation classes
@@ -299,7 +300,7 @@ public class PBHelper {
   public static DatanodeID convert(DatanodeIDProto dn) {
     return new DatanodeID(dn.getIpAddr(), dn.getHostName(), dn.getDatanodeUuid(),
         dn.getXferPort(), dn.getInfoPort(), dn.hasInfoSecurePort() ? dn
-            .getInfoSecurePort() : 0, dn.getIpcPort());
+            .getInfoSecurePort() : 0, dn.getIpcPort(), Time.getUtcTime());
   }
 
   public static DatanodeIDProto convert(DatanodeID dn) {

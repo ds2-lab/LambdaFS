@@ -30,6 +30,7 @@ import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeRegistration;
 import org.apache.hadoop.hdfs.server.protocol.NamenodeProtocols;
 import org.apache.hadoop.test.GenericTestUtils;
+import org.apache.hadoop.util.Time;
 import org.apache.hadoop.util.VersionInfo;
 import org.junit.Test;
 
@@ -198,7 +199,7 @@ public class TestDatanodeRegistration {
 
       // register the same datanode again with a different storage ID
       dnId = new DatanodeID(DN_IP_ADDR, DN_HOSTNAME, "changed-fake-storage-id",
-          DN_XFER_PORT, DN_INFO_PORT, DN_INFO_SECURE_PORT, DN_IPC_PORT);
+          DN_XFER_PORT, DN_INFO_PORT, DN_INFO_SECURE_PORT, DN_IPC_PORT, Time.getUtcTime());
       dnReg = new DatanodeRegistration(dnId, mockStorageInfo, null,
           VersionInfo.getVersion());
       rpcServer.registerDatanode(dnReg);

@@ -23,11 +23,14 @@ public class DatanodeStorage {
 
     private final String datanodeUuid;
 
-    public DatanodeStorage(String storageId, String datanodeUuid, int state, int storageType) {
+    private final long creationTime;
+
+    public DatanodeStorage(String storageId, String datanodeUuid, int state, int storageType, long creationTime) {
         this.storageId = storageId;
         this.datanodeUuid = datanodeUuid;
         this.state = state;
         this.storageType = storageType;
+        this.creationTime = creationTime;
     }
 
     public String getStorageId() {
@@ -51,5 +54,9 @@ public class DatanodeStorage {
 
     public String getDatanodeUuid() {
         return datanodeUuid;
+    }
+
+    public long getCreationTime() {
+        return creationTime;
     }
 }

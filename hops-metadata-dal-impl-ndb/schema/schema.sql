@@ -30,6 +30,7 @@ CREATE TABLE `datanodes` (
     `info_port` int(11),
     `info_secure_port` int(11),
     `ipc_port` int(11),
+    `creation_time` bigint(20),
     PRIMARY KEY (`datanode_uuid`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 

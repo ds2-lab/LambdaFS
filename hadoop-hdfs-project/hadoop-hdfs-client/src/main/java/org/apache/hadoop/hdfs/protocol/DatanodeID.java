@@ -49,11 +49,12 @@ public class DatanodeID implements Comparable<DatanodeID>, Serializable {
   private int infoSecurePort; // info server port
   private int ipcPort;       // IPC server port
   private String xferAddr;
+  private long creationTime;  // time that the DN was created.
 
   /**
-   * UUID identifying a given datanode. For upgraded Datanodes this is the
+   * UUID identifying a given datanode. For upgraded DataNodes this is the
    * same as the StorageID that was previously used by this Datanode.
-   * For newly formatted Datanodes it is a UUID.
+   * For newly formatted DataNodes it is a UUID.
    */
   private final String datanodeUuid;
 
@@ -69,7 +70,8 @@ public class DatanodeID implements Comparable<DatanodeID>, Serializable {
         from.getXferPort(),
         from.getInfoPort(),
         from.getInfoSecurePort(),
-        from.getIpcPort());
+        from.getIpcPort(),
+        from.getCreationTime());
     this.peerHostName = from.getPeerHostName();
   }
   
@@ -86,13 +88,14 @@ public class DatanodeID implements Comparable<DatanodeID>, Serializable {
    * @param ipcPort ipc server port
    */
   public DatanodeID(String ipAddr, String hostName, String datanodeUuid,
-      int xferPort, int infoPort, int infoSecurePort, int ipcPort) {
+      int xferPort, int infoPort, int infoSecurePort, int ipcPort, long creationTime) {
     setIpAndXferPort(ipAddr, xferPort);
     this.hostName = hostName;
     this.datanodeUuid = checkDatanodeUuid(datanodeUuid);
     this.infoPort = infoPort;
     this.infoSecurePort = infoSecurePort;
     this.ipcPort = ipcPort;
+    this.creationTime = creationTime;
   }
   
   //HOP: Mahmoud: 
@@ -104,6 +107,7 @@ public class DatanodeID implements Comparable<DatanodeID>, Serializable {
     this.datanodeUuid = "";
     this.infoPort = -1;
     this.ipcPort = -1;
+    this.creationTime = -1;
   }
   
   public void setIpAddr(String ipAddr) {
@@ -290,5 +294,9 @@ public class DatanodeID implements Comparable<DatanodeID>, Serializable {
   @Override
   public int compareTo(DatanodeID that) {
     return getXferAddr().compareTo(that.getXferAddr());
+  }
+
+  public long getCreationTime() {
+    return creationTime;
   }
 }

@@ -204,9 +204,9 @@ public class DataStorage extends Storage {
 
   /**
    * VolumeBuilder holds the metadata (e.g., the storage directories) of the
-   * prepared volume returned from {@link prepareVolume()}. Calling {@link build()}
-   * to add the metadata to {@link DataStorage} so that this prepared volume can
-   * be active.
+   * prepared volume returned from {@link VolumeBuilder#prepareVolume(DataNode, File, List)}.
+   * Calling {@link VolumeBuilder#build()} ()} to add the metadata to {@link DataStorage} so that
+   * this prepared volume can be active.
    */
   @InterfaceAudience.Private
   @InterfaceStability.Unstable
