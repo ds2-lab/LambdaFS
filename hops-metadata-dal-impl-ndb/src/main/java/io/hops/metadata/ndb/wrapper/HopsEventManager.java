@@ -317,12 +317,15 @@ public class HopsEventManager implements EventManager {
             // As far as I can tell, this is NOT busy-waiting. This ultimately calls select(), or whatever
             // the equivalent is for the given operating system. And Linux, Windows, etc. suspend the
             // process if there are no file descriptors available, so this is not a busy wait.
-            boolean events = session.pollForEvents(-1);
+            //
+            // Also, I originally passed -1 here, but this did not appear to cause the event manager to block
+            // for very long. Like less than a second, tens of milliseconds. So I just have it wait for a minute
+            // before trying again.
+            boolean events = session.pollForEvents(60000);
 
-            if (!events) {
-                LOG.debug("Received 0 events.");
+            // Just continue if we didn't find any events.
+            if (!events)
                 continue;
-            }
 
             LOG.debug("Received at least one event!");
             int numEventsProcessed = processEvents();
