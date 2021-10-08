@@ -1848,15 +1848,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
     StartupProgressMetrics.register(startupProgress);
 
-    // Serverless NameNodes do not need to start the HTTP server.
-    // startHttpServer(conf);
     loadNamesystem(conf);
 
-    // Serverless NameNodes do not need to create or start an RPC server.
-    // rpcServer = createRpcServer(conf);
-
-    //tokenServiceName = NetUtils.getHostPortString(rpcServer.getRpcAddress());
-    //httpServer.setNameNodeAddress(getNameNodeAddress());
+    LOG.debug("Finished loading the namesystem.");
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);
@@ -1865,6 +1859,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     metrics.getJvmMetrics().setPauseMonitor(pauseMonitor);
 
     startCommonServices(conf);
+
+    LOG.debug("Finished starting common NameNode services.");
 
     if(isLeader()){ //if the newly started namenode is the leader then it means
       //that is cluster was restarted and we can reset the number of default
@@ -2073,6 +2069,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     try {
       initializeGenericKeys(conf);
       initialize(conf);
+      LOG.debug("NameNode initialization completed.");
       this.started.set(true);
       enterActiveState();
     } catch (IOException | HadoopIllegalArgumentException e) {
