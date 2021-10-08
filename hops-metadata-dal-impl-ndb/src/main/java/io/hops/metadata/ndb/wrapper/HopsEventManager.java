@@ -22,9 +22,6 @@ import java.util.HashMap;
  * from NDB on the table for which the NameNode caches data serves to inform the NameNode that its cache is now
  * out-of-date.
  *
- * Currently implements the Singleton pattern, as there's no reason for a NameNode to have more than one
- * instance of this class at any given time.
- *
  * TODO:
  *  For now, I am assuming that there is just ONE active event operation, and that event operation
  *  is using default column tables and record attributes, as defined below in the static variables.
@@ -32,7 +29,7 @@ import java.util.HashMap;
 public class HopsEventManager implements EventManager {
     static final Log LOG = LogFactory.getLog(HopsEventManager.class);
 
-    private static HopsEventManager instance;
+    // private static HopsEventManager instance;
 
     /**
      * Default event name that NameNodes use in order to watch for cache invalidations from NDB.
@@ -115,14 +112,14 @@ public class HopsEventManager implements EventManager {
      */
     private boolean defaultSetupPerformed = false;
 
-    private HopsEventManager(HopsSession session) {
+    public HopsEventManager(HopsSession session) {
         this.session = session;
 
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
     }
 
-    private HopsEventManager() throws StorageException {
+    public HopsEventManager() throws StorageException {
         this(ClusterjConnector.getInstance().obtainSession());
     }
 
@@ -132,12 +129,12 @@ public class HopsEventManager implements EventManager {
      * @param session Active session with NDB.
      * @return singleton instance of HopsEventManager.
      */
-    public HopsEventManager getInstance(HopsSession session) {
-        if (instance == null)
-            instance = new HopsEventManager(session);
-
-        return instance;
-    }
+//    public HopsEventManager getInstance(HopsSession session) {
+//        if (instance == null)
+//            instance = new HopsEventManager(session);
+//
+//        return instance;
+//    }
 
     /**
      * Retrieve the singleton instance of HopsEventManager.
@@ -145,12 +142,12 @@ public class HopsEventManager implements EventManager {
      * Creates the instance of it does not already exist.
      * @return singleton instance of HopsEventManager.
      */
-    public HopsEventManager getInstance() throws StorageException {
-        if (instance == null)
-            instance = new HopsEventManager();
-
-        return instance;
-    }
+//    public HopsEventManager getInstance() throws StorageException {
+//        if (instance == null)
+//            instance = new HopsEventManager();
+//
+//        return instance;
+//    }
 
     /**
      * Create and register an Event Operation for the specified event.
