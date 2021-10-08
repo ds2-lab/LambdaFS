@@ -244,29 +244,27 @@ public class OpenWhiskHandler {
 
         // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
         // from intermediate storage.
-        synchronized (serverlessNameNode) {
-            LOG.debug("Checking for duplicate requests now...");
+        LOG.debug("Checking for duplicate requests now...");
 
-            // Check to see if this is a duplicate request, in which case we should not return anything of substance.
-            if (serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
-                LOG.warn("This request (" + requestId + ") has already been processed. Returning now...");
-                return result;
-            }
-
-            LOG.debug("Request is NOT a duplicate! Processing updates from intermediate storage now...");
-
-            // Now we need to process various updates that are stored in intermediate storage by DataNodes.
-            // These include storage reports, block reports, and new DataNode registrations.
-            try {
-                serverlessNameNode.getAndProcessUpdatesFromIntermediateStorage();
-            }
-            catch (IOException | ClassNotFoundException ex) {
-                LOG.error("Encountered exception while retrieving and processing updates from intermediate storage: ", ex);
-                result.addException(ex);
-            }
-
-            LOG.debug("Successfully processed updates from intermediate storage!");
+        // Check to see if this is a duplicate request, in which case we should not return anything of substance.
+        if (serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
+            LOG.warn("This request (" + requestId + ") has already been processed. Returning now...");
+            return result;
         }
+
+        LOG.debug("Request is NOT a duplicate! Processing updates from intermediate storage now...");
+
+        // Now we need to process various updates that are stored in intermediate storage by DataNodes.
+        // These include storage reports, block reports, and new DataNode registrations.
+        try {
+            serverlessNameNode.getAndProcessUpdatesFromIntermediateStorage();
+        }
+        catch (IOException | ClassNotFoundException ex) {
+            LOG.error("Encountered exception while retrieving and processing updates from intermediate storage: ", ex);
+            result.addException(ex);
+        }
+
+        LOG.debug("Successfully processed updates from intermediate storage!");
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
@@ -324,27 +322,12 @@ public class OpenWhiskHandler {
                     clientName, clientIPAddress, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
 
             try {
-                synchronized (serverlessNameNode) {
-                    serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
-                }
+                serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
             }
             catch (IOException ex) {
                 LOG.error("Encountered IOException while trying to establish TCP connection with client: ", ex);
                 result.addException(ex);
             }
-        }
-
-        // Now we need to mark this request as processed, so we don't reprocess it
-        // if we receive the same request via TCP.
-        try {
-            synchronized (serverlessNameNode) {
-                serverlessNameNode.designateRequestAsProcessed(requestId);
-                LOG.debug("Successfully designated request " + requestId + " as processed!");
-            }
-        }
-        catch (IllegalStateException ex) {
-            LOG.error("Encountered IllegalStateException while marking request " + requestId + " as processed: ", ex);
-            result.addException(ex);
         }
 
         result.logResultDebugInformation();

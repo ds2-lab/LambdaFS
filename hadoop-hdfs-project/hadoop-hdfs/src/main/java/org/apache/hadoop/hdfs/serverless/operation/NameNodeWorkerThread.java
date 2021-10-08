@@ -82,9 +82,8 @@ public class NameNodeWorkerThread extends Thread {
                 currentlyExecutingTasks.put(task.getTaskId(), task);
 
                 Serializable result = null;
-                synchronized (serverlessNameNodeInstance) {
-                    result = serverlessNameNodeInstance.performOperation(task.getOperationName(), task.getOperationArguments());
-                }
+                result = serverlessNameNodeInstance.performOperation(
+                        task.getOperationName(), task.getOperationArguments());
 
                 currentlyExecutingTasks.remove(task.getTaskId());
 
@@ -126,12 +125,22 @@ public class NameNodeWorkerThread extends Thread {
      * Check if this task is a duplicate based on its task key. The task key comes from the request ID, which
      * is generated client-side. This means that, for a given HTTP request, its corresponding TCP request will have
      * the same request ID (and vice versa).
+     *
      * @param candidate the task for which we are checking if it is a duplicate
      * @return true if the task is a duplicate, otherwise false.
      */
     public synchronized boolean isTaskDuplicate(FileSystemTask<Serializable> candidate) {
-        return currentlyExecutingTasks.containsKey(candidate.getTaskId())
-                || completedTasks.containsKey(candidate.getTaskId());
+        return isTaskDuplicate(candidate.getTaskId());
+    }
+
+    /**
+     * Check if the task identified by the given ID is a duplicate.
+     *
+     * @param taskId the task ID of the task for which we are checking if it is a duplicate
+     * @return true if the task is a duplicate, otherwise false.
+     */
+    public synchronized boolean isTaskDuplicate(String taskId) {
+        return currentlyExecutingTasks.containsKey(taskId) || completedTasks.containsKey(taskId);
     }
 
     /**

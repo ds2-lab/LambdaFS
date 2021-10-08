@@ -107,6 +107,7 @@ import java.net.URI;
 import java.security.PrivilegedExceptionAction;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -198,6 +199,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Worker thread that actually performs the various file system operations.
    */
   private NameNodeWorkerThread workerThread;
+
+  /**
+   * Thread in which the EventManager runs.
+   */
+  private Thread eventManagerThread;
 
   /**
    * Worker queue for the worker thread. This is accessed both by this class and by NameNodeTCPClient objects.
@@ -337,15 +343,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private final HashMap<String, Integer> lastIntermediateBlockReportIds = new HashMap<>();
 
   /**
-   * HashSet containing all the IDs of requests that have already been processed.
-   *
-   * This is used so we do not process a duplicate request in the form of a TCP/HTTP request
-   * (i.e., we do not want to process both of corresponding TCP/HTTP requests, rather we want
-   * to process just one of the two).
-   */
-  private final HashSet<String> processedRequestIds = new HashSet<String>();
-
-  /**
    * The name of the serverless function in which this NameNode instance is running.
    */
   private final String functionName;
@@ -394,11 +391,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    * Determines if the given request (identified by its request ID) has already been received and processed by the NN.
+   *
    * @param requestId The ID of the request.
    * @return true if the request has been received and processed already, otherwise false.
    */
-  public boolean checkIfRequestProcessedAlready(String requestId) {
-    return processedRequestIds.contains(requestId);
+  public synchronized boolean checkIfRequestProcessedAlready(String requestId) {
+    return workerThread.isTaskDuplicate(requestId);
   }
 
   public int getNumUniqueServerlessNameNodes() {
@@ -407,23 +405,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   public NameNodeTCPClient getNameNodeTcpClient() {
     return nameNodeTCPClient;
-  }
-
-  /**
-   * Record the given request (identified by its ID) as 'processed'.
-   * @param requestId The unique ID of the request.
-   * @throws IllegalStateException If the request has already been processed.
-   */
-  public void designateRequestAsProcessed(String requestId)
-          throws IllegalStateException {
-    LOG.debug("Attempting to designate request " + requestId + " as processed now...");
-
-    boolean newlyAdded = processedRequestIds.add(requestId);
-
-    // If the requestId was not newly-added, meaning `processedRequestIds` already contained
-    // that request ID, then we throw an exception.
-    if (!newlyAdded)
-      throw new IllegalStateException("Given request (ID = " + requestId + ") has already been processed.");
   }
 
   /**
@@ -585,7 +566,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param fsArgs The arguments to be passed to the desired FS operation.
    * @param op The name of the desired FS operation to be performed.
    */
-  public Serializable performOperation(String op, JsonObject fsArgs)
+  public synchronized Serializable performOperation(String op, JsonObject fsArgs)
           throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException {
     LOG.info("Specified operation: " + op);
 
@@ -594,9 +575,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return null;
     }
 
-    Serializable returnValue = this.operations.get(op).apply(fsArgs);
-
-    return returnValue;
+    return this.operations.get(op).apply(fsArgs);
   }
 
   /**
@@ -611,7 +590,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       System.exit(0);
     }
 
-    LOG.info("Creating and initializing Serverless NameNode now...");
+    LOG.info("Creating and initializing new instance of Serverless NameNode now...");
 
     try {
       StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
@@ -1789,6 +1768,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           conf.set(HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS, intervals);
       }
 
+    LOG.debug("Initializing NameNode now...");
+
     UserGroupInformation.setConfiguration(conf);
     loginAsNameNodeUser(conf);
 
@@ -1800,12 +1781,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     workerThread = new NameNodeWorkerThread(nameNodeWorkQueue, this);
     workerThread.start();
 
+    LOG.debug("Started the NameNode worker thread.");
+
     // We need to do this AFTER the above call to `HdfsStorageFactory.setConfiguration(conf)`, as the ClusterJ/NDB
     // library is loaded during that call. If we try to create the event manager before that, we will get class
     // not found errors.
     ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
     ndbEventManager.defaultSetup(null, true);
-    new Thread(ndbEventManager).start();
+
+    eventManagerThread = new Thread(ndbEventManager);
+    eventManagerThread.start();
+
+    LOG.debug("Started the NDB EventManager thread.");
 
     numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
     workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,
