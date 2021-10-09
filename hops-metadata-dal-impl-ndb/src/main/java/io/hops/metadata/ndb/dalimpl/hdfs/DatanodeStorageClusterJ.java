@@ -183,6 +183,7 @@ public class DatanodeStorageClusterJ
      * Convert the given DatanodeStorageDTO instance to a DatanodeStorage instance.
      */
     private static DatanodeStorage convert(DatanodeStorageDTO src) {
-        return new DatanodeStorage(src.getStorageId(), src.getDatanodeUuid(), src.getState(), src.getStorageType());
+        return new DatanodeStorage(
+                src.getStorageId(), src.getDatanodeUuid(), src.getState(), src.getStorageType());
     }
 }
