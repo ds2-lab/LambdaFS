@@ -853,10 +853,15 @@ public class DatanodeManager {
       ServerlessNameNode.LOG.debug("Checking if already-registered DN has different 'creation time' than the node " +
               "we're registering now...");
 
-      if (nodeReg.getCreationTime() < nodeS.getCreationTime())
+      if (nodeReg.getCreationTime() < nodeS.getCreationTime()) {
         LOG.debug("The DataNode we're registering is OLDER than the existing DN that the NN already knows about.");
-      else
+      }
+      else {
         LOG.debug("The DataNode we're registering is NEWER than the existing DN that the NN already knows about.");
+      }
+      LOG.debug("NodeReg Creation Time: " + nodeReg.getCreationTime());
+      LOG.debug("nodeN Creation Time: " + nodeN.getCreationTime());
+      LOG.debug("nodeN Creation Time: " + nodeN.getCreationTime());
 
       ServerlessNameNode.LOG.info("BLOCK* registerDatanode: " + nodeN
               + " (Node ID = " + nodeN.getDatanodeUuid() + ")");

@@ -1112,7 +1112,7 @@ public class DFSTestUtil {
     return new DatanodeInfo(new DatanodeID(ipAddr, host, UUID.randomUUID().toString(), port,
         DFSConfigKeys.DFS_DATANODE_HTTP_DEFAULT_PORT,
         DFSConfigKeys.DFS_DATANODE_HTTPS_DEFAULT_PORT,
-        DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT));
+        DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT, Time.getUtcTime()));
   }
 
   public static DatanodeInfo getLocalDatanodeInfo(String ipAddr,
@@ -1122,7 +1122,8 @@ public class DFSTestUtil {
         DFSConfigKeys.DFS_DATANODE_HTTP_DEFAULT_PORT,
         DFSConfigKeys.DFS_DATANODE_HTTPS_DEFAULT_PORT,
         DFSConfigKeys.DFS_DATANODE_IPC_DEFAULT_PORT,
-        1l, 2l, 3l, 4l, 0l, 0l, 0l, 5, 6, "local", adminState);
+        1l, 2l, 3l, 4l, 0l, 0l, 0l,
+            5, 6, "local", adminState);
   }
 
   public static DatanodeDescriptor[] toDatanodeDescriptor(

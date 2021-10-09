@@ -146,7 +146,7 @@ public class DatanodeInfo extends DatanodeID implements Node {
       final int xceiverCount, final String networkLocation,
       final AdminStates adminState) {
     super(ipAddr, hostName, datanodeUuid, xferPort, infoPort,
-            infoSecurePort, ipcPort);
+            infoSecurePort, ipcPort, -1L);
     this.capacity = capacity;
     this.dfsUsed = dfsUsed;
     this.remaining = remaining;
