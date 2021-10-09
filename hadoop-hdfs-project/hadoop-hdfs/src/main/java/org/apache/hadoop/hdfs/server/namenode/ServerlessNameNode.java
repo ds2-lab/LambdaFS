@@ -2778,6 +2778,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   static void createLeaseLocks(Configuration conf) throws IOException {
     int count = conf.getInt(DFSConfigKeys.DFS_LEASE_CREATION_LOCKS_COUNT_KEY,
             DFS_LEASE_CREATION_LOCKS_COUNT_DEFAULT);
+    LOG.debug("Creating lease locks. Count = " + count + ".");
     new LightWeightRequestHandler(HDFSOperationType.CREATE_LEASE_LOCKS) {
       @Override
       public Object performTask() throws IOException {
