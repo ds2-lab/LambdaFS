@@ -377,7 +377,7 @@ public class DecommissionManager {
      * The last datanode in decomNodeBlocks that we've processed
      */
     private DatanodeDescriptor iterkey = new DatanodeDescriptor(null, new 
-        DatanodeID("", "", "", 0, 0, 0, 0));
+        DatanodeID("", "", "", 0, 0, 0, 0, -1));
 
     Monitor(int numBlocksPerCheck, int numNodesPerCheck, int 
         maxConcurrentTrackedNodes) {
