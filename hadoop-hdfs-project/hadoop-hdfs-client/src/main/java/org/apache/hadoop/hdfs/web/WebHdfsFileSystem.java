@@ -855,7 +855,7 @@ public class WebHdfsFileSystem extends FileSystem
 
   /**
    * Create a symlink pointing to the destination path.
-   * @see org.apache.hadoop.fs.Hdfs#createSymlink(Path, Path, boolean)
+   * @see org.apache.hadoop.fs.FileSystem#createSymlink(Path, Path, boolean)
    */
   public void createSymlink(Path destination, Path f, boolean createParent
       ) throws IOException {
