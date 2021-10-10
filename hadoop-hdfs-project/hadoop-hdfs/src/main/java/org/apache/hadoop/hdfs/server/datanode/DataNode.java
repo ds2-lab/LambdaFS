@@ -1998,6 +1998,8 @@ public class DataNode extends ReconfigurableBase
    * Otherwise, deadlock might occur.
    */
   public void shutdown() {
+    LOG.debug("Shutting down the DataNode.");
+
     if (plugins != null) {
       for (ServicePlugin p : plugins) {
         try {
@@ -2166,6 +2168,8 @@ public class DataNode extends ReconfigurableBase
     } catch (Exception ex) {
       LOG.warn("Error while stopping FsSecurityActions", ex);
     }
+
+    LOG.debug("Removing DN metadata from intermediate storage now...");
 
     try {
       this.removeDataNodeMetadataFromIntermediateStorage();
