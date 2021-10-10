@@ -37,7 +37,6 @@ import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
 import org.apache.hadoop.hdfs.server.protocol.*;
-import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.io.IOUtils;
@@ -94,6 +93,7 @@ class BPServiceActor implements Runnable {
     this.dnConf = dn.getDnConf();
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(dn.getDnConf().serverlessPlatformName);
     this.serverlessInvoker.setIsClientInvoker(false);
+    this.serverlessInvoker.setConfiguration(dn.getDnConf().getConf());
     scheduler = new Scheduler(dnConf.heartBeatInterval);
   }
 

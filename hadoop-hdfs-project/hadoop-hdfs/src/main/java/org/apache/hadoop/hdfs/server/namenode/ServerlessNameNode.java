@@ -1420,6 +1420,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     ServerlessInvokerBase<JsonObject> serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
             conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
     serverlessInvoker.setClientName("CommandLine");
+    serverlessInvoker.setConfiguration(conf);
 
     String serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 

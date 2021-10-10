@@ -43,15 +43,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * will not be used directly.
      */
     public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
-        this(new Configuration());
-    }
-
-    /**
-     * Allows the specification of a {@link Configuration} object; however, because invokers are generally created
-     * via the {@link ServerlessInvokerFactory} class, this constructor will not be used directly.
-     */
-    public OpenWhiskInvoker(Configuration conf) throws NoSuchAlgorithmException, KeyManagementException {
-        super(conf);
+        super();
     }
 
     /**

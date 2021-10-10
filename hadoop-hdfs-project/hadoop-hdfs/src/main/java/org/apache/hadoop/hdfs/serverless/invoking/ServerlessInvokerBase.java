@@ -43,7 +43,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Maintains a mapping of files and directories to the serverless functions responsible for caching the
      * metadata of the file/directory in question.
      */
-    protected final FunctionMetadataMap cache;
+    protected FunctionMetadataMap cache;
 
     /**
      * The number of uniquely-deployed serverless functions available for use.
@@ -130,10 +130,15 @@ public abstract class ServerlessInvokerBase<T> {
      * Default constructor.
      */
     public ServerlessInvokerBase() throws NoSuchAlgorithmException, KeyManagementException {
-        this(new Configuration());
+        instantiateTrustManager();
+        httpClient = getHttpClient();
     }
 
-    public ServerlessInvokerBase(Configuration conf) throws NoSuchAlgorithmException, KeyManagementException {
+    /**
+     * Set parameters of the invoker specified in the HopsFS configuration.
+     */
+    public void setConfiguration(Configuration conf) {
+        cache = new FunctionMetadataMap(conf);
         numUniqueFunctions = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
         debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);
@@ -141,9 +146,6 @@ public abstract class ServerlessInvokerBase<T> {
         LOG.debug("NDB debug enabled: " + debugEnabledNdb);
         if (debugEnabledNdb)
             LOG.debug("NDB debug string: " + debugStringNdb);
-        instantiateTrustManager();
-        httpClient = getHttpClient();
-        cache = new FunctionMetadataMap(conf);
     }
 
     public FunctionMetadataMap getFunctionMetadataMap() {
