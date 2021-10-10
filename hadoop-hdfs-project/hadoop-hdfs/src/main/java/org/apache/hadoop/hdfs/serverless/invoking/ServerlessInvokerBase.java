@@ -35,6 +35,12 @@ public abstract class ServerlessInvokerBase<T> {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
 
     /**
+     * Flag indicated whether the invoker has been configured.
+     * The invoker must be configured via `setConfiguration` before it can be used.
+     */
+    protected boolean configured = false;
+
+    /**
      * HTTPClient used to invoke serverless functions.
      */
     protected final CloseableHttpClient httpClient;
@@ -147,6 +153,8 @@ public abstract class ServerlessInvokerBase<T> {
         LOG.debug("NDB debug enabled: " + debugEnabledNdb);
         if (debugEnabledNdb)
             LOG.debug("NDB debug string: " + debugStringNdb);
+
+        configured = true;
     }
 
     public FunctionMetadataMap getFunctionMetadataMap() {
@@ -158,12 +166,12 @@ public abstract class ServerlessInvokerBase<T> {
             String functionUriBase,
             HashMap<String, Object> nameNodeArguments,
             HashMap<String, Object> fileSystemOperationArguments)
-            throws IOException;
+            throws IOException, IllegalStateException;
 
     public abstract T invokeNameNodeViaHttpPost(String operationName, String functionUri,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments)
-            throws IOException;
+            throws IOException, IllegalStateException;
 
     /**
      * Issue an HTTP request to invoke the NameNode. This version accepts a requestId to use rather than
@@ -173,7 +181,7 @@ public abstract class ServerlessInvokerBase<T> {
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId)
-            throws IOException;
+            throws IOException, IllegalStateException;
 
 
     public abstract CloseableHttpClient getHttpClient()
@@ -204,6 +212,14 @@ public abstract class ServerlessInvokerBase<T> {
      */
     public void setIsClientInvoker(boolean isClientInvoker) {
         this.isClientInvoker = isClientInvoker;
+    }
+
+    /**
+     * Returns True if this invoker has already been configured via the `setConfiguration()` API.
+     * Otherwise, returns false.
+     */
+    public boolean hasBeenConfigured() {
+        return configured;
     }
 
     /**

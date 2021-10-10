@@ -3,7 +3,6 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 import com.google.gson.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
@@ -13,7 +12,6 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
 import java.util.concurrent.ThreadLocalRandom;
-import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -71,7 +69,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         String operationName,
         String functionUriBase,
         HashMap<String, Object> nameNodeArguments,
-        HashMap<String, Object> fileSystemOperationArguments) throws IOException
+        HashMap<String, Object> fileSystemOperationArguments) throws IOException, IllegalStateException
     {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
@@ -122,7 +120,10 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     private JsonObject invokeNameNodeViaHttpInternal(String operationName, String functionUriBase,
                                                      JsonObject nameNodeArguments,
                                                      JsonObject fileSystemOperationArguments,
-                                                     String requestId) throws IOException {
+                                                     String requestId) throws IOException, IllegalStateException {
+        if (!hasBeenConfigured())
+            throw new IllegalStateException("Invoker has not yet been configured.");
+
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);
 
@@ -229,7 +230,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     @Override
     public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
                                                 HashMap<String, Object> nameNodeArguments,
-                                                ArgumentContainer fileSystemOperationArguments) throws IOException {
+                                                ArgumentContainer fileSystemOperationArguments)
+            throws IOException, IllegalStateException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
         // would like to perform (e.g., create, delete, append, etc.).
@@ -270,7 +272,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
-                                                String requestId) throws IOException {
+                                                String requestId)
+            throws IOException, IllegalStateException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
         // would like to perform (e.g., create, delete, append, etc.).
