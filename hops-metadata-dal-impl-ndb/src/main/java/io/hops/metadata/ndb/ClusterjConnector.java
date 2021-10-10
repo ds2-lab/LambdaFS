@@ -91,7 +91,7 @@ public class ClusterjConnector implements StorageConnector<DBSession> {
   /*
    * Return a dbSession from a random dbSession factory in our pool.
    *
-   * NOTE: Do not close the dbSession returned by this call or you will die.
+   * NOTE: Do not close the dbSession returned by this call, or you will die.
    */
   @Override
   public HopsSession obtainSession() throws StorageException {

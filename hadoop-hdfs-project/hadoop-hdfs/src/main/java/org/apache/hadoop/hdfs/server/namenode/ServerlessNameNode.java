@@ -1791,9 +1791,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     ndbEventManager.defaultSetup(null, true);
 
     eventManagerThread = new Thread(ndbEventManager);
-    eventManagerThread.start();
+    // eventManagerThread.start();
 
-    LOG.debug("Started the NDB EventManager thread.");
+    // LOG.debug("Started the NDB EventManager thread.");
 
     numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
     workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,

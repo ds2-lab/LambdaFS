@@ -126,13 +126,13 @@ public class DBSessionProvider implements Runnable {
     }
   }
 
-  public DBSession getSession() throws StorageException {
+  public synchronized DBSession getSession() throws StorageException {
     try {
       DBSession session = sessionPool.remove();
       return session;
     } catch (NoSuchElementException e) {
       LOG.warn(
-          "DB Sessino provider cant keep up with the demand for new sessions");
+          "DBSessionProvider cannot keep up with the demand for new sessions.");
       return initSession();
     }
   }

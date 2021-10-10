@@ -3010,8 +3010,6 @@ public class DataNode extends ReconfigurableBase
     LOG.info("Debug logging enabled: " + LOG.isDebugEnabled());
     LOG.info("=================================================================");
 
-
-
     if (LOG.isDebugEnabled())
       LOG.info("Debug-logging IS enabled.");
     else
