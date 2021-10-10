@@ -138,6 +138,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Set parameters of the invoker specified in the HopsFS configuration.
      */
     public void setConfiguration(Configuration conf) {
+        LOG.debug("Configuring ServerlessInvokerBase now...");
         cache = new FunctionMetadataMap(conf);
         numUniqueFunctions = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
