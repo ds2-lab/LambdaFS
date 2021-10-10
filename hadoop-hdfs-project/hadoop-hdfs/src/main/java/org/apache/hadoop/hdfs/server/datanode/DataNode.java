@@ -205,6 +205,8 @@ import org.apache.hadoop.tracing.TracerConfigurationManager;
 import static org.apache.hadoop.util.ExitUtil.terminate;
 import org.apache.hadoop.util.JvmPauseMonitor;
 import org.apache.htrace.core.Tracer;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.eclipse.jetty.util.ajax.JSON;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -3003,7 +3005,12 @@ public class DataNode extends ReconfigurableBase
   public static void main(String args[]) {
     LOG.info("=================================================================");
     LOG.info("DataNode v" + versionNumber + " has started executing.");
+    LOG.info("Debug logging enabled: " + LOG.isDebugEnabled());
+    Logger.getRootLogger().setLevel(Level.DEBUG);
+    LOG.info("Debug logging enabled: " + LOG.isDebugEnabled());
     LOG.info("=================================================================");
+
+
 
     if (LOG.isDebugEnabled())
       LOG.info("Debug-logging IS enabled.");
