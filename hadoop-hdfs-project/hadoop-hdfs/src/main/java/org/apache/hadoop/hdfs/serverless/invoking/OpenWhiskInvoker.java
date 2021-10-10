@@ -40,7 +40,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * Because invokers are generally created via the {@link ServerlessInvokerFactory} class, this constructor
      * will not be used directly.
      */
-    public OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
+    protected OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
         super();
     }
 

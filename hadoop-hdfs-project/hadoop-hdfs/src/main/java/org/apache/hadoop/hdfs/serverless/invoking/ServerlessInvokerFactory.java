@@ -2,7 +2,8 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
 import io.hops.exception.StorageInitializtionException;
-import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvoker;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.Locale;
 
@@ -13,6 +14,7 @@ import java.util.Locale;
  * for the platform being used.
  */
 public class ServerlessInvokerFactory {
+    private static final Log LOG = LogFactory.getLog(ServerlessInvokerFactory.class);
 
     /**
      * Return the class name of the serverless invoker for the specified serverless platform.
@@ -42,6 +44,8 @@ public class ServerlessInvokerFactory {
     public static ServerlessInvokerBase<JsonObject> getServerlessInvoker(String serverlessPlatformName)
             throws StorageInitializtionException {
         String invokerClassName = getInvokerClassName(serverlessPlatformName);
+
+        LOG.debug("Attempting to instantiate invoker of type: " + invokerClassName);
 
         try {
             return (ServerlessInvokerBase<JsonObject>) Class.forName(invokerClassName).newInstance();

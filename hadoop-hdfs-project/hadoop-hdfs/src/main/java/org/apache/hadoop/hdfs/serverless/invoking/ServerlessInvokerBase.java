@@ -135,7 +135,7 @@ public abstract class ServerlessInvokerBase<T> {
     /**
      * Default constructor.
      */
-    public ServerlessInvokerBase() throws NoSuchAlgorithmException, KeyManagementException {
+    protected ServerlessInvokerBase() throws NoSuchAlgorithmException, KeyManagementException {
         instantiateTrustManager();
         httpClient = getHttpClient();
     }
