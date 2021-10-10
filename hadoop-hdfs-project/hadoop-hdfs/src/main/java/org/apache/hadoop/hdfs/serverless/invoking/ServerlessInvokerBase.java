@@ -138,6 +138,9 @@ public abstract class ServerlessInvokerBase<T> {
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
         debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);
         debugStringNdb = conf.get(DFSConfigKeys.NDB_DEBUG_STRING, DFSConfigKeys.NDB_DEBUG_STRING_DEFAULT);
+        LOG.debug("NDB debug enabled: " + debugEnabledNdb);
+        if (debugEnabledNdb)
+            LOG.debug("NDB debug string: " + debugStringNdb);
         instantiateTrustManager();
         httpClient = getHttpClient();
         cache = new FunctionMetadataMap(conf);

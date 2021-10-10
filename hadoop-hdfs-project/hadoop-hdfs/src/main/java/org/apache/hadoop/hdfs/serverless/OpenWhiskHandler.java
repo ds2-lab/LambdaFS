@@ -141,9 +141,11 @@ public class OpenWhiskHandler {
             debugString = userArguments.getAsJsonPrimitive("debugStringNdb").getAsString();
 
         if (debugEnabled && debugString != null) {
-            LOG.debug("NDB Debugging has been enabled. Using dbug string \"" +
+            LOG.debug("NDB debugging has been enabled. Using dbug string \"" +
                     debugString + "\"");
             ClusterJHelper.newDbug().push(debugString);
+        } else {
+            LOG.debug("NDB debugging is NOT enabled.");
         }
 
         // The name of the client. This originates from the DFSClient class.
