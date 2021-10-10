@@ -843,17 +843,27 @@ public class DatanodeManager {
         "BLOCK* registerDatanode: from " + nodeReg + " storage " +
             nodeReg.getDatanodeUuid());
 
+    LOG.debug("Checking DN map for existing DN with same UUID as node being registered now...");
     DatanodeDescriptor nodeS = datanodeMap.get(nodeReg.getDatanodeUuid());
+
+    if (nodeS == null)
+      LOG.debug("Did NOT find existing DN with same UUID.");
+    else
+      LOG.debug("Found existing DN with same UUID!");
+
+    LOG.debug("Checking host2DN map for existing DN with same IP address/port as node being registered now...");
     DatanodeDescriptor nodeN = host2DatanodeMap.getDatanodeByXferAddr(nodeReg.getIpAddr(), nodeReg.getXferPort());
 
-    if (nodeN != null && nodeN != nodeS) {
-      ServerlessNameNode.LOG.debug("Found existing DN with same UUID as the node we're registering.");
-      ServerlessNameNode.LOG.debug("Found existing DN with same IP address and port as the node we're registering.");
+    if (nodeN == null)
+      LOG.debug("Did NOT find existing DN with same IP address/port.");
+    else
+      LOG.debug("Found existing DN with same IP address/port.");
 
+    if (nodeN != null && nodeN != nodeS) {
       ServerlessNameNode.LOG.debug("Checking if already-registered DN has different 'creation time' than the node " +
               "we're registering now...");
 
-      if (nodeReg.getCreationTime() < nodeS.getCreationTime()) {
+      if (nodeReg.getCreationTime() < nodeN.getCreationTime()) {
         LOG.debug("The DataNode we're registering is OLDER than the existing DN that the NN already knows about.");
       }
       else {
