@@ -207,8 +207,8 @@ public class StorageReportClusterJ
             copyState(dtoObject, storageReport);
             session.savePersistent(dtoObject);
 
-            LOG.debug("Wrote/persisted StorageReport groupId = " + dtoObject.getGroupId() + ", reportId = "
-                    + dtoObject.getReportId() + " to MySQL NDB storage.");
+            /*LOG.debug("Wrote/persisted StorageReport groupId = " + dtoObject.getGroupId() + ", reportId = "
+                    + dtoObject.getReportId() + " to MySQL NDB storage.");*/
         } finally {
             session.release(dtoObject);
         }
