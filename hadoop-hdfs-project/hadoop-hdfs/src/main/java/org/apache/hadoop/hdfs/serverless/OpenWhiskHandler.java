@@ -258,6 +258,8 @@ public class OpenWhiskHandler {
 
         // Now we need to process various updates that are stored in intermediate storage by DataNodes.
         // These include storage reports, block reports, and new DataNode registrations.
+        // Note that we perform this step even if this is a warm function with an existing NameNode,
+        // as new DataNodes could have been added to the file system, and storage reports are published routinely.
         try {
             serverlessNameNode.getAndProcessUpdatesFromIntermediateStorage();
         }

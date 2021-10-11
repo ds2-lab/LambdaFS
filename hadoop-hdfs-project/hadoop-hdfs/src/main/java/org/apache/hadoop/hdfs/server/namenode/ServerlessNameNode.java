@@ -413,7 +413,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Retrieve and process the various updates that are stored in intermediate storage.
    *
-   * These updates include newly-registered DataNodes, storage reports, and intermediate block reports.
+   * These updates include:
+   *  - Registering new DataNodes;
+   *  - Processing storage reports from DataNodes;
+   *  - Processing intermediate block reports from DataNodes.
    */
   public void getAndProcessUpdatesFromIntermediateStorage() throws IOException, ClassNotFoundException {
     List<DatanodeRegistration> datanodeRegistrations = getDataNodesFromIntermediateStorage();
@@ -865,9 +868,40 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // the storage reports from intermediate storage after we've registered the data node(s).
     List<DatanodeRegistration> datanodeRegistrations = new ArrayList<>();
 
+    // Iterate over all the DataNodes retrieved from intermediate storage. We need to do some pre-processing here
+    // to avoid errors during the registration process. If we have two DataNodeMeta objects with the same IP address
+    // and port, then they are referring to the same DataNode. DataNodes are uniquely identified by their IP, port,
+    // and UUID. But we only care if the IP and port are the same. In this case, we only keep the most-recent DN based
+    // on the 'creation_time' field.
+    HashMap<String, DataNodeMeta> dnMap = new HashMap<>();
     for (DataNodeMeta dataNodeMeta : dataNodes) {
+      String key = dataNodeMeta.getIpAddress() + ":" + dataNodeMeta.getXferPort();
+
+      // If the map already contains the key, then we check if the DataNodeMeta in the map is older or newer than
+      // the one from the for-each loop. If the for-each loop instance is newer, then we replace the one in the map
+      // with the one from the for-each loop. If the for-each loop instance is older, then we skip the for-each loop
+      // instance, as we want the newest DN associated with a given ip address + port.
+      if (dnMap.containsKey(key))
+      {
+        int creationTimeComparisonResult = dataNodeMeta.compareCreationTimes(dnMap.get(key));
+
+        // If the DN from the for-loop has a creation time stamp larger than the DN already in the map, then we replace
+        // the DN in the map with the instance from the for-loop. If the creation times are the same, or if the DN from
+        // the for-loop has a smaller creation time stamp, then we do nothing and move onto the next DN in the for-loop.
+        if (creationTimeComparisonResult > 0)
+          dnMap.put(key, dataNodeMeta);
+      }
+      else
+        dnMap.put(key, dataNodeMeta);
+    }
+
+    int numRemoved = dnMap.size() - dataNodes.size();
+    LOG.debug("Removed " + numRemoved + " old DataNodeMeta objects from the registration list.");
+    LOG.debug("Discovered " + dnMap.size() + " new DataNodes. Processing now...");
+
+    for (DataNodeMeta dataNodeMeta : dnMap.values()) {
       String datanodeUuid = dataNodeMeta.getDatanodeUuid();
-      LOG.info("Discovered DataNode: " + dataNodeMeta);
+      LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
 
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
@@ -888,6 +922,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // Create an entry for this DataNode.
       // TODO: What if this DataNode has been around for a while and this NameNode is only just now being invoked?
       //       The BlockReports starting at 0 will be old, won't they? Need to figure out how to address this.
+      //       I think, in traditional HopsFS, the NameNode would just start with the first block report it receives
+      //       from a DataNode, so Serverless HopsFS, the NNs should also just start with the most-recent block report
+      //       and ignore the others...
       if (!lastIntermediateBlockReportIds.containsKey(datanodeUuid)) {
         LOG.debug("Adding entry in `lastIntermediateBlockReportIds` for DataNode " + datanodeUuid);
         lastIntermediateBlockReportIds.put(datanodeUuid, -1);

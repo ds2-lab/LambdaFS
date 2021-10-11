@@ -847,9 +847,9 @@ public class DatanodeManager {
     DatanodeDescriptor nodeS = datanodeMap.get(nodeReg.getDatanodeUuid());
 
     if (nodeS == null)
-      LOG.debug("\tDid NOT find existing DN with same UUID.");
+      LOG.debug("     Did NOT find existing DN with same UUID.");
     else
-      LOG.debug("\tFound existing DN with same UUID!");
+      LOG.debug("     Found existing DN with same UUID!");
 
     LOG.debug("Checking host2DN map for existing DN with same IP address/port as node being registered now...");
     DatanodeDescriptor nodeN = host2DatanodeMap.getDatanodeByXferAddr(nodeReg.getIpAddr(), nodeReg.getXferPort());

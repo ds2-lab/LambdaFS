@@ -89,4 +89,36 @@ public final class DataNodeMeta {
     public long getCreationTime() {
         return creationTime;
     }
+
+    /**
+     * This is implemented to mirror the DatanodeID class' `equals` method.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+
+        if (!(obj instanceof DataNodeMeta))
+            return false;
+
+        DataNodeMeta other = (DataNodeMeta)obj;
+
+        return this.ipAddress.equals(other.getIpAddress()) &&
+                this.datanodeUuid.equals(other.datanodeUuid) &&
+                this.xferPort == other.xferPort;
+    }
+
+    /**
+     * Mimics the compareTo() function in some sense. If the creation times are the same, this returns 0.
+     *
+     * If the creation time of THIS instance is less, then this returns -1. If it is greater, then it returns 1.
+     *
+     * In that sense, the ordering imposed by this function is NOT consistent with equals().
+     * @param other The other DN against which we are comparing.
+     * @return 0 if both DNs were created at the same time, -1 if THIS instance was created earlier, 1 if THIS
+     * instance was created later.
+     */
+    public int compareCreationTimes(DataNodeMeta other) {
+        return Long.compare(this.creationTime, other.creationTime);
+    }
 }
