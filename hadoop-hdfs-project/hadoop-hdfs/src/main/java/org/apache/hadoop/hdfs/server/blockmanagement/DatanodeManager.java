@@ -855,9 +855,9 @@ public class DatanodeManager {
     DatanodeDescriptor nodeN = host2DatanodeMap.getDatanodeByXferAddr(nodeReg.getIpAddr(), nodeReg.getXferPort());
 
     if (nodeN == null)
-      LOG.debug("\tDid NOT find existing DN with same IP address/port.");
+      LOG.debug("     Did NOT find existing DN with same IP address/port.");
     else
-      LOG.debug("\tFound existing DN with same IP address/port.");
+      LOG.debug("     Found existing DN with same IP address/port.");
 
     if (nodeN != null && nodeN != nodeS) {
       ServerlessNameNode.LOG.debug("Checking if already-registered DN has different 'creation time' than the node " +

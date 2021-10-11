@@ -874,6 +874,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // and UUID. But we only care if the IP and port are the same. In this case, we only keep the most-recent DN based
     // on the 'creation_time' field.
     HashMap<String, DataNodeMeta> dnMap = new HashMap<>();
+    int numReplaced = 0;
     for (DataNodeMeta dataNodeMeta : dataNodes) {
       String key = dataNodeMeta.getIpAddress() + ":" + dataNodeMeta.getXferPort();
 
@@ -888,16 +889,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         // If the DN from the for-loop has a creation time stamp larger than the DN already in the map, then we replace
         // the DN in the map with the instance from the for-loop. If the creation times are the same, or if the DN from
         // the for-loop has a smaller creation time stamp, then we do nothing and move onto the next DN in the for-loop.
-        if (creationTimeComparisonResult > 0)
+        if (creationTimeComparisonResult > 0) {
           dnMap.put(key, dataNodeMeta);
+          numReplaced++;
+        }
       }
       else
         dnMap.put(key, dataNodeMeta);
     }
 
-    int numRemoved = dnMap.size() - dataNodes.size();
-    LOG.debug("Removed " + numRemoved + " old DataNodeMeta objects from the registration list.");
+    LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
     LOG.debug("Discovered " + dnMap.size() + " new DataNodes. Processing now...");
+
+    // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
+    //  allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
 
     for (DataNodeMeta dataNodeMeta : dnMap.values()) {
       String datanodeUuid = dataNodeMeta.getDatanodeUuid();

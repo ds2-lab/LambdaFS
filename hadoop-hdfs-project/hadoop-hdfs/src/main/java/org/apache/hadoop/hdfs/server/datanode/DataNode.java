@@ -1388,7 +1388,7 @@ public class DataNode extends ReconfigurableBase
     // find multiple. This may happen if this DataNode crashes and is unable to clean up its metadata from NDB.
     dataNodeMeta = new DataNodeMeta(this.id.getDatanodeUuid(), this.id.getHostName(),
             ipAddr, this.id.getXferPort(), this.id.getInfoPort(),
-            this.id.getInfoSecurePort(), this.id.getIpcPort(), Time.monotonicNow());
+            this.id.getInfoSecurePort(), this.id.getIpcPort(), Time.getUtcTime());
 
     LOG.info("Creating DataNodeMeta instance: " + dataNodeMeta.toString());
 
