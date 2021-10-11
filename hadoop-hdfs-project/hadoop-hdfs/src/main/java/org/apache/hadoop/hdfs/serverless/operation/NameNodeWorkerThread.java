@@ -79,7 +79,12 @@ public class NameNodeWorkerThread extends Thread {
                     continue;
                 }
 
-                currentlyExecutingTasks.put(task.getTaskId(), task);
+                LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
+
+                FileSystemTask<Serializable> prev = currentlyExecutingTasks.putIfAbsent(task.getTaskId(), task);
+                if (prev != null)
+                    LOG.error("Enqueued task " + task.getTaskId() + " into CurrentlyExecutingTasks despite there " +
+                            "already being a task with the same ID present.");
 
                 Serializable result = null;
                 result = serverlessNameNodeInstance.performOperation(
@@ -93,7 +98,10 @@ public class NameNodeWorkerThread extends Thread {
                 else
                     task.postResult(NullResult.getInstance());
 
-                completedTasks.put(task.getTaskId(), task);
+                prev = completedTasks.putIfAbsent(task.getTaskId(), task);
+                if (prev != null)
+                    LOG.error("Enqueued task " + task.getTaskId() + " into CompletedTasks despite there " +
+                            "already being a task with the same ID present.");
             }
         }
         catch (InterruptedException ex) {
@@ -139,7 +147,7 @@ public class NameNodeWorkerThread extends Thread {
      * @param taskId the task ID of the task for which we are checking if it is a duplicate
      * @return true if the task is a duplicate, otherwise false.
      */
-    public synchronized boolean isTaskDuplicate(String taskId) {
+    public boolean isTaskDuplicate(String taskId) {
         return currentlyExecutingTasks.containsKey(taskId) || completedTasks.containsKey(taskId);
     }
 

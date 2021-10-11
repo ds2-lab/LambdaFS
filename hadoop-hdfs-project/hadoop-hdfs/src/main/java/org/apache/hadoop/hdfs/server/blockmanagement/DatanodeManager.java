@@ -814,6 +814,14 @@ public class DatanodeManager {
   public void registerDatanode(DatanodeRegistration nodeReg)
       throws DisallowedDatanodeException, IOException {
 
+    // TODO:
+    //  - No DNs registered already.
+    //  - No DNs registered already. NDB contains at least 1 old DN record and 0 new DN records.
+    //      - What happens if NN tries to register old DN?
+    //      - What happens when updated DN tries to register with the NN?
+    //  - No DNs registered already. NDB contains at least 1 old DN record and at least 1 new DN record.
+    //      - Will the NN ignore the old record and register the new one based on time-stamps?
+
     InetAddress dnAddress = Server.getRemoteIp();
     if (dnAddress != null) {
       // Mostly called inside an RPC, update ip and peer hostname

@@ -398,7 +398,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param requestId The ID of the request.
    * @return true if the request has been received and processed already, otherwise false.
    */
-  public synchronized boolean checkIfRequestProcessedAlready(String requestId) {
+  public boolean checkIfRequestProcessedAlready(String requestId) {
     return workerThread.isTaskDuplicate(requestId);
   }
 
@@ -796,9 +796,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // If we didn't register ANY DataNodes, then we should raise an exception here,
     // as we won't have any DataNodes with which to complete file system operations.
-    if (numSuccess == 0) {
+    if (datanodeRegistrations.size() > 0 && numSuccess == 0) {
       throw new IOException("Failed to successfully process any of the " + datanodeRegistrations.size() +
               " registration(s).");
+    }
+    else if (datanodeRegistrations.size() == 0) {
+      LOG.warn("There were NO datanode registrations to process...");
     }
 
     // Update the groupIds map.
