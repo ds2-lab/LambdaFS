@@ -101,7 +101,7 @@ public class HopsEventManager implements EventManager {
      * The active session with the database. Used to issue operations related to events,
      * and to receive events from the database.
      */
-    private final HopsSession session;
+    private HopsSession session;
 
     /**
      * Used to track if default setup has been performed. In most cases, we'll want to just use the
@@ -109,15 +109,10 @@ public class HopsEventManager implements EventManager {
      */
     private boolean defaultSetupPerformed = false;
 
-    public HopsEventManager(HopsSession session) {
-        this.session = session;
-
+    public HopsEventManager() throws StorageException {
+        this.session = ClusterjConnector.getInstance().obtainSession();
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
-    }
-
-    public HopsEventManager() throws StorageException {
-        this(ClusterjConnector.getInstance().obtainSession());
     }
 
     /**

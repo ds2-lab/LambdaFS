@@ -19,8 +19,11 @@ package org.apache.hadoop.hdfs.server.namenode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.mysql.clusterj.SessionFactory;
 import io.hops.DalDriver;
+import io.hops.DalStorageFactory;
 import io.hops.EventManager;
+import io.hops.StorageConnector;
 import io.hops.exception.StorageException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
@@ -1791,7 +1794,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     ndbEventManager.defaultSetup(null, true);
 
     eventManagerThread = new Thread(ndbEventManager);
-    // eventManagerThread.start();
+    eventManagerThread.start();
 
     // LOG.debug("Started the NDB EventManager thread.");
 
