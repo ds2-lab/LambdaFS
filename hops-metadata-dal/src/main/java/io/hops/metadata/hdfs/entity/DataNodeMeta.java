@@ -81,9 +81,9 @@ public final class DataNodeMeta {
 
     @Override
     public String toString() {
-        return "Datanode <UUID=" + datanodeUuid + ", hostname=" + hostname + ", ipAddress=" + ipAddress
+        return "Datanode(UUID=" + datanodeUuid + ", hostname=" + hostname + ", ipAddress=" + ipAddress
                 + ", xferPort=" + xferPort + ", infoPort=" + infoPort + ", infoSecurePort=" + infoSecurePort +
-                ", ipcPort=" + ipcPort + ", creationTime=" + creationTime;
+                ", ipcPort=" + ipcPort + ", creationTime=" + creationTime + ")";
     }
 
     public long getCreationTime() {
