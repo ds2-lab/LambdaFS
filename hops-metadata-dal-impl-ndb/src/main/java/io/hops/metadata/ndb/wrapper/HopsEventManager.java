@@ -113,8 +113,6 @@ public class HopsEventManager implements EventManager {
         this.session = ClusterjConnector.getInstance().obtainSession();
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
-
-        LOG.debug("Session use-count: " + session.getSessionUseCount());
     }
 
     /**
