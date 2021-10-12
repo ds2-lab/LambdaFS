@@ -44,6 +44,15 @@ public class HopsEventOperation {
     }
 
     /**
+     * Return the event name associated with this event operation, which could be null or "N/A"
+     * if the name of the associated event was not available when this event operation object
+     * was created (which is not uncommon).
+     */
+    public String getEventName() {
+        return associatedEventName;
+    }
+
+    /**
      * Get the 32-bit int pre-value of a record attribute (i.e., value associated with an event).
      *
      * @param columnName The name of the column whose value is desired.

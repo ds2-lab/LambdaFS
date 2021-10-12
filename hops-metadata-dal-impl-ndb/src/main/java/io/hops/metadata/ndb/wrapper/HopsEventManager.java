@@ -376,7 +376,7 @@ public class HopsEventManager implements EventManager {
      */
     @Override
     public synchronized int processEvents() {
-        HopsEventOperation nextEventOp = session.nextEvent("N/A");
+        HopsEventOperation nextEventOp = session.nextEvent(activeEventOperation.getEventName());
         int numEventsProcessed = 0;
 
         while (nextEventOp != null) {
@@ -418,7 +418,7 @@ public class HopsEventManager implements EventManager {
             //  Determine whether or not to handle the event based on whether the parent INode ID
             //  caches to this INode (i.e., depending on whether this NameNode caches the relevant metadata or not).
 
-            nextEventOp = session.nextEvent("N/A");
+            nextEventOp = session.nextEvent(activeEventOperation.getEventName());
             numEventsProcessed++;
         }
 

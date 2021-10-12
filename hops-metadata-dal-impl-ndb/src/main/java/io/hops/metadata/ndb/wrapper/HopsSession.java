@@ -127,12 +127,16 @@ public class HopsSession {
    * @param eventName The name of the event we're checking on. It is acceptable for null to be passed if the name is
    *                  not available. The name is just passed to the HopsEventOperation constructor, and that object
    *                  only uses the name for debugging purposes.
-   * @return EventOperation associated with the next event that was received
+   * @return EventOperation associated with the next event that was received.
+   *         This will return null if there are no other events to receive.
    */
   public HopsEventOperation nextEvent(String eventName) {
     EventOperation eventOperation = session.nextEvent();
 
-    return new HopsEventOperation(eventOperation, "N/A");
+    if (eventOperation == null)
+      return null;
+
+    return new HopsEventOperation(eventOperation, eventName);
   }
 
   /**

@@ -920,7 +920,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         if (creationTimeComparisonResult > 0) {
           dnMap.put(key, dataNodeMeta);
           LOG.debug("Replacing DN " + existingDN.getDatanodeUuid() + " with DN " + dataNodeMeta.getDatanodeUuid() +
-                          "in pre-registration mapping.");
+                          " in pre-registration mapping.");
           LOG.debug("Creation time of existing DN (uuid=" + existingDN.getDatanodeUuid() + "): "
                   + existingDN.getCreationTime());
           LOG.debug("Creation time of \"new\" DN (uuid=" + dataNodeMeta.getDatanodeUuid() + "): "
