@@ -8,6 +8,7 @@ import com.mysql.clusterj.tie.DbugImpl;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
+import org.apache.hadoop.hdfs.serverless.operation.DuplicateRequest;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
@@ -99,22 +100,23 @@ public class OpenWhiskHandler {
         String functionName = platformSpecificInitialization();
 
         // The arguments passed by the user are included under the 'value' key.
-        JsonObject userArguments = args.get("value").getAsJsonObject();
+        JsonObject userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
 
         String clientIpAddress = null;
-        if (userArguments.has("clientInternalIp")) {
-            clientIpAddress = userArguments.getAsJsonPrimitive("clientInternalIp").getAsString();
+        if (userArguments.has(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP)) {
+            clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
         }
 
         String[] commandLineArguments;
         // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
-        if (userArguments.has("command-line-arguments")) {
+        if (userArguments.has(ServerlessNameNodeKeys.COMMAND_LINE_ARGS)) {
             try {
-                commandLineArguments = userArguments.getAsJsonPrimitive("command-line-arguments")
+                commandLineArguments = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.COMMAND_LINE_ARGS)
                         .getAsString().split("\\s+");
             } catch (ClassCastException ex) {
                 // If it was included as a JsonArray, then unpack it that way.
-                JsonArray commandLineArgumentsJson = userArguments.getAsJsonArray("command-line-arguments");
+                JsonArray commandLineArgumentsJson = userArguments.getAsJsonArray(
+                        ServerlessNameNodeKeys.COMMAND_LINE_ARGS);
                 commandLineArguments = new String[commandLineArgumentsJson.size()];
 
                 // Unpack the arguments.
@@ -134,11 +136,11 @@ public class OpenWhiskHandler {
         // Check if NDB debugging is enabled. If so, then attempt to extract the dbug string. If
         // NDB debugging is enabled and a dbug string was extracted, then pass it to the ClusterJ API,
         // which will in turn pass the dbug string to the underlying NDB API.
-        if (userArguments.has("debugNdb"))
-            debugEnabled = userArguments.getAsJsonPrimitive("debugNdb").getAsBoolean();
+        if (userArguments.has(ServerlessNameNodeKeys.DEBUG_NDB))
+            debugEnabled = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.DEBUG_NDB).getAsBoolean();
 
-        if (debugEnabled && userArguments.has("debugStringNdb"))
-            debugString = userArguments.getAsJsonPrimitive("debugStringNdb").getAsString();
+        if (debugEnabled && userArguments.has(ServerlessNameNodeKeys.DEBUG_STRING_NDB))
+            debugString = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.DEBUG_STRING_NDB).getAsString();
 
         if (debugEnabled && debugString != null) {
             LOG.debug("NDB debugging has been enabled. Using dbug string \"" +
@@ -149,21 +151,22 @@ public class OpenWhiskHandler {
         }
 
         // The name of the client. This originates from the DFSClient class.
-        String clientName = userArguments.getAsJsonPrimitive("clientName").getAsString();
+        String clientName = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_NAME).getAsString();
 
         // The name of the file system operation that the client wants us to perform.
-        String operation = userArguments.getAsJsonPrimitive("op").getAsString();
+        String operation = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
 
         // This is NOT the OpenWhisk activation ID. The request ID originates at the client who invoked us.
         // That way, the corresponding TCP request (to this HTTP request) would have the same request ID.
         // This is used to prevent duplicate requests from being processed.
-        String requestId = userArguments.getAsJsonPrimitive("requestId").getAsString();
+        String requestId = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
 
         // The arguments to the file system operation.
-        JsonObject fsArgs = userArguments.getAsJsonObject("fsArgs");
+        JsonObject fsArgs = userArguments.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
 
         // Flag that indicates whether this action was invoked by a client or a DataNode.
-        boolean isClientInvoker = userArguments.getAsJsonPrimitive("isClientInvoker").getAsBoolean();
+        boolean isClientInvoker = userArguments.getAsJsonPrimitive(
+                ServerlessNameNodeKeys.IS_CLIENT_INVOKER).getAsBoolean();
 
         LOG.info("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
         LOG.debug("Top-level OpenWhisk arguments: " + args);
@@ -248,9 +251,10 @@ public class OpenWhiskHandler {
         // from intermediate storage.
         LOG.debug("Checking for duplicate requests now...");
 
-        // Check to see if this is a duplicate request, in which case we should not return anything of substance.
+        // Check to see if this is a duplicate request, in which case we should return a message indicating as such.
         if (serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
             LOG.warn("This request (" + requestId + ") has already been processed. Returning now...");
+            result.addResult(new DuplicateRequest("HTTP", requestId), false);
             return result;
         }
 
@@ -352,8 +356,8 @@ public class OpenWhiskHandler {
         // After performing the desired FS operation, we check if there is a particular file or directory
         // identified by the `src` parameter. This is the file/directory that should be hashed to a particular
         // serverless function. We calculate this here and include the information for the client in our response.
-        if (fsArgs != null && fsArgs.has("src")) {
-            String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+        if (fsArgs != null && fsArgs.has(ServerlessNameNodeKeys.SRC)) {
+            String src = fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.SRC).getAsString();
 
             INode iNode = null;
             try {
@@ -379,21 +383,6 @@ public class OpenWhiskHandler {
                 result.addFunctionMapping(src, iNode.getParentId(), functionNumber);
             }
         }
-    }
-
-    /**
-     * Add an exception to the result (which is returned to whoever invoked us).
-     * @param result The JsonObject encapsulating the result to be returned to the invoker.
-     * @param t The exception to add to the result.
-     */
-    private static void addExceptionToResult(JsonObject result, Throwable t) {
-        JsonArray exceptions;
-        if (result.has("EXCEPTIONS"))
-            exceptions = result.get("EXCEPTIONS").getAsJsonArray();
-        else
-            exceptions = new JsonArray();
-
-        exceptions.add(t.toString());
     }
 
     /**

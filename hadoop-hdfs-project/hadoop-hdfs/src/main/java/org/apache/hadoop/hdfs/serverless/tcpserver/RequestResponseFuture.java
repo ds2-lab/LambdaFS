@@ -1,10 +1,12 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
+import com.esotericsoftware.kryo.util.Null;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
+import org.apache.hadoop.hdfs.serverless.operation.NullResult;
 
 import java.io.Serializable;
 import java.util.concurrent.*;
@@ -69,7 +71,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
         final Object resultOrNull = this.resultQueue.take();
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
-        if (resultOrNull == NullRequestResponse.getInstance())
+        if (resultOrNull instanceof NullResult)
             return null;
         else if (resultOrNull instanceof JsonObject)
             return (JsonObject)resultOrNull;
@@ -86,7 +88,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
             throw new TimeoutException();
         }
 
-        if (resultOrNull == NullRequestResponse.getInstance())
+        if (resultOrNull instanceof NullResult)
             return null;
         else if (resultOrNull instanceof JsonObject)
             return (JsonObject)resultOrNull;
@@ -127,22 +129,5 @@ public class RequestResponseFuture implements Future<JsonObject> {
 
     public String getRequestId() {
         return requestId;
-    }
-
-    /**
-     * Used to return 'null' for a TCP request. If this is the result that is obtained, then
-     * null is returned in place of an actual object (i.e., something that implements Serializable).
-     */
-    public static class NullRequestResponse implements Serializable {
-        private static final long serialVersionUID = -1663521618378958991L;
-
-        static NameNodeWorkerThread.NullResult instance;
-
-        public static NameNodeWorkerThread.NullResult getInstance() {
-            if (instance == null)
-                instance = new NameNodeWorkerThread.NullResult();
-
-            return instance;
-        }
     }
 }

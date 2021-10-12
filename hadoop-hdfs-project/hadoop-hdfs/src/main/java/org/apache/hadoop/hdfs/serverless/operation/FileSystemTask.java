@@ -74,9 +74,8 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
         final T resultOrNull = this.resultQueue.take();
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
-        if (resultOrNull == NameNodeWorkerThread.NullResult.getInstance() ||
-                resultOrNull == NameNodeWorkerThread.DuplicateRequest.getInstance())
-            return null;
+        //if (resultOrNull instanceof NullResult || resultOrNull instanceof DuplicateRequest)
+        //    return null;
 
         return resultOrNull;
     }
@@ -92,9 +91,8 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
         }
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
-        if ((resultOrNull == NameNodeWorkerThread.NullResult.getInstance() ||
-                resultOrNull == NameNodeWorkerThread.DuplicateRequest.getInstance()))
-            return null;
+        //if ((resultOrNull instanceof NullResult || resultOrNull instanceof DuplicateRequest))
+        //    return null;
 
         return resultOrNull;
     }

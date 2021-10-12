@@ -221,7 +221,7 @@ public class NameNodeTCPClient {
         FileSystemTask<Serializable> newTask = null;
         try {
             LOG.debug("[TCP] Adding task " + requestId + " (operation = " + op + ") to work queue now...");
-            newTask= new FileSystemTask<>(requestId, op, fsArgs);
+            newTask = new FileSystemTask<>(requestId, op, fsArgs);
             serverlessNameNode.enqueueFileSystemTask(newTask);
 
             // We wait for the task to finish executing in a separate try-catch block so that, if there is

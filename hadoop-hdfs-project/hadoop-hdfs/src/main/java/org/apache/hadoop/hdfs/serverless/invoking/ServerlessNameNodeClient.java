@@ -21,6 +21,7 @@ import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.tcpserver.HopsFSUserServer;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
@@ -117,7 +118,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throws IOException, InterruptedException, ExecutionException {
         // Check if there's a source directory parameter, as this is the file or directory that could
         // potentially be mapped to a serverless function.
-        Object sourceObject = opArguments.has("src");
+        Object sourceObject = opArguments.has(ServerlessNameNodeKeys.SRC);
         if (sourceObject instanceof String) {
             String sourceFileOrDirectory = (String)sourceObject;
 
@@ -183,9 +184,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // Submit the TCP request here.
         completionService.submit(() -> {
             JsonObject payload = new JsonObject();
-            payload.addProperty("requestId", requestId);
-            payload.addProperty("op", operationName);
-            payload.add("fsArgs", opArguments.convertToJsonObject());
+            payload.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
+            payload.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
+            payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
 
             // We're effectively wrapping a Future in a Future here...
             return tcpServer.issueTcpRequestAndWait(mappedFunctionNumber, false, payload);
@@ -203,11 +204,36 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         LOG.debug("Successfully submitted HTTP request. Waiting for first result now...");
 
-        Future<JsonObject> firstResult = completionService.take();
+        // We should NOT just return the first result that we get.
+        // It is not uncommon that the NameNode will receive the TCP request first and begin working on the task.
+        // Then, while the task is being executed, the NN will receive the HTTP request, notice that the associated
+        // operation is already being worked on, and return a null response to the user via HTTP. The user will often
+        // receive this HTTP response first. In this scenario, we should simply discard the HTTP response, as the
+        // TCP response will actually contain the result of the FS operation.
+        Future<JsonObject> potentialResult = completionService.take();
 
         try {
-            JsonObject responseJson = firstResult.get();
-            executorService.shutdown(); // Could use .shutdownNow() to attempt to cancel the other request?
+            JsonObject responseJson = potentialResult.get();
+
+            // Now we should check if this response contains a result, or is simply a duplicate request
+            // notification from whichever request the NameNode received last. That is, if the NN received the
+            // HTTP request second, then this could be an HTTP response indicating that the task was already
+            // being executed. The same could be true in the case of the TCP response.
+            //
+            // If this is an actual result, then we can return it to the user. Otherwise, we must keep waiting.
+
+            if (responseJson.has(ServerlessNameNodeKeys.DUPLICATE_REQUEST) &&
+                responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.DUPLICATE_REQUEST).getAsBoolean()) {
+
+                LOG.debug("Received duplicate request acknowledgement from NameNode. " +
+                        "Must continue waiting for real result.");
+
+                // Just wait for the next result.
+                potentialResult = completionService.take();
+                responseJson = potentialResult.get();
+            }
+
+            executorService.shutdown();
             long opEnd = System.nanoTime();
             long opDuration = opEnd - opStart;
             long durationMilliseconds = TimeUnit.NANOSECONDS.toMillis(opDuration);
@@ -244,7 +270,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // Arguments for the 'create' filesystem operation.
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("offset", offset);
         opArguments.put("length", length);
 
@@ -319,9 +345,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public HdfsFileStatus create(String src, FsPermission masked, String clientName, EnumSetWritable<CreateFlag> flag,
                                  boolean createParent, short replication, long blockSize,
                                  CryptoProtocolVersion[] supportedVersions, EncodingPolicy policy)
-            throws AccessControlException, AlreadyBeingCreatedException, DSQuotaExceededException,
-            FileAlreadyExistsException, FileNotFoundException, NSQuotaExceededException, ParentNotDirectoryException,
-            SafeModeException, UnresolvedLinkException, IOException {
+            throws IOException {
         // We need to pass a series of arguments to the Serverless NameNode. We prepare these arguments here
         // in a HashMap and pass them off to the ServerlessInvoker, which will package them up in the required
         // format for the Serverless NameNode.
@@ -330,9 +354,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // Arguments for the 'create' filesystem operation.
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("masked", masked.toShort());
-        opArguments.put("clientName", dfsClient.clientName);
+        opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, dfsClient.clientName);
 
         // Convert this argument (to the 'create' function) to a String so we can send it over JSON.
         DataOutputBuffer out = new DataOutputBuffer();
@@ -404,8 +428,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         byte[] objectBytes = out.getData();
         String enumSetBase64 = Base64.encodeBase64String(objectBytes);
 
-        opArguments.put("src", src);
-        opArguments.put("clientName", clientName);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
+        opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
         opArguments.put("flag", enumSetBase64);
 
         JsonObject responseJson;
@@ -458,7 +482,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void setMetaStatus(String src, MetaStatus metaStatus) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("metaStatus", metaStatus.ordinal());
 
         try {
@@ -476,7 +500,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void setPermission(String src, FsPermission permission) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("permission", permission);
 
         try {
@@ -494,7 +518,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void setOwner(String src, String username, String groupname) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("username", username);
         opArguments.put("groupname", groupname);
 
@@ -513,7 +537,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void abandonBlock(ExtendedBlock b, long fileId, String src, String holder) throws IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("holder", holder);
         opArguments.put("fileId", fileId);
         opArguments.put("b", b);
@@ -535,8 +559,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // HashMap<String, Object> opArguments = new HashMap<>();
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
-        opArguments.put("clientName", clientName);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
+        opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
         opArguments.put("previous", previous);
         opArguments.put("fileId", fileId);
         opArguments.put("favoredNodes", favoredNodes);
@@ -577,8 +601,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public boolean complete(String src, String clientName, ExtendedBlock last, long fileId, byte[] data) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
-        opArguments.put("clientName", clientName);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
+        opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
         opArguments.put("last", last);
         opArguments.put("fileId", fileId);
         opArguments.put("data", data);
@@ -618,7 +642,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public boolean rename(String src, String dst) throws UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("dst", dst);
 
         Integer[] optionsArr = new Integer[1];
@@ -663,7 +687,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void rename2(String src, String dst, Options.Rename... options) throws IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("dst", dst);
 
         Integer[] optionsArr = new Integer[options.length];
@@ -689,9 +713,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public boolean truncate(String src, long newLength, String clientName) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("newLength", newLength);
-        opArguments.put("clientName", clientName);
+        opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
 
         JsonObject responseJson;
         try {
@@ -723,7 +747,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public boolean delete(String src, boolean recursive) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("recursive", recursive);
 
         JsonObject responseJson;
@@ -756,7 +780,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public boolean mkdirs(String src, FsPermission masked, boolean createParent) throws AccessControlException, FileAlreadyExistsException, FileNotFoundException, NSQuotaExceededException, ParentNotDirectoryException, SafeModeException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("masked", masked);
         opArguments.put("createParent", createParent);
 
@@ -788,7 +812,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public DirectoryListing getListing(String src, byte[] startAfter, boolean needLocation) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("startAfter", startAfter);
         opArguments.put("needLocation", needLocation);
 
@@ -822,7 +846,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void renewLease(String clientName) throws AccessControlException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("clientName", clientName);
+        opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
 
         try {
             submitOperationToNameNode(
@@ -889,7 +913,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public HdfsFileStatus getFileInfo(String src) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
 
         JsonObject responseJson;
         try {
@@ -921,7 +945,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public boolean isFileClosed(String src) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
 
         JsonObject responseJson;
         try {
@@ -955,7 +979,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public HdfsFileStatus getFileLinkInfo(String src) throws AccessControlException, UnresolvedLinkException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put("src", src);
+        opArguments.put(ServerlessNameNodeKeys.SRC, src);
 
         JsonObject responseJson;
         try {

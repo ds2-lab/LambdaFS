@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,6 +12,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This encapsulates all the information that may be returned to the user after the NameNode executes.
@@ -51,6 +54,14 @@ public class NameNodeResult {
     private boolean hasResult = false;
 
     /**
+     * Any extra fields to be added explicitly/directly to the result payload. As of right now,
+     * only strings are supported as additional fields.
+     *
+     * These will be added as a top-level key/value pair to the JSON payload returned to the client.
+     */
+    private final HashMap<String, String> additionalFields;
+
+    /**
      * Request ID associated with this result.
      */
     private final String requestId;
@@ -60,6 +71,7 @@ public class NameNodeResult {
         this.functionName = functionName;
         this.requestId = requestId;
         this.exceptions = new ArrayList<>();
+        this.additionalFields = new HashMap<>();
     }
 
     /**
@@ -88,6 +100,17 @@ public class NameNodeResult {
      */
     public void addFunctionMapping(String fileOrDirectory, long parentId, int mappedFunctionName) {
         this.serverlessFunctionMapping = new ServerlessFunctionMapping(fileOrDirectory, parentId, mappedFunctionName);
+    }
+
+    /**
+     * Explicitly add an entry as a top-level key/value pair to the payload returned to the client.
+     *
+     * This should only be used for entries that are not covered by the rest of the API.
+     * @param key The key to use for the entry.
+     * @param value The value to be used for the entry.
+     */
+    public void addExtraString(String key, String value) {
+        this.additionalFields.put(key, value);
     }
 
     /**
@@ -162,6 +185,10 @@ public class NameNodeResult {
     /**
      * Convert this object to a JsonObject so that it can be returned directly to the invoker.
      *
+     * This inspects the type of the result field. If it is of type DuplicateRequest, an additional field
+     * is added to the payload indicating that this response is for a duplicate request and should not be
+     * returned as the true result of the associated file system operation.
+     *
      * @param operation If non-null, will be included as a top-level entry in the result under the key "op".
      *                  This is used by TCP connections in particular, as TCP messages generally contain an "op"
      *                  field to designate the request as one containing a result or one used for registration.
@@ -169,19 +196,28 @@ public class NameNodeResult {
     public JsonObject toJson(String operation) {
         JsonObject json = new JsonObject();
 
-        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-            ObjectOutputStream objectOutputStream;
-            objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-            objectOutputStream.writeObject(result);
-            objectOutputStream.flush();
+        // If the result is a duplicate request, then don't bother sending an actual result field.
+        // That's just unnecessary network I/O. We can just include a flag indicating that this is
+        // a duplicate request and leave it at that.
+        if (result instanceof DuplicateRequest) {
+            // Add a flag indicating whether this is just a duplicate result.
+            json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, true);
+        } else {
+            try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+                ObjectOutputStream objectOutputStream;
+                objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+                objectOutputStream.writeObject(result);
+                objectOutputStream.flush();
 
-            byte[] objectBytes = byteArrayOutputStream.toByteArray();
-            String base64Object = Base64.encodeBase64String(objectBytes);
+                byte[] objectBytes = byteArrayOutputStream.toByteArray();
+                String base64Object = Base64.encodeBase64String(objectBytes);
 
-            json.addProperty("RESULT", base64Object);
-        } catch (Exception ex) {
-            LOG.error("Exception encountered whilst serializing result of file system operation: ", ex);
-            addException(ex);
+                json.addProperty(ServerlessNameNodeKeys.RESULT, base64Object);
+                json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, false);
+            } catch (Exception ex) {
+                LOG.error("Exception encountered whilst serializing result of file system operation: ", ex);
+                addException(ex);
+            }
         }
 
         if (exceptions.size() > 0) {
@@ -191,7 +227,7 @@ public class NameNodeResult {
                 exceptionsJson.add(t.toString());
             }
 
-            json.add("EXCEPTIONS", exceptionsJson);
+            json.add(ServerlessNameNodeKeys.EXCEPTIONS, exceptionsJson);
         }
 
         if (serverlessFunctionMapping != null) {
@@ -202,6 +238,15 @@ public class NameNodeResult {
             functionMapping.addProperty("function", serverlessFunctionMapping.mappedFunctionNumber);
 
             json.add("FUNCTION_MAPPING", functionMapping);
+        }
+
+        if (additionalFields.size() > 0) {
+            for (Map.Entry<String, String> entry : additionalFields.entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue();
+
+                json.addProperty(key, value);
+            }
         }
 
         if (operation != null)

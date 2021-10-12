@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 import com.google.gson.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
@@ -130,7 +131,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         int functionNumber = -1;
 
         // Attempt to get the serverless function associated with the particular file/directory, if one exists.
-        if (fileSystemOperationArguments != null && fileSystemOperationArguments.has("src")) {
+        if (fileSystemOperationArguments != null &&
+                fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
             String sourceFileOrDirectory =
                     (String) fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
             LOG.debug("Checking serverless function cache for entry associated with file/directory \"" +
@@ -166,16 +168,16 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         // We pass the file system operation arguments to the NameNode, as it
         // will hand them off to the intended file system operation function.
-        nameNodeArguments.add("fsArgs", fileSystemOperationArguments);
-        nameNodeArguments.addProperty("op", operationName);
-        nameNodeArguments.addProperty("clientName", clientName);
-        nameNodeArguments.addProperty("isClientInvoker", isClientInvoker);
+        nameNodeArguments.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, fileSystemOperationArguments);
+        nameNodeArguments.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
+        nameNodeArguments.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
+        nameNodeArguments.addProperty(ServerlessNameNodeKeys.IS_CLIENT_INVOKER, isClientInvoker);
 
         addStandardArguments(nameNodeArguments, requestId);
 
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
         // within the HTTP POST request. They should be included with the key "value".
-        requestArguments.add("value", nameNodeArguments);
+        requestArguments.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
 
         // Prepare the HTTP POST request.
         StringEntity parameters = new StringEntity(requestArguments.toString());
@@ -325,13 +327,13 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     @Override
     public Object extractResultFromJsonResponse(JsonObject response) throws IOException, ClassNotFoundException {
         // First, let's check and see if there's any information about file/directory-to-function mappings.
-        if (response.has("FUNCTION_MAPPING")) {
+        if (response.has(ServerlessNameNodeKeys.FUNCTION_MAPPING)) {
             LOG.debug("JSON response from serverless name node contains function mapping information.");
             JsonObject functionMapping = response.getAsJsonObject("FUNCTION_MAPPING");
 
-            String src = functionMapping.getAsJsonPrimitive("fileOrDirectory").getAsString();
-            long parentINodeId = functionMapping.getAsJsonPrimitive("parentId").getAsLong();
-            int function = functionMapping.getAsJsonPrimitive("function").getAsInt();
+            String src = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FILE_OR_DIR).getAsString();
+            long parentINodeId = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.PARENT_ID).getAsLong();
+            int function = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION).getAsInt();
 
             LOG.debug("File or directory: \"" + src + "\", parent INode ID: " + parentINodeId +
                     ", function: " + function);
@@ -344,8 +346,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         }
 
         // Print any exceptions that were encountered first.
-        if (response.has("EXCEPTIONS")) {
-            JsonArray exceptionsJson = response.get("EXCEPTIONS").getAsJsonArray();
+        if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {
+            JsonArray exceptionsJson = response.get(ServerlessNameNodeKeys.EXCEPTIONS).getAsJsonArray();
 
             LOG.warn("The ServerlessNameNode encountered " + exceptionsJson.size()
                     + (exceptionsJson.size() == 1 ? " exception" : " exceptions") + ".");
@@ -355,8 +357,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         }
 
         // Now we'll check for a result from the name node.
-        if (response.has("RESULT")) {
-            String resultBase64 = response.getAsJsonPrimitive("RESULT").getAsString();
+        if (response.has(ServerlessNameNodeKeys.RESULT)) {
+            String resultBase64 = response.getAsJsonPrimitive(ServerlessNameNodeKeys.RESULT).getAsString();
 
             try {
                 Object result = InvokerUtilities.base64StringToObject(resultBase64);

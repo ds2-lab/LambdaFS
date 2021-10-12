@@ -75,7 +75,7 @@ public class NameNodeWorkerThread extends Thread {
                 if (isTaskDuplicate(task)) {
                     LOG.warn("Encountered duplicate task " + task.getTaskId() + " (operation = "
                             + task.getOperationName() + ").");
-                    task.postResult(DuplicateRequest.getInstance());
+                    task.postResult(new DuplicateRequest("TCP", task.getTaskId()));
                     continue;
                 }
 
@@ -162,39 +162,5 @@ public class NameNodeWorkerThread extends Thread {
             return currentlyExecutingTasks.get(candidate.getTaskId());
 
         return completedTasks.get(candidate.getTaskId());
-    }
-
-    /**
-     * Used to return 'null' for a FileSystemTask. If this is the result that is obtained, then
-     * null is returned in place of an actual object (i.e., something that implements Serializable).
-     */
-    public static class NullResult implements Serializable {
-        private static final long serialVersionUID = -1663521618378958991L;
-
-        private static NullResult instance;
-
-        public static NullResult getInstance() {
-            if (instance == null)
-                instance = new NullResult();
-
-            return instance;
-        }
-    }
-
-    /**
-     * Used to indicate that the request was a duplicate and therefore no result will be returned.
-     */
-    public static class DuplicateRequest implements Serializable {
-
-        private static final long serialVersionUID = 7192661459086515520L;
-
-        private static DuplicateRequest instance;
-
-        public static DuplicateRequest getInstance() {
-            if (instance == null)
-                instance = new DuplicateRequest();
-
-            return instance;
-        }
     }
 }

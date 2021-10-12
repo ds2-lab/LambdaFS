@@ -6,6 +6,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.http.impl.client.CloseableHttpClient;
 
@@ -242,14 +243,15 @@ public abstract class ServerlessInvokerBase<T> {
         // If there is not already a command-line-arguments entry, then we'll add one with the "-regular" flag
         // so that the name node performs standard execution. If there already is such an entry, then we do
         // not want to overwrite it.
-        if (!nameNodeArgumentsJson.has("command-line-arguments"))
-            nameNodeArgumentsJson.addProperty("command-line-arguments", "-regular");
+        if (!nameNodeArgumentsJson.has(ServerlessNameNodeKeys.COMMAND_LINE_ARGS))
+            nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.COMMAND_LINE_ARGS, "-regular");
 
-        nameNodeArgumentsJson.addProperty("requestId", requestId);
+        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
 
-        nameNodeArgumentsJson.addProperty("debugNdb", debugEnabledNdb);
-        nameNodeArgumentsJson.addProperty("debugStringNdb", debugStringNdb);
+        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.DEBUG_NDB, debugEnabledNdb);
+        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.DEBUG_STRING_NDB, debugStringNdb);
 
-        nameNodeArgumentsJson.addProperty("clientInternalIp", InvokerUtilities.getInternalIpAddress());
+        nameNodeArgumentsJson.addProperty(
+                ServerlessNameNodeKeys.CLIENT_INTERNAL_IP, InvokerUtilities.getInternalIpAddress());
     }
 }
