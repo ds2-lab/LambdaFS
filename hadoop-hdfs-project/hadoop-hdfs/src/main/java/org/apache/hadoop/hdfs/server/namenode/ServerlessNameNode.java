@@ -887,13 +887,23 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // instance, as we want the newest DN associated with a given ip address + port.
       if (dnMap.containsKey(key))
       {
-        int creationTimeComparisonResult = dataNodeMeta.compareCreationTimes(dnMap.get(key));
+        // It just exists in this mapping; it hasn't already been registered necessarily.
+        // But we don't want to bother trying to register this DN if it's just old metadata
+        // from a DN that no longer exists/that has been replaced by a newer DN.
+        DataNodeMeta existingDN = dnMap.get(key);
+        int creationTimeComparisonResult = dataNodeMeta.compareCreationTimes(existingDN);
 
         // If the DN from the for-loop has a creation time stamp larger than the DN already in the map, then we replace
         // the DN in the map with the instance from the for-loop. If the creation times are the same, or if the DN from
         // the for-loop has a smaller creation time stamp, then we do nothing and move onto the next DN in the for-loop.
         if (creationTimeComparisonResult > 0) {
           dnMap.put(key, dataNodeMeta);
+          LOG.debug("Replacing DN " + existingDN.getDatanodeUuid() + " with DN " + dataNodeMeta.getDatanodeUuid() +
+                          "in pre-registration mapping.");
+          LOG.debug("Creation time of existing DN (uuid=" + existingDN.getDatanodeUuid() + "): "
+                  + existingDN.getCreationTime());
+          LOG.debug("Creation time of \"new\" DN (uuid=" + dataNodeMeta.getDatanodeUuid() + "): "
+                  + dataNodeMeta.getCreationTime());
           numReplaced++;
         }
       }
