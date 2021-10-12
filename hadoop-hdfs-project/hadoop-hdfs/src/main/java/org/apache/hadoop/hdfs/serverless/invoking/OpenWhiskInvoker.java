@@ -190,8 +190,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         HttpResponse httpResponse = httpClient.execute(request);
 
-        LOG.info("HTTP Response from OpenWhisk function:\n" + httpResponse.toString());
-        LOG.info("response.getEntity() = " + httpResponse.getEntity());
+        LOG.debug("HTTP Response from OpenWhisk function:\n" + httpResponse.toString());
+        LOG.debug("response.getEntity() = " + httpResponse.getEntity());
 
         String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
         Gson gson = new Gson();

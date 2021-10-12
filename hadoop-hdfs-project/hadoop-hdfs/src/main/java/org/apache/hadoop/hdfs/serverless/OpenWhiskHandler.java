@@ -174,7 +174,7 @@ public class OpenWhiskHandler {
         LOG.info("Client IP address: " + (clientIpAddress == null ? "N/A" : clientIpAddress));
         LOG.info("Function container was " + (isCold ? "COLD" : "WARM") + ".");
         LOG.info("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-        LOG.info("Operation name: " + clientName);
+        LOG.info("Operation name: " + operation);
         LOG.debug("Operation arguments: " + fsArgs);
         LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
 
