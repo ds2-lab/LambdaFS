@@ -3776,9 +3776,9 @@ public abstract class Server {
           if (!running) {
             return;
           }
-          if (LOG.isDebugEnabled()) {
-            LOG.debug(Thread.currentThread().getName()+": task running");
-          }
+//          if (LOG.isDebugEnabled()) {
+//            LOG.debug(Thread.currentThread().getName()+": task running");
+//          }
           try {
             closeIdle(false);
           } finally {
