@@ -402,8 +402,9 @@ class BPOfferService implements Runnable {
         // first BP to handshake, etc.
         try {
           dn.initBlockPool(this);
-          LOG.debug("Assigning groupId of " + nsInfo.getGroupId() + " to this DataNode.");
-          dn.setStorageReportGroupCounter(nsInfo.getGroupId());
+          long groupId = nsInfo.getGroupId();
+          LOG.debug("Assigning groupId of " + groupId + " to this DataNode.");
+          dn.setStorageReportGroupCounter(groupId);
           success = true;
         } finally {
           if (!success) {
