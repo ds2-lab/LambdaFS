@@ -110,7 +110,7 @@ public class HopsEventManager implements EventManager {
     private boolean defaultSetupPerformed = false;
 
     public HopsEventManager() throws StorageException {
-        this.session = ClusterjConnector.getInstance().obtainSession();
+        this.session = ClusterjConnector.getInstance().obtainSession(true);
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
     }

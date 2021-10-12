@@ -95,12 +95,22 @@ public class ClusterjConnector implements StorageConnector<DBSession> {
    */
   @Override
   public HopsSession obtainSession() throws StorageException {
-    DBSession dbSession = sessions.get();
-    if (dbSession == null) {
-      dbSession = dbSessionProvider.getSession();
-      sessions.set(dbSession);
+    return this.obtainSession(false);
+  }
+
+  @Override
+  public HopsSession obtainSession(boolean requireUnique) throws StorageException {
+    DBSession dbSession;
+    if (!requireUnique) {
+      dbSession = sessions.get();
+      if (dbSession == null) {
+        dbSession = dbSessionProvider.getSession();
+        sessions.set(dbSession);
+      }
+    } else {
+      LOG.debug("Returning new, unique session now...");
+      dbSession = dbSessionProvider.getUniqueSession();
     }
-    LOG.debug("Returning session with use-count=" + dbSession.getSessionUseCount());
     return dbSession.getSession();
   }
 

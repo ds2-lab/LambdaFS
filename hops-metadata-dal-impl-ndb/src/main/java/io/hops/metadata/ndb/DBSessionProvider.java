@@ -126,6 +126,17 @@ public class DBSessionProvider implements Runnable {
     }
   }
 
+  /**
+   * Used to get a new, unique session. This is important for thread safety as sessions cannot
+   * be shared between threads under any circumstances, according to the MySQL Cluster NDB
+   * documentation. Thus, this function is used when a thread-safe session is required. This
+   * situation occurs exclusively for the HopsEventManager, as of right now.
+   * @return A brand new DBSession instance.
+   */
+  protected DBSession getUniqueSession() throws StorageException {
+    return initSession();
+  }
+
   public synchronized DBSession getSession() throws StorageException {
     try {
       DBSession session = sessionPool.remove();
