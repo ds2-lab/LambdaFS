@@ -4,6 +4,7 @@ import com.google.gson.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
@@ -36,6 +37,15 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * This is appended to the end of the serverlessEndpointBase AFTER the number is added.
      */
     private final String blockingParameter = "?blocking=true";
+
+    private final Random random = new Random();
+
+    /**
+     * The maximum amount of time to wait before issuing another HTTP request after the previous request failed.
+     *
+     * TODO: Make this configurable.
+     */
+    private static final int maxBackoffMilliseconds = 5000;
 
     /**
      * Because invokers are generally created via the {@link ServerlessInvokerFactory} class, this constructor
@@ -190,10 +200,66 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         LOG.debug("HttpRequest (before issuing it): " + request.toString());
         LOG.debug("Request URI/URL: " + request.getURI().toURL());
 
-        HttpResponse httpResponse = httpClient.execute(request);
+        int currentNumTries = 0;
+        int maxNumTries = 3; // TODO: Make this configurable.
 
+        while (currentNumTries < maxNumTries) {
+            HttpResponse httpResponse = httpClient.execute(request);
+            int responseCode = httpResponse.getStatusLine().getStatusCode();
+
+            // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
+            // generally indicate a client error, but sometimes I receive this error right after
+            // updating the NameNodes. OpenWhisk complains that the function hasn't been initialized
+            // yet, but if you try again a few seconds later, then the request will get through.
+            if (responseCode >= 400 && responseCode <= 599) {
+                LOG.error("Received HTTP response code " + responseCode + " on attempt " +
+                        (currentNumTries + 1) + "/" + maxNumTries + ".");
+
+                if ((currentNumTries + 1) < maxNumTries) {
+                    long sleepInterval = getExponentialBackoffInterval(currentNumTries);
+                    LOG.debug("Sleeping for " + sleepInterval + " milliseconds before issuing another request...");
+                    try {
+                        Thread.sleep(sleepInterval);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                currentNumTries++;
+                continue;
+            }
+
+            return processHttpResponse(httpResponse);
+        }
+
+        throw new IOException("The file system operation could not be completed. " +
+                "Failed to invoke a Serverless NameNode after " + maxNumTries + " attempts.");
+    }
+
+    /**
+     * Process the HTTP response returned by the NameNode.
+     *
+     * @param httpResponse The response returned by the NameNode.
+     * @return The result intended for the HopsFS client in the form of a JSON object.
+     */
+    private JsonObject processHttpResponse(HttpResponse httpResponse) throws IOException {
         String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
         Gson gson = new Gson();
+
+        int responseCode = httpResponse.getStatusLine().getStatusCode();
+        String reasonPhrase = httpResponse.getStatusLine().getReasonPhrase();
+        String protocolVersion = httpResponse.getStatusLine().getProtocolVersion().toString();
+
+        Header contentType = httpResponse.getEntity().getContentType();
+        long contentLength = httpResponse.getEntity().getContentLength();
+
+        LOG.debug("====== HTTP RESPONSE ======");
+        LOG.debug(protocolVersion + " - " + responseCode);
+        LOG.debug(reasonPhrase);
+        LOG.debug("---------------------------");
+        LOG.debug(contentType.getName() + ": " + contentType.getValue());
+        LOG.debug("Content-length: " + contentLength);
+        LOG.debug("===========================");
 
         LOG.debug("HTTP Response from OpenWhisk function:\n" + httpResponse);
         LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
@@ -377,6 +443,17 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         }
 
         return null;
+    }
+
+    /**
+     * Return the time to wait, in milliseconds, given the current number of attempts.
+     * @param n The current number of attempts.
+     * @return The time to wait, in milliseconds, before attempting another request.
+     */
+    private long getExponentialBackoffInterval(int n) {
+        double interval = Math.pow(2, n);
+        int jitter = random.nextInt( 1000 );
+        return (long)Math.min(interval + jitter, maxBackoffMilliseconds);
     }
 
     /**
