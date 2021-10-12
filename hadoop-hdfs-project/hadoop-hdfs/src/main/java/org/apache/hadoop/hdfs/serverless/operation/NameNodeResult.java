@@ -85,6 +85,8 @@ public class NameNodeResult {
             this.result = result;
             hasResult = true;
             return true;
+        } else {
+            LOG.warn("Cannot overwrite existing result of type " + result.getClass().getSimpleName() + ".");
         }
 
         return false;
@@ -203,6 +205,8 @@ public class NameNodeResult {
             // Add a flag indicating whether this is just a duplicate result.
             json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, true);
         } else {
+            LOG.debug("Result type: " + (result != null ? result.getClass().getSimpleName() : "null"));
+
             try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
                 ObjectOutputStream objectOutputStream;
                 objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
@@ -250,11 +254,11 @@ public class NameNodeResult {
         }
 
         if (operation != null)
-            json.addProperty("op", operation);
+            json.addProperty(ServerlessNameNodeKeys.OPERATION, operation);
 
-        json.addProperty("functionName", functionName);
+        json.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, functionName);
 
-        json.addProperty("requestId", requestId);
+        json.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
 
         return json;
     }

@@ -291,7 +291,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           //StartupOption.UPGRADE.getName() + "] | [" +
           //StartupOption.ROLLBACK.getName() + "] | [" +
           StartupOption.ROLLINGUPGRADE.getName() + " "
-          + RollingUpgradeStartupOption.getAllOptionString() + " ] | \n\t[" +
+          + RollingUpgradeStartupOption.getAllOptionString() + " ] | \n   [" +
           //StartupOption.FINALIZE.getName() + "] | [" +
           //StartupOption.IMPORT.getName() + "] | [" +
           //StartupOption.INITIALIZESHAREDEDITS.getName() + "] | [" +
@@ -1345,8 +1345,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       policy = new EncodingPolicy(codec, targetReplication);
     }
 
-    LOG.info("Create Arguments:\n\tsrc = " + src + "\n\tclientName = "+ clientName + "\n\tcreateParent = " +
-            createParent + "\n\treplication = " + replication + "\n\tblockSize = " + blockSize);
+    LOG.info("Create Arguments:\n   src = " + src + "\n   clientName = "+ clientName + "\n   createParent = " +
+            createParent + "\n   replication = " + replication + "\n   blockSize = " + blockSize);
 
     if (!checkPathLength(src)) {
       throw new IOException(

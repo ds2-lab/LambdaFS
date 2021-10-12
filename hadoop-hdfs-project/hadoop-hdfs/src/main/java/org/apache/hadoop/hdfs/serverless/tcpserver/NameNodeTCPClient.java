@@ -11,6 +11,7 @@ import com.google.gson.JsonParser;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
 
@@ -273,8 +274,8 @@ public class NameNodeTCPClient {
     private void registerWithClient(Client tcpClient) {
         // Complete the registration with the TCP server.
         JsonObject registration = new JsonObject();
-        registration.addProperty("op", ServerlessClientServerUtilities.OPERATION_REGISTER);
-        registration.addProperty("functionName", functionName);
+        registration.addProperty(ServerlessNameNodeKeys.OPERATION, ServerlessClientServerUtilities.OPERATION_REGISTER);
+        registration.addProperty(ServerlessNameNodeKeys.FUNCTION_NAME, functionName);
 
         LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP() + " now...");
         int bytesSent = tcpClient.sendTCP(registration.toString());

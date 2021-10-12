@@ -452,7 +452,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      */
     private long getExponentialBackoffInterval(int n) {
         double interval = Math.pow(2, n);
-        int jitter = random.nextInt( 1000 );
+        int jitter = random.nextInt( 1000);
         return (long)Math.min(interval + jitter, maxBackoffMilliseconds);
     }
 

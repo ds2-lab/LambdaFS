@@ -253,8 +253,8 @@ public class OpenWhiskHandler {
 
         // Check to see if this is a duplicate request, in which case we should return a message indicating as such.
         if (serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
-            LOG.warn("This request (" + requestId + ") has already been processed. Returning now...");
-            result.addResult(new DuplicateRequest("HTTP", requestId), false);
+            LOG.warn("This request (" + requestId + ") has already been received via TCP. Returning now...");
+            result.addResult(new DuplicateRequest("HTTP", requestId), true);
             return result;
         }
 
@@ -387,7 +387,7 @@ public class OpenWhiskHandler {
 
     /**
      * Create and return the response to return to whoever invoked this Serverless NameNode.
-     * @param result The result returned from by `nameNodeDriver()`.
+     * @param result The result returned from by `driver()`.
      * @return JsonObject to return as result of this OpenWhisk activation (i.e., serverless function execution).
      */
     private static JsonObject createJsonResponse(NameNodeResult result) {
