@@ -36,9 +36,9 @@ CREATE TABLE `datanodes` (
 
 -- This table holds individual storage reports. Storage reports will reference datanode storage instances.
 CREATE TABLE `storage_reports` (
-    `group_id` int(11) NOT NULL,    -- DNs typically send several reports in a single heartbeat.
-                                    -- We can tell which reports are grouped together by this field.
-    `report_id` int(11) NOT NULL,   -- This is how we distinguish between entire groups of storage reports.
+    `group_id` bigint(20) NOT NULL,       -- DNs typically send several reports in a single heartbeat.
+                                          -- We can tell which reports are grouped together by this field.
+    `report_id` int(11) NOT NULL,         -- This is how we distinguish between entire groups of storage reports.
     `datanode_uuid` varchar(36) NOT NULL, -- This should refer to a Datanode from the other table.
     `failed` BIT(1) NOT NULL,
     `capacity` bigint(20) NOT NULL,
