@@ -190,11 +190,12 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         HttpResponse httpResponse = httpClient.execute(request);
 
-        LOG.debug("HTTP Response from OpenWhisk function:\n" + httpResponse.toString());
-        LOG.debug("response.getEntity() = " + httpResponse.getEntity());
-
         String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
         Gson gson = new Gson();
+
+        LOG.debug("HTTP Response from OpenWhisk function:\n" + httpResponse);
+        LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
+        LOG.debug("HTTP Response Entity Content: " + json);
 
         JsonObject jsonObjectResponse = null;
         JsonPrimitive jsonPrimitiveResponse = null;
@@ -361,9 +362,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 Object result = InvokerUtilities.base64StringToObject(resultBase64);
 
                 if (result == null) {
-                    LOG.warn("Returning null despite the NameNode returning a result...");
-                    LOG.warn("response['RESULT']=" + resultBase64);
-                    LOG.warn("After decoding from base64: " + result);
+                    LOG.warn("Returning null despite the NameNode returning a result.");
                     return null;
                 }
 
