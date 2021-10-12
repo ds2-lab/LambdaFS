@@ -3381,13 +3381,13 @@ public class BlockManager {
    * over or under replicated. Place it into the respective queue.
    */
   public synchronized void processMisReplicatedBlocks() throws IOException {
-    //this normaly reinitialize the block scanning, when should we reinitialize the block scanning and
-    //how do we propagate it to all NN?
+    // this normally reinitialize the block scanning, when should we reinitialize the block scanning and
+    // how do we propagate it to all NN?
     stopReplicationInitializer();
     if (namesystem.isLeader()) {
-      //it should be ok to reset even if other NN did not restart 
-      //at worse we will have blocks in neededReplication that should not be there
-      //this would only result in these block getting transiantly over replicated
+      // it should be ok to reset even if other NN did not restart
+      // at worse we will have blocks in neededReplication that should not be there
+      // this would only result in these block getting transiently over-replicated
       HdfsVariables.resetMisReplicatedIndex();
       neededReplications.clear();
       excessReplicateMap.clear();
@@ -3439,7 +3439,7 @@ public class BlockManager {
         // TODO: This could be modified to support serverless by checking how many deployments of the NN
         //  there are, and then just using those in place of the "active namenodes", as each unique
         //  deployment of the NN is essentially an "active namenode".
-        for (ActiveNode nn : namesystem.getNameNode().getLeaderElectionInstance().getActiveNamenodes().getActiveNodes()) {
+        for (ActiveNode nn : namesystem.getNameNode().getActiveNameNodes().getActiveNodes()) {
           activeNodes.add(nn.getId());
         }
         List<MisReplicatedRange> toRemove = new ArrayList<>();

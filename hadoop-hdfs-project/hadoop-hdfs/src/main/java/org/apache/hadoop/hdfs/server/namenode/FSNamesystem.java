@@ -783,7 +783,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * Initialize replication queues.
    */
   private void initializeReplQueues() throws IOException {
-    LOG.info("initializing replication queues");
+    LOG.info("Initializing replication queues.");
     blockManager.processMisReplicatedBlocks();
     initializedReplQueues = true;
   }

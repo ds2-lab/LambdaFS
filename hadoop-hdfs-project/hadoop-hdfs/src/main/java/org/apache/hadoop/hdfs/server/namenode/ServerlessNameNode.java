@@ -1854,6 +1854,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
      LOG.debug("Started the NDB EventManager thread.");
 
     numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+
     workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,
             SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT);
     LOG.debug("Number of unique serverless name nodes: " + numUniqueServerlessNameNodes);
@@ -2700,10 +2701,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public SortedActiveNodeList getActiveNameNodes() {
-    //return leaderElection.getActiveNamenodes();
-
     return new SortedActiveNodeList() {
-
       @Override
       public boolean isEmpty() {
         return false;
@@ -2711,7 +2709,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       @Override
       public int size() {
-        return 0;
+        return numUniqueServerlessNameNodes;
       }
 
       @Override
@@ -2721,7 +2719,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       @Override
       public List<ActiveNode> getSortedActiveNodes() {
-        return new ArrayList<ActiveNode>();
+        return getActiveNodes();
       }
 
       @Override
