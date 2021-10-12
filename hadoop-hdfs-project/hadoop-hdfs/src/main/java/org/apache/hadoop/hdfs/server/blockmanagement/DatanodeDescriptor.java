@@ -563,7 +563,15 @@ public class DatanodeDescriptor extends DatanodeInfo {
 
     for (StorageReport report : reports) {
       try {
-        DatanodeStorageInfo storage = updateStorage(report.getStorage());
+        DatanodeStorage dnStorage = report.getStorage();
+
+        if (dnStorage == null) {
+          LOG.error("StorageReport is missing reference to DatanodeStorage.");
+          LOG.error("StorageReport in question: " + report);
+          throw new IOException("StorageReport contains null reference for its DatanodeStorage field.");
+        }
+
+        DatanodeStorageInfo storage = updateStorage(dnStorage);
         if (checkFailedStorages) {
           failedStorageInfos.remove(storage);
         }

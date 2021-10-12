@@ -264,7 +264,7 @@ public class DataNode extends ReconfigurableBase
   /**
    * Each time a new group of StorageReport instances is written to NDB, this variable is incremented.
    */
-  private volatile int storageReportGroupCounter = -1;
+  private volatile long storageReportGroupCounter = Time.getUtcTime();
 
   /**
    * Used to assign reportId values to intermediate block reports.
@@ -511,7 +511,7 @@ public class DataNode extends ReconfigurableBase
   /**
    * Set the Storage Report groupId counter to a specific value. This is used during registration.
    */
-  public synchronized void setStorageReportGroupCounter(int groupCounter) {
+  public synchronized void setStorageReportGroupCounter(long groupCounter) {
     this.storageReportGroupCounter = groupCounter;
   }
 
@@ -528,7 +528,7 @@ public class DataNode extends ReconfigurableBase
    * Increments the `storageReportGroupCounter` instance variable and returns the value of this variable
    * BEFORE it was incremented during this method's execution.
    */
-  public synchronized int getAndIncrementStorageReportGroupCounter() {
+  public synchronized long getAndIncrementStorageReportGroupCounter() {
     if (storageReportGroupCounter == -1) {
       LOG.debug("Retrieving Storage Report groupId from NDB...");
       StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> reportAccess =
@@ -543,8 +543,9 @@ public class DataNode extends ReconfigurableBase
         this.storageReportGroupCounter = 0;
       }
     }
-    int tmp = storageReportGroupCounter;
-    storageReportGroupCounter += 1;
+    long tmp = storageReportGroupCounter;
+    //storageReportGroupCounter += 1;
+    storageReportGroupCounter = Time.getUtcTime();
     return tmp;
   }
 

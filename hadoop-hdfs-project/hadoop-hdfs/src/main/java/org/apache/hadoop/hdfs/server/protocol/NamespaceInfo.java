@@ -45,7 +45,7 @@ public class NamespaceInfo extends StorageInfo {
   /**
    * The groupId that the DataNode should begin using when it publishes Storage Reports to intermediate storage.
    */
-  int groupId;
+  long groupId;
 
   // only authoritative on the server-side to determine advertisement to
   // clients.  enum will update the supported values
@@ -123,11 +123,11 @@ public class NamespaceInfo extends StorageInfo {
   /**
    * Set the groupId value of this NamespaceInfo object.
    */
-  public void setGroupId(int groupId) {
+  public void setGroupId(long groupId) {
     this.groupId = groupId;
   }
 
-  public int getGroupId() {
+  public long getGroupId() {
     return this.groupId;
   }
 

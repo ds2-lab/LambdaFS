@@ -14,21 +14,21 @@ public interface StorageReportDataAccess<T> extends EntityDataAccess {
      * @param groupId The ID of the group of storageReports in which the desired instance is found.
      * @param reportId The ID of the particular report.
      */
-    T getStorageReport(int groupId, int reportId, String datanodeUuid) throws StorageException;
+    T getStorageReport(long groupId, int reportId, String datanodeUuid) throws StorageException;
 
     /**
      * Remove the particular storage report identified by the given groupId and reportId.
      * @param groupId The ID of the group of storageReports in which the desired instance is found.
      * @param reportId The ID of the particular report.
      */
-    void removeStorageReport(int groupId, int reportId, String datanodeUuid) throws StorageException;
+    void removeStorageReport(long groupId, int reportId, String datanodeUuid) throws StorageException;
 
     /**
      * Remove all StorageReport instances contained within the group specified by the given groupId.
      * @param groupId The ID of the group of StorageReport instances to remove.
      * @return The number of Storage Reports that were deleted.
      */
-    int removeStorageReports(int groupId, String datanodeUuid) throws StorageException;
+    int removeStorageReports(long groupId, String datanodeUuid) throws StorageException;
 
     /**
      * Remove all StorageReport instances associated with the datanode identified by the given UUID.
@@ -47,7 +47,7 @@ public interface StorageReportDataAccess<T> extends EntityDataAccess {
      * @param groupId The ID of the group of StorageReports to return.
      * @param datanodeUuid The UUID of the datanode from which the reports should have originated.
      */
-    List<T> getStorageReports(int groupId, String datanodeUuid) throws StorageException;
+    List<T> getStorageReports(long groupId, String datanodeUuid) throws StorageException;
 
     /**
      * Retrieve the latest storage reports from the DataNode identified by the given UUID.
@@ -71,5 +71,5 @@ public interface StorageReportDataAccess<T> extends EntityDataAccess {
      * @return A list of StorageReport instances.
      * @throws StorageException
      */
-    List<T> getStorageReportsAfterGroupId(int groupId, String datanodeUuid) throws StorageException;
+    List<T> getStorageReportsAfterGroupId(long groupId, String datanodeUuid) throws StorageException;
 }

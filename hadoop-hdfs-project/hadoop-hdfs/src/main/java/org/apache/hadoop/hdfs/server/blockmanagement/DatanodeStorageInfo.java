@@ -50,8 +50,7 @@ import org.apache.hadoop.hdfs.server.protocol.DatanodeStorage.State;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 
 /**
- * A Datanode has one or more storages. A storage in the Datanode is represented
- * by this class.
+ * A Datanode has one or more storages. A storage in the Datanode is represented by this class.
  */
 public class DatanodeStorageInfo {
   public static final Log LOG = LogFactory.getLog(DatanodeStorageInfo.class);

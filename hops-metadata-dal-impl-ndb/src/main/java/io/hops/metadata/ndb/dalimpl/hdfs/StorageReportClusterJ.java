@@ -30,8 +30,8 @@ public class StorageReportClusterJ
     public interface StorageReportDTO {
         @PrimaryKey
         @Column(name = GROUP_ID)
-        int getGroupId();
-        void setGroupId(int groupId);
+        long getGroupId();
+        void setGroupId(long groupId);
 
         @PrimaryKey
         @Column(name = REPORT_ID)
@@ -71,7 +71,7 @@ public class StorageReportClusterJ
     private static final Log LOG = LogFactory.getLog(StorageReportClusterJ.class);
 
     private final ClusterjConnector connector = ClusterjConnector.getInstance();
-    private MysqlServerConnector mysqlConnector = MysqlServerConnector.getInstance();
+    private final MysqlServerConnector mysqlConnector = MysqlServerConnector.getInstance();
 
     /**
      * Source: https://stackoverflow.com/questions/7745609/sql-select-only-rows-with-max-value-on-a-column
@@ -116,7 +116,7 @@ public class StorageReportClusterJ
             "DELETE FROM %s WHERE %s = %s";
 
     @Override
-    public StorageReport getStorageReport(int groupId, int reportId, String datanodeUuid) throws StorageException {
+    public StorageReport getStorageReport(long groupId, int reportId, String datanodeUuid) throws StorageException {
         LOG.info("GET StorageReport groupId = " + groupId + ", reportId = " + reportId);
 
         HopsSession session = connector.obtainSession();
@@ -131,7 +131,7 @@ public class StorageReportClusterJ
     }
 
     @Override
-    public void removeStorageReport(int groupId, int reportId, String datanodeUuid) throws StorageException {
+    public void removeStorageReport(long groupId, int reportId, String datanodeUuid) throws StorageException {
         LOG.info("REMOVE StorageReport groupId = " + groupId + ", reportId = " + reportId);
 
         HopsSession session = connector.obtainSession();
@@ -144,7 +144,7 @@ public class StorageReportClusterJ
     }
 
     @Override
-    public int removeStorageReports(int groupId, String datanodeUuid) throws StorageException {
+    public int removeStorageReports(long groupId, String datanodeUuid) throws StorageException {
         LOG.info("REMOVE StorageReport group " + groupId + ", datanodeUuid = " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
@@ -222,7 +222,7 @@ public class StorageReportClusterJ
     }
 
     @Override
-    public List<StorageReport> getStorageReportsAfterGroupId(int groupId, String datanodeUuid) throws StorageException {
+    public List<StorageReport> getStorageReportsAfterGroupId(long groupId, String datanodeUuid) throws StorageException {
         LOG.info("GET StorageReports after group " + groupId + ", DN UUID: " + datanodeUuid);
 
         PreparedStatement s = null;
@@ -278,7 +278,7 @@ public class StorageReportClusterJ
     }
 
     @Override
-    public List<StorageReport> getStorageReports(int groupId, String datanodeUuid) throws StorageException {
+    public List<StorageReport> getStorageReports(long groupId, String datanodeUuid) throws StorageException {
         LOG.info("GET StorageReport group " + groupId + ", DN UUID: " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();

@@ -108,6 +108,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.PrivilegedExceptionAction;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -243,6 +244,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private static final String DEFAULT_OPERATION = "default";
 
   /**
+   * The time at which this instance of the NameNode began executing.
+   *
+   * This is used to initially grab StorageReport instances from NDB. In regular HopsFS, NameNodes
+   * would only begin receiving StorageReports once everything is running. Old StorageReports would
+   * obviously have just not been sent. So we only query for StorageReports that were published beginning
+   * with the time that the NameNode began executing.
+   */
+  private final long creationTime;
+
+  /**
    * HDFS configuration can have three types of parameters:
    * <ol>
    * <li>Parameters that are common for all the name services in the
@@ -338,7 +349,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * This variable is used to keep track of the last storage report retrieved from intermediate storage.
    */
-  private final HashMap<String, Integer> lastStorageReportGroupIds = new HashMap<>();
+  private final HashMap<String, Long> lastStorageReportGroupIds = new HashMap<>();
 
   /**
    * Used to keep track of the most recent reportId obtained for each data node.
@@ -683,7 +694,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Get the largest groupId retrieved for this particular DataNode.
     // We default to 0 if there is no value stored yet as 0 is the starting value for groupIds.
-    int lastStorageReportGroupId = lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(), 0);
+    long lastStorageReportGroupId = lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(), creationTime);
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
         = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId - 1, registration.getDatanodeUuid());
         // = dataAccess.getLatestStorageReports(registration.getDatanodeUuid());
@@ -726,7 +737,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Map to keep track of the largest groupId retrieved for each DataNode. Specifically, this maps
     // the DataNode's UUID to the largest groupId retrieved during this operation.
-    HashMap<String, Integer> largestGroupIds = new HashMap<>();
+    HashMap<String, Long> largestGroupIds = new HashMap<>();
 
     // Retrieve the storage reports from intermediate storage.
     HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap
@@ -751,17 +762,27 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // For each storage report associated with the current datanode, convert it to a HopsFS storage report (they
       // are currently the DAL storage reports, which are just designed to be used with intermediate storage).
       for (StorageReport report : storageReports) {
-        //LOG.debug(report.toString());
 
-        org.apache.hadoop.hdfs.server.protocol.StorageReport convertedReport
-                = new org.apache.hadoop.hdfs.server.protocol.StorageReport(
-                datanodeStorageMap.get(report.getDatanodeStorageId()), report.getFailed(),
-                report.getCapacity(), report.getDfsUsed(), report.getRemaining(), report.getBlockPoolUsed());
+        String datanodeStorageId = report.getDatanodeStorageId();
+        org.apache.hadoop.hdfs.server.protocol.DatanodeStorage datanodeStorage =
+                datanodeStorageMap.get(datanodeStorageId);
 
-        convertedStorageReports.add(convertedReport);
+        if (datanodeStorage != null) {
+          org.apache.hadoop.hdfs.server.protocol.StorageReport convertedReport
+                  = new org.apache.hadoop.hdfs.server.protocol.StorageReport(
+                  datanodeStorageMap.get(report.getDatanodeStorageId()), report.getFailed(),
+                  report.getCapacity(), report.getDfsUsed(), report.getRemaining(), report.getBlockPoolUsed());
 
-        if (report.getGroupId() > largestGroupIds.getOrDefault(report.getDatanodeUuid(), -1))
-          largestGroupIds.put(report.getDatanodeUuid(), report.getGroupId());
+          convertedStorageReports.add(convertedReport);
+
+          if (report.getGroupId() > largestGroupIds.getOrDefault(report.getDatanodeUuid(), -1L))
+            largestGroupIds.put(report.getDatanodeUuid(), report.getGroupId());
+        }
+        else {
+          LOG.warn("StorageReport (id=" + report.getReportId() + ", group="
+                  + report.getGroupId() + ") from DataNode " + datanodeUuid + " is referencing an unknown datanode " +
+                  "storage (id=" + datanodeStorageId + "). Skipping this report.");
+        }
       }
 
       convertedStorageReportMap.put(datanodeUuid, convertedStorageReports);
@@ -805,9 +826,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     // Update the groupIds map.
-    for (Map.Entry<String, Integer> entry : largestGroupIds.entrySet()) {
+    for (Map.Entry<String, Long> entry : largestGroupIds.entrySet()) {
       String datanodeUuid = entry.getKey();
-      int groupId = entry.getValue();
+      long groupId = entry.getValue();
 
       lastStorageReportGroupIds.put(datanodeUuid, groupId);
 
@@ -1284,7 +1305,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Check for an existing groupId associated with this DataNode.
     // This would exist if the DN had crashed and is restarting or something to that effect.
-    int groupId = this.lastStorageReportGroupIds.getOrDefault(datanodeUuid, 0);
+    long groupId = this.lastStorageReportGroupIds.getOrDefault(datanodeUuid, creationTime);
     LOG.debug("Assigning groupId " + groupId + " to DN " + datanodeUuid);
     nsInfo.setGroupId(groupId);
 
@@ -2120,6 +2141,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
     this.functionName = functionName;
     this.nameNodeTCPClient = new NameNodeTCPClient(functionName, this);
+    this.creationTime = Time.getUtcTime();
     this.tracer = new Tracer.Builder("NameNode").
       conf(TraceUtils.wrapHadoopConf(NAMENODE_HTRACE_PREFIX, conf)).
       build();

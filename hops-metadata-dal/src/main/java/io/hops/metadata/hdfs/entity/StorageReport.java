@@ -7,7 +7,7 @@ public class StorageReport {
     /**
      * We can tell which reports are grouped together by this field.
      */
-    private final int groupId;
+    private final long groupId;
 
     /**
      * This is how we distinguish between entire groups of storage reports.
@@ -31,7 +31,7 @@ public class StorageReport {
 
     private final String datanodeStorageId;
 
-    public StorageReport(int groupId, int reportId, String datanodeUuid, boolean failed, long capacity,
+    public StorageReport(long groupId, int reportId, String datanodeUuid, boolean failed, long capacity,
                          long dfsUsed, long remaining, long blockPoolUsed, String datanodeStorageId) {
         this.groupId = groupId;
         this.reportId = reportId;
@@ -68,7 +68,7 @@ public class StorageReport {
         return reportId;
     }
 
-    public int getGroupId() {
+    public long getGroupId() {
         return groupId;
     }
 

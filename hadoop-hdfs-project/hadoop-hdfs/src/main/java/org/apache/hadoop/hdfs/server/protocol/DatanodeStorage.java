@@ -26,7 +26,10 @@ import java.io.Serializable;
 import java.util.UUID;
 
 /**
- * Class captures information of a storage in Datanode.
+ * Class captures information of a storage in Datanode. This is used to interface
+ * with intermediate storage (i.e., store and retrieve Datanode storages from intermediate storage).
+ * The "proper" representation of a storage on a given DataNode is implemented by the class
+ * {@link org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo}.
  */
 public class DatanodeStorage implements Serializable {
   private static final long serialVersionUID = -3457051977557065967L;

@@ -272,7 +272,7 @@ class BPServiceActor implements Runnable {
    * Store the given StorageReport instance in intermediate storage.
    * @param originalReport the report to store in intermediate storage.
    */
-  private void storeStorageReportInIntermediateStorage(StorageReport originalReport, int groupId, int reportId,
+  private void storeStorageReportInIntermediateStorage(StorageReport originalReport, long groupId, int reportId,
       StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> access) throws StorageException {
 
     // This is the Data Abstraction Layer report. Has some additional fields, such as groupId and reportId.
@@ -324,7 +324,7 @@ class BPServiceActor implements Runnable {
     //LOG.info("Storing " + reports.length + " StorageReport instance(s) in intermediate storage now...");
 
     int reportId = 0;
-    int groupId = dn.getAndIncrementStorageReportGroupCounter();
+    long groupId = dn.getAndIncrementStorageReportGroupCounter();
     // Check NDB for the last-used groupId.
 
     HashSet<DatanodeStorage> datanodeStorages = new HashSet<>();
