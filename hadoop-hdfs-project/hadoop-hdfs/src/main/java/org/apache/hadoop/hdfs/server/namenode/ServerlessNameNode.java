@@ -1835,13 +1835,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // We need to do this AFTER the above call to `HdfsStorageFactory.setConfiguration(conf)`, as the ClusterJ/NDB
     // library is loaded during that call. If we try to create the event manager before that, we will get class
     // not found errors.
-//    ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
-//    ndbEventManager.defaultSetup(null, true);
-//
-//    eventManagerThread = new Thread(ndbEventManager);
-//    eventManagerThread.start();
+    ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
+    ndbEventManager.defaultSetup(null, true);
 
-    // LOG.debug("Started the NDB EventManager thread.");
+    eventManagerThread = new Thread(ndbEventManager);
+    eventManagerThread.start();
+
+     LOG.debug("Started the NDB EventManager thread.");
 
     numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
     workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,

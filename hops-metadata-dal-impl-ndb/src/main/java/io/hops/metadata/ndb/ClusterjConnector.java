@@ -100,6 +100,7 @@ public class ClusterjConnector implements StorageConnector<DBSession> {
       dbSession = dbSessionProvider.getSession();
       sessions.set(dbSession);
     }
+    LOG.debug("Returning session with use-count=" + dbSession.getSessionUseCount());
     return dbSession.getSession();
   }
 

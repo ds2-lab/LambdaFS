@@ -131,8 +131,7 @@ public class DBSessionProvider implements Runnable {
       DBSession session = sessionPool.remove();
       return session;
     } catch (NoSuchElementException e) {
-      LOG.warn(
-          "DBSessionProvider cannot keep up with the demand for new sessions.");
+      LOG.warn("DBSessionProvider cannot keep up with the demand for new sessions.");
       return initSession();
     }
   }
@@ -144,7 +143,9 @@ public class DBSessionProvider implements Runnable {
 
     if ((returnedSession.getSessionUseCount() >=
         returnedSession.getMaxReuseCount()) ||
-        forceClose) { // session can be closed even before the reuse count has expired. Close the session incase of database errors.
+        forceClose) {
+      // session can be closed even before the reuse count has expired.
+      // Close the session in case of database errors.
       toGC.add(returnedSession);
     } else { // increment the count and return it to the pool
       returnedSession.getSession().setLockMode(LockMode.READ_COMMITTED);
