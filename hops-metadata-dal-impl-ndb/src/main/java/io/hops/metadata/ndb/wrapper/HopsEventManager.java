@@ -68,7 +68,9 @@ public class HopsEventManager implements EventManager {
      * These should just be numerical (32- or 64-bit integers, ideally).
      */
     private static final String[] INODE_TABLE_RECORD_ATTR_COLUMNS = new String[] {
-            "partition_id", "parent_id", "id"
+            "partition_id",     // int(11)
+            "parent_id",        // int(11)
+            "id"                // int(11)
     };
 
     /**

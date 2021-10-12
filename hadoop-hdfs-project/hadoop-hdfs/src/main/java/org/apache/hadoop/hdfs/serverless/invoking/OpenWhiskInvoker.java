@@ -197,13 +197,15 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
 
-        LOG.debug("HttpRequest (before issuing it): " + request.toString());
+        LOG.debug("HttpRequest (before issuing it): " + request);
         LOG.debug("Request URI/URL: " + request.getURI().toURL());
 
         int currentNumTries = 0;
         int maxNumTries = 3; // TODO: Make this configurable.
 
         while (currentNumTries < maxNumTries) {
+            LOG.debug("Invoking NameNode (op=" + operationName + "), attempt " + (currentNumTries + 1)
+                    + "/" + maxNumTries + ".");
             HttpResponse httpResponse = httpClient.execute(request);
             int responseCode = httpResponse.getStatusLine().getStatusCode();
 
