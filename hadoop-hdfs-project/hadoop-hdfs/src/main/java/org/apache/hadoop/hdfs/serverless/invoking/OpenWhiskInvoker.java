@@ -201,11 +201,10 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         LOG.debug("Request URI/URL: " + request.getURI().toURL());
 
         int currentNumTries = 0;
-        int maxNumTries = 3; // TODO: Make this configurable.
 
-        while (currentNumTries < maxNumTries) {
+        while (currentNumTries < maxHttpRetries) {
             LOG.debug("Invoking NameNode (op=" + operationName + "), attempt " + (currentNumTries + 1)
-                    + "/" + maxNumTries + ".");
+                    + "/" + maxHttpRetries + ".");
             HttpResponse httpResponse = httpClient.execute(request);
             int responseCode = httpResponse.getStatusLine().getStatusCode();
 
@@ -215,9 +214,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             // yet, but if you try again a few seconds later, then the request will get through.
             if (responseCode >= 400 && responseCode <= 599) {
                 LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-                        (currentNumTries + 1) + "/" + maxNumTries + ".");
+                        (currentNumTries + 1) + "/" + maxHttpRetries + ".");
 
-                if ((currentNumTries + 1) < maxNumTries) {
+                if ((currentNumTries + 1) < maxHttpRetries) {
                     long sleepInterval = getExponentialBackoffInterval(currentNumTries);
                     LOG.debug("Sleeping for " + sleepInterval + " milliseconds before issuing another request...");
                     try {
@@ -235,7 +234,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         }
 
         throw new IOException("The file system operation could not be completed. " +
-                "Failed to invoke a Serverless NameNode after " + maxNumTries + " attempts.");
+                "Failed to invoke a Serverless NameNode after " + maxHttpRetries + " attempts.");
     }
 
     /**
