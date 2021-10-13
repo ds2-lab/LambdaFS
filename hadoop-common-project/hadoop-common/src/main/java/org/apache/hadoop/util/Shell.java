@@ -517,20 +517,20 @@ public abstract class Shell {
       LOG.debug("The Serverless NameNode does not have a HADOOP_HOME directory.");
     }
 
-    HADOOP_HOME_FILE = null;
-    HADOOP_HOME_DIR_FAILURE_CAUSE = null;
-//    try {
-//      home = checkHadoopHome();
-//      ex = null;
-//    } catch (IOException ioe) {
-//      if (LOG.isDebugEnabled()) {
-//        LOG.debug("Failed to detect a valid hadoop home directory", ioe);
-//      }
-//      ex = ioe;
-//      home = null;
-//    }
-//    HADOOP_HOME_FILE = home;
-//    HADOOP_HOME_DIR_FAILURE_CAUSE = ex;
+//    HADOOP_HOME_FILE = null;
+//    HADOOP_HOME_DIR_FAILURE_CAUSE = null;
+    try {
+      home = checkHadoopHome();
+      ex = null;
+    } catch (IOException ioe) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Failed to detect a valid hadoop home directory.");
+      }
+      ex = ioe;
+      home = null;
+    }
+    HADOOP_HOME_FILE = home;
+    HADOOP_HOME_DIR_FAILURE_CAUSE = ex;
   }
 
   /**
