@@ -18,10 +18,6 @@
 
 <configuration>
     <property>
-        <name>serverless.tcp.enabled</name>
-        <value>true</value>
-    </property>
-    <property>
         <name>serverless.http.maxretries</name>
         <value>3</value>
     </property>
