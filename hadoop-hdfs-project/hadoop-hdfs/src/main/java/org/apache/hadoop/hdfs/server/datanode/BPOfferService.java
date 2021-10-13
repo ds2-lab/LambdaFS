@@ -795,8 +795,7 @@ class BPOfferService implements Runnable {
   }
 
   /**
-   * Main loop for each BP thread. Run until shutdown, forever calling remote
-   * NameNode functions.
+   * Main loop for each BP thread. Run until shutdown, forever calling remote NameNode functions.
    */
   private void whirlingLikeASufi()
       throws Exception {   //http://en.wikipedia.org/wiki/Sufi_whirling
@@ -806,7 +805,7 @@ class BPOfferService implements Runnable {
         long startTime = scheduler.monotonicNow();
         boolean sendHeartbeat = scheduler.isHeartbeatDue(startTime);
 
-        if(sendHeartbeat){
+        if (sendHeartbeat) {
             scheduler.scheduleNextHeartbeat();
         }
         
@@ -874,6 +873,8 @@ class BPOfferService implements Runnable {
       }
       sendImmediateIBR = false;
     }
+
+    LOG.debug("DataNode has " + reports.size() + " incremental block report(s) to send to the NameNode.");
 
     if (reports.size() == 0) {
       // Nothing new to report.
@@ -1019,7 +1020,7 @@ class BPOfferService implements Runnable {
       i++;
     }
 
-    // Get a namenode to send the report(s) to
+    // Get a NameNode to send the report(s) to
     ActiveNode an = nextNNForBlkReport(totalBlockCount);
     int numReportsSent = 0;
     int numRPCs = 0;
@@ -1286,8 +1287,9 @@ class BPOfferService implements Runnable {
     nnListLastUpdate = System.currentTimeMillis();
   }
 
-  public synchronized  void startWhirlingSufiThread() {
+  public synchronized void startWhirlingSufiThread() {
     if (blockReportThread == null || !blockReportThread.isAlive()) {
+      LOG.debug("It's time to start whirling like a sufi!");
       blockReportThread = new Thread(this, "BlkReportThread");
       blockReportThread.setDaemon(true); // needed for JUnit testing
       blockReportThread.start();

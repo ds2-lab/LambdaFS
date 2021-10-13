@@ -143,6 +143,7 @@ public class NameNodeTCPClient {
              * @param object The object that the client sent to us.
              */
             public void received(Connection connection, Object object) {
+                LOG.debug("");
                 LOG.debug("[TCP Client] Received message from connection " + connection.toString());
 
                 NameNodeResult tcpResult;
@@ -213,7 +214,7 @@ public class NameNodeTCPClient {
         LOG.debug("FS operation arguments: ");
         for (Map.Entry<String, JsonElement> entry : fsArgs.entrySet())
             LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
-        LOG.debug("======================================================");
+        LOG.debug("======================================================\n");
 
         NameNodeResult tcpResult = new NameNodeResult(functionName, requestId);
 

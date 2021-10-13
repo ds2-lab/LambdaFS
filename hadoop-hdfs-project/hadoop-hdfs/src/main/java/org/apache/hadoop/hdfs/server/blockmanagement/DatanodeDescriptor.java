@@ -99,8 +99,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
    * A datanode is a collection of storages. This maps storageID's to their
    * DataNodeStorageInfo
    */
-  private final Map<String, DatanodeStorageInfo> storageMap =
-      new HashMap<String, DatanodeStorageInfo>();
+  private final Map<String, DatanodeStorageInfo> storageMap = new HashMap<String, DatanodeStorageInfo>();
   
 //  /**
 //   * A list of CachedBlock objects on this datanode.
@@ -1042,7 +1041,8 @@ public class DatanodeDescriptor extends DatanodeInfo {
     return sb.toString();
   }
 
-  public DatanodeStorageInfo updateStorage(DatanodeStorage s) throws IOException{
+  public DatanodeStorageInfo updateStorage(DatanodeStorage s) throws IOException {
+    LOG.debug("Updating storage map for DataNode " + getDatanodeUuid() + " now...");
     synchronized (storageMap) {
       DatanodeStorageInfo storage = getStorageInfo(s.getStorageID());
       if (storage == null) {
