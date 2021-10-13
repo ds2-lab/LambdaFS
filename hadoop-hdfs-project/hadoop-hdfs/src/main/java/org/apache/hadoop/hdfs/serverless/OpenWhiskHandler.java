@@ -92,12 +92,13 @@ public class OpenWhiskHandler {
      * OpenWhisk handler.
      */
     public static JsonObject main(JsonObject args) {
+        String functionName = platformSpecificInitialization();
+
         LOG.info("============================================================");
-        LOG.info("Serverless NameNode v" + ServerlessNameNode.versionNumber + " has started executing.");
+        LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " has received an HTTP invocation.");
         LOG.info("============================================================\n");
 
         performStaticInitialization();
-        String functionName = platformSpecificInitialization();
 
         // The arguments passed by the user are included under the 'value' key.
         JsonObject userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
