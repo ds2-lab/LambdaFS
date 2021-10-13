@@ -2154,7 +2154,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
     this.functionName = functionName;
     this.nameNodeTCPClient = new NameNodeTCPClient(functionName, this);
-    this.creationTime = Time.getUtcTime();
+    // Subtract five seconds (i.e., 5000 milliseconds) to account for invocation overheads and other start-up times.
+    this.creationTime = Time.getUtcTime() - 5000;
     this.tracer = new Tracer.Builder("NameNode").
       conf(TraceUtils.wrapHadoopConf(NAMENODE_HTRACE_PREFIX, conf)).
       build();
