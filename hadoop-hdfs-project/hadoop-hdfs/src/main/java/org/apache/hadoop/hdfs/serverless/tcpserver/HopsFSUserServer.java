@@ -168,6 +168,11 @@ public class HopsFSUserServer {
                     LOG.debug("[TCP Server] Received message from NameNode at " + connection.toString() + " at " +
                             connection.getRemoteAddressTCP() + ".");
 
+                    LOG.debug("===== Message Contents =====");
+                    for (String key : body.keySet())
+                        LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
+                    LOG.debug("============================");
+
                     String functionName = body.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION_NAME).getAsString();
                     String operation = body.getAsJsonPrimitive("op").getAsString();
 
