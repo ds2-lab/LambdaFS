@@ -898,9 +898,8 @@ class BPOfferService implements Runnable {
       if (!success) {
         synchronized (pendingIncrementalBRperStorage) {
           for (StorageReceivedDeletedBlocks report : reports) {
-            // If we didn't succeed in sending the report, put all of the
-            // blocks back onto our queue, but only in the case where we
-            // didn't put something newer in the meantime.
+            // If we didn't succeed in sending the report, put all the blocks back onto our queue, but only
+            // in the case where we didn't put something newer in the meantime.
             PerStoragePendingIncrementalBR perStorageMap = pendingIncrementalBRperStorage.get(report.getStorage());
             perStorageMap.putMissingBlockInfos(report.getBlocks());
             sendImmediateIBR = true;
@@ -954,9 +953,9 @@ class BPOfferService implements Runnable {
   }
 
   /*
-   * Informing the name node could take a long long time! Should we wait
-   * till namenode is informed before responding with success to the
-   * client? For now we don't.
+   * Informing the name node could take a long, long time! Should we wait
+   * till NameNode is informed before responding with success to the
+   * client? For now, we don't.
    */
   void notifyNamenodeBlockInt(ReceivedDeletedBlockInfo bInfo,
       String storageUuid, boolean now) {
@@ -979,7 +978,7 @@ class BPOfferService implements Runnable {
   }
 
   /**
-   * Report the list blocks to the Namenode
+   * Report the list blocks to the NameNode.
    *
    * @throws IOException
    */

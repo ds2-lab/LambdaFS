@@ -581,7 +581,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
         totalBlockPoolUsed += report.getBlockPoolUsed();
         totalDfsUsed += report.getDfsUsed();
       } catch (IOException ex) {
-        LOG.error("could not handle storage report for storage: " + report.getStorage().getStorageID(), ex);
+        LOG.error("Could not handle storage report for storage: " + report.getStorage().getStorageID(), ex);
       }
     }
     rollBlocksScheduled(getLastUpdateMonotonic());

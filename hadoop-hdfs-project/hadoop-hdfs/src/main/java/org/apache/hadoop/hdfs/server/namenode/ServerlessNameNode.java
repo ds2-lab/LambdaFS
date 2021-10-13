@@ -61,9 +61,7 @@ import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.security.token.block.ExportedBlockKeys;
-import org.apache.hadoop.hdfs.server.blockmanagement.BRLoadBalancingNonLeaderException;
-import org.apache.hadoop.hdfs.server.blockmanagement.BRTrackingService;
-import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
+import org.apache.hadoop.hdfs.server.blockmanagement.*;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.NamenodeRole;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.RollingUpgradeStartupOption;
@@ -818,6 +816,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // If we didn't register ANY DataNodes, then we should raise an exception here,
     // as we won't have any DataNodes with which to complete file system operations.
     if (datanodeRegistrations.size() > 0 && numSuccess == 0) {
+      // TODO: What if we already have some valid DNs registered? We shouldn't throw an exception in this case.
+      //       We should add an additional condition that we also do not have any valid DNs.
       throw new IOException("Failed to successfully process any of the " + datanodeRegistrations.size() +
               " registration(s).");
     }
@@ -986,6 +986,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         LOG.error("Error registering datanode " + dataNodeMeta.getDatanodeUuid());
         throw ex;
       }
+    }
+
+    DatanodeManager datanodeManager = namesystem.getBlockManager().getDatanodeManager();
+    for (DatanodeRegistration registration : datanodeRegistrations) {
+      DatanodeDescriptor datanodeDescriptor = datanodeManager.getDatanode(registration.getDatanodeUuid());
+      DatanodeStorageInfo[] storageInfos = datanodeDescriptor.getStorageInfos();
+      int numStorageInfos = storageInfos.length;
+
+      if (numStorageInfos == 1)
+        LOG.debug("After registration, DataNode " + registration.getDatanodeUuid() + " has 1 storage info.");
+      else
+        LOG.debug("After registration, DataNode " + registration.getDatanodeUuid() + " has " +
+                numStorageInfos + " storage infos.");
     }
 
     return datanodeRegistrations;

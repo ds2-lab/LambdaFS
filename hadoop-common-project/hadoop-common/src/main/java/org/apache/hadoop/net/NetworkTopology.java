@@ -113,7 +113,8 @@ public class NetworkTopology {
     this.clusterMap = factory.newInnerNode(NodeBase.ROOT);
   }
 
-  /** Add a leaf node
+  /**
+   * Add a leaf node
    * Update node counter & rack counter if necessary
    * @param node node to be added; can be null
    * @exception IllegalArgumentException if add a node to a leave 
