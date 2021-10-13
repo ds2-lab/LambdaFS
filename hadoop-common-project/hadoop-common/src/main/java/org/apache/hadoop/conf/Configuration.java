@@ -2856,6 +2856,7 @@ public class Configuration implements Iterable<Map.Entry<String,String>>,
           result.put((String) item.getKey(), (String) item.getValue());
       }
     }
+
     return result.entrySet().iterator();
   }
 

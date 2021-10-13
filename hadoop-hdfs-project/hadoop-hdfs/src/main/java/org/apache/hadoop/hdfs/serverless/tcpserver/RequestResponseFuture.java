@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.util.Null;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
 import org.apache.hadoop.hdfs.serverless.operation.NullResult;
@@ -50,10 +51,32 @@ public class RequestResponseFuture implements Future<JsonObject> {
         this.createdAt = System.nanoTime();
     }
 
-    @Override
-    public synchronized boolean cancel(boolean mayInterruptIfRunning) {
+    /**
+     * Cancel this future, informing whoever is waiting on it why it was cancelled and if we think
+     * they should retry (via HTTP this time, seeing as the TCP connection was presumably lost).
+     *
+     * TODO: Add way to check if the future was really cancelled.
+     *
+     * @param reason The reason for cancellation.
+     * @param shouldRetry If True, then whoever is waiting on this future should resubmit.
+     *
+     * @throws InterruptedException
+     */
+    public synchronized void cancel(String reason, boolean shouldRetry) throws InterruptedException {
         state = State.CANCELLED;
-        return true;
+        JsonObject cancellationMessage = new JsonObject();
+        cancellationMessage.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
+        cancellationMessage.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
+        cancellationMessage.addProperty(ServerlessNameNodeKeys.CANCELLED, true);
+        cancellationMessage.addProperty(ServerlessNameNodeKeys.REASON, reason);
+        cancellationMessage.addProperty(ServerlessNameNodeKeys.SHOULD_RETRY, shouldRetry);
+        resultQueue.put(cancellationMessage);
+    }
+
+    @Override
+    public boolean cancel(boolean mayInterruptIfRunning) {
+        LOG.warn("Standard cancel API is not supported.");
+        return false;
     }
 
     @Override
@@ -63,7 +86,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
 
     @Override
     public synchronized boolean isDone() {
-        return state == State.DONE;
+        return state == State.DONE || state == State.CANCELLED;
     }
 
     @Override
@@ -100,7 +123,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
     /**
      * Post a result to this future so that it may be consumed by whoever is waiting on it.
      */
-    public void postResult(JsonObject result) {
+    public synchronized void postResult(JsonObject result) {
         try {
             resultQueue.put(result);
             this.state = State.DONE;
@@ -130,4 +153,21 @@ public class RequestResponseFuture implements Future<JsonObject> {
     public String getRequestId() {
         return requestId;
     }
+
+    /**
+     * Used to cancel this future. These are inserted into the result queue when the
+     * cancel() function is called.
+     */
+//    public static class CancelledFuture implements Serializable {
+//        private static final long serialVersionUID = -5847135839854478638L;
+//        public static String REASON_CONNECTION_LOST = "CONNECTION_LOST";
+//
+//        public String reason;
+//        public boolean resubmitViaHttp;
+//
+//        public CancelledFuture(String reason, boolean resubmitViaHttp) {
+//            this.reason = reason;
+//            this.resubmitViaHttp = resubmitViaHttp;
+//        }
+//    }
 }

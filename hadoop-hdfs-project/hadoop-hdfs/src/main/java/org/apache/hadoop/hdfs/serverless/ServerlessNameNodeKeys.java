@@ -16,6 +16,11 @@ public class ServerlessNameNodeKeys {
     public static final String VALUE = "value";
     public static final String FUNCTION_NAME = "functionName";
 
+    public static final String REQUEST_METHOD = "requestMethod";
+    public static final String CANCELLED = "cancelled";
+    public static final String REASON = "reason";
+    public static final String SHOULD_RETRY = "shouldRetry";
+
     public static final String COMMAND_LINE_ARGS = "command-line-arguments";
     public static final String DEBUG_NDB = "debugNdb";
     public static final String DEBUG_STRING_NDB = "debugStringNdb";

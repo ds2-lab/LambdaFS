@@ -4,6 +4,7 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
+import com.esotericsoftware.minlog.Log;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -77,6 +78,7 @@ public class NameNodeTCPClient {
         this.serverlessNameNode = serverlessNameNode;
 
         tcpClients = new HashMap<>();
+        Log.set(Log.LEVEL_TRACE);
     }
 
     /**
@@ -165,7 +167,7 @@ public class NameNodeTCPClient {
                     IllegalArgumentException ex = new IllegalArgumentException(
                             "[TCP Client] Received object of unexpected type from client " + tcpClient
                                     + ". Object type: " + object.getClass().getSimpleName() + ".");
-                    tcpResult = new NameNodeResult(functionName, "N/A");
+                    tcpResult = new NameNodeResult(functionName, "N/A", "TCP");
                     tcpResult.addException(ex);
                 }
 
@@ -218,7 +220,7 @@ public class NameNodeTCPClient {
             LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
         LOG.debug("======================================================\n");
 
-        NameNodeResult tcpResult = new NameNodeResult(functionName, requestId);
+        NameNodeResult tcpResult = new NameNodeResult(functionName, requestId, "TCP");
 
         // Create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.

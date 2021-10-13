@@ -66,12 +66,18 @@ public class NameNodeResult {
      */
     private final String requestId;
 
+    /**
+     * HTTP or TCP.
+     */
+    private final String requestMethod;
 
-    public NameNodeResult(String functionName, String requestId) {
+
+    public NameNodeResult(String functionName, String requestId, String requestMethod) {
         this.functionName = functionName;
         this.requestId = requestId;
         this.exceptions = new ArrayList<>();
         this.additionalFields = new HashMap<>();
+        this.requestMethod = requestMethod;
     }
 
     /**
@@ -259,6 +265,10 @@ public class NameNodeResult {
         json.addProperty(ServerlessNameNodeKeys.FUNCTION_NAME, functionName);
 
         json.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
+
+        json.addProperty(ServerlessNameNodeKeys.REQUEST_METHOD, requestMethod);
+
+        json.addProperty(ServerlessNameNodeKeys.CANCELLED, false);
 
         return json;
     }

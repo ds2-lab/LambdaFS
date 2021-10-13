@@ -15,6 +15,7 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import java.io.IOException;
 import java.net.BindException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -73,6 +74,13 @@ public class HopsFSUserServer {
     private final ConcurrentHashMap<String, RequestResponseFuture> completedFutures;
 
     /**
+     * Associate with each connection the list of futures that have been submitted and NOT completed.
+     *
+     * If the connection is lost, then these futures must be re-submitted via HTTP.
+     */
+    private final ConcurrentHashMap<String, List<RequestResponseFuture>> submittedFutures;
+
+    /**
      * Constructor.
      */
     public HopsFSUserServer(Configuration conf) {
@@ -96,6 +104,7 @@ public class HopsFSUserServer {
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
         this.activeConnections = new ConcurrentHashMap<>();
+        this.submittedFutures = new ConcurrentHashMap<>();
         this.activeFutures = new ConcurrentHashMap<>();
         this.completedFutures = new ConcurrentHashMap<>();
 
@@ -251,6 +260,29 @@ public class HopsFSUserServer {
                 if (connection.name != null) {
                     LOG.debug("[TCP SERVER] Connection to " + connection.name + " lost.");
                     activeConnections.remove(connection.name);
+
+                    List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
+
+                    LOG.warn("There were " + incompleteFutures.size()
+                            + " incomplete future(s) associated with now-terminated connection " +
+                            connection.name);
+
+                    // Cancel each of the futures.
+                    for (RequestResponseFuture future : incompleteFutures) {
+                        LOG.debug("    Cancelling future " + future.getRequestId() + " for operation " +
+                                future.getOperationName());
+                        try {
+                            future.cancel(
+                                    RequestResponseFuture.CancelledFuture.REASON_CONNECTION_LOST, true);
+                        } catch (InterruptedException ex) {
+                            LOG.error("Error encountered while cancelling future " + future.getRequestId()
+                                    + " for operation " + future.getOperationName() + ":", ex);
+                        }
+                    }
+
+                    // TODO: Need to determine if we were waiting on a result from this NameNode
+                    //       via TCP. If so, we need to send another HTTP message and indicate
+                    //       that the NN should perform the operation again.
                 } else {
                     LOG.warn("[TCP SERVER] Lost connection to unregistered NameNode.");
                 }

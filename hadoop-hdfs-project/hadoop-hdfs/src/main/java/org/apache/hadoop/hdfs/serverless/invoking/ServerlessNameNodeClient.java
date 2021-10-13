@@ -221,6 +221,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // TCP response will actually contain the result of the FS operation.
         Future<JsonObject> potentialResult = completionService.take();
 
+        boolean receivedTcp = false;
+        boolean receivedHttp = false;
+
         try {
             JsonObject responseJson = potentialResult.get();
 
@@ -234,12 +237,38 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             if (responseJson.has(ServerlessNameNodeKeys.DUPLICATE_REQUEST) &&
                 responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.DUPLICATE_REQUEST).getAsBoolean()) {
 
-                LOG.debug("Received duplicate request acknowledgement from NameNode. " +
+                String requestMethod =
+                        responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString();
+
+                if (requestMethod.equals("TCP")) {
+                    receivedTcp = true;
+                } else {
+                    receivedHttp = true;
+                }
+
+                LOG.debug("Received duplicate request acknowledgement via " + requestId + " from NameNode. " +
                         "Must continue waiting for real result.");
 
                 // Just wait for the next result.
                 potentialResult = completionService.take();
                 responseJson = potentialResult.get();
+            }
+            else if (responseJson.has(ServerlessNameNodeKeys.CANCELLED) &&
+                     responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.CANCELLED).getAsBoolean()) {
+                LOG.debug("The TCP future for request " + requestId + " has been cancelled. Reason: " +
+                        responseJson.get(ServerlessNameNodeKeys.REASON).getAsString());
+
+                receivedTcp = true; // We didn't technically receive it, but we're not going to so...
+                boolean shouldRetry = responseJson.get(ServerlessNameNodeKeys.SHOULD_RETRY).getAsBoolean();
+                LOG.debug("Should retry: " + shouldRetry);
+
+                if (receivedHttp) {
+                    LOG.debug("Already received HTTP response. Must have been duplicate.");
+                    // TODO: Resubmit HTTP request, indicate that the NN should re-perform the operation,
+                    //       even if this is a duplicate.
+                } else {
+                    LOG.debug("Have not yet received HTTP response. Will continue waiting...");
+                }
             }
 
             executorService.shutdown();
