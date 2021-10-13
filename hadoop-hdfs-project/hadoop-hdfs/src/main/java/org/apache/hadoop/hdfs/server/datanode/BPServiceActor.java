@@ -308,12 +308,8 @@ class BPServiceActor implements Runnable {
   }
   
   HeartbeatResponse sendHeartBeat() throws IOException {
-    StorageReport[] reports =
-        dn.getFSDataset().getStorageReports(bpos.getBlockPoolId());
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Sending heartbeat with " + reports.length +
-          " storage reports from service actor: " + this);
-    }
+    StorageReport[] reports = dn.getFSDataset().getStorageReports(bpos.getBlockPoolId());
+    LOG.debug("Sending heartbeat with " + reports.length + " storage reports from service actor: " + this);
 
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> reportAccess =
             (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);

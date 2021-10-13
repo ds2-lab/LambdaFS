@@ -242,7 +242,7 @@ public class StorageReportClusterJ
 
             while (result.next()) {
                 StorageReport report = new StorageReport(
-                    result.getInt(GROUP_ID), result.getInt(REPORT_ID), result.getString(DATANODE_UUID),
+                    result.getLong(GROUP_ID), result.getInt(REPORT_ID), result.getString(DATANODE_UUID),
                         result.getBoolean(FAILED), result.getLong(CAPACITY), result.getLong(DFS_USED),
                         result.getLong(REMAINING), result.getLong(BLOCK_POOL_USED),
                         result.getString(DATANODE_STORAGE_ID)

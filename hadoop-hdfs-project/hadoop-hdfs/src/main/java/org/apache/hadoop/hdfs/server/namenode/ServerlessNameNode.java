@@ -2154,8 +2154,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
     this.functionName = functionName;
     this.nameNodeTCPClient = new NameNodeTCPClient(functionName, this);
-    // Subtract five seconds (i.e., 5000 milliseconds) to account for invocation overheads and other start-up times.
-    this.creationTime = Time.getUtcTime() - 5000;
+    // Subtract five seconds (i.e., 6000 milliseconds) to account for invocation overheads and other start-up times.
+    // The default DN heartbeat interval (and therefore, StorageReport interval) is three seconds, so this should
+    // ensure that the NN finds at least 1-2 storage reports, which can be used to bootstrap the DN storages.
+    this.creationTime = Time.getUtcTime() - 6000;
     this.tracer = new Tracer.Builder("NameNode").
       conf(TraceUtils.wrapHadoopConf(NAMENODE_HTRACE_PREFIX, conf)).
       build();
