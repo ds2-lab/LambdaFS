@@ -256,7 +256,7 @@ public class NameNodeResult {
         if (operation != null)
             json.addProperty(ServerlessNameNodeKeys.OPERATION, operation);
 
-        json.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, functionName);
+        json.addProperty(ServerlessNameNodeKeys.FUNCTION_NAME, functionName);
 
         json.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
 

@@ -203,9 +203,9 @@ public class NameNodeTCPClient {
     }
 
     private NameNodeResult handleWorkAssignment(JsonObject args) {
-        String requestId = args.getAsJsonPrimitive("requestId").getAsString();
-        String op = args.getAsJsonPrimitive("op").getAsString();
-        JsonObject fsArgs = args.getAsJsonObject("fsArgs");
+        String requestId = args.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
+        String op = args.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
+        JsonObject fsArgs = args.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
 
         LOG.debug("================ TCP Message Contents ================");
         LOG.debug("Request ID: " + requestId);
