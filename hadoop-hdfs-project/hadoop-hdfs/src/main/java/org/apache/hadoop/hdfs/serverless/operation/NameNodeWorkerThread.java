@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.operation;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.slf4j.Logger;

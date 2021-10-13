@@ -84,29 +84,32 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * Serverless HopsFS cluster.
    */
   public static final String SERVERLESS_MAX_DEPLOYMENTS = "serverless.deployments.max";
-
   public static final int SERVERLESS_MAX_DEPLOYMENTS_DEFAULT = 1;
 
   public static final String SERVERLESS_METADATA_CACHE_REDIS_ENDPOINT = "serverless.redis.endpoint";
-
   public static final String SERVERLESS_METADATA_CACHE_REDIS_ENDPOINT_DEFAULT = "127.0.0.1";
 
   public static final String SERVERLESS_METADATA_CACHE_REDIS_PORT = "serverless.redis.port";
-
   public static final int SERVERLESS_METADATA_CACHE_REDIS_PORT_DEFAULT = 6379;
 
   /**
    * Serverless HopsFS clients expose a TCP server that NameNodes establish connections with.
    * Clients can then use TCP requests to communicate with NameNodes.
    */
-  public static final String SERVERLESS_TCP_SERVER_PORT = "serverless.tcpserver.port";
+  public static final String SERVERLESS_TCP_SERVER_PORT = "serverless.tcp.port";
 
   public static final int SERVERLESS_TCP_SERVER_PORT_DEFAULT = 6000;
+
+  public static final String SERVERLESS_TCP_REQUESTS_ENABLED = "serverless.tcp.enabled";
+  public static final boolean SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT = true;
+
+  public static final String SERVERLESS_HTTP_RETRY_MAX = "serverless.http.maxretries";
+  public static final int SERVERLESS_HTTP_RETRY_MAX_DEFAULT = 3;
 
   /**
    * How long to wait for the worker thread to execute a given task before timing out.
    */
-  public static final String SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS = "serverless.workerthread.timeoutmillis";
+  public static final String SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS = "serverless.task.timeoutmillis";
   public static final int SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT = 30000;
 
   //db storage

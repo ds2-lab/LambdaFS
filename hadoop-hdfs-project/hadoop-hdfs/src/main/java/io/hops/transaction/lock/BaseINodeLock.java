@@ -494,8 +494,8 @@ public abstract class BaseINodeLock extends Lock {
       INode targetInode = INodeUtil.getNode(inodeId, true);
       setINodeLockType(getDefaultInodeLockType());
       if (targetInode == null) {
-        //we throw a LeaseExpiredException as this should be called only when we try to edit an open file
-        //and the exception normaly sent if the file does not exist. This is to be compatible with apache client.
+        // we throw a LeaseExpiredException as this should be called only when we try to edit an open file
+        // and the exception normally sent if the file does not exist. This is to be compatible with apache client.
         throw new LeaseExpiredException("No lease on inode: " + inodeId + ": File does not exist. ");
       }
       Cache.getInstance().set(targetInode);

@@ -82,6 +82,11 @@ public abstract class ServerlessInvokerBase<T> {
     protected String debugStringNdb = null;
 
     /**
+     * Maximum number of retries to be attempted for failed HTTP requests (response code in range [400, 599]).
+     */
+    protected int maxHttpRetries = DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT;
+
+    /**
      * Return the INode-NN mapping cache entry for the given file or directory.
      *
      * This function returns -1 if no such entry exists.
@@ -149,6 +154,8 @@ public abstract class ServerlessInvokerBase<T> {
         cache = new FunctionMetadataMap(conf);
         numUniqueFunctions = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        maxHttpRetries = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX,
+                DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT);
         debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);
         debugStringNdb = conf.get(DFSConfigKeys.NDB_DEBUG_STRING, DFSConfigKeys.NDB_DEBUG_STRING_DEFAULT);
         LOG.debug("NDB debug enabled: " + debugEnabledNdb);

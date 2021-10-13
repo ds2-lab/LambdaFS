@@ -76,13 +76,20 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     private final HopsFSUserServer tcpServer;
 
+    /**
+     * Flag that dictates whether TCP requests can be used to perform FS operations.
+     */
+    private final boolean tcpEnabled;
+
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
         serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
+        tcpEnabled = conf.getBoolean(SERVERLESS_TCP_REQUESTS_ENABLED, SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
 
         LOG.info("Serverless endpoint: " + serverlessEndpointBase);
         LOG.info("Serverless platform: " + serverlessPlatformName);
+        LOG.info("TCP requests are " + (tcpEnabled ? "enabled." : "disabled."));
 
         this.serverlessInvoker = dfsClient.serverlessInvoker;
 
@@ -119,7 +126,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // Check if there's a source directory parameter, as this is the file or directory that could
         // potentially be mapped to a serverless function.
         Object sourceObject = opArguments.has(ServerlessNameNodeKeys.SRC);
-        if (sourceObject instanceof String) {
+
+        // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
+        if (tcpEnabled && sourceObject instanceof String) {
             String sourceFileOrDirectory = (String)sourceObject;
 
             // Next, let's see if we have an entry in our cache for this file/directory.
