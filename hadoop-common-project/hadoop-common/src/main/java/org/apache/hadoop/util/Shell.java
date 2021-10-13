@@ -512,25 +512,22 @@ public abstract class Shell {
   static {
     File home;
     IOException ex;
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("The Serverless NameNode does not have a HADOOP_HOME directory.");
-    }
-
 //    HADOOP_HOME_FILE = null;
 //    HADOOP_HOME_DIR_FAILURE_CAUSE = null;
     try {
       home = checkHadoopHome();
       ex = null;
     } catch (IOException ioe) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Failed to detect a valid hadoop home directory.");
-      }
+      LOG.debug("Failed to detect a valid hadoop home directory.");
+      LOG.debug("Note that, if this is a Serverless NameNode, then this is by-design. " +
+                      "Serverless NameNodes do not have a HADOOP_HOME directory.");
       ex = ioe;
       home = null;
     }
     HADOOP_HOME_FILE = home;
     HADOOP_HOME_DIR_FAILURE_CAUSE = ex;
+    if (home != null)
+      LOG.debug("Located Hadoop home directory: " + home);
   }
 
   /**
