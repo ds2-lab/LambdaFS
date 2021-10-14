@@ -57,7 +57,7 @@ public class ArgumentContainer {
     /**
      * Return the parameter associated with the given key, or null if no such parameter exists.
      */
-    public Object has(String key) {
+    public Object get(String key) {
         if (primitiveArguments.containsKey(key))
             return primitiveArguments.get(key);
         else if (objectArguments.containsKey(key))
@@ -66,6 +66,16 @@ public class ArgumentContainer {
             return nonByteArrayArguments.containsKey(key);
 
         return byteArrayArguments.getOrDefault(key, null);
+    }
+
+    /**
+     * Return True if the Argument Container has a value for this key.
+     */
+    public boolean has(String key) {
+        return primitiveArguments.containsKey(key) ||
+                objectArguments.containsKey(key) ||
+                nonByteArrayArguments.containsKey(key) ||
+                byteArrayArguments.containsKey(key);
     }
 
     /**

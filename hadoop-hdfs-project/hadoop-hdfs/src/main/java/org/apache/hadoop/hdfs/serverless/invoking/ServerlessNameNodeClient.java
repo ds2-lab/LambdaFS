@@ -125,7 +125,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throws IOException, InterruptedException, ExecutionException {
         // Check if there's a source directory parameter, as this is the file or directory that could
         // potentially be mapped to a serverless function.
-        Object sourceObject = opArguments.has(ServerlessNameNodeKeys.SRC);
+        Object sourceObject = opArguments.get(ServerlessNameNodeKeys.SRC);
 
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
         if (tcpEnabled && sourceObject instanceof String) {
@@ -177,7 +177,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                                       HashMap<String, Object> nameNodeArguments,
                                                       ArgumentContainer opArguments,
                                                       int mappedFunctionNumber)
-            throws InterruptedException, ExecutionException {
+            throws InterruptedException, ExecutionException, IOException {
 
         long opStart = System.nanoTime();
         String requestId = UUID.randomUUID().toString();
@@ -221,11 +221,19 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // TCP response will actually contain the result of the FS operation.
 
 
-        boolean receivedTcp = false;
-        boolean receivedHttp = false;
+        int numTcpReceived = 0;            // Number of TCP responses that we've received.
+        int numHttpReceived = 0;           // Number of HTTP responses that we've received.
+        int numDuplicatesReceived = 0;     // Number of duplicate responses that we've received.
+        boolean resubmitted = false;       // Indicates whether we've resubmitted the request.
 
         while (true) {
-            LOG.debug("Waiting for a result from the RequestResponseFuture for task " + requestId + "...");
+            LOG.debug("============ Waiting for Responses ============");
+            LOG.debug("Task ID: " + requestId);
+            LOG.debug("Number of TCP responses received: " + numTcpReceived);
+            LOG.debug("Number of HTTP responses received: " + numHttpReceived);
+            LOG.debug("Number of duplicate responses received: " + numDuplicatesReceived);
+            LOG.debug("Resubmitted: " + resubmitted);
+            LOG.debug("===============================================");
             Future<JsonObject> potentialResult = completionService.take();
 
             try {
@@ -240,15 +248,21 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 if (responseJson.has(ServerlessNameNodeKeys.DUPLICATE_REQUEST) &&
                         responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.DUPLICATE_REQUEST).getAsBoolean()) {
-
+                    numDuplicatesReceived++;
                     String requestMethod =
                             responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString();
 
                     if (requestMethod.equals("TCP"))
-                        receivedTcp = true;
+                        numTcpReceived++;
                     else
-                        receivedHttp = true;
+                        numHttpReceived++;
 
+                    if (numHttpReceived > 0 &&
+                        numTcpReceived > 0 &&
+                        resubmitted) {
+                        throw new IOException(
+                                "Task " + requestId + " for operation " + operationName + " has failed.");
+                    }
 
                     LOG.debug("Received duplicate request acknowledgement via " + requestId + " from NameNode. " +
                             "Must continue waiting for real result.");
@@ -263,21 +277,20 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     LOG.debug("The TCP future for request " + requestId + " has been cancelled. Reason: " +
                             responseJson.get(ServerlessNameNodeKeys.REASON).getAsString());
 
-                    receivedTcp = true; // We didn't technically receive it, but we're not going to so...
+                    numTcpReceived++; // We didn't technically receive it, but we're not going to so...
                     boolean shouldRetry = responseJson.get(ServerlessNameNodeKeys.SHOULD_RETRY).getAsBoolean();
                     LOG.debug("Should retry: " + shouldRetry);
 
-                    if (receivedHttp) {
-                        LOG.debug("Already received HTTP response, probably as a \"duplicate request\" notification.");
+                    if (numHttpReceived > 0) {
+                        LOG.debug("Already received HTTP " + numHttpReceived +
+                                " response(s), probably as a \"duplicate request\" notification.");
 
-                        // TODO: Right now, we just re-submit once. We could definitely resubmit multiple times,
-                        //       though, and the number of times a resubmission is attempted could be configurable.
 
                         LOG.debug("Resubmitting request " + requestId + "(op=" + operationName + ") via HTTP now...");
 
-                        // TODO: If we make it so resubmission can occur more than once, we'll need to
-                        //       add a check here to see if `opArguments` already has the 'redo' field.
-                        opArguments.addPrimitive(ServerlessNameNodeKeys.FORCE_REDO, true);
+                        // The 'FORCE_REDO' key would only ever be present with a 'true' value.
+                        if (!(opArguments.has(ServerlessNameNodeKeys.FORCE_REDO)))
+                            opArguments.addPrimitive(ServerlessNameNodeKeys.FORCE_REDO, true);
 
                         // Resubmit the HTTP request.
                         completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
@@ -287,11 +300,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                 null,
                                 opArguments,
                                 requestId));
-                        continue;
+
+                        resubmitted = true;
                     } else {
                         LOG.debug("Have not yet received HTTP response. Will continue waiting...");
-                        continue;
                     }
+                    continue;
                 }
 
                 executorService.shutdown();
