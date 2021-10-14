@@ -230,6 +230,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 continue;
             }
 
+            LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName + ").");
             return processHttpResponse(httpResponse);
         }
 

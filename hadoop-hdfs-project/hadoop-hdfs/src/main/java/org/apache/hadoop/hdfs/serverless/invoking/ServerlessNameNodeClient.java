@@ -231,7 +231,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             LOG.debug("Task ID: " + requestId);
             LOG.debug("Number of TCP responses received: " + numTcpReceived);
             LOG.debug("Number of HTTP responses received: " + numHttpReceived);
-            LOG.debug("Number of duplicate responses received: " + numDuplicatesReceived);
+            LOG.debug("Number of \"duplicate request\" notifications received: " + numDuplicatesReceived);
             LOG.debug("Resubmitted: " + resubmitted);
             LOG.debug("===============================================");
             Future<JsonObject> potentialResult = completionService.take();
@@ -264,8 +264,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                 "Task " + requestId + " for operation " + operationName + " has failed.");
                     }
 
-                    LOG.debug("Received duplicate request acknowledgement via " + requestId + " from NameNode. " +
-                            "Must continue waiting for real result.");
+                    LOG.debug("Received duplicate request acknowledgement via " + requestMethod
+                            + " for task " + requestId + ". Must continue waiting for real result.");
 
                     // Just wait for the next result.
                     //potentialResult = completionService.take();
