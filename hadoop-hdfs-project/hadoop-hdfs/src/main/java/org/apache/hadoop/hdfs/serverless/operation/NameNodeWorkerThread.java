@@ -217,7 +217,8 @@ public class NameNodeWorkerThread extends Thread {
      * @return The number of previous results that were removed from the cache.
      */
     public int doPurge() {
-        LOG.debug("Purging old, cached PreviousResult instances now...");
+        LOG.debug("Purging previously-calculated results from the cache now. Size of cache pre-purge is: " +
+                previousResultCache.size());
         long now = Time.getUtcTime();
         int numPurged = 0;
 
@@ -240,6 +241,8 @@ public class NameNodeWorkerThread extends Thread {
             break;
         }
 
+        LOG.debug("Removed " + numPurged + (numPurged == 1 ? " entry " : " entries ") +
+                "from the cache. Size of cache is now " + previousResultCache.size());
         return numPurged;
     }
 
