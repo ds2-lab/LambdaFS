@@ -263,9 +263,26 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 LOG.debug("Should retry: " + shouldRetry);
 
                 if (receivedHttp) {
-                    LOG.debug("Already received HTTP response. Must have been duplicate.");
-                    // TODO: Resubmit HTTP request, indicate that the NN should re-perform the operation,
-                    //       even if this is a duplicate.
+                    LOG.debug("Already received HTTP response, probably as a \"duplicate request\" notification.");
+
+                    // TODO: Right now, we just re-submit once. We could definitely resubmit multiple times,
+                    //       though, and the number of times a resubmission is attempted could be configurable.
+
+                    LOG.debug("Resubmitting request " + requestId + "(op=" + operationName + ") via HTTP now...");
+
+                    // TODO: If we make it so resubmission can occur more than once, we'll need to
+                    //       add a check here to see if `opArguments` already has the 'redo' field.
+                    opArguments.addPrimitive(ServerlessNameNodeKeys.FORCE_REDO, true);
+
+                    // Resubmit the HTTP request.
+                    completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                            operationName,
+                            dfsClient.serverlessEndpoint,
+                            // We do not have any additional/non-default arguments to pass to the NN.
+                            null,
+                            opArguments,
+                            requestId));
+
                 } else {
                     LOG.debug("Have not yet received HTTP response. Will continue waiting...");
                 }

@@ -112,6 +112,18 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS = "serverless.task.timeoutmillis";
   public static final int SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT = 30000;
 
+  /**
+   * How often the worker thread should iterate over its cache to see if any results should be purged.
+   */
+  public static final String SERVERLESS_PURGE_INTERVAL_MILLISECONDS = "serverless.task.purgeinterval";
+  public static final int SERVERLESS_PURGE_INTERVAL_MILLISECONDS_DEFAULT = 300000; // 300 seconds, or 5 minutes.
+
+  /**
+   * How long the worker thread should cache previously-computed results before purging them.
+   */
+  public static final String SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS =  "serverless.task.cacheinterval";
+  public static final int SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT = 180000; // 180 seconds, or 3 minutes.
+
   //db storage
   public static final String DFS_STORAGE_DRIVER_JAR_FILE = "dfs.storage.driver.jarFile";
   public static final String DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT = "";

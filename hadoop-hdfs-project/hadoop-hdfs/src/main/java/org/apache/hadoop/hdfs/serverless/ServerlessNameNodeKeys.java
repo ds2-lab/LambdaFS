@@ -21,6 +21,13 @@ public class ServerlessNameNodeKeys {
     public static final String REASON = "reason";
     public static final String SHOULD_RETRY = "shouldRetry";
 
+    /**
+     * Used to indicate to the NN that it should re-attempt this operation, even if
+     * it was already completed, as the TCP connection was dropped before the result
+     * could be delivered to the user.
+     */
+    public static final String FORCE_REDO = "forceRedo";
+
     public static final String COMMAND_LINE_ARGS = "command-line-arguments";
     public static final String DEBUG_NDB = "debugNdb";
     public static final String DEBUG_STRING_NDB = "debugStringNdb";

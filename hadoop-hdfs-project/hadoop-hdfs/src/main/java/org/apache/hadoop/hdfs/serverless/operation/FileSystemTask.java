@@ -17,6 +17,14 @@ import java.util.concurrent.*;
 public class FileSystemTask<T extends Serializable> implements Future<T> {
     private static final Log LOG = LogFactory.getLog(FileSystemTask.class);
 
+    /**
+     * Return the flag indicating whether the task should be re-executed,
+     * even if it was already completed once.
+     */
+    public boolean getForceRedo() {
+        return forceRedo;
+    }
+
     private enum State {WAITING, DONE, CANCELLED, ERROR}
 
     private volatile State state = State.WAITING;
@@ -46,12 +54,45 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
      */
     private final BlockingQueue<T> resultQueue = new ArrayBlockingQueue<>(1);
 
-    public FileSystemTask(String taskId, String operationName, JsonObject operationArguments) {
+    /**
+     * If True, the NN should complete this operation again, even if it was already completed once before.
+     * This can occur if the TCP connection that was going to return the result back to the client was
+     * dropped before the client received the result.
+     */
+    private final boolean forceRedo;
+
+    /**
+     * Create a new instance of FileSystemTask.
+     *
+     * @param taskId The unique ID of this task. This ID comes from the requestId and is shared by the HTTP and
+     *               TCP requests used to submit this action.
+     * @param operationName The name of the file system operation being performed. This generally refers explicitly
+     *                      to the function name of the operation.
+     * @param operationArguments The arguments for the file system operation.
+     * @param forceRedo If True, the NN should complete this operation again, even if it was already completed
+     *                  once before. Presumably the TCP connection that was going to return the result back to
+     *                  the client was dropped before the client received the result.
+     */
+    public FileSystemTask(String taskId, String operationName, JsonObject operationArguments, boolean forceRedo) {
         this.taskId = taskId;
         this.operationName = operationName;
         this.operationArguments = operationArguments;
+        this.forceRedo = forceRedo;
 
         this.createdAt = System.nanoTime();
+    }
+
+    /**
+     * Create a new instance of FileSystemTask.
+     *
+     * @param taskId The unique ID of this task. This ID comes from the requestId and is shared by the HTTP and
+     *               TCP requests used to submit this action.
+     * @param operationName The name of the file system operation being performed. This generally refers explicitly
+     *                      to the function name of the operation.
+     * @param operationArguments The arguments for the file system operation.
+     */
+    public FileSystemTask(String taskId, String operationName, JsonObject operationArguments) {
+        this(taskId, operationName, operationArguments, false);
     }
 
     @Override

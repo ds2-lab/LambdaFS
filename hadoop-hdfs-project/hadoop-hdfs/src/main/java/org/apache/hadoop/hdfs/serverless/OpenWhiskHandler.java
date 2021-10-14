@@ -21,6 +21,7 @@ import java.util.concurrent.*;
 
 import static com.google.common.hash.Hashing.consistentHash;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT;
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.FORCE_REDO;
 
 /**
  * This class encapsulates the behavior and functionality of the serverless function handler for OpenWhisk.
@@ -252,11 +253,19 @@ public class OpenWhiskHandler {
         // from intermediate storage.
         LOG.debug("Checking for duplicate requests now...");
 
+        // Check if we need to redo this operation. This can occur if the TCP connection that was supposed
+        // to deliver the result back to the client was dropped before the client received the result.
+        boolean redoEvenifDuplicate = false;
+        if (fsArgs.has(FORCE_REDO) && fsArgs.get(FORCE_REDO).getAsBoolean())
+            redoEvenifDuplicate = true;
+
         // Check to see if this is a duplicate request, in which case we should return a message indicating as such.
-        if (serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
+        if (!redoEvenifDuplicate && serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
             LOG.warn("This request (" + requestId + ") has already been received via TCP. Returning now...");
             result.addResult(new DuplicateRequest("HTTP", requestId), true);
             return result;
+        } else if (redoEvenifDuplicate) {
+            LOG.warn("Apparently, request " + requestId + " must be re-executed...");
         }
 
         LOG.debug("Request is NOT a duplicate! Processing updates from intermediate storage now...");

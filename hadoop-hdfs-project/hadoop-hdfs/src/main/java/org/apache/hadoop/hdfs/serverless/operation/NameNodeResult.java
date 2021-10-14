@@ -5,12 +5,16 @@ import com.google.gson.JsonObject;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -71,6 +75,14 @@ public class NameNodeResult {
      */
     private final String requestMethod;
 
+    /**
+     * The UTC timestamp at which this result was (theoretically) delivered back to the client.
+     *
+     * A value of -1 indicates that this result has not yet been delivered. A non-negative value
+     * does not indicate that the result was delivered successfully, only that the NameNode
+     * attempted to deliver it.
+     */
+    private long timeDeliveredBackToClient = -1L;
 
     public NameNodeResult(String functionName, String requestId, String requestMethod) {
         this.functionName = functionName;
@@ -274,10 +286,49 @@ public class NameNodeResult {
     }
 
     /**
+     * Mark this result as being delivered back to the client. This does not indicate that the delivery was successful
+     * (i.e., that the client actually received the result). Instead, it just means that the NN attempted to deliver it.
+     *
+     * If the timestamp is already greater than zero, this will raise an exception, UNLESS the 'redo' flag is true.
+     *
+     * @param redo Indicates that this result is being re-sent back to the client, and thus an existing, positive
+     *             timestamp value should not result in an error.
+     *
+     * @throws IllegalStateException If 'redo' is false and the timestamp is already greater than zero.
+     */
+    public void markDelivered(boolean redo) throws IllegalStateException {
+        // If the time-stamp is nonzero and the result isn't being re-delivered back to the client, then
+        // throw an exception to indicate that something is wrong here.
+        if (timeDeliveredBackToClient > 0 && !redo) {
+            throw new IllegalStateException("This result was already delivered to the client at " +
+                    Instant.ofEpochMilli(timeDeliveredBackToClient).atZone(ZoneOffset.UTC) + ".");
+        }
+
+        long newTimestamp = Time.getUtcTime();
+        String oldTimeFormatted = Instant.ofEpochMilli(timeDeliveredBackToClient).atZone(ZoneOffset.UTC).toString();
+        String newTimeFormatted = Instant.ofEpochMilli(newTimestamp).atZone(ZoneOffset.UTC).toString();
+
+        if (timeDeliveredBackToClient > 0)
+            LOG.warn("Overwriting previous delivery timestamp of " + timeDeliveredBackToClient + "(" +
+                    oldTimeFormatted + ") with new timestamp of " + newTimestamp + "(" + newTimeFormatted + ").");
+
+        timeDeliveredBackToClient = newTimestamp;
+    }
+
+    /**
      * Return the number of exceptions contained within this result.
      */
     public int numExceptions() {
         return exceptions.size();
+    }
+
+    /**
+     * Return the time at which the NN attempted to deliver this result back to the client.
+     *
+     * A value of -1 indicates that the NN has not yet attempted to deliver the result back to the client.
+     */
+    public long getTimeDeliveredBackToClient() {
+        return timeDeliveredBackToClient;
     }
 
     /**

@@ -1871,7 +1871,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     nameNodeWorkQueue = new LinkedBlockingQueue<>();
 
     // Create the thread and tell it to run!
-    workerThread = new NameNodeWorkerThread(nameNodeWorkQueue, this);
+    workerThread = new NameNodeWorkerThread(conf, nameNodeWorkQueue, this);
     workerThread.start();
 
     LOG.debug("Started the NameNode worker thread.");
