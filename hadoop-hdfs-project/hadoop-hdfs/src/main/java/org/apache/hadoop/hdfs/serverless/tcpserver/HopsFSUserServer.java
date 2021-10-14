@@ -272,8 +272,7 @@ public class HopsFSUserServer {
                         LOG.debug("    Cancelling future " + future.getRequestId() + " for operation " +
                                 future.getOperationName());
                         try {
-                            future.cancel(
-                                    RequestResponseFuture.CancelledFuture.REASON_CONNECTION_LOST, true);
+                            future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
                         } catch (InterruptedException ex) {
                             LOG.error("Error encountered while cancelling future " + future.getRequestId()
                                     + " for operation " + future.getOperationName() + ":", ex);
