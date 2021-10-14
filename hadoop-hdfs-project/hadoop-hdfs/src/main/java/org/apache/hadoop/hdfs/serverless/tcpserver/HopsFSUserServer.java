@@ -497,7 +497,7 @@ public class HopsFSUserServer {
         RequestResponseFuture requestResponseFuture = issueTcpRequest(functionNumber, bypassCheck, payload);
 
         LOG.debug("[TCP SERVER] Waiting for result from future for request " + requestResponseFuture.getRequestId()
-                + "," + "associated serverless function number = " + functionNumber);
+                + ", associated serverless function NameNode " + functionNumber);
         return requestResponseFuture.get();
     }
 

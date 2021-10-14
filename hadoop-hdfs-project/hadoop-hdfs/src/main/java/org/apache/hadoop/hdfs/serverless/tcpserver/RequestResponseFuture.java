@@ -91,8 +91,9 @@ public class RequestResponseFuture implements Future<JsonObject> {
 
     @Override
     public synchronized JsonObject get() throws InterruptedException, ExecutionException {
+        LOG.debug("Waiting for result for TCP request " + requestId + " now...");
         final Object resultOrNull = this.resultQueue.take();
-        LOG.debug("Got result for future " + requestId + ".");
+        LOG.debug("Got result for TCP future " + requestId + ".");
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
         if (resultOrNull instanceof NullResult)
@@ -125,14 +126,14 @@ public class RequestResponseFuture implements Future<JsonObject> {
      * Post a result to this future so that it may be consumed by whoever is waiting on it.
      */
     public synchronized void postResult(JsonObject result) {
-        LOG.debug("Posting result for future " + requestId + " now...");
+        LOG.debug("Posting result for TCP future " + requestId + " now...");
         try {
             resultQueue.put(result);
-            LOG.debug("Posted result for future " + requestId + ".");
+            LOG.debug("Posted result for TCP future " + requestId + ".");
             this.state = State.DONE;
         }
         catch (Exception ex) {
-            LOG.error("Exception encountered while attempting to put result into future: ", ex);
+            LOG.error("Exception encountered while attempting to post result to TCP future: ", ex);
             this.state = State.ERROR;
         }
     }

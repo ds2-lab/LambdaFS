@@ -394,7 +394,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * @return The result contained within the JsonObject returned by the NameNode.
      */
     @Override
-    public Object extractResultFromJsonResponse(JsonObject response) throws IOException, ClassNotFoundException {
+    public Object extractResultFromJsonResponse(JsonObject response) {
         // First, let's check and see if there's any information about file/directory-to-function mappings.
         if (response.has(ServerlessNameNodeKeys.FUNCTION_MAPPING)) {
             LOG.debug("JSON response from serverless name node contains function mapping information.");
