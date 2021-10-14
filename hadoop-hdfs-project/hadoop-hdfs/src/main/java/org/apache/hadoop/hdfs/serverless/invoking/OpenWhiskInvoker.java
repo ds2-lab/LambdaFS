@@ -4,6 +4,7 @@ import com.google.gson.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.operation.NullResult;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -431,8 +432,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             try {
                 Object result = InvokerUtilities.base64StringToObject(resultBase64);
 
-                if (result == null) {
-                    LOG.warn("Returning null despite the NameNode returning a result.");
+                if (result == null || (result instanceof NullResult)) {
                     return null;
                 }
 
