@@ -191,6 +191,8 @@ public class NameNodeWorkerThread extends Thread {
                             "already being a task with the same ID present.");
 
                 // Cache the result for a bit.
+                LOG.debug("Caching result of task " + task.getTaskId() + "(op=" + task.getOperationName()
+                                + ") for " + resultRetainIntervalMilliseconds + " milliseconds.");
                 PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
                 previousResultCache.put(task.getTaskId(), previousResult);
                 previousResultPriorityQueue.add(previousResult);

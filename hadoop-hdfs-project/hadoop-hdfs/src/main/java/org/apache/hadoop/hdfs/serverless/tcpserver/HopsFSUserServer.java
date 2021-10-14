@@ -278,10 +278,6 @@ public class HopsFSUserServer {
                                     + " for operation " + future.getOperationName() + ":", ex);
                         }
                     }
-
-                    // TODO: Need to determine if we were waiting on a result from this NameNode
-                    //       via TCP. If so, we need to send another HTTP message and indicate
-                    //       that the NN should perform the operation again.
                 } else {
                     LOG.warn("[TCP SERVER] Lost connection to unregistered NameNode.");
                 }
