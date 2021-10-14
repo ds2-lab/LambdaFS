@@ -93,7 +93,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
     }
 
     @Override
-    public synchronized JsonObject get() throws InterruptedException, ExecutionException {
+    public JsonObject get() throws InterruptedException, ExecutionException {
         LOG.debug("Waiting for result for TCP request " + requestId + " now...");
         final Object resultOrNull = this.resultQueue.take();
         LOG.debug("Got result for TCP future " + requestId + ".");
@@ -109,7 +109,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
     }
 
     @Override
-    public synchronized JsonObject get(long timeout, TimeUnit unit)
+    public JsonObject get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
         final Object resultOrNull = this.resultQueue.poll(timeout, unit);
         if (resultOrNull == null) {
