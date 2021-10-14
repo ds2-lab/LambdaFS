@@ -219,90 +219,101 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // operation is already being worked on, and return a null response to the user via HTTP. The user will often
         // receive this HTTP response first. In this scenario, we should simply discard the HTTP response, as the
         // TCP response will actually contain the result of the FS operation.
-        Future<JsonObject> potentialResult = completionService.take();
+
 
         boolean receivedTcp = false;
         boolean receivedHttp = false;
 
-        try {
-            JsonObject responseJson = potentialResult.get();
+        while (true) {
+            LOG.debug("Waiting for a result from the RequestResponseFuture for task " + requestId + "...");
+            Future<JsonObject> potentialResult = completionService.take();
 
-            // Now we should check if this response contains a result, or is simply a duplicate request
-            // notification from whichever request the NameNode received last. That is, if the NN received the
-            // HTTP request second, then this could be an HTTP response indicating that the task was already
-            // being executed. The same could be true in the case of the TCP response.
-            //
-            // If this is an actual result, then we can return it to the user. Otherwise, we must keep waiting.
+            try {
+                JsonObject responseJson = potentialResult.get();
 
-            if (responseJson.has(ServerlessNameNodeKeys.DUPLICATE_REQUEST) &&
-                responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.DUPLICATE_REQUEST).getAsBoolean()) {
+                // Now we should check if this response contains a result, or is simply a duplicate request
+                // notification from whichever request the NameNode received last. That is, if the NN received the
+                // HTTP request second, then this could be an HTTP response indicating that the task was already
+                // being executed. The same could be true in the case of the TCP response.
+                //
+                // If this is an actual result, then we can return it to the user. Otherwise, we must keep waiting.
 
-                String requestMethod =
-                        responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString();
+                if (responseJson.has(ServerlessNameNodeKeys.DUPLICATE_REQUEST) &&
+                        responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.DUPLICATE_REQUEST).getAsBoolean()) {
 
-                if (requestMethod.equals("TCP")) {
-                    receivedTcp = true;
-                } else {
-                    receivedHttp = true;
+                    String requestMethod =
+                            responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString();
+
+                    if (requestMethod.equals("TCP"))
+                        receivedTcp = true;
+                    else
+                        receivedHttp = true;
+
+
+                    LOG.debug("Received duplicate request acknowledgement via " + requestId + " from NameNode. " +
+                            "Must continue waiting for real result.");
+
+                    // Just wait for the next result.
+                    //potentialResult = completionService.take();
+                    //responseJson = potentialResult.get();
+                    continue;
+                }
+                else if (responseJson.has(ServerlessNameNodeKeys.CANCELLED) &&
+                        responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.CANCELLED).getAsBoolean()) {
+                    LOG.debug("The TCP future for request " + requestId + " has been cancelled. Reason: " +
+                            responseJson.get(ServerlessNameNodeKeys.REASON).getAsString());
+
+                    receivedTcp = true; // We didn't technically receive it, but we're not going to so...
+                    boolean shouldRetry = responseJson.get(ServerlessNameNodeKeys.SHOULD_RETRY).getAsBoolean();
+                    LOG.debug("Should retry: " + shouldRetry);
+
+                    if (receivedHttp) {
+                        LOG.debug("Already received HTTP response, probably as a \"duplicate request\" notification.");
+
+                        // TODO: Right now, we just re-submit once. We could definitely resubmit multiple times,
+                        //       though, and the number of times a resubmission is attempted could be configurable.
+
+                        LOG.debug("Resubmitting request " + requestId + "(op=" + operationName + ") via HTTP now...");
+
+                        // TODO: If we make it so resubmission can occur more than once, we'll need to
+                        //       add a check here to see if `opArguments` already has the 'redo' field.
+                        opArguments.addPrimitive(ServerlessNameNodeKeys.FORCE_REDO, true);
+
+                        // Resubmit the HTTP request.
+                        completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                                operationName,
+                                dfsClient.serverlessEndpoint,
+                                // We do not have any additional/non-default arguments to pass to the NN.
+                                null,
+                                opArguments,
+                                requestId));
+                        continue;
+                    } else {
+                        LOG.debug("Have not yet received HTTP response. Will continue waiting...");
+                        continue;
+                    }
                 }
 
-                LOG.debug("Received duplicate request acknowledgement via " + requestId + " from NameNode. " +
-                        "Must continue waiting for real result.");
+                executorService.shutdown();
+                long opEnd = System.nanoTime();
+                long opDuration = opEnd - opStart;
+                long durationMilliseconds = TimeUnit.NANOSECONDS.toMillis(opDuration);
+                LOG.debug("Successfully obtained response from HTTP/TCP request for operation " +
+                        operationName + " in " + durationMilliseconds + " milliseconds.");
+                return responseJson;
+            } catch (ExecutionException | InterruptedException ex) {
+                // Log it.
+                LOG.error("Encountered " + ex.getClass().getSimpleName() + " while extracting result from Future " +
+                        "for operation " + operationName + ":", ex);
 
-                // Just wait for the next result.
-                potentialResult = completionService.take();
-                responseJson = potentialResult.get();
+                // Throw it again.
+                throw ex;
             }
-            else if (responseJson.has(ServerlessNameNodeKeys.CANCELLED) &&
-                     responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.CANCELLED).getAsBoolean()) {
-                LOG.debug("The TCP future for request " + requestId + " has been cancelled. Reason: " +
-                        responseJson.get(ServerlessNameNodeKeys.REASON).getAsString());
-
-                receivedTcp = true; // We didn't technically receive it, but we're not going to so...
-                boolean shouldRetry = responseJson.get(ServerlessNameNodeKeys.SHOULD_RETRY).getAsBoolean();
-                LOG.debug("Should retry: " + shouldRetry);
-
-                if (receivedHttp) {
-                    LOG.debug("Already received HTTP response, probably as a \"duplicate request\" notification.");
-
-                    // TODO: Right now, we just re-submit once. We could definitely resubmit multiple times,
-                    //       though, and the number of times a resubmission is attempted could be configurable.
-
-                    LOG.debug("Resubmitting request " + requestId + "(op=" + operationName + ") via HTTP now...");
-
-                    // TODO: If we make it so resubmission can occur more than once, we'll need to
-                    //       add a check here to see if `opArguments` already has the 'redo' field.
-                    opArguments.addPrimitive(ServerlessNameNodeKeys.FORCE_REDO, true);
-
-                    // Resubmit the HTTP request.
-                    completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                            operationName,
-                            dfsClient.serverlessEndpoint,
-                            // We do not have any additional/non-default arguments to pass to the NN.
-                            null,
-                            opArguments,
-                            requestId));
-
-                } else {
-                    LOG.debug("Have not yet received HTTP response. Will continue waiting...");
-                }
-            }
-
-            executorService.shutdown();
-            long opEnd = System.nanoTime();
-            long opDuration = opEnd - opStart;
-            long durationMilliseconds = TimeUnit.NANOSECONDS.toMillis(opDuration);
-            LOG.debug("Successfully obtained response from HTTP/TCP request for operation " +
-                    operationName + " in " + durationMilliseconds + " milliseconds.");
-            return responseJson;
-        } catch (ExecutionException | InterruptedException ex) {
-            // Log it.
-            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while extracting result from Future " +
-                    "for operation " + operationName + ":", ex);
-
-            // Throw it again.
-            throw ex;
         }
+    }
+
+    private void handleDuplicateRequest() {
+
     }
 
     /**

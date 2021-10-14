@@ -195,7 +195,7 @@ public class NameNodeWorkerThread extends Thread {
                 previousResultCache.put(task.getTaskId(), previousResult);
                 previousResultPriorityQueue.add(previousResult);
 
-                // Check if we need to purge any results before continung to the next loop.
+                // Check if we need to purge any results before continuing to the next loop.
                 tryPurge();
             }
         }
