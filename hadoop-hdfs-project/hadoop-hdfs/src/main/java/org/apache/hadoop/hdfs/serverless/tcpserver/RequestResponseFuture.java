@@ -155,6 +155,34 @@ public class RequestResponseFuture implements Future<JsonObject> {
     }
 
     /**
+     * Hash based on requestId.
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result
+                + ((requestId.hashCode()));
+        return result;
+    }
+
+    /**
+     * Equality based on requestId.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+
+        if (!(obj instanceof RequestResponseFuture))
+            return false;
+
+        RequestResponseFuture other = (RequestResponseFuture)obj;
+
+        return this.requestId.equals(other.requestId);
+    }
+
+    /**
      * Used to cancel this future. These are inserted into the result queue when the
      * cancel() function is called.
      */

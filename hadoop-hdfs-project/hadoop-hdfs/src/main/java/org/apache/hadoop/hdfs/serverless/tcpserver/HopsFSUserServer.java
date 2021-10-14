@@ -14,6 +14,7 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 
 import java.io.IOException;
 import java.net.BindException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -232,6 +233,10 @@ public class HopsFSUserServer {
                             // Update state pertaining to futures.
                             activeFutures.remove(requestId);
                             completedFutures.put(requestId, future);
+
+                            List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
+                            incompleteFutures.remove(future);
+
                             break;
                         default:
                             LOG.warn("[TCP SERVER] Unknown operation received from NameNode " + functionName + ": "
@@ -323,7 +328,7 @@ public class HopsFSUserServer {
      * @param functionNumber The NameNode deployment for which the connection is desired.
      * @return TCP connection to the desired NameNode if it exists, otherwise null.
      */
-    private Connection getConnection(int functionNumber) {
+    private NameNodeConnection getConnection(int functionNumber) {
         String serverlessFunctionName = baseFunctionName + functionNumber;
 
         return activeConnections.getOrDefault(serverlessFunctionName, null);
@@ -344,7 +349,7 @@ public class HopsFSUserServer {
     private boolean deleteConnection(int functionNumber, boolean deleteIfActive, boolean errorIfActive) {
         String functionName = baseFunctionName + functionNumber;
 
-        Connection conn = activeConnections.getOrDefault(functionName, null);
+        NameNodeConnection conn = activeConnections.getOrDefault(functionName, null);
 
         if (conn != null) {
             if (conn.isConnected()) {
@@ -357,6 +362,17 @@ public class HopsFSUserServer {
                 if (deleteIfActive) {
                     conn.close();
                     activeConnections.remove(functionName);
+
+                    // Remove the list of futures associated with this connection.
+                    // TODO: Should we resubmit these via HTTP? Or just drop them, effectively?
+                    //       Currently, we're just dropping them.
+                    List<RequestResponseFuture> incompleteFutures = submittedFutures.get(conn.name);
+                    if (incompleteFutures.size() > 0) {
+                        LOG.warn("Connection to NameNode " + functionName + " has " + incompleteFutures.size() +
+                                " incomplete futures associated with it, yet we're deleting the connection...");
+                    }
+                    submittedFutures.remove(conn.name);
+
                     LOG.debug("[TCP SERVER] Closed and removed connection to " + functionName);
                     return true;
                 } else {
@@ -390,6 +406,8 @@ public class HopsFSUserServer {
 
             // If the connection is NOT active, then we need to remove it from our cache of connections.
             deleteConnection(functionNumber, false, true);
+            LOG.warn("Found that connection to NameNode " + functionNumber + " is NOT connected while checking" +
+                    " if it exists. Removing it from the connection mapping...");
         }
 
         return false;
@@ -441,7 +459,7 @@ public class HopsFSUserServer {
         }
 
         // Send the TCP request to the NameNode.
-        Connection tcpConnection = getConnection(functionNumber);
+        NameNodeConnection tcpConnection = getConnection(functionNumber);
         int bytesSent = tcpConnection.sendTCP(payload.toString());
 
         LOG.debug("Sent " + bytesSent + " bytes to NameNode" + functionNumber + ".");
@@ -452,6 +470,12 @@ public class HopsFSUserServer {
         String operation = payload.get("op").getAsString();
         RequestResponseFuture requestResponseFuture = new RequestResponseFuture(requestId, operation);
         registerRequestResponseFuture(requestResponseFuture);
+
+        // Make note of this future as being incomplete.
+        List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(
+                tcpConnection.name, k -> new ArrayList<>());
+
+        incompleteFutures.add(requestResponseFuture);
 
         return requestResponseFuture;
     }
