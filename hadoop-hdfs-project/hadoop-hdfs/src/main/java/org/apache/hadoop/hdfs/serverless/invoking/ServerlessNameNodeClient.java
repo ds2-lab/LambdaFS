@@ -225,6 +225,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         int numHttpReceived = 0;           // Number of HTTP responses that we've received.
         int numDuplicatesReceived = 0;     // Number of duplicate responses that we've received.
         boolean resubmitted = false;       // Indicates whether we've resubmitted the request.
+        boolean tcpCancelled = false;      // Indicates whether the TCP request has been cancelled.
 
         while (true) {
             LOG.debug("============ Waiting for Responses ============");
@@ -267,9 +268,24 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     LOG.debug("Received duplicate request acknowledgement via " + requestMethod
                             + " for task " + requestId + ". Must continue waiting for real result.");
 
-                    // Just wait for the next result.
-                    //potentialResult = completionService.take();
-                    //responseJson = potentialResult.get();
+                    // If the TCP request has already been cancelled, then we should resubmit via HTTP. It's annoying
+                    // that we have this extra network hop, but at least the operation should be able to complete.
+                    if (tcpCancelled) {
+                        LOG.debug("Seeing as the TCP request has been cancelled, we must resubmit via HTTP.");
+
+                        // The 'FORCE_REDO' key would only ever be present with a 'true' value.
+                        if (!(opArguments.has(ServerlessNameNodeKeys.FORCE_REDO)))
+                            opArguments.addPrimitive(ServerlessNameNodeKeys.FORCE_REDO, true);
+
+                        // Resubmit the HTTP request.
+                        completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                                operationName,
+                                dfsClient.serverlessEndpoint,
+                                // We do not have any additional/non-default arguments to pass to the NN.
+                                null,
+                                opArguments,
+                                requestId));
+                    }
                     continue;
                 }
                 else if (responseJson.has(ServerlessNameNodeKeys.CANCELLED) &&
@@ -277,7 +293,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     LOG.debug("The TCP future for request " + requestId + " has been cancelled. Reason: " +
                             responseJson.get(ServerlessNameNodeKeys.REASON).getAsString());
 
-                    numTcpReceived++; // We didn't technically receive it, but we're not going to so...
+                    tcpCancelled = true;
                     boolean shouldRetry = responseJson.get(ServerlessNameNodeKeys.SHOULD_RETRY).getAsBoolean();
                     LOG.debug("Should retry: " + shouldRetry);
 
