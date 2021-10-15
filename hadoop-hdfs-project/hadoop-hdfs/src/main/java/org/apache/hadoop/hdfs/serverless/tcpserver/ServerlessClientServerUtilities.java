@@ -6,6 +6,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.operation.DuplicateRequest;
+import org.apache.hadoop.hdfs.serverless.operation.NullResult;
 
 /**
  * Utility functions exposed by both TCP clients and servers.
@@ -45,5 +47,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(JsonElement.class);
         kryo.register(JsonPrimitive.class);
         kryo.register(JsonArray.class);*/
+        kryo.register(DuplicateRequest.class);
+        kryo.register(NullResult.class);
     }
 }

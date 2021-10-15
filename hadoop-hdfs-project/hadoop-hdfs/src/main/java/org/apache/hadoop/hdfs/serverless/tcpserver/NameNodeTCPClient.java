@@ -120,7 +120,7 @@ public class NameNodeTCPClient {
      * false if a connection with that client already exists.
      * @throws IOException If the connection to the new client times out.
      */
-    public boolean addClient(ServerlessHopsFSClient newClient) throws IOException {
+    public boolean addClient(ServerlessHopsFSClient newClient) {
         if (tcpClients.containsKey(newClient)) {
             LOG.warn("NameNodeTCPClient already has a connection to client " + newClient);
             return false;
@@ -132,7 +132,8 @@ public class NameNodeTCPClient {
         Client tcpClient = new Client();
 
         // Start the client in its own thread.
-        new Thread(tcpClient).start();
+        // new Thread(tcpClient).start();
+        tcpClient.start();
 
         // We need to register whatever classes will be serialized BEFORE any network activity is performed.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
@@ -187,7 +188,15 @@ public class NameNodeTCPClient {
 
         // We time how long it takes to establish the TCP connection for debugging/metric-collection purposes.
         Instant connectStart = Instant.now();
-        tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
+        new Thread("Connect") {
+            public void run() {
+                try {
+                    tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
+                } catch (IOException ex) {
+                    LOG.error("Exception encountered while trying to connect to HopsFS Client via TCP:", ex);
+                }
+            }
+        }.start();
         Instant connectEnd = Instant.now();
 
         // Compute the duration of the TCP connection establishment.
