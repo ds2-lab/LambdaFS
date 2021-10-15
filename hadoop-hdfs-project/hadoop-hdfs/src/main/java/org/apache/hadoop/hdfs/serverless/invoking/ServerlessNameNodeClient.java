@@ -324,9 +324,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     continue;
                 }
 
+                // Check if the future was resolved/completed by an HTTP request. If so, then the TCP server
+                // won't know that this future is done unless we inform the tcp server explicitly.
                 String requestMethod =
                         responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString();
-
                 if (requestMethod.equals("HTTP"))
                     tcpServer.deactivateFuture(requestId);
 
