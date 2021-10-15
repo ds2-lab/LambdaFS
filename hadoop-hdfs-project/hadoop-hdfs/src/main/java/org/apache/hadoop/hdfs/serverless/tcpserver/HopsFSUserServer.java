@@ -4,6 +4,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
+import com.esotericsoftware.minlog.Log;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import jdk.nashorn.internal.runtime.regexp.joni.ast.StringNode;
@@ -96,6 +97,8 @@ public class HopsFSUserServer {
             return new NameNodeConnection();
           }
         };
+
+        Log.set(Log.LEVEL_TRACE);
 
         // First, register the JsonObject class with the Kryo serializer.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(server.getKryo());
