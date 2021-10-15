@@ -188,7 +188,7 @@ public class NameNodeTCPClient {
 
         // We time how long it takes to establish the TCP connection for debugging/metric-collection purposes.
         Instant connectStart = Instant.now();
-        new Thread("Connect") {
+        Thread connectThread = new Thread("Connect") {
             public void run() {
                 try {
                     tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
@@ -196,7 +196,13 @@ public class NameNodeTCPClient {
                     LOG.error("Exception encountered while trying to connect to HopsFS Client via TCP:", ex);
                 }
             }
-        }.start();
+        };
+        connectThread.start();
+        try {
+            connectThread.join();
+        } catch (InterruptedException ex) {
+            LOG.error("Exception encountered while trying to connect to HopsFS Client via TCP:", ex);
+        }
         Instant connectEnd = Instant.now();
 
         // Compute the duration of the TCP connection establishment.
