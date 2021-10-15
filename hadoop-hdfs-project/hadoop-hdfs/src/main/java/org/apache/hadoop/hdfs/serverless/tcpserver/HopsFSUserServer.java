@@ -83,6 +83,11 @@ public class HopsFSUserServer {
     private final ConcurrentHashMap<String, List<RequestResponseFuture>> submittedFutures;
 
     /**
+     * Mapping of task/request ID to the NameNode to which the task/request was submitted.
+     */
+    private final ConcurrentHashMap<String, NameNodeConnection> futureToNameNodeMapping;
+
+    /**
      * Constructor.
      */
     public HopsFSUserServer(Configuration conf) {
@@ -111,6 +116,7 @@ public class HopsFSUserServer {
         this.submittedFutures = new ConcurrentHashMap<>();
         this.activeFutures = new ConcurrentHashMap<>();
         this.completedFutures = new ConcurrentHashMap<>();
+        this.futureToNameNodeMapping = new ConcurrentHashMap<>();
 
         String functionEndpoint = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT,
                 DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
@@ -447,6 +453,34 @@ public class HopsFSUserServer {
     }
 
     /**
+     * Inform the TCP server that a future has been resolved via HTTP, and as such it should be moved
+     * out of the active futures mapping.
+     * @param requestId The ID of the request/task that was resolved via TCP.
+     */
+    public boolean deactivateFuture(String requestId) {
+        RequestResponseFuture future = activeFutures.remove(requestId);
+
+        if (future != null) {
+            completedFutures.put(requestId, future);
+
+            if (futureToNameNodeMapping.containsKey(requestId)) {
+                NameNodeConnection conn = futureToNameNodeMapping.get(requestId);
+
+                // Remove this future from the submitted futures list associated with the connection,
+                // if it exists.
+                if (conn != null && submittedFutures.containsKey(conn.name)) {
+                    List<RequestResponseFuture> futures = submittedFutures.get(conn.name);
+                    futures.remove(future);
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Issue a TCP request to the given NameNode. Ths function will check to ensure that the connection exists
      * first before issuing the connection.
      * @param functionNumber The NameNode to issue a request to.
@@ -479,6 +513,7 @@ public class HopsFSUserServer {
                 tcpConnection.name, k -> new ArrayList<>());
 
         incompleteFutures.add(requestResponseFuture);
+        futureToNameNodeMapping.put(requestId, tcpConnection);
 
         return requestResponseFuture;
     }

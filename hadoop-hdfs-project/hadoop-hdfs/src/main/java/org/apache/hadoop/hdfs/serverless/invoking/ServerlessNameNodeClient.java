@@ -324,6 +324,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     continue;
                 }
 
+                String requestMethod =
+                        responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString();
+
+                if (requestMethod.equals("HTTP"))
+                    tcpServer.deactivateFuture(requestId);
+
                 executorService.shutdown();
                 long opEnd = System.nanoTime();
                 long opDuration = opEnd - opStart;
