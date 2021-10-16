@@ -203,7 +203,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         int currentNumTries = 0;
 
-        while (currentNumTries < maxHttpRetries) {
+        do {
             LOG.debug("Invoking NameNode (op=" + operationName + "), attempt " + (currentNumTries + 1)
                     + "/" + maxHttpRetries + ".");
             HttpResponse httpResponse = httpClient.execute(request);
@@ -233,7 +233,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
             LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName + ").");
             return processHttpResponse(httpResponse);
-        }
+        } while (currentNumTries <= maxHttpRetries);
 
         throw new IOException("The file system operation could not be completed. " +
                 "Failed to invoke a Serverless NameNode after " + maxHttpRetries + " attempts.");
