@@ -87,6 +87,12 @@ public abstract class ServerlessInvokerBase<T> {
     protected int maxHttpRetries = DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT;
 
     /**
+     * If True, then we'll tell the NameNodes how to connect to this client's TCP server.
+     * If False, then we'll tell the NameNodes not to try connecting to the TCP server.
+     */
+    protected boolean tcpEnabled;
+
+    /**
      * Return the INode-NN mapping cache entry for the given file or directory.
      *
      * This function returns -1 if no such entry exists.
@@ -156,6 +162,10 @@ public abstract class ServerlessInvokerBase<T> {
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
         maxHttpRetries = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX,
                 DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT);
+        tcpEnabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
+                DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+
+        // NDB
         debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);
         debugStringNdb = conf.get(DFSConfigKeys.NDB_DEBUG_STRING, DFSConfigKeys.NDB_DEBUG_STRING_DEFAULT);
         LOG.debug("NDB debug enabled: " + debugEnabledNdb);
@@ -260,5 +270,6 @@ public abstract class ServerlessInvokerBase<T> {
 
         nameNodeArgumentsJson.addProperty(
                 ServerlessNameNodeKeys.CLIENT_INTERNAL_IP, InvokerUtilities.getInternalIpAddress());
+        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.TCP_ENABLED, tcpEnabled);
     }
 }

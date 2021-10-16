@@ -104,10 +104,12 @@ public class OpenWhiskHandler {
         // The arguments passed by the user are included under the 'value' key.
         JsonObject userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
 
-        String clientIpAddress = null;
-        if (userArguments.has(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP)) {
-            clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
-        }
+        String clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
+
+        boolean tcpEnabled = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_ENABLED).getAsBoolean();
+//        if (userArguments.has(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP)) {
+//            clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
+//        }
 
         String[] commandLineArguments;
         // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
@@ -185,7 +187,7 @@ public class OpenWhiskHandler {
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
-                requestId, clientName, isClientInvoker);
+                requestId, clientName, isClientInvoker, tcpEnabled);
 
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
@@ -233,7 +235,7 @@ public class OpenWhiskHandler {
      */
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                      String functionName, String clientIPAddress, String requestId,
-                                     String clientName, boolean isClientInvoker) {
+                                     String clientName, boolean isClientInvoker, boolean tcpEnabled) {
         NameNodeResult result = new NameNodeResult(functionName, requestId, "HTTP");
 
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
@@ -335,18 +337,12 @@ public class OpenWhiskHandler {
         tryCreateFunctionMapping(result, fsArgs, serverlessNameNode);
 
         // The last step is to establish a TCP connection to the client that invoked us.
-        if (isClientInvoker) {
+        if (isClientInvoker && tcpEnabled) {
             ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
                     clientName, clientIPAddress, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
-
-            try {
-                serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
-            }
-            catch (IOException ex) {
-                LOG.error("Encountered IOException while trying to establish TCP connection with client: ", ex);
-                result.addException(ex);
-            }
-        }
+            serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
+        } else if (!tcpEnabled) // Just so we can print a debug message indicating that we're not doing TCP.
+            LOG.debug("TCP is DISABLED. Will not try to connect to the client.");
 
         result.logResultDebugInformation();
         return result;

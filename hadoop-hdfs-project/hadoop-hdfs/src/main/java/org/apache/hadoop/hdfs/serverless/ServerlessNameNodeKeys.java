@@ -33,6 +33,7 @@ public class ServerlessNameNodeKeys {
     public static final String DEBUG_NDB = "debugNdb";
     public static final String DEBUG_STRING_NDB = "debugStringNdb";
     public static final String CLIENT_INTERNAL_IP = "clientInternalIp";
+    public static final String TCP_ENABLED = "tcpEnabled";
 
     public static final String FUNCTION_MAPPING = "FUNCTION_MAPPING";
     public static final String FILE_OR_DIR = "fileOrDirectory";

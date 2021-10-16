@@ -78,7 +78,7 @@ public class NameNodeTCPClient {
         this.serverlessNameNode = serverlessNameNode;
 
         tcpClients = new HashMap<>();
-        Log.set(Log.LEVEL_TRACE);
+        //Log.set(Log.LEVEL_TRACE);
     }
 
     /**

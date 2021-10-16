@@ -88,6 +88,11 @@ public class HopsFSUserServer {
     private final ConcurrentHashMap<String, NameNodeConnection> futureToNameNodeMapping;
 
     /**
+     * Indicates whether the TCP server should ultimately be started and enabled.
+     */
+    private final boolean enabled;
+
+    /**
      * Constructor.
      */
     public HopsFSUserServer(Configuration conf) {
@@ -103,7 +108,12 @@ public class HopsFSUserServer {
           }
         };
 
-        Log.set(Log.LEVEL_TRACE);
+        //Log.set(Log.LEVEL_TRACE);
+
+        enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
+                DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+
+        LOG.info("TCP server " + (enabled ? "ENABLED." : "DISABLED."));
 
         // First, register the JsonObject class with the Kryo serializer.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(server.getKryo());
@@ -140,6 +150,10 @@ public class HopsFSUserServer {
      * Start the TCP server.
      */
     public void startServer() throws IOException {
+        if (!enabled) {
+            LOG.warn("TCP Server is NOT enabled. Server will NOT be started.");
+            return;
+        }
         LOG.debug("Starting HopsFS Client TCP Server now...");
 
         // Start the TCP server.
