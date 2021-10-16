@@ -277,6 +277,12 @@ public class HopsFSUserServer {
 
                     List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
 
+                    if (incompleteFutures == null) {
+                        LOG.debug("There were no futures associated with now-closed connection " +
+                                connection.name);
+                        return;
+                    }
+
                     LOG.warn("There were " + incompleteFutures.size()
                             + " incomplete future(s) associated with now-terminated connection " +
                             connection.name);
