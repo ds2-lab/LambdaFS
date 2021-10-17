@@ -333,8 +333,8 @@ public class LeaseRenewer {
           public void run() {
             try {
               if (LOG.isDebugEnabled()) {
-                LOG.debug("Lease renewer daemon for " + clientsString() +
-                    " with renew id " + id + " started");
+                LOG.debug("Lease renewer daemon for client " + clientsString() +
+                    ", INode ID = " + inodeId + " with renew id " + id + " started");
               }
               LeaseRenewer.this.run(id);
             } catch (InterruptedException e) {
