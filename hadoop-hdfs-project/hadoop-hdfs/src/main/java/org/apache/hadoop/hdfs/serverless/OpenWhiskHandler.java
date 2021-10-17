@@ -325,14 +325,20 @@ public class OpenWhiskHandler {
             // and ultimately reported to the client. Alternatively, if the task is executed successfully, then
             // the future will resolve, and we'll be able to return a result to the client!
             LOG.debug("Waiting for task " + requestId + " (operation = " + op + ") to be executed now...");
-            Object fileSystemOperationResult = newTask.get(
+            Serializable fileSystemOperationResult = newTask.get(
                     serverlessNameNode.getWorkerThreadTimeoutMs(), TimeUnit.MILLISECONDS);
 
-            // Serialize the resulting HdfsFileStatus/LocatedBlock/etc. object, if it exists, and encode it to Base64,
-            // so we can include it in the JSON response sent back to the invoker of this serverless function.
-            if (fileSystemOperationResult != null) {
-                LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
+            LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
+            if (fileSystemOperationResult instanceof NameNodeResult) {
+                LOG.debug("Merging NameNodeResult instances now...");
+                result.mergeInto((NameNodeResult)fileSystemOperationResult, true);
+            } else if (fileSystemOperationResult != null) {
+                LOG.warn("Worker thread returned result of type: "
+                        + fileSystemOperationResult.getClass().getSimpleName());
                 result.addResult(fileSystemOperationResult, true);
+            } else {
+                // This will be caught immediately and added to the result returned to the client.
+                throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
             }
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId

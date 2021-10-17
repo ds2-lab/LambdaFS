@@ -29,8 +29,9 @@ import java.util.Map;
  *
  * This is used on the NameNode side.
  */
-public class NameNodeResult {
+public class NameNodeResult implements Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(NameNodeResult.class);
+    private static final long serialVersionUID = -6018521672360252605L;
 
     /**
      * Exceptions encountered during the current request's execution.
@@ -40,7 +41,7 @@ public class NameNodeResult {
     /**
      * The desired result of the current request's execution.
      */
-    private Object result;
+    private Serializable result;
 
     /**
      * We may be returning a mapping of a file or directory to a particular serverless function.
@@ -98,7 +99,7 @@ public class NameNodeResult {
      * @param forceOverwrite If true, overwrite an existing result.
      * @return True if the result was stored, otherwise false.
      */
-    public boolean addResult(Object result, boolean forceOverwrite) {
+    public boolean addResult(Serializable result, boolean forceOverwrite) {
         if (result == null || forceOverwrite) {
             this.result = result;
             hasResult = true;
@@ -124,8 +125,9 @@ public class NameNodeResult {
 
     /**
      * Explicitly add an entry as a top-level key/value pair to the payload returned to the client.
-     *
      * This should only be used for entries that are not covered by the rest of the API.
+     * Note that this will overwrite existing values with the same key.
+     *
      * @param key The key to use for the entry.
      * @param value The value to be used for the entry.
      */
@@ -160,6 +162,7 @@ public class NameNodeResult {
      * Log some useful debug information about the result field (e.g., the object's type) to the console.
      */
     public void logResultDebugInformation(String opPerformed) {
+        LOG.debug("");
         LOG.debug("+-+-+-+-+-+-+ Result Debug Information +-+-+-+-+-+-+");
         if (hasResult) {
             LOG.debug("Type: " + result.getClass());
@@ -202,7 +205,7 @@ public class NameNodeResult {
             LOG.debug("No serverless function mapping data contained within this result.");
         }
 
-        LOG.debug("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+");
+        LOG.debug("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n");
     }
 
     /**
@@ -226,7 +229,7 @@ public class NameNodeResult {
             // Add a flag indicating whether this is just a duplicate result.
             json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, true);
         } else {
-            LOG.debug("Result type: " + (result != null ? result.getClass().getSimpleName() : "null"));
+            //LOG.debug("Result type: " + (result != null ? result.getClass().getSimpleName() : "null"));
 
             try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
                 ObjectOutputStream objectOutputStream;
@@ -332,6 +335,50 @@ public class NameNodeResult {
      */
     public long getTimeDeliveredBackToClient() {
         return timeDeliveredBackToClient;
+    }
+
+    /**
+     * Merge another instance of {@link NameNodeResult} into this current instance.
+     *
+     * FIELDS THAT WILL NOT BE OVERWRITTEN:
+     * - functionName: The value for this instance will ALWAYS persist.
+     * - requestId: The value for this instance will ALWAYS persist.
+     * - requestMethod: The value for this instance will ALWAYS persist.
+     * - timeDeliveredBackToClient: The value for this instance will ALWAYS persist.
+     * - serverlessFunctionMapping: The value for this instance will ALWAYS persist.
+     *
+     * FIELDS THAT WILL BE UPDATED/CHANGED:
+     * - additionalFields: Will be merged together. Values will be overwritten or not depending on the value
+     *                     of the 'keepOld' parameter.
+     * - exceptions: Will be combined (like a set union operation, where both sets are disjoint).
+     * - hasResult: Will not be overwritten automatically, but will be set to true/false depending on
+     *              whether this instance has a result field after the merge.
+     * - result: Will be overwritten or not depending on the value of the `keepOld` parameter.
+     *
+     * @param other The other instance to merge into this one.
+     * @param keepOld If True, then existing values of this instance will NOT be overwritten with new values from the
+     *                other NameNodeResult. If False, then existing values of this instance will be overwritten by the
+     *                fields of the other instance when applicable.
+     */
+    public void mergeInto(NameNodeResult other, boolean keepOld) {
+        // Merge the additionalFields HashMap. Note that, for a call map1.putAll(map2), the
+        // fields of map2 will be preserved and the values of map1 will be overwritten.
+        for (Map.Entry<String, String> entry : other.additionalFields.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+
+            if (this.additionalFields.containsKey(key) && keepOld)
+                continue;
+
+            this.additionalFields.put(key, value);
+        }
+
+        this.exceptions.addAll(other.exceptions);
+
+        if (!keepOld && other.hasResult)
+            this.result = other.result;
+
+        this.hasResult = this.result != null;
     }
 
     /**

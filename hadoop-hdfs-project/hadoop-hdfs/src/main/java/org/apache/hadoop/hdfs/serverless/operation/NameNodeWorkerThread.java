@@ -88,6 +88,11 @@ public class NameNodeWorkerThread extends Thread {
     private final HashMap<String, Long> purgeRecords;
 
     /**
+     * The name of the serverless function in which this thread is executing.
+     */
+    private final String functionName;
+
+    /**
      * The last time that the worker thread attempted to purge old results.
      */
     private long lastPurgePass;
@@ -95,12 +100,14 @@ public class NameNodeWorkerThread extends Thread {
     public NameNodeWorkerThread(
             Configuration conf,
             BlockingQueue<FileSystemTask<Serializable>> workQueue,
-            ServerlessNameNode serverlessNameNodeInstance) {
+            ServerlessNameNode serverlessNameNodeInstance,
+            String functionName) {
         this.serverlessNameNodeInstance = serverlessNameNodeInstance;
         this.workQueue = workQueue;
         this.previousResultPriorityQueue = new PriorityQueue<PreviousResult>();
         this.previousResultCache = new HashMap<String, PreviousResult>();
         this.purgeRecords = new HashMap<String, Long>();
+        this.functionName = functionName;
 
         this.currentlyExecutingTasks = new ConcurrentHashMap<>();
         this.completedTasks = new ConcurrentHashMap<>();
@@ -157,9 +164,15 @@ public class NameNodeWorkerThread extends Thread {
                 LOG.debug("Worker thread: dequeued task " + task.getTaskId() + "(operation = "
                                 + task.getOperationName() + ").");
 
+                // This will ultimately be returned to the main thread to be merged with their NameNodeResult instance.
+                // The requestId and requestMethod fields won't be used during the merge, so we just use dummy values
+                // for them.
+                NameNodeResult workerResult = new NameNodeResult(
+                        this.functionName, "Unknown Request ID", "Unknown Request Method");
+
                 // Check if this is a duplicate task.
                 if (isTaskDuplicate(task)) {
-                    handleDuplicateTask(task);
+                    handleDuplicateTask(task, workerResult);
 
                     // Check if we need to purge any results before continung to the next loop.
                     tryPurge();
@@ -174,16 +187,28 @@ public class NameNodeWorkerThread extends Thread {
                             "already being a task with the same ID present.");
 
                 Serializable result = null;
-                result = serverlessNameNodeInstance.performOperation(
-                        task.getOperationName(), task.getOperationArguments());
+                try {
+                    result = serverlessNameNodeInstance.performOperation(
+                            task.getOperationName(), task.getOperationArguments());
+
+                    if (result == null)
+                        workerResult.addResult(NullResult.getInstance(), true);
+                    else
+                        workerResult.addResult(result, true);
+                } catch (Exception ex) {
+                    LOG.error("Worker thread encountered exception while executing file system operation " +
+                            task.getOperationName() + " for task " + task.getTaskId() + ".", ex);
+                    workerResult.addException(ex);
+                }
 
                 currentlyExecutingTasks.remove(task.getTaskId());
 
                 // Do something with the task.
-                if (result != null)
-                    task.postResult(result);
-                else
-                    task.postResult(NullResult.getInstance());
+                // if (result != null)
+                //     task.postResult(result);
+                // else
+                //     task.postResult(NullResult.getInstance());
+                task.postResult(workerResult);
 
                 prev = completedTasks.putIfAbsent(task.getTaskId(), task);
                 if (prev != null)
@@ -203,10 +228,6 @@ public class NameNodeWorkerThread extends Thread {
         }
         catch (InterruptedException ex) {
             LOG.error("Serverless NameNode Worker Thread was interrupted while running:", ex);
-        } catch (IOException | ClassNotFoundException | InvocationTargetException |
-                NoSuchMethodException | IllegalAccessException ex) {
-            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while executing task " +
-                    task.getTaskId() + " (operation = " + task.getOperationName() + ").", ex);
         }
     }
 
@@ -251,8 +272,9 @@ public class NameNodeWorkerThread extends Thread {
     /**
      * Handler for when the worker thread encounters a duplicate task.
      * @param task The task in question.
+     * @param result The NameNodeResult object being used by the worker thread.
      */
-    private void handleDuplicateTask(FileSystemTask<Serializable> task) {
+    private void handleDuplicateTask(FileSystemTask<Serializable> task, NameNodeResult result) {
         LOG.warn("Encountered duplicate task " + task.getTaskId() + " (operation = "
                 + task.getOperationName() + ").");
 
@@ -270,12 +292,15 @@ public class NameNodeWorkerThread extends Thread {
                         (Time.getUtcTime() - purgeRecords.get(task.getTaskId())) / 1000.0;
                 LOG.warn("Task was removed " + timeSinceRemovalSeconds + " seconds ago.");
 
+                result.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
+
                 // Simply post a DuplicateRequest message. The client-side code will know that this means
                 // that the result is no longer in the cache, and the operation must be restarted.
-                task.postResult(new DuplicateRequest("TCP", task.getTaskId()));
+                task.postResult(result);
             }
         } else {
-            task.postResult(new DuplicateRequest("TCP", task.getTaskId()));
+            result.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
+            task.postResult(result);
         }
     }
 
