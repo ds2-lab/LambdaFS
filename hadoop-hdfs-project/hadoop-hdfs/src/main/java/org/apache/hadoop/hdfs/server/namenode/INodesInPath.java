@@ -149,6 +149,9 @@ public class INodesInPath {
   static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components,
                               final boolean resolveLink, final LRUMetadataCache<String, Object> metadataCache)
           throws UnresolvedLinkException, StorageException, TransactionContextException {
+    if (metadataCache == null)
+      LOG.warn("Metadata cache instance is null during INode path resolution.");
+
     Preconditions.checkArgument(startingDir.compareTo(components[0]) == 0);
 
     INode curNode = startingDir;
@@ -191,10 +194,15 @@ public class INodesInPath {
                         + fullPathToCurrentComponent + "'. Using cached INode.");
         curNode = (INode) metadataCache.get(fullPathToCurrentComponent);
       } else {
-        LOG.debug("INode " + childNameAsString + " is not in cache under key '"
-                + fullPathToCurrentComponent + "'. Retrieving from intermediate storage now...");
-        if (metadataCache != null)
+        // If the cache is null, we'll print a different message than if the cache is not null.
+        if (metadataCache != null) {
+          LOG.debug("INode " + childNameAsString + " is not in cache under key '"
+                  + fullPathToCurrentComponent + "'. Retrieving from intermediate storage instead.");
           LOG.debug("Keys in metadata cache (" + metadataCache.size() + "): " + metadataCache.keySet());
+        } else {
+          LOG.debug("We do not have access to the metadata cache for some reason.");
+          LOG.debug("Retrieving INode " + childNameAsString + " from intermediate storage instead.");
+        }
         // normal case, and also for resolving file/dir under snapshot root
         curNode = dir.getChildINode(childName);
       }

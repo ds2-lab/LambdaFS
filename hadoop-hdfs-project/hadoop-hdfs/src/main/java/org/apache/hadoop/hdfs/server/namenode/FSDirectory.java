@@ -1609,7 +1609,7 @@ public class FSDirectory implements Closeable {
 
   INodesInPath getExistingPathINodes(byte[][] components)
       throws UnresolvedLinkException, StorageException, TransactionContextException {
-    return INodesInPath.resolve(getRootDir(), components, false);
+    return INodesInPath.resolve(getRootDir(), components, false, namesystem.getMetadataCache());
   }
 
   /**
@@ -1709,7 +1709,7 @@ public class FSDirectory implements Closeable {
           throws UnresolvedLinkException, StorageException, TransactionContextException {
     final byte[][] components = INode.getPathComponents(src);
     INodesInPath inodesInPath = INodesInPath.resolve(getRootDir(), components,
-            resolveLink);
+            resolveLink, namesystem.getMetadataCache());
     return inodesInPath;
   }
   
