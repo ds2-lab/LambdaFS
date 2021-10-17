@@ -1489,6 +1489,12 @@ class DataStreamer extends Daemon {
       }
       block = oldBlock;
       lb = locateFollowingBlock(excluded.length > 0 ? excluded : null);
+
+      if (lb == null) {
+        LOG.error("Could not locate following block. src = \"" + src + "\", fileID = " + stat.getFileId() + ".");
+        throw new IOException("Could not locate block. Cannot complete write operation.");
+      }
+
       block = lb.getBlock();
       block.setNumBytes(0);
       bytesSent = 0;
