@@ -2700,7 +2700,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   LocatedBlock getAdditionalBlock(final String srcArg, final long fileId, final String clientName,
       final ExtendedBlock previous, final Set<Node> excludedNodes,
       final List<String> favoredNodes) throws IOException {
-    LOG.debug("Client " + clientName + " is requesting an additional block for file \"" + srcArg + "\", fileId = "
+    LOG.debug("Client " + clientName + " is requesting an additional block for file '" + srcArg + "', fileId = "
             + fileId + ".");
 
     final LocatedBlock[] onRetryBlock = new LocatedBlock[1];
@@ -7495,7 +7495,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       public void setUp() throws IOException {
         super.setUp();
         if(LOG.isDebugEnabled()) {
-          LOG.debug("About to lock \"" + path + "\"");
+          LOG.debug("About to lock '" + path + "'");
         }
       }
 
@@ -7532,7 +7532,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           inode.setSubtreeLockOwner(getNamenodeId());
           EntityManager.update(inode);
           if(LOG.isDebugEnabled()) {
-            LOG.debug("Lock the INode with sub tree lock flag. Path: \"" + path + "\" "
+            LOG.debug("Lock the INode with sub tree lock flag. Path: '" + path + "' "
                     + " id: " + inode.getId()
                     + " pid: " + inode.getParentId() + " name: " + inode.getLocalName());
           }
@@ -7551,7 +7551,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         }else{
           if(LOG.isInfoEnabled()) {
             LOG.info("No component was locked in the path using sub tree flag. "
-                    + "Path: \"" + path + "\"");
+                    + "Path: '" + path + "'");
           }
           return null;
         }

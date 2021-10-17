@@ -238,6 +238,9 @@ public class OpenWhiskHandler {
                                      String clientName, boolean isClientInvoker, boolean tcpEnabled) {
         NameNodeResult result = new NameNodeResult(functionName, requestId, "HTTP");
 
+        LOG.debug("");
+        LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
+
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
         // If this container was cold prior to this invocation, then we'll actually be creating the instance now.
         ServerlessNameNode serverlessNameNode;
@@ -250,6 +253,8 @@ public class OpenWhiskHandler {
             result.addException(ex);
             return result;
         }
+
+        LOG.debug("==================================================================\n");
 
         // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
         // from intermediate storage.
@@ -270,7 +275,8 @@ public class OpenWhiskHandler {
             LOG.warn("Apparently, request " + requestId + " must be re-executed...");
         }
 
-        LOG.debug("Request is NOT a duplicate! Processing updates from intermediate storage now...");
+        LOG.debug("");
+        LOG.debug("======== Processing Updates from Intermediate Storage ========");
 
         // Now we need to process various updates that are stored in intermediate storage by DataNodes.
         // These include storage reports, block reports, and new DataNode registrations.
@@ -285,6 +291,7 @@ public class OpenWhiskHandler {
         }
 
         LOG.debug("Successfully processed updates from intermediate storage!");
+        LOG.debug("==============================================================\n");
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.

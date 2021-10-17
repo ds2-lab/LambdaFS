@@ -155,7 +155,7 @@ public class INodeLock extends BaseINodeLock {
     }
 
     for (String path : paths) {
-      LOG.debug("Attempting to acquire lock for path \"" + path + "\"");
+      LOG.debug("Attempting to acquire lock for path: " + path + "");
 
       List<INode> resolvedINodes = null;
       if (getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
