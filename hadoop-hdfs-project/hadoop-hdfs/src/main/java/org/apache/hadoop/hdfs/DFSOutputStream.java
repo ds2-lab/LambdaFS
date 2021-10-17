@@ -400,6 +400,7 @@ public class DFSOutputStream extends FSOutputSummer
     packetSize = chunkSize*chunksPerPacket;
     if (DFSClient.LOG.isDebugEnabled()) {
       DFSClient.LOG.debug("computePacketChunkSize: src=" + src +
+              ", fileId=" + fileId +
               ", chunkSize=" + chunkSize +
               ", chunksPerPacket=" + chunksPerPacket +
               ", packetSize=" + packetSize);
@@ -435,6 +436,7 @@ public class DFSOutputStream extends FSOutputSummer
         DFSClient.LOG.debug("DFSClient writeChunk allocating new packet seqno=" +
                 currentPacket.getSeqno() +
                 ", src=" + src +
+                ", fileId=" + fileId +
                 ", packetSize=" + packetSize +
                 ", chunksPerPacket=" + chunksPerPacket +
                 ", bytesCurBlock=" + streamer.getBytesCurBlock());

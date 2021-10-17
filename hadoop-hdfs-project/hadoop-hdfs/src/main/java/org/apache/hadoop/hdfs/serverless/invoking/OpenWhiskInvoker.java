@@ -434,7 +434,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                     return null;
                 }
 
-                LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result);
+                LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": "
+                        + result.toString());
                 return result;
             } catch (Exception ex) {
                 LOG.error("Error encountered while extracting result from NameNode response:", ex);
