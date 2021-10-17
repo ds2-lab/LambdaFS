@@ -187,12 +187,12 @@ public class INodesInPath {
 
       // Check the metadata cache for this particular INode.
       if (metadataCache != null && metadataCache.containsKey(fullPathToCurrentComponent)) {
-        LOG.debug("INode " + childNameAsString + " is already cached locally under key " + '"'
-                        + fullPathToCurrentComponent + '"' + ". Using cached INode.");
+        LOG.debug("INode " + childNameAsString + " is already cached locally under key '"
+                        + fullPathToCurrentComponent + "'. Using cached INode.");
         curNode = (INode) metadataCache.get(fullPathToCurrentComponent);
       } else {
-        LOG.debug("INode " + childNameAsString + " is not in cache under key " + '"'
-                + fullPathToCurrentComponent + '"' + ". Retrieving from intermediate storage now...");
+        LOG.debug("INode " + childNameAsString + " is not in cache under key '"
+                + fullPathToCurrentComponent + "'. Retrieving from intermediate storage now...");
         if (metadataCache != null)
           LOG.debug("Keys in metadata cache (" + metadataCache.size() + "): " + metadataCache.keySet());
         // normal case, and also for resolving file/dir under snapshot root

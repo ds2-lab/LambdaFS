@@ -1666,7 +1666,7 @@ public class FSDirectory implements Closeable {
       else
         fullPathToComponent = constructPath(components, 0, i + 1);
 
-      LOG.debug("Processing INode " + '"' + component + '"' + " now. INode is null: " + (node == null));
+      LOG.debug("Processing INode '" + component + "' now. INode is null: " + (node == null));
 
       if (node != null) {
         // Just used for debugging. Will eventually remove this code.
@@ -1677,8 +1677,8 @@ public class FSDirectory implements Closeable {
             LOG.debug("First INode in path: " + node.toDetailString());
         }
 
-        LOG.debug("Caching INode " + '"' + component + '"' + " in metadata cache under key " + '"'
-                + fullPathToComponent + '"' + " now...");
+        LOG.debug("Caching INode '" + component + "' in metadata cache under key '"
+                + fullPathToComponent + "' now...");
         namesystem.getMetadataCache().put(fullPathToComponent, node);
       }
       else {
