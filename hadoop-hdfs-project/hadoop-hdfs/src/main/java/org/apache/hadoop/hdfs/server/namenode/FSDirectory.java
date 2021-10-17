@@ -1679,7 +1679,7 @@ public class FSDirectory implements Closeable {
 
         LOG.debug("Caching INode '" + component + "' in metadata cache under key '"
                 + fullPathToComponent + "' now...");
-        namesystem.getMetadataCache().put(fullPathToComponent, node);
+        namesystem.getMetadataCache().put(fullPathToComponent, node.getId(), node);
       }
       else {
         LOG.warn("INode is null. Path component: " + component + ", full path: " + fullPathToComponent);
@@ -1769,7 +1769,7 @@ public class FSDirectory implements Closeable {
               // yields the String "". So we cache the root INode under the empty String key.
 
               LOG.debug("Caching the root INode under the key " + INodeDirectory.ROOT_NAME + " now...");
-              namesystem.getMetadataCache().put(INodeDirectory.ROOT_NAME, newRootINode);
+              namesystem.getMetadataCache().put(INodeDirectory.ROOT_NAME, newRootINode.getId(), newRootINode);
             } else {
               LOG.warn("New root INode is null. Cannot cache the INode.");
             }

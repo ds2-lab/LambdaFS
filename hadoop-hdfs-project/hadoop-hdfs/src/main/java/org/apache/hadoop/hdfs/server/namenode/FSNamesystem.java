@@ -1642,7 +1642,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   public synchronized void invalidateMetadataCache(
           List<String> invalidatedKeys,
-          Map<String, Object> updatedValues)
+          Map<String, INode> updatedValues)
   {
     // Ensure we're using proper grammar in our debug messages.
     String entry;
@@ -1673,7 +1673,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       // If we already have the value for this key, then update the cache.
       if (updatedValues.containsKey(invalidatedKey)) {
         LOG.debug("Using local, updated value for entry " + invalidatedKey + ".");
-        metadataCache.put(invalidatedKey, updatedValues.get(invalidatedKey));
+        INode updatedINode = updatedValues.get(invalidatedKey);
+        metadataCache.put(invalidatedKey, updatedINode.getId(), updatedINode);
       } else {
         LOG.debug("Invalidating cache entry " + invalidatedKey + ".");
         metadataCache.invalidateKey(invalidatedKey, false);
