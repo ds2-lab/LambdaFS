@@ -89,8 +89,8 @@ public class ArgumentContainer {
             return;
         }
 
-        LOG.debug("Adding arguments. Key: \"" + key + "\", value: " + value.toString() + ", value's class: "
-                + value.getClass().getSimpleName());
+        //LOG.debug("Adding arguments. Key: \"" + key + "\", value: " + value.toString() + ", value's class: "
+        //        + value.getClass().getSimpleName());
 
         Class<?> clazz = value.getClass();
 
@@ -121,7 +121,7 @@ public class ArgumentContainer {
      * @param value The argument itself.
      */
     public void addByteArray(String key, byte[] value) {
-        LOG.debug("Adding byte[] argument \"" + key + "\"");
+        //LOG.debug("Adding byte[] argument \"" + key + "\"");
         byteArrayArguments.put(key, value);
     }
 
@@ -137,7 +137,7 @@ public class ArgumentContainer {
             throw new IllegalArgumentException("Argument `value` must not be an array of byte/Byte.");
         }
 
-        LOG.debug("Adding non-byte array argument \"" + key + "\"");
+        //LOG.debug("Adding non-byte array argument \"" + key + "\"");
 
         nonByteArrayArguments.put(key, value);
     }
@@ -152,7 +152,7 @@ public class ArgumentContainer {
      */
     public <T> void addPrimitive(String key, T value) {
         assert(value.getClass().isPrimitive() || value instanceof String);
-        LOG.debug("Adding primitive argument \"" + key + "\"");
+        //LOG.debug("Adding primitive argument \"" + key + "\"");
         primitiveArguments.put(key, value);
     }
 
@@ -169,7 +169,7 @@ public class ArgumentContainer {
             return;
         }
 
-        LOG.debug("Adding object argument \"" + key + "\"");
+        //LOG.debug("Adding object argument \"" + key + "\"");
         objectArguments.put(key, value);
     }
 
@@ -181,11 +181,11 @@ public class ArgumentContainer {
         int totalNumArguments = nonByteArrayArguments.size() + byteArrayArguments.size()
                 + primitiveArguments.size() + objectArguments.size();
 
-        LOG.debug("Packaging " + totalNumArguments + " arguments into JsonObject.");
-        LOG.debug("\tNon-Byte Array Arguments: " + nonByteArrayArguments.size());
-        LOG.debug("\tByte Array Arguments: " + byteArrayArguments.size());
-        LOG.debug("\tPrimitive Arguments: " + primitiveArguments.size());
-        LOG.debug("\tObject Arguments: " + objectArguments.size());
+        //LOG.debug("Packaging " + totalNumArguments + " arguments into JsonObject.");
+        //LOG.debug("\tNon-Byte Array Arguments: " + nonByteArrayArguments.size());
+        //LOG.debug("\tByte Array Arguments: " + byteArrayArguments.size());
+        //LOG.debug("\tPrimitive Arguments: " + primitiveArguments.size());
+        //LOG.debug("\tObject Arguments: " + objectArguments.size());
 
         JsonObject arguments = new JsonObject();
 

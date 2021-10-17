@@ -159,19 +159,22 @@ public class NameNodeResult {
     /**
      * Log some useful debug information about the result field (e.g., the object's type) to the console.
      */
-    public void logResultDebugInformation() {
-        LOG.info("+-+-+-+-+-+-+ Result Debug Information +-+-+-+-+-+-+");
+    public void logResultDebugInformation(String opPerformed) {
+        LOG.debug("+-+-+-+-+-+-+ Result Debug Information +-+-+-+-+-+-+");
         if (hasResult) {
-            LOG.info("Type: " + result.getClass());
-            LOG.info("Result " + (result instanceof Serializable ? "IS " : "is NOT ") + "serializable.");
-            LOG.info("Value: " + result);
+            LOG.debug("Type: " + result.getClass());
+            LOG.debug("Result " + (result instanceof Serializable ? "IS " : "is NOT ") + "serializable.");
+            LOG.debug("Value: " + result);
         } else {
-            LOG.info("There is NO result value present.");
+            LOG.debug("There is NO result value present.");
         }
 
-        LOG.info("----------------------------------------------------");
+        if (opPerformed != null)
+            LOG.debug("Operation performed: " + opPerformed);
 
-        LOG.info("Number of exceptions: " + exceptions.size());
+        LOG.debug("----------------------------------------------------");
+
+        LOG.debug("Number of exceptions: " + exceptions.size());
 
         if (exceptions.size() > 0) {
             StringBuilder builder = new StringBuilder();
@@ -188,18 +191,18 @@ public class NameNodeResult {
                 counter++;
             }
 
-            LOG.info(builder.toString());
+            LOG.debug(builder.toString());
         }
 
-        LOG.info("----------------------------------------------------");
+        LOG.debug("----------------------------------------------------");
 
         if (serverlessFunctionMapping != null) {
-            LOG.info(serverlessFunctionMapping.toString());
+            LOG.debug(serverlessFunctionMapping.toString());
         } else {
-            LOG.info("No serverless function mapping data contained within this result.");
+            LOG.debug("No serverless function mapping data contained within this result.");
         }
 
-        LOG.info("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+");
+        LOG.debug("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+");
     }
 
     /**

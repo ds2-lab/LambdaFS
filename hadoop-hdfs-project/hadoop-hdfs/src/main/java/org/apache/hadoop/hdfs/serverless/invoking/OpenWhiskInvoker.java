@@ -146,8 +146,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
             String sourceFileOrDirectory =
                     (String) fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
-            LOG.debug("Checking serverless function cache for entry associated with file/directory \"" +
-                    sourceFileOrDirectory + "\" now...");
+            //LOG.debug("Checking serverless function cache for entry associated with file/directory \"" +
+            //        sourceFileOrDirectory + "\" now...");
             functionNumber = cache.getFunction(sourceFileOrDirectory);
         } else {
             LOG.debug("No `src` property found in file system arguments... skipping the checking of INode cache...");
@@ -169,8 +169,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         builder.append(blockingParameter);
         String functionUri = builder.toString();
 
-        LOG.info(String.format("Preparing to invoke OpenWhisk serverless function with URI \"%s\" \nfor FS operation \"%s\" now...",
-                functionUri, operationName));
+       // LOG.info(String.format("Preparing to invoke OpenWhisk serverless function with URI \"%s\" \nfor FS operation \"%s\" now...",
+       //         functionUri, operationName));
 
         HttpPost request = new HttpPost(functionUri);
 
@@ -196,15 +196,13 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         request.setHeader("Content-type", "application/json");
         request.setHeader("Authorization", "Basic Basic 789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP");
 
-        LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
-
-        LOG.debug("HttpRequest (before issuing it): " + request);
-        LOG.debug("Request URI/URL: " + request.getURI().toURL());
+        //LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
+        //LOG.debug("Request URI/URL: " + request.getURI().toURL());
 
         int currentNumTries = 0;
 
         do {
-            LOG.debug("Invoking NameNode (op=" + operationName + "), attempt " + (currentNumTries + 1)
+            LOG.info("Invoking NameNode (op=" + operationName + "), attempt " + (currentNumTries + 1)
                     + "/" + maxHttpRetries + ".");
             HttpResponse httpResponse = httpClient.execute(request);
             int responseCode = httpResponse.getStatusLine().getStatusCode();

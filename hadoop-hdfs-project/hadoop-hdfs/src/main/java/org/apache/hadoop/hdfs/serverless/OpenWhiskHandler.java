@@ -344,7 +344,7 @@ public class OpenWhiskHandler {
         } else if (!tcpEnabled) // Just so we can print a debug message indicating that we're not doing TCP.
             LOG.debug("TCP is DISABLED. Will not try to connect to the client.");
 
-        result.logResultDebugInformation();
+        result.logResultDebugInformation(op);
         return result;
     }
 
