@@ -147,7 +147,7 @@ public class INodesInPath {
    * @return the specified number of existing INodes in the path
    */
   static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components,
-                              final boolean resolveLink, final LRUMetadataCache<String, Object> metadataCache)
+                              final boolean resolveLink, final LRUMetadataCache<INode> metadataCache)
           throws UnresolvedLinkException, StorageException, TransactionContextException {
     if (metadataCache == null)
       LOG.warn("Metadata cache instance is null during INode path resolution.");
@@ -192,19 +192,26 @@ public class INodesInPath {
       if (metadataCache != null && metadataCache.containsKey(fullPathToCurrentComponent)) {
         LOG.debug("INode " + childNameAsString + " is already cached locally under key '"
                         + fullPathToCurrentComponent + "'. Using cached INode.");
-        curNode = (INode) metadataCache.get(fullPathToCurrentComponent);
+        curNode = (INode) metadataCache.getByPath(fullPathToCurrentComponent);
+
+        if (curNode != null)
+          LOG.debug("Current INode (id=" + curNode.getId() + "): " + curNode.toString());
       } else {
         // If the cache is null, we'll print a different message than if the cache is not null.
         if (metadataCache != null) {
           LOG.debug("INode " + childNameAsString + " is not in cache under key '"
                   + fullPathToCurrentComponent + "'. Retrieving from intermediate storage instead.");
-          LOG.debug("Keys in metadata cache (" + metadataCache.size() + "): " + metadataCache.keySet());
+          LOG.debug("Valid keys in metadata cache (" + metadataCache.size(false) + "): "
+                  + metadataCache.getPathKeys(false));
         } else {
           LOG.debug("We do not have access to the metadata cache for some reason.");
           LOG.debug("Retrieving INode " + childNameAsString + " from intermediate storage instead.");
         }
         // normal case, and also for resolving file/dir under snapshot root
         curNode = dir.getChildINode(childName);
+
+        if (curNode != null)
+          LOG.debug("Current INode (id=" + curNode.getId() + "): " + curNode.toString());
       }
 
       count++;

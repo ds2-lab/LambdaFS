@@ -3,10 +3,7 @@ package org.apache.hadoop.hdfs.serverless.cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -32,16 +29,13 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Used by Serverless NameNodes to store and retrieve cached metadata.
  */
-public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
+public class LRUMetadataCache<T> {
     static final Logger LOG = LoggerFactory.getLogger(LRUMetadataCache.class);
 
-    private static final int DEFAULT_MAX_ENTRIES = 100;         // Default maximum capacity.
+    private static final int DEFAULT_MAX_ENTRIES = 250;         // Default maximum capacity.
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;     // Default load factor.
 
     private static final long serialVersionUID = -8140463703331613827L;
-
-    // The maximum capacity.
-    private final int maxSize;
 
     private final Lock _mutex = new ReentrantLock(true);
 
@@ -49,8 +43,17 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
      * Keys are added to this set upon being invalidated. If a key is in this set,
      * then the data in the cache for that key is out-of-date and must be retrieved from
      * intermediate storage, rather than from the cache.
+     *
+     * This must remain a subset of the keyset of the cache variable.
      */
     private final HashSet<String> invalidatedKeys;
+
+    /**
+     * Mapping between INode IDs and their names.
+     */
+    private final HashMap<Long, String> idToNameMapping;
+
+    private final HashMap<String, T> cache;
 
     /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
@@ -78,45 +81,65 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
      * Create an LRU Metadata Cache using a specified maximum capacity and load factor.
      */
     public LRUMetadataCache(int capacity, float loadFactor) {
-        super(capacity, loadFactor, true);
-
-        this.maxSize = capacity;
         this.invalidatedKeys = new HashSet<>();
+        this.idToNameMapping = new HashMap<>(capacity, loadFactor);
+        this.cache = new HashMap<>(capacity, loadFactor);
     }
 
-    @Override
-    public synchronized T get(Object key) {
-        //_mutex.lock();
+    /**
+     * Return the metadata object associated with the given key, or null if:
+     *  (1) No entry exists for the given key, or
+     *  (2) The given key has been invalidated.
+     * @param key The fully-qualified path of the desired INode
+     * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
+     * invalidated.
+     */
+    public synchronized T getByPath(String key) {
+        if (invalidatedKeys.contains(key))
+            return null;
 
-        T returnValue = super.get(key);
+        T returnValue = cache.get(key);
 
         LOG.debug("Retrieved value " + returnValue.toString() + " from cache using key " + key + ".");
-
-        //_mutex.unlock();
 
         return returnValue;
     }
 
     /**
-     * Override `put()` to disallow null values from being added to the cache.
+     * Return the metadata object associated with the given key, or null if:
+     *  (1) No entry exists for the given key, or
+     *  (2) The given key has been invalidated.
+     * @param iNodeId The INode ID of the given metadata object.
+     * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
+     * invalidated.
      */
-    @Override
-    public synchronized T put(String key, T value) {
+    public synchronized T getByINodeId(long iNodeId) {
+        if (idToNameMapping.containsKey(iNodeId)) {
+            String key = idToNameMapping.get(iNodeId);
+            return getByPath(key);
+        }
+        return null;
+    }
+
+    /**
+     * Override `put()` to disallow null values from being added to the cache.
+     *
+     * @param key The fully-qualified path of the desired INode
+     * @param iNodeId The INode ID of the given metadata object.
+     * @param value The metadata object to cache under the given key.
+     */
+    public synchronized T put(String key, long iNodeId, T value) {
         if (value == null)
             throw new IllegalArgumentException("LRUMetadataCache does NOT support null values. Associated key: " + key);
 
-        //_mutex.lock();
-
-        T returnValue = super.put(key, value);
+        T returnValue = cache.put(key, value);
 
         boolean removed = invalidatedKeys.remove(key);
 
         if (removed)
-            LOG.debug("Previously invalid key " + key + " updated with valid cache value. Cache size: " + size());
+            LOG.debug("Previously invalid key " + key + " updated with valid cache value. Cache size: " + cache.size());
         else
-            LOG.debug("Inserted metadata object into cache under key " + key + ". Cache size: " + this.size());
-
-        //_mutex.unlock();
+            LOG.debug("Inserted metadata object into cache under key " + key + ". Cache size: " + cache.size());
 
         return returnValue;
     }
@@ -124,24 +147,92 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
     /**
      * Checks that the key has not been invalidated before checking the contents of the cache.
      */
-    @Override
     public boolean containsKey(Object key) {
         if (key == null)
             return false;
 
-        if (invalidatedKeys.contains((String)key)) {
-            return false;
+        // If the given key is a string, then we can use it directly.
+        if (key instanceof String) {
+            return !invalidatedKeys.contains(key) && cache.containsKey(key);
+        }
+        else if (key instanceof Long) {
+            // If the key is a long, we need to check if we've mapped this long to a String key. If so,
+            // then we can get the string version and continue as before.
+            String keyAsStr = idToNameMapping.getOrDefault((Long)key, null);
+            return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
         }
 
-        return super.containsKey(key);
+        return false;
+    }
+
+    /**
+     * Return the size of the cache.
+     *
+     * @param includeInvalidKeys If true, include invalid keys in the size.
+     */
+    public int size(boolean includeInvalidKeys) {
+        int cacheSize = cache.size();
+
+        if (!includeInvalidKeys)
+            cacheSize -= invalidatedKeys.size();
+
+        return cacheSize;
+    }
+
+    /**
+     * Return the number of keys that have been invalidated.
+     */
+    public int numInvalidatedKeys() {
+        return invalidatedKeys.size();
     }
 
     /**
      * Check if there is an entry for the given key in this cache, regardless of whether not that entry is
-     * marked as invalid or not.
+     * marked as invalid or not. That is, this "skips" the check of whether this key is invalid.
+     *
+     * The regular containsKey() function only returns true if this contains the key AND the key has not been
+     * invalidated.
      */
-    public boolean containsKeySkipInvalidCheck(Object key) {
-        return super.containsKey(key);
+    public boolean containsKeySkipInvalidCheck(String key) {
+        return cache.containsKey(key);
+    }
+
+    /**
+     * Invalidate a given key by passing the INode ID of the INode to be invalidated, rather than the
+     * fully-qualified path.
+     * @param inodeId The INode ID of the INode to be invalidated.
+     * @return True if the key was invalidated, otherwise false.
+     */
+    public boolean invalidateKey(long inodeId) {
+        if (idToNameMapping.containsKey(inodeId)) {
+            String key = idToNameMapping.get(inodeId);
+
+            return invalidateKey(key, false);
+        }
+
+        return false;
+    }
+
+    /**
+     * Return the current set of keys in the cache.
+     * @param includeInvalidKeys If true, the invalid keys will also be included in the returned list.
+     */
+    public List<String> getPathKeys(boolean includeInvalidKeys) {
+        ArrayList<String> keyList = new ArrayList<>();
+
+        for (String key : cache.keySet()) {
+            if (includeInvalidKeys || !invalidatedKeys.contains(key))
+                keyList.add(key);
+        }
+
+        return keyList;
+    }
+
+    /**
+     * Get the invalidated keys.
+     */
+    public String[] getInvalidatedKeys() {
+        return invalidatedKeys.toArray(new String[0]);
     }
 
     /**
@@ -163,12 +254,5 @@ public class LRUMetadataCache<String, T> extends LinkedHashMap<String, T> {
         }
 
         return false;
-    }
-
-    @Override
-    protected boolean removeEldestEntry(Map.Entry<String, T> eldest) {
-        // This method must be overridden if used in a fixed cache.
-        // See https://stackoverflow.com/questions/27475797/use-linkedhashmap-to-implement-lru-cache.
-        return this.size() > maxSize;
     }
 }

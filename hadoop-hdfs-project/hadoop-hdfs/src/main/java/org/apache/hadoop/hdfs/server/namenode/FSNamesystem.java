@@ -243,7 +243,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   /**
    * Used to cache file system metadata locally within a serverless name node.
    */
-  private final LRUMetadataCache<String, Object> metadataCache;
+  private final LRUMetadataCache<INode> metadataCache;
 
   private final boolean isPermissionEnabled;
   private final UserGroupInformation fsOwner;
@@ -973,7 +973,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     logAuditEvent(true, "setOwner", src, null, auditStat);
   }
 
-  public LRUMetadataCache<String, Object> getMetadataCache() {
+  public LRUMetadataCache<INode> getMetadataCache() {
     return metadataCache;
   }
 
