@@ -72,7 +72,7 @@ public class HdfsFileStatus implements Serializable {
    * @param owner the owner of the path
    * @param group the group of the path
    * @param path the local name in java UTF8 encoding the same as that in-memory
-   * @param fileid the inode id of the file
+   * @param fileId the inode id of the file
    * @param feInfo the file's encryption info
    */
   public HdfsFileStatus(long length, boolean isdir, int block_replication,
@@ -278,12 +278,21 @@ public class HdfsFileStatus implements Serializable {
     return childrenNum;
   }
 
+  @Override
+  public String toString() {
+    return String.format("HdfsFileStatus(access_time=%d, block_replication=%d, blocksize=%d, childrenNum=%d, " +
+            "feInfo=%s, fileId=%d, group=%s, isdir=%b, length=%d, modification_time=%d, owner=%s)",
+            access_time, block_replication, blocksize, childrenNum, (feInfo == null ? "null" : feInfo.toString()),
+            fileId, group, isdir, length, modification_time, owner);
+  }
+
   /**
    * Resolve the short name of the Path given the URI, parent provided. This
    * FileStatus reference will not contain a valid Path until it is resolved
    * by this method.
    * @param defaultUri FileSystem to fully qualify HDFS path.
-   * @param parent Parent path of this element.
+   * @param path Parent path of this element. (this comment originally said the arg was called 'parent', so I do not
+   *             know if this current description is correct or not).
    * @return Reference to this instance.
    */
   public final FileStatus makeQualified(URI defaultUri, Path path) {

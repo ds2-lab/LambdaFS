@@ -738,8 +738,7 @@ public class DFSOutputStream extends FSOutputSummer
   }
 
   /**
-   * Waits till all existing data is flushed and confirmations
-   * received from datanodes.
+   * Waits till all existing data is flushed and confirmations received from datanodes.
    */
   protected void flushInternal() throws IOException {
     LOG.debug("flushInternal() called. Waiting until all existing data is flushed and confirmations have been " +
