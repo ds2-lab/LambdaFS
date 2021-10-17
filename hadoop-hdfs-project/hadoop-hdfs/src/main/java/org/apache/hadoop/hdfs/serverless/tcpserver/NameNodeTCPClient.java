@@ -275,7 +275,7 @@ public class NameNodeTCPClient {
             LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
             if (fileSystemOperationResult instanceof NameNodeResult) {
                 LOG.debug("[TCP] Merging NameNodeResult instances now...");
-                tcpResult.mergeInto((NameNodeResult)fileSystemOperationResult, true);
+                tcpResult.mergeInto((NameNodeResult)fileSystemOperationResult, false);
             } else if (fileSystemOperationResult != null) {
                 LOG.warn("[TCP] Worker thread returned result of type: "
                         + fileSystemOperationResult.getClass().getSimpleName());

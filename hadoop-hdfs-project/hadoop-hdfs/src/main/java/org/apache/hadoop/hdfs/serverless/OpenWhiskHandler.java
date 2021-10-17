@@ -331,7 +331,7 @@ public class OpenWhiskHandler {
             LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
             if (fileSystemOperationResult instanceof NameNodeResult) {
                 LOG.debug("Merging NameNodeResult instances now...");
-                result.mergeInto((NameNodeResult)fileSystemOperationResult, true);
+                result.mergeInto((NameNodeResult)fileSystemOperationResult, false);
             } else if (fileSystemOperationResult != null) {
                 LOG.warn("Worker thread returned result of type: "
                         + fileSystemOperationResult.getClass().getSimpleName());
