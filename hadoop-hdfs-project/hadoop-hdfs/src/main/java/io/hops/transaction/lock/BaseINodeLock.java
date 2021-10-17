@@ -490,6 +490,7 @@ public abstract class BaseINodeLock extends Lock {
     }
 
     INode lockInode(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws IOException {
+      LOG.debug("Locking INode " + inodeId + " with lock type " + lockType.name() + " now...");
       setINodeLockType(lockType);
       INode targetInode = INodeUtil.getNode(inodeId, true);
       setINodeLockType(getDefaultInodeLockType());
@@ -604,7 +605,7 @@ public abstract class BaseINodeLock extends Lock {
     @Override
     List<INode> fetchINodes(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws IOException {
       List<INode> inodes = new LinkedList<>();
-      //get the inode and its parrent from the cache
+      // Get the inode and its parent from the cache.
       if (TransactionLockTypes.impliesParentWriteLock(lockType)) {
         inodes.addAll(lockInodeAndParent(lockType, inodeId));
       } else {

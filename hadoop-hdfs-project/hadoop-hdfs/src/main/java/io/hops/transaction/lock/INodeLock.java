@@ -110,6 +110,9 @@ public class INodeLock extends BaseINodeLock {
        * a dealock situation.
        */
       Arrays.sort(paths);
+
+      LOG.debug("Acquiring iNode locks on the following paths: " + Arrays.toString(paths));
+
       acquirePathsINodeLocks();
     } else {
       acquireInodeIdInodeLock();
@@ -152,6 +155,8 @@ public class INodeLock extends BaseINodeLock {
     }
 
     for (String path : paths) {
+      LOG.debug("Attempting to acquire lock for path \"" + path + "\"");
+
       List<INode> resolvedINodes = null;
       if (getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
         //Batching only works in READ_COMITTED mode. If locking is enabled then it can lead to deadlocks.

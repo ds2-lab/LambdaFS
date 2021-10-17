@@ -2693,16 +2693,20 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * be where the client writes data.  Subsequent items in the list must
    * be provided in the connection to the first datanode.
    * <p/>
-   * Make sure the previous blocks have been reported by datanodes and
-   * are replicated.  Will return an empty 2-elt array if we want the
+   * Make sure the previous blocks have been reported by DataNodes and
+   * are replicated. Will return an empty 2-elt array if we want the
    * client to "try again later".
    */
   LocatedBlock getAdditionalBlock(final String srcArg, final long fileId, final String clientName,
       final ExtendedBlock previous, final Set<Node> excludedNodes,
       final List<String> favoredNodes) throws IOException {
+    LOG.debug("Client " + clientName + " is requesting an additional block for file \"" + srcArg + "\", fileId = "
+            + fileId + ".");
+
     final LocatedBlock[] onRetryBlock = new LocatedBlock[1];
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
+
     HopsTransactionalRequestHandler additionalBlockHandler = new HopsTransactionalRequestHandler(
         HDFSOperationType.GET_ADDITIONAL_BLOCK, src) {
       @Override
@@ -2724,7 +2728,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           locks.add(il)
               .add(lf.getLastTwoBlocksLock(fileId));
         }
-        //we have to lock all leasse for the client becuase the file could have been renamed
+        //we have to lock all leases for the client because the file could have been renamed.
         locks.add(lf.getLeaseLockAllPaths(LockType.READ, clientName, leaseCreationLockRows))
             .add(lf.getLeasePathLock(LockType.READ_COMMITTED))
             .add(lf.getBlockRelated(BLK.RE, BLK.CR, BLK.ER, BLK.UC));
