@@ -15,6 +15,7 @@
  */
 package io.hops;
 
+import io.hops.events.EventManager;
 import io.hops.exception.StorageInitializtionException;
 
 public class DalDriver {

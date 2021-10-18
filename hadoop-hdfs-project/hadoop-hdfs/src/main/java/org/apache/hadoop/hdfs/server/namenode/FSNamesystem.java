@@ -27,6 +27,8 @@ import io.hops.common.IDsMonitor;
 import io.hops.common.INodeUtil;
 import io.hops.erasure_coding.Codec;
 import io.hops.erasure_coding.ErasureCodingManager;
+import io.hops.events.HopsEvent;
+import io.hops.events.HopsEventListener;
 import io.hops.exception.*;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.metadata.HdfsStorageFactory;
@@ -166,8 +168,7 @@ import static org.apache.hadoop.util.Time.now;
  */
 @InterfaceAudience.Private
 @Metrics(context="dfs")
-public class FSNamesystem implements Namesystem, FSNamesystemMBean,
-  NameNodeMXBean {
+public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBean, HopsEventListener {
   public static final Log LOG = LogFactory.getLog(FSNamesystem.class);
 
   private static final ThreadLocal<StringBuilder> auditBuffer =
@@ -975,6 +976,21 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
   public LRUMetadataCache<INode> getMetadataCache() {
     return metadataCache;
+  }
+
+  /**
+   * Handle an NDB event, which typically serves as an invalidation for a particular INode.
+   *
+   * @param iNodeId The INode ID of the INode involved in the NDB operation that triggered the event.
+   * @param shouldInvalidate If true, then this event should invalidate the associated metadata.
+   * @param event The HopsEvent instance that triggered this notification.
+   */
+  @Override
+  public void eventReceived(long iNodeId, boolean shouldInvalidate) {
+    LOG.debug("Received " + (shouldInvalidate ? "invalidating" : "non-invalidating") + " event for INode ID " +
+            iNodeId);
+
+    metadataCache.invalidateKey(iNodeId);
   }
 
   public static class GetBlockLocationsResult {

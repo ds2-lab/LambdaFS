@@ -3,8 +3,6 @@ package io.hops.metadata.ndb.wrapper;
 import com.mysql.clusterj.TableEvent;
 import com.mysql.clusterj.core.store.EventOperation;
 import com.mysql.clusterj.core.store.RecordAttr;
-import com.mysql.ndbjtie.ndbapi.NdbRecAttr;
-import io.hops.EventManager;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 

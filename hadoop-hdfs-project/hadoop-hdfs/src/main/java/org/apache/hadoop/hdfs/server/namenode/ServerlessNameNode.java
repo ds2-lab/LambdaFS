@@ -19,11 +19,8 @@ package org.apache.hadoop.hdfs.server.namenode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.mysql.clusterj.SessionFactory;
 import io.hops.DalDriver;
-import io.hops.DalStorageFactory;
-import io.hops.EventManager;
-import io.hops.StorageConnector;
+import io.hops.events.EventManager;
 import io.hops.exception.StorageException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
@@ -106,10 +103,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.PrivilegedExceptionAction;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -1881,6 +1876,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // not found errors.
     ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
     ndbEventManager.defaultSetup(null, true);
+    ndbEventManager.addListener(namesystem);
 
     eventManagerThread = new Thread(ndbEventManager);
     eventManagerThread.start();

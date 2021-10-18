@@ -3,14 +3,17 @@ package io.hops.metadata.ndb.wrapper;
 import com.mysql.clusterj.*;
 import com.mysql.clusterj.core.store.Event;
 import com.mysql.clusterj.core.store.EventOperation;
-import io.hops.EventManager;
-import io.hops.HopsEvent;
+import io.hops.events.EventManager;
+import io.hops.events.HopsEvent;
+import io.hops.events.HopsEventListener;
 import io.hops.exception.StorageException;
 import io.hops.metadata.ndb.ClusterjConnector;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * This class is responsible for listening to events from NDB and reacting to them appropriately.
@@ -26,8 +29,6 @@ import java.util.HashMap;
 public class HopsEventManager implements EventManager {
     static final Log LOG = LogFactory.getLog(HopsEventManager.class);
 
-    // private static HopsEventManager instance;
-
     /**
      * Default event name that NameNodes use in order to watch for cache invalidations from NDB.
      */
@@ -37,6 +38,11 @@ public class HopsEventManager implements EventManager {
      * Name of the NDB table that contains the INodes.
      */
     private static final String INODES_TABLE_NAME = "hdfs_inodes";
+
+    /**
+     * Classes who want to be notified that an event has occurred so they can process the event.
+     */
+    private List<HopsEventListener> listeners = new ArrayList<>();
 
     /**
      * The columns of the INode NDB table, in the order that they're defined in the schema.
@@ -117,31 +123,23 @@ public class HopsEventManager implements EventManager {
         this.eventOperationMap = new HashMap<>();
     }
 
-    /**
-     * Retrieve the singleton instance of HopsEventManager.
-     *
-     * @param session Active session with NDB.
-     * @return singleton instance of HopsEventManager.
-     */
-//    public HopsEventManager getInstance(HopsSession session) {
-//        if (instance == null)
-//            instance = new HopsEventManager(session);
-//
-//        return instance;
-//    }
+    // Inherit the javadoc.
+    @Override
+    public void addListener(HopsEventListener listener) {
+        this.listeners.add(listener);
+        LOG.debug("Registered new event listener. Number of listeners: " + listeners.size() + ".");
+    }
 
-    /**
-     * Retrieve the singleton instance of HopsEventManager.
-     *
-     * Creates the instance of it does not already exist.
-     * @return singleton instance of HopsEventManager.
-     */
-//    public HopsEventManager getInstance() throws StorageException {
-//        if (instance == null)
-//            instance = new HopsEventManager();
-//
-//        return instance;
-//    }
+    // Inherit the javadoc.
+    @Override
+    public boolean removeListener(HopsEventListener listener) {
+        if (listeners.contains(listener)) {
+            listeners.remove(listener);
+            return true;
+        }
+
+        return false;
+    }
 
     /**
      * Create and register an Event Operation for the specified event.
@@ -392,15 +390,23 @@ public class HopsEventManager implements EventManager {
             //  For now, I am assuming that there is just ONE active event operation, and that event operation
             //  is using default column tables and record attributes, as defined above in the static variables.
 
+            LOG.debug("Received " + eventType.name() + " event from NDB.");
+
             switch (eventType) {
-                case INSERT:
-                    LOG.debug("Received INSERT event from NDB.");
-                    break;
-                case DELETE:
-                    LOG.debug("Received DELETE event from NDB.");
-                    break;
+                case DELETE:    // Fall through.
                 case UPDATE:
-                    LOG.debug("Received UPDATE event from NDB.");
+                    long preValue = activeEventOperation.getLongPreValue("id");
+                    long postValue = activeEventOperation.getLongPostValue("id");
+
+                    if (preValue != postValue)
+                        LOG.warn("INode table entry unexpectedly changed ID values. Old ID = " +
+                            preValue + ", new ID = " + postValue + ".");
+
+                    // Need to invalidate the cache entry for the deleted/updated INode, if we're caching it.
+                    notifyEventListeners(postValue, true);
+
+                    break;
+                case INSERT:    // Do nothing for now.
                     break;
                 default:
                     LOG.debug("Received unexpected " + eventType.name() + " event from NDB.");
@@ -428,5 +434,18 @@ public class HopsEventManager implements EventManager {
                 " event" : " events") + " from NDB.");
 
         return numEventsProcessed;
+    }
+
+    /**
+     * Notify anybody listening for events that we received an event.
+     *
+     * @param iNodeId The INode ID of the INode involved in the NDB operation that triggered the event.
+     * @param shouldInvalidate If true, then this event should invalidate the associated metadata.
+     */
+    private void notifyEventListeners(long iNodeId, boolean shouldInvalidate) {
+        LOG.debug("Notifying " + listeners.size() + (listeners.size() == 1 ? " listener " : " listeners ")
+            + " of event on INode " + iNodeId + ".");
+        for (HopsEventListener listener : listeners)
+            listener.eventReceived(iNodeId, shouldInvalidate);
     }
 }

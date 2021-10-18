@@ -1,4 +1,4 @@
-package io.hops;
+package io.hops.events;
 
 /**
  * Exists to be used as a wrapper around ClusterJ's Event,

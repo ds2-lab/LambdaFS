@@ -1,4 +1,4 @@
-package io.hops;
+package io.hops.events;
 
 import io.hops.exception.StorageException;
 
@@ -68,4 +68,18 @@ public interface EventManager extends Runnable {
      * @return the number of events that were processed.
      */
     public int processEvents();
+
+    /**
+     * Register an event listener with the event manager.
+     * @param listener the event listener to be registered.
+     */
+    public void addListener(HopsEventListener listener);
+
+    /**
+     * Unregister an event listener with the event manager.
+     * @param listener the event listener to be unregistered.
+     * @return True if the listener was registered and now is not.
+     * False if the listener was not registered to begin with.
+     */
+    public boolean removeListener(HopsEventListener listener);
 }
