@@ -1026,7 +1026,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     DatanodeInfo[] excludeNodes = null;
     if (fsArgs.has("excludeNodes")) {
       // Decode and deserialize the DatanodeInfo[].
-      JsonArray excludedNodesJsonArray = fsArgs.getAsJsonArray("favoredNodes");
+      JsonArray excludedNodesJsonArray = fsArgs.getAsJsonArray("excludeNodes");
       excludeNodes = new DatanodeInfo[excludedNodesJsonArray.size()];
 
       for (int i = 0; i < excludedNodesJsonArray.size(); i++) {
