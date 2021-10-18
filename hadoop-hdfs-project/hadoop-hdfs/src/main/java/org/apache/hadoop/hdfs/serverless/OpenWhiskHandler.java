@@ -392,7 +392,7 @@ public class OpenWhiskHandler {
 
             // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
             if (iNode != null) {
-                LOG.debug("Parent INode ID for " + '"' + src + '"' + ": " + iNode.getParentId());
+                LOG.debug("Parent INode ID for '" + src + "': " + iNode.getParentId());
 
                 int functionNumber = consistentHash(iNode.getParentId(), serverlessNameNode.getNumUniqueServerlessNameNodes());
 

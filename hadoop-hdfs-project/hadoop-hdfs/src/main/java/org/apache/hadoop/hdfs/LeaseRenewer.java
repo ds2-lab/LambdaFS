@@ -458,15 +458,15 @@ public class LeaseRenewer {
       //skip if current client name is the same as the previous name.
       if (!c.getClientName().equals(previousName)) {
         if (!c.renewLease()) {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Did not renew lease for client " + c);
-          }
+//          if (LOG.isDebugEnabled()) {
+//            LOG.debug("Did not renew lease for client " + c);
+//          }
           continue;
         }
         previousName = c.getClientName();
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Lease renewed for client " + previousName);
-        }
+//        if (LOG.isDebugEnabled()) {
+//          LOG.debug("Lease renewed for client " + previousName);
+//        }
       }
     }
   }
@@ -482,10 +482,9 @@ public class LeaseRenewer {
       if (elapsed >= getRenewalTime()) {
         try {
           renew();
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Lease renewer daemon for " + clientsString() +
-                " with renew id " + id + " executed");
-          }
+//          if (LOG.isDebugEnabled()) {
+//            LOG.debug("Lease renewer daemon for " + clientsString() + " with renew id " + id + " executed");
+//          }
           lastRenewed = Time.monotonicNow();
         } catch (SocketTimeoutException ie) {
           LOG.warn("Failed to renew lease for " + clientsString() + " for " +
@@ -504,15 +503,13 @@ public class LeaseRenewer {
 
       synchronized (this) {
         if (id != currentId || isRenewerExpired()) {
-          if (LOG.isDebugEnabled()) {
-            if (id != currentId) {
-              LOG.debug("Lease renewer daemon for " + clientsString() +
-                  " with renew id " + id + " is not current");
-            } else {
-              LOG.debug("Lease renewer daemon for " + clientsString() +
-                  " with renew id " + id + " expired");
-            }
-          }
+//          if (LOG.isDebugEnabled()) {
+//            if (id != currentId) {
+//              LOG.debug("Lease renewer daemon for " + clientsString() + " with renew id " + id + " is not current");
+//            } else {
+//              LOG.debug("Lease renewer daemon for " + clientsString() + " with renew id " + id + " expired");
+//            }
+//          }
           //no longer the current daemon or expired
           return;
         }

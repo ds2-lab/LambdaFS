@@ -28,8 +28,7 @@ import org.apache.hadoop.net.SocketOutputStream;
 import org.apache.hadoop.net.unix.DomainSocket;
 
 /**
- * Represents a peer that we communicate with by using non-blocking I/O 
- * on a Socket.
+ * Represents a peer that we communicate with by using non-blocking I/O on a Socket.
  */
 class NioInetPeer implements Peer {
   private final Socket socket;
