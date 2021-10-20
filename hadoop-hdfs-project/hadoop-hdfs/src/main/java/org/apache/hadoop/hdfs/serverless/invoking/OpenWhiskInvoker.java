@@ -213,7 +213,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             // yet, but if you try again a few seconds later, then the request will get through.
             if (responseCode >= 400 && responseCode <= 599) {
                 LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-                        (currentNumTries + 1) + "/" + (maxHttpRetries + 1git ad) + ".");
+                        (currentNumTries + 1) + "/" + (maxHttpRetries) + ".");
 
                 if ((currentNumTries + 1) < maxHttpRetries) {
                     long sleepInterval = getExponentialBackoffInterval(currentNumTries);
