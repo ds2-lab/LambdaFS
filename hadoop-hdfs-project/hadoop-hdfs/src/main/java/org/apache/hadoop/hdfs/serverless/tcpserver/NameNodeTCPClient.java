@@ -70,14 +70,47 @@ public class NameNodeTCPClient {
     private final ServerlessNameNode serverlessNameNode;
 
     /**
+     * The size, in bytes, used for the write buffer of new TCP connections. Objects are serialized to
+     * the write buffer where the bytes are queued until they can be written to the TCP socket.
+     */
+    private static final int defaultWriteBufferSizeBytes = 8192;
+
+    /**
+     * The size, in bytes, used for the object buffer of new TCP connections. Object buffers are used
+     * to hold the bytes for a single object graph until it can be sent over the network or deserialized.
+     */
+    private static final int defaultObjectBufferSizeBytes = 4096;
+
+    /**
+     * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
+     */
+    private static final int maxBufferSize = 16384;
+
+    /**
+     * The current size, in bytes, being used for TCP write buffers. If we notice a buffer overflow,
+     * then we increase the size of this buffer for future TCP connections in the hopes that we'll
+     * avoid a buffer overflow.
+     */
+    private int writeBufferSize;
+
+    /**
+     * The current size, in bytes, being used for TCP object buffers. If we notice a buffer overflow,
+     * then we increase the size of this buffer for future TCP connections in the hopes that we'll
+     * avoid a buffer overflow.
+     */
+    private int objectBufferSize;
+
+    /**
      * Constructor.
      * @param functionName The name of the serverless function in which this TCP client exists.
      */
     public NameNodeTCPClient(String functionName, ServerlessNameNode serverlessNameNode) {
         this.functionName = functionName;
         this.serverlessNameNode = serverlessNameNode;
+        this.tcpClients = new HashMap<>();
 
-        tcpClients = new HashMap<>();
+        this.writeBufferSize = defaultWriteBufferSizeBytes;
+        this.objectBufferSize = defaultObjectBufferSizeBytes;
         //Log.set(Log.LEVEL_TRACE);
     }
 
@@ -130,7 +163,7 @@ public class NameNodeTCPClient {
 
 
         // We pass the writeBuffer and objectBuffer arguments to the Client constructor.
-        // Objects are serialized to the Write Buffer where the bytes are queued until they can
+        // Objects are serialized to the write buffer where the bytes are queued until they can
         // be written to the TCP socket. Normally the socket is writable and the bytes are written
         // immediately. If the socket cannot be written to and enough serialized objects are queued
         // to overflow the buffer, then the connection will be closed.
@@ -186,11 +219,31 @@ public class NameNodeTCPClient {
                 String jsonString = new Gson().toJson(tcpResult.toJson(
                         ServerlessClientServerUtilities.OPERATION_RESULT));
 
-                LOG.debug("Sending the following JSON string to client at " + tcpClient.getRemoteAddressTCP()
+                LOG.debug("[TCP Client] Sending the following JSON string to client at " + tcpClient.getRemoteAddressTCP()
                     + ": " + jsonString);
                 int bytesSent = tcpClient.sendTCP(jsonString);
 
-                LOG.debug("Sent " + bytesSent + " bytes to HopsFS client at " + tcpClient.getRemoteAddressTCP());
+                LOG.debug("[TCP Client] Sent " + bytesSent + " bytes to HopsFS client at " + tcpClient.getRemoteAddressTCP());
+
+                // Increase the buffer size for future TCP connections to hopefully avoid buffer overflows.
+                if (bytesSent > objectBufferSize) {
+                    LOG.warn("[TCP Client] Sent object of size " + bytesSent
+                            + " bytes when object buffer is only of size " + objectBufferSize + " bytes.");
+
+                    // Do not go above the max buffer size.
+                    int oldBufferSize = objectBufferSize;
+                    objectBufferSize = Math.min(objectBufferSize * 2, maxBufferSize);
+
+                    // If we were able to increase the buffer size, then print a message indicating that
+                    // we did so. If we were already at the max, then we'll print a warning, but currently
+                    // we don't do anything about it, so future TCP sends of the same object size will fail.
+                    if (oldBufferSize < objectBufferSize)
+                        LOG.debug("[TCP Client] Increasing buffer size of future TCP connections to " +
+                                objectBufferSize + " bytes.");
+                    else
+                        // TODO: What should we do if this occurs?
+                        LOG.warn("[TCP Client] Already at the maximum buffer size for TCP connections...");
+                }
             }
 
             public void disconnected (Connection connection) {
