@@ -173,7 +173,7 @@ public class NameNodeTCPClient {
         // the bytes for a single object graph until it can be sent over the network or deserialized.
         // In short, the object buffers should be sized at least as large as the largest object that will be
         // sent or received.
-        Client tcpClient = new Client(8192, 4096);
+        Client tcpClient = new Client(writeBufferSize, objectBufferSize);
 
         // Start the client in its own thread.
         // new Thread(tcpClient).start();
