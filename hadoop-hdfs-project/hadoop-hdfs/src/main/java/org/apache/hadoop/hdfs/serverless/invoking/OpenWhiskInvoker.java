@@ -203,7 +203,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         do {
             LOG.info("Invoking NameNode (op=" + operationName + "), attempt " + (currentNumTries + 1)
-                    + "/" + maxHttpRetries + ".");
+                    + "/" + (maxHttpRetries + 1) + ".");
             HttpResponse httpResponse = httpClient.execute(request);
             int responseCode = httpResponse.getStatusLine().getStatusCode();
 
@@ -213,7 +213,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             // yet, but if you try again a few seconds later, then the request will get through.
             if (responseCode >= 400 && responseCode <= 599) {
                 LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-                        (currentNumTries + 1) + "/" + maxHttpRetries + ".");
+                        (currentNumTries + 1) + "/" + (maxHttpRetries + 1git ad) + ".");
 
                 if ((currentNumTries + 1) < maxHttpRetries) {
                     long sleepInterval = getExponentialBackoffInterval(currentNumTries);
