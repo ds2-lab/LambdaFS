@@ -174,6 +174,9 @@ public class NameNodeTCPClient {
 
                 String jsonString = new Gson().toJson(tcpResult.toJson(
                         ServerlessClientServerUtilities.OPERATION_RESULT));
+
+                LOG.debug("Sending the following JSON string to client at " + tcpClient.getRemoteAddressTCP()
+                    + ": " + jsonString);
                 int bytesSent = tcpClient.sendTCP(jsonString);
 
                 LOG.debug("Sent " + bytesSent + " bytes to HopsFS client at " + tcpClient.getRemoteAddressTCP());
