@@ -128,8 +128,19 @@ public class NameNodeTCPClient {
 
         LOG.debug("Establishing connection with new Serverless HopsFS client " + newClient + " now...");
 
-        // The call to connect() may produce an IOException if it times out.
-        Client tcpClient = new Client();
+
+        // We pass the writeBuffer and objectBuffer arguments to the Client constructor.
+        // Objects are serialized to the Write Buffer where the bytes are queued until they can
+        // be written to the TCP socket. Normally the socket is writable and the bytes are written
+        // immediately. If the socket cannot be written to and enough serialized objects are queued
+        // to overflow the buffer, then the connection will be closed.
+        //
+        // One (using only TCP) or three (using both TCP and UDP) buffers are allocated with size
+        // equal to the objectBuffer argument (the second parameter). These buffers are used to hold
+        // the bytes for a single object graph until it can be sent over the network or deserialized.
+        // In short, the object buffers should be sized at least as large as the largest object that will be
+        // sent or received.
+        Client tcpClient = new Client(8192, 4096);
 
         // Start the client in its own thread.
         // new Thread(tcpClient).start();
@@ -194,6 +205,7 @@ public class NameNodeTCPClient {
         Thread connectThread = new Thread("Connect") {
             public void run() {
                 try {
+                    // The call to connect() may produce an IOException if it times out.
                     tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
                 } catch (IOException ex) {
                     LOG.error("Exception encountered while trying to connect to HopsFS Client via TCP:", ex);
