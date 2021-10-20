@@ -96,7 +96,7 @@ public class HopsFSUserServer {
      * Constructor.
      */
     public HopsFSUserServer(Configuration conf) {
-        server = new Server() {
+        server = new Server(16384, 16384) {
           /**
            * By providing our own connection implementation, we can store per-connection state
            * without a connection ID to perform state look-up.
