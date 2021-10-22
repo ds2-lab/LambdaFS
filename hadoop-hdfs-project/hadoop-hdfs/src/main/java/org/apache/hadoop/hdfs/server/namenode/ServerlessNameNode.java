@@ -365,38 +365,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private int workerThreadTimeoutMilliseconds;
 
   /**
-   * Currently implemented for OpenWhisk. This function returns the name of the serverless function.
-   */
-  private static String platformSpecificInitialization() {
-    // TODO: Make this generic so that it can be readily reimplemented for arbitrary serverless platforms.
-    String activationId = System.getenv("__OW_ACTIVATION_ID");
-
-    LOG.info("System.getenv(\"HADOOP_CONF_DIR\") = " + System.getenv("HADOOP_CONF_DIR"));
-    LOG.info("OpenWhisk activation ID = " + activationId);
-
-    // OpenWhisk initialization.
-    if (activationId != null)
-      openWhiskInitialization(activationId);
-    else
-      ServerlessNameNode.nameNodeID = 1;
-
-    return System.getenv("__OW_ACTION_NAME");
-  }
-
-  /**
-   * Perform initialization specific to OpenWhisk.
-   * @param activationId the activation ID of the running OpenWhisk function instance.
-   */
-  private static void openWhiskInitialization(String activationId) {
-    if (ServerlessNameNode.nameNodeID == -1) {
-      ServerlessNameNode.nameNodeID = ServerlessUtilities.hash(activationId);
-      LOG.info("Set name node ID to " + ServerlessNameNode.nameNodeID);
-    } else {
-      LOG.info("Name node ID already set to " + ServerlessNameNode.nameNodeID);
-    }
-  }
-
-  /**
    * Determines if the given request (identified by its request ID) has already been received and processed by the NN.
    *
    * @param requestId The ID of the request.
@@ -2699,8 +2667,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Returns the id of this namenode
    */
   public long getId() {
-    //return leaderElection.getCurrentId();
-    return ServerlessNameNode.nameNodeID;
+    return this.nameNodeID;
   }
 
   /**
