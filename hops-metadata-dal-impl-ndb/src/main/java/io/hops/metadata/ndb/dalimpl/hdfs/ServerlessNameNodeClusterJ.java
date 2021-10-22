@@ -31,9 +31,9 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
         long getNameNodeId();
         void setNameNodeId(long nameNodeId);
 
-        @Column(name = DEPLOYMENT_ID)
-        int getDeploymentId();
-        void setDeploymentId(int deploymentId);
+        @Column(name = FUNCTION_NAME)
+        String getFunctionName();
+        void setFunctionName(String functionName);
 
         @Column(name = REPLICA_ID)
         String getReplicaId();
@@ -43,29 +43,11 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
         long getCreationTime();
         void setCreationTime(long creationTime);
     }
-
-//    private HopsQuery<ServerlessNameNodeDTO> createQuery(List<String> columns, HopsSession session)
-//            throws StorageException {
-//        HopsQueryBuilder queryBuilder = session.getQueryBuilder();
-//        HopsQueryDomainType<ServerlessNameNodeDTO> domainType
-//                = queryBuilder.createQueryDefinition(ServerlessNameNodeDTO.class);
-//
-//
-//        for (String column : columns) {
-//            String param = column + "_param";
-//        }
-//
-//        HopsPredicate idPredicate = domainType.get("namenode_id").equal(domainType.param("namenode_id_param"));
-//        HopsPredicate deploymentNumberPredicate =
-//                domainType.get("deployment_id").equal(domainType.param("deployment_id_param"));
-//        domainType.where(idPredicate.and(deploymentNumberPredicate));
-//
-//        return session.createQuery(domainType);
 //    }
 
     @Override
-    public ServerlessNameNodeMeta getServerlessNameNode(long nameNodeId, int deploymentNumber) throws StorageException {
-        LOG.debug("GET NameNode (ID = " + nameNodeId + ", deployment number = " + deploymentNumber + ")");
+    public ServerlessNameNodeMeta getServerlessNameNode(long nameNodeId, String functionName) throws StorageException {
+        LOG.debug("GET NameNode (ID = " + nameNodeId + ", function name = " + functionName + ")");
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
@@ -73,13 +55,13 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
                 = queryBuilder.createQueryDefinition(ServerlessNameNodeDTO.class);
 
         HopsPredicate idPredicate = domainType.get("namenode_id").equal(domainType.param("namenode_id_param"));
-        HopsPredicate deploymentNumberPredicate =
-                domainType.get("deployment_id").equal(domainType.param("deployment_id_param"));
-        domainType.where(idPredicate.and(deploymentNumberPredicate));
+        HopsPredicate functionNamePredicate =
+                domainType.get("function_name").equal(domainType.param("function_name_param"));
+        domainType.where(idPredicate.and(functionNamePredicate));
 
         HopsQuery<ServerlessNameNodeDTO> query = session.createQuery(domainType);
         query.setParameter("namenode_id_param", nameNodeId);
-        query.setParameter("deployment_id_param", deploymentNumber);
+        query.setParameter("function_name_param", functionName);
 
         List<ServerlessNameNodeDTO> results = query.getResultList();
 
@@ -91,8 +73,8 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
             LOG.warn("Unexpected results length: " + results.size() + ".");
             LOG.warn("Returning result with the latest creation time...");
         } else {
-            LOG.warn("Failed to find a NameNode with ID = " + nameNodeId + " and deployment number = "
-                + deploymentNumber + ".");
+            LOG.warn("Failed to find a NameNode with ID = " + nameNodeId + " and serverless function name = "
+                + functionName + ".");
         }
 
         session.release(results);
@@ -131,18 +113,18 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
     }
 
     @Override
-    public ServerlessNameNodeMeta getServerlessNameNodeByDeploymentNumber(long deploymentNumber) throws StorageException {
-        LOG.debug("GET NameNode (deployment number = " + deploymentNumber + ")");
+    public ServerlessNameNodeMeta getServerlessNameNodeByFunctionName(String functionName) throws StorageException {
+        LOG.debug("GET NameNode (function name = " + functionName + ")");
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
         HopsQueryDomainType<ServerlessNameNodeDTO> domainType
                 = queryBuilder.createQueryDefinition(ServerlessNameNodeDTO.class);
 
-        domainType.where(domainType.get("deployment_id").equal(domainType.param("deployment_id_param")));
+        domainType.where(domainType.get("function_name").equal(domainType.param("function_name_param")));
 
         HopsQuery<ServerlessNameNodeDTO> query = session.createQuery(domainType);
-        query.setParameter("deployment_id_param", deploymentNumber);
+        query.setParameter("function_name_param", functionName);
 
         List<ServerlessNameNodeDTO> results = query.getResultList();
 
@@ -154,7 +136,7 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
             LOG.warn("Unexpected results length: " + results.size() + ".");
             LOG.warn("Returning result with the latest creation time...");
         } else {
-            LOG.warn("Failed to find a NameNode with deployment number = " + deploymentNumber + ".");
+            LOG.warn("Failed to find a NameNode with function name = " + functionName + ".");
         }
 
         session.release(results);
@@ -171,8 +153,8 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
             serverlessNameNodeDTO = session.newInstance(ServerlessNameNodeDTO.class);
             copyState(serverlessNameNodeDTO, nameNode);
             session.savePersistent(serverlessNameNodeDTO);
-            LOG.debug("Wrote/persisted ServerlessNameNode " + nameNode.getNameNodeId() + "(deployment number = "
-                    + nameNode.getDeploymentNumber() + ") to MySQL NDB storage.");
+            LOG.debug("Wrote/persisted ServerlessNameNode " + nameNode.getNameNodeId() + "(function name = "
+                    + nameNode.getFunctionName() + ") to MySQL NDB storage.");
         } finally {
             session.release(serverlessNameNodeDTO);
         }
@@ -198,13 +180,13 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
     }
 
     @Override
-    public void removeServerlessNameNode(long deploymentNumber) throws StorageException {
-        LOG.debug("REMOVE NameNode (deployment number = " + deploymentNumber + ")");
+    public void removeServerlessNameNode(String functionName) throws StorageException {
+        LOG.debug("REMOVE NameNode (function name = " + functionName + ")");
 
         HopsSession session = connector.obtainSession();
 
         ServerlessNameNodeDTO deleteMe
-                = session.find(ServerlessNameNodeDTO.class, deploymentNumber);
+                = session.find(ServerlessNameNodeDTO.class, functionName);
         session.deletePersistent(deleteMe);
     }
 
@@ -236,7 +218,7 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
      * {@link ServerlessNameNodeDTO} object.
      */
     private ServerlessNameNodeMeta convert(ServerlessNameNodeDTO src) {
-        return new ServerlessNameNodeMeta(src.getNameNodeId(), src.getDeploymentId(),
+        return new ServerlessNameNodeMeta(src.getNameNodeId(), src.getFunctionName(),
                 src.getReplicaId(), src.getCreationTime());
     }
 
@@ -248,7 +230,7 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
      */
     private void copyState(ServerlessNameNodeDTO dest, ServerlessNameNodeMeta src) {
         dest.setNameNodeId(src.getNameNodeId());
-        dest.setDeploymentId(src.getDeploymentNumber());
+        dest.setFunctionName(src.getFunctionName());
         dest.setReplicaId(src.getReplicaId());
         dest.setCreationTime(src.getCreationTime());
     }

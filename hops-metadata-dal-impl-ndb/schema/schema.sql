@@ -32,7 +32,7 @@ delimiter $$
 -- record of the currently-existing NameNodes.
 CREATE TABLE `serverless_namenodes` (
     `namenode_id` bigint(20) NOT NULL,      -- The ID of the NameNode object.
-    `deployment_id` int(11) NOT NULL,       -- The deployment of the serverless function.
+    `function_name` varchar(36) NOT NULL,   -- The name of the serverless function in/on which the NN is running.
     `replica_id` varchar(36) NOT NULL,      -- Basically a place-holder for the future if we scale-out deployments.
     `creation_time` bigint(20),             -- When the NameNode instance started running.
     PRIMARY KEY (`namenode_id`, `deployment_id`), -- Eventually, `replica_id` may be a part of the PK.

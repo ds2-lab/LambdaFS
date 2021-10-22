@@ -13,12 +13,12 @@ import java.util.List;
 public interface ServerlessNameNodeDataAccess<T> extends EntityDataAccess {
     /**
      * Retrieve the Serverless NameNode identified by both its unique ID and the specified
-     * deployment number of the serverless function on which it is theoretically executing.
+     * serverless function name of the serverless function on which it is theoretically executing.
      * @param nameNodeId The unique ID of the desired NameNode.
-     * @param deploymentNumber Deployment number of a serverless function.
+     * @param functionName Name of the serverless function on which the NN is running.
      * @return Desired NameNode instance.
      */
-    T getServerlessNameNode(long nameNodeId, int deploymentNumber) throws StorageException;
+    T getServerlessNameNode(long nameNodeId, String functionName) throws StorageException;
 
     /**
      * Retrieve the Serverless NameNode identified by its unique ID.
@@ -28,11 +28,11 @@ public interface ServerlessNameNodeDataAccess<T> extends EntityDataAccess {
     T getServerlessNameNodeByNameNodeId(long nameNodeId) throws StorageException;
 
     /**
-     * Retrieve the Serverless NameNode currently associated with the specified deployment number.
-     * @param deploymentNumber Deployment number of a serverless function.
+     * Retrieve the Serverless NameNode currently associated with the specified function name.
+     * @param functionName The name of the serverless function on which the NN is running.
      * @return The NameNode instance that is, in theory, currently running within the specified function.
      */
-    T getServerlessNameNodeByDeploymentNumber(long deploymentNumber) throws StorageException;
+    T getServerlessNameNodeByFunctionName(String functionName) throws StorageException;
 
     /**
      * Add a new Serverless NameNode to intermediate storage.
@@ -44,7 +44,7 @@ public interface ServerlessNameNodeDataAccess<T> extends EntityDataAccess {
      * Replace an existing Serverless NameNode entry with a new one. If no existing entry exists,
      * then the new one is added without replacing anything.
      *
-     * The deployment number is used to determine what gets replaced.
+     * The serverless function name is used to determine what gets replaced.
      *
      * @param nameNode The new Serverless NameNode metadata to write to NDB.
      */
@@ -58,10 +58,10 @@ public interface ServerlessNameNodeDataAccess<T> extends EntityDataAccess {
     void removeServerlessNameNode(T nameNode) throws StorageException;
 
     /**
-     * Remove the given serverless name node instance (which is identified by its serverless function
-     * deployment number) from intermediate storage.
+     * Remove the given serverless name node instance (which is identified by the name of the serverless
+     * function on which it is running) from intermediate storage.
      */
-    void removeServerlessNameNode(long deploymentNumber) throws StorageException;
+    void removeServerlessNameNode(String functionName) throws StorageException;
 
     /**
      * Return a list of all Serverless NameNodes stored in intermediate storage.

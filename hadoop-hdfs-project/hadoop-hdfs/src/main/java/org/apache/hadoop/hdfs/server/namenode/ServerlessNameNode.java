@@ -2370,6 +2370,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     ServerlessNameNodeDataAccess<ServerlessNameNodeMeta> dataAccess =
             (ServerlessNameNodeDataAccess)HdfsStorageFactory.getDataAccess(ServerlessNameNodeDataAccess.class);
+
+    ServerlessNameNodeMeta serverlessNameNodeMeta
+            = new ServerlessNameNodeMeta(getId(), functionName, "Replica1", Time.getUtcTime());
   }
 
   private static void printUsage(PrintStream out) {

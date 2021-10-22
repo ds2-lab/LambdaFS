@@ -10,9 +10,9 @@ public final class ServerlessNameNodeMeta {
     private final long nameNodeId;
 
     /**
-     * The deployment of the serverless function.
+     * The name of the serverless function.
      */
-    private final int deploymentNumber;
+    private final String functionName;
 
     /**
      * Basically a place-holder for the future if we scale-out deployments.
@@ -24,9 +24,9 @@ public final class ServerlessNameNodeMeta {
      */
     private final long creationTime;
 
-    public ServerlessNameNodeMeta(long nameNodeId, int deploymentNumber, String replicaId, long creationTime) {
+    public ServerlessNameNodeMeta(long nameNodeId, String functionName, String replicaId, long creationTime) {
         this.nameNodeId = nameNodeId;
-        this.deploymentNumber = deploymentNumber;
+        this.functionName = functionName;
         this.replicaId = replicaId;
         this.creationTime = creationTime;
     }
@@ -35,8 +35,8 @@ public final class ServerlessNameNodeMeta {
         return nameNodeId;
     }
 
-    public int getDeploymentNumber() {
-        return deploymentNumber;
+    public String getFunctionName() {
+        return functionName;
     }
 
     public String getReplicaId() {
@@ -49,7 +49,7 @@ public final class ServerlessNameNodeMeta {
 
     @Override
     public String toString() {
-        return "ServerlessNameNodeMeta(nameNodeId=" + nameNodeId + ", deploymentNumber=" + deploymentNumber +
+        return "ServerlessNameNodeMeta(nameNodeId=" + nameNodeId + ", functionName=" + functionName +
                 ", replicaId=" + replicaId + ", creationTime=" + creationTime + ")";
     }
 
@@ -64,7 +64,7 @@ public final class ServerlessNameNodeMeta {
         ServerlessNameNodeMeta other = (ServerlessNameNodeMeta)obj;
 
         return this.nameNodeId == other.nameNodeId &&
-                this.deploymentNumber == other.deploymentNumber;
+                this.functionName.equals(other.functionName);
                 // Eventually might include: this.replicaId.equals(other.replicaId)
     }
 

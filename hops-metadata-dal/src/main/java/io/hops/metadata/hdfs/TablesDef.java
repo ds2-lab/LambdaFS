@@ -23,7 +23,7 @@ public class TablesDef {
   public interface ServerlessNameNodesTableDef {
     String TABLE_NAME = "serverless_namenodes";
     String NAME_NODE_ID = "namenode_id";
-    String DEPLOYMENT_ID = "deployment_id";
+    String FUNCTION_NAME = "function_name";
     String REPLICA_ID = "replica_id";
     String CREATION_TIME = "creation_time:";
   }
