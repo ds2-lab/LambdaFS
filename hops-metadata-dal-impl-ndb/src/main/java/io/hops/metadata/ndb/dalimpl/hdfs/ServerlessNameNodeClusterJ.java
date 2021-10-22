@@ -72,6 +72,19 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
         } else if (results.size() > 1) {
             LOG.warn("Unexpected results length: " + results.size() + ".");
             LOG.warn("Returning result with the latest creation time...");
+
+            long largestCreationTime = -1;
+            ServerlessNameNodeDTO latestDTO = null;
+
+            for (ServerlessNameNodeDTO resultDTO : results) {
+                if (resultDTO.getCreationTime() > largestCreationTime) {
+                    largestCreationTime = resultDTO.getCreationTime();
+                    latestDTO = resultDTO;
+                }
+            }
+
+            if (latestDTO != null)
+                result = convert(latestDTO);
         } else {
             LOG.warn("Failed to find a NameNode with ID = " + nameNodeId + " and serverless function name = "
                 + functionName + ".");
@@ -104,6 +117,19 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
         } else if (results.size() > 1) {
             LOG.warn("Unexpected results length: " + results.size() + ".");
             LOG.warn("Returning result with the latest creation time...");
+
+            long largestCreationTime = -1;
+            ServerlessNameNodeDTO latestDTO = null;
+
+            for (ServerlessNameNodeDTO resultDTO : results) {
+                if (resultDTO.getCreationTime() > largestCreationTime) {
+                    largestCreationTime = resultDTO.getCreationTime();
+                    latestDTO = resultDTO;
+                }
+            }
+
+            if (latestDTO != null)
+                result = convert(latestDTO);
         } else {
             LOG.warn("Failed to find a NameNode with ID = " + nameNodeId + ".");
         }
@@ -135,6 +161,19 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
         } else if (results.size() > 1) {
             LOG.warn("Unexpected results length: " + results.size() + ".");
             LOG.warn("Returning result with the latest creation time...");
+
+            long largestCreationTime = -1;
+            ServerlessNameNodeDTO latestDTO = null;
+
+            for (ServerlessNameNodeDTO resultDTO : results) {
+                if (resultDTO.getCreationTime() > largestCreationTime) {
+                    largestCreationTime = resultDTO.getCreationTime();
+                    latestDTO = resultDTO;
+                }
+            }
+
+            if (latestDTO != null)
+                result = convert(latestDTO);
         } else {
             LOG.warn("Failed to find a NameNode with function name = " + functionName + ".");
         }
