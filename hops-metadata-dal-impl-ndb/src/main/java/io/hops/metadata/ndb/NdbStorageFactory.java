@@ -103,6 +103,7 @@ public class NdbStorageFactory implements DalStorageFactory {
 
   private void initDataAccessMap() {
     // These are the classes that I've added for our Serverless NameNode.
+    dataAccessMap.put(ServerlessNameNodeDataAccess.class, new ServerlessNameNodeClusterJ());
     dataAccessMap.put(DataNodeDataAccess.class, new DataNodeClusterJ());
     dataAccessMap.put(StorageReportDataAccess.class, new StorageReportClusterJ());
     dataAccessMap.put(DatanodeStorageDataAccess.class, new DatanodeStorageClusterJ());

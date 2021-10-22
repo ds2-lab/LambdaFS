@@ -7,6 +7,9 @@ import java.util.List;
 
 /**
  * Interface defining the API used to read and write DatanodeStorage objects to NDB.
+ *
+ * TODO: There already exists a {@link StorageDataAccess} class that essentially does exactly what this
+ *       class does. So at some point I need to get rid of this class and just use the existing class.
  */
 public interface DatanodeStorageDataAccess<T> extends EntityDataAccess {
     /**

@@ -2,6 +2,8 @@ package io.hops.metadata.hdfs.dal;
 
 import io.hops.exception.StorageException;
 import io.hops.metadata.common.EntityDataAccess;
+import io.hops.metadata.hdfs.entity.DataNodeMeta;
+import io.hops.metadata.hdfs.entity.ServerlessNameNodeMeta;
 
 import java.util.List;
 
@@ -37,6 +39,29 @@ public interface ServerlessNameNodeDataAccess<T> extends EntityDataAccess {
      * @param nameNode The NameNode to add to storage.
      */
     void addServerlessNameNode(T nameNode) throws StorageException;
+
+    /**
+     * Replace an existing Serverless NameNode entry with a new one. If no existing entry exists,
+     * then the new one is added without replacing anything.
+     *
+     * The deployment number is used to determine what gets replaced.
+     *
+     * @param nameNode The new Serverless NameNode metadata to write to NDB.
+     */
+    void replaceServerlessNameNode(T nameNode) throws StorageException;
+
+    /**
+     * Remove the given serverless name node instance from intermediate storage.
+     *
+     * This function uses the NameNode's ID to field and delete it.
+     */
+    void removeServerlessNameNode(T nameNode) throws StorageException;
+
+    /**
+     * Remove the given serverless name node instance (which is identified by its serverless function
+     * deployment number) from intermediate storage.
+     */
+    void removeServerlessNameNode(long deploymentNumber) throws StorageException;
 
     /**
      * Return a list of all Serverless NameNodes stored in intermediate storage.

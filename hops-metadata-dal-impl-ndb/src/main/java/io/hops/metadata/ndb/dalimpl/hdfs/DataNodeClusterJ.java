@@ -91,6 +91,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
      * @param uuid The UUID of the DataNode to remove.
      *
      * TODO: Fix this method. Doesn't seem to work. Maybe need to pass a DataNodeDTO object.
+     * TODO: Is it still the case that this function doesn't work?
      */
     @Override
     public void removeDataNode(String uuid) throws StorageException {

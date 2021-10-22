@@ -2358,6 +2358,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
   }
 
+  /**
+   * Write the metadata for this Serverless NameNode instance to NDB.
+   *
+   * This function will delete existing metadata associated with whatever serverless function we're running on, if
+   * any exists. Then it will add the new metadata. If there is no existing metadata associated with whatever
+   * serverless function we're running on, then the new metadata is simply added.
+   */
+  private void writeMetadataToNdb() {
+    LOG.debug("Writing Serverless NameNode metadata to NDB.");
+
+    ServerlessNameNodeDataAccess<ServerlessNameNodeMeta> dataAccess =
+            (ServerlessNameNodeDataAccess)HdfsStorageFactory.getDataAccess(ServerlessNameNodeDataAccess.class);
+  }
+
   private static void printUsage(PrintStream out) {
     out.println(USAGE + "\n");
   }

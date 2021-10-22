@@ -6,7 +6,6 @@ import com.mysql.clusterj.annotation.PrimaryKey;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.hdfs.dal.ServerlessNameNodeDataAccess;
-import io.hops.metadata.hdfs.entity.DataNodeMeta;
 import io.hops.metadata.hdfs.entity.ServerlessNameNodeMeta;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.wrapper.*;
@@ -164,24 +163,49 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
 
     @Override
     public void addServerlessNameNode(ServerlessNameNodeMeta nameNode) throws StorageException {
-        LOG.debug("ADD DataNode " + nameNode.toString());
-        ServerlessNameNodeDTO dataNodeDTO = null;
-        //LOG.info("Obtaining HopsSession now...");
+        LOG.debug("ADD Serverless NameNode " + nameNode.toString());
+        ServerlessNameNodeDTO serverlessNameNodeDTO = null;
         HopsSession session = connector.obtainSession();
-        //LOG.info("Successfully obtained HopsSession.");
 
         try {
-            dataNodeDTO = session.newInstance(ServerlessNameNodeDTO.class);
-            //LOG.info("Created new instance of DataNodeDTO...");
-            copyState(dataNodeDTO, nameNode);
-            //LOG.info("Successfully copied DataNode state to DataNodeDTO.");
-            session.savePersistent(dataNodeDTO);
-            LOG.debug("Wrote/persisted DataNode " + nameNode.getNameNodeId() + "(deployment number = "
+            serverlessNameNodeDTO = session.newInstance(ServerlessNameNodeDTO.class);
+            copyState(serverlessNameNodeDTO, nameNode);
+            session.savePersistent(serverlessNameNodeDTO);
+            LOG.debug("Wrote/persisted ServerlessNameNode " + nameNode.getNameNodeId() + "(deployment number = "
                     + nameNode.getDeploymentNumber() + ") to MySQL NDB storage.");
         } finally {
-            session.release(dataNodeDTO);
-            //LOG.info("Released DataNodeDTO instance.");
+            session.release(serverlessNameNodeDTO);
         }
+    }
+
+    @Override
+    public void replaceServerlessNameNode(ServerlessNameNodeMeta nameNode) throws StorageException {
+        LOG.debug("REPLACE Serverless NameNode, new instance = " + nameNode.toString());
+
+        removeServerlessNameNode(nameNode);
+        addServerlessNameNode(nameNode);
+    }
+
+    @Override
+    public void removeServerlessNameNode(ServerlessNameNodeMeta nameNode) throws StorageException {
+        LOG.debug("REMOVE NameNode (ID = " + nameNode.getNameNodeId() + ")");
+
+        HopsSession session = connector.obtainSession();
+
+        ServerlessNameNodeDTO deleteMe
+                = session.find(ServerlessNameNodeDTO.class, nameNode.getNameNodeId());
+        session.deletePersistent(deleteMe);
+    }
+
+    @Override
+    public void removeServerlessNameNode(long deploymentNumber) throws StorageException {
+        LOG.debug("REMOVE NameNode (deployment number = " + deploymentNumber + ")");
+
+        HopsSession session = connector.obtainSession();
+
+        ServerlessNameNodeDTO deleteMe
+                = session.find(ServerlessNameNodeDTO.class, deploymentNumber);
+        session.deletePersistent(deleteMe);
     }
 
     @Override
@@ -196,7 +220,7 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
 
         List<ServerlessNameNodeMeta> results = new ArrayList<>();
 
-        // Convert each ServerlessNameNodeDTO object to a DataNodeMeta object and add it to the list.
+        // Convert each ServerlessNameNodeDTO object to a ServerlessNameNodeMeta object and add it to the list.
         for (ServerlessNameNodeDTO serverlessNameNodeDTO : resultsRaw) {
             results.add(convert(serverlessNameNodeDTO));
         }

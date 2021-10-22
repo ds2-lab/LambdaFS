@@ -348,8 +348,6 @@ public class HdfsStorageFactory {
         entityContexts.put(FileProvXAttrBufferEntry.class, new FileProvXAttrBufferContext(
             (FileProvXAttrBufferDataAccess) getDataAccess(FileProvXAttrBufferDataAccess.class)));
 
-        // entityContexts.put(DataNode.class, (DataNodeDataAccess) getDataAccess(DataNodeDataAccess.class));
-
         return entityContexts;
       }
 
