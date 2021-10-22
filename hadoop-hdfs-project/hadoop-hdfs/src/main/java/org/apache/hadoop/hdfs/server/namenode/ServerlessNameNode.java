@@ -1876,7 +1876,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // not found errors.
     ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
     ndbEventManager.defaultSetup(null, true);
-    ndbEventManager.addListener(namesystem);
+    // Note that we need to register the namesystem as an event listener with the event manager,
+    // but the name system doesn't get loaded until a little later.
 
     eventManagerThread = new Thread(ndbEventManager);
     eventManagerThread.start();
@@ -1939,8 +1940,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     StartupProgressMetrics.register(startupProgress);
 
     loadNamesystem(conf);
-
     LOG.debug("Finished loading the namesystem.");
+
+    // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
+    ndbEventManager.addListener(namesystem);
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);
