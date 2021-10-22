@@ -126,6 +126,9 @@ public class HopsEventManager implements EventManager {
     // Inherit the javadoc.
     @Override
     public void addListener(HopsEventListener listener) {
+        if (listener == null)
+            throw new IllegalArgumentException("Listener cannot be null.");
+
         this.listeners.add(listener);
         LOG.debug("Registered new event listener. Number of listeners: " + listeners.size() + ".");
     }
@@ -414,12 +417,12 @@ public class HopsEventManager implements EventManager {
             }
 
             // Print the pre- and post-values for the columns for which record attributes were created.
-            for (String columName : INODE_TABLE_RECORD_ATTR_COLUMNS) {
-                long preValue = activeEventOperation.getLongPreValue(columName);
-                long postValue = activeEventOperation.getLongPostValue(columName);
+            for (String columnName : INODE_TABLE_RECORD_ATTR_COLUMNS) {
+                long preValue = activeEventOperation.getLongPreValue(columnName);
+                long postValue = activeEventOperation.getLongPostValue(columnName);
 
-                LOG.debug("Pre-value for column " + columName + ": " + preValue);
-                LOG.debug("Post-value for column " + columName + ": " + postValue);
+                LOG.debug("Pre-value for column " + columnName + ": " + preValue);
+                LOG.debug("Post-value for column " + columnName + ": " + postValue);
             }
 
             // TODO:
@@ -444,7 +447,7 @@ public class HopsEventManager implements EventManager {
      */
     private void notifyEventListeners(long iNodeId, boolean shouldInvalidate) {
         LOG.debug("Notifying " + listeners.size() + (listeners.size() == 1 ? " listener " : " listeners ")
-            + " of event on INode " + iNodeId + ".");
+            + "of event on INode " + iNodeId + ".");
         for (HopsEventListener listener : listeners)
             listener.eventReceived(iNodeId, shouldInvalidate);
     }
