@@ -335,9 +335,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * This is set the first time this function is invoked (when it is warm, it should still be set...).
    *
-   * The value is computed by hashing the activation ID of the OpenWhisk function.
+   * The value is computed by hashing the activation ID of the OpenWhisk function that created the instance.
    */
-  public static long nameNodeID = -1;
+  public long nameNodeID = -1L;
 
   /**
    * This variable is used to keep track of the last storage report retrieved from intermediate storage.
@@ -1871,6 +1871,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("Started the NameNode worker thread.");
 
+    // The existing code uses longs for NameNode IDs, so I'm just using this to generate a random ID.
+    // This should be sufficiently random for our purposes. I don't think we'll encounter collisions.
+    // Note, Long.MAX_VALUE in binary is 0111111111111111111111111111111111111111111111111111111111111111
+    // https://stackoverflow.com/questions/15184820/how-to-generate-unique-positive-long-using-uuid
+    this.nameNodeID = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+
     // We need to do this AFTER the above call to `HdfsStorageFactory.setConfiguration(conf)`, as the ClusterJ/NDB
     // library is loaded during that call. If we try to create the event manager before that, we will get class
     // not found errors.
@@ -1952,6 +1958,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     metrics.getJvmMetrics().setPauseMonitor(pauseMonitor);
 
     startCommonServices(conf);
+
+    writeMetadataToNdb();
 
     LOG.debug("Finished starting common NameNode services.");
 
@@ -2365,14 +2373,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * any exists. Then it will add the new metadata. If there is no existing metadata associated with whatever
    * serverless function we're running on, then the new metadata is simply added.
    */
-  private void writeMetadataToNdb() {
+  private void writeMetadataToNdb() throws StorageException {
     LOG.debug("Writing Serverless NameNode metadata to NDB.");
 
     ServerlessNameNodeDataAccess<ServerlessNameNodeMeta> dataAccess =
             (ServerlessNameNodeDataAccess)HdfsStorageFactory.getDataAccess(ServerlessNameNodeDataAccess.class);
 
-    ServerlessNameNodeMeta serverlessNameNodeMeta
-            = new ServerlessNameNodeMeta(getId(), functionName, "Replica1", Time.getUtcTime());
+    // Hard-coding the replica ID for now as it is essentially a place-holder.
+    ServerlessNameNodeMeta serverlessNameNodeMeta =
+            new ServerlessNameNodeMeta(getId(), functionName, "Replica1", Time.getUtcTime());
+
+    dataAccess.replaceServerlessNameNode(serverlessNameNodeMeta);
   }
 
   private static void printUsage(PrintStream out) {

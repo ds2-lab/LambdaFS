@@ -479,12 +479,12 @@ public class OpenWhiskHandler {
         LOG.debug("Hadoop configuration directory: " + System.getenv("HADOOP_CONF_DIR"));
         LOG.debug("OpenWhisk activation ID: " + activationId);
 
-        if (ServerlessNameNode.nameNodeID == -1) {
-            ServerlessNameNode.nameNodeID = ServerlessUtilities.hash(activationId);
-            LOG.debug("Set name node ID to " + ServerlessNameNode.nameNodeID);
-        } else {
-            LOG.debug("Name node ID already set to " + ServerlessNameNode.nameNodeID);
-        }
+//        if (ServerlessNameNode.nameNodeID == -1) {
+//            ServerlessNameNode.nameNodeID = ServerlessUtilities.hash(activationId);
+//            LOG.debug("Set name node ID to " + ServerlessNameNode.nameNodeID);
+//        } else {
+//            LOG.debug("Name node ID already set to " + ServerlessNameNode.nameNodeID);
+//        }
 
         return System.getenv("__OW_ACTION_NAME");
     }
