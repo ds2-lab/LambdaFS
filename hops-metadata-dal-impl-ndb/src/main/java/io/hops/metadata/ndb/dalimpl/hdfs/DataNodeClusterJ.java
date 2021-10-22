@@ -65,7 +65,7 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
      */
     @Override
     public DataNodeMeta getDataNode(final String uuid) throws StorageException {
-        LOG.info("GET DataNode " + uuid);
+        LOG.debug("GET DataNode " + uuid);
         HopsSession session = connector.obtainSession();
 
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
@@ -112,20 +112,20 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
     public void addDataNode(DataNodeMeta dataNode) throws StorageException {
         LOG.debug("ADD DataNode " + dataNode.toString());
         DataNodeDTO dataNodeDTO = null;
-        //LOG.info("Obtaining HopsSession now...");
+        //LOG.debug("Obtaining HopsSession now...");
         HopsSession session = connector.obtainSession();
-        //LOG.info("Successfully obtained HopsSession.");
+        //LOG.debug("Successfully obtained HopsSession.");
 
         try {
             dataNodeDTO = session.newInstance(DataNodeDTO.class);
-            //LOG.info("Created new instance of DataNodeDTO...");
+            //LOG.debug("Created new instance of DataNodeDTO...");
             copyState(dataNodeDTO, dataNode);
-            //LOG.info("Successfully copied DataNode state to DataNodeDTO.");
+            //LOG.debug("Successfully copied DataNode state to DataNodeDTO.");
             session.savePersistent(dataNodeDTO);
             LOG.debug("Wrote/persisted DataNode " + dataNode.getDatanodeUuid() + " to MySQL NDB storage.");
         } finally {
             session.release(dataNodeDTO);
-            //LOG.info("Released DataNodeDTO instance.");
+            //LOG.debug("Released DataNodeDTO instance.");
         }
     }
 

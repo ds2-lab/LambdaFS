@@ -18,6 +18,17 @@ package io.hops.metadata.hdfs;
 public class TablesDef {
 
   /**
+   * Defines the MySQL NDB table for the Serverless NameNodes.
+   */
+  public interface ServerlessNameNodesTableDef {
+    String TABLE_NAME = "serverless_namenodes";
+    String NAME_NODE_ID = "namenode_id";
+    String DEPLOYMENT_ID = "deployment_id";
+    String REPLICA_ID = "replica_id";
+    String CREATION_TIME = "creation_time:";
+  }
+
+  /**
    * Defines the MySQL NDB table for the DataNodes.
    * This table is used by serverless NameNodes to establish connections with the DataNodes.
    */
@@ -33,6 +44,9 @@ public class TablesDef {
     String CREATION_TIME = "creation_time";
   }
 
+  /**
+   * Defines the MySQL NDB table for the StorageReports.
+   */
   public interface StorageReportsTableDef {
     String TABLE_NAME = "storage_reports";
     String GROUP_ID = "group_id";

@@ -36,7 +36,7 @@ public interface ServerlessNameNodeDataAccess<T> extends EntityDataAccess {
      * Add a new Serverless NameNode to intermediate storage.
      * @param nameNode The NameNode to add to storage.
      */
-    T addServerlessNameNode(T nameNode) throws StorageException;
+    void addServerlessNameNode(T nameNode) throws StorageException;
 
     /**
      * Return a list of all Serverless NameNodes stored in intermediate storage.
