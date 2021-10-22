@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.operation;
 
+import io.hops.exception.StorageException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
@@ -59,6 +60,16 @@ public class NameNodeWorkerThread extends Thread {
     private final long resultRetainIntervalMilliseconds;
 
     /**
+     * How often, in seconds, the active name nodes list should be refreshed.
+     */
+    private final int activeNameNodeRefreshIntervalMilliseconds;
+
+    /**
+     * The time at which the active name node list was last refreshed. Used to schedule future refreshes.
+     */
+    private long lastActiveNameNodeListRefresh;
+
+    /**
      * Cache of previously-computed results. These results are kept in-memory for a configurable period of time
      * so that they may be re-submitted to a client if the client does not receive the original transmission.
      *
@@ -116,6 +127,8 @@ public class NameNodeWorkerThread extends Thread {
                 SERVERLESS_PURGE_INTERVAL_MILLISECONDS_DEFAULT);
         this.resultRetainIntervalMilliseconds = conf.getInt(SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS,
                 SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT);
+        this.activeNameNodeRefreshIntervalMilliseconds = conf.getInt(SERVERLESS_ACTIVE_NODE_REFRESH,
+                SERVERLESS_ACTIVE_NODE_REFRESH_DEFAULT);
     }
 
     /**
@@ -138,6 +151,32 @@ public class NameNodeWorkerThread extends Thread {
         return -1;
     }
 
+    private void tryUpdateActiveNameNodeList() throws StorageException {
+        long now = Time.getUtcTime();
+
+        if (now - lastActiveNameNodeListRefresh > activeNameNodeRefreshIntervalMilliseconds) {
+            serverlessNameNodeInstance.refreshActiveNameNodesList();
+            lastActiveNameNodeListRefresh = Time.getUtcTime();
+        }
+    }
+
+    /**
+     * Perform the various book-keeping tasks that the worker thread does, such as updating
+     * the active name node list for the NameNode, and purging entries from the cache of previous results.
+     */
+    private void doRoutineActivities() {
+        // Check if we need to purge any results before continuing to the next loop.
+        tryPurge();
+
+        try {
+            // Update the list of active name nodes, if it is time to do so.
+            tryUpdateActiveNameNodeList();
+        } catch (StorageException ex) {
+            LOG.error("Encountered Storage Exception while trying to refresh the list of active NameNodes.");
+            ex.printStackTrace();
+        }
+    }
+
     @Override
     public void run() {
         LOG.info("Serverless NameNode Worker Thread has started running.");
@@ -156,8 +195,7 @@ public class NameNodeWorkerThread extends Thread {
                     NameNodeTCPClient nameNodeTCPClient = serverlessNameNodeInstance.getNameNodeTcpClient();
                     LOG.debug("Number of TCP Clients of the NameNode: " + nameNodeTCPClient.numClients());
 
-                    // Check if we need to purge any results before continung to the next loop.
-                    tryPurge();
+                    doRoutineActivities();
                     continue;
                 }
 
@@ -174,8 +212,7 @@ public class NameNodeWorkerThread extends Thread {
                 if (isTaskDuplicate(task)) {
                     handleDuplicateTask(task, workerResult);
 
-                    // Check if we need to purge any results before continung to the next loop.
-                    tryPurge();
+                    doRoutineActivities();
                     continue;
                 }
 
@@ -222,8 +259,7 @@ public class NameNodeWorkerThread extends Thread {
                 previousResultCache.put(task.getTaskId(), previousResult);
                 previousResultPriorityQueue.add(previousResult);
 
-                // Check if we need to purge any results before continuing to the next loop.
-                tryPurge();
+                doRoutineActivities();
             }
         }
         catch (InterruptedException ex) {

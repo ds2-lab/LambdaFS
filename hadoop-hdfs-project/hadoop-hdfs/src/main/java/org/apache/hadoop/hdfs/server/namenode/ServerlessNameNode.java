@@ -73,6 +73,7 @@ import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
@@ -108,7 +109,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.google.common.hash.Hashing.consistentHash;
 import static io.hops.transaction.lock.LockFactory.getInstance;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import org.apache.hadoop.tracing.TraceUtils;
@@ -224,6 +224,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * This is used when hashing parent inode IDs to particular serverless name nodes.
    */
   private int numUniqueServerlessNameNodes;
+
+  /**
+   * List of currently-active NameNodes. This list is based on metadata stored in NDB.
+   *
+   * The list is updated in one of two ways:
+   *  (1) The worker thread periodically refreshes the list when it has no other work to do.
+   *  (2) The list is updated when the NameNode is first created.
+   */
+  private ActiveServerlessNameNodeList activeNameNodes;
 
   /**
    * A mapping from operation/function name to the respective functions. We use this to call FS operations and whatever
@@ -544,7 +553,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param fsArgs The arguments to be passed to the desired FS operation.
    * @param op The name of the desired FS operation to be performed.
    */
-  public synchronized Serializable performOperation(String op, JsonObject fsArgs)
+  public Serializable performOperation(String op, JsonObject fsArgs)
           throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException {
     LOG.info("Specified operation: " + op);
 
@@ -554,6 +563,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     return this.operations.get(op).apply(fsArgs);
+  }
+
+  public synchronized void refreshActiveNameNodesList() throws StorageException {
+    if (activeNameNodes == null)
+      activeNameNodes = new ActiveServerlessNameNodeList(getId());
+
+    activeNameNodes.refresh();
   }
 
   /**
@@ -1928,6 +1944,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     startCommonServices(conf);
 
     writeMetadataToNdb();
+    refreshActiveNameNodesList();
 
     LOG.debug("Finished starting common NameNode services.");
 
@@ -2665,8 +2682,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    * Returns the id of this namenode
+   *
+   * @throws IllegalStateException if the ID is requested prior to being set.
    */
-  public long getId() {
+  public long getId() throws IllegalStateException {
+    if (this.nameNodeID == -1)
+      throw new IllegalStateException("NameNode ID requested before the ID has been set.");
+
     return this.nameNodeID;
   }
 
@@ -2700,7 +2722,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
       LOG.debug("NN Id: " + leaderElection.getCurrentId() + ") Received request to assign" +
               " block report work ("+ noOfBlks + " blks) ");
-      ActiveNode an = brTrackingService.assignWork(leaderElection.getActiveNamenodes(),
+      ActiveNode an = brTrackingService.assignWork(getActiveNameNodes(),
               nodeID.getXferAddr(), noOfBlks);
       return an;
     } else {
@@ -2726,43 +2748,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public long getLeCurrentId() {
-    // LOG.warn("LeaderElection ID has been replaced by standard NameNode ID because LeaderElection is disabled!");
     return this.getId();
-    // return leaderElection.getCurrentId();
   }
 
+  /**
+   * Return the current version of the active name nodes list.
+   *
+   * The list is updated in one of two ways:
+   *  (1) The worker thread periodically refreshes the list when it has no other work to do.
+   *  (2) The list is updated when the NameNode is first created.
+   */
   public SortedActiveNodeList getActiveNameNodes() {
-    return new SortedActiveNodeList() {
-      @Override
-      public boolean isEmpty() {
-        return false;
-      }
-
-      @Override
-      public int size() {
-        return numUniqueServerlessNameNodes;
-      }
-
-      @Override
-      public List<ActiveNode> getActiveNodes() {
-        return new ArrayList<ActiveNode>();
-      }
-
-      @Override
-      public List<ActiveNode> getSortedActiveNodes() {
-        return getActiveNodes();
-      }
-
-      @Override
-      public ActiveNode getActiveNode(InetSocketAddress address) {
-        return null;
-      }
-
-      @Override
-      public ActiveNode getLeader() {
-        return null;
-      }
-    };
+    return this.activeNameNodes;
   }
 
   private void startMDCleanerService(){

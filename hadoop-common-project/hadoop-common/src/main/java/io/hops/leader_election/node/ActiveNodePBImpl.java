@@ -224,7 +224,6 @@ public class ActiveNodePBImpl implements ActiveNode {
 
   @Override
   public int compareTo(ActiveNode o) {
-
     if (this.getId() < o.getId()) {
       return -1;
     } else if (this.getId() == o.getId()) {

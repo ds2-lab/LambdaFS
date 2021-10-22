@@ -115,6 +115,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_HTTP_TIMEOUT_DEFAULT = 30;
 
   /**
+   * How often, in seconds, the list of active name nodes should be updated.
+   */
+  public static final String SERVERLESS_ACTIVE_NODE_REFRESH = "serverless.activenodes.refreshinterval";
+  public static final int SERVERLESS_ACTIVE_NODE_REFRESH_DEFAULT = 10;
+
+  /**
    * How long to wait for the worker thread to execute a given task before timing out.
    */
   public static final String SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS = "serverless.task.timeoutmillis";
