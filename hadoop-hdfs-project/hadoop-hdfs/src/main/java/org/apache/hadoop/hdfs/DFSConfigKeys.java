@@ -107,6 +107,14 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_HTTP_RETRY_MAX_DEFAULT = 3;
 
   /**
+   * Time, in seconds, for an HTTP request to a NameNode to timeout. Timed-out
+   * requests will be retried according to the SERVERLESS_HTTP_RETRY_MAX
+   * configuration parameter.
+   */
+  public static final String SERVERLESS_HTTP_TIMEOUT = "serverless.http.timeout";
+  public static final int SERVERLESS_HTTP_TIMEOUT_DEFAULT = 30;
+
+  /**
    * How long to wait for the worker thread to execute a given task before timing out.
    */
   public static final String SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS = "serverless.task.timeoutmillis";

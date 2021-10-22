@@ -93,6 +93,13 @@ public abstract class ServerlessInvokerBase<T> {
     protected boolean tcpEnabled;
 
     /**
+     * The timeout, in milliseconds, for an HTTP request to a NameNode. This specifically
+     * is the timeout for a connection to be established with the server. Timed-out requests
+     * will be retried according to the maxHttpRetries instance variable.
+     */
+    protected int httpTimeoutMilliseconds;
+
+    /**
      * Return the INode-NN mapping cache entry for the given file or directory.
      *
      * This function returns -1 if no such entry exists.
@@ -164,6 +171,8 @@ public abstract class ServerlessInvokerBase<T> {
                 DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT);
         tcpEnabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+        httpTimeoutMilliseconds = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT,
+                DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
 
         // NDB
         debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);

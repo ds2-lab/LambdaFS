@@ -7,6 +7,7 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.NullResult;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.entity.StringEntity;
@@ -204,7 +205,19 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         do {
             LOG.info("Invoking NameNode (op=" + operationName + "), attempt " + (currentNumTries + 1)
                     + "/" + (maxHttpRetries + 1) + ".");
-            HttpResponse httpResponse = httpClient.execute(request);
+
+            HttpResponse httpResponse;
+            try {
+                httpResponse = httpClient.execute(request);
+            } catch (IOException ex) {
+                LOG.error("Encountered IOException while invoking NameNode via HTTP POST:", ex);
+                LOG.error("Request presumably timed out.");
+                doExponentialBackoff(currentNumTries);
+                currentNumTries++;
+                continue;
+            }
+
+
             int responseCode = httpResponse.getStatusLine().getStatusCode();
 
             // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
@@ -215,15 +228,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 LOG.error("Received HTTP response code " + responseCode + " on attempt " +
                         (currentNumTries + 1) + "/" + (maxHttpRetries) + ".");
 
-                if ((currentNumTries + 1) < maxHttpRetries) {
-                    long sleepInterval = getExponentialBackoffInterval(currentNumTries);
-                    LOG.debug("Sleeping for " + sleepInterval + " milliseconds before issuing another request...");
-                    try {
-                        Thread.sleep(sleepInterval);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
+                doExponentialBackoff(currentNumTries);
 
                 currentNumTries++;
                 continue;
@@ -235,6 +240,28 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         throw new IOException("The file system operation could not be completed. " +
                 "Failed to invoke a Serverless NameNode after " + maxHttpRetries + " attempts.");
+    }
+
+    /**
+     * Perform the sleep associated with exponential backoff.
+     *
+     * This checks the value of currentNumTries and compares it against maxHttpRetries.
+     * If we're out of tries, then we do not bother sleeping. Instead, we just return immediately.
+     *
+     * @param currentNumTries How many times we've attempted a request thus far.
+     */
+    private void doExponentialBackoff(int currentNumTries) {
+        // Only bother sleeping (exponential backoff) if we're going to try at least one more time.
+        if ((currentNumTries + 1) > maxHttpRetries)
+            return;
+
+        long sleepInterval = getExponentialBackoffInterval(currentNumTries);
+        LOG.debug("Sleeping for " + sleepInterval + " milliseconds before issuing another request...");
+        try {
+            Thread.sleep(sleepInterval);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -379,10 +406,14 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         SSLContext sc = SSLContext.getInstance("SSL");
         sc.init(null, trustAllCerts, new SecureRandom());
+
+        RequestConfig requestConfig = RequestConfig.custom().setConnectTimeout(httpTimeoutMilliseconds).build();
+
         return HttpClients
             .custom()
             .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
             .setSSLContext(sc)
+            .setDefaultRequestConfig(requestConfig)
             .build();
     }
 
