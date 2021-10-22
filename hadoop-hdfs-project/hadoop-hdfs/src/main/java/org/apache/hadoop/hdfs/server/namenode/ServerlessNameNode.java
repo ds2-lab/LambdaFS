@@ -2734,16 +2734,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public static boolean isNameNodeAlive(Collection<ActiveNode> activeNamenodes, long namenodeId) {
+    LOG.debug("Checking if NameNode " + namenodeId + " is alive...");
     if (activeNamenodes == null) {
+      LOG.debug("ActiveNameNodes is null... assuming the NN is alive to be conservative.");
       // We do not know yet, be conservative
       return true;
     }
 
     for (ActiveNode namenode : activeNamenodes) {
       if (namenode.getId() == namenodeId) {
+        LOG.debug("NameNode " + namenodeId + " IS alive, according to our records.");
         return true;
       }
     }
+    LOG.debug("NameNode " + namenodeId + " is NOT alive, according to our records.");
     return false;
   }
 
