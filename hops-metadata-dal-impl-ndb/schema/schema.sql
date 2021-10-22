@@ -22,6 +22,24 @@ CALL flyway$$
 
 delimiter $$
 
+-- Used to keep track of the current versions of the various Serverless NameNodes.
+-- Basically, NameNodes populate their ActiveNodes lists with this information. When
+-- a NameNode gets created, it updates its entry in this table with its NameNode ID.
+-- If the NameNode on a particular deployment of the OpenWhisk NameNode function either
+-- crashes or its container gets reclaimed or whatever, a new instance will be created.
+-- This instance will have a new ID. If the hold instance held any locks, we need a way to
+-- determine that the old instance literally doesn't exist anymore. This table serves as a
+-- record of the currently-existing NameNodes.
+CREATE TABLE `serverless_namenodes` (
+    `namenode_id` bigint(20) NOT NULL,      -- The ID of the NameNode object.
+    `deployment_id` int(11) NOT NULL,       -- The deployment of the serverless function.
+    `replica_id` varchar(36) NOT NULL,      -- Basically a place-holder for the future if we scale-out deployments.
+    `creation_time` bigint(20),             -- When the NameNode instance started running.
+    PRIMARY KEY (`namenode_id`, `deployment_id`), -- Eventually, `replica_id` may be a part of the PK.
+    KEY `namenode_idx` (`namenode_id`),
+    KEY `deployment_idx` (`deployment_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
 CREATE TABLE `datanodes` (
     `datanode_uuid` varchar(36) NOT NULL,
     `hostname` varchar(253) NOT NULL,

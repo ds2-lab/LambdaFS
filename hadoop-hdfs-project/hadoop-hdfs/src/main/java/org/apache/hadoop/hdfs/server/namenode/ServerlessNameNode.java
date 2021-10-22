@@ -2716,8 +2716,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
   }
 
-  public static boolean isNameNodeAlive(Collection<ActiveNode> activeNamenodes,
-      long namenodeId) {
+  public static boolean isNameNodeAlive(Collection<ActiveNode> activeNamenodes, long namenodeId) {
     if (activeNamenodes == null) {
       // We do not know yet, be conservative
       return true;
