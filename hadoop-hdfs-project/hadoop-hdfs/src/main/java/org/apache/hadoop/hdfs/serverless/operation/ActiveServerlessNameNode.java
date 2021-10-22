@@ -5,7 +5,7 @@ import io.hops.leader_election.node.ActiveNode;
 import java.net.InetSocketAddress;
 
 /**
- * Basically just holds onto the ID. All of the other fields are meaningless for serverless name nodes.
+ * Basically just holds onto the ID. All the other fields are meaningless for serverless name nodes.
  */
 public class ActiveServerlessNameNode implements ActiveNode {
     private final long id;
@@ -62,6 +62,11 @@ public class ActiveServerlessNameNode implements ActiveNode {
     @Override
     public int getLocationDomainId() {
         return -1;
+    }
+
+    @Override
+    public String toString() {
+        return "ActiveServerlessNameNode(ID=" + id + ")";
     }
 
     @Override

@@ -54,6 +54,14 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
             if (nameNode.getNameNodeId() == localNameNodeId)
                 localNameNode = activeNameNode;
         }
+
+        if (activeNodes.size() == 1)
+            LOG.debug("Finished refreshing active NameNode list. There is just one active name node now.");
+        else
+            LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
+                    " active NameNodes now.");
+
+        LOG.debug("Active NameNode IDs: " + activeNodes.toString());
     }
 
     @Override
