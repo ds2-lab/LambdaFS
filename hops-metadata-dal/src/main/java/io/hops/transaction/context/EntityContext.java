@@ -238,7 +238,7 @@ public abstract class EntityContext<T> {
       throws StorageCallPreventedException {
     if (storageCallPrevented) {
       throw new StorageCallPreventedException("[" + finderType + "] Trying " +
-          "to access storage while it is disable in transaction, inconsistent" +
+          "to access storage while it is disabled in transaction; inconsistent" +
           " transaction context statement. Params=" + Arrays.toString(params));
     }
   }

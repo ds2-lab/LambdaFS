@@ -217,7 +217,7 @@ public class CachedBlockContext extends BaseReplicaContext<BlockPK.CachedBlockPK
       hit(iFinder, results, "datanodeId", datanodeId, "type", type.toString());
     } else {
       throw new StorageCallPreventedException("[" + iFinder + "] Trying " +
-          "to access storage while it should allways be called after a more general lock");
+          "to access storage while it should always be called after a more general lock");
     }
     return results;
   }

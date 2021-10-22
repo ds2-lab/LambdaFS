@@ -300,6 +300,8 @@ public class LeaseManager {
       return;
     }
 
+    LOG.debug("Removing lease: " + lease.toString() + ", Lease path: " + src.toString());
+
     if (!lease.removePath(src)) {
       LOG.error(src + " not found in lease.paths (=" + lease.getPaths() + ")");
     }

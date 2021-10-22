@@ -1552,7 +1552,7 @@ public class FSDirectory implements Closeable {
   }
   
   /**
-   * We kept the name from apache hadoop for meging simplification but the only purpose of this
+   * We kept the name from apache hadoop for merging simplification but the only purpose of this
    * function is to remove the encryptionZones as the InodeMap is the DB.
    */
   public final void removeFromInodeMap(List<? extends INode> inodes) throws IOException {

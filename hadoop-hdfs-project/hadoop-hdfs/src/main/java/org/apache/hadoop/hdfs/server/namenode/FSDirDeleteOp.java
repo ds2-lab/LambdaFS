@@ -98,11 +98,13 @@ class FSDirDeleteOp {
   static boolean delete(
       final FSNamesystem fsn, String srcArg, final boolean recursive)
       throws IOException {
+    LOG.debug("Performing DELETE operation on source argument " + srcArg + " now. Recursive: " + recursive + ".");
     final FSDirectory fsd = fsn.getFSDirectory();
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = fsd.resolvePath(fsd.getPermissionChecker(), srcArg, pathComponents);
 
     if (!recursive) {
+      LOG.debug("Deletion is NOT recursive. Performing delete transaction now.");
       // It is safe to do this as it will only delete a single file or an empty directory
       return deleteTransaction(fsn, src, recursive);
     }
