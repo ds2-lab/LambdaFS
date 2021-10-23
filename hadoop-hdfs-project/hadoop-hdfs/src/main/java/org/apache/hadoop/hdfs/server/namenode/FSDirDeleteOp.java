@@ -492,7 +492,7 @@ class FSDirDeleteOp {
   
     // Add metadata log entry for all deleted childred.
     addMetaDataLogForDirDeletion(targetNode, fsd.getFSNamesystem().getNamenodeId());
-    
+
     // Remove the node from the namespace
     long removed = fsd.removeLastINode(iip);
     if (removed == -1) {

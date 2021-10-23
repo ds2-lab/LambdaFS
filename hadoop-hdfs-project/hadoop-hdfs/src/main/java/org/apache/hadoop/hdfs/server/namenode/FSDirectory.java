@@ -937,6 +937,7 @@ public class FSDirectory implements Closeable {
     if (isQuotaEnabled()) {
       iip.getLastINode().computeQuotaUsage(getBlockStoragePolicySuite(), counts);
     }
+    LOG.debug("Removing last INode. INodes in path: " + iip.toString());
     return removeLastINode(iip, false, counts);
   }
   
@@ -959,8 +960,6 @@ public class FSDirectory implements Closeable {
     }
 
     if (isQuotaEnabled()) {
-      
-      
       QuotaCounts outStandingDelta= new QuotaCounts.Builder().build();
       
       //apply the quota update that have not been applied yet in order for them to be forwarded to the parent eventhough

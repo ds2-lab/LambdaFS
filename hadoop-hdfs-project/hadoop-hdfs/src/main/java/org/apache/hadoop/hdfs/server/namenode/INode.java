@@ -30,6 +30,9 @@ import io.hops.metadata.hdfs.entity.FileProvenanceEntry;
 import io.hops.transaction.EntityManager;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.Path;
@@ -67,7 +70,8 @@ import org.apache.hadoop.hdfs.util.LongBitFormat;
  */
 @InterfaceAudience.Private
 public abstract class INode implements Comparable<byte[]>, LinkedElement {
-  
+  private static final Log LOG = LogFactory.getLog(INode.class);
+
   public static final List<INode> EMPTY_LIST =
       Collections.unmodifiableList(new ArrayList<INode>());
   public enum Finder implements FinderType<INode> {
@@ -856,6 +860,7 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement {
 
   protected void remove(INode node)
       throws IOException {
+    LOG.debug("Removing INode " + node.toString() + " now...");
     EntityManager.remove(node);
     //if This inode is of type INodeDirectoryWithQuota then also delete the INode Attribute table
     if ((node instanceof INodeDirectory) && ((INodeDirectory) node).isWithQuota()) {

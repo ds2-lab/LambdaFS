@@ -30,6 +30,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.PathIsNotDirectoryException;
 import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.fs.StorageType;
@@ -40,13 +43,15 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
+import org.apache.hadoop.hdfs.serverless.invoking.OpenWhiskInvoker;
 
 
 /**
  * Directory INode class.
  */
 public class INodeDirectory extends INodeWithAdditionalFields {
-  
+  private static final Log LOG = LogFactory.getLog(INodeDirectory.class);
+
   /**
    * Cast INode to INodeDirectory.
    */
@@ -234,6 +239,7 @@ public class INodeDirectory extends INodeWithAdditionalFields {
 
   public boolean removeChild(INode node)
       throws IOException {
+    LOG.debug("Removing INode " + node.toString() + " from INodeDirectory " + this.toString() + ".");
     INode existingInode = getChildINode(node.getLocalNameBytes());
     if (existingInode != null) {
       remove(existingInode);
