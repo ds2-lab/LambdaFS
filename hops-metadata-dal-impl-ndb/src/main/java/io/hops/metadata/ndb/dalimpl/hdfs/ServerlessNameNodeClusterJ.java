@@ -31,6 +31,7 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
         long getNameNodeId();
         void setNameNodeId(long nameNodeId);
 
+        @PrimaryKey
         @Column(name = FUNCTION_NAME)
         String getFunctionName();
         void setFunctionName(String functionName);
@@ -212,8 +213,12 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
 
         HopsSession session = connector.obtainSession();
 
+        final Object[] key = new Object[2];
+        key[0] = nameNode.getNameNodeId();
+        key[1] = nameNode.getFunctionName();
+
         ServerlessNameNodeDTO deleteMe
-                = session.find(ServerlessNameNodeDTO.class, nameNode.getNameNodeId());
+                = session.find(ServerlessNameNodeDTO.class, key);
 
         session.deletePersistent(deleteMe);
     }
