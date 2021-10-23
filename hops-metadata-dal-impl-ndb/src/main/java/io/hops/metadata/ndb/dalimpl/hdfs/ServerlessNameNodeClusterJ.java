@@ -192,7 +192,7 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
             serverlessNameNodeDTO = session.newInstance(ServerlessNameNodeDTO.class);
             copyState(serverlessNameNodeDTO, nameNode);
             session.savePersistent(serverlessNameNodeDTO);
-            LOG.debug("Wrote/persisted ServerlessNameNode " + nameNode.getNameNodeId() + "(function name = "
+            LOG.debug("Wrote/persisted ServerlessNameNode (ID = " + nameNode.getNameNodeId() + ", function name = "
                     + nameNode.getFunctionName() + ") to MySQL NDB storage.");
         } finally {
             session.release(serverlessNameNodeDTO);

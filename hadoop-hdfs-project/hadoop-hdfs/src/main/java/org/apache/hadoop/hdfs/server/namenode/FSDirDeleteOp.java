@@ -125,11 +125,19 @@ class FSDirDeleteOp {
 
     INodeIdentifier subtreeRoot = null;
     if (pathInode.isFile() || pathInode.isSymlink()) {
-      return deleteTransaction(fsn, src, false);
+      boolean success = deleteTransaction(fsn, src, false);
+
+      if (success)
+        LOG.debug("DELETE was successful. Returning true.");
+      else
+        LOG.debug("DELETE was NOT successful. Returning false.");
+
+      return success;
     }
 
     RetryCacheEntry cacheEntry = LightWeightCacheDistributed.getTransactional();
     if (cacheEntry != null && cacheEntry.isSuccess()) {
+      LOG.debug("DELETE was successful (returning previous response).");
       return true; // Return previous response
     }
     boolean ret = false;
@@ -145,6 +153,7 @@ class FSDirDeleteOp {
 
       //sub tree operation
       try {
+        LOG.debug("Performing subtree operation to delete " + src + " now...");
         //once subtree is locked we still need to check all subAccess in AbstractFileTree.FileTree
         //permission check in Apache Hadoop: doCheckOwner:false, ancestorAccess:null, parentAccess:FsAction.WRITE, 
         //access:null, subAccess:FsAction.ALL, ignoreEmptyDir:true
@@ -172,8 +181,8 @@ class FSDirDeleteOp {
 
         for (int i = fileTree.getHeight(); i > 0; i--) {
           if (!deleteTreeLevel(fsn, src, fileTree.getSubtreeRoot().getId(), fileTree, i)) {
-            ret = false;
-            return ret;
+            LOG.debug("DELETE was NOT successful. Returning false.");
+            return false;
           }
         }
       } finally {
@@ -181,8 +190,8 @@ class FSDirDeleteOp {
           fsn.unlockSubtree(src, subtreeRoot.getInodeId());
         }
       }
-      ret = true;
-      return ret;
+      LOG.debug("DELETE was successful. Returning true.");
+      return true;
     } finally {
       LightWeightCacheDistributed.putTransactional(ret);
     }
@@ -311,6 +320,8 @@ class FSDirDeleteOp {
     final FSPermissionChecker pc = fsd.getPermissionChecker();
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = fsd.resolvePath(pc, srcArg, pathComponents);
+
+    LOG.debug("Performing delete transaction for source " + src + " now...");
 
     HopsTransactionalRequestHandler deleteHandler = new HopsTransactionalRequestHandler(HDFSOperationType.DELETE, src) {
       @Override
