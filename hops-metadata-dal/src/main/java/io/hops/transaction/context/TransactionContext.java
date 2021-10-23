@@ -22,6 +22,8 @@ import io.hops.metadata.common.CounterType;
 import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.entity.MetadataLogEntry;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class TransactionContext {
+  private static final Log LOG = LogFactory.getLog(TransactionContext.class);
 
   private static String UNKNOWN_TYPE = "Unknown type:";
   private boolean activeTxExpected = false;
@@ -114,6 +117,8 @@ public class TransactionContext {
     aboutToPerform();
 
     if (typeContextMap.containsKey(obj.getClass())) {
+      LOG.debug("typeContextMap.get(obj.getClass()): "
+              + typeContextMap.get(obj.getClass()).getClass().getSimpleName());
       typeContextMap.get(obj.getClass()).remove(obj);
     } else {
       throw new RuntimeException(UNKNOWN_TYPE + obj.getClass());
