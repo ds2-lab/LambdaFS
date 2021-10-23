@@ -69,12 +69,14 @@ class FSDirDeleteOp {
       ServerlessNameNode.stateChangeLog.debug("DIR* FSDirectory.delete: " + iip.getPath());
     }
     final long filesRemoved;
-      if (!deleteAllowed(iip, iip.getPath()) ) {
-        filesRemoved = -1;
-      } else {
-        filesRemoved = unprotectedDelete(fsd, iip, collectedBlocks,
-                                         removedINodes, mtime);
-      }
+    if (!deleteAllowed(iip, iip.getPath()) ) {
+      filesRemoved = -1;
+    } else {
+      filesRemoved = unprotectedDelete(fsd, iip, collectedBlocks,
+                                       removedINodes, mtime);
+    }
+
+    LOG.debug("Removed " + filesRemoved + " file(s).");
     return filesRemoved;
   }
 
@@ -424,20 +426,19 @@ class FSDirDeleteOp {
     
     long mtime = now();
     // Unlink the target directory from directory tree
-    long filesRemoved = delete(
-        fsd, iip, collectedBlocks, removedINodes, mtime);
+    long filesRemoved = delete(fsd, iip, collectedBlocks, removedINodes, mtime);
     if (filesRemoved < 0) {
       return false;
     }
     incrDeletedFileCount(filesRemoved);
 
+    LOG.debug("Removed INodes: " + removedINodes.toString());
     fsn.removeLeasesAndINodes(src, removedINodes);
     fsn.removeBlocks(collectedBlocks); // Incremental deletion of blocks
     collectedBlocks.clear();
 
     if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
-      ServerlessNameNode.stateChangeLog.debug("DIR* Namesystem.delete: "
-                                        + src +" is removed");
+      ServerlessNameNode.stateChangeLog.debug("DIR* Namesystem.delete: " + src +" is removed");
     }
     return true;
   }
