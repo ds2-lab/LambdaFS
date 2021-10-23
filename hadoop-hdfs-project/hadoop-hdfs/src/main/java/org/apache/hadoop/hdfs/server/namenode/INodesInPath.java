@@ -420,11 +420,11 @@ public class INodesInPath {
         final INodeDirectory parent_i = inodes[i].getParent();
         final INodeDirectory parent_i_1 = inodes[i - 1].getParent();
         if (parent_i != inodes[i - 1] && (parent_i_1 == null || parent_i != parent_i_1)) {
-          LOG.error("");
           LOG.error("Failed to validate INodes in this path.");
           LOG.error("Path: " + toString(false));
           LOG.error("INode #" + i + "'s parent is not equal to INode #" + (i - 1) + "!");
           LOG.error("INode #" + i + " = " + inodes[i].toDetailString() + ", ID = " + inodes[i].getId() + ".");
+          LOG.error("INode #" + i + "'s parent ID: " + inodes[i].getParent().getId() + ", " + inodes[i].getParentId());
           LOG.error("INode #" + (i - 1) + " = " + inodes[i - 1].toDetailString() + ", ID = " + inodes[i-1].getId() + ".");
           LOG.error("");
           throw new AssertionError(
