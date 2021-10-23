@@ -203,7 +203,7 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
     public void replaceServerlessNameNode(ServerlessNameNodeMeta nameNode) throws StorageException {
         LOG.debug("REPLACE Serverless NameNode, new instance = " + nameNode.toString());
 
-        removeServerlessNameNode(nameNode);
+        removeServerlessNameNode(nameNode.getFunctionName());
         addServerlessNameNode(nameNode);
     }
 
