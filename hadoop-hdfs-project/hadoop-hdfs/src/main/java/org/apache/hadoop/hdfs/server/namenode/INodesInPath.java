@@ -419,7 +419,8 @@ public class INodesInPath {
       for (i++; i < inodes.length && inodes[i] != null; i++) {
         final INodeDirectory parent_i = inodes[i].getParent();
         final INodeDirectory parent_i_1 = inodes[i - 1].getParent();
-        if (parent_i != inodes[i - 1] && (parent_i_1 == null || parent_i != parent_i_1)) {
+        //if (parent_i != inodes[i - 1] && (parent_i_1 == null || parent_i != parent_i_1)) {
+        if (!parent_i.equals(inodes[i - 1]) && (parent_i_1 == null || !parent_i.equals(parent_i_1))) {
           LOG.error("Failed to validate INodes in this path.");
           LOG.error("Path: " + toString(false));
           LOG.error("INode #" + i + "'s parent is not equal to INode #" + (i - 1) + "!");
