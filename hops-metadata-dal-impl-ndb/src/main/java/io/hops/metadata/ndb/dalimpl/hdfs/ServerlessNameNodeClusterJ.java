@@ -43,7 +43,6 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
         long getCreationTime();
         void setCreationTime(long creationTime);
     }
-//    }
 
     @Override
     public ServerlessNameNodeMeta getServerlessNameNode(long nameNodeId, String functionName) throws StorageException {
