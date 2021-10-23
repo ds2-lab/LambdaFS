@@ -160,6 +160,8 @@ class FSDirDeleteOp {
         subtreeRoot = fsn.lockSubtreeAndCheckOwnerAndParentPermission(src, false,
             FsAction.WRITE, SubTreeOperation.Type.DELETE_STO);
 
+        LOG.debug("Subtree root: " + subtreeRoot.toString());
+
         List<AclEntry> nearestDefaultsForSubtree = fsn.calculateNearestDefaultAclForSubtree(pathInfo);
         AbstractFileTree.FileTree fileTree = new AbstractFileTree.FileTree(fsn, subtreeRoot, FsAction.ALL, true,
             nearestDefaultsForSubtree, subtreeRoot.getStoragePolicy());
@@ -173,7 +175,7 @@ class FSDirDeleteOp {
             try {
               idIterator.wait();
             } catch (InterruptedException e) {
-              // Not sure if this can happen if we are not shutting down but we need to abort in case it happens.
+              // Not sure if this can happen if we are not shutting down, but we need to abort in case it happens.
               throw new IOException("Operation failed due to an Interrupt");
             }
           }
@@ -197,20 +199,31 @@ class FSDirDeleteOp {
     }
   }
   
-    private static boolean deleteTreeLevel(final FSNamesystem fsn, final String subtreeRootPath, final long subTreeRootID,
-      final AbstractFileTree.FileTree fileTree, int level) throws TransactionContextException, IOException {
-    ArrayList<Future> barrier = new ArrayList<>();
+    private static boolean deleteTreeLevel(final FSNamesystem fsn, final String subtreeRootPath,
+                                           final long subTreeRootID, final AbstractFileTree.FileTree fileTree,
+                                           int level) throws TransactionContextException, IOException {
+      LOG.debug("Deleting tree level " + level + " of tree rooted at " + subtreeRootPath + " (ID = " +
+              subTreeRootID + ") now...");
+
+      ArrayList<Future> barrier = new ArrayList<>();
 
       List<ProjectedINode> emptyDirs = new ArrayList();
       for (final ProjectedINode dir : fileTree.getDirsByLevel(level)) {
+        LOG.debug("Children in directory (id=" + dir.getId() + "): " + fileTree.countChildren(dir.getId()));
         if (fileTree.countChildren(dir.getId()) <= BIGGEST_DELETABLE_DIR) {
+          LOG.debug("Directory " + dir.getId() + " has less than " + BIGGEST_DELETABLE_DIR
+                  + " children. Can delete it directly.");
           final String path = fileTree.createAbsolutePath(subtreeRootPath, dir);
           Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
           barrier.add(f);
         } else {
           //delete the content of the directory one by one.
+          LOG.debug("Directory " + dir.getId()
+                  + " has too many child files. Deleting content of directory one-by-one.");
           for (final ProjectedINode inode : fileTree.getChildren(dir.getId())) {
+            LOG.debug("    Trying to delete child INode " + inode.getName() + " (id=" + inode.getId() + ").");
             if (!inode.isDirectory()) {
+              LOG.debug("        INode " + inode.getName() + "(id=" + inode.getId() + ") is NOT a directory.");
               final String path = fileTree.createAbsolutePath(subtreeRootPath, inode);
               Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
               barrier.add(f);
@@ -220,9 +233,12 @@ class FSDirDeleteOp {
         }
       }
 
+      LOG.debug("There are " + barrier.size() + " child files to delete next.");
       boolean success = processResponses(barrier);
       if (!success)
         return false;
+
+      LOG.debug("There are " + emptyDirs.size() + " empty child directories to delete next.");
 
       //delete the empty Dirs
       for (ProjectedINode dir : emptyDirs) {
