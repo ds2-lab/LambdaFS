@@ -1941,10 +1941,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     metrics.getJvmMetrics().setPauseMonitor(pauseMonitor);
 
-    startCommonServices(conf);
-
     writeMetadataToNdb();
     refreshActiveNameNodesList();
+
+    startCommonServices(conf);
 
     LOG.debug("Finished starting common NameNode services.");
 
@@ -2763,7 +2763,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *  (2) The list is updated when the NameNode is first created.
    */
   public SortedActiveNodeList getActiveNameNodes() {
-    return this.activeNameNodes;
+    if (activeNameNodes == null)
+      LOG.warn("Returning NULL from getActiveNameNodes()...");
+    return activeNameNodes;
   }
 
   private void startMDCleanerService(){

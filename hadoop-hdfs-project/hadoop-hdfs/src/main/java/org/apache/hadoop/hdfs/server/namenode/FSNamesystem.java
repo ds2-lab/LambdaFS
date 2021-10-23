@@ -7705,6 +7705,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   }
 
   public ServerlessNameNode getNameNode() {
+    if (serverlessNameNode == null)
+      LOG.warn("Returning NULL from getNameNode()...");
     return serverlessNameNode;
   }
 
