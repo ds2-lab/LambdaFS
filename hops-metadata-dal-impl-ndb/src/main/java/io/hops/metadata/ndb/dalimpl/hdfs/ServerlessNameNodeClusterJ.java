@@ -214,6 +214,7 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
 
         ServerlessNameNodeDTO deleteMe
                 = session.find(ServerlessNameNodeDTO.class, nameNode.getNameNodeId());
+
         session.deletePersistent(deleteMe);
     }
 
@@ -222,10 +223,33 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
         LOG.debug("REMOVE NameNode (function name = " + functionName + ")");
 
         HopsSession session = connector.obtainSession();
+        HopsQueryBuilder queryBuilder = session.getQueryBuilder();
+        HopsQueryDomainType<ServerlessNameNodeDTO> domainType
+                = queryBuilder.createQueryDefinition(ServerlessNameNodeDTO.class);
 
-        ServerlessNameNodeDTO deleteMe
-                = session.find(ServerlessNameNodeDTO.class, functionName);
-        session.deletePersistent(deleteMe);
+        domainType.where(domainType.get("function_name").equal(domainType.param("function_name_param")));
+
+        HopsQuery<ServerlessNameNodeDTO> query = session.createQuery(domainType);
+        query.setParameter("function_name_param", functionName);
+
+        List<ServerlessNameNodeDTO> results = query.getResultList();
+
+        if (results.size() == 0) {
+            LOG.error("There are no Serverless NameNode instances with function name = "
+                    + functionName + " in NDB.");
+            return;
+        }
+        else if (results.size() > 1) {
+            LOG.warn("There are multiple Serverless NN instances with function name = " +
+                    functionName + " in NDB. Deleting ALL of them...");
+        }
+
+        for (ServerlessNameNodeDTO deleteMe : results) {
+            LOG.debug("Deleting Serverless NN instance: " + deleteMe.toString());
+            session.deletePersistent(deleteMe);
+        }
+
+        session.release(results);
     }
 
     @Override
