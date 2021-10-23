@@ -407,7 +407,11 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         SSLContext sc = SSLContext.getInstance("SSL");
         sc.init(null, trustAllCerts, new SecureRandom());
 
-        RequestConfig requestConfig = RequestConfig.custom().setConnectTimeout(httpTimeoutMilliseconds).build();
+        RequestConfig requestConfig = RequestConfig
+                .custom()
+                .setConnectTimeout(httpTimeoutMilliseconds)
+                .setSocketTimeout(httpTimeoutMilliseconds)
+                .build();
 
         return HttpClients
             .custom()
