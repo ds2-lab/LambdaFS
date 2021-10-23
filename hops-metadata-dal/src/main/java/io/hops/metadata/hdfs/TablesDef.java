@@ -25,7 +25,7 @@ public class TablesDef {
     String NAME_NODE_ID = "namenode_id";
     String FUNCTION_NAME = "function_name";
     String REPLICA_ID = "replica_id";
-    String CREATION_TIME = "creation_time:";
+    String CREATION_TIME = "creation_time";
   }
 
   /**
