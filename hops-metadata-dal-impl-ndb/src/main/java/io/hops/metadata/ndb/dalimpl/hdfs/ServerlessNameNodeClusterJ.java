@@ -232,7 +232,7 @@ public class ServerlessNameNodeClusterJ implements TablesDef.ServerlessNameNodes
         HopsQueryDomainType<ServerlessNameNodeDTO> domainType
                 = queryBuilder.createQueryDefinition(ServerlessNameNodeDTO.class);
 
-        domainType.where(domainType.get("function_name").equal(domainType.param("function_name_param")));
+        domainType.where(domainType.get(FUNCTION_NAME).equal(domainType.param("function_name_param")));
 
         HopsQuery<ServerlessNameNodeDTO> query = session.createQuery(domainType);
         query.setParameter("function_name_param", functionName);
