@@ -7,6 +7,7 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.NullResult;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
+import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
@@ -208,9 +209,14 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             try {
                 httpResponse = httpClient.execute(request);
                 LOG.debug("Received HTTP response on attempt " + (currentNumTries + 1) + "!");
+            } catch (NoHttpResponseException ex) {
+                LOG.debug("Attempt " + (currentNumTries + 1) + " to invoke NameNode " + functionUri +
+                        " timed out.");
+                doExponentialBackoff(currentNumTries);
+                currentNumTries++;
+                continue;
             } catch (IOException ex) {
                 LOG.error("Encountered IOException while invoking NN via HTTP:", ex);
-                LOG.error("Request presumably timed out.");
                 doExponentialBackoff(currentNumTries);
                 currentNumTries++;
                 continue;
