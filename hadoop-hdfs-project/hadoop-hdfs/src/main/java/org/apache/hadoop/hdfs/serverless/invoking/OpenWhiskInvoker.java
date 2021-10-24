@@ -203,8 +203,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         int currentNumTries = 0;
 
         do {
-            LOG.info("Invoking NameNode (op=" + operationName + "), attempt " + (currentNumTries + 1)
-                    + "/" + (maxHttpRetries + 1) + ".");
+            LOG.info("Invoking NameNode " + functionNumber + " (op=" + operationName + "), attempt "
+                    + (currentNumTries + 1) + "/" + (maxHttpRetries + 1) + ".");
 
             HttpResponse httpResponse;
             try {
