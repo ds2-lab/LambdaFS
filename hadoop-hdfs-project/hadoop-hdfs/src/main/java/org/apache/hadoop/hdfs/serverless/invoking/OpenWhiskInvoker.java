@@ -146,9 +146,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         if (fileSystemOperationArguments != null &&
                 fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
             String sourceFileOrDirectory =
-                    (String) fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
-            //LOG.debug("Checking serverless function cache for entry associated with file/directory \"" +
-            //        sourceFileOrDirectory + "\" now...");
+                    fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
             functionNumber = cache.getFunction(sourceFileOrDirectory);
         } else {
             LOG.debug("No `src` property found in file system arguments... skipping the checking of INode cache...");
@@ -157,7 +155,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         // If we have a cache entry for this function, then we'll invoke that specific function.
         // Otherwise, we'll just select a function at random.
         if (functionNumber < 0) {
-            functionNumber = ThreadLocalRandom.current().nextInt(0, numUniqueFunctions + 1);
+            functionNumber = ThreadLocalRandom.current().nextInt(0, numUniqueFunctions);
             LOG.debug("Randomly selected serverless function " + functionNumber);
         } else {
             LOG.debug("Retrieved serverless function " + functionNumber + " from cache.");
