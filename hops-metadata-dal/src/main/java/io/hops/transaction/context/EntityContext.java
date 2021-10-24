@@ -218,12 +218,6 @@ public abstract class EntityContext<T> {
   }
 
   public void preventStorageCall(boolean val) {
-    if (val != storageCallPrevented) {
-      LOG.warn("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-      LOG.warn("Storage calls " + (val ? "WILL" : "will NOT") + " be PREVENTED from this point forward.");
-      LOG.warn("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-    }
-
     storageCallPrevented = val;
   }
 
