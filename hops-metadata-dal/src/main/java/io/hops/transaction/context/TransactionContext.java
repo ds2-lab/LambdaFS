@@ -117,8 +117,6 @@ public class TransactionContext {
     aboutToPerform();
 
     if (typeContextMap.containsKey(obj.getClass())) {
-      LOG.debug("typeContextMap.get(obj.getClass()): "
-              + typeContextMap.get(obj.getClass()).getClass().getSimpleName());
       typeContextMap.get(obj.getClass()).remove(obj);
     } else {
       throw new RuntimeException(UNKNOWN_TYPE + obj.getClass());
