@@ -1648,6 +1648,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   }
 
   /**
+   * Invalidate the metadata cache entry for the INode with the given ID.
+   * @param iNodeId The ID of the INode that we're invalidating.
+   */
+  public synchronized void invalidateMetadataCacheEntry(long iNodeId) {
+    metadataCache.invalidateKey(iNodeId);
+  }
+
+  /**
    * Invalidate a subset of keys stored in the metadata cache.
    *
    * @param invalidatedKeys List of keys that have been invalidated and need to be updated (via retrieving the data
@@ -1671,11 +1679,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
     if (updatedValues.size() > 0)
       LOG.debug("Already have " + updatedValues.size() + " updated cache " + entry + " locally.");
-
-    // TODO:
-    //    Proactively retrieve updated values from cache?
-    //    Or simply mark the values as invalidated, and then retrieve them later?
-    //    For now, just mark them as invalidated and lazily retrieve them when they're requested.
 
     // TODO:
     //    Receive parentId during events so the NN can determine if the event corresponds to an
@@ -7628,7 +7631,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @throws IOException
    */
   @VisibleForTesting
-  void  unlockSubtreeInternal(final String path, final long ignoreStoInodeId) throws IOException {
+  void unlockSubtreeInternal(final String path, final long ignoreStoInodeId) throws IOException {
     new HopsTransactionalRequestHandler(HDFSOperationType.RESET_SUBTREE_LOCK) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {

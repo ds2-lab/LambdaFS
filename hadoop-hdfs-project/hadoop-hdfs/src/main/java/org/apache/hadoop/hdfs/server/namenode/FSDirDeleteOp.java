@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 import static org.apache.hadoop.util.Time.now;
 
@@ -420,9 +421,7 @@ class FSDirDeleteOp {
    * @return blocks collected from the deleted path
    * @throws IOException
    */
-  static boolean deleteInternal(
-      FSNamesystem fsn, String src, INodesInPath iip)
-      throws IOException {
+  static boolean deleteInternal(FSNamesystem fsn, String src, INodesInPath iip) throws IOException {
     if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
       ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.delete: " + src);
     }
@@ -443,6 +442,13 @@ class FSDirDeleteOp {
     fsn.removeLeasesAndINodes(src, removedINodes);
     fsn.removeBlocks(collectedBlocks); // Incremental deletion of blocks
     collectedBlocks.clear();
+
+    LOG.debug("Invalidating metadata cache entries for removed INodes now.");
+    for (INode inode : removedINodes) {
+      fsn.invalidateMetadataCacheEntry(inode.getId());
+    }
+
+    // Remove these INodes from the local metadata cache, as they've been deleted.
 
     if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
       ServerlessNameNode.stateChangeLog.debug("DIR* Namesystem.delete: " + src +" is removed");
