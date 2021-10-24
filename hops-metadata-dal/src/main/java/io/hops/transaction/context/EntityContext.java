@@ -218,18 +218,13 @@ public abstract class EntityContext<T> {
   }
 
   public void preventStorageCall(boolean val) {
-    storageCallPrevented = val;
+    if (val != storageCallPrevented) {
+      LOG.warn("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+      LOG.warn("Storage calls " + (val ? "WILL" : "will NOT") + " be PREVENTED from this point forward.");
+      LOG.warn("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    }
 
-    if (val) {
-      LOG.warn("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-      LOG.warn("Storage calls will be PREVENTED from this point forward.");
-      LOG.warn("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-    }
-    else {
-      LOG.warn("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-      LOG.warn("Storage calls will NO LONGER be prevented.");
-      LOG.warn("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-    }
+    storageCallPrevented = val;
   }
 
   public static void setLockMode(LockMode lock) {
