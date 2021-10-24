@@ -1650,9 +1650,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * Invalidate the metadata cache entry for the INode with the given ID.
    * @param iNodeId The ID of the INode that we're invalidating.
+   *
+   * @return True if the key was invalidated, otherwise false.
    */
-  public synchronized void invalidateMetadataCacheEntry(long iNodeId) {
-    metadataCache.invalidateKey(iNodeId);
+  public synchronized boolean invalidateMetadataCacheEntry(long iNodeId) {
+    return metadataCache.invalidateKey(iNodeId);
   }
 
   /**

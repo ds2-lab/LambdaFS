@@ -443,12 +443,19 @@ class FSDirDeleteOp {
     fsn.removeBlocks(collectedBlocks); // Incremental deletion of blocks
     collectedBlocks.clear();
 
-    LOG.debug("Invalidating metadata cache entries for removed INodes now.");
-    for (INode inode : removedINodes) {
-      fsn.invalidateMetadataCacheEntry(inode.getId());
-    }
-
     // Remove these INodes from the local metadata cache, as they've been deleted.
+    LOG.debug("Invalidating up to " + removedINodes.size() + " metadata cache " +
+            (removedINodes.size() == 1 ? "entry for removed INodes now." : "entries for removed INodes now."));
+    int numInvalidated = 0;
+    for (INode inode : removedINodes) {
+      LOG.debug("Attempting to invalidate INode " + inode.getFullPathName() + " (id=" + inode.getId() + ").");
+      boolean invalidated = fsn.invalidateMetadataCacheEntry(inode.getId());
+
+      if (invalidated)
+        numInvalidated++;
+    }
+    LOG.debug("Invalidated " + numInvalidated + "/" + removedINodes.size()
+            + " cache " + (numInvalidated == 1 ? "entry" : "entries") + " corresponding to removed INodes.");
 
     if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
       ServerlessNameNode.stateChangeLog.debug("DIR* Namesystem.delete: " + src +" is removed");

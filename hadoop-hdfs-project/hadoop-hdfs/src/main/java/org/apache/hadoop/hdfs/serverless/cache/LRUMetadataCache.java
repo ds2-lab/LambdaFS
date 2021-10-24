@@ -133,6 +133,7 @@ public class LRUMetadataCache<T> {
             throw new IllegalArgumentException("LRUMetadataCache does NOT support null values. Associated key: " + key);
 
         T returnValue = cache.put(key, value);
+        idToNameMapping.put(iNodeId, key);
 
         boolean removed = invalidatedKeys.remove(key);
 
@@ -201,6 +202,7 @@ public class LRUMetadataCache<T> {
      * Invalidate a given key by passing the INode ID of the INode to be invalidated, rather than the
      * fully-qualified path.
      * @param inodeId The INode ID of the INode to be invalidated.
+     *
      * @return True if the key was invalidated, otherwise false.
      */
     public boolean invalidateKey(long inodeId) {
