@@ -7665,6 +7665,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   @VisibleForTesting
   void unlockSubtree(final String path, final long ignoreStoInodeId) throws IOException {
     try{
+      LOG.debug("Unlocking subtree at path: " + path);
       unlockSubtreeInternal(path, ignoreStoInodeId);
     }catch(Exception e){
       //Unable to remove the lock. setting the async removal flag

@@ -249,6 +249,11 @@ class FSDirDeleteOp {
         barrier.add(f);
       }
 
+      if (barrier.size() != 1)
+        LOG.debug("Processing the " + barrier.size() + " entries in the barrier.");
+      else
+        LOG.debug("Processing the " + barrier.size() + " entry in the barrier.");
+
       return processResponses(barrier);
   }
 
@@ -279,6 +284,8 @@ class FSDirDeleteOp {
       final long subTreeRootId)
       throws StorageException, TransactionContextException, IOException {
     final FSDirectory fsd = fsn.getFSDirectory();
+
+    LOG.debug("Performing multi-transaction internal delete for " + src + " now...");
 
     return fsn.getFSOperationsExecutor().submit(new Callable<Boolean>() {
       @Override
