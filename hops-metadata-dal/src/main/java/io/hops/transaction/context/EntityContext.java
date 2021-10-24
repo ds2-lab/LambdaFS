@@ -219,6 +219,11 @@ public abstract class EntityContext<T> {
 
   public void preventStorageCall(boolean val) {
     storageCallPrevented = val;
+
+    if (val)
+      LOG.warn("Storage calls will be PREVENTED from this point forward.");
+    else
+      LOG.warn("Storage calls will NO LONGER be prevented.");
   }
 
   public static void setLockMode(LockMode lock) {
