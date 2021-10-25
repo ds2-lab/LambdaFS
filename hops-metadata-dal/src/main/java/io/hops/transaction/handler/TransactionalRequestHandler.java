@@ -58,13 +58,14 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
       tryCount++;
       ignoredException = null;
       committed = false;
-      
+
+      requestHandlerLOG.debug("Setting preventStorageCalls to FALSE.");
       EntityManager.preventStorageCall(false);
       boolean success = false;
       try {
         setNDC(info);
         if(requestHandlerLOG.isTraceEnabled()) {
-          requestHandlerLOG.trace("Pretransaction phase started");
+          requestHandlerLOG.debug("Pretransaction phase started");
         }
         preTransactionSetup();
         //sometimes in setup we call light weight request handler that messes up with the NDC
@@ -73,7 +74,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         setupTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
         if(requestHandlerLOG.isTraceEnabled()) {
-          requestHandlerLOG.trace("Pretransaction phase finished. Time " + setupTime + " ms");
+          requestHandlerLOG.debug("Pretransaction phase finished. Time " + setupTime + " ms");
         }
         setRandomPartitioningKey();
         EntityManager.begin();
@@ -91,11 +92,12 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         acquireLockTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
         if(requestHandlerLOG.isTraceEnabled()){
-          requestHandlerLOG.trace("All Locks Acquired. Time " + acquireLockTime + " ms");
+          requestHandlerLOG.debug("All Locks Acquired. Time " + acquireLockTime + " ms");
         }
         //sometimes in setup we call light weight request handler that messes up with the NDC
         removeNDC();
         setNDC(info);
+        requestHandlerLOG.debug("Setting preventStorageCalls to TRUE.");
         EntityManager.preventStorageCall(true);
         try {
           txRetValue = performTask();
@@ -110,7 +112,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         inMemoryProcessingTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
         if(requestHandlerLOG.isTraceEnabled()) {
-          requestHandlerLOG.trace("In Memory Processing Finished. Time " + inMemoryProcessingTime + " ms");
+          requestHandlerLOG.debug("In Memory Processing Finished. Time " + inMemoryProcessingTime + " ms");
         }
 
         TransactionsStats.TransactionStat stat = TransactionsStats.getInstance()
@@ -125,12 +127,12 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         }
 
         if(requestHandlerLOG.isTraceEnabled()) {
-          requestHandlerLOG.trace("TX committed. Time " + commitTime + " ms");
+          requestHandlerLOG.debug("TX committed. Time " + commitTime + " ms");
         }
         totalTime = (System.currentTimeMillis() - txStartTime);
         if(requestHandlerLOG.isTraceEnabled()) {
           String opName = !NDCWrapper.NDCEnabled()?opType+" ":"";
-          requestHandlerLOG.trace(opName+"TX Finished. " +
+          requestHandlerLOG.debug(opName+"TX Finished. " +
                   "TX Time: " + (totalTime) + " ms, " +
                   // -1 because 'tryCount` also counts the initial attempt which is technically not a retry
                   "RetryCount: " + (tryCount-1) + ", " +
@@ -173,7 +175,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         removeNDC();
         if (!committed && locksAcquirer!=null) {
           try {
-            requestHandlerLOG.trace("TX Failed. Rollback TX");
+            requestHandlerLOG.debug("TX Failed. Rollback TX");
             EntityManager.rollback(locksAcquirer.getLocks());
           } catch (Exception e) {
             requestHandlerLOG.warn("Could not rollback transaction", e);
