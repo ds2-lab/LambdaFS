@@ -26,9 +26,19 @@ public interface IntermediateBlockReportDataAccess<T> extends EntityDataAccess {
     List<T> getReports(String datanodeUuid, int minimumReportId) throws StorageException;
 
     /**
+     * Retrieve all IntermediateBlockReport instances from the specified DataNode that were published at or after
+     * the specified time.
+     * @param datanodeUuid The DataNode whose reports we're retrieving.
+     * @param publishedAt We only retrieve reports published at this time or later.
+     * @return Reports published at the given time or later by the specified DataNode.
+     */
+    List<T> getReportsPublishedAfter(String datanodeUuid, long publishedAt) throws StorageException;
+
+    /**
      * Add the necessary information to imitate the blockReceivedAndDeleted() RPC call.
      */
-    void addReport(int reportId, String datanodeUuid, String poolId, String receivedAndDeletedBlocks)
+    void addReport(int reportId, String datanodeUuid, long publishedAt, String poolId,
+                   String receivedAndDeletedBlocks)
             throws StorageException;
 
     /**

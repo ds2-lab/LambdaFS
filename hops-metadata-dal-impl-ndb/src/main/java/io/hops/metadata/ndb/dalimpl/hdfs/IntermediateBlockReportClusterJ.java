@@ -34,6 +34,10 @@ public class IntermediateBlockReportClusterJ
         String getDatanodeUuid();
         void setDatanodeUuid(String datanodeUuid);
 
+        @Column(name = PUBLISHED_AT)
+        long getPublishedAt();
+        void setPublishedAt(long publishedAt);
+
         @Column(name = POOL_ID)
         String getPoolId();
         void setPoolId(String poolId);
@@ -45,7 +49,7 @@ public class IntermediateBlockReportClusterJ
 
     @Override
     public IntermediateBlockReport getReport(int reportId, String datanodeUuid) throws StorageException {
-        LOG.info("GET IntermediateStorageReport -- reportId: " + reportId + ", datanodeUuid: " + datanodeUuid);
+        LOG.debug("GET IntermediateStorageReport -- reportId: " + reportId + ", datanodeUuid: " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
 
@@ -83,7 +87,7 @@ public class IntermediateBlockReportClusterJ
 
     @Override
     public List<IntermediateBlockReport> getReports(String datanodeUuid) throws StorageException {
-        LOG.info("GET IntermediateStorageReports -- datanodeUuid: " + datanodeUuid);
+        LOG.debug("GET IntermediateStorageReports -- datanodeUuid: " + datanodeUuid);
 
         List<IntermediateBlockReportDTO> storeReportDTOs = getIntermediateBlockReportDTOs(
                 connector.obtainSession(), datanodeUuid);
@@ -108,10 +112,41 @@ public class IntermediateBlockReportClusterJ
         // Return the number of Storage Reports that were deleted.
         return storageReportDTOs.size();
     }
+    
+    @Override
+    public List<IntermediateBlockReport> getReportsPublishedAfter(String datanodeUuid, long publishedAt) throws StorageException {
+        LOG.debug("GET IntermediateBlockReport -- DN UUID: " + datanodeUuid + ", publishedAt: " +
+                publishedAt);
+
+        HopsSession session = connector.obtainSession();
+        HopsQueryBuilder queryBuilder = session.getQueryBuilder();
+        HopsQueryDomainType<IntermediateBlockReportDTO> domainType =
+                queryBuilder.createQueryDefinition(IntermediateBlockReportDTO.class);
+
+        HopsPredicate predicateDatanodeUuid =
+                domainType.get("datanodeUuid").equal(domainType.param("datanodeUuidParam"));
+        HopsPredicate predicatePublishedAt =
+                domainType.get("publishedAt").greaterEqual(domainType.param("publishedAtParam"));
+        domainType.where(predicateDatanodeUuid.and(predicatePublishedAt));
+
+        HopsQuery<IntermediateBlockReportDTO> query = session.createQuery(domainType);
+        query.setParameter("datanodeUuidParam", datanodeUuid);
+        query.setParameter("publishedAtParam", publishedAt);
+
+        List<IntermediateBlockReportDTO> storeReportDTOs = query.getResultList();
+
+        ArrayList<IntermediateBlockReport> resultList = new ArrayList<>();
+
+        for (IntermediateBlockReportDTO dto : storeReportDTOs) {
+            resultList.add(convert(dto));
+        }
+
+        return resultList;
+    }
 
     @Override
     public List<IntermediateBlockReport> getReports(String datanodeUuid, int minimumReportId) throws StorageException {
-        LOG.info("GET IntermediateStorageReport -- minimumReportId: " + minimumReportId
+        LOG.debug("GET IntermediateStorageReport -- minimumReportId: " + minimumReportId
                 + ", datanodeUuid: " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
@@ -141,33 +176,37 @@ public class IntermediateBlockReportClusterJ
     }
 
     @Override
-    public void addReport(int reportId, String datanodeUuid, String poolId, String receivedAndDeletedBlocks) throws StorageException {
-        LOG.info("ADD IntermediateStorageReport -- reportId: " + reportId + ", datanodeUuid: " + datanodeUuid
+
+    public void addReport(int reportId, String datanodeUuid, long publishedAt,
+                          String poolId, String receivedAndDeletedBlocks)
+            throws StorageException {
+        LOG.debug("ADD IntermediateStorageReport -- reportId: " + reportId + ", datanodeUuid: " + datanodeUuid
             + ", poolId: " + poolId + ", length of encoded blocks string: " + receivedAndDeletedBlocks.length());
 
         HopsSession session = connector.obtainSession();
-        //LOG.info("Obtained session...");
+        //LOG.debug("Obtained session...");
         IntermediateBlockReportDTO dtoObject = null;
 
         try {
             dtoObject = session.newInstance(IntermediateBlockReportDTO.class);
-            //LOG.info("Created instance of class IntermediateBlockReportDTO...");
+            //LOG.debug("Created instance of class IntermediateBlockReportDTO...");
             dtoObject.setReportId(reportId);
             dtoObject.setDatanodeUuid(datanodeUuid);
+            dtoObject.setPublishedAt(publishedAt);
             dtoObject.setPoolId(poolId);
             dtoObject.setReceivedAndDeletedBlocks(receivedAndDeletedBlocks);
 
             session.savePersistent(dtoObject);
-            //LOG.info("Saved IntermediateBlockReportDTO instance to intermediate storage...");
+            //LOG.debug("Saved IntermediateBlockReportDTO instance to intermediate storage...");
         } finally {
             session.release(dtoObject);
-            //LOG.info("Released IntermediateBlockReportDTO instance...");
+            //LOG.debug("Released IntermediateBlockReportDTO instance...");
         }
 
     }
 
     private IntermediateBlockReport convert(IntermediateBlockReportDTO src) {
-        return new IntermediateBlockReport(src.getReportId(), src.getDatanodeUuid(), src.getPoolId(),
-                src.getReceivedAndDeletedBlocks());
+        return new IntermediateBlockReport(src.getReportId(), src.getDatanodeUuid(), src.getPublishedAt(),
+                src.getPoolId(), src.getReceivedAndDeletedBlocks());
     }
 }

@@ -71,6 +71,7 @@ public class TablesDef {
   public interface IntermediateBlockReportsTableDef {
     String TABLE_NAME = "intermediate_block_reports";
     String REPORT_ID = "report_id";
+    String PUBLISHED_AT = "published_at"; // Timestamp at which the report was published to intermediate storage.
     String DATANODE_UUID = "datanode_uuid";
     String POOL_ID = "pool_id";
     String RECEIVED_AND_DELETED_BLOCKS = "received_and_deleted_blocks";

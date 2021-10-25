@@ -13,6 +13,11 @@ public class IntermediateBlockReport {
      */
     private final String datanodeUuid;
 
+    /**
+     * The timestamp at which the report was published.
+     */
+    private final long publishedAt;
+
     private final String poolId;
 
     /**
@@ -20,9 +25,11 @@ public class IntermediateBlockReport {
      */
     private final String receivedAndDeletedBlocks;
 
-    public IntermediateBlockReport(int reportId, String datanodeUuid, String poolId, String receivedAndDeletedBlocks) {
+    public IntermediateBlockReport(int reportId, String datanodeUuid, long publishedAt,
+                                   String poolId, String receivedAndDeletedBlocks) {
         this.reportId = reportId;
         this.datanodeUuid = datanodeUuid;
+        this.publishedAt = publishedAt;
         this.poolId = poolId;
         this.receivedAndDeletedBlocks = receivedAndDeletedBlocks;
     }
@@ -47,5 +54,9 @@ public class IntermediateBlockReport {
     public String toString() {
         return "IntermediateBlockReport <reportId = " + reportId + ", datanodeUuid = " + datanodeUuid + ", poolId = "
                 + poolId + ">";
+    }
+
+    public long getPublishedAt() {
+        return publishedAt;
     }
 }

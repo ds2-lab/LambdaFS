@@ -83,6 +83,7 @@ CREATE TABLE `datanode_storages` (
 CREATE TABLE `intermediate_block_reports` (
     `report_id` int(11) NOT NULL,
     `datanode_uuid` varchar(36) NOT NULL,
+    `published_at` bigint(20) NOT NULL,
     `pool_id` varchar(255) NOT NULL,
     `received_and_deleted_blocks` varchar(5000) NOT NULL,
     PRIMARY KEY (`report_id`, `datanode_uuid`),

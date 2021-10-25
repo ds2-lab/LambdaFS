@@ -72,7 +72,6 @@ import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
-import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
@@ -356,7 +355,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Used to keep track of the most recent reportId obtained for each data node.
    */
-  private final HashMap<String, Integer> lastIntermediateBlockReportIds = new HashMap<>();
+  private final HashMap<String, Long> lastIntermediateBlockReportTimestamp = new HashMap<>();
 
   /**
    * The name of the serverless function in which this NameNode instance is running.
@@ -670,14 +669,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
             (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
 
-    // Get the largest groupId retrieved for this particular DataNode.
-    // We default to 0 if there is no value stored yet as 0 is the starting value for groupIds.
+    // The groupId column for Storage Reports is actually being used as a timestamp now. So we default to the time
+    // that the NN was created, as any reports published before that point would not have been received by a
+    // traditional, serverful HopsFS NN anyway.
     long lastStorageReportGroupId = lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(), creationTime);
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
-        = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId - 1, registration.getDatanodeUuid());
-        // = dataAccess.getLatestStorageReports(registration.getDatanodeUuid());
+        = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId - 1,
+            registration.getDatanodeUuid());
 
     LOG.debug("Retrieved " + storageReports.size() + " storage report instances from intermediate storage...");
+
+    // Update the entry for this DN, as we just retrieved its Storage Reports.
+    lastStorageReportGroupIds.put(registration.getDatanodeUuid(), Time.getUtcTime());
 
     return storageReports;
   }
@@ -806,14 +809,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     // Update the groupIds map.
-    for (Map.Entry<String, Long> entry : largestGroupIds.entrySet()) {
-      String datanodeUuid = entry.getKey();
-      long groupId = entry.getValue();
-
-      lastStorageReportGroupIds.put(datanodeUuid, groupId);
-
-      LOG.debug("Largest groupId retrieved for DataNode " + datanodeUuid + ": " + groupId);
-    }
+//    for (Map.Entry<String, Long> entry : largestGroupIds.entrySet()) {
+//      String datanodeUuid = entry.getKey();
+//      long groupId = entry.getValue();
+//
+//      lastStorageReportGroupIds.put(datanodeUuid, groupId);
+//
+//      LOG.debug("Largest groupId retrieved for DataNode " + datanodeUuid + ": " + groupId);
+//    }
   }
 
   /**
@@ -824,16 +827,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
 
     LOG.info("Retrieving intermediate block reports from intermediate storage now...");
-    LOG.info("There are " + lastIntermediateBlockReportIds.size() + " DataNodes for which reports must be retrieved.");
+    LOG.info("There are " + lastIntermediateBlockReportTimestamp.size()
+            + " DataNodes for which reports must be retrieved.");
 
-    for (Map.Entry<String, Integer> entry : lastIntermediateBlockReportIds.entrySet()) {
+    // Keep track of the DNs whose intermediate block reports we process.
+    // We'll update the timestamp after this loop.
+    long now = Time.getUtcTime();
+    ArrayList<String> processedReports = new ArrayList<>();
+    for (Map.Entry<String, Long> entry : lastIntermediateBlockReportTimestamp.entrySet()) {
       String datanodeUuid = entry.getKey();
-      int lastReportId = entry.getValue();
+      long lastTimestamp = entry.getValue();
 
-      LOG.info("Retrieving all reports with reportId >= " + (lastReportId + 1) + " for DataNode "
+      LOG.info("Retrieving all reports with timestamp >= " + (lastTimestamp + 1) + " for DataNode "
               + datanodeUuid + " now...");
 
-      List<IntermediateBlockReport> reports = dataAccess.getReports(datanodeUuid, lastReportId + 1);
+      List<IntermediateBlockReport> reports = dataAccess.getReportsPublishedAfter(datanodeUuid, lastTimestamp);
 
       LOG.info("Retrieved " + reports.size() + " intermediate block reports published by DataNode "
               + datanodeUuid + ".");
@@ -849,7 +857,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           namesystem.processIncrementalBlockReport(report.getDatanodeUuid(), blocks);
         }
       }
+
+      processedReports.add(datanodeUuid);
     }
+
+    // Update the entries for all the DNs whose reports we processed.
+    for (String datanodeUuid: processedReports)
+      lastIntermediateBlockReportTimestamp.put(datanodeUuid, now);
   }
 
   /**
@@ -939,14 +953,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               dnId, storageInfo, new ExportedBlockKeys(), VersionInfo.getVersion());
 
       // Create an entry for this DataNode.
-      // TODO: What if this DataNode has been around for a while and this NameNode is only just now being invoked?
-      //       The BlockReports starting at 0 will be old, won't they? Need to figure out how to address this.
-      //       I think, in traditional HopsFS, the NameNode would just start with the first block report it receives
-      //       from a DataNode, so Serverless HopsFS, the NNs should also just start with the most-recent block report
-      //       and ignore the others...
-      if (!lastIntermediateBlockReportIds.containsKey(datanodeUuid)) {
+      if (!lastIntermediateBlockReportTimestamp.containsKey(datanodeUuid)) {
         LOG.debug("Adding entry in `lastIntermediateBlockReportIds` for DataNode " + datanodeUuid);
-        lastIntermediateBlockReportIds.put(datanodeUuid, -1);
+        lastIntermediateBlockReportTimestamp.put(datanodeUuid, creationTime);
       } else {
         LOG.debug("Entry for DataNode " + datanodeUuid + " already exists in `lastIntermediateBlockReportIds`");
       }
@@ -1296,6 +1305,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     namesystem.checkSuperuserPrivilege();
     NamespaceInfo nsInfo = namesystem.getNamespaceInfo();
 
+    // TODO: Does this still make sense?
     // Check for an existing groupId associated with this DataNode.
     // This would exist if the DN had crashed and is restarting or something to that effect.
     long groupId = this.lastStorageReportGroupIds.getOrDefault(datanodeUuid, creationTime);
