@@ -949,7 +949,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void renewLease(String clientName) throws AccessControlException, IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
+        opArguments.addPrimitive("clientName", clientName);
 
         try {
             submitOperationToNameNode(
@@ -958,7 +958,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
-            LOG.error("Exception encountered while submitting operation renewLease to NameNode:", ex);
+            LOG.error("Exception encountered while submitting operation getListing to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
     }
 
@@ -969,7 +970,32 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public long[] getStats() throws IOException {
-        return new long[0];
+        ArgumentContainer opArguments = new ArgumentContainer();
+
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "getStats",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation getListing to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
+        }
+
+        Object result = null;
+        try {
+            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+        }
+        if (result != null)
+            return (long[])result;
+
+        return null;
     }
 
     @Override

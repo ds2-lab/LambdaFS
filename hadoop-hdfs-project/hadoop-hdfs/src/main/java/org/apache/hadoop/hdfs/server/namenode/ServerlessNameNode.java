@@ -507,6 +507,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("getFileLinkInfo", args -> (Serializable)getFileLinkInfo(args));
     operations.put("getListing", args -> (Serializable)getListing(args));
     operations.put("getServerDefaults", args -> (Serializable)getServerDefaults(args));
+    operations.put("getStats", args -> (Serializable)getStats(args));
     operations.put("isFileClosed", args -> (Serializable)isFileClosed(args));
     operations.put("mkdirs", args -> (Serializable)mkdirs(args));
     operations.put("removeUser", args -> {
@@ -1112,12 +1113,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return info;
   }
 
-  private void renewLease(JsonObject fsArgs) throws IOException {
-    String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
-
-    namesystem.renewLease(clientName);
-  }
-
   private boolean complete(JsonObject fsArgs) throws IOException, ClassNotFoundException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
@@ -1379,6 +1374,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private FsServerDefaults getServerDefaults(JsonObject fsArgs) {
     return this.namesystem.getServerDefaults();
+  }
+
+  private void renewLease(JsonObject fsArgs) throws IOException {
+    String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
+    this.namesystem.renewLease(clientName);
+  }
+
+  private long[] getStats(JsonObject fsArgs) throws IOException {
+    return this.namesystem.getStats();
   }
 
   private boolean delete(JsonObject fsArgs) throws IOException {
