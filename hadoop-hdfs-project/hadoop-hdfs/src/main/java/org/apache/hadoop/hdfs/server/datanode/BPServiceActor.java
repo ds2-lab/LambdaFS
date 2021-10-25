@@ -727,7 +727,7 @@ class BPServiceActor implements Runnable {
     int reportId = dn.getAndIncrementIntermediateBlockReportCounter();
     LOG.info("Storing intermediate block report " + reportId + " in intermediate storage now...");
 
-    dataAccess.addReport(reportId, registration.getDatanodeUuid(), poolId, encoded);
+    dataAccess.addReport(reportId, registration.getDatanodeUuid(), Time.getUtcTime(), poolId, encoded);
 
     LOG.info("Successfully stored intermediate block report " + reportId + " in intermediate storage.");
 
