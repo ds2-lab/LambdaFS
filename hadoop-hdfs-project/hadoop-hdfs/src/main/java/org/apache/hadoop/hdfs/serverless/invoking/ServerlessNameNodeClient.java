@@ -1000,7 +1000,34 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public DatanodeInfo[] getDatanodeReport(HdfsConstants.DatanodeReportType type) throws IOException {
-        return new DatanodeInfo[0];
+        ArgumentContainer opArguments = new ArgumentContainer();
+
+        opArguments.put("type", type.ordinal());
+
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "getDatanodeReport",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation getListing to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
+        }
+
+        Object result = null;
+        try {
+            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        } catch (ClassNotFoundException e) {
+            LOG.error("Exception encountered whilst extracting result of `complete()` " +
+                    "operation from JSON response.");
+            e.printStackTrace();
+        }
+        if (result != null)
+            return (DatanodeInfo[])result;
+
+        return null;
     }
 
     @Override

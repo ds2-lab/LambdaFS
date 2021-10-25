@@ -84,6 +84,7 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.util.MBeans;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.net.Node;
+import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.RefreshUserMappingsProtocol;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -503,6 +504,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("create", args -> (Serializable)create(args));
     operations.put("delete", args -> (Serializable)delete(args));
     operations.put("getBlockLocations", args -> (Serializable)getBlockLocations(args));
+    operations.put("getDatanodeReport", args -> (Serializable)getDatanodeReport(args));
     operations.put("getFileInfo", args -> (Serializable)getFileInfo(args));
     operations.put("getFileLinkInfo", args -> (Serializable)getFileLinkInfo(args));
     operations.put("getListing", args -> (Serializable)getListing(args));
@@ -931,7 +933,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("Discovered " + dnMap.size() + " new DataNodes. Processing now...");
 
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
-    //  allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
+    //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
 
     for (DataNodeMeta dataNodeMeta : dnMap.values()) {
       String datanodeUuid = dataNodeMeta.getDatanodeUuid();
@@ -972,7 +974,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
         datanodeRegistrations.add(datanodeRegistration);
       } catch (IOException ex) {
-        // Log this so we know the source of the exception, then re-throw it so it gets caught one layer up.
+        // Log this, so we know the source of the exception, then re-throw it so it gets caught one layer up.
         LOG.error("Error registering datanode " + dataNodeMeta.getDatanodeUuid());
         throw ex;
       }
@@ -1383,6 +1385,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private long[] getStats(JsonObject fsArgs) throws IOException {
     return this.namesystem.getStats();
+  }
+
+  private DatanodeInfo[] getDatanodeReport(JsonObject fsArgs) throws AccessControlException {
+    int typeOrdinal = fsArgs.getAsJsonPrimitive("type").getAsInt();
+    HdfsConstants.DatanodeReportType type = HdfsConstants.DatanodeReportType.values()[typeOrdinal];
+
+    return namesystem.datanodeReport(type);
   }
 
   private boolean delete(JsonObject fsArgs) throws IOException {

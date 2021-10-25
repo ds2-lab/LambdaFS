@@ -464,10 +464,10 @@ public class DFSAdmin extends FsShell {
     long used = ds.getUsed();
     long remaining = ds.getRemaining();
     long presentCapacity = used + remaining;
-    boolean mode = dfs.setSafeMode(HdfsConstants.SafeModeAction.SAFEMODE_GET);
-    if (mode) {
-      System.out.println("Safe mode is ON");
-    }
+//    boolean mode = dfs.setSafeMode(HdfsConstants.SafeModeAction.SAFEMODE_GET);
+//    if (mode) {
+//      System.out.println("Safe mode is ON");
+//    }
     System.out.println("Configured Capacity: " + capacity
         + " (" + StringUtils.byteDesc(capacity) + ")");
     System.out.println("Present Capacity: " + presentCapacity

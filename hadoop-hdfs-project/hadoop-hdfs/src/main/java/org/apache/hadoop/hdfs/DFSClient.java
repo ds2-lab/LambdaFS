@@ -2248,7 +2248,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @see ClientProtocol#getStats()
    */
   public FsStatus getDiskStatus() throws IOException {
-    long rawNums[] = callGetStats();
+    long[] rawNums = callGetStats();
     return new FsStatus(rawNums[0], rawNums[1], rawNums[2]);
   }
 
@@ -2340,7 +2340,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   public boolean setSafeMode(SafeModeAction action, boolean isChecked) throws IOException{
     if(leaderNN==null){
-      throw new IOException("no leader namenode availlable");
+      throw new IOException("There is no leader NameNode available!");
     }
     try (TraceScope ignored = tracer.newScope("setSafeMode")) {
       for (ClientProtocol nn : allNNs) {
