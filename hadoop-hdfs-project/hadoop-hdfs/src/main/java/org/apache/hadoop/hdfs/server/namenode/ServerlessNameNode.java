@@ -400,8 +400,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *  - Processing intermediate block reports from DataNodes.
    */
   public void getAndProcessUpdatesFromIntermediateStorage() throws IOException, ClassNotFoundException {
+    LOG.debug("Retrieving and processing updates from intermediate storage.");
+    LOG.debug("First, retrieving all DataNode registrations.");
     List<DatanodeRegistration> datanodeRegistrations = getDataNodesFromIntermediateStorage();
+    LOG.debug("Finished retrieving DataNode registrations. " +
+            "Next, retrieving and processing storage reports for each DN.");
     retrieveAndProcessStorageReports(datanodeRegistrations);
+    LOG.debug("Finished retrieving and processing storage reports. " +
+            "Next, retrieving and processing intermediate block reports for each DN.");
     getAndProcessIntermediateBlockReports();
   }
 
@@ -939,7 +945,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
     LOG.debug("There are " + dnMap.size() + " new DataNodes to process after pre-processing step.");
-    LOG.debug("DataNodes after preprocessing step:");
 
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
     //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.

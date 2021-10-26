@@ -1357,6 +1357,8 @@ public class DatanodeManager {
                                              StorageReport[] reports) throws IOException {
     synchronized (heartbeatManager) {
       synchronized (datanodeMap) {
+        LOG.debug("Processing StorageReports for DataNode " + nodeReg.getDatanodeUuid()
+                + " now. There are " + reports.length + " report(s) to process.");
         DatanodeDescriptor nodeInfo = null;
         String dataNodeUuid = nodeReg.getDatanodeUuid();
 
