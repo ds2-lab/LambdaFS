@@ -3621,6 +3621,21 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     // remove inodes from inodesMap
     if (removedINodes != null) {
       dir.removeFromInodeMap(removedINodes);
+
+      // Remove these INodes from the local metadata cache, as they've been deleted.
+      LOG.debug("Invalidating up to " + removedINodes.size() + " metadata cache " +
+              (removedINodes.size() == 1 ? "entry for removed INodes now." : "entries for removed INodes now."));
+      int numInvalidated = 0;
+      for (INode inode : removedINodes) {
+        LOG.debug("Attempting to invalidate INode " + inode.getFullPathName() + " (id=" + inode.getId() + ").");
+        boolean invalidated = invalidateMetadataCacheEntry(inode.getId());
+
+        if (invalidated)
+          numInvalidated++;
+      }
+      LOG.debug("Invalidated " + numInvalidated + "/" + removedINodes.size()
+              + " cache " + (numInvalidated == 1 ? "entry" : "entries") + " corresponding to removed INodes.");
+
       removedINodes.clear();
     }
   }

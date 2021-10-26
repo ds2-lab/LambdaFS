@@ -238,7 +238,6 @@ public class OpenWhiskHandler {
                                      String clientName, boolean isClientInvoker, boolean tcpEnabled) {
         NameNodeResult result = new NameNodeResult(functionName, requestId, "HTTP");
 
-        LOG.debug("");
         LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
 
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
@@ -273,7 +272,6 @@ public class OpenWhiskHandler {
             LOG.warn("Apparently, request " + requestId + " must be re-executed...");
         }
 
-        LOG.debug("");
         LOG.debug("========== Processing Updates from Intermediate Storage ==========");
 
         // Now we need to process various updates that are stored in intermediate storage by DataNodes.

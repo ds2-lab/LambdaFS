@@ -1041,7 +1041,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
   }
 
   public DatanodeStorageInfo updateStorage(DatanodeStorage s) throws IOException {
-    LOG.debug("Updating storage map for DataNode " + getDatanodeUuid() + " now...");
+    //LOG.debug("Updating storage map for DataNode " + getDatanodeUuid() + " now...");
     synchronized (storageMap) {
       DatanodeStorageInfo storage = getStorageInfo(s.getStorageID());
       if (storage == null) {

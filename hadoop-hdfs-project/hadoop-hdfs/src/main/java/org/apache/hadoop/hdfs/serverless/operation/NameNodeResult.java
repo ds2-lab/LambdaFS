@@ -162,7 +162,6 @@ public class NameNodeResult implements Serializable {
      * Log some useful debug information about the result field (e.g., the object's type) to the console.
      */
     public void logResultDebugInformation(String opPerformed) {
-        LOG.debug("");
         LOG.debug("+-+-+-+-+-+-+ Result Debug Information +-+-+-+-+-+-+");
         if (hasResult) {
             LOG.debug("Type: " + result.getClass());

@@ -192,7 +192,6 @@ public class NameNodeTCPClient {
              * @param object The object that the client sent to us.
              */
             public void received(Connection connection, Object object) {
-                LOG.debug("");
                 LOG.debug("[TCP Client] Received message from connection " + connection.toString());
 
                 NameNodeResult tcpResult;
