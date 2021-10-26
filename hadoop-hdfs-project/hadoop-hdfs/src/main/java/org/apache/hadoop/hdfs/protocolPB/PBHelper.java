@@ -18,6 +18,8 @@
 package org.apache.hadoop.hdfs.protocolPB;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+
+import com.esotericsoftware.minlog.Log;
 import com.google.common.base.Preconditions;
 import static org.apache.hadoop.hdfs.protocol.proto.EncryptionZonesProtos
     .EncryptionZoneProto;
@@ -2038,7 +2040,8 @@ public class PBHelper {
       throws IOException {
     final int firstByte = input.read();
     if (firstByte == -1) {
-      throw new EOFException("Premature EOF: no length prefix available");
+      Log.error("Premature EOF: No length prefix available. HINT: Check to see if DN crashed!");
+      throw new EOFException("Premature EOF: No length prefix available. HINT: Check to see if DN crashed!");
     }
 
     int size = CodedInputStream.readRawVarint32(firstByte, input);

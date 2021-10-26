@@ -944,7 +944,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
-    LOG.debug("There are " + dnMap.size() + " new DataNodes to process after pre-processing step.");
+    LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
 
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
     //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.

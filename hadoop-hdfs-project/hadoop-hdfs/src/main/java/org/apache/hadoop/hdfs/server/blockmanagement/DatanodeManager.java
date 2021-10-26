@@ -902,8 +902,8 @@ public class DatanodeManager {
               .debug("BLOCK* registerDatanode: " + "node restarted.");
 
           DatanodeStorageInfo[] dnStorageInfos = nodeN.getStorageInfos();
-          ServerlessNameNode.LOG.debug("Newly-registered DN (nodeN & nodeS) has at least one associated storageInfo: {}",
-                  (dnStorageInfos != null) && dnStorageInfos.length > 0);
+//          ServerlessNameNode.LOG.debug("Newly-registered DN (nodeN & nodeS) has at least one associated storageInfo: {}",
+//                  (dnStorageInfos != null) && dnStorageInfos.length > 0);
         }
       } else {
         // nodeS is found
@@ -947,8 +947,8 @@ public class DatanodeManager {
       startDecommissioningIfExcluded(nodeS);
 
       DatanodeStorageInfo[] dnStorageInfos = nodeS.getStorageInfos();
-      ServerlessNameNode.LOG.debug("Newly-registered DN (nodeS) has at least one associated storageInfo: {}",
-              (dnStorageInfos != null) && dnStorageInfos.length > 0);
+//      ServerlessNameNode.LOG.debug("Newly-registered DN (nodeS) has at least one associated storageInfo: {}",
+//              (dnStorageInfos != null) && dnStorageInfos.length > 0);
       return;
     }
 
@@ -970,8 +970,8 @@ public class DatanodeManager {
     addDatanode(nodeDescr);
 
     DatanodeStorageInfo[] dnStorageInfos = nodeDescr.getStorageInfos();
-    ServerlessNameNode.LOG.debug("Newly-registered (nodeDescr) DN has at least one associated storageInfo: {}",
-            (dnStorageInfos != null) && dnStorageInfos.length > 0);
+//    ServerlessNameNode.LOG.debug("Newly-registered (nodeDescr) DN has at least one associated storageInfo: {}",
+//            (dnStorageInfos != null) && dnStorageInfos.length > 0);
 
     // also treat the registration message as a heartbeat
     // no need to update its timestamp
