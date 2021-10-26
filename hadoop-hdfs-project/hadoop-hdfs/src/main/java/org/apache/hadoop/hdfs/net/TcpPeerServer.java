@@ -66,6 +66,7 @@ public class TcpPeerServer implements PeerServer {
       if (channel == null) {
         peer = new BasicInetPeer(socket);
       } else {
+        LOG.debug("Creating instance of NioInetPeer. For some reason, this often causes the DataNode to crash...");
         peer = new NioInetPeer(socket);
       }
       success = true;

@@ -30,7 +30,7 @@ import org.apache.hadoop.net.unix.DomainSocket;
 /**
  * Represents a peer that we communicate with by using non-blocking I/O on a Socket.
  */
-class NioInetPeer implements Peer {
+public class NioInetPeer implements Peer {
   private final Socket socket;
 
   /**
@@ -45,7 +45,7 @@ class NioInetPeer implements Peer {
 
   private final boolean isLocal;
 
-  NioInetPeer(Socket socket) throws IOException {
+  public NioInetPeer(Socket socket) throws IOException {
     this.socket = socket;
     this.in = new SocketInputStream(socket.getChannel(), 0);
     this.out = new SocketOutputStream(socket.getChannel(), 0);
