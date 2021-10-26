@@ -1931,6 +1931,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
 
     LOG.debug("Initializing NameNode now...");
+    Instant initStart = Instant.now();
 
     this.heartBeatInterval = conf.getLong(DFS_HEARTBEAT_INTERVAL_KEY,
             DFS_HEARTBEAT_INTERVAL_DEFAULT) * 1000L;
@@ -1965,7 +1966,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     eventManagerThread = new Thread(ndbEventManager);
     eventManagerThread.start();
 
-     LOG.debug("Started the NDB EventManager thread.");
+    LOG.debug("Started the NDB EventManager thread.");
+
+    Instant serverlessInitDone = Instant.now();
+    Duration serverlessInitDuration = Duration.between(initStart, serverlessInitDone);
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+    LOG.debug("Serverless-specific NN initialization completed in " +
+            DurationFormatUtils.formatDurationHMS(serverlessInitDuration.toMillis()));
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 
     numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
@@ -2022,8 +2030,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
     StartupProgressMetrics.register(startupProgress);
 
+    Instant intermediateInitDone = Instant.now();
+    Duration intermediateInitDuration = Duration.between(serverlessInitDone, intermediateInitDone);
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+    LOG.debug("Intermediate NameNode initialization completed in " +
+            DurationFormatUtils.formatDurationHMS(intermediateInitDuration.toMillis()));
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+
     loadNamesystem(conf);
     LOG.debug("Finished loading the namesystem.");
+
+    Instant loadNamesystemDone = Instant.now();
+    Duration loadNamesystemDuration = Duration.between(intermediateInitDone, loadNamesystemDone);
+    LOG.debug("- - - - - - - - - - - - - - - -");
+    LOG.debug("Loaded namesystem in " + DurationFormatUtils.formatDurationHMS(loadNamesystemDuration.toMillis()));
+    LOG.debug("- - - - - - - - - - - - - - - -");
 
     // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
     ndbEventManager.addListener(namesystem);
@@ -2034,12 +2055,24 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     metrics.getJvmMetrics().setPauseMonitor(pauseMonitor);
 
+    Instant metadataInitStart = Instant.now();
     writeMetadataToNdb();
     refreshActiveNameNodesList();
+    Instant metadataInitEnd = Instant.now();
+    Duration metadataInitDuration = Duration.between(metadataInitStart, metadataInitEnd);
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+    LOG.debug("Wrote NN metadata to storage and refreshed active NN list in " +
+            DurationFormatUtils.formatDurationHMS(metadataInitDuration.toMillis()));
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 
     startCommonServices(conf);
+    Instant commonServiceEnd = Instant.now();
+    Duration startCommonServiceDuration = Duration.between(metadataInitEnd, commonServiceEnd);
 
-    LOG.debug("Finished starting common NameNode services.");
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
+    LOG.debug("Started common NameNode services in " +
+            DurationFormatUtils.formatDurationHMS(startCommonServiceDuration.toMillis()));
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
 
     if(isLeader()){ //if the newly started namenode is the leader then it means
       //that is cluster was restarted and we can reset the number of default
