@@ -1941,6 +1941,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     HdfsStorageFactory.setConfiguration(conf);
 
+    Instant securityStartEnd = Instant.now();
+    Duration securityDuration = Duration.between(initStart, securityStartEnd);
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+    LOG.debug("Finished security start-up in " + DurationFormatUtils.formatDurationHMS(securityDuration.toMillis()));
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+    Instant nameNodeInitStart = Instant.now();
+
     nameNodeWorkQueue = new LinkedBlockingQueue<>();
 
     // Create the thread and tell it to run!
@@ -1960,16 +1967,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // not found errors.
     ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
     ndbEventManager.defaultSetup(null, true);
+
     // Note that we need to register the namesystem as an event listener with the event manager,
     // but the name system doesn't get loaded until a little later.
-
     eventManagerThread = new Thread(ndbEventManager);
     eventManagerThread.start();
 
     LOG.debug("Started the NDB EventManager thread.");
 
     Instant serverlessInitDone = Instant.now();
-    Duration serverlessInitDuration = Duration.between(initStart, serverlessInitDone);
+    Duration serverlessInitDuration = Duration.between(nameNodeInitStart, serverlessInitDone);
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
     LOG.debug("Serverless-specific NN initialization completed in " +
             DurationFormatUtils.formatDurationHMS(serverlessInitDuration.toMillis()));
