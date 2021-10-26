@@ -254,11 +254,9 @@ public class OpenWhiskHandler {
             return result;
         }
 
-        LOG.debug("==================================================================\n");
-
         // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
         // from intermediate storage.
-        LOG.debug("Checking for duplicate requests now...");
+        LOG.debug("==================================================================");
 
         // Check if we need to redo this operation. This can occur if the TCP connection that was supposed
         // to deliver the result back to the client was dropped before the client received the result.
@@ -276,7 +274,7 @@ public class OpenWhiskHandler {
         }
 
         LOG.debug("");
-        LOG.debug("======== Processing Updates from Intermediate Storage ========");
+        LOG.debug("========== Processing Updates from Intermediate Storage ==========");
 
         // Now we need to process various updates that are stored in intermediate storage by DataNodes.
         // These include storage reports, block reports, and new DataNode registrations.
@@ -291,7 +289,7 @@ public class OpenWhiskHandler {
         }
 
         LOG.debug("Successfully processed updates from intermediate storage!");
-        LOG.debug("==============================================================\n");
+        LOG.debug("==================================================================");
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
