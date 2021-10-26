@@ -939,6 +939,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
     LOG.debug("There are " + dnMap.size() + " new DataNodes to process after pre-processing step.");
+    LOG.debug("DataNodes after preprocessing step:");
 
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
     //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
@@ -988,18 +989,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
     }
 
-    DatanodeManager datanodeManager = namesystem.getBlockManager().getDatanodeManager();
-    for (DatanodeRegistration registration : datanodeRegistrations) {
-      DatanodeDescriptor datanodeDescriptor = datanodeManager.getDatanode(registration.getDatanodeUuid());
-      DatanodeStorageInfo[] storageInfos = datanodeDescriptor.getStorageInfos();
-      int numStorageInfos = storageInfos.length;
-
-      if (numStorageInfos == 1)
-        LOG.debug("After registration, DataNode " + registration.getDatanodeUuid() + " has 1 storage info.");
-      else
-        LOG.debug("After registration, DataNode " + registration.getDatanodeUuid() + " has " +
-                numStorageInfos + " storage infos.");
-    }
+//    Commented out because DataNodes do not get storages until processing their storage reports.
+//
+//    DatanodeManager datanodeManager = namesystem.getBlockManager().getDatanodeManager();
+//    for (DatanodeRegistration registration : datanodeRegistrations) {
+//      DatanodeDescriptor datanodeDescriptor = datanodeManager.getDatanode(registration.getDatanodeUuid());
+//      DatanodeStorageInfo[] storageInfos = datanodeDescriptor.getStorageInfos();
+//      int numStorageInfos = storageInfos.length;
+//
+//      if (numStorageInfos == 1)
+//        LOG.debug("After registration, DataNode " + registration.getDatanodeUuid() + " has 1 storage info.");
+//      else
+//        LOG.debug("After registration, DataNode " + registration.getDatanodeUuid() + " has " +
+//                numStorageInfos + " storage infos.");
+//    }
 
     return datanodeRegistrations;
   }
