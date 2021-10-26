@@ -624,8 +624,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
         excessStorages.remove(report.getStorage().getStorageID());
       }
 
-      // For each remaining storage, remove it if there are no associated
-      // blocks.
+      // For each remaining storage, remove it if there are no associated blocks.
       for (final DatanodeStorageInfo storageInfo : excessStorages.values()) {
         try {
           if (storageInfo.numBlocks() == 0) {

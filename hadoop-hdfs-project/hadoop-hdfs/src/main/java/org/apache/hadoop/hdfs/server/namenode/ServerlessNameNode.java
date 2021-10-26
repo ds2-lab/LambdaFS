@@ -881,7 +881,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     DataNodeDataAccess<DataNodeMeta> dataAccess = (DataNodeDataAccess)
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
+
     LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("DataNodes retrieved: ");
+      for (DataNodeMeta dataNodeMeta : dataNodes)
+        LOG.debug(dataNodeMeta.toString());
+    }
 
     NamespaceInfo nsInfo = namesystem.getNamespaceInfo();
 
@@ -925,12 +932,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           numReplaced++;
         }
       }
-      else
+      else {
         dnMap.put(key, dataNodeMeta);
+      }
     }
 
     LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
-    LOG.debug("Discovered " + dnMap.size() + " new DataNodes. Processing now...");
+    LOG.debug("There are " + dnMap.size() + " new DataNodes to process after pre-processing step.");
 
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
     //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
