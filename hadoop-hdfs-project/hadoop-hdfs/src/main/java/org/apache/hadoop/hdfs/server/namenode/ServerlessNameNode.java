@@ -45,6 +45,7 @@ import io.hops.transaction.lock.TransactionLocks;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
@@ -104,6 +105,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.PrivilegedExceptionAction;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
@@ -2249,10 +2251,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     this.conf = conf;
     try {
       initializeGenericKeys(conf);
+      Instant initStart = Instant.now();
       initialize(conf);
-      LOG.debug("NameNode initialization completed.");
+      Instant initEnd = Instant.now();
+      Duration initDuration = Duration.between(initStart, initEnd);
+      LOG.debug("NameNode initialization completed. Time elapsed: " +
+              DurationFormatUtils.formatDurationHMS(initDuration.toMillis()));
       this.started.set(true);
+      Instant activeStateStart = Instant.now();
       enterActiveState();
+      Instant activeStateEnd = Instant.now();
+      Duration enterActiveStateDuration = Duration.between(activeStateStart, activeStateEnd);
+      LOG.debug("NameNode entered active state. Time elapsed: " +
+              DurationFormatUtils.formatDurationHMS(enterActiveStateDuration.toMillis()));
     } catch (IOException | HadoopIllegalArgumentException e) {
       this.stop();
       throw e;

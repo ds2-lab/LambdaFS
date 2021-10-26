@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.mysql.clusterj.ClusterJHelper;
 import com.mysql.clusterj.Dbug;
 import com.mysql.clusterj.tie.DbugImpl;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
@@ -17,6 +18,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.*;
 
 import static com.google.common.hash.Hashing.consistentHash;
@@ -107,9 +110,8 @@ public class OpenWhiskHandler {
         String clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
 
         boolean tcpEnabled = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_ENABLED).getAsBoolean();
-//        if (userArguments.has(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP)) {
-//            clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
-//        }
+
+        Instant start = Instant.now();
 
         String[] commandLineArguments;
         // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
@@ -185,6 +187,9 @@ public class OpenWhiskHandler {
         LOG.debug("Operation arguments: " + fsArgs);
         LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
 
+        LOG.debug("Handing control over to driver() function after "
+                + DurationFormatUtils.formatDurationHMS((Duration.between(start, Instant.now()).toMillis())));
+
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
                 requestId, clientName, isClientInvoker, tcpEnabled);
@@ -238,6 +243,7 @@ public class OpenWhiskHandler {
                                      String clientName, boolean isClientInvoker, boolean tcpEnabled) {
         NameNodeResult result = new NameNodeResult(functionName, requestId, "HTTP");
 
+        Instant creationStart = Instant.now();
         LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
 
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
@@ -252,6 +258,11 @@ public class OpenWhiskHandler {
             result.addException(ex);
             return result;
         }
+
+        Instant creationEnd = Instant.now();
+        Duration creationDuration = Duration.between(creationStart, creationEnd);
+        LOG.debug("Getting/creating NN instance took: "
+                + DurationFormatUtils.formatDurationHMS(creationDuration.toMillis()));
 
         // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
         // from intermediate storage.
@@ -286,7 +297,11 @@ public class OpenWhiskHandler {
             result.addException(ex);
         }
 
-        LOG.debug("Successfully processed updates from intermediate storage!");
+        Instant updateEnd = Instant.now();
+        Duration updateDuration = Duration.between(creationEnd, updateEnd);
+
+        LOG.debug("Successfully processed updates from intermediate storage. Time elapsed: " +
+                DurationFormatUtils.formatDurationHMS(updateDuration.toMillis()));
         LOG.debug("==================================================================");
 
         // Finally, create a new task and assign it to the worker thread.
