@@ -1939,13 +1939,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     UserGroupInformation.setConfiguration(conf);
     loginAsNameNodeUser(conf);
 
-    HdfsStorageFactory.setConfiguration(conf);
-
     Instant securityStartEnd = Instant.now();
     Duration securityDuration = Duration.between(initStart, securityStartEnd);
     LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
     LOG.debug("Finished security start-up in " + DurationFormatUtils.formatDurationHMS(securityDuration.toMillis()));
     LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+
+    HdfsStorageFactory.setConfiguration(conf);
+
+    Instant storageFactorySetup = Instant.now();
+    Duration storageFactoryDuration = Duration.between(securityStartEnd, storageFactorySetup);
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+    LOG.debug("Finished configuring HdfsStorageFactory in " +
+            DurationFormatUtils.formatDurationHMS(storageFactoryDuration.toMillis()));
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+
     Instant nameNodeInitStart = Instant.now();
 
     nameNodeWorkQueue = new LinkedBlockingQueue<>();
