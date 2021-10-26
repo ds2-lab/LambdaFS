@@ -3611,14 +3611,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * Remove leases and inodes related to a given path
    * @param src The given path
-   * @param removedINodes Containing the list of inodes to be removed from
-   *                      inodesMap
-   * @param acquireINodeMapLock Whether to acquire the lock for inode removal
+   * @param removedINodes Containing the list of inodes to be removed from inodesMap.
    */
   void removeLeasesAndINodes(String src, List<INode> removedINodes)
       throws IOException {
     leaseManager.removeLeaseWithPrefixPath(src);
-    // remove inodes from inodesMap
+    // Remove inodes from inodesMap
     if (removedINodes != null) {
       dir.removeFromInodeMap(removedINodes);
 

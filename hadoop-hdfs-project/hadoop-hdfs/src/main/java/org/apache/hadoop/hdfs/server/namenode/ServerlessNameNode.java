@@ -104,6 +104,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.PrivilegedExceptionAction;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -201,6 +202,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Thread in which the EventManager runs.
    */
   private Thread eventManagerThread;
+
+  /**
+   * How often the DataNodes are supposed to publish heartbeats/storage reports to intermediate storage.
+   * The units of this variable are milliseconds.
+   */
+  private long heartBeatInterval;
 
   /**
    * Worker queue for the worker thread. This is accessed both by this class and by NameNodeTCPClient objects.
@@ -681,7 +688,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // The groupId column for Storage Reports is actually being used as a timestamp now. So we default to the time
     // that the NN was created, as any reports published before that point would not have been received by a
     // traditional, serverful HopsFS NN anyway.
-    long lastStorageReportGroupId = lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(), creationTime);
+    long lastStorageReportGroupId =
+            lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(), creationTime);
+
+    if (Time.getUtcTime() - lastStorageReportGroupId < heartBeatInterval) {
+      LOG.debug("StorageReports for DataNode " + registration.getDatanodeUuid() + " were last retrieved at time " +
+              Instant.ofEpochMilli(lastStorageReportGroupId).toString() + ", which was less than " +
+              heartBeatInterval + "ms ago. Skipping.");
+
+      return null;
+    }
+
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
         = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId - 1,
             registration.getDatanodeUuid());
@@ -740,7 +757,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     for (Map.Entry<String, List<StorageReport>> entry : storageReportMap.entrySet()) {
       String datanodeUuid = entry.getKey();
       List<StorageReport> storageReports = entry.getValue();
-      //LOG.debug("Storage Reports for Data Node: " + datanodeUuid);
+
+      if (storageReports == null) {
+        LOG.warn("StorageReport list for DataNode " + datanodeUuid + " is null. Skipping.");
+        convertedStorageReportMap.put(datanodeUuid, null);
+        continue;
+      }
 
       // Get the mapping of storageIds to DatanodeStorage instances for this particular datanode.
       HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorageMap
@@ -787,9 +809,25 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // and cast it to an array of HopsFS StorageReport[].
     for (DatanodeRegistration registration : datanodeRegistrations) {
       try {
-        this.namesystem.handleServerlessStorageReports(registration, convertedStorageReportMap.get(
-                        registration.getDatanodeUuid()).toArray(
-                        org.apache.hadoop.hdfs.server.protocol.StorageReport.EMPTY_ARRAY));
+        // Grab the list of converted storage reports.
+        List<org.apache.hadoop.hdfs.server.protocol.StorageReport> convertedStorageReports =
+                convertedStorageReportMap.get(registration.getDatanodeUuid());
+
+        // Check if it is null. If it is null, then there are intentionally no storage reports for this DN.
+        // If there were "unintentionally" no storage reports, then it would be of length zero. When it is null,
+        // it means we grabbed the last batch of storage reports within the last heartbeat interval, so there will
+        // not be any new ones. If we pass an array of length zero to `handleServerlessReports()`, the NN will
+        // unregister the storages of the DN bc it thinks the DN stopped reporting about them, indicating that
+        // they're gone. So we use a null value to say "no, it's fine, we know there aren't any reports yet."
+        if (convertedStorageReports == null) {
+          LOG.warn("There are no converted storage reports associated with DataNode "
+                  + registration.getDatanodeUuid() + ". Skipping...");
+          continue;
+        }
+
+        this.namesystem.handleServerlessStorageReports(registration,
+                convertedStorageReports.toArray(org.apache.hadoop.hdfs.server.protocol.StorageReport.EMPTY_ARRAY));
+
         numSuccess++; // We successfully processed those reports, so increment this counter.
       } catch (IOException ex) {
         // We catch this exception so that the entire NameNode doesn't fail if just one of the DataNodes fails
@@ -1881,6 +1919,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
 
     LOG.debug("Initializing NameNode now...");
+
+    this.heartBeatInterval = conf.getLong(DFS_HEARTBEAT_INTERVAL_KEY,
+            DFS_HEARTBEAT_INTERVAL_DEFAULT) * 1000L;
 
     UserGroupInformation.setConfiguration(conf);
     loginAsNameNodeUser(conf);
