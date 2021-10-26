@@ -628,6 +628,8 @@ public class DatanodeDescriptor extends DatanodeInfo {
       for (final DatanodeStorageInfo storageInfo : excessStorages.values()) {
         try {
           if (storageInfo.numBlocks() == 0) {
+            LOG.warn("Removing storage " + storageInfo + " from DataNode " + this
+                    + " because there are no blocks associated with it.");
             storageMap.remove(storageInfo.getStorageID());
             LOG.info("Removed storage " + storageInfo + " from DataNode" + this);
           } else if (LOG.isDebugEnabled()) {

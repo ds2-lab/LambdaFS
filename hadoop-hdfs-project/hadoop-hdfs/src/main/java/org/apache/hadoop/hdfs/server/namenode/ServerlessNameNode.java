@@ -680,8 +680,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private List<io.hops.metadata.hdfs.entity.StorageReport> retrieveStorageReports(DatanodeRegistration registration)
           throws IOException {
-    LOG.info("Retrieving StorageReport instance for datanode " + registration.getDatanodeUuid());
-
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
             (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
 
@@ -691,13 +689,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     long lastStorageReportGroupId =
             lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(), creationTime);
 
-    if (Time.getUtcTime() - lastStorageReportGroupId < heartBeatInterval) {
+    long millisecondsSinceLastReportRetrieval = Time.getUtcTime() - lastStorageReportGroupId;
+    if (millisecondsSinceLastReportRetrieval < heartBeatInterval) {
       LOG.debug("StorageReports for DataNode " + registration.getDatanodeUuid() + " were last retrieved at time " +
               Instant.ofEpochMilli(lastStorageReportGroupId).toString() + ", which was less than " +
               heartBeatInterval + "ms ago. Skipping.");
 
       return null;
     }
+
+    LOG.debug("Retrieving StorageReport instance for datanode " + registration.getDatanodeUuid()
+            + ". Reports were last retrieved " + millisecondsSinceLastReportRetrieval + " ms ago.");
 
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
         = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId - 1,
