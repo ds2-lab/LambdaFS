@@ -1863,6 +1863,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
           throws IOException {
     checkOpen();
     try (TraceScope ignored = newPathTraceScope("listPaths", src)) {
+      LOG.debug("Listing paths for target directory " + src);
       return namenode.getListing(src, startAfter, needLocation);
     } catch(RemoteException re) {
       throw re.unwrapRemoteException(AccessControlException.class,
@@ -1882,6 +1883,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public HdfsFileStatus getFileInfo(String src) throws IOException {
     checkOpen();
     try (TraceScope ignored = newPathTraceScope("getFileInfo", src)) {
+      LOG.debug("Getting file info for file/directory " + src);
       return namenode.getFileInfo(src);
     } catch(RemoteException re) {
       throw re.unwrapRemoteException(AccessControlException.class,

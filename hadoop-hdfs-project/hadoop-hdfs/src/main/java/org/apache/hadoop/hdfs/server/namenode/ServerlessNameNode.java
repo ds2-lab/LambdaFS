@@ -804,7 +804,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("Processing storage reports from " + convertedStorageReportMap.size() + " data nodes now...");
 
-    int numSuccess = 0;
+    int numSuccess = 0;               // If we have zero successes and zero skips, that's a problem.
+    int numSkippedIntentionally = 0;  // Keep track of how many we've skipped on purpose.
+                                      // Having no successes AND intentional skips is an okay scenario.
 
     // For each registration, we call the `handleServerlessStorageReports()` function. We pass the given
     // registration, then we retrieve the list of storage reports from the mapping, convert it to an Object[],
@@ -824,6 +826,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         if (convertedStorageReports == null) {
           LOG.warn("There are no converted storage reports associated with DataNode "
                   + registration.getDatanodeUuid() + ". Skipping...");
+          numSkippedIntentionally++;
           continue;
         }
 
@@ -845,13 +848,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
     }
 
+    // We don't need to consider datanode registrations that we intentionally skipped in this upcoming
+    // check. There's only a problem if there were non-skipped registrations and we successfully
+    // processed NONE of them.
+    int numNotSkipped = datanodeRegistrations.size() - numSkippedIntentionally;
+
     // If we didn't register ANY DataNodes, then we should raise an exception here,
     // as we won't have any DataNodes with which to complete file system operations.
-    if (datanodeRegistrations.size() > 0 && numSuccess == 0) {
+    if (numNotSkipped > 0 && numSuccess == 0) {
       // TODO: What if we already have some valid DNs registered? We shouldn't throw an exception in this case.
       //       We should add an additional condition that we also do not have any valid DNs.
       throw new IOException("Failed to successfully process any of the " + datanodeRegistrations.size() +
-              " registration(s).");
+              " non-skipped registration(s).");
     }
     else if (datanodeRegistrations.size() == 0) {
       LOG.warn("There were NO datanode registrations to process...");
