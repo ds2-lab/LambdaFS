@@ -153,7 +153,7 @@ public class NameNodeTCPClient {
      * false if a connection with that client already exists.
      * @throws IOException If the connection to the new client times out.
      */
-    public boolean addClient(ServerlessHopsFSClient newClient) {
+    public boolean addClient(ServerlessHopsFSClient newClient) throws IOException {
         if (tcpClients.containsKey(newClient)) {
             LOG.warn("NameNodeTCPClient already has a connection to client " + newClient);
             return false;
@@ -254,13 +254,14 @@ public class NameNodeTCPClient {
 
         // We time how long it takes to establish the TCP connection for debugging/metric-collection purposes.
         Instant connectStart = Instant.now();
-        Thread connectThread = new Thread("Connect") {
+        Thread connectThread
+                = new Thread("Thread-ConnectTo" + newClient.getClientIp() + ":" + newClient.getClientPort()) {
             public void run() {
                 try {
                     // The call to connect() may produce an IOException if it times out.
                     tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
                 } catch (IOException ex) {
-                    LOG.error("Exception encountered while trying to connect to HopsFS Client via TCP:", ex);
+                    LOG.error("IOException encountered while trying to connect to HopsFS Client via TCP:", ex);
                 }
             }
         };
@@ -268,7 +269,7 @@ public class NameNodeTCPClient {
         try {
             connectThread.join();
         } catch (InterruptedException ex) {
-            LOG.error("Exception encountered while trying to connect to HopsFS Client via TCP:", ex);
+            LOG.error("InterruptedException encountered while trying to connect to HopsFS Client via TCP:", ex);
         }
         Instant connectEnd = Instant.now();
 
@@ -278,15 +279,20 @@ public class NameNodeTCPClient {
         double connectMilliseconds = TimeUnit.NANOSECONDS.toMillis(connectDuration.getNano()) +
                 TimeUnit.SECONDS.toMillis(connectDuration.getSeconds());
 
-        LOG.debug("Successfully established connection with client " + newClient.getClientId()
-                + " in " + connectMilliseconds + " milliseconds!");
+        if (tcpClient.isConnected()) {
+            LOG.debug("Successfully established connection with client " + newClient.getClientId()
+                    + " in " + connectMilliseconds + " milliseconds!");
 
-        // Now that we've registered the classes to be transferred, we can register with the server.
-        registerWithClient(tcpClient);
+            // Now that we've registered the classes to be transferred, we can register with the server.
+            registerWithClient(tcpClient);
 
-        tcpClients.put(newClient, tcpClient);
+            tcpClients.put(newClient, tcpClient);
 
-        return true;
+            return true;
+        } else {
+            throw new IOException("Failed to connect to client at " + newClient.getClientIp() + ":" +
+                    newClient.getClientPort());
+        }
     }
 
     private NameNodeResult handleWorkAssignment(JsonObject args) {
