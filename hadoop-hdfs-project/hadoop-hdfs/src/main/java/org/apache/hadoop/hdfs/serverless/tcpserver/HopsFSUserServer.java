@@ -200,12 +200,17 @@ public class HopsFSUserServer {
 
                     LOG.debug("[TCP Server] Received message from NameNode at " + connection.toString() + " at " +
                             connection.getRemoteAddressTCP() + ".");
-                    LOG.debug("[TCP Server] Message contents: " + body.toString());
 
-                    LOG.debug("===== Message Contents =====");
-                    for (String key : body.keySet())
-                        LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
-                    LOG.debug("============================");
+                    try {
+                        LOG.debug("===== Message Contents =====");
+                        for (String key : body.keySet())
+                            LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
+                        LOG.debug("============================");
+                    } catch (Exception ex) {
+                        LOG.error("Error encountered while iterating over keys of message:", ex);
+                        LOG.debug("Printing message in its entirety.");
+                        LOG.debug(body.toString());
+                    }
 
                     String functionName = body.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION_NAME).getAsString();
                     String operation = body.getAsJsonPrimitive("op").getAsString();
