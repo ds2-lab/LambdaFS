@@ -289,6 +289,8 @@ public class NameNodeResult implements Serializable {
 
         json.addProperty(ServerlessNameNodeKeys.CANCELLED, false);
 
+        json.addProperty(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
+
         return json;
     }
 

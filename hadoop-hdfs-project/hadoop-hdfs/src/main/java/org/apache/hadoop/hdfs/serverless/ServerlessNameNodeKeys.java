@@ -21,6 +21,7 @@ public class ServerlessNameNodeKeys {
     public static final String REASON = "reason";
     public static final String SHOULD_RETRY = "shouldRetry";
     public static final String REASON_CONNECTION_LOST = "CONNECTION_LOST";
+    public static final String OPENWHISK_ACTIVATION_ID = "OPENWHISK_ACTIVATION_ID";
 
     /**
      * Used to indicate to the NN that it should re-attempt this operation, even if
