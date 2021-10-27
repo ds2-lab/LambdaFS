@@ -44,7 +44,7 @@ public abstract class Cache {
 
   public static Cache getInstance(Configuration conf) throws IOException {
     if (instance == null) {
-      String  memType = conf.get(DFSConfigKeys.DFS_RESOLVING_CACHE_TYPE,
+      String memType = conf.get(DFSConfigKeys.DFS_RESOLVING_CACHE_TYPE,
           DFSConfigKeys.DFS_RESOLVING_CACHE_TYPE_DEFAULT).toLowerCase();
       if(memType.equals("inmemory")){
         instance = new InMemoryCache();

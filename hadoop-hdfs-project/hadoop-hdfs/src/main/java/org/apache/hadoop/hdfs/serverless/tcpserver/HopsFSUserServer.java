@@ -468,6 +468,7 @@ public class HopsFSUserServer {
             return false;
         }
 
+        LOG.debug("[TCP Server] Registering future for request " + requestResponseFuture.getRequestId() + ".");
         activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
         return true;
     }
@@ -515,18 +516,23 @@ public class HopsFSUserServer {
             return null;
         }
 
-        // Send the TCP request to the NameNode.
-        NameNodeConnection tcpConnection = getConnection(functionNumber);
-        int bytesSent = tcpConnection.sendTCP(payload.toString());
-
-        LOG.debug("Sent " + bytesSent + " bytes to NameNode" + functionNumber + ".");
-
         // Create and register a future to keep track of this request and provide a means for the client to obtain
         // a response from the NameNode, should the client deliver one to us.
         String requestId = payload.get("requestId").getAsString();
         String operation = payload.get("op").getAsString();
         RequestResponseFuture requestResponseFuture = new RequestResponseFuture(requestId, operation);
         registerRequestResponseFuture(requestResponseFuture);
+
+        // Send the TCP request to the NameNode.
+        NameNodeConnection tcpConnection = getConnection(functionNumber);
+        int bytesSent = tcpConnection.sendTCP(payload.toString());
+
+        // If 'bytesSent' is zero, then an error must have occurred.
+        // TODO: Handle this scenario somehow (resubmit the TCP request, notify the client, etc.)
+        if (bytesSent == 0)
+            LOG.error("Transmission of TCP request " + requestId + " sent 0 bytes.");
+        else
+            LOG.debug("Sent " + bytesSent + " bytes to NameNode" + functionNumber + ".");
 
         // Make note of this future as being incomplete.
         List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(

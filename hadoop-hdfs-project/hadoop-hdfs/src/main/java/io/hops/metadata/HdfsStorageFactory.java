@@ -126,17 +126,6 @@ public class HdfsStorageFactory {
 
       ClassLoader loader = DalDriver.class.getClassLoader();
 
-      /*System.out.println(DalDriver.class.getSimpleName() + ".class");
-      System.out.println(String.valueOf(DalDriver.class.getResource("DalDriver.class")));
-      System.out.println(String.valueOf(loader.getResource("io/hops/DalDriver.class")));
-      System.out.println(String.valueOf(DalDriver.class.getProtectionDomain().getCodeSource().getLocation()));
-
-      loader = DalStorageFactory.class.getClassLoader();
-      System.out.println(DalStorageFactory.class.getSimpleName() + ".class");
-      System.out.println(String.valueOf(DalStorageFactory.class.getResource("DalStorageFactory.class")));
-      System.out.println(String.valueOf(loader.getResource("io/hops/DalStorageFactory.class")));
-      System.out.println(String.valueOf(DalStorageFactory.class.getProtectionDomain().getCodeSource().getLocation()));*/
-
       HdfsVariables.registerDefaultValues(conf);
 
       String metadataDalJarPath = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,

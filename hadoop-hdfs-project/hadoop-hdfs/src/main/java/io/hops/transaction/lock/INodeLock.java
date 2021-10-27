@@ -297,7 +297,7 @@ public class INodeLock extends BaseINodeLock {
       byte[][] components, String path)
       throws StorageException, UnresolvedPathException,
       TransactionContextException {
-    // TODO Handle the case that predecessing nodes get deleted before locking
+    // TODO Handle the case that predecessor nodes get deleted before locking
     // lock upgrade if the path was not fully resolved
     if (resolvedINodes.size() != components.length) {
       // path was not fully resolved

@@ -29,7 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 
-public class InMemoryCache extends Cache{
+public class InMemoryCache extends Cache {
 
   private ConcurrentLinkedHashMap<String, Long> pathCache;
   //store INodeIdentifier instead of INode to save memory and avoid risk of modifying the INode object by accident
@@ -124,7 +124,7 @@ public class InMemoryCache extends Cache{
   @Override
   protected void flushInternal() {
     pathCache.clear();
-    inodeIdCache.clear();;
+    inodeIdCache.clear();
   }
 
   @Override
