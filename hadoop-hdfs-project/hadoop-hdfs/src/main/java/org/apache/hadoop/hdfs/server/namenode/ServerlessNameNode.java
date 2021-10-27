@@ -722,7 +722,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // This is because the worker thread performs the updates now. So the worker thread just checks for updates
     // every heartbeat interval.
 //
-//    long millisecondsSinceLastReportRetrieval = Time.getUtcTime() - lastStorageReportGroupId;
+    long millisecondsSinceLastReportRetrieval = Time.getUtcTime() - lastStorageReportGroupId;
 //    if (millisecondsSinceLastReportRetrieval < heartBeatInterval) {
 //      LOG.debug("StorageReports for DataNode " + registration.getDatanodeUuid() + " were last retrieved at time " +
 //              Instant.ofEpochMilli(lastStorageReportGroupId).toString() + ", which was less than " +
