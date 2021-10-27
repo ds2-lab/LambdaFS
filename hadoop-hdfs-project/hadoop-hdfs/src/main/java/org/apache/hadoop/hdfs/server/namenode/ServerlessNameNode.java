@@ -1991,7 +1991,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Create the thread and tell it to run!
     workerThread = new NameNodeWorkerThread(conf, nameNodeWorkQueue, this, functionName);
-    workerThread.start();
 
     LOG.debug("Started the NameNode worker thread.");
 
@@ -2133,6 +2132,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // -1 to ensure the entries in the current epoch are delete by the cleaner
       HdfsVariables.setRetryCacheCleanerEpoch(System.currentTimeMillis()/1000 - 1);
     }
+  }
+
+  /**
+   * Start the NameNodeWorkerThread if it has not already been started.
+   */
+  public void tryStartWorkerThread() {
+    if (workerThread.isAlive())
+      return;
+
+    workerThread.start();
   }
 
   /**

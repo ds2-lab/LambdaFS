@@ -268,6 +268,8 @@ public class OpenWhiskHandler {
         // from intermediate storage.
         LOG.debug("==================================================================");
 
+        serverlessNameNode.tryStartWorkerThread();
+
         // Check if we need to redo this operation. This can occur if the TCP connection that was supposed
         // to deliver the result back to the client was dropped before the client received the result.
         boolean redoEvenIfDuplicate = false;
