@@ -81,6 +81,7 @@ import org.apache.hadoop.hdfs.HDFSPolicyProvider;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.client.BlockReportOptions;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
+import org.apache.hadoop.hdfs.net.NioInetPeer;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.BlockLocalPathInfo;
 import org.apache.hadoop.hdfs.protocol.ClientDatanodeProtocol;
@@ -1242,6 +1243,16 @@ public class DataNode extends ReconfigurableBase
   void startDataNode(Configuration conf, AbstractList<StorageLocation> dataDirs,
       SecureResources resources) throws IOException {  
     LOG.info("startDataNode() called!");
+
+    LOG.debug("Creating instance of NioInetPeer to see if the DN crashes.");
+
+    try {
+      NioInetPeer peer = new NioInetPeer(null);
+    } catch (NullPointerException ex) {
+      // Ignore a NullPointerException; this is expected.
+      LOG.debug("Encountered NPE while creating NioInetPeer. This is expected.");
+      LOG.debug("Printing the *EXPECTED* NPE:", ex);
+    }
 
     // settings global for all BPs in the Data Node
     this.secureResources = resources;

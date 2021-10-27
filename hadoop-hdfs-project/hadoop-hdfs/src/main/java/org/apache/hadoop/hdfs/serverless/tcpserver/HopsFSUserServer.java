@@ -200,6 +200,7 @@ public class HopsFSUserServer {
 
                     LOG.debug("[TCP Server] Received message from NameNode at " + connection.toString() + " at " +
                             connection.getRemoteAddressTCP() + ".");
+                    LOG.debug("[TCP Server] Message contents: " + body.toString());
 
                     LOG.debug("===== Message Contents =====");
                     for (String key : body.keySet())
