@@ -212,6 +212,8 @@ public class NameNodeWorkerThread extends Thread {
     public void run() {
         LOG.info("Serverless NameNode Worker Thread has started running.");
 
+        doRoutineActivities();
+
         // Pretend we checked our (currently-empty) cache for results to purge.
         lastPurgePass = Time.getUtcTime();
 
