@@ -436,6 +436,12 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      */
     @Override
     public Object extractResultFromJsonResponse(JsonObject response) {
+        String requestId;
+        if (response.has(ServerlessNameNodeKeys.REQUEST_ID))
+            requestId = response.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
+        else
+            requestId = "N/A";
+
         // First, let's check and see if there's any information about file/directory-to-function mappings.
         if (response.has(ServerlessNameNodeKeys.FUNCTION_MAPPING)) {
             LOG.debug("JSON response from serverless name node contains function mapping information.");
@@ -459,11 +465,23 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {
             JsonArray exceptionsJson = response.get(ServerlessNameNodeKeys.EXCEPTIONS).getAsJsonArray();
 
-            LOG.warn("The ServerlessNameNode encountered " + exceptionsJson.size()
-                    + (exceptionsJson.size() == 1 ? " exception" : " exceptions") + ".");
+            int numExceptions = exceptionsJson.size();
 
-            for (int i = 0; i < exceptionsJson.size(); i++)
-                LOG.error(exceptionsJson.get(i).getAsString());
+            if (numExceptions > 0) {
+                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
+                LOG.warn("*** The ServerlessNameNode encountered " + numExceptions +
+                        (numExceptions == 1 ? " exception. ***" : " exceptions. ***"));
+
+                for (int i = 0; i < exceptionsJson.size(); i++)
+                    LOG.error(exceptionsJson.get(i).getAsString());
+                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
+            }
+            else {
+                LOG.debug("The Serverless NameNode did not encounter any exceptions while executing task " +
+                        requestId);
+            }
+
+
         }
 
         // Now we'll check for a result from the name node.
