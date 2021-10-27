@@ -203,11 +203,16 @@ public class HopsFSUserServer {
 
                     try {
                         LOG.debug("===== Message Contents =====");
-                        for (String key : body.keySet())
-                            LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
+                        for (String key : body.keySet()) {
+                            try {
+                                LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
+                            } catch (ClassCastException ex) {
+                                LOG.debug("     " + key + ": " + body.getAsJsonArray(key).toString());
+                            }
+                        }
                         LOG.debug("============================");
                     } catch (Exception ex) {
-                        LOG.error("Error encountered while iterating over keys of message:", ex);
+                        LOG.error("Unexpected error encountered while iterating over keys of message:", ex);
                         LOG.debug("Printing message in its entirety.");
                         LOG.debug(body.toString());
                     }
