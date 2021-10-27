@@ -211,7 +211,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 opArguments,
                 requestId));
 
-        LOG.debug("Successfully submitted HTTP request. Waiting for first result now...");
+        LOG.debug("Successfully submitted HTTP request for task " + requestId + "(op=" + operationName +
+                "). Waiting for first result now...");
 
         // We should NOT just return the first result that we get.
         // It is not uncommon that the NameNode will receive the TCP request first and begin working on the task.
@@ -230,6 +231,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         while (true) {
             LOG.debug("============ Waiting for Responses ============");
             LOG.debug("Task ID: " + requestId);
+            LOG.debug("Operation name: " + operationName);
             LOG.debug("Number of TCP responses received: " + numTcpReceived);
             LOG.debug("Number of HTTP responses received: " + numHttpReceived);
             LOG.debug("Number of \"duplicate request\" notifications received: " + numDuplicatesReceived);

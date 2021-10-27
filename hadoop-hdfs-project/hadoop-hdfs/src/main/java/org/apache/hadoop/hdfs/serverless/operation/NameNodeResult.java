@@ -228,7 +228,9 @@ public class NameNodeResult implements Serializable {
             // Add a flag indicating whether this is just a duplicate result.
             json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, true);
         } else {
-            //LOG.debug("Result type: " + (result != null ? result.getClass().getSimpleName() : "null"));
+            if (result != null)
+                LOG.debug("Returning result of type " + result.getClass().getSimpleName()
+                        + " to client. Result value: " + result.toString());
 
             try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
                 ObjectOutputStream objectOutputStream;
