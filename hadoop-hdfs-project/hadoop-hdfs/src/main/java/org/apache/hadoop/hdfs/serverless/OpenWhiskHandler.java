@@ -270,39 +270,30 @@ public class OpenWhiskHandler {
 
         // Check if we need to redo this operation. This can occur if the TCP connection that was supposed
         // to deliver the result back to the client was dropped before the client received the result.
-        boolean redoEvenifDuplicate = false;
+        boolean redoEvenIfDuplicate = false;
         if (fsArgs.has(FORCE_REDO) && fsArgs.get(FORCE_REDO).getAsBoolean())
-            redoEvenifDuplicate = true;
+            redoEvenIfDuplicate = true;
 
         // Check to see if this is a duplicate request, in which case we should return a message indicating as such.
-        if (!redoEvenifDuplicate && serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
+        if (!redoEvenIfDuplicate && serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
             LOG.warn("This request (" + requestId + ") has already been received via TCP. Returning now...");
             result.addResult(new DuplicateRequest("HTTP", requestId), true);
             return result;
-        } else if (redoEvenifDuplicate) {
+        } else if (redoEvenIfDuplicate) {
             LOG.warn("Apparently, request " + requestId + " must be re-executed...");
         }
-
-        LOG.debug("========== Processing Updates from Intermediate Storage ==========");
 
         // Now we need to process various updates that are stored in intermediate storage by DataNodes.
         // These include storage reports, block reports, and new DataNode registrations.
         // Note that we perform this step even if this is a warm function with an existing NameNode,
         // as new DataNodes could have been added to the file system, and storage reports are published routinely.
-        try {
-            serverlessNameNode.getAndProcessUpdatesFromIntermediateStorage();
-        }
-        catch (IOException | ClassNotFoundException ex) {
-            LOG.error("Encountered exception while retrieving and processing updates from intermediate storage: ", ex);
-            result.addException(ex);
-        }
-
-        Instant updateEnd = Instant.now();
-        Duration updateDuration = Duration.between(creationEnd, updateEnd);
-
-        LOG.debug("Successfully processed updates from intermediate storage. Time elapsed: " +
-                DurationFormatUtils.formatDurationHMS(updateDuration.toMillis()));
-        LOG.debug("==================================================================");
+//        try {
+//            serverlessNameNode.getAndProcessUpdatesFromIntermediateStorage();
+//        }
+//        catch (IOException | ClassNotFoundException ex) {
+//            LOG.error("Encountered exception while retrieving and processing updates from intermediate storage: ", ex);
+//            result.addException(ex);
+//        }
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.

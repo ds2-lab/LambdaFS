@@ -265,6 +265,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private final long creationTime;
 
   /**
+   * The last time an intermediate storage updated occurred.
+   *
+   * Initialized to -1 so that an update occurs the first time it is attempted.
+   */
+  private volatile long lastIntermediateStorageUpdate = -1L;
+
+  /**
    * HDFS configuration can have three types of parameters:
    * <ol>
    * <li>Parameters that are common for all the name services in the
@@ -409,6 +416,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *  - Processing intermediate block reports from DataNodes.
    */
   public void getAndProcessUpdatesFromIntermediateStorage() throws IOException, ClassNotFoundException {
+    Instant processUpdatesStart = Instant.now();
+
+    long msSinceLastUpdate = Time.getUtcTime() - lastIntermediateStorageUpdate;
+    if (msSinceLastUpdate < heartBeatInterval) {
+      LOG.debug("We updated intermediate storage " + msSinceLastUpdate + " ms ago. Skipping.");
+      return;
+    }
+
+    LOG.debug("========== Processing Updates from Intermediate Storage ==========");
+
     LOG.debug("Retrieving and processing updates from intermediate storage.");
     LOG.debug("First, retrieving all DataNode registrations.");
     List<DatanodeRegistration> datanodeRegistrations = getDataNodesFromIntermediateStorage();
@@ -418,6 +435,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("Finished retrieving and processing storage reports. " +
             "Next, retrieving and processing intermediate block reports for each DN.");
     getAndProcessIntermediateBlockReports();
+
+    lastIntermediateStorageUpdate = Time.getUtcTime();
+
+    Instant processUpdatesEnd = Instant.now();
+    Duration updateDuration = Duration.between(processUpdatesStart, processUpdatesEnd);
+
+    LOG.debug("Successfully processed updates from intermediate storage. Time elapsed: " +
+            DurationFormatUtils.formatDurationHMS(updateDuration.toMillis()));
+    LOG.debug("==================================================================");
   }
 
   /**
@@ -691,14 +717,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     long lastStorageReportGroupId =
             lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(), creationTime);
 
-    long millisecondsSinceLastReportRetrieval = Time.getUtcTime() - lastStorageReportGroupId;
-    if (millisecondsSinceLastReportRetrieval < heartBeatInterval) {
-      LOG.debug("StorageReports for DataNode " + registration.getDatanodeUuid() + " were last retrieved at time " +
-              Instant.ofEpochMilli(lastStorageReportGroupId).toString() + ", which was less than " +
-              heartBeatInterval + "ms ago. Skipping.");
-
-      return null;
-    }
+    // Commented this out because:
+    // Now, I just block intermediate-storage-updates from occurring more often than every heartbeatInterval.
+    // This is because the worker thread performs the updates now. So the worker thread just checks for updates
+    // every heartbeat interval.
+//
+//    long millisecondsSinceLastReportRetrieval = Time.getUtcTime() - lastStorageReportGroupId;
+//    if (millisecondsSinceLastReportRetrieval < heartBeatInterval) {
+//      LOG.debug("StorageReports for DataNode " + registration.getDatanodeUuid() + " were last retrieved at time " +
+//              Instant.ofEpochMilli(lastStorageReportGroupId).toString() + ", which was less than " +
+//              heartBeatInterval + "ms ago. Skipping.");
+//
+//      return null;
+//    }
 
     LOG.debug("Retrieving StorageReport instance for datanode " + registration.getDatanodeUuid()
             + ". Reports were last retrieved " + millisecondsSinceLastReportRetrieval + " ms ago.");

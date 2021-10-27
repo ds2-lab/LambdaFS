@@ -151,12 +151,42 @@ public class NameNodeWorkerThread extends Thread {
         return -1;
     }
 
-    private void tryUpdateActiveNameNodeList() throws StorageException {
+    /**
+     * Check if it is time to attempt to update the active NameNode list.
+     * If so, then perform the refresh.
+     * If not, then return immediately.
+     */
+    private void tryUpdateActiveNameNodeList() {
         long now = Time.getUtcTime();
 
         if (now - lastActiveNameNodeListRefresh > activeNameNodeRefreshIntervalMilliseconds) {
-            serverlessNameNodeInstance.refreshActiveNameNodesList();
+
+            try {
+                // Update the list of active name nodes, if it is time to do so.
+                serverlessNameNodeInstance.refreshActiveNameNodesList();
+            } catch (StorageException ex) {
+                LOG.error("Encountered Storage Exception while trying to refresh the list of active NameNodes.");
+                ex.printStackTrace();
+            }
+
             lastActiveNameNodeListRefresh = Time.getUtcTime();
+        }
+    }
+
+    /**
+     * Try to retrieve and process updates from intermediate storage.
+     * These updates include storage reports and intermediate block reports.
+     *
+     * NOTE: The NameNode keeps track of scheduling these updates. So this function will just return
+     * if it is not time for an update. The worker thread does not need to check if it is time to
+     * update or not itself.
+     */
+    private void tryUpdateFromIntermediateStorage() {
+        try {
+            serverlessNameNodeInstance.getAndProcessUpdatesFromIntermediateStorage();
+        }
+        catch (IOException | ClassNotFoundException ex) {
+            LOG.error("Encountered exception while retrieving and processing updates from intermediate storage: ", ex);
         }
     }
 
@@ -167,14 +197,8 @@ public class NameNodeWorkerThread extends Thread {
     private void doRoutineActivities() {
         // Check if we need to purge any results before continuing to the next loop.
         tryPurge();
-
-        try {
-            // Update the list of active name nodes, if it is time to do so.
-            tryUpdateActiveNameNodeList();
-        } catch (StorageException ex) {
-            LOG.error("Encountered Storage Exception while trying to refresh the list of active NameNodes.");
-            ex.printStackTrace();
-        }
+        tryUpdateActiveNameNodeList();
+        tryUpdateFromIntermediateStorage();
     }
 
     @Override
