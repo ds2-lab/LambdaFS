@@ -352,12 +352,26 @@ public class HopsFSUserServer {
      */
     private void cacheConnection(NameNodeConnection connection, String functionName) {
         if (activeConnections.containsKey(functionName)) {
-            throw new IllegalStateException("[TCP SERVER] Connection with NameNode " + functionName
-                    + " already cached locally. " + "Currently cached connection: "
-                    + activeConnections.get(functionName).toString() + ", new connection: " + connection.toString());
+            NameNodeConnection oldConnection = activeConnections.get(functionName);
+
+            if (oldConnection.isConnected()) {
+                LOG.error("[TCP Server] Already have an ACTIVE conn to NameNode " + functionName + ".");
+                LOG.warn("[TCP Server] Replacing old, ACTIVE conn to NameNode " + functionName +
+                        " with a new one...");
+
+                oldConnection.close();
+            } else {
+                LOG.error("[TCP Server] Already have a conn to NameNode " + functionName
+                        + ", but it is apparently no longer connected...");
+                LOG.warn("[TCP Server] Replacing old, now-disconnected conn to NameNode " + functionName +
+                        " with the new one...");
+            }
+        } else {
+            // We don't want to print this debug message along with the ones from the if-statement above, so
+            // we put it in the else block. It isn't contradictory or anything, but it'd be redundant.
+            LOG.debug("Caching active connection with serverless function \"" + functionName + "\" now...");
         }
 
-        LOG.debug("Caching active connection with serverless function \"" + functionName + "\" now...");
         activeConnections.put(functionName, connection);
     }
 
