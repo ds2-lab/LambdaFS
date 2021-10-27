@@ -177,6 +177,13 @@ public class NameNodeWorkerThread extends Thread {
      * Try to retrieve and process updates from intermediate storage.
      * These updates include storage reports and intermediate block reports.
      *
+     * This was originally performed exclusively in the HTTP handler
+     * {@link org.apache.hadoop.hdfs.serverless.OpenWhiskHandler}. We moved it here because, when clients were issuing
+     * TCP requests to NameNodes rather than HTTP requests, we would encounter errors as the NNs never retrieved and
+     * processed storage reports and intermediate block reports. Now the NameNodeWorkerThread periodically retrieves
+     * and processes these updates. Seeing as both HTTP and TCP requests go thru the NameNodeWorkerThread, this
+     * prevents the aforementioned issue from occurring.
+     *
      * NOTE: The NameNode keeps track of scheduling these updates. So this function will just return
      * if it is not time for an update. The worker thread does not need to check if it is time to
      * update or not itself.
