@@ -117,7 +117,7 @@ public class StorageReportClusterJ
 
     @Override
     public StorageReport getStorageReport(long groupId, int reportId, String datanodeUuid) throws StorageException {
-        LOG.info("GET StorageReport groupId = " + groupId + ", reportId = " + reportId);
+        //LOG.debug("GET StorageReport groupId = " + groupId + ", reportId = " + reportId);
 
         HopsSession session = connector.obtainSession();
 
@@ -132,20 +132,20 @@ public class StorageReportClusterJ
 
     @Override
     public void removeStorageReport(long groupId, int reportId, String datanodeUuid) throws StorageException {
-        LOG.info("REMOVE StorageReport groupId = " + groupId + ", reportId = " + reportId);
+        //LOG.debug("REMOVE StorageReport groupId = " + groupId + ", reportId = " + reportId);
 
         HopsSession session = connector.obtainSession();
         Object[] primaryKey = {groupId, reportId, datanodeUuid};
         StorageReportDTO deleteMe = session.find(StorageReportDTO.class, primaryKey);
         session.deletePersistent(StorageReportDTO.class, deleteMe);
 
-        LOG.debug("Successfully removed/deleted DatanodeStorage with groupId = " + groupId
-            + ", reportId = " + reportId);
+        //LOG.debug("Successfully removed/deleted DatanodeStorage with groupId = " + groupId
+        //    + ", reportId = " + reportId);
     }
 
     @Override
     public int removeStorageReports(long groupId, String datanodeUuid) throws StorageException {
-        LOG.info("REMOVE StorageReport group " + groupId + ", datanodeUuid = " + datanodeUuid);
+        //LOG.debug("REMOVE StorageReport group " + groupId + ", datanodeUuid = " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
@@ -173,7 +173,7 @@ public class StorageReportClusterJ
 
     @Override
     public int removeStorageReports(String datanodeUuid) throws StorageException {
-        LOG.info("DELETE StorageReports for DN " + datanodeUuid);
+        //LOG.debug("DELETE StorageReports for DN " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
@@ -197,7 +197,7 @@ public class StorageReportClusterJ
 
     @Override
     public void addStorageReport(StorageReport storageReport) throws StorageException {
-        // LOG.info("ADD StorageReport " + storageReport.toString());
+        // LOG.debug("ADD StorageReport " + storageReport.toString());
 
         StorageReportDTO dtoObject = null;
         HopsSession session = connector.obtainSession();
@@ -216,20 +216,20 @@ public class StorageReportClusterJ
 
     @Override
     public int getLastGroupId(String datanodeUuid) throws StorageException {
-        LOG.info("GET largest groupId for DN: " + datanodeUuid);
+        //LOG.debug("GET largest groupId for DN: " + datanodeUuid);
 
         return getMaxGroupId(datanodeUuid);
     }
 
     @Override
     public List<StorageReport> getStorageReportsAfterGroupId(long groupId, String datanodeUuid) throws StorageException {
-        LOG.info("GET StorageReports after group " + groupId + ", DN UUID: " + datanodeUuid);
+        //LOG.debug("GET StorageReports after group " + groupId + ", DN UUID: " + datanodeUuid);
 
         PreparedStatement s = null;
         ResultSet result = null;
 
         String query = String.format(GREATER_THAN_GROUP_ID_QUERY, TABLE_NAME, GROUP_ID, groupId);
-        LOG.debug("Executing MySQL query: " + query);
+        //LOG.debug("Executing MySQL query: " + query);
 
         ArrayList<StorageReport> resultList = new ArrayList<>();
 
@@ -279,7 +279,7 @@ public class StorageReportClusterJ
 
     @Override
     public List<StorageReport> getStorageReports(long groupId, String datanodeUuid) throws StorageException {
-        LOG.info("GET StorageReport group " + groupId + ", DN UUID: " + datanodeUuid);
+        //LOG.debug("GET StorageReport group " + groupId + ", DN UUID: " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
@@ -308,7 +308,7 @@ public class StorageReportClusterJ
     private int getMaxGroupId(String datanodeUuid) throws StorageException {
         String query = String.format(MAX_GROUP_ID_QUERY, GROUP_ID, TABLE_NAME, DATANODE_UUID, datanodeUuid);
 
-        LOG.debug("Executing MySQL query: " + query);
+        //LOG.debug("Executing MySQL query: " + query);
 
         PreparedStatement s = null;
         ResultSet result = null;
@@ -318,7 +318,7 @@ public class StorageReportClusterJ
             s = conn.prepareStatement(query);
             result = s.executeQuery();
 
-            LOG.debug("Result = " + result.toString());
+            //LOG.debug("Result = " + result.toString());
 
             if (result.next())
                 return result.getInt(String.format("max(%s)", GROUP_ID));
@@ -351,11 +351,11 @@ public class StorageReportClusterJ
 
     @Override
     public List<StorageReport> getLatestStorageReports(String datanodeUuid) throws StorageException {
-        LOG.info("GET Latest StorageReports from DN " + datanodeUuid);
+        //LOG.debug("GET Latest StorageReports from DN " + datanodeUuid);
 
         int maxGroupId = getMaxGroupId(datanodeUuid);
 
-        LOG.debug("Max groupId: " + maxGroupId);
+        //LOG.debug("Max groupId: " + maxGroupId);
 
         return getStorageReports(maxGroupId, datanodeUuid);
     }

@@ -426,14 +426,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("========== Processing Updates from Intermediate Storage ==========");
 
-    LOG.debug("Retrieving and processing updates from intermediate storage.");
-    LOG.debug("First, retrieving all DataNode registrations.");
+    //LOG.debug("Retrieving and processing updates from intermediate storage.");
+    //LOG.debug("First, retrieving all DataNode registrations.");
     List<DatanodeRegistration> datanodeRegistrations = getDataNodesFromIntermediateStorage();
-    LOG.debug("Finished retrieving DataNode registrations. " +
-            "Next, retrieving and processing storage reports for each DN.");
+    //LOG.debug("Finished retrieving DataNode registrations. " +
+    //        "Next, retrieving and processing storage reports for each DN.");
     retrieveAndProcessStorageReports(datanodeRegistrations);
-    LOG.debug("Finished retrieving and processing storage reports. " +
-            "Next, retrieving and processing intermediate block reports for each DN.");
+    //LOG.debug("Finished retrieving and processing storage reports. " +
+    //        "Next, retrieving and processing intermediate block reports for each DN.");
     getAndProcessIntermediateBlockReports();
 
     lastIntermediateStorageUpdate = Time.getUtcTime();
@@ -711,11 +711,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
             (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
 
-    // The groupId column for Storage Reports is actually being used as a timestamp now. So we default to the time
-    // that the NN was created, as any reports published before that point would not have been received by a
-    // traditional, serverful HopsFS NN anyway.
+    // The groupId column for Storage Reports is actually being used as a timestamp now. So we default to a little
+    // before the time that the NN was created, as any reports published before that point would not have been received
+    // by a traditional, serverful HopsFS NN anyway. We opt for times a little early just so we can bootstrap the
+    // storage of the DN, since the NN may be performing an operation rn that requires us to know about the DN's
+    // storage. So we grab some old reports, so we know about the storages that it has.
     long lastStorageReportGroupId =
-            lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(), creationTime);
+            lastStorageReportGroupIds.getOrDefault(registration.getDatanodeUuid(),
+                    creationTime - (heartBeatInterval * 3));
 
     // Commented this out because:
     // Now, I just block intermediate-storage-updates from occurring more often than every heartbeatInterval.
@@ -1010,12 +1013,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         // the for-loop has a smaller creation time stamp, then we do nothing and move onto the next DN in the for-loop.
         if (creationTimeComparisonResult > 0) {
           dnMap.put(key, dataNodeMeta);
-          LOG.debug("Replacing DN " + existingDN.getDatanodeUuid() + " with DN " + dataNodeMeta.getDatanodeUuid() +
-                          " in pre-registration mapping.");
-          LOG.debug("Creation time of existing DN (uuid=" + existingDN.getDatanodeUuid() + "): "
-                  + existingDN.getCreationTime());
-          LOG.debug("Creation time of \"new\" DN (uuid=" + dataNodeMeta.getDatanodeUuid() + "): "
-                  + dataNodeMeta.getCreationTime());
+          //LOG.debug("Replacing DN " + existingDN.getDatanodeUuid() + " with DN " + dataNodeMeta.getDatanodeUuid() +
+          //                " in pre-registration mapping.");
+          //LOG.debug("Creation time of existing DN (uuid=" + existingDN.getDatanodeUuid() + "): "
+          //        + existingDN.getCreationTime());
+          //LOG.debug("Creation time of \"new\" DN (uuid=" + dataNodeMeta.getDatanodeUuid() + "): "
+          //        + dataNodeMeta.getCreationTime());
           numReplaced++;
         }
       }
@@ -1044,19 +1047,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               nsInfo.getNamespaceID(), nsInfo.clusterID, nsInfo.getCTime(),
               HdfsServerConstants.NodeType.DATA_NODE, nsInfo.getBlockPoolID());
 
-      LOG.info("NamespaceID: {}, ClusterID: {}, CTime: {}, BlockPoolID: {}", nsInfo.getNamespaceID(),
-              nsInfo.clusterID, nsInfo.getCTime(), nsInfo.getBlockPoolID());
+      //LOG.info("NamespaceID: {}, ClusterID: {}, CTime: {}, BlockPoolID: {}", nsInfo.getNamespaceID(),
+      //        nsInfo.clusterID, nsInfo.getCTime(), nsInfo.getBlockPoolID());
 
       DatanodeRegistration datanodeRegistration = new DatanodeRegistration(
               dnId, storageInfo, new ExportedBlockKeys(), VersionInfo.getVersion());
 
       // Create an entry for this DataNode.
       if (!lastIntermediateBlockReportTimestamp.containsKey(datanodeUuid)) {
-        LOG.debug("Adding entry in `lastIntermediateBlockReportIds` for DataNode " + datanodeUuid);
+        //LOG.debug("Adding entry in `lastIntermediateBlockReportIds` for DataNode " + datanodeUuid);
         lastIntermediateBlockReportTimestamp.put(datanodeUuid, creationTime);
-      } else {
-        LOG.debug("Entry for DataNode " + datanodeUuid + " already exists in `lastIntermediateBlockReportIds`");
-      }
+      } //else {
+        //LOG.debug("Entry for DataNode " + datanodeUuid + " already exists in `lastIntermediateBlockReportIds`");
+      //}
 
       try {
         if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
