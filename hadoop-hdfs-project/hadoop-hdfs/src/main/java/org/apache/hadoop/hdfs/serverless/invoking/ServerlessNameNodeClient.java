@@ -163,7 +163,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LOG.debug("Issuing HTTP request only for operation " + operationName);
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(false, true, "/whisk.system/namenodeX";
+                = new OperationPerformed(false, true, "/whisk.system/namenodeX",
                 operationName, Time.getUtcTime());
         operationsPerformed.add(operationPerformed);
 
