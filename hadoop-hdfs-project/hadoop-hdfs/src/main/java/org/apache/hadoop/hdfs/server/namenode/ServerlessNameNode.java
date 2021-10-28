@@ -111,6 +111,7 @@ import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
 
 import static io.hops.transaction.lock.LockFactory.getInstance;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
@@ -1231,20 +1232,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (fsArgs.has("last")) {
       String lastBase64 = fsArgs.getAsJsonPrimitive("last").getAsString();
       last = (ExtendedBlock) InvokerUtilities.base64StringToObject(lastBase64);
-      /*byte[] lastBytes = Base64.decodeBase64(lastBase64);
-
-      // TODO: Try using SerializationUtils from Commons Lang library.
-      //  Reference: https://stackoverflow.com/questions/2836646/java-serializable-object-to-byte-array
-      ByteArrayInputStream bis = new ByteArrayInputStream(lastBytes);
-
-      try (ObjectInput in = new ObjectInputStream(bis)) {
-        Object o = in.readObject();
-        last = (ExtendedBlock) o;
-      }*/
-
-      /*DataInputBuffer dataInput = new DataInputBuffer();
-      dataInput.reset(lastBytes, lastBytes.length);
-      last = (ExtendedBlock) ObjectWritable.readObject(dataInput, null);*/
     }
 
     byte[] data = null;
@@ -1257,6 +1244,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (stateChangeLog.isDebugEnabled()) {
       stateChangeLog.debug("*DIR* NameNode.complete: " + src + " fileId=" + fileId +" for " + clientName);
     }
+
+    // Check to see if we've been sent an intermediate block report.
+    getAndProcessIntermediateBlockReports();
 
     return namesystem.completeFile(src, clientName, last, fileId, data);
   }

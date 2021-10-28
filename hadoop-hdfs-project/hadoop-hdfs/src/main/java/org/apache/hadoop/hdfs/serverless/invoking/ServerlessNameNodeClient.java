@@ -181,7 +181,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         long opStart = System.nanoTime();
         String requestId = UUID.randomUUID().toString();
-        LOG.debug("Issuing concurrent HTTP/TCP request for operation " + operationName + " now. Request ID = "
+        LOG.debug("Issuing concurrent HTTP/TCP request for operation '" + operationName + "' now. Request ID = "
             + requestId);
 
         // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
