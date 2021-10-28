@@ -179,11 +179,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     public void printOperationsPerformed() {
         Collections.sort(operationsPerformed);
-        LOG.debug("============== Operations Performed ==============");
+        LOG.debug("====================== Operations Performed ======================");
         LOG.debug("Number performed: " + operationsPerformed.size());
         for (OperationPerformed operationPerformed : operationsPerformed)
             LOG.debug(operationPerformed.toString());
-        LOG.debug("==================================================");
+        LOG.debug("==================================================================");
     }
 
     /**
@@ -1545,8 +1545,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         @Override
         public String toString() {
-            return operationName + " \t " + Instant.ofEpochMilli(timeIssued).toString() + " \t " +
-                    (issuedViaHttp ? "HTTP" : "-") + " \t " + (issuedViaTcp ? "TCP" : "-");
+            return operationName + " \t\t " + Instant.ofEpochMilli(timeIssued).toString() + " \t\t " +
+                    (issuedViaHttp ? "HTTP" : "-") + " \t\t " + (issuedViaTcp ? "TCP" : "-");
         }
 
         /**
