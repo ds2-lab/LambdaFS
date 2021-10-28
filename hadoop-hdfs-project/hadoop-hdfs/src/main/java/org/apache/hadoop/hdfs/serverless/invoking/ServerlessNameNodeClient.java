@@ -1193,7 +1193,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void setQuota(String path, long namespaceQuota, long storagespaceQuota, StorageType type) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
-        
+
     }
 
     @Override
@@ -1545,8 +1545,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         @Override
         public String toString() {
-            return operationName + " \t\t " + Instant.ofEpochMilli(timeIssued).toString() + " \t\t " +
-                    (issuedViaHttp ? "HTTP" : "-") + " \t\t " + (issuedViaTcp ? "TCP" : "-");
+            String format = "%-32s%-24s%-4s%-3s";
+            return String.format(format, operationName, Instant.ofEpochMilli(timeIssued).toString(),
+                    (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
+
+//            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
+//                    (issuedViaHttp ? "HTTP" : "-") + " \t" + (issuedViaTcp ? "TCP" : "-");
         }
 
         /**
