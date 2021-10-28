@@ -1545,7 +1545,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         @Override
         public String toString() {
-            String format = "%-32s%-24s%-4s%-3s";
+            String format = "%-32s %-24s %-4s %-3s";
             return String.format(format, operationName, Instant.ofEpochMilli(timeIssued).toString(),
                     (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
 
