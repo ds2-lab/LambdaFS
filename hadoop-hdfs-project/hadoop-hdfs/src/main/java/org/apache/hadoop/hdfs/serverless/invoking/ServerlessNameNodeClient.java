@@ -178,6 +178,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * Return the list of the operations we've performed. This is just used for debugging purposes.
      */
     public void printOperationsPerformed() {
+        Collections.sort(operationsPerformed);
         LOG.debug("============== Operations Performed ==============");
         LOG.debug("Number performed: " + operationsPerformed.size());
         for (OperationPerformed operationPerformed : operationsPerformed)
@@ -373,10 +374,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 throw ex;
             }
         }
-    }
-
-    private void handleDuplicateRequest() {
-
     }
 
     /**
@@ -1528,7 +1525,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         return 0;
     }
 
-    public class OperationPerformed implements Serializable {
+    public class OperationPerformed implements Serializable, Comparable<OperationPerformed> {
         private static final long serialVersionUID = -3094538262184661023L;
 
         boolean issuedViaTcp;
@@ -1550,6 +1547,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         public String toString() {
             return operationName + " \t " + Instant.ofEpochMilli(timeIssued).toString() + " \t " +
                     (issuedViaHttp ? "HTTP" : "-") + " \t " + (issuedViaTcp ? "TCP" : "-");
+        }
+
+        /**
+         * Compare two instances of OperationPerformed.
+         * The comparison is based exclusively on their timeIssued field.
+         */
+        @Override
+        public int compareTo(OperationPerformed op) {
+            return Long.compare(timeIssued, op.timeIssued);
         }
     }
 }
