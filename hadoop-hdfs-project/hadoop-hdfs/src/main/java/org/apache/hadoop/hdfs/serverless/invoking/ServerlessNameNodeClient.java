@@ -143,7 +143,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
             if (mappedFunctionNumber != -1 && tcpServer.connectionExists(mappedFunctionNumber)) {
                 OperationPerformed operationPerformed
-                        = new OperationPerformed(true, true, operationName, Time.getUtcTime());
+                        = new OperationPerformed(true, true,
+                        "/whisk.system/namenode" + mappedFunctionNumber, operationName, Time.getUtcTime());
                 operationsPerformed.add(operationPerformed);
 
                 return issueConcurrentTcpHttpRequests(
@@ -162,7 +163,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LOG.debug("Issuing HTTP request only for operation " + operationName);
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(false, true, operationName, Time.getUtcTime());
+                = new OperationPerformed(false, true, "/whisk.system/namenodeX";
+                operationName, Time.getUtcTime());
         operationsPerformed.add(operationPerformed);
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
@@ -181,6 +183,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         Collections.sort(operationsPerformed);
         LOG.debug("====================== Operations Performed ======================");
         LOG.debug("Number performed: " + operationsPerformed.size());
+//        String format = "%-32s %-24s %-4s %-3s";
+//        LOG.debug(String.format(format, "Operation Name", "Timestamp", "HTTP", "TCP"));
         for (OperationPerformed operationPerformed : operationsPerformed)
             LOG.debug(operationPerformed.toString());
         LOG.debug("==================================================================");
@@ -1534,20 +1538,24 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         String operationName;
 
+        String targetFunction;
+
         long timeIssued;
 
-        public OperationPerformed(boolean issuedViaTcp, boolean issuedViaHttp, String operationName, long timeIssued) {
+        public OperationPerformed(boolean issuedViaTcp, boolean issuedViaHttp, String targetFunction,
+                                  String operationName, long timeIssued) {
             this.issuedViaHttp = issuedViaHttp;
             this.issuedViaTcp = issuedViaTcp;
+            this.targetFunction = targetFunction;
             this.operationName = operationName;
             this.timeIssued = timeIssued;
         }
 
         @Override
         public String toString() {
-            String format = "%-32s %-24s %-4s %-3s";
+            String format = "%-32s %-24s %-26s %-4s %-3s";
             return String.format(format, operationName, Instant.ofEpochMilli(timeIssued).toString(),
-                    (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
+                    targetFunction, (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
 
 //            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
 //                    (issuedViaHttp ? "HTTP" : "-") + " \t" + (issuedViaTcp ? "TCP" : "-");
