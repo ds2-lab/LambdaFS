@@ -1347,6 +1347,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
+  // Added for debugging serverless NN.
+  public void printOperationsPerformed() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      client.printOperationsPerformed();
+    }
+  }
+
+  // Added for debugging serverless NN.
   public void printDebugInformation() {
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;

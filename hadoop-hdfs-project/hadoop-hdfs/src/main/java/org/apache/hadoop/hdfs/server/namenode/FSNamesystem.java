@@ -607,7 +607,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     return auditLoggers;
   }
 
-  /** Whether or not retry cache is enabled */
+  /** Return boolean indicating whether retry cache is enabled */
   boolean hasRetryCache() {
     return isRetryCacheEnabled;
   }

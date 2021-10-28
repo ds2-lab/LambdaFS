@@ -29,15 +29,15 @@ import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.util.Time;
 import org.codehaus.jackson.impl.JsonReadContext;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.Serializable;
 import java.sql.SQLException;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.time.Instant;
+import java.util.*;
 import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
@@ -80,6 +80,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * Flag that dictates whether TCP requests can be used to perform FS operations.
      */
     private final boolean tcpEnabled;
+
+    /**
+     * For debugging, keep track of the operations we've performed.
+     */
+    private List<OperationPerformed> operationsPerformed = new ArrayList<>();
 
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
@@ -137,6 +142,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
             // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
             if (mappedFunctionNumber != -1 && tcpServer.connectionExists(mappedFunctionNumber)) {
+                OperationPerformed operationPerformed
+                        = new OperationPerformed(true, true, operationName, Time.getUtcTime());
+                operationsPerformed.add(operationPerformed);
+
                 return issueConcurrentTcpHttpRequests(
                         operationName,
                         serverlessEndpoint,
@@ -152,6 +161,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         LOG.debug("Issuing HTTP request only for operation " + operationName);
 
+        OperationPerformed operationPerformed
+                = new OperationPerformed(false, true, operationName, Time.getUtcTime());
+        operationsPerformed.add(operationPerformed);
+
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
         return dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
@@ -159,6 +172,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments);
+    }
+
+    /**
+     * Return the list of the operations we've performed. This is just used for debugging purposes.
+     */
+    public void printOperationsPerformed() {
+        LOG.debug("============== Operations Performed ==============");
+        LOG.debug("Number performed: " + operationsPerformed.size());
+        for (OperationPerformed operationPerformed : operationsPerformed)
+            LOG.debug(operationPerformed.toString());
+        LOG.debug("==================================================");
     }
 
     /**
@@ -1502,5 +1526,30 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     @Override
     public long getEpochMS() throws IOException {
         return 0;
+    }
+
+    public class OperationPerformed implements Serializable {
+        private static final long serialVersionUID = -3094538262184661023L;
+
+        boolean issuedViaTcp;
+
+        boolean issuedViaHttp;
+
+        String operationName;
+
+        long timeIssued;
+
+        public OperationPerformed(boolean issuedViaTcp, boolean issuedViaHttp, String operationName, long timeIssued) {
+            this.issuedViaHttp = issuedViaHttp;
+            this.issuedViaTcp = issuedViaTcp;
+            this.operationName = operationName;
+            this.timeIssued = timeIssued;
+        }
+
+        @Override
+        public String toString() {
+            return operationName + " \t " + Instant.ofEpochMilli(timeIssued).toString() + " \t " +
+                    (issuedViaHttp ? "HTTP" : "-") + " \t " + (issuedViaTcp ? "TCP" : "-");
+        }
     }
 }
