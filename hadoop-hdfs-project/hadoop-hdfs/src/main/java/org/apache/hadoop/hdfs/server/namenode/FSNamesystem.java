@@ -1695,6 +1695,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       if (updatedValues.containsKey(invalidatedKey)) {
         LOG.debug("Using local, updated value for entry " + invalidatedKey + ".");
         INode updatedINode = updatedValues.get(invalidatedKey);
+
         metadataCache.put(invalidatedKey, updatedINode.getId(), updatedINode);
       } else {
         LOG.debug("Invalidating cache entry " + invalidatedKey + ".");
@@ -1704,6 +1705,24 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     }
 
     LOG.debug("Invalidated (without updating) " + numKeysInvalidated + " key(s).");
+  }
+
+  /**
+   * Return True if we should cache this INode locally, otherwise return False.
+   * @param inode The INode in question.
+   * @return True if we should cache this INode locally, otherwise returns False.
+   */
+  public boolean shouldCacheLocally(INode inode) {
+    return serverlessNameNode.shouldCacheLocally(inode);
+  }
+
+  /**
+   * Get the serverless function number of the NameNode that should cache this INode.
+   * @param inode The INode in question.
+   * @return The number of the serverless function responsible for caching this INode.
+   */
+  public int getMappedServerlessFunction(INode inode) {
+    return serverlessNameNode.getMappedServerlessFunction(inode);
   }
 
   /**

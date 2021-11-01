@@ -112,7 +112,10 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import static com.google.common.hash.Hashing.consistentHash;
 import static io.hops.transaction.lock.LockFactory.getInstance;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import org.apache.hadoop.tracing.TraceUtils;
@@ -379,6 +382,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * The name of the serverless function in which this NameNode instance is running.
    */
   private final String functionName;
+
+  /**
+   * The number of this serverless function.
+   */
+  private final int functionNumber;
 
   /**
    * Used to communicate with Serverless HopsFS clients via TCP.
@@ -2319,6 +2327,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
     this.functionName = functionName;
+    this.functionNumber = getFunctionNumberFromFunctionName();
     this.nameNodeTCPClient = new NameNodeTCPClient(functionName, this);
     // Subtract five seconds (i.e., 6000 milliseconds) to account for invocation overheads and other start-up times.
     // The default DN heartbeat interval (and therefore, StorageReport interval) is three seconds, so this should
@@ -2396,6 +2405,37 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   synchronized boolean isStopRequested() {
     return stopRequested;
+  }
+
+  /**
+   * Returns the number of this serverless function, given the name.
+   *
+   * If this returns -1, then that means it could not extract the number from the name.
+   * A "correct" number will always be >= 0.
+   * @param functionName The name of this serverless function.
+   * @return The number, which will be >= 0 if valid, otherwise < 0.
+   */
+  private int getFunctionNumberFromFunctionName(String functionName) {
+    Pattern lastIntPattern = Pattern.compile("[^0-9]+([0-9]+)$");
+    String input = "...";
+    Matcher matcher = lastIntPattern.matcher(input);
+    if (matcher.find()) {
+      String someNumberStr = matcher.group(1);
+      return Integer.parseInt(someNumberStr);
+    }
+
+    return -1;
+  }
+
+  /**
+   * Returns the number of this serverless function using this function's 'functionName' field.
+   *
+   * If this returns -1, then that means it could not extract the number from the name.
+   * A "correct" number will always be >= 0.
+   * @return The number, which will be >= 0 if valid, otherwise < 0.
+   */
+  private int getFunctionNumberFromFunctionName() {
+    return getFunctionNumberFromFunctionName(this.functionName);
   }
 
   /**
@@ -2782,6 +2822,24 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         LOG.debug("Setting " + FS_DEFAULT_NAME_KEY + " to " + defaultUri.toString());
       }
     }
+  }
+
+  /**
+   * Return True if we should cache this INode locally, otherwise return False.
+   * @param inode The INode in question.
+   * @return True if we should cache this INode locally, otherwise returns False.
+   */
+  public boolean shouldCacheLocally(INode inode) {
+    return getMappedServerlessFunction(inode) == functionNumber;
+  }
+
+  /**
+   * Get the serverless function number of the NameNode that should cache this INode.
+   * @param inode The INode in question.
+   * @return The number of the serverless function responsible for caching this INode.
+   */
+  public int getMappedServerlessFunction(INode inode) {
+    return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
   }
 
   /** 

@@ -387,10 +387,10 @@ public class OpenWhiskHandler {
         if (fsArgs != null && fsArgs.has(ServerlessNameNodeKeys.SRC)) {
             String src = fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.SRC).getAsString();
 
-            INode iNode = null;
+            INode inode = null;
             try {
                 synchronized (serverlessNameNode) {
-                    iNode = serverlessNameNode.getINodeForCache(src);
+                    inode = serverlessNameNode.getINodeForCache(src);
                 }
             }
             catch (IOException ex) {
@@ -400,15 +400,15 @@ public class OpenWhiskHandler {
             }
 
             // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
-            if (iNode != null) {
-                LOG.debug("Parent INode ID for '" + src + "': " + iNode.getParentId());
+            if (inode != null) {
+                LOG.debug("Parent INode ID for '" + src + "': " + inode.getParentId());
 
-                int functionNumber = consistentHash(iNode.getParentId(), serverlessNameNode.getNumUniqueServerlessNameNodes());
+                int functionNumber = serverlessNameNode.getMappedServerlessFunction(inode);
 
-                LOG.debug("Consistently hashed parent INode ID " + iNode.getParentId()
+                LOG.debug("Consistently hashed parent INode ID " + inode.getParentId()
                         + " to serverless function " + functionNumber);
 
-                result.addFunctionMapping(src, iNode.getParentId(), functionNumber);
+                result.addFunctionMapping(src, inode.getParentId(), functionNumber);
             }
         }
     }

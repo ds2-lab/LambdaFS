@@ -62,20 +62,20 @@ public class LRUMetadataCache<T> {
         this(DEFAULT_MAX_ENTRIES, DEFAULT_LOAD_FACTOR);
     }
 
-    /**
-     * Create an LRU Metadata Cache using the default load factor value and a specified maximum capacity.
-     */
-    public LRUMetadataCache(int capacity) {
-        this(capacity, DEFAULT_LOAD_FACTOR);
-    }
-
-
-    /**
-     * Create an LRU Metadata Cache using the default maximum capacity and a specified load factor value.
-     */
-    public LRUMetadataCache(float loadFactor) {
-        this(DEFAULT_MAX_ENTRIES, loadFactor);
-    }
+//    /**
+//     * Create an LRU Metadata Cache using the default load factor value and a specified maximum capacity.
+//     */
+//    public LRUMetadataCache(int capacity) {
+//        this(capacity, DEFAULT_LOAD_FACTOR);
+//    }
+//
+//
+//    /**
+//     * Create an LRU Metadata Cache using the default maximum capacity and a specified load factor value.
+//     */
+//    public LRUMetadataCache(float loadFactor) {
+//        this(DEFAULT_MAX_ENTRIES, loadFactor);
+//    }
 
     /**
      * Create an LRU Metadata Cache using a specified maximum capacity and load factor.
