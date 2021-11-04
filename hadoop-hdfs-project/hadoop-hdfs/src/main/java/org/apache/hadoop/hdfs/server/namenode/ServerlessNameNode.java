@@ -1842,64 +1842,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             portString);
   }
 
-  /**
-   * Create a ZooKeeper group with the given name. This is accomplished by creating a persistent ZNode.
-   * @param groupName The desired name of the ZK group.
-   */
-  private void createZooKeeperGroup(String groupName) throws KeeperException, InterruptedException {
-    if (this.zooKeeper == null)
-      throw new IllegalStateException("The ZooKeeper instance of this NameNode should be " +
-              "instantiated before attempting to create a group.");
-
-    if (this.zooKeeper.)
-
-    String path = "/" + groupName;
-
-    this.zooKeeper
-  }
-
-  /**
-   * Connect to the ZooKeeper ensemble.
-   * @param hosts Hostnames of the ZooKeeper servers.
-   * @return A {@link ZooKeeper object} representing the connection to the server/ensemble.
-   */
-  private ZooKeeper connectToZooKeeper(String[] hosts) throws IOException, InterruptedException {
-    if (hosts == null)
-      throw new IllegalArgumentException("The 'hosts' array argument must be non-null.");
-
-    if (hosts.length == 0)
-      throw new IllegalArgumentException("The 'hosts' array argument must have length greater than zero.");
-
-    StringBuilder connectionStringBuilder = new StringBuilder();
-    for (int i = 0; i < hosts.length; i++) {
-      String host = hosts[i];
-
-      connectionStringBuilder.append(host);
-
-      if (i < hosts.length - 1)
-        connectionStringBuilder.append(',');
-    }
-    String connectionString = connectionStringBuilder.toString();
-
-    final CountDownLatch connectedSignal = new CountDownLatch(1);
-
-    LOG.debug("Connecting to ZooKeeper with connectionString: " + connectionString);
-
-    // Launches a separate thread to connect and returns immediately. So we create a new Watcher
-    // and listen for the SyncConnected event to know that the connection has been established,
-    // at which point the CountDownLatch will be decremented.
-    ZooKeeper zk = new ZooKeeper(connectionString, 30 * 1000, new Watcher() {
-      @Override
-      public void process(WatchedEvent event) {
-        if (event.getState() == Watcher.Event.KeeperState.SyncConnected) {
-          connectedSignal.countDown();
-        }
-      }
-    });
-    connectedSignal.await();
-    return zk;
-  }
-
   //
   // Common NameNode methods implementation for the active name-node role.
   //
@@ -2037,7 +1979,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param conf
    *     the configuration
    */
-  protected void initialize(Configuration conf) throws IOException {
+  protected void initialize(Configuration conf) throws Exception {
     if (conf.get(HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS) == null) {
       String intervals = conf.get(DFS_METRICS_PERCENTILES_INTERVALS_KEY);
         if (intervals != null)
@@ -2445,6 +2387,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     } catch (IOException | HadoopIllegalArgumentException e) {
       this.stop();
       throw e;
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 
