@@ -117,6 +117,11 @@ public class AsyncZKClient implements ZKClient {
         LOG.debug("Closing AsyncZKClient now...");
     }
 
+    @Override
+    public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception {
+        throw new NotImplementedException("Not implemented!");
+    }
+
 //    @Override
 //    public GroupMember getGroupMember() {
 //        return null;
