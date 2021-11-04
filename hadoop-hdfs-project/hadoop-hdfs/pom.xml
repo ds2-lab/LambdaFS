@@ -73,6 +73,17 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>async-http-client</artifactId>
       <version>2.12.3</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.curator/curator-x-async -->
+    <dependency>
+      <groupId>org.apache.curator</groupId>
+      <artifactId>curator-x-async</artifactId>
+      <version>5.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.curator</groupId>
+      <artifactId>curator-recipes</artifactId>
+      <version>4.0.1</version>
+    </dependency>
     <!-- https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-mapper-asl -->
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
@@ -133,12 +144,6 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <groupId>io.hops</groupId>
       <artifactId>hadoop-hdfs-client</artifactId>
       <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.zookeeper</groupId>
-      <artifactId>zookeeper</artifactId>
-      <type>test-jar</type>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>

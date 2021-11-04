@@ -46,6 +46,7 @@ import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
@@ -77,6 +78,8 @@ import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
+import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
+import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
@@ -96,12 +99,17 @@ import org.apache.hadoop.tools.GetUserMappingsProtocol;
 import org.apache.hadoop.tracing.TraceAdminProtocol;
 import org.apache.hadoop.util.*;
 import org.apache.hadoop.util.ExitUtil.ExitException;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.management.ObjectName;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.PrivilegedExceptionAction;
@@ -109,6 +117,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -259,6 +268,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private static final String DEFAULT_OPERATION = "default";
 
   /**
+   * ZooKeeper client. Used to track membership.
+   */
+  private ZKClient zooKeeperClient;
+
+  /**
    * The time at which this instance of the NameNode began executing.
    *
    * This is used to initially grab StorageReport instances from NDB. In regular HopsFS, NameNodes
@@ -267,6 +281,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * with the time that the NameNode began executing.
    */
   private final long creationTime;
+
+  /**
+   * Connection to the ZooKeeper cluster/server.
+   */
+  private ZooKeeper zooKeeper;
+
+  /**
+   * Zookeeper framework-style client
+   */
+  private CuratorFramework curatorFramework;
 
   /**
    * The last time an intermediate storage updated occurred.
@@ -622,7 +646,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (activeNameNodes == null)
       activeNameNodes = new ActiveServerlessNameNodeList(getId());
 
-    activeNameNodes.refresh();
+    activeNameNodes.refreshFromZooKeeper(this.zooKeeperClient);
   }
 
   /**
@@ -1818,6 +1842,64 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             portString);
   }
 
+  /**
+   * Create a ZooKeeper group with the given name. This is accomplished by creating a persistent ZNode.
+   * @param groupName The desired name of the ZK group.
+   */
+  private void createZooKeeperGroup(String groupName) throws KeeperException, InterruptedException {
+    if (this.zooKeeper == null)
+      throw new IllegalStateException("The ZooKeeper instance of this NameNode should be " +
+              "instantiated before attempting to create a group.");
+
+    if (this.zooKeeper.)
+
+    String path = "/" + groupName;
+
+    this.zooKeeper
+  }
+
+  /**
+   * Connect to the ZooKeeper ensemble.
+   * @param hosts Hostnames of the ZooKeeper servers.
+   * @return A {@link ZooKeeper object} representing the connection to the server/ensemble.
+   */
+  private ZooKeeper connectToZooKeeper(String[] hosts) throws IOException, InterruptedException {
+    if (hosts == null)
+      throw new IllegalArgumentException("The 'hosts' array argument must be non-null.");
+
+    if (hosts.length == 0)
+      throw new IllegalArgumentException("The 'hosts' array argument must have length greater than zero.");
+
+    StringBuilder connectionStringBuilder = new StringBuilder();
+    for (int i = 0; i < hosts.length; i++) {
+      String host = hosts[i];
+
+      connectionStringBuilder.append(host);
+
+      if (i < hosts.length - 1)
+        connectionStringBuilder.append(',');
+    }
+    String connectionString = connectionStringBuilder.toString();
+
+    final CountDownLatch connectedSignal = new CountDownLatch(1);
+
+    LOG.debug("Connecting to ZooKeeper with connectionString: " + connectionString);
+
+    // Launches a separate thread to connect and returns immediately. So we create a new Watcher
+    // and listen for the SyncConnected event to know that the connection has been established,
+    // at which point the CountDownLatch will be decremented.
+    ZooKeeper zk = new ZooKeeper(connectionString, 30 * 1000, new Watcher() {
+      @Override
+      public void process(WatchedEvent event) {
+        if (event.getState() == Watcher.Event.KeeperState.SyncConnected) {
+          connectedSignal.countDown();
+        }
+      }
+    });
+    connectedSignal.await();
+    return zk;
+  }
+
   //
   // Common NameNode methods implementation for the active name-node role.
   //
@@ -2102,7 +2184,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     metrics.getJvmMetrics().setPauseMonitor(pauseMonitor);
 
     Instant metadataInitStart = Instant.now();
-    writeMetadataToNdb();
+    // writeMetadataToIntermediateStorage();
+
+    this.zooKeeperClient = new SyncZKClient(
+            conf.getStrings(SERVERLESS_ZOOKEEPER_HOSTNAMES, SERVERLESS_ZOOKEEPER_HOSTNAMES_DEFAULT),
+            String.valueOf(this.nameNodeID));
+    this.zooKeeperClient.createAndJoinGroup(this.functionName);
+
     refreshActiveNameNodesList();
     Instant metadataInitEnd = Instant.now();
     Duration metadataInitDuration = Duration.between(metadataInitStart, metadataInitEnd);
@@ -2581,7 +2669,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * any exists. Then it will add the new metadata. If there is no existing metadata associated with whatever
    * serverless function we're running on, then the new metadata is simply added.
    */
-  private void writeMetadataToNdb() throws StorageException {
+  private void writeMetadataToIntermediateStorage() throws StorageException {
     LOG.debug("Writing Serverless NameNode metadata to NDB.");
 
     ServerlessNameNodeDataAccess<ServerlessNameNodeMeta> dataAccess =

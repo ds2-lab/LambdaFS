@@ -8,6 +8,7 @@ import io.hops.metadata.hdfs.dal.ServerlessNameNodeDataAccess;
 import io.hops.metadata.hdfs.entity.ServerlessNameNodeMeta;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +37,50 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
     }
 
     /**
+     * Refresh the active node list, using ZooKeeper as the means of tracking group membership.
+     * @param zkClient The ZooKeeper client from the {@link ServerlessNameNode} object.
+     */
+    public synchronized void refreshFromZooKeeper(ZKClient zkClient) {
+        LOG.debug("Updating the list of active NameNodes from ZooKeeper.");
+
+        Map<String, byte[]> groupMembers = zkClient.getGroupMembers();
+        activeNodes.clear();
+
+        for (Map.Entry<String, byte[]> entry : groupMembers.entrySet()) {
+            String memberId = entry.getKey();
+            byte[] memberData = entry.getValue();
+
+            LOG.debug("Discovered GroupMember " + memberId + " with data " + Arrays.toString(memberData) + ".");
+
+            long id;
+            try {
+                id = Long.parseLong(memberId);
+            } catch (NumberFormatException ex) {
+                LOG.error("GroupMember " + memberId + " has incorrectly-formatted ID. Discarding.");
+                continue;
+            }
+
+            ActiveServerlessNameNode activeNameNode = new ActiveServerlessNameNode(id);
+            activeNodes.add(activeNameNode);
+
+            if (id == localNameNodeId)
+                localNameNode = activeNameNode;
+        }
+
+        if (activeNodes.size() == 1)
+            LOG.debug("Finished refreshing active NameNode list. There is just one active name node now.");
+        else
+            LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
+                    " active NameNodes now.");
+
+        LOG.debug("Active NameNode IDs: " + activeNodes);
+    }
+
+    /**
      * Query intermediate storage for updated serverless name node metadata.
      */
-    public synchronized void refresh() throws StorageException {
-        LOG.debug("Updating the list of active NameNodes.");
+    public synchronized void refreshFromStorage() throws StorageException {
+        LOG.debug("Updating the list of active NameNodes from intermediate storage.");
 
         ServerlessNameNodeDataAccess<ServerlessNameNodeMeta> dataAccess =
                 (ServerlessNameNodeDataAccess) HdfsStorageFactory.getDataAccess(ServerlessNameNodeDataAccess.class);
@@ -61,7 +102,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
             LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
                     " active NameNodes now.");
 
-        LOG.debug("Active NameNode IDs: " + activeNodes.toString());
+        LOG.debug("Active NameNode IDs: " + activeNodes);
     }
 
     @Override

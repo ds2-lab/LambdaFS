@@ -22,6 +22,13 @@ CALL flyway$$
 
 delimiter $$
 
+CREATE TABLE `write_acknowledgements` (
+    `namenode_id` bigint(20) NOT NULL,               -- The ID of the NameNode object.
+    `function_name` varchar(36) NOT NULL,            -- The name of the serverless function in which the NN is running.
+    `acknowledgements` int(11) NOT NULL DEFAULT '0', -- Flag indicating whether or not the write has been ACK'd.
+    `op_id` varchar(36) NOT NULL,                    -- Unique identifier of the write operation.
+)
+
 -- Used to keep track of the current versions of the various Serverless NameNodes.
 -- Basically, NameNodes populate their ActiveNodes lists with this information. When
 -- a NameNode gets created, it updates its entry in this table with its NameNode ID.

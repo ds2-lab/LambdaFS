@@ -138,6 +138,18 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS =  "serverless.task.cacheinterval";
   public static final int SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT = 180000; // 180 seconds, or 3 minutes.
 
+  /**
+   * Comma-delimited list of hostnames of ZooKeeper servers.
+   */
+  public static final String SERVERLESS_ZOOKEEPER_HOSTNAMES = "serverless.zookeepers.hosts";
+  public static final String[] SERVERLESS_ZOOKEEPER_HOSTNAMES_DEFAULT = {
+          "10.241.64.15:2181",  // NDB Manager (ndb_mgmd) VM.
+          "10.241.64.16:2181",  // NDB DataNode (ndbd) VM.
+          "10.241.64.14:2181"   // HopsFS Development VM.
+  };
+
+  // END OF SERVERLESS
+
   //db storage
   public static final String DFS_STORAGE_DRIVER_JAR_FILE = "dfs.storage.driver.jarFile";
   public static final String DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT = "";
