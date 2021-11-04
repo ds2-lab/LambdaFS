@@ -39,18 +39,16 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
     /**
      * Refresh the active node list, using ZooKeeper as the means of tracking group membership.
      * @param zkClient The ZooKeeper client from the {@link ServerlessNameNode} object.
+     * @param groupName The name of the group of which we are a member.
      */
-    public synchronized void refreshFromZooKeeper(ZKClient zkClient) {
-        LOG.debug("Updating the list of active NameNodes from ZooKeeper.");
+    public synchronized void refreshFromZooKeeper(ZKClient zkClient, String groupName) throws Exception {
+        LOG.debug("Updating the list of active NameNodes from ZooKeeper. Group name: " + groupName);
 
-        Map<String, byte[]> groupMembers = zkClient.getGroupMembers();
+        List<String> groupMembers = zkClient.getGroupMembers(groupName);
         activeNodes.clear();
 
-        for (Map.Entry<String, byte[]> entry : groupMembers.entrySet()) {
-            String memberId = entry.getKey();
-            byte[] memberData = entry.getValue();
-
-            LOG.debug("Discovered GroupMember " + memberId + " with data " + Arrays.toString(memberData) + ".");
+        for (String memberId : groupMembers) {
+            LOG.debug("Discovered GroupMember " + memberId + ".");
 
             long id;
             try {

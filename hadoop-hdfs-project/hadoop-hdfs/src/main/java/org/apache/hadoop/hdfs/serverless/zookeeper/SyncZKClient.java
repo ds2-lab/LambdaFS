@@ -9,10 +9,14 @@ import org.apache.curator.framework.recipes.nodes.GroupMember;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.x.async.AsyncCuratorFramework;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 /**
  * Encapsulates ZooKeeper/Apache Curator Framework functionality for the NameNode.
@@ -91,13 +95,6 @@ public class SyncZKClient implements ZKClient {
         return CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
     }
 
-    public Map<String, byte[]> getGroupMembers() {
-        if (this.groupMember == null)
-            throw new IllegalStateException("Must first join a group before retrieving group members.");
-
-        return this.groupMember.getCurrentMembers();
-    }
-
     @Override
     public void connect() {
         LOG.debug("Connecting to the ZK ensemble now...");
@@ -118,15 +115,6 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public void createAndJoinGroup(String groupName) {
-        String path = "/" + groupName; // The paths must be fully-qualified, so we prepend an '/'.
-
-        LOG.debug("Joining ZK group via GroupMember API with path: " + path);
-        this.groupMember = new GroupMember(this.client, path, this.memberId, new byte[0]);
-        this.groupMember.start();
-    }
-
-    @Override
     public void joinGroup(String groupName) throws Exception {
         String path = "/" + groupName; // The paths must be fully-qualified, so we prepend an '/'.
 
@@ -143,19 +131,90 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public GroupMember getGroupMember() {
-        return this.groupMember;
+    public void createAndJoinGroup(String groupName) throws Exception {
+        createGroup(groupName);
+        joinGroup(groupName);
+    }
+
+    public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception {
+        if (groupName == null)
+            throw new IllegalArgumentException("Group name argument cannot be null.");
+
+        if (callback == null)
+            throw new IllegalArgumentException("Callback argument cannot be null.");
+
+        String path = "/" + groupName;
+
+        LOG.debug("Getting children for group: " + path);
+        List<String> children = this.client.getChildren().usingWatcher(new Watcher() {
+            @Override
+            public void process(WatchedEvent event) {
+                LOG.debug("Watcher received event " + event.getType().name() + " for children of group: " + path);
+
+                // We only care about this event if it is about the children of the group changing.
+                if (event.getType() == Event.EventType.NodeChildrenChanged) {
+                    try {
+                        LOG.debug("Executing callback for NodeChildrenChanged event on group " + path + " now...");
+                        callback.run();
+                    } catch (Exception ex) {
+                        LOG.error("Error encountered while executing callback:", ex);
+                    }
+                }
+            }
+        }).forPath(path);
+
+        if (children.isEmpty())
+            LOG.warn("There are no children in group: " + path);
+
+        return children;
     }
 
     @Override
-    public <T> void createWatch(String groupName, Callable<T> callback) {
-        if (this.client == null)
-            throw new IllegalStateException("Client must be created/instantiated before any watches can be created.");
+    public List<String> getGroupMembers(String groupName) throws Exception {
         if (groupName == null)
             throw new IllegalArgumentException("Group name argument cannot be null.");
 
         String path = "/" + groupName;
 
-        LOG.debug("Synchronously creating watch for path: " + path);
+        LOG.debug("Getting children for group: " + path);
+        List<String> children = this.client.getChildren().forPath(path);
+
+        if (children.isEmpty())
+            LOG.warn("There are no children in group: " + path);
+
+        return children;
     }
+
+//    public Map<String, byte[]> getGroupMembers() {
+//        if (this.groupMember == null)
+//            throw new IllegalStateException("Must first join a group before retrieving group members.");
+//
+//        return this.groupMember.getCurrentMembers();
+//    }
+
+//    @Override
+//    public void createAndJoinGroup(String groupName) {
+//        String path = "/" + groupName; // The paths must be fully-qualified, so we prepend an '/'.
+//
+//        LOG.debug("Joining ZK group via GroupMember API with path: " + path);
+//        this.groupMember = new GroupMember(this.client, path, this.memberId, new byte[0]);
+//        this.groupMember.start();
+//    }
+
+//    @Override
+//    public GroupMember getGroupMember() {
+//        return this.groupMember;
+//    }
+
+//    @Override
+//    public <T> void createWatch(String groupName, Callable<T> callback) {
+//        if (this.client == null)
+//            throw new IllegalStateException("Client must be created/instantiated before any watches can be created.");
+//        if (groupName == null)
+//            throw new IllegalArgumentException("Group name argument cannot be null.");
+//
+//        String path = "/" + groupName;
+//
+//        LOG.debug("Synchronously creating watch for path: " + path);
+//    }
 }

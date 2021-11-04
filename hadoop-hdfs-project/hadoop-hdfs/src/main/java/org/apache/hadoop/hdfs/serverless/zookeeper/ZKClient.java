@@ -3,8 +3,10 @@ package org.apache.hadoop.hdfs.serverless.zookeeper;
 import org.apache.curator.framework.recipes.nodes.GroupMember;
 import org.apache.zookeeper.KeeperException;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 /**
  * The public API of a ZooKeeper client.
@@ -24,7 +26,6 @@ public interface ZKClient {
      * Create a ZooKeeper group/directory (i.e., a persistent ZNode) with the given name.
      * @param groupName The name to use for the new group/directory.
      */
-    @Deprecated
     public void createGroup(String groupName) throws Exception;
 
     /**
@@ -32,14 +33,13 @@ public interface ZKClient {
      * the parent directory.
      * @param groupName The ZK directory/group to join.
      */
-    @Deprecated
     public void joinGroup(String groupName) throws Exception;
 
     /**
      * Create and join a group with the given name.
      * @param groupName The name of the group to join.
      */
-    public void createAndJoinGroup(String groupName);
+    public void createAndJoinGroup(String groupName) throws Exception;
 
     /**
      * Perform any necessary clean-up, such as stopping a
@@ -48,19 +48,36 @@ public interface ZKClient {
     public void close();
 
     /**
-     * Return the GroupMember instance associated with this client, if it exists. Otherwise, return null.
+     * Get the children of the given group. This creates a watcher for the children of that group changing
+     * and calls the specified callback when the children of the group change.
+     * @param groupName The group whose children we desire.
+     * @param callback The function to call when the group membership changes. Note that this is NOT run in a different
+     *                 thread.
+     * @return List of IDs of the members of the specified group.
      */
-    public GroupMember getGroupMember();
+    public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception;
 
     /**
-     * Get the members of the group we're currently in.
+     * Get the children of the given group.
+     * @param groupName The group whose children we desire..
+     * @return List of IDs of the members of the specified group.
      */
-    public Map<String, byte[]> getGroupMembers();
+    public List<String> getGroupMembers(String groupName) throws Exception;
 
-    /**
-     * Create a watch on the given group. Can optionally supply a callback to process the event.
-     *
-     * @param groupName The name of the group for which to create a watch.
-     */
-    public <T> void createWatch(String groupName, Callable<T> callback);
+//    /**
+//     * Return the GroupMember instance associated with this client, if it exists. Otherwise, return null.
+//     */
+//    public GroupMember getGroupMember();
+
+//    /**
+//     * Get the members of the group we're currently in.
+//     */
+//    public Map<String, byte[]> getGroupMembers();
+
+//    /**
+//     * Create a watch on the given group. Can optionally supply a callback to process the event.
+//     *
+//     * @param groupName The name of the group for which to create a watch.
+//     */
+//    public <T> void createWatch(String groupName, Callable<T> callback);
 }

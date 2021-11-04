@@ -10,6 +10,7 @@ import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.x.async.AsyncCuratorFramework;
 import org.apache.zookeeper.CreateMode;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -116,14 +117,22 @@ public class AsyncZKClient implements ZKClient {
         LOG.debug("Closing AsyncZKClient now...");
     }
 
-    @Override
-    public GroupMember getGroupMember() {
-        return null;
+//    @Override
+//    public GroupMember getGroupMember() {
+//        return null;
+//    }
+//
+//    @Override
+//    public Map<String, byte[]> getGroupMembers() {
+//        return null;
+//    }
+
+    public <T> List<String> getGroupMembers(String groupName, Callable<T> callback) throws Exception {
+        throw new NotImplementedException("Not implemented!");
     }
 
-    @Override
-    public Map<String, byte[]> getGroupMembers() {
-        return null;
+    public List<String> getGroupMembers(String groupName) throws Exception {
+        throw new NotImplementedException("Not implemented!");
     }
 
     /**
@@ -140,33 +149,33 @@ public class AsyncZKClient implements ZKClient {
         return CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
     }
 
-    @Override
-    public <T> void createWatch(String groupName, Callable<T> callback) {
-        if (this.client == null)
-            throw new IllegalStateException("Client must be created/instantiated before any watches can be created.");
-        if (groupName == null)
-            throw new IllegalArgumentException("Group name argument cannot be null.");
-
-        String path = "/" + groupName;
-
-        LOG.debug("Asynchronously creating watch for path: " + path);
-
-        this.client.watched()
-                .getData()
-                .forPath(path)
-                .event()
-                .thenAcceptAsync(watchedEvent -> {
-                    try {
-                        LOG.debug("Watch on group " + path + " has been triggered!");
-
-                        if (callback != null)
-                            callback.call();
-                        else
-                            LOG.warn("No callback provided to do something on watch notification...");
-                    } catch (Exception ex) {
-                        LOG.error("Error encountered while processing event from watch on group " + path + ":", ex);
-                    }
-                });
-    }
+//    @Override
+//    public <T> void createWatch(String groupName, Callable<T> callback) {
+//        if (this.client == null)
+//            throw new IllegalStateException("Client must be created/instantiated before any watches can be created.");
+//        if (groupName == null)
+//            throw new IllegalArgumentException("Group name argument cannot be null.");
+//
+//        String path = "/" + groupName;
+//
+//        LOG.debug("Asynchronously creating watch for path: " + path);
+//
+//        this.client.watched()
+//                .getData()
+//                .forPath(path)
+//                .event()
+//                .thenAcceptAsync(watchedEvent -> {
+//                    try {
+//                        LOG.debug("Watch on group " + path + " has been triggered!");
+//
+//                        if (callback != null)
+//                            callback.call();
+//                        else
+//                            LOG.warn("No callback provided to do something on watch notification...");
+//                    } catch (Exception ex) {
+//                        LOG.error("Error encountered while processing event from watch on group " + path + ":", ex);
+//                    }
+//                });
+//    }
 }
 

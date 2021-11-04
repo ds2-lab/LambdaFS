@@ -164,8 +164,8 @@ public class NameNodeWorkerThread extends Thread {
             try {
                 // Update the list of active name nodes, if it is time to do so.
                 serverlessNameNodeInstance.refreshActiveNameNodesList();
-            } catch (StorageException ex) {
-                LOG.error("Encountered Storage Exception while trying to refresh the list of active NameNodes.");
+            } catch (Exception ex) {
+                LOG.error("Encountered Exception while trying to refresh the list of active NameNodes.");
                 ex.printStackTrace();
             }
 
