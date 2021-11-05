@@ -2131,6 +2131,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     this.zooKeeperClient = new SyncZKClient(
             conf.getStrings(SERVERLESS_ZOOKEEPER_HOSTNAMES, SERVERLESS_ZOOKEEPER_HOSTNAMES_DEFAULT),
             String.valueOf(this.nameNodeID));
+    this.zooKeeperClient.connect();
     this.zooKeeperClient.createAndJoinGroup(this.functionName);
 
     refreshActiveNameNodesList();
