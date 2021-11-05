@@ -15,7 +15,7 @@ logger.addHandler(ch)
 
 # Example:
 #
-# wsk -i action create /whisk.system/namenode1 /home/ubuntu/repos/hops/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar --main org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode --web true --docker scusemua/java8action:latest
+# wsk -i action create /whisk.system/namenode1 /home/ubuntu/repos/hops/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar --main org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode --web true --kind namenode:1
 #
 
 if __name__ == "__main__":
@@ -81,10 +81,12 @@ if __name__ == "__main__":
 
         if do_create:
             logger.debug("Creating function with name \"%s\"" % function_name)
-            command = "wsk -i action create /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
+            #command = "wsk -i action create /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
+            command = "wsk -i action create /whisk.system/%s %s --main %s --web true --kind namenode:1" % (function_name, jar_path, main_class)
         else:
             logger.debug("Updating function with name \"%s\"" % function_name)
-            command = "wsk -i action update /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
+            #command = "wsk -i action update /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
+            command = "wsk -i action update /whisk.system/%s %s --main %s --web true --kind namenode:1" % (function_name, jar_path, main_class)
 
         split_command = command.split(" ")
 
