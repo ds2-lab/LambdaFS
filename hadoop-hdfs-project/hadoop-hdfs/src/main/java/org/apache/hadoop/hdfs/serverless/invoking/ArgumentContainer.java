@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
+import com.sun.org.apache.xpath.internal.Arg;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kerby.util.Base64;
@@ -52,6 +53,15 @@ public class ArgumentContainer {
         byteArrayArguments = new HashMap<>();
         nonByteArrayArguments = new HashMap<>();
         objectArguments = new HashMap<>();
+    }
+
+    public ArgumentContainer(HashMap<String, Serializable> fsArgs) {
+        primitiveArguments = new HashMap<>();
+        byteArrayArguments = new HashMap<>();
+        nonByteArrayArguments = new HashMap<>();
+        objectArguments = new HashMap<>();
+
+        for (Map.Entry<String, Serializable>)
     }
 
     /**

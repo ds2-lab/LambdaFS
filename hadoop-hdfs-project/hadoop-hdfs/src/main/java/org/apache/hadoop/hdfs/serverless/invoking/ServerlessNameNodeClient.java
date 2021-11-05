@@ -174,7 +174,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 operationName,
                 dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments);
+                opArguments,
+                null,
+                -1);
     }
 
     /**
@@ -239,7 +241,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments,
-                requestId));
+                requestId,
+                -1));
 
         LOG.debug("Successfully submitted HTTP request for task " + requestId + "(op=" + operationName +
                 "). Waiting for first result now...");
@@ -250,7 +253,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // operation is already being worked on, and return a null response to the user via HTTP. The user will often
         // receive this HTTP response first. In this scenario, we should simply discard the HTTP response, as the
         // TCP response will actually contain the result of the FS operation.
-
 
         int numTcpReceived = 0;            // Number of TCP responses that we've received.
         int numHttpReceived = 0;           // Number of HTTP responses that we've received.
@@ -316,7 +318,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                 // We do not have any additional/non-default arguments to pass to the NN.
                                 null,
                                 opArguments,
-                                requestId));
+                                requestId,
+                                -1));
                     }
                     continue;
                 }
@@ -347,7 +350,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                 // We do not have any additional/non-default arguments to pass to the NN.
                                 null,
                                 opArguments,
-                                requestId));
+                                requestId,
+                                -1));
 
                         resubmitted = true;
                     } else {

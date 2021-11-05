@@ -15,6 +15,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.invoking.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
 
@@ -25,7 +26,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * Encapsulates a Kryonet TCP client. Used to communicate directly with Serverless HopsFS clients.
@@ -292,6 +293,36 @@ public class NameNodeTCPClient {
         } else {
             throw new IOException("Failed to connect to client at " + newClient.getClientIp() + ":" +
                     newClient.getClientPort());
+        }
+    }
+
+    /**
+     * Check if this NameNode is authorized to perform the specified operation. Specifically, we check if we're
+     * being asked to perform a write operation on an INode that we do not cache. If this is the case, then we invoke
+     * a function from the deployment responsible for this NameNode, and we return the result of that operation
+     * to the client.
+     *
+     * @param requestId The ID of the task/request.
+     * @param op The name of the operation we're performing.
+     * @param payload The original payload we received via TCP.
+     * @param fsArgs The file system arguments supplied by the client.
+     */
+    private void handleAuthorization(String requestId, String op, JsonObject payload, JsonObject fsArgs)
+            throws IOException {
+        if (serverlessNameNode.isWriteOperation(op)) {
+            if (!fsArgs.has("src"))
+                throw new IllegalArgumentException("Arguments for operation " + op + " do not contain a 'src' entry.");
+
+            String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+
+            boolean authorized = serverlessNameNode.authorizedToPerformWrite(src);
+
+            if (!authorized) {
+                // Redirect this request via HTTP.
+                // TODO: Determine if we can directly reuse the TCP payload or if it is different than an HTTP payload.
+                // TODO: Maybe put this function in a common area so that it can be reused by OpenWhiskHandler
+                //       for HTTP requests.
+            }
         }
     }
 

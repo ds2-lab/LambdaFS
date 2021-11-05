@@ -58,62 +58,62 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         super();
     }
 
-    /**
-     * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
-     * function in Serverless HopsFS. (OpenWhisk supports HTTP GET, I think? But we don't use that, in any case.)
-     *
-     * This overload of the {@link ServerlessInvokerBase#invokeNameNodeViaHttpPost} function is used when the arguments
-     * for the file system operation are passed in a HashMap, rather than a {@link ArgumentContainer} object.
-     *
-     * The {@link ArgumentContainer} is relatively new, and in general, all invocations will use that class for passing
-     * arguments. But I am leaving this function here in case we end up wanting to use a HashMap for whatever reason.
-     *
-     * @param operationName The name of the file system operation to be performed.
-     * @param functionUriBase The base URI of the serverless function. This tells the invoker where to issue the
-     *                        HTTP POST request to.
-     * @param nameNodeArguments Arguments for the NameNode itself. These would normally be passed in via the
-     *                          commandline in traditional, serverful HopsFS.
-     * @param fileSystemOperationArguments The arguments for the filesystem operation. Each key should directly
-     *                                     correspond to the name of an argument, while the value should be the
-     *                                     argument itself.
-     * @return The response from the serverless NameNode.
-     */
-    @Override
-    public JsonObject invokeNameNodeViaHttpPost(
-        String operationName,
-        String functionUriBase,
-        HashMap<String, Object> nameNodeArguments,
-        HashMap<String, Object> fileSystemOperationArguments) throws IOException, IllegalStateException
-    {
-        // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
-        // object itself. That is, these are NOT the arguments for the particular file system operation that we
-        // would like to perform (e.g., create, delete, append, etc.).
-        JsonObject nameNodeArgumentsJson = new JsonObject();
-
-        // These are the arguments passed to the file system operation that we'd like to perform (e.g., create).
-        JsonObject fileSystemOperationArgumentsJson = new JsonObject();
-
-        // Populate the file system operation arguments JSON.
-        if (fileSystemOperationArguments != null) {
-            LOG.debug("Populating HTTP request with FS operation arguments now...");
-            InvokerUtilities.populateJsonObjectWithArguments(
-                    fileSystemOperationArguments, fileSystemOperationArgumentsJson);
-            LOG.debug("Populated " + fileSystemOperationArgumentsJson.size() + " arguments.");
-        }
-        else {
-            LOG.debug("No FS operation arguments specified.");
-            fileSystemOperationArgumentsJson = new JsonObject();
-        }
-
-        // Populate the NameNode arguments JSON with any additional arguments specified by the user.
-        if (nameNodeArguments != null)
-            InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
-
-        String requestId = UUID.randomUUID().toString();
-
-        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-                fileSystemOperationArgumentsJson, requestId);
-    }
+//    /**
+//     * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
+//     * function in Serverless HopsFS. (OpenWhisk supports HTTP GET, I think? But we don't use that, in any case.)
+//     *
+//     * This overload of the {@link ServerlessInvokerBase#invokeNameNodeViaHttpPost} function is used when the arguments
+//     * for the file system operation are passed in a HashMap, rather than a {@link ArgumentContainer} object.
+//     *
+//     * The {@link ArgumentContainer} is relatively new, and in general, all invocations will use that class for passing
+//     * arguments. But I am leaving this function here in case we end up wanting to use a HashMap for whatever reason.
+//     *
+//     * @param operationName The name of the file system operation to be performed.
+//     * @param functionUriBase The base URI of the serverless function. This tells the invoker where to issue the
+//     *                        HTTP POST request to.
+//     * @param nameNodeArguments Arguments for the NameNode itself. These would normally be passed in via the
+//     *                          commandline in traditional, serverful HopsFS.
+//     * @param fileSystemOperationArguments The arguments for the filesystem operation. Each key should directly
+//     *                                     correspond to the name of an argument, while the value should be the
+//     *                                     argument itself.
+//     * @return The response from the serverless NameNode.
+//     */
+//    @Override
+//    public JsonObject invokeNameNodeViaHttpPost(
+//        String operationName,
+//        String functionUriBase,
+//        HashMap<String, Object> nameNodeArguments,
+//        HashMap<String, Object> fileSystemOperationArguments) throws IOException, IllegalStateException
+//    {
+//        // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
+//        // object itself. That is, these are NOT the arguments for the particular file system operation that we
+//        // would like to perform (e.g., create, delete, append, etc.).
+//        JsonObject nameNodeArgumentsJson = new JsonObject();
+//
+//        // These are the arguments passed to the file system operation that we'd like to perform (e.g., create).
+//        JsonObject fileSystemOperationArgumentsJson = new JsonObject();
+//
+//        // Populate the file system operation arguments JSON.
+//        if (fileSystemOperationArguments != null) {
+//            LOG.debug("Populating HTTP request with FS operation arguments now...");
+//            InvokerUtilities.populateJsonObjectWithArguments(
+//                    fileSystemOperationArguments, fileSystemOperationArgumentsJson);
+//            LOG.debug("Populated " + fileSystemOperationArgumentsJson.size() + " arguments.");
+//        }
+//        else {
+//            LOG.debug("No FS operation arguments specified.");
+//            fileSystemOperationArgumentsJson = new JsonObject();
+//        }
+//
+//        // Populate the NameNode arguments JSON with any additional arguments specified by the user.
+//        if (nameNodeArguments != null)
+//            InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
+//
+//        String requestId = UUID.randomUUID().toString();
+//
+//        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
+//                fileSystemOperationArgumentsJson, requestId);
+//    }
 
     /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient
@@ -129,40 +129,45 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      *                          arguments when using a serverful name node.
      * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
      *                                     to the Java function which performs the FS operation.
+     * @param requestId The unique ID used to match this request uniquely against its corresponding TCP request. If
+     *                  passed a null, then a random ID is generated.
+     * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
+     *                         cache entry exists.
      * @return The response from the Serverless NameNode.
      */
     private JsonObject invokeNameNodeViaHttpInternal(String operationName, String functionUriBase,
                                                      JsonObject nameNodeArguments,
                                                      JsonObject fileSystemOperationArguments,
-                                                     String requestId) throws IOException, IllegalStateException {
+                                                     String requestId, int targetDeployment)
+            throws IOException, IllegalStateException {
         if (!hasBeenConfigured())
             throw new IllegalStateException("Invoker has not yet been configured.");
 
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);
 
-        int functionNumber = -1;
-
-        // Attempt to get the serverless function associated with the particular file/directory, if one exists.
-        if (fileSystemOperationArguments != null &&
-                fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
-            String sourceFileOrDirectory =
-                    fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
-            functionNumber = cache.getFunction(sourceFileOrDirectory);
-        } else {
-            LOG.debug("No `src` property found in file system arguments... skipping the checking of INode cache...");
+        if (targetDeployment == -1) {
+            // Attempt to get the serverless function associated with the particular file/directory, if one exists.
+            if (fileSystemOperationArguments != null && fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
+                String sourceFileOrDirectory =
+                        fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
+                targetDeployment = cache.getFunction(sourceFileOrDirectory);
+            } else {
+                LOG.debug("No `src` property found in file system arguments... " +
+                        "skipping the checking of INode cache...");
+            }
         }
 
         // If we have a cache entry for this function, then we'll invoke that specific function.
         // Otherwise, we'll just select a function at random.
-        if (functionNumber < 0) {
-            functionNumber = ThreadLocalRandom.current().nextInt(0, numUniqueFunctions);
-            LOG.debug("Randomly selected serverless function " + functionNumber);
+        if (targetDeployment < 0) {
+            targetDeployment = ThreadLocalRandom.current().nextInt(0, numUniqueFunctions);
+            LOG.debug("Randomly selected serverless function " + targetDeployment);
         } else {
-            LOG.debug("Retrieved serverless function " + functionNumber + " from cache.");
+            LOG.debug("Retrieved serverless function " + targetDeployment + " from cache.");
         }
 
-        builder.append(functionNumber);
+        builder.append(targetDeployment);
 
         // Add the blocking parameter to the end of the URI so the function blocks until it completes
         // and the full result can be returned to the user.
@@ -202,7 +207,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         int currentNumTries = 0;
 
         do {
-            LOG.info("Invoking NameNode " + functionNumber + " (op=" + operationName + "), attempt "
+            LOG.info("Invoking NameNode " + targetDeployment + " (op=" + operationName + "), attempt "
                     + (currentNumTries + 1) + "/" + (maxHttpRetries + 1) + ".");
 
             HttpResponse httpResponse;
@@ -318,39 +323,39 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         return jsonObjectResponse;
     }
 
-    /**
-     * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
-     * function in Serverless HopsFS. (OpenWhisk supports HTTP GET, I think? But we don't use that, in any case.)
-     *
-     * This overload of the {@link ServerlessInvokerBase#invokeNameNodeViaHttpPost} function is used when the arguments
-     * for a {@link ArgumentContainer} object.
-     * @param operationName The name of the file system operation to be performed.
-     * @param functionUriBase The base URI of the serverless function. This tells the invoker where to issue the
-     *                        HTTP POST request to.
-     * @param nameNodeArguments Arguments for the NameNode itself. These would normally be passed in via the
-     *                          commandline in traditional, serverful HopsFS.
-     * @param fileSystemOperationArguments The arguments for the filesystem operation.
-     * @return The response from the serverless NameNode.
-     */
-    @Override
-    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
-                                                HashMap<String, Object> nameNodeArguments,
-                                                ArgumentContainer fileSystemOperationArguments)
-            throws IOException, IllegalStateException {
-        // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
-        // object itself. That is, these are NOT the arguments for the particular file system operation that we
-        // would like to perform (e.g., create, delete, append, etc.).
-        JsonObject nameNodeArgumentsJson = new JsonObject();
-
-        // Populate the NameNode arguments JSON with any additional arguments specified by the user.
-        if (nameNodeArguments != null)
-            InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
-
-        String requestId = UUID.randomUUID().toString();
-
-        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-                fileSystemOperationArguments.convertToJsonObject(), requestId);
-    }
+//    /**
+//     * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
+//     * function in Serverless HopsFS. (OpenWhisk supports HTTP GET, I think? But we don't use that, in any case.)
+//     *
+//     * This overload of the {@link ServerlessInvokerBase#invokeNameNodeViaHttpPost} function is used when the arguments
+//     * for a {@link ArgumentContainer} object.
+//     * @param operationName The name of the file system operation to be performed.
+//     * @param functionUriBase The base URI of the serverless function. This tells the invoker where to issue the
+//     *                        HTTP POST request to.
+//     * @param nameNodeArguments Arguments for the NameNode itself. These would normally be passed in via the
+//     *                          commandline in traditional, serverful HopsFS.
+//     * @param fileSystemOperationArguments The arguments for the filesystem operation.
+//     * @return The response from the serverless NameNode.
+//     */
+//    @Override
+//    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
+//                                                HashMap<String, Object> nameNodeArguments,
+//                                                ArgumentContainer fileSystemOperationArguments)
+//            throws IOException, IllegalStateException {
+//        // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
+//        // object itself. That is, these are NOT the arguments for the particular file system operation that we
+//        // would like to perform (e.g., create, delete, append, etc.).
+//        JsonObject nameNodeArgumentsJson = new JsonObject();
+//
+//        // Populate the NameNode arguments JSON with any additional arguments specified by the user.
+//        if (nameNodeArguments != null)
+//            InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
+//
+//        String requestId = UUID.randomUUID().toString();
+//
+//        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
+//                fileSystemOperationArguments.convertToJsonObject(), requestId);
+//    }
 
     /**
      * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
@@ -370,14 +375,17 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * @param nameNodeArguments Arguments for the NameNode itself. These would normally be passed in via the
      *                          commandline in traditional, serverful HopsFS.
      * @param fileSystemOperationArguments The arguments for the filesystem operation.
-     * @param requestId The unique ID used to match this request uniquely against its corresponding TCP request.
+     * @param requestId The unique ID used to match this request uniquely against its corresponding TCP request. If
+     *                  passed a null, then a random ID is generated.
+     * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
+     *                         cache entry exists.
      * @return The response from the serverless NameNode.
      */
     @Override
     public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
-                                                String requestId)
+                                                String requestId, int targetDeployment)
             throws IOException, IllegalStateException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
@@ -388,8 +396,11 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         if (nameNodeArguments != null)
             InvokerUtilities.populateJsonObjectWithArguments(nameNodeArguments, nameNodeArgumentsJson);
 
+        if (requestId == null)
+            requestId = UUID.randomUUID().toString();
+
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-                fileSystemOperationArguments.convertToJsonObject(), requestId);
+                fileSystemOperationArguments.convertToJsonObject(), requestId, targetDeployment);
     }
 
     /**

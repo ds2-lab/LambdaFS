@@ -17,6 +17,7 @@
 package org.apache.hadoop.hdfs.server.namenode;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.hops.DalDriver;
@@ -255,6 +256,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * other functions as directed by clients and DataNodes.
    */
   private Map<String, CheckedFunction<JsonObject, ? extends Serializable>> operations;
+
+  /**
+   * HashSet containing the names of all write operations. 
+   * Used to check if a given operation is a write operation or not.
+   */
+  private HashSet<String> writeOperations;
 
   /**
    * When the 'op' field is set to this in the invocation payload, no operation is performed.
@@ -544,6 +551,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     R apply(T arg) throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException;
   }
 
+  /**
+   * Check if the given operation is a write operation.
+   * @param op The name of the operation.
+   * @return True if the operation is a write operation, otherwise false.
+   */
+  public boolean isWriteOperation(String op) {
+    return writeOperations.contains(op);
+  }
 
   /**
    * Check that this NameNode is "authorized" to perform a write operation on the file or directory specified
@@ -555,7 +570,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * @return True if this NN is authorized to write to that file/directory, otherwise False.
    */
-  private boolean authorizedToPerformWrite(String src) throws IOException {
+  public boolean authorizedToPerformWrite(String src) throws IOException {
     LOG.debug("Checking if NameNode " + functionName + " is authorized to perform a write to file/directory " + src);
     INode inode = this.getINodeForCache(src);
     int mappedDeployment = getMappedServerlessFunction(inode);
@@ -576,6 +591,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   public void populateOperationsMap() {
     operations = new HashMap<>();
+    writeOperations = Sets.newHashSet(
+            "abandonBlock", "addBlock", "append", "complete", "concat", "create", "delete",
+            "mkdirs", "rename", "setOwner", "setPermission", "setMetaStatus", "truncate"
+    );
 
     operations.put("abandonBlock", args -> {
       abandonBlock(args);
@@ -1648,28 +1667,28 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return cmd;
   }
 
-  public static void main(String[] args) throws Exception {
-    LOG.info("=================================================================");
-    LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
-    LOG.info("=================================================================");
-    System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
-
-    HashMap<String, Object> nameNodeArguments = new HashMap<String, Object>();
-    nameNodeArguments.put("command-line-arguments", args);
-
-    Configuration conf = new Configuration();
-
-    ServerlessInvokerBase<JsonObject> serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
-            conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
-    serverlessInvoker.setClientName("CommandLine");
-    serverlessInvoker.setConfiguration(conf);
-
-    String serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
-
-    LOG.debug("Invoking serverless NameNode with commandline arguments: " + Arrays.toString(args));
-
-    serverlessInvoker.invokeNameNodeViaHttpPost(DEFAULT_OPERATION, serverlessEndpoint,
-            nameNodeArguments, new HashMap<String, Object>());
+//  public static void main(String[] args) throws Exception {
+//    LOG.info("=================================================================");
+//    LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
+//    LOG.info("=================================================================");
+//    System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
+//
+//    HashMap<String, Object> nameNodeArguments = new HashMap<String, Object>();
+//    nameNodeArguments.put("command-line-arguments", args);
+//
+//    Configuration conf = new Configuration();
+//
+//    ServerlessInvokerBase<JsonObject> serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
+//            conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
+//    serverlessInvoker.setClientName("CommandLine");
+//    serverlessInvoker.setConfiguration(conf);
+//
+//    String serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+//
+//    LOG.debug("Invoking serverless NameNode with commandline arguments: " + Arrays.toString(args));
+//
+//    serverlessInvoker.invokeNameNodeViaHttpPost(DEFAULT_OPERATION, serverlessEndpoint,
+//            nameNodeArguments, new HashMap<String, Object>());
 
     /*platformSpecificInitialization();
 
@@ -1699,7 +1718,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // Just pass `CommandLine` for the function name...
     JsonObject response = nameNodeDriver(op, fsArgs, commandLineArguments, "CommandLine");
     LOG.info("Response = " + response);*/
-  }
+//  }
 
   /**
    * httpServer
@@ -2274,6 +2293,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   @Override // NameNodeStatusMXBean
   public boolean isSecurityEnabled() {
     return UserGroupInformation.isSecurityEnabled();
+  }
+
+  /**
+   * Return the Serverless Invoker object used by this NameNode.
+   */
+  public ServerlessInvokerBase<JsonObject> getServerlessInvoker() {
+    return serverlessInvoker;
   }
 
   private void stopCommonServices() {

@@ -188,29 +188,44 @@ public abstract class ServerlessInvokerBase<T> {
         return cache;
     }
 
-    public abstract T invokeNameNodeViaHttpPost(
-            String operationName,
-            String functionUriBase,
-            HashMap<String, Object> nameNodeArguments,
-            HashMap<String, Object> fileSystemOperationArguments)
-            throws IOException, IllegalStateException;
+//    public abstract T invokeNameNodeViaHttpPost(
+//            String operationName,
+//            String functionUriBase,
+//            HashMap<String, Object> nameNodeArguments,
+//            HashMap<String, Object> fileSystemOperationArguments)
+//            throws IOException, IllegalStateException;
 
-    public abstract T invokeNameNodeViaHttpPost(String operationName, String functionUri,
-                                                HashMap<String, Object> nameNodeArguments,
-                                                ArgumentContainer fileSystemOperationArguments)
-            throws IOException, IllegalStateException;
+//    public abstract T invokeNameNodeViaHttpPost(String operationName, String functionUri,
+//                                                HashMap<String, Object> nameNodeArguments,
+//                                                ArgumentContainer fileSystemOperationArguments)
+//            throws IOException, IllegalStateException;
 
     /**
-     * Issue an HTTP request to invoke the NameNode. This version accepts a requestId to use rather than
-     * generating one itself.
+     * This performs all the logic. The public versions of this function accept parameters that are convenient
+     * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
+     *
+     * @param operationName The FS operation being performed.
+     * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
+     *                        in order to invoke the function. Before the request is issued, a number is appended
+     *                        to the end of the URI to target a particular serverless name node. After the number is
+     *                        appended, we also append a string ?blocking=true to ensure that the operation blocks
+     *                        until it is completed so that the result may be returned to the caller.
+     * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
+     *                          arguments when using a serverful name node.
+     * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
+     *                                     to the Java function which performs the FS operation.
+     * @param requestId The unique ID used to match this request uniquely against its corresponding TCP request. If
+     *                  passed a null, then a random ID is generated.
+     * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
+     *                         cache entry exists.
+     * @return The response from the Serverless NameNode.
      */
-    public abstract T invokeNameNodeViaHttpPost(String operationName, String functionUri,
+    public abstract T invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
-                                                String requestId)
+                                                String requestId, int targetDeployment)
             throws IOException, IllegalStateException;
-
-
+    
     public abstract CloseableHttpClient getHttpClient()
             throws NoSuchAlgorithmException, KeyManagementException;
 

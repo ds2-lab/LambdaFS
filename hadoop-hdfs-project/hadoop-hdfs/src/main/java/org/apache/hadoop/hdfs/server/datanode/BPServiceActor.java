@@ -37,6 +37,7 @@ import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.invoking.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.io.IOUtils;
@@ -149,7 +150,7 @@ class BPServiceActor implements Runnable {
       try {
         LOG.debug("Attempting to invoke NameNode for DN-NN handshake now...");
 
-        HashMap<String, Object> fsArgs = new HashMap<>();
+        ArgumentContainer fsArgs = new ArgumentContainer();
 
         String uuid = dn.getDatanodeUuid();
 
@@ -163,7 +164,9 @@ class BPServiceActor implements Runnable {
                 "versionRequest",
                 dnConf.serverlessEndpoint,
                 null,
-                fsArgs
+                fsArgs,
+                null,
+                -1
         );
 
         LOG.info("responseJson = " + responseJson.toString());
