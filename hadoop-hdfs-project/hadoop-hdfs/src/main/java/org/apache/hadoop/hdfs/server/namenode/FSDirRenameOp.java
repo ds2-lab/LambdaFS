@@ -694,7 +694,6 @@ class FSDirRenameOp {
             
             if (!undoRemoveSrc && !undoRemoveDst) {
               tx.logMetadataEvent();
-             
             }
 
             tx.snapshotMaintenance();
