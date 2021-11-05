@@ -482,7 +482,9 @@ public class OpenWhiskHandler {
     /**
      * In this case, we are performing OpenWhisk-specific initialization.
      *
-     * @return The name of this particular OpenWhisk serverless function/action.
+     * @return The name of this particular OpenWhisk serverless function/action. Note that the namespace portion
+     * of the function's name is removed. So, if the function's fully-qualified name is "/whisk.system/namenode0",
+     * then we return "namenode0", removing the "/whisk.system/" from the function's name.
      */
     private static String platformSpecificInitialization() {
         String activationId = System.getenv("__OW_ACTIVATION_ID");
