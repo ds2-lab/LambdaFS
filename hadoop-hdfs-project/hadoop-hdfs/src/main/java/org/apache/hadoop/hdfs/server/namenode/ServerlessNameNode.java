@@ -243,6 +243,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private int numUniqueServerlessNameNodes;
 
   /**
+   * We issue HTTP requests here to invoke NameNodes.
+   */
+  private String functionUriBase;
+
+  /**
    * List of currently-active NameNodes. This list is based on metadata stored in NDB.
    *
    * The list is updated in one of two ways:
@@ -2082,6 +2087,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("Started the NDB EventManager thread.");
 
+    functionUriBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
             conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
 
@@ -2234,6 +2241,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   public int getWorkerThreadTimeoutMs() {
     return workerThreadTimeoutMilliseconds;
+  }
+
+  public String getFunctionUriBase() {
+    return this.functionUriBase;
   }
 
   /**

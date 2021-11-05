@@ -11,6 +11,7 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.DuplicateRequest;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
+import org.apache.hadoop.hdfs.serverless.operation.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
 import org.slf4j.Logger;
@@ -301,20 +302,18 @@ public class OpenWhiskHandler {
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
-        FileSystemTask<Serializable> newTask = null;
+        Future<Serializable> newTask = null;
         try {
-            LOG.debug("Adding task " + requestId + " (operation = " + op + ") to work queue now...");
-            newTask = new FileSystemTask<>(requestId, op, fsArgs);
-            serverlessNameNode.enqueueFileSystemTask(newTask);
+            newTask = FileSystemTaskUtils.createAndEnqueueFileSystemTask(requestId, op, fsArgs,
+                    serverlessNameNode.getFunctionUriBase(), result, serverlessNameNode);
 
             // We wait for the task to finish executing in a separate try-catch block so that, if there is
             // an exception, then we can log a specific message indicating where the exception occurred. If we
             // waited for the task in this block, we wouldn't be able to indicate in the log whether the
             // exception occurred when creating/scheduling the task or while waiting for it to complete.
-        }
-        catch (Exception ex) {
-            LOG.error("Encountered " + ex.getClass().getSimpleName()
-                    + " while assigning a new task to the worker thread: ", ex);
+        } catch (IOException ex) {
+            LOG.error("Error encountered while creating file system task "
+                    + requestId + " for operation " + op + ":", ex);
             result.addException(ex);
         }
 
