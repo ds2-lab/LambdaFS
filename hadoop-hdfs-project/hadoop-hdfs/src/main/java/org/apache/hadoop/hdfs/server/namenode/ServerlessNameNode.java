@@ -267,6 +267,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private ZKClient zooKeeperClient;
 
   /**
+   * Used by the Serverless NameNode to invoke other Serverless NameNodes.
+   */
+  private ServerlessInvokerBase<JsonObject> serverlessInvoker;
+
+  /**
    * The time at which this instance of the NameNode began executing.
    *
    * This is used to initially grab StorageReport instances from NDB. In regular HopsFS, NameNodes
@@ -2057,6 +2062,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     eventManagerThread.start();
 
     LOG.debug("Started the NDB EventManager thread.");
+
+    this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
+            conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
 
     Instant serverlessInitDone = Instant.now();
     Duration serverlessInitDuration = Duration.between(nameNodeInitStart, serverlessInitDone);

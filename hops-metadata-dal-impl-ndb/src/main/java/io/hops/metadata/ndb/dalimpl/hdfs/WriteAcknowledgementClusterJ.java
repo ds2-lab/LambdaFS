@@ -79,6 +79,27 @@ public class WriteAcknowledgementClusterJ
     }
 
     @Override
+    public void acknowledge(WriteAcknowledgement writeAcknowledgement) throws StorageException {
+        LOG.debug("ACK " + writeAcknowledgement.toString());
+
+        if (!writeAcknowledgement.getAcknowledged())
+            throw new IllegalArgumentException("The 'acknowledged' field of the acknowledgement should be true.");
+
+        HopsSession session = connector.obtainSession();
+
+        WriteAcknowledgementDTO writeAcknowledgementDTO = null;
+
+        try {
+            writeAcknowledgementDTO = session.newInstance(WriteAcknowledgementDTO.class);
+            copyState(writeAcknowledgementDTO, writeAcknowledgement);
+            session.updatePersistent(writeAcknowledgementDTO); // Throw exception if it does NOT exist.
+            LOG.debug("Successfully stored " + writeAcknowledgement.toString());
+        } finally {
+            session.release(writeAcknowledgementDTO);
+        }
+    }
+
+    @Override
     public void addWriteAcknowledgement(WriteAcknowledgement writeAcknowledgement) throws StorageException {
         LOG.debug("ADD " + writeAcknowledgement.toString());
         HopsSession session = connector.obtainSession();
@@ -88,7 +109,7 @@ public class WriteAcknowledgementClusterJ
         try {
             writeAcknowledgementDTO = session.newInstance(WriteAcknowledgementDTO.class);
             copyState(writeAcknowledgementDTO, writeAcknowledgement);
-            session.savePersistent(writeAcknowledgementDTO);
+            session.makePersistent(writeAcknowledgementDTO); // Throw exception if it exists.
             LOG.debug("Successfully stored " + writeAcknowledgement.toString());
         } finally {
             session.release(writeAcknowledgementDTO);
@@ -108,7 +129,8 @@ public class WriteAcknowledgementClusterJ
                 copyState(writeAcknowledgementDTOs[i], writeAcknowledgements[i]);
             }
 
-            session.savePersistentAll(Arrays.asList(writeAcknowledgementDTOs));
+            // Throw exception if any exist.
+            session.makePersistentAll(Arrays.asList(writeAcknowledgementDTOs));
             LOG.debug("Successfully stored " + Arrays.toString(writeAcknowledgements));
         } finally {
             session.release(writeAcknowledgementDTOs);

@@ -30,6 +30,13 @@ public class WriteAcknowledgement {
         this.acknowledged = acknowledged;
     }
 
+    /**
+     * Return an instance of this WriteAcknowledgement object with the 'acknowledged' field set to True.
+     */
+    public WriteAcknowledgement acknowledge() {
+        return new WriteAcknowledgement(this.nameNodeId, this.functionName, this.operationId, true);
+    }
+
     public long getNameNodeId() {
         return nameNodeId;
     }

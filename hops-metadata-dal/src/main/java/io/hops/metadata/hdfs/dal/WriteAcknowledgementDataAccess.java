@@ -2,6 +2,7 @@ package io.hops.metadata.hdfs.dal;
 
 import io.hops.exception.StorageException;
 import io.hops.metadata.common.EntityDataAccess;
+import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 
 import java.util.List;
 
@@ -19,12 +20,23 @@ public interface WriteAcknowledgementDataAccess<T> extends EntityDataAccess {
 
     /**
      * Store the given write acknowledgement in intermediate storage.
+     *
+     * NOTE: This should only be used for adding the un-ACK'd entries. Use the separate API for ACK-ing an entry.
      * @param writeAcknowledgement The WriteAcknowledgement to store in intermediate storage.
      */
     void addWriteAcknowledgement(T writeAcknowledgement) throws StorageException;
 
     /**
+     * Acknowledge the given write acknowledgement. The parameterized instance's 'acknowledged' field should be true,
+     * or an exception will be thrown. Also throws an exception if there does not exist an entry already in
+     * intermediate storage for this ACK.
+     */
+    void acknowledge(WriteAcknowledgement writeAcknowledgement) throws StorageException;
+
+    /**
      * Store the given write acknowledgements in intermediate storage.
+     *
+     * NOTE: This should only be used for adding the un-ACK'd entries. Use the separate API for ACK-ing an entry.
      * @param writeAcknowledgements Array of WriteAcknowledgements to store in intermediate storage.
      */
     void addWriteAcknowledgements(T[] writeAcknowledgements) throws StorageException;
