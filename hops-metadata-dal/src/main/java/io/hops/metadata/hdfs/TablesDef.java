@@ -17,6 +17,14 @@ package io.hops.metadata.hdfs;
 
 public class TablesDef {
 
+  public interface WriteAcknowledgementsTableDef {
+    String TABLE_NAME = "write_acknowledgements";
+    String NAME_NODE_ID = "namenode_id";
+    String FUNCTION_NAME = "function_name";
+    String ACKNOWLEDGED = "acknowledged";
+    String OPERATION_ID = "op_id";
+  }
+
   /**
    * Defines the MySQL NDB table for the Serverless NameNodes.
    */

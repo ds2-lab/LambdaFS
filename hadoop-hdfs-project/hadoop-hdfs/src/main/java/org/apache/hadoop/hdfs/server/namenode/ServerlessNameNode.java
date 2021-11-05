@@ -99,9 +99,6 @@ import org.apache.hadoop.tools.GetUserMappingsProtocol;
 import org.apache.hadoop.tracing.TraceAdminProtocol;
 import org.apache.hadoop.util.*;
 import org.apache.hadoop.util.ExitUtil.ExitException;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,7 +106,6 @@ import org.slf4j.LoggerFactory;
 import javax.management.ObjectName;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
-import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.PrivilegedExceptionAction;
@@ -117,10 +113,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -410,7 +404,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * The number of this serverless function.
    */
-  private final int functionNumber;
+  private final int deploymentNumber;
 
   /**
    * Used to communicate with Serverless HopsFS clients via TCP.
@@ -543,6 +537,32 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   @FunctionalInterface
   public interface CheckedFunction<T, R extends Serializable> {
     R apply(T arg) throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException;
+  }
+
+
+  /**
+   * Check that this NameNode is "authorized" to perform a write operation on the file or directory specified
+   * by the provided path. A NameNode is "authorized" to perform a write operation if it is responsible for caching
+   * the metadata of the given file or directory. This is determined by consistently hashing the INode to a NameNode
+   * deployment, and checking to see if this NameNode is an instance of that deployment.
+   *
+   * @param src The file or directory to be written to.
+   *
+   * @return True if this NN is authorized to write to that file/directory, otherwise False.
+   */
+  private boolean authorizedToPerformWrite(String src) throws IOException {
+    LOG.debug("Checking if NameNode " + functionName + " is authorized to perform a write to file/directory " + src);
+    INode inode = this.getINodeForCache(src);
+    int mappedDeployment = getMappedServerlessFunction(inode);
+
+    // We'll go ahead and cache the INode locally if we're responsible for caching it since
+    // we went to the effort of retrieving it from NDB already.
+    if (this.deploymentNumber == mappedDeployment) {
+      this.namesystem.getMetadataCache().put(src, inode.getId(), inode);
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -2358,7 +2378,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
     this.functionName = functionName;
-    this.functionNumber = getFunctionNumberFromFunctionName();
+    this.deploymentNumber = getFunctionNumberFromFunctionName();
     this.nameNodeTCPClient = new NameNodeTCPClient(functionName, this);
     // Subtract five seconds (i.e., 6000 milliseconds) to account for invocation overheads and other start-up times.
     // The default DN heartbeat interval (and therefore, StorageReport interval) is three seconds, so this should
@@ -2863,7 +2883,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return True if we should cache this INode locally, otherwise returns False.
    */
   public boolean shouldCacheLocally(INode inode) {
-    return getMappedServerlessFunction(inode) == functionNumber;
+    return getMappedServerlessFunction(inode) == deploymentNumber;
   }
 
   /**

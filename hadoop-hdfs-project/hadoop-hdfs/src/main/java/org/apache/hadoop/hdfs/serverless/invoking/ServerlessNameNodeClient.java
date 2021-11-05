@@ -121,13 +121,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param nameNodeArguments The command-line arguments to be given to the NN, should it be created within the NN
      *                          function container (i.e., during a cold start).
      * @param opArguments The arguments to be passed to the specified file system operation.
+     *
      * @return The result of executing the desired FS operation on the NameNode.
      */
-    private JsonObject submitOperationToNameNode(String operationName,
-                                                      String serverlessEndpoint,
-                                                      HashMap<String, Object> nameNodeArguments,
-                                                      ArgumentContainer opArguments)
-            throws IOException, InterruptedException, ExecutionException {
+    private JsonObject submitOperationToNameNode(
+            String operationName,
+            String serverlessEndpoint,
+            HashMap<String, Object> nameNodeArguments,
+            ArgumentContainer opArguments) throws IOException, InterruptedException, ExecutionException {
         // Check if there's a source directory parameter, as this is the file or directory that could
         // potentially be mapped to a serverless function.
         Object sourceObject = opArguments.get(ServerlessNameNodeKeys.SRC);

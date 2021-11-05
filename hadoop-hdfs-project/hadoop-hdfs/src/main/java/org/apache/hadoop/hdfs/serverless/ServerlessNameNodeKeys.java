@@ -15,6 +15,8 @@ public class ServerlessNameNodeKeys {
     public static final String SRC = "src";
     public static final String VALUE = "value";
     public static final String FUNCTION_NAME = "functionName";
+    public static final String PERFORMING_WRITE = "PERFORMING_WRITE";
+    public static final String REDIRECTED_WRITE = "REDIRECTED_WRITE";
 
     public static final String REQUEST_METHOD = "requestMethod";
     public static final String CANCELLED = "cancelled";
