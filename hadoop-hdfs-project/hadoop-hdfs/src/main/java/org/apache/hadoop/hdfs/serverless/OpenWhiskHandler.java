@@ -18,6 +18,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.*;
@@ -488,13 +490,11 @@ public class OpenWhiskHandler {
         LOG.debug("Hadoop configuration directory: " + System.getenv("HADOOP_CONF_DIR"));
         LOG.debug("OpenWhisk activation ID: " + activationId);
 
-//        if (ServerlessNameNode.nameNodeID == -1) {
-//            ServerlessNameNode.nameNodeID = ServerlessUtilities.hash(activationId);
-//            LOG.debug("Set name node ID to " + ServerlessNameNode.nameNodeID);
-//        } else {
-//            LOG.debug("Name node ID already set to " + ServerlessNameNode.nameNodeID);
-//        }
+        String functionNameWithNamespace = System.getenv("__OW_ACTION_NAME");
+        Path functionNameAsPath = Paths.get(functionNameWithNamespace);
 
-        return System.getenv("__OW_ACTION_NAME");
+        // This will extract just the last part. The function names are really:
+        // /whisk.system/namenodeX, where X is an integer. We don't want the "/whisk.system/" part.
+        return functionNameAsPath.getFileName().toString();
     }
 }
