@@ -121,14 +121,14 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public void joinGroup(String groupName) throws Exception {
+    public void joinGroup(String groupName, String memberId) throws Exception {
         if (this.client == null)
             throw new IllegalStateException("ZooKeeper client must be instantiated before joining a group.");
 
         if (groupName == null)
             throw new IllegalArgumentException("Group name parameter must be non-null.");
 
-        String path = "/" + groupName; // The paths must be fully-qualified, so we prepend an '/'.
+        String path = "/" + groupName + "/" + memberId; // The paths must be fully-qualified, so we prepend an '/'.
 
         LOG.debug("Joining ZK group with path: " + path);
         this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
@@ -143,9 +143,9 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public void createAndJoinGroup(String groupName) throws Exception {
+    public void createAndJoinGroup(String groupName, String memberId) throws Exception {
         createGroup(groupName);
-        joinGroup(groupName);
+        joinGroup(groupName, memberId);
     }
 
     public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception {

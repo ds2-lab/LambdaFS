@@ -100,7 +100,7 @@ public class AsyncZKClient implements ZKClient {
     }
 
     @Override
-    public void joinGroup(String groupName) throws Exception {
+    public void joinGroup(String groupName, String memberId) throws Exception {
         String path = "/" + groupName; // The paths must be fully-qualified, so we prepend an '/'.
 
         LOG.debug("Joining ZK group with path: " + path);
@@ -108,7 +108,7 @@ public class AsyncZKClient implements ZKClient {
     }
 
     @Override
-    public void createAndJoinGroup(String groupName) {
+    public void createAndJoinGroup(String groupName, String memberId) {
         throw new NotImplementedException("AsyncZKClient does not support the createAndJoinGroup() function.");
     }
 

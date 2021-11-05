@@ -32,14 +32,16 @@ public interface ZKClient {
      * Join an existing ZooKeeper group/directory by creating an ephemeral child node under
      * the parent directory.
      * @param groupName The ZK directory/group to join.
+     * @param memberId Used when creating the ephemeral ID of this node.
      */
-    public void joinGroup(String groupName) throws Exception;
+    public void joinGroup(String groupName, String memberId) throws Exception;
 
     /**
      * Create and join a group with the given name.
      * @param groupName The name of the group to join.
+     * @param memberId Used when creating the ephemeral ID of this node.
      */
-    public void createAndJoinGroup(String groupName) throws Exception;
+    public void createAndJoinGroup(String groupName, String memberId) throws Exception;
 
     /**
      * Perform any necessary clean-up, such as stopping a
