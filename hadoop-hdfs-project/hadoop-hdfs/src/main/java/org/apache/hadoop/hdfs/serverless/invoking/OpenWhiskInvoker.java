@@ -116,6 +116,35 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 //    }
 
     /**
+     * Redirect a received request to another NameNode. This is useful when a client issues a write request to
+     * a deployment that is not authorized to perform writes on the target file/directory.
+     *
+     * @param operationName The FS operation being performed.
+     * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
+     *                        in order to invoke the function. Before the request is issued, a number is appended
+     *                        to the end of the URI to target a particular serverless name node. After the number is
+     *                        appended, we also append a string ?blocking=true to ensure that the operation blocks
+     *                        until it is completed so that the result may be returned to the caller.
+     * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
+     *                          arguments when using a serverful name node.
+     * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
+     *                                     to the Java function which performs the FS operation.
+     * @param requestId The unique ID used to match this request uniquely against its corresponding TCP request. If
+     *                  passed a null, then a random ID is generated.
+     * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
+     *                         cache entry exists.
+     * @return The response from the Serverless NameNode.
+     */
+    @Override
+    public JsonObject redirectRequest(String operationName, String functionUriBase,
+                                      JsonObject nameNodeArguments, JsonObject fileSystemOperationArguments,
+                                      String requestId, int targetDeployment) throws IOException {
+        // Just hand everything off to the internal HTTP invoke method.
+        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArguments,
+                fileSystemOperationArguments, requestId, targetDeployment);
+    }
+
+    /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient
      * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
      *
@@ -438,84 +467,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             .setSSLContext(sc)
             .setDefaultRequestConfig(requestConfig)
             .build();
-    }
-
-    /**
-     * Extract the result of a file system operation from the {@link JsonObject} returned by the NameNode.
-     * @param response The response from the NameNode.
-     * @return The result contained within the JsonObject returned by the NameNode.
-     */
-    @Override
-    public Object extractResultFromJsonResponse(JsonObject response) {
-        String requestId;
-        if (response.has(ServerlessNameNodeKeys.REQUEST_ID))
-            requestId = response.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
-        else
-            requestId = "N/A";
-
-        // First, let's check and see if there's any information about file/directory-to-function mappings.
-        if (response.has(ServerlessNameNodeKeys.FUNCTION_MAPPING)) {
-            LOG.debug("JSON response from serverless name node contains function mapping information.");
-            JsonObject functionMapping = response.getAsJsonObject("FUNCTION_MAPPING");
-
-            String src = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FILE_OR_DIR).getAsString();
-            long parentINodeId = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.PARENT_ID).getAsLong();
-            int function = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION).getAsInt();
-
-            LOG.debug("File or directory: \"" + src + "\", parent INode ID: " + parentINodeId +
-                    ", function: " + function);
-
-            cache.addEntry(src, function, false);
-
-            LOG.debug("Added entry to function-mapping cache. File/directory \"" + src + "\" --> " + function);
-        } else {
-            LOG.warn("No INode function mapping information contained within response from serverless name node...");
-        }
-
-        // Print any exceptions that were encountered first.
-        if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {
-            JsonArray exceptionsJson = response.get(ServerlessNameNodeKeys.EXCEPTIONS).getAsJsonArray();
-
-            int numExceptions = exceptionsJson.size();
-
-            if (numExceptions > 0) {
-                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
-                LOG.warn("*** The ServerlessNameNode encountered " + numExceptions +
-                        (numExceptions == 1 ? " exception. ***" : " exceptions. ***"));
-
-                for (int i = 0; i < exceptionsJson.size(); i++)
-                    LOG.error(exceptionsJson.get(i).getAsString());
-                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
-            }
-            else {
-                LOG.debug("The Serverless NameNode did not encounter any exceptions while executing task " +
-                        requestId);
-            }
-
-
-        }
-
-        // Now we'll check for a result from the name node.
-        if (response.has(ServerlessNameNodeKeys.RESULT)) {
-            String resultBase64 = response.getAsJsonPrimitive(ServerlessNameNodeKeys.RESULT).getAsString();
-
-            try {
-                Object result = InvokerUtilities.base64StringToObject(resultBase64);
-
-                if (result == null || (result instanceof NullResult)) {
-                    return null;
-                }
-
-                LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": "
-                        + result.toString());
-                return result;
-            } catch (Exception ex) {
-                LOG.error("Error encountered while extracting result from NameNode response:", ex);
-                return null;
-            }
-        }
-
-        return null;
     }
 
     /**

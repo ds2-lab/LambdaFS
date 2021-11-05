@@ -42,6 +42,7 @@ import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT;
+import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase.extractResultFromJsonResponse;
 
 /**
  * This serves as an adapter between the DFSClient interface and the serverless NameNode API.
@@ -421,12 +422,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getBlockLocations to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = this.serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             locatedBlocks = (LocatedBlocks)result;
 
@@ -464,12 +460,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getServerDefaults to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = this.serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             serverDefaults = (FsServerDefaults)result;
 
@@ -528,12 +519,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // Extract the result from the Json response.
         // If there's an exception, then it will be logged by this function.
-        Object result = null;
-        try {
-            result = this.serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             stat = (HdfsFileStatus)result;
 
@@ -581,12 +567,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // Extract the result from the Json response.
         // If there's an exception, then it will be logged by this function.
-        Object result = null;
-        try {
-            result = this.serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             stat = (LastBlockWithStatus)result;
 
@@ -713,7 +694,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation addBlock to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
 
         if (result != null) {
             LocatedBlock locatedBlock = (LocatedBlock) result;
@@ -754,14 +735,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation complete to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             return (boolean)result;
 
@@ -864,14 +838,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation truncate to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             return (boolean)result;
 
@@ -897,14 +864,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation delete to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             return (boolean)result;
 
@@ -931,16 +891,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation mkdirs to NameNode.");
         }
 
-        boolean result = false;
-        try {
-            result = (boolean) serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-        }
+        Object res = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        if (res != null)
+            return (boolean)res;
 
-        return result;
+        throw new IOException("Received null response for mkdirs operation...");
     }
 
     @Override
@@ -963,14 +918,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             return (DirectoryListing)result;
 
@@ -1016,14 +964,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             return (long[])result;
 
@@ -1048,14 +989,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             return (DatanodeInfo[])result;
 
@@ -1115,14 +1049,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getFileInfo to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             return (HdfsFileStatus)result;
 
@@ -1147,16 +1074,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation isFileClosed to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-            throw new IOException("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             return (boolean)result;
 
@@ -1181,14 +1099,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation isFileClosed to NameNode.");
         }
 
-        Object result = null;
-        try {
-            result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Exception encountered whilst extracting result of `complete()` " +
-                    "operation from JSON response.");
-            e.printStackTrace();
-        }
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
         if (result != null)
             return (HdfsFileStatus)result;
 

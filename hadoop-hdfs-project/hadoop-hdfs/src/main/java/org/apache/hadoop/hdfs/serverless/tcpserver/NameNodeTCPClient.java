@@ -9,6 +9,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.apache.avro.data.Json;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -88,11 +89,16 @@ public class NameNodeTCPClient {
     private static final int maxBufferSize = 16384;
 
     /**
+     * Used to redirect write operations to authorized deployments.
+     */
+    private final String functionUriBase;
+
+    /**
      * The current size, in bytes, being used for TCP write buffers. If we notice a buffer overflow,
      * then we increase the size of this buffer for future TCP connections in the hopes that we'll
      * avoid a buffer overflow.
      */
-    private int writeBufferSize;
+    private final int writeBufferSize;
 
     /**
      * The current size, in bytes, being used for TCP object buffers. If we notice a buffer overflow,
@@ -103,16 +109,22 @@ public class NameNodeTCPClient {
 
     /**
      * Constructor.
+     *
+     * @param conf Configuration passed to the serverless NameNode.
      * @param functionName The name of the serverless function in which this TCP client exists.
+     * @param serverlessNameNode The ServerlessNameNode instance.
      */
-    public NameNodeTCPClient(String functionName, ServerlessNameNode serverlessNameNode) {
+    public NameNodeTCPClient(Configuration conf, String functionName, ServerlessNameNode serverlessNameNode) {
         this.functionName = functionName;
         this.serverlessNameNode = serverlessNameNode;
         this.tcpClients = new HashMap<>();
+        this.functionUriBase = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT, DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
 
         this.writeBufferSize = defaultWriteBufferSizeBytes;
         this.objectBufferSize = defaultObjectBufferSizeBytes;
-        //Log.set(Log.LEVEL_TRACE);
+
+        LOG.debug("Created NameNodeTCPClient(funcName=" + functionName + ", functionUriBase=" + functionUriBase +
+                ", writeBufferSize=" + writeBufferSize + " bytes, objectBufferSize=" + objectBufferSize + " bytes).");
     }
 
     /**
@@ -302,28 +314,88 @@ public class NameNodeTCPClient {
      * a function from the deployment responsible for this NameNode, and we return the result of that operation
      * to the client.
      *
+     * @param op The name of the operation we're performing.
+     * @param src The target file/directory of the operation we've been asked to perform.
+     *
+     * @return True if we're allowed to perform this operation, otherwise false.
+     */
+    private boolean checkIfAuthorized(String op, String src)
+            throws IOException {
+        if (serverlessNameNode.isWriteOperation(op))
+            return serverlessNameNode.authorizedToPerformWrite(src);
+
+        return true;
+    }
+
+    /**
+     * Create and return a FileSystemTask instance for the given request. This function checks to see if this
+     * NameNode is write-authorized to perform the task. If not, this function transparently redirects the request
+     * to the correct deployment.
+     *
+     * Important:
+     * If this NameNode is executing the task locally (i.e., it was not redirected), then this function enqueues
+     * the task in the NameNode's work queue. On the other hand, if the task was redirected, then we do NOT enqueue
+     * it. We simply return the future, and the client calls .get() on that future.
+     *
+     * TODO: Add retry/timeout handling for redirected future.
+     *       This might be done most easily by creating a new class for redirected futures where the retry logic
+     *       is abstracted away from the client who simply calls .get() on the future...
+     *
      * @param requestId The ID of the task/request.
      * @param op The name of the operation we're performing.
-     * @param payload The original payload we received via TCP.
      * @param fsArgs The file system arguments supplied by the client.
+     * @param tcpResult The result that will eventually be returned to the client.
+     *
+     * @return A FileSystemTask for the given request, or null if something went wrong while creating the task.
      */
-    private void handleAuthorization(String requestId, String op, JsonObject payload, JsonObject fsArgs)
-            throws IOException {
-        if (serverlessNameNode.isWriteOperation(op)) {
-            if (!fsArgs.has("src"))
-                throw new IllegalArgumentException("Arguments for operation " + op + " do not contain a 'src' entry.");
+    private Future<Serializable> createAndEnqueueFileSystemTask(String requestId, String op, JsonObject fsArgs,
+                                                              NameNodeResult tcpResult) throws IOException {
+        if (!fsArgs.has("src"))
+            throw new IllegalArgumentException("Arguments for operation " + op + " do not contain a 'src' entry.");
 
-            String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+        String src = fsArgs.getAsJsonPrimitive("src").getAsString();
 
-            boolean authorized = serverlessNameNode.authorizedToPerformWrite(src);
+        boolean authorized = checkIfAuthorized(op, src);
 
-            if (!authorized) {
-                // Redirect this request via HTTP.
-                // TODO: Determine if we can directly reuse the TCP payload or if it is different than an HTTP payload.
-                // TODO: Maybe put this function in a common area so that it can be reused by OpenWhiskHandler
-                //       for HTTP requests.
-            }
+        if (!authorized) {
+            int targetDeployment = serverlessNameNode.getMappedServerlessFunction(src);
+            LOG.debug("We are NOT authorized to perform a write operation on target file/directory " + src);
+            LOG.debug("Redirecting request to deployment #" + targetDeployment + " instead...");
+
+            // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
+            ExecutorService executorService = Executors.newFixedThreadPool(1);
+
+            // Create a CompletionService to listen for results from the futures we're going to create.
+            CompletionService<JsonObject> completionService =
+                    new ExecutorCompletionService<JsonObject>(executorService);
+
+            // Submit the HTTP request here.
+            Future<JsonObject> future = completionService.submit(() ->
+                    serverlessNameNode.getServerlessInvoker().redirectRequest(op, functionUriBase, new JsonObject(),
+                            fsArgs,  requestId, targetDeployment));
+
+            return new RedirectedRequestFuture(requestId, op, future);
         }
+
+        FileSystemTask<Serializable> newTask = new FileSystemTask<Serializable>(requestId, op, fsArgs);
+
+        // We wait for the task to finish executing in a separate try-catch block so that, if there is
+        // an exception, then we can log a specific message indicating where the exception occurred. If we
+        // waited for the task in this next block, we wouldn't be able to indicate in the log whether the
+        // exception occurred when creating/scheduling the task or while waiting for it to complete.
+        try {
+            // The task does exist, so let's enqueue it.
+            LOG.debug("[TCP] Adding task " + requestId + " (operation = " + op + ") to work queue now...");
+            serverlessNameNode.enqueueFileSystemTask(newTask);
+        } catch (InterruptedException ex) {
+            LOG.error("[TCP] Encountered " + ex.getClass().getSimpleName()
+                    + " while assigning a new task to the worker thread: ", ex);
+            tcpResult.addException(ex);
+            // We don't want to continue as we already encountered a critical error, so just return.
+            return null;
+        }
+
+        return newTask;
     }
 
     private NameNodeResult handleWorkAssignment(JsonObject args) {
@@ -341,33 +413,26 @@ public class NameNodeTCPClient {
 
         NameNodeResult tcpResult = new NameNodeResult(functionName, requestId, "TCP");
 
-        // Create a new task and assign it to the worker thread.
-        // After this, we will simply wait for the result to be completed before returning it to the user.
-        FileSystemTask<Serializable> newTask = null;
+        // Create a new task. After this, we assign it to the worker thread and wait for the
+        // result to be computed before returning it to the user.
+        Future<Serializable> newTask = null;
         try {
-            LOG.debug("[TCP] Adding task " + requestId + " (operation = " + op + ") to work queue now...");
-            newTask = new FileSystemTask<>(requestId, op, fsArgs);
-            serverlessNameNode.enqueueFileSystemTask(newTask);
+            newTask = createAndEnqueueFileSystemTask(requestId, op, fsArgs, tcpResult);
+        } catch (IOException ex) {
+            LOG.error("Error encountered while creating file system task "
+                    + requestId + " for operation " + op + ":", ex);
+           tcpResult.addException(ex);
+            // We don't want to continue as we already encountered a critical error, so just return.
+           return tcpResult;
+        }
 
-            // We wait for the task to finish executing in a separate try-catch block so that, if there is
-            // an exception, then we can log a specific message indicating where the exception occurred. If we
-            // waited for the task in this block, we wouldn't be able to indicate in the log whether the
-            // exception occurred when creating/scheduling the task or while waiting for it to complete.
-        }
-        catch (Exception ex) {
-            LOG.error("[TCP] Encountered " + ex.getClass().getSimpleName()
-                    + " while assigning a new task to the worker thread: ", ex);
-            tcpResult.addException(ex);
-        }
+        // If we failed to create a new task for the desired file system operation, then we'll just throw
+        // another exception indicating that we have nothing to execute, seeing as the task doesn't exist.
+        if (newTask == null)
+            throw new IllegalStateException("[TCP] Failed to create task for operation " + op);
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
-            // If we failed to create a new task for the desired file system operation, then we'll just throw
-            // another exception indicating that we have nothing to execute, seeing as the task doesn't exist.
-            if (newTask == null) {
-                throw new IllegalStateException("[TCP] Failed to create task for operation " + op);
-            }
-
             // In the case that we do have a task to wait on, we'll wait for the configured amount of time for the
             // worker thread to execute the task. If the task times out, then an exception will be thrown, caught,
             // and ultimately reported to the client. Alternatively, if the task is executed successfully, then
@@ -388,10 +453,11 @@ public class NameNodeTCPClient {
                 // This will be caught immediately and added to the result returned to the client.
                 throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
             }
-        } catch (Exception ex) {
+        } catch (ExecutionException | InterruptedException | TimeoutException ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);
             tcpResult.addException(ex);
+            // We don't have to return here as the next instruction is to return.
         }
 
         return tcpResult;

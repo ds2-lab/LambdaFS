@@ -2413,7 +2413,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
     this.functionName = functionName;
     this.deploymentNumber = getFunctionNumberFromFunctionName();
-    this.nameNodeTCPClient = new NameNodeTCPClient(functionName, this);
+    this.nameNodeTCPClient = new NameNodeTCPClient(conf, functionName, this);
     // Subtract five seconds (i.e., 6000 milliseconds) to account for invocation overheads and other start-up times.
     // The default DN heartbeat interval (and therefore, StorageReport interval) is three seconds, so this should
     // ensure that the NN finds at least 1-2 storage reports, which can be used to bootstrap the DN storages.
@@ -2926,6 +2926,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return The number of the serverless function responsible for caching this INode.
    */
   public int getMappedServerlessFunction(INode inode) {
+    return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
+  }
+
+  /**
+   * Get the serverless function number of the NameNode that should cache this file/directory.
+   * @param path Fully-qualified path to the target file/directory.
+   * @return The number of the serverless function responsible for caching this file/directory.
+   */
+  public int getMappedServerlessFunction(String path) throws IOException {
+    INode inode = getINodeForCache(path);
     return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
   }
 

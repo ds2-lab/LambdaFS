@@ -55,15 +55,6 @@ public class ArgumentContainer {
         objectArguments = new HashMap<>();
     }
 
-    public ArgumentContainer(HashMap<String, Serializable> fsArgs) {
-        primitiveArguments = new HashMap<>();
-        byteArrayArguments = new HashMap<>();
-        nonByteArrayArguments = new HashMap<>();
-        objectArguments = new HashMap<>();
-
-        for (Map.Entry<String, Serializable>)
-    }
-
     /**
      * Return the parameter associated with the given key, or null if no such parameter exists.
      */
