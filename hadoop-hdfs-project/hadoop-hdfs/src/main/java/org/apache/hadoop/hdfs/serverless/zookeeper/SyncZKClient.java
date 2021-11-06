@@ -146,9 +146,11 @@ public class SyncZKClient implements ZKClient {
         try {
             // This will throw an exception if the group already exists!
             createGroup(groupName);
+            LOG.debug("Successfully created new ZooKeeper group '/" + groupName + "'.");
         } catch (KeeperException.NodeExistsException ex) {
-            LOG.debug("ZooKeeper group " + groupName + " already exists.");
+            LOG.debug("ZooKeeper group '/" + groupName + "' already exists.");
         }
+
         joinGroup(groupName, memberId);
     }
 
