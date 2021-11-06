@@ -225,56 +225,80 @@ public class StorageReportClusterJ
     public List<StorageReport> getStorageReportsAfterGroupId(long groupId, String datanodeUuid) throws StorageException {
         //LOG.debug("GET StorageReports after group " + groupId + ", DN UUID: " + datanodeUuid);
 
-        PreparedStatement s = null;
-        ResultSet result = null;
+        HopsSession session = connector.obtainSession();
+        HopsQueryBuilder queryBuilder = session.getQueryBuilder();
+        HopsQueryDomainType<StorageReportDTO> domainType = queryBuilder.createQueryDefinition(StorageReportDTO.class);
 
-        String query = String.format(GREATER_THAN_GROUP_ID_QUERY, TABLE_NAME, GROUP_ID, groupId);
-        //LOG.debug("Executing MySQL query: " + query);
+        HopsPredicate predicateGroupId = domainType.param("groupIdParam").greaterThan(domainType.get("groupId"));
+                // domainType.get("groupId").equal(domainType.param("groupIdParam"));
+        HopsPredicate predicateDatanodeUuid =
+                domainType.get("datanodeUuid").equal(domainType.param("datanodeUuidParam"));
+        domainType.where(predicateGroupId.and(predicateDatanodeUuid));
+
+        HopsQuery<StorageReportDTO> query = session.createQuery(domainType);
+        query.setParameter("groupIdParam", groupId);
+        query.setParameter("datanodeUuidParam", datanodeUuid);
+
+        List<StorageReportDTO> storeReportDTOs = query.getResultList();
 
         ArrayList<StorageReport> resultList = new ArrayList<>();
 
-        try {
-            Connection conn = mysqlConnector.obtainSession();
-            s = conn.prepareStatement(query);
-            result = s.executeQuery();
-
-            //LOG.debug("Result = " + result.toString());
-
-            while (result.next()) {
-                StorageReport report = new StorageReport(
-                    result.getLong(GROUP_ID), result.getInt(REPORT_ID), result.getString(DATANODE_UUID),
-                        result.getBoolean(FAILED), result.getLong(CAPACITY), result.getLong(DFS_USED),
-                        result.getLong(REMAINING), result.getLong(BLOCK_POOL_USED),
-                        result.getString(DATANODE_STORAGE_ID)
-                );
-
-                //LOG.debug("Retrieved StorageReport instance: " + report.toString());
-
-                resultList.add(report);
-            }
-        } catch (SQLException ex) {
-            throw HopsSQLExceptionHelper.wrap(ex);
-        } finally {
-            if (s != null) {
-                try {
-                    s.close();
-                } catch (SQLException ex) {
-                    LOG.warn("Exception when closing the PrepareStatement", ex);
-                }
-            }
-
-            if (result != null) {
-                try {
-                    result.close();
-                } catch (SQLException ex) {
-                    LOG.warn("Exception when closing the ResultSet", ex);
-                }
-            }
-
-            mysqlConnector.closeSession();
+        for (StorageReportDTO dto : storeReportDTOs) {
+            resultList.add(convert(dto));
         }
 
         return resultList;
+
+//        PreparedStatement s = null;
+//        ResultSet result = null;
+//
+//        String query = String.format(GREATER_THAN_GROUP_ID_QUERY, TABLE_NAME, GROUP_ID, groupId);
+//        //LOG.debug("Executing MySQL query: " + query);
+//
+//        ArrayList<StorageReport> resultList = new ArrayList<>();
+//
+//        try {
+//            Connection conn = mysqlConnector.obtainSession();
+//            s = conn.prepareStatement(query);
+//            result = s.executeQuery();
+//
+//            //LOG.debug("Result = " + result.toString());
+//
+//            while (result.next()) {
+//                StorageReport report = new StorageReport(
+//                    result.getLong(GROUP_ID), result.getInt(REPORT_ID), result.getString(DATANODE_UUID),
+//                        result.getBoolean(FAILED), result.getLong(CAPACITY), result.getLong(DFS_USED),
+//                        result.getLong(REMAINING), result.getLong(BLOCK_POOL_USED),
+//                        result.getString(DATANODE_STORAGE_ID)
+//                );
+//
+//                //LOG.debug("Retrieved StorageReport instance: " + report.toString());
+//
+//                resultList.add(report);
+//            }
+//        } catch (SQLException ex) {
+//            throw HopsSQLExceptionHelper.wrap(ex);
+//        } finally {
+//            if (s != null) {
+//                try {
+//                    s.close();
+//                } catch (SQLException ex) {
+//                    LOG.warn("Exception when closing the PrepareStatement", ex);
+//                }
+//            }
+//
+//            if (result != null) {
+//                try {
+//                    result.close();
+//                } catch (SQLException ex) {
+//                    LOG.warn("Exception when closing the ResultSet", ex);
+//                }
+//            }
+//
+//            mysqlConnector.closeSession();
+//        }
+//
+//        return resultList;
     }
 
     @Override
