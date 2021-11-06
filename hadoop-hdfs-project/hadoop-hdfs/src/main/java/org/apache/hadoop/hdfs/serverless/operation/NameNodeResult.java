@@ -140,7 +140,7 @@ public class NameNodeResult implements Serializable {
      * @param ex The exception that occurred.
      */
     public void addException(Exception ex) {
-        exceptions.add(ex);
+        addThrowable(ex);
     }
 
     /**
@@ -151,7 +151,9 @@ public class NameNodeResult implements Serializable {
     }
 
     /**
-     * Alias for `addException()`.
+     * Essentially an alias for `addException()`, though there are Throwables that are not exceptions (e.g.,
+     * IllegalAccessError) that we could encounter.
+     *
      * @param t The exception/throwable to record.
      */
     public void addThrowable(Throwable t) {

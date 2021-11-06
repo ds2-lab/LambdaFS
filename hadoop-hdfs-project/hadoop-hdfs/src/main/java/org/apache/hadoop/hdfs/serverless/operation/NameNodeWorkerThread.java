@@ -269,6 +269,10 @@ public class NameNodeWorkerThread extends Thread {
                     LOG.error("Worker thread encountered exception while executing file system operation " +
                             task.getOperationName() + " for task " + task.getTaskId() + ".", ex);
                     workerResult.addException(ex);
+                } catch (Throwable t) {
+                    LOG.error("Worker thread encountered throwable while executing file system operation " +
+                            task.getOperationName() + " for task " + task.getTaskId() + ".", t);
+                    workerResult.addThrowable(t);
                 }
 
                 currentlyExecutingTasks.remove(task.getTaskId());
