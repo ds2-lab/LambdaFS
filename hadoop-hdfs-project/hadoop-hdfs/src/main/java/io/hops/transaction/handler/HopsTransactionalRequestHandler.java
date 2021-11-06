@@ -84,7 +84,7 @@ public abstract class HopsTransactionalRequestHandler
     return super.execute(new TransactionInfo() {
       @Override
       public String getContextName(OperationType opType) {
-        if (namesystem != null && namesystem instanceof FSNamesystem) {
+        if (namesystem instanceof FSNamesystem) {
           return "NN (" + ((FSNamesystem) namesystem).getNamenodeId() + ") " +
               opType.toString() + "[" + Thread.currentThread().getId() + "]";
         } else {
@@ -94,7 +94,7 @@ public abstract class HopsTransactionalRequestHandler
 
       @Override
       public void performPostTransactionAction() throws IOException {
-        if (namesystem != null && namesystem instanceof FSNamesystem) {
+        if (namesystem instanceof FSNamesystem) {
           ((FSNamesystem) namesystem).performPendingSafeModeOperation();
         }
       }

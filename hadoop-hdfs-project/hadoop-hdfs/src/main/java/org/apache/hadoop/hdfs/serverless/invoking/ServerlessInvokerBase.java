@@ -36,6 +36,15 @@ import java.util.*;
 public abstract class ServerlessInvokerBase<T> {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
 
+    private final Random random = new Random();
+
+    /**
+     * The maximum amount of time to wait before issuing another HTTP request after the previous request failed.
+     *
+     * TODO: Make this configurable.
+     */
+    private static final int maxBackoffMilliseconds = 5000;
+
     /**
      * Flag indicated whether the invoker has been configured.
      * The invoker must be configured via `setConfiguration` before it can be used.
@@ -359,6 +368,39 @@ public abstract class ServerlessInvokerBase<T> {
      */
     public boolean hasBeenConfigured() {
         return configured;
+    }
+
+    /**
+     * Perform the sleep associated with exponential backoff.
+     *
+     * This checks the value of currentNumTries and compares it against maxHttpRetries.
+     * If we're out of tries, then we do not bother sleeping. Instead, we just return immediately.
+     *
+     * @param currentNumTries How many times we've attempted a request thus far.
+     */
+    protected void doExponentialBackoff(int currentNumTries) {
+        // Only bother sleeping (exponential backoff) if we're going to try at least one more time.
+        if ((currentNumTries + 1) > maxHttpRetries)
+            return;
+
+        long sleepInterval = getExponentialBackoffInterval(currentNumTries);
+        LOG.debug("Sleeping for " + sleepInterval + " milliseconds before issuing another request...");
+        try {
+            Thread.sleep(sleepInterval);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Return the time to wait, in milliseconds, given the current number of attempts.
+     * @param n The current number of attempts.
+     * @return The time to wait, in milliseconds, before attempting another request.
+     */
+    private long getExponentialBackoffInterval(int n) {
+        double interval = Math.pow(2, n);
+        int jitter = random.nextInt( 1000);
+        return (long)Math.min(interval + jitter, maxBackoffMilliseconds);
     }
 
     /**

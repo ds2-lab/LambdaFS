@@ -16,6 +16,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
+import java.net.SocketTimeoutException;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -40,15 +41,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * This is appended to the end of the serverlessEndpointBase AFTER the number is added.
      */
     private final String blockingParameter = "?blocking=true";
-
-    private final Random random = new Random();
-
-    /**
-     * The maximum amount of time to wait before issuing another HTTP request after the previous request failed.
-     *
-     * TODO: Make this configurable.
-     */
-    private static final int maxBackoffMilliseconds = 5000;
 
     /**
      * Because invokers are generally created via the {@link ServerlessInvokerFactory} class, this constructor
@@ -243,7 +235,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             try {
                 httpResponse = httpClient.execute(request);
                 LOG.debug("Received HTTP response on attempt " + (currentNumTries + 1) + "!");
-            } catch (NoHttpResponseException ex) {
+            } catch (NoHttpResponseException | SocketTimeoutException ex) {
                 LOG.debug("Attempt " + (currentNumTries + 1) + " to invoke NameNode " + functionUri +
                         " timed out.");
                 doExponentialBackoff(currentNumTries);
@@ -282,28 +274,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         throw new IOException("The file system operation could not be completed. " +
                 "Failed to invoke a Serverless NameNode after " + maxHttpRetries + " attempts.");
-    }
-
-    /**
-     * Perform the sleep associated with exponential backoff.
-     *
-     * This checks the value of currentNumTries and compares it against maxHttpRetries.
-     * If we're out of tries, then we do not bother sleeping. Instead, we just return immediately.
-     *
-     * @param currentNumTries How many times we've attempted a request thus far.
-     */
-    private void doExponentialBackoff(int currentNumTries) {
-        // Only bother sleeping (exponential backoff) if we're going to try at least one more time.
-        if ((currentNumTries + 1) > maxHttpRetries)
-            return;
-
-        long sleepInterval = getExponentialBackoffInterval(currentNumTries);
-        LOG.debug("Sleeping for " + sleepInterval + " milliseconds before issuing another request...");
-        try {
-            Thread.sleep(sleepInterval);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 
     /**
@@ -455,6 +425,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         SSLContext sc = SSLContext.getInstance("SSL");
         sc.init(null, trustAllCerts, new SecureRandom());
 
+        LOG.debug("Setting HTTP connection timeout to " + httpTimeoutMilliseconds + " milliseconds.");
+        LOG.debug("Setting HTTP socket timeout to " + httpTimeoutMilliseconds + " milliseconds.");
+
         RequestConfig requestConfig = RequestConfig
                 .custom()
                 .setConnectTimeout(httpTimeoutMilliseconds)
@@ -467,17 +440,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             .setSSLContext(sc)
             .setDefaultRequestConfig(requestConfig)
             .build();
-    }
-
-    /**
-     * Return the time to wait, in milliseconds, given the current number of attempts.
-     * @param n The current number of attempts.
-     * @return The time to wait, in milliseconds, before attempting another request.
-     */
-    private long getExponentialBackoffInterval(int n) {
-        double interval = Math.pow(2, n);
-        int jitter = random.nextInt( 1000);
-        return (long)Math.min(interval + jitter, maxBackoffMilliseconds);
     }
 
     /**
