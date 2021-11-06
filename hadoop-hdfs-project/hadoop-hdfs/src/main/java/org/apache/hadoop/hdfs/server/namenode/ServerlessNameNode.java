@@ -806,8 +806,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // Now, I just block intermediate-storage-updates from occurring more often than every heartbeatInterval.
     // This is because the worker thread performs the updates now. So the worker thread just checks for updates
     // every heartbeat interval.
-//
-    long millisecondsSinceLastReportRetrieval = Time.getUtcTime() - lastStorageReportGroupId;
+
+    long now = Time.getUtcTime();
+    long millisecondsSinceLastReportRetrieval = now - lastStorageReportGroupId;
 //    if (millisecondsSinceLastReportRetrieval < heartBeatInterval) {
 //      LOG.debug("StorageReports for DataNode " + datanodeDescriptor.getDatanodeUuid() + " were last retrieved at time " +
 //              Instant.ofEpochMilli(lastStorageReportGroupId).toString() + ", which was less than " +
@@ -817,16 +818,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //    }
 
     LOG.debug("Retrieving StorageReport instance for datanode " + datanodeDescriptor.getDatanodeUuid()
-            + ". Reports were last retrieved " + millisecondsSinceLastReportRetrieval + " ms ago.");
+            + ". Reports were last retrieved " + millisecondsSinceLastReportRetrieval
+            + " ms ago (Current timestamp = " + now + ", previous timestamp  = " + lastStorageReportGroupId  + ").");
 
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
-        = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId - 1,
+        = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId,
             datanodeDescriptor.getDatanodeUuid());
 
     LOG.debug("Retrieved " + storageReports.size() + " storage report instances from intermediate storage...");
 
     // Update the entry for this DN, as we just retrieved its Storage Reports.
-    lastStorageReportGroupIds.put(datanodeDescriptor.getDatanodeUuid(), Time.getUtcTime());
+    lastStorageReportGroupIds.put(datanodeDescriptor.getDatanodeUuid(), now);
 
     return storageReports;
   }
