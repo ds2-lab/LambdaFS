@@ -27,13 +27,16 @@ import java.util.List;
 
 public abstract class HopsTransactionalRequestHandler
     extends TransactionalRequestHandler {
-  
+
+  private final String path;
+
   public HopsTransactionalRequestHandler(HDFSOperationType opType) {
     this(opType, null);
   }
   
   public HopsTransactionalRequestHandler(HDFSOperationType opType, String path) {
-    super(opType, path);
+    super(opType);
+    this.path = path;
   }
 
   @Override

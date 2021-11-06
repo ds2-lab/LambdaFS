@@ -31,22 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class TransactionalRequestHandler extends RequestHandler {
-  protected final String path;
-
-  public TransactionalRequestHandler(OperationType opType, String path) {
-    super(opType);
-    this.path = path;
-  }
-
   public TransactionalRequestHandler(OperationType opType) {
-    this(opType, null);
-  }
-
-  /**
-   * Return the path instance variable.
-   */
-  public String getPath() {
-    return path;
+    super(opType);
   }
 
   @Override
