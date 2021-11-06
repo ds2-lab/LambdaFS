@@ -15,6 +15,7 @@
  */
 package io.hops.transaction.handler;
 
+import io.hops.leader_election.node.ActiveNode;
 import io.hops.transaction.TransactionInfo;
 import io.hops.transaction.lock.HdfsTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
@@ -22,6 +23,7 @@ import org.apache.hadoop.hdfs.protocol.RecoveryInProgressException;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 
 import java.io.IOException;
+import java.util.List;
 
 public abstract class HopsTransactionalRequestHandler
     extends TransactionalRequestHandler {
@@ -80,6 +82,12 @@ public abstract class HopsTransactionalRequestHandler
               + " does NOT need to use the serverless consistency protocol.");
     }
     requestHandlerLOG.debug("Transaction is operating on path: " + path);
+
+    if (namesystem instanceof FSNamesystem) {
+      FSNamesystem namesystemInst = (FSNamesystem)namesystem;
+      List<ActiveNode> activeNodes = namesystemInst.getActiveNameNodesInDeployment();
+      requestHandlerLOG.debug("Active nodes: " + activeNodes.toString());
+    }
 
     return super.execute(new TransactionInfo() {
       @Override

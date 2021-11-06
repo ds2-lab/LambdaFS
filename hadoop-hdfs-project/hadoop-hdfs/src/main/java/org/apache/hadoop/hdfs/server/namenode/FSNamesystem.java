@@ -3071,6 +3071,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   }
 
   /**
+   * Return the currently-active NameNodes in the deployment.
+   */
+  public List<ActiveNode> getActiveNameNodesInDeployment() {
+    return this.serverlessNameNode.getActiveNameNodes().getActiveNodes();
+  }
+
+  /**
    * @see ClientProtocol#getAdditionalDatanode(String, ExtendedBlock, DatanodeInfo[], String[], DatanodeInfo[], int, String)
    */
   LocatedBlock getAdditionalDatanode(final String srcArg, final long fileId, final ExtendedBlock blk,
