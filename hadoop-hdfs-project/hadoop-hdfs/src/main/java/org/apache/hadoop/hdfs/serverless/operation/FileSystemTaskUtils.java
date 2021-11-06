@@ -68,6 +68,8 @@ public class FileSystemTaskUtils {
                                 fsArgs,  requestId, targetDeployment));
 
                 return new RedirectedRequestFuture(requestId, op, future);
+            } else {
+                LOG.debug("We ARE authorized to perform a write operation on target file/directory '" + src + "'.");
             }
         }
 

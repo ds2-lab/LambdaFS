@@ -2426,6 +2426,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
     this.functionName = functionName;
     this.deploymentNumber = getFunctionNumberFromFunctionName();
+
+    if (this.deploymentNumber < 0)
+      throw new IOException("Failed to extract valid deployment number from function name '" +
+              functionName + "'");
+
+    LOG.debug("We are function '" + this.functionName + "' from deployment #" + this.deploymentNumber + ".");
     this.nameNodeTCPClient = new NameNodeTCPClient(conf, functionName, this);
     // Subtract five seconds (i.e., 6000 milliseconds) to account for invocation overheads and other start-up times.
     // The default DN heartbeat interval (and therefore, StorageReport interval) is three seconds, so this should
@@ -2517,8 +2523,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private int getFunctionNumberFromFunctionName(String functionName) {
     Pattern lastIntPattern = Pattern.compile("[^0-9]+([0-9]+)$");
-    String input = "...";
-    Matcher matcher = lastIntPattern.matcher(input);
+    Matcher matcher = lastIntPattern.matcher(functionName);
     if (matcher.find()) {
       String someNumberStr = matcher.group(1);
       return Integer.parseInt(someNumberStr);
