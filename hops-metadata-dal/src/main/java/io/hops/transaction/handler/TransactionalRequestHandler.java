@@ -57,44 +57,6 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
     Object txRetValue = null;
     List<Throwable> exceptions = new ArrayList<>();
 
-    //// // // // // // // // // // ////
-    // UPDATED CONSISTENCY PROTOCOL   //
-    //// // // // // // // // // // ////
-    //
-    // TERMINOLOGY:
-    // - Leader NameNode: The NameNode performing the write operation.
-    // - Follower NameNode: NameNode instance from the same deployment as the Leader NameNode.
-    //
-    // The updated consistency protocol for Serverless NameNodes is as follows:
-    // (1) The Leader NN begins listening for changes in group membership from ZooKeeper.
-    //     The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly.
-    // (2) Add N-1 un-ACK'd records to the "ACKs" table, where N is the number of nodes in the Leader's deployment.
-    //     (The Leader adds N-1 as it does not need to add a record for itself.)
-    // (3) The leader sets the INV flag of the target INode to 1 (i.e., true), thereby triggering a round of INVs from
-    //     intermediate storage (NDB).
-    // (4) Each follower NN will ACK its entry in the ACKs table upon receiving the INV from intermediate storage (NDB).
-    //     The follower will also invalidate its cache at this point, thereby readying itself for the upcoming write.
-    // (5) The Leader listens for updates on the ACK table, waiting for all entries to be ACK'd.
-    //     If there are any NN failures during this phase, the Leader will detect them via ZK. The Leader does not
-    //     need ACKs from failed NNs, as they invalidate their cache upon returning.
-    // (6) Once all the "ACK" table entries added by the Leader have been ACK'd by followers, the Leader will check to
-    //     see if there are any new, concurrent write operations with a larger timestamp. If so, the Leader must
-    //     complete the next step FIRST before submitting any ACKs for those new writes.
-    // (7) The Leader will perform the "true" write operation to intermediate storage (NDB). Then, it can ACK any
-    //     new write operations that may be waiting.
-    // (8) Follower NNs will lazily update their caches on subsequent read operations.
-    //
-    //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
-
-    if (opType.shouldUseConsistencyProtocol()) {
-      requestHandlerLOG.debug("Transaction type " + opType.getName()
-              + " SHOULD use the serverless consistency protocol.");
-    } else {
-      requestHandlerLOG.debug("Transaction type " + opType.getName()
-              + " does NOT need to use the serverless consistency protocol.");
-    }
-    requestHandlerLOG.debug("Transaction is operating on path: " + path);
-
     while (tryCount <= RETRY_COUNT) {
       long expWaitTime = exponentialBackoff();
       long txStartTime = System.currentTimeMillis();

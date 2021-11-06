@@ -422,7 +422,7 @@ public enum HDFSOperationType implements OperationType {
 
   static {
     // Initialize the transaction types that potentially write to INodes, as these transactions will require
-    // the use of the serverless consistency protocol. This protocol is described in TransactionalRequestHandler.
+    // the use of the serverless consistency protocol. This protocol is described in HopsTransactionalRequestHandler.
     writeTransactionTypes = Sets.newHashSet(
             SET_PERMISSION, SET_OWNER, SET_OWNER_SUBTREE, CONCAT, TRUNCATE, SET_TIMES, CREATE_SYM_LINK,
             SET_STORAGE_POLICY, SET_REPLICATION, SET_META_ENABLED, START_FILE, RECOVER_LEASE, APPEND_FILE,
