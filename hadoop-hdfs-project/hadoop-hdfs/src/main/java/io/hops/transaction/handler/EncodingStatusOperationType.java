@@ -34,5 +34,20 @@ public enum EncodingStatusOperationType
   FIND_REQUESTED_PARITY_REPAIRS,
   FIND_POTENTIALLY_FIXED_PARITIES,
   FIND_DELETED,
-  FIND_REVOKED
+  FIND_REVOKED;
+
+  @Override
+  public boolean shouldUseConsistencyProtocol() {
+    return (this == UPDATE || this == DELETE);
+  }
+
+  @Override
+  public boolean shouldUseConsistencyProtocol(RequestHandler.OperationType operationType) {
+    return (operationType == UPDATE || operationType == DELETE);
+  }
+
+  @Override
+  public String getName() {
+    return null;
+  }
 }
