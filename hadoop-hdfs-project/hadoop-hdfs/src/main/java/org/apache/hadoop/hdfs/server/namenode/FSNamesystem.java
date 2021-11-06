@@ -1709,7 +1709,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @param inode The INode in question.
    * @return True if we should cache this INode locally, otherwise returns False.
    */
-  public boolean shouldCacheLocally(INode inode) {
+  public boolean shouldCacheLocally(INode inode) throws TransactionContextException, StorageException {
     return serverlessNameNode.shouldCacheLocally(inode);
   }
 
@@ -1718,7 +1718,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @param inode The INode in question.
    * @return The number of the serverless function responsible for caching this INode.
    */
-  public int getMappedServerlessFunction(INode inode) {
+  public int getMappedServerlessFunction(INode inode) throws TransactionContextException, StorageException {
     return serverlessNameNode.getMappedServerlessFunction(inode);
   }
 

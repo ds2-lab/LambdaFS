@@ -23,6 +23,7 @@ import com.google.gson.JsonObject;
 import io.hops.DalDriver;
 import io.hops.events.EventManager;
 import io.hops.exception.StorageException;
+import io.hops.exception.TransactionContextException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
 import io.hops.leader_election.node.ActiveNode;
@@ -2934,7 +2935,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param inode The INode in question.
    * @return True if we should cache this INode locally, otherwise returns False.
    */
-  public boolean shouldCacheLocally(INode inode) {
+  public boolean shouldCacheLocally(INode inode) throws TransactionContextException, StorageException {
     return getMappedServerlessFunction(inode) == deploymentNumber;
   }
 
@@ -2943,8 +2944,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param inode The INode in question.
    * @return The number of the serverless function responsible for caching this INode.
    */
-  public int getMappedServerlessFunction(INode inode) {
-    return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
+  public int getMappedServerlessFunction(INode inode) throws TransactionContextException, StorageException {
+    //return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
+    return consistentHash(inode.getFullPathName().hashCode(), numUniqueServerlessNameNodes);
   }
 
   /**
@@ -2953,8 +2955,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return The number of the serverless function responsible for caching this file/directory.
    */
   public int getMappedServerlessFunction(String path) throws IOException {
-    INode inode = getINodeForCache(path);
-    return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
+    //INode inode = getINodeForCache(path);
+    //return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
+    return consistentHash(path.hashCode(), numUniqueServerlessNameNodes);
   }
 
   /** 

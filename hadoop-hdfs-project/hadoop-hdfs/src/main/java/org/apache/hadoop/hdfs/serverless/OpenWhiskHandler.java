@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.mysql.clusterj.ClusterJHelper;
 import com.mysql.clusterj.Dbug;
 import com.mysql.clusterj.tie.DbugImpl;
+import io.hops.exception.StorageException;
+import io.hops.exception.TransactionContextException;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
@@ -351,8 +353,13 @@ public class OpenWhiskHandler {
             result.addException(ex);
         }
 
-        // Check if a function mapping should be created and returned to the client.
-        tryCreateFunctionMapping(result, fsArgs, serverlessNameNode);
+        try {
+            // Check if a function mapping should be created and returned to the client.
+            tryCreateFunctionMapping(result, fsArgs, serverlessNameNode);
+        } catch (IOException ex) {
+            LOG.error("Encountered IOException while trying to create function mapping:", ex);
+            result.addException(ex);
+        }
 
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker && tcpEnabled) {
@@ -381,7 +388,8 @@ public class OpenWhiskHandler {
      */
     public static void tryCreateFunctionMapping(NameNodeResult result,
                                                 JsonObject fsArgs,
-                                                ServerlessNameNode serverlessNameNode) {
+                                                ServerlessNameNode serverlessNameNode)
+            throws IOException {
         // After performing the desired FS operation, we check if there is a particular file or directory
         // identified by the `src` parameter. This is the file/directory that should be hashed to a particular
         // serverless function. We calculate this here and include the information for the client in our response.
@@ -404,7 +412,7 @@ public class OpenWhiskHandler {
             if (inode != null) {
                 LOG.debug("Parent INode ID for '" + src + "': " + inode.getParentId());
 
-                int functionNumber = serverlessNameNode.getMappedServerlessFunction(inode);
+                int functionNumber = serverlessNameNode.getMappedServerlessFunction(src);
 
                 LOG.debug("Consistently hashed parent INode ID " + inode.getParentId()
                         + " to serverless function " + functionNumber);

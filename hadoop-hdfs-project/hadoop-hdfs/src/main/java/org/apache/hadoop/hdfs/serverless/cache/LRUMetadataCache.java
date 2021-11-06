@@ -8,7 +8,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * TODO:
+ *
+ * ** UPDATE**:
+ * WE NOW CACHE BY THE FULLY-QUALIFIED PATH OF THE INODE, NOT THE PARENT'S ID.
  *
  * Figure out what the various tables would be called in NDB.
  * The cache (or maybe some other object) will create and maintain ClusterJ Event and EventOperation objects
