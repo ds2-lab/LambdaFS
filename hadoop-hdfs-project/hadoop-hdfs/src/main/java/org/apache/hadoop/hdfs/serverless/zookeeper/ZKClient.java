@@ -24,6 +24,26 @@ public interface ZKClient {
 
     /**
      * Create a ZooKeeper group/directory (i.e., a persistent ZNode) with the given name.
+     *
+     * One can think of ZooKeeper as a bunch of directories (so, think of a file tree). Clients create these
+     * things called ZNodes, which can be thought of as directories with extra functionality. There are a few
+     * different kinds of ZNodes we can create.
+     *
+     * Persistent ZNodes do not get deleted after the client who created them disconnects. So, if Client1 creates
+     * a persistent ZNode "/foo" and then disconnects, the "/foo" ZNode will still exist in ZooKeeper. This is useful
+     * for creating the group itself.
+     *
+     * Clients can then join this group by creating a so-called "ephemeral" ZNode. Ephemeral ZNodes are deleted after
+     * the client who created them disconnects.
+     *
+     * So let's say we want to have a group called "TheGroup". We can create a persistent ZNode "/TheGroup". Then,
+     * clients can join the group by creating ephemeral, child ZNodes of "/TheGroup". For example, Client1 could create
+     * an ephemeral ZNode "/TheGroup/Client1". As long as the "/TheGroup/Client1" ZNode exists, everybody in the group
+     * knows that Client1 is active. Maybe Client2 will add its own ephemeral ZNode "/TheGroup/Client2", so now there
+     * are two ephemeral ZNodes ("/TheGroup/Client1" and "/TheGroup/Client2") and one persistent ZNode ("/TheGroup").
+     *
+     * So, this method creates a PERSISTENT ZNode.
+     *
      * @param groupName The name to use for the new group/directory.
      */
     public void createGroup(String groupName) throws Exception;
@@ -31,13 +51,20 @@ public interface ZKClient {
     /**
      * Join an existing ZooKeeper group/directory by creating an ephemeral child node under
      * the parent directory.
+     *
+     * The ephemeral ZNode will exist as long as we (the client who created it) are alive and connected to ZooKeeper.
+     * If we disconnect, then our ZNode will be deleted, signifying that we have left the group and are no longer
+     * running.
+     *
      * @param groupName The ZK directory/group to join.
      * @param memberId Used when creating the ephemeral ID of this node.
      */
     public void joinGroup(String groupName, String memberId) throws Exception;
 
     /**
-     * Create and join a group with the given name.
+     * Create and join a group with the given name. This just calls the `createGroup()` function followed by the
+     * `joinGroup()` function.
+     *
      * @param groupName The name of the group to join.
      * @param memberId Used when creating the ephemeral ID of this node.
      */
