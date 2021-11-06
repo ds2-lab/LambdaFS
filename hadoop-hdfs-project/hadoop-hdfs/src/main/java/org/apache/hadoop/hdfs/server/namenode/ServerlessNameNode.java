@@ -2091,6 +2091,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
             conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
+    this.serverlessInvoker.setIsClientInvoker(false); // We are not a client.
 
     Instant serverlessInitDone = Instant.now();
     Duration serverlessInitDuration = Duration.between(nameNodeInitStart, serverlessInitDone);
