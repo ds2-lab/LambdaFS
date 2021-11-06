@@ -1353,17 +1353,17 @@ public class DatanodeManager {
   /**
    * Process storage reports that were retrieved from intermediate storage.
    */
-  public void handleServerlessStorageReports(DatanodeRegistration nodeReg,
+  public void handleServerlessStorageReports(DatanodeDescriptor datanodeDescriptor,
                                              StorageReport[] reports) throws IOException {
     synchronized (heartbeatManager) {
       synchronized (datanodeMap) {
-        LOG.debug("Processing StorageReports for DataNode " + nodeReg.getDatanodeUuid()
+        LOG.debug("Processing StorageReports for DataNode " + datanodeDescriptor.getDatanodeUuid()
                 + " now. There are " + reports.length + " report(s) to process.");
         DatanodeDescriptor nodeInfo = null;
-        String dataNodeUuid = nodeReg.getDatanodeUuid();
+        String dataNodeUuid = datanodeDescriptor.getDatanodeUuid();
 
         try {
-          nodeInfo = getDatanode(nodeReg);
+          nodeInfo = getDatanode(datanodeDescriptor);
         } catch (UnregisteredNodeException e) {
           LOG.error("DataNode " + dataNodeUuid + " appears to be unregistered!");
           throw e;

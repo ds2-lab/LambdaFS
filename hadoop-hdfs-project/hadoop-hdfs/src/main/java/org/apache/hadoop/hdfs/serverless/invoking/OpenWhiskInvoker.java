@@ -162,7 +162,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                                                      String requestId, int targetDeployment)
             throws IOException, IllegalStateException {
         if (!hasBeenConfigured())
-            throw new IllegalStateException("Invoker has not yet been configured.");
+            throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
+                    "You must configure it by calling .setConfiguration(...) before using it.");
 
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);

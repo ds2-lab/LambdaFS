@@ -4412,9 +4412,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * Serverless version of the `handleHeartbeat()` function.
    */
-  public void handleServerlessStorageReports(DatanodeRegistration datanodeRegistration, StorageReport[] reports)
+  public void handleServerlessStorageReports(DatanodeDescriptor datanodeDescriptor, StorageReport[] reports)
           throws IOException {
-    blockManager.getDatanodeManager().handleServerlessStorageReports(datanodeRegistration, reports);
+    blockManager.getDatanodeManager().handleServerlessStorageReports(datanodeDescriptor, reports);
   }
 
   /**
