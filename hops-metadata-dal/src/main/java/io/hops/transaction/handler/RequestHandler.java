@@ -29,6 +29,23 @@ public abstract class RequestHandler {
   private long waitTime;
 
   public interface OperationType {
+    /**
+     * Returns true if the instance on which this function is called is a write operation that requires the use
+     * of the serverless consistency protocol. Otherwise, returns false.
+     */
+    boolean shouldUseConsistencyProtocol();
+
+    /**
+     * Returns true if the given OperationType indicates/denotes/is a write operation that requires the use
+     * of the serverless consistency protocol. Otherwise, returns false.
+     * @param operationType The OperationType in question.
+     */
+    boolean shouldUseConsistencyProtocol(OperationType operationType);
+
+    /**
+     * Return the name of the OperationType in question.
+     */
+    String getName();
   }
 
   protected static Log requestHandlerLOG = LogFactory.getLog(RequestHandler.class);

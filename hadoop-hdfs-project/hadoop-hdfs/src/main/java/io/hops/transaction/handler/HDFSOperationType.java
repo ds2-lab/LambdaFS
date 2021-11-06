@@ -15,11 +15,15 @@
  */
 package io.hops.transaction.handler;
 
+import com.google.common.collect.Sets;
 import io.hops.transaction.handler.RequestHandler.OperationType;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 
 public enum HDFSOperationType implements OperationType {
   // NameNodeRpcServer
-
   INITIALIZE,
   ACTIVATE,
   META_SAVE,
@@ -409,5 +413,44 @@ public enum HDFSOperationType implements OperationType {
   //FSCK
   FSCK_GET_NUM_REPLICAS,
   FSCK_GET_CORRUPT_REPLICAS,
-  FSCK_GET_STORAGES
+  FSCK_GET_STORAGES;
+
+  /**
+   * Contains
+   */
+  public static final HashSet<HDFSOperationType> writeTransactionTypes;
+
+  static {
+    // Initialize the transaction types that potentially write to INodes, as these transactions will require
+    // the use of the serverless consistency protocol. This protocol is described in TransactionalRequestHandler.
+    writeTransactionTypes = Sets.newHashSet(
+            SET_PERMISSION, SET_OWNER, SET_OWNER_SUBTREE, CONCAT, TRUNCATE, SET_TIMES, CREATE_SYM_LINK,
+            SET_STORAGE_POLICY, SET_REPLICATION, SET_META_ENABLED, START_FILE, RECOVER_LEASE, APPEND_FILE,
+            GET_ADDITIONAL_BLOCK, GET_ADDITIONAL_DATANODE, ABANDON_BLOCK, COMPLETE_FILE, DEPRICATED_RENAME,
+            RENAME, DELETE, MKDIRS, SET_QUOTA, FSYNC, COMMIT_BLOCK_SYNCHRONIZATION, RENEW_LEASE, ADD_USER,
+            UPDATE_BLOCK_FOR_PIPELINE, UPDATE_PIPELINE, SET_ROOT, GET_ROOT, REVOKE_ENCODING_STATUS, CREATE_EZ,
+            PROCESS_MIS_REPLICATED_BLOCKS_PER_INODE_BATCH, GET_ALL_INODES, APPLY_QUOTA_UPDATE, SUBTREE_RENAME,
+            SUBTREE_DELETE, SUBTREE_DEPRICATED_RENAME, SUBTREE_SETPERMISSION, REMOVE_ACL_ENTRIES, REMOVE_ACL,
+            REMOVE_DEFAULT_ACL, MODIFY_ACL_ENTRIES, ADD_INODE_ACES, REMOVE_INODE_ACES, SET_ACL, SET_SUBTREE_LOCK,
+            RESET_SUBTREE_LOCK, SET_ASYNC_SUBTREE_RECOVERY_FLAG, SET_XATTR, REMOVE_XATTRS, REMOVE_XATTRS_FOR_INODE,
+            ADD_ENCODING_STATUS, UPDATE_ENCODING_STATUS
+    );
+  }
+
+  @Override
+  public String getName() {
+    return this.name();
+  }
+
+  @Override
+  public boolean shouldUseConsistencyProtocol() {
+    return writeTransactionTypes.contains(this);
+  }
+
+  @Override
+  public boolean shouldUseConsistencyProtocol(OperationType operationType) {
+    if (operationType instanceof HDFSOperationType)
+      return writeTransactionTypes.contains((HDFSOperationType)operationType);
+    return false;
+  }
 }

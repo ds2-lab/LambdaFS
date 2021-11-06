@@ -25,4 +25,20 @@ public enum YARNOperationType implements OperationType {
   // Transaction in unit tests.
   OTHER,
   GET_VARIABLE,
+  ;
+
+  @Override
+  public boolean shouldUseConsistencyProtocol() {
+    return false;
+  }
+
+  @Override
+  public boolean shouldUseConsistencyProtocol(OperationType operationType) {
+    return false;
+  }
+
+  @Override
+  public String getName() {
+    return this.getName();
+  }
 }

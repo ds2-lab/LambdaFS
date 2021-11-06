@@ -23,15 +23,30 @@ import io.hops.transaction.context.TransactionsStats;
 import io.hops.transaction.lock.Lock;
 import io.hops.transaction.lock.TransactionLockAcquirer;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public abstract class TransactionalRequestHandler extends RequestHandler {
+  protected final String path;
+
+  public TransactionalRequestHandler(OperationType opType, String path) {
+    super(opType);
+    this.path = path;
+  }
 
   public TransactionalRequestHandler(OperationType opType) {
-    super(opType);
+    this(opType, null);
+  }
+
+  /**
+   * Return the path instance variable.
+   */
+  public String getPath() {
+    return path;
   }
 
   @Override
@@ -71,6 +86,14 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
     //
     //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
 
+    if (opType.shouldUseConsistencyProtocol()) {
+      requestHandlerLOG.debug("Transaction type " + opType.getName()
+              + " SHOULD use the serverless consistency protocol.");
+    } else {
+      requestHandlerLOG.debug("Transaction type " + opType.getName()
+              + " does NOT need to use the serverless consistency protocol.");
+    }
+    requestHandlerLOG.debug("Transaction is operating on path: " + path);
 
     while (tryCount <= RETRY_COUNT) {
       long expWaitTime = exponentialBackoff();

@@ -25,17 +25,13 @@ import java.io.IOException;
 
 public abstract class HopsTransactionalRequestHandler
     extends TransactionalRequestHandler {
-
-  private final String path;
   
   public HopsTransactionalRequestHandler(HDFSOperationType opType) {
     this(opType, null);
   }
   
-  public HopsTransactionalRequestHandler(HDFSOperationType opType,
-      String path) {
-    super(opType);
-    this.path = path;
+  public HopsTransactionalRequestHandler(HDFSOperationType opType, String path) {
+    super(opType, path);
   }
 
   @Override
