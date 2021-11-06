@@ -230,7 +230,6 @@ public class StorageReportClusterJ
         HopsQueryDomainType<StorageReportDTO> domainType = queryBuilder.createQueryDefinition(StorageReportDTO.class);
 
         HopsPredicate predicateGroupId = domainType.get("groupId").greaterThan(domainType.param("groupIdParam"));
-                // domainType.get("groupId").equal(domainType.param("groupIdParam"));
         HopsPredicate predicateDatanodeUuid =
                 domainType.get("datanodeUuid").equal(domainType.param("datanodeUuidParam"));
         domainType.where(predicateGroupId.and(predicateDatanodeUuid));

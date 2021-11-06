@@ -793,14 +793,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     StorageReportDataAccess<io.hops.metadata.hdfs.entity.StorageReport> dataAccess =
             (StorageReportDataAccess)HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
 
+    String datanodeUuid = datanodeDescriptor.getDatanodeUuid();
     // The groupId column for Storage Reports is actually being used as a timestamp now. So we default to a little
     // before the time that the NN was created, as any reports published before that point would not have been received
     // by a traditional, serverful HopsFS NN anyway. We opt for times a little early just so we can bootstrap the
     // storage of the DN, since the NN may be performing an operation rn that requires us to know about the DN's
     // storage. So we grab some old reports, so we know about the storages that it has.
     long lastStorageReportGroupId =
-            lastStorageReportGroupIds.getOrDefault(datanodeDescriptor.getDatanodeUuid(),
-                    creationTime - (heartBeatInterval * 3));
+            lastStorageReportGroupIds.getOrDefault(datanodeUuid,creationTime - (heartBeatInterval * 3));
 
     // Commented this out because:
     // Now, I just block intermediate-storage-updates from occurring more often than every heartbeatInterval.
@@ -817,18 +817,22 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //      return null;
 //    }
 
-    LOG.debug("Retrieving StorageReport instance for datanode " + datanodeDescriptor.getDatanodeUuid()
+    LOG.debug("Retrieving StorageReport instance for datanode " + datanodeUuid
             + ". Reports were last retrieved " + millisecondsSinceLastReportRetrieval
             + " ms ago (Current timestamp = " + now + ", previous timestamp  = " + lastStorageReportGroupId  + ").");
 
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
-        = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId,
-            datanodeDescriptor.getDatanodeUuid());
+        = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId, datanodeUuid);
 
     LOG.debug("Retrieved " + storageReports.size() + " storage report instances from intermediate storage...");
 
-    // Update the entry for this DN, as we just retrieved its Storage Reports.
-    lastStorageReportGroupIds.put(datanodeDescriptor.getDatanodeUuid(), now);
+    // TODO: This is a weird hack. For some reason, no StorageReports are being returned here, even though
+    //       when I query the DB in an actual MySQL terminal session, I get StorageReports. I want to see if there
+    //       is a race condition where ClusterJ just isn't seeing it. So I'm not going to update the timestamp unless
+    //       we actually retrieve a storage report.
+    if (storageReports.size() > 0)
+      // Update the entry for this DN, as we just retrieved its Storage Reports.
+      lastStorageReportGroupIds.put(datanodeUuid, now);
 
     return storageReports;
   }
