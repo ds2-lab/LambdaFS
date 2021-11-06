@@ -79,10 +79,10 @@ public class FileSystemTaskUtils {
         // exception occurred when creating/scheduling the task or while waiting for it to complete.
         try {
             // The task does exist, so let's enqueue it.
-            LOG.debug("[TCP] Adding task " + requestId + " (operation = " + op + ") to work queue now...");
+            LOG.debug("Adding task " + requestId + " (operation = " + op + ") to work queue now...");
             serverlessNameNode.enqueueFileSystemTask(newTask);
         } catch (InterruptedException ex) {
-            LOG.error("[TCP] Encountered " + ex.getClass().getSimpleName()
+            LOG.error("Encountered " + ex.getClass().getSimpleName()
                     + " while assigning a new task to the worker thread: ", ex);
             tcpResult.addException(ex);
             // We don't want to continue as we already encountered a critical error, so just return.
