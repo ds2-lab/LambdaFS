@@ -454,8 +454,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    *     configuration
    * @param namenode
    *     the namenode
-   * @param ignoreRetryCache Whether or not should ignore the retry cache setup
-   *                         step. For Secondary NN this should be set to true.
    * @throws IOException
    *      on bad configuration
    */
@@ -983,7 +981,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    *
    * @param iNodeId The INode ID of the INode involved in the NDB operation that triggered the event.
    * @param shouldInvalidate If true, then this event should invalidate the associated metadata.
-   * @param event The HopsEvent instance that triggered this notification.
    */
   @Override
   public void eventReceived(long iNodeId, boolean shouldInvalidate) {
@@ -1341,7 +1338,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * under-replicated data blocks or removal of the excessive block copies
    * if the blocks are over-replicated.
    *
-   * @param src1
+   * @param src
    *     file name
    * @param replication
    *     new replication
@@ -1910,11 +1907,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * Create a new file entry in the namespace.
    * <p/>
    * For description of parameters and exceptions thrown see
-   * {@link ClientProtocol#create(String, FsPermission, String, EnumSetWritable, boolean, short, long)} , except it returns valid file status upon
+   * ClientProtocol#create(String, FsPermission, String, EnumSetWritable, boolean, short, long),
+   * except it returns valid file status upon
    * success
    *
-   * For retryCache handling details see -
-   * {@link #getFileStatus(boolean, CacheEntryWithPayload)}
+   * For retryCache handling details see - getFileStatus(boolean, CacheEntryWithPayload)
    *
    */
   HdfsFileStatus startFile(final String srcArg, final PermissionStatus permissions,
@@ -2281,9 +2278,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @param leaseHolder identifier of the lease holder on this file
    * @param clientMachine identifier of the client machine
    * @param newBlock if the data is appended to a new block
-   * @param writeToEditLog whether to persist this change to the edit log
-   * @param logRetryCache whether to record RPC ids in editlog for retry cache
-   *                      rebuilding
    * @return the last block locations if the block is partial or null otherwise
    * @throws UnresolvedLinkException
    * @throws IOException
@@ -2379,7 +2373,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * Immediately revoke the lease of the current lease holder and start lease
    * recovery so that the file can be forced to be closed.
    *
-   * @param src1
+   * @param srcArg
    *     the srcArg of the file to start lease recovery
    * @param holder
    *     the lease holder's name
@@ -3078,7 +3072,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   }
 
   /**
-   * @see ClientProtocol#getAdditionalDatanode(String, ExtendedBlock, DatanodeInfo[], String[], DatanodeInfo[], int, String)
+   * see ClientProtocol.getAdditionalDatanode(String, ExtendedBlock, DatanodeInfo[], String[], DatanodeInfo[], int, String)
    */
   LocatedBlock getAdditionalDatanode(final String srcArg, final long fileId, final ExtendedBlock blk,
       final DatanodeInfo[] existings, final String[] storageIDs,
@@ -3757,7 +3751,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   }
 
   /** Persist all metadata about this file.
-   * @param src The string representation of the path
+   * @param srcArg The string representation of the path
    * @param fileId The inode ID that we're fsyncing.  Older clients will pass
    *               INodeId.GRANDFATHER_INODE_ID here.
    * @param clientName
@@ -4310,9 +4304,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * Get a partial listing of the indicated directory
    *
-   * @param src1
+   * @param src
    *     the directory name
-   * @param startAfter1
+   * @param startAfter
    *     the name to start after
    * @param needLocation
    *     if blockLocations need to be returned
@@ -4486,7 +4480,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * Persist the block list for the inode.
    * @param path
    * @param file
-   * @param logRetryCache
    */
   private void persistBlocks(String path, INodeFile file) throws IOException {
     Preconditions.checkArgument(file.isUnderConstruction());
@@ -7527,14 +7520,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    *    the root of the subtree to be locked
    * @param doCheckOwner
    *    whether or not to check the owner
-   * @param ancestorAccess
-   *    the requested ancestor access
    * @param parentAccess
    *    the requested parent access
-   * @param access
-   *    the requested access
-   * @param subAccess
-   *    the requested sub access
    * @return
    *  the inode representing the root of the subtree
    * @throws IOException
@@ -7871,7 +7858,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * Add and encoding status for a file without checking the retry cache.
    *
-   * @param sourcePath
+   * @param sourcePathArg
    *    the file path
    * @param policy
    *    the policy to be used
@@ -8093,7 +8080,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * Set the status of an erasure-coded file and its parity file.
    *
-   * @param sourceFile
+   * @param sourceFileArg
    *    the file path
    * @param status
    *    the file status
@@ -8484,7 +8471,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * Set xattr for a file or directory.
    *
-   * @param src
+   * @param srcArg
    *          - path on which it sets the xattr
    * @param xAttr
    *          - xAttr details to set
