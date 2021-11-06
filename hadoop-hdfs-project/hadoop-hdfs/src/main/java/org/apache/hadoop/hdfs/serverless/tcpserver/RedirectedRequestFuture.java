@@ -1,11 +1,9 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.google.gson.JsonObject;
-import org.apache.avro.data.Json;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
-import org.apache.hadoop.hdfs.serverless.operation.NullResult;
 
 import java.io.Serializable;
 import java.util.concurrent.*;

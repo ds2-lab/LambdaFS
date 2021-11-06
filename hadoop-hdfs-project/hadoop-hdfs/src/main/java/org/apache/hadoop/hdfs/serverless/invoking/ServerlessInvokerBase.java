@@ -5,13 +5,11 @@ import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.hadoop.hdfs.serverless.operation.NullResult;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.xbill.DNS.Serial;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
