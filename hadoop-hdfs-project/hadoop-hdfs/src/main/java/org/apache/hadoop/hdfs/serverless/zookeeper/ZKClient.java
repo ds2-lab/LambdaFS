@@ -45,8 +45,11 @@ public interface ZKClient {
      * So, this method creates a PERSISTENT ZNode.
      *
      * @param groupName The name to use for the new group/directory.
+     *
+     * @throws KeeperException.NodeExistsException If the group already exists (i.e., if there is already a persistent
+     * node with the same path).
      */
-    public void createGroup(String groupName) throws Exception;
+    public void createGroup(String groupName) throws Exception, KeeperException.NodeExistsException;
 
     /**
      * Join an existing ZooKeeper group/directory by creating an ephemeral child node under
@@ -64,6 +67,10 @@ public interface ZKClient {
     /**
      * Create and join a group with the given name. This just calls the `createGroup()` function followed by the
      * `joinGroup()` function.
+     *
+     * IMPORTANT: This function wraps the call to `createGroup()` in a try-catch and ignores the possible
+     * NodeExistsException that gets thrown if the group already exists. During standard operation, the groups will
+     * almost always already exist, so the `createGroup()` call is expected to throw an exception.
      *
      * @param groupName The name of the group to join.
      * @param memberId Used when creating the ephemeral ID of this node.

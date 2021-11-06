@@ -8,10 +8,7 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.nodes.GroupMember;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.x.async.AsyncCuratorFramework;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
 
 import java.util.List;
 import java.util.Map;
@@ -107,7 +104,7 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public void createGroup(String groupName) throws Exception {
+    public void createGroup(String groupName) throws Exception, KeeperException.NodeExistsException {
         if (this.client == null)
             throw new IllegalStateException("ZooKeeper client must be instantiated before joining a group.");
 
@@ -117,6 +114,8 @@ public class SyncZKClient implements ZKClient {
         String path = "/" + groupName; // The paths must be fully-qualified, so we prepend an '/'.
 
         LOG.debug("Creating ZK group with path: " + path);
+
+        // This will throw an exception if the group already exists!
         this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(path);
     }
 
@@ -144,7 +143,12 @@ public class SyncZKClient implements ZKClient {
 
     @Override
     public void createAndJoinGroup(String groupName, String memberId) throws Exception {
-        createGroup(groupName);
+        try {
+            // This will throw an exception if the group already exists!
+            createGroup(groupName);
+        } catch (KeeperException.NodeExistsException ex) {
+            LOG.debug("ZooKeeper group " + groupName + " already exists.");
+        }
         joinGroup(groupName, memberId);
     }
 
