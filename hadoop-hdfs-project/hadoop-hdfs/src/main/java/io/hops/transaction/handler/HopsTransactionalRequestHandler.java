@@ -28,15 +28,15 @@ import java.util.List;
 public abstract class HopsTransactionalRequestHandler
     extends TransactionalRequestHandler {
 
-  private final String _path;
+  private final String path;
 
   public HopsTransactionalRequestHandler(HDFSOperationType opType) {
     this(opType, null);
   }
   
-  public HopsTransactionalRequestHandler(HDFSOperationType opType, String _path) {
+  public HopsTransactionalRequestHandler(HDFSOperationType opType, String path) {
     super(opType);
-    this._path = _path;
+    this.path = path;
   }
 
   @Override
@@ -84,7 +84,7 @@ public abstract class HopsTransactionalRequestHandler
       requestHandlerLOG.debug("Transaction type " + opType.getName()
               + " does NOT need to use the serverless consistency protocol.");
     }
-    requestHandlerLOG.debug("Transaction is operating on path: " + _path);
+    requestHandlerLOG.debug("Transaction is operating on path: " + path);
 
     if (namesystem instanceof FSNamesystem) {
       FSNamesystem namesystemInst = (FSNamesystem)namesystem;
