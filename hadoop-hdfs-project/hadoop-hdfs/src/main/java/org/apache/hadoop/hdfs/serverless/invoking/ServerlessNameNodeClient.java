@@ -1500,8 +1500,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         public OperationPerformed(String operationName, long startTime, long endTime, String deployment,
                                   boolean issuedViaHttp, boolean issuedViaTcp) {
             this.operationName = operationName;
-            this.startTime = startTime;
-            this.endTime = endTime;
+            this.startTime = startTime / 1000000;
+            this.endTime = endTime / 1000000;
             this.duration = endTime - startTime;
             this.deployment = deployment;
             this.issuedViaHttp = issuedViaHttp;
@@ -1511,9 +1511,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         /**
          * Modify the endTime of this OperationPerformed instance.
          * This also recomputes this instance's `duration` field.
+         *
+         * @param endTime The end time in nanoSeconds.
          */
         public void setEndTime(long endTime) {
-            this.endTime = endTime;
+            this.endTime = endTime / 1000000;
             this.duration = endTime - startTime;
         }
 
@@ -1526,7 +1528,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         @Override
         public String toString() {
-            String format = "%-25s %-25s %-25s %-12s %-12s %-6s %-6s";
+            String format = "%-25s %-25s %-25s %-12s %-8s %-6s %-6s";
 
             return String.format(format, operationName, Instant.ofEpochMilli(startTime).toString(),
                     Instant.ofEpochMilli(endTime).toString(), duration, deployment,
