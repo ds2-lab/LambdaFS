@@ -313,7 +313,7 @@ public class OpenWhiskHandler {
             // an exception, then we can log a specific message indicating where the exception occurred. If we
             // waited for the task in this block, we wouldn't be able to indicate in the log whether the
             // exception occurred when creating/scheduling the task or while waiting for it to complete.
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             LOG.error("Error encountered while creating file system task "
                     + requestId + " for operation " + op + ":", ex);
             result.addException(ex);
