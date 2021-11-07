@@ -63,7 +63,7 @@ public abstract class HopsTransactionalRequestHandler
     //     (The Leader adds N-1 as it does not need to add a record for itself.)
     // (3) The leader sets the INV flag of the target INode to 1 (i.e., true), thereby triggering a round of INVs from
     //     intermediate storage (NDB).
-    // (4) Each follower NN will ACK its entry in the ACKs table upon receiving the INV from intermediate storage (NDB).
+    // (4) Follower NNs will ACK their entry in the ACKs table upon receiving the INV from intermediate storage (NDB).
     //     The follower will also invalidate its cache at this point, thereby readying itself for the upcoming write.
     // (5) The Leader listens for updates on the ACK table, waiting for all entries to be ACK'd.
     //     If there are any NN failures during this phase, the Leader will detect them via ZK. The Leader does not
@@ -90,6 +90,10 @@ public abstract class HopsTransactionalRequestHandler
       FSNamesystem namesystemInst = (FSNamesystem)namesystem;
       List<ActiveNode> activeNodes = namesystemInst.getActiveNameNodesInDeployment();
       requestHandlerLOG.debug("Active nodes: " + activeNodes.toString());
+    } else if (namesystem == null) {
+      requestHandlerLOG.debug("Transaction namesystem object is null! Cannot determine active nodes.");
+    } else {
+      requestHandlerLOG.debug("Transaction namesystem object is of type " + namesystem.getClass().getSimpleName());
     }
 
     return super.execute(new TransactionInfo() {

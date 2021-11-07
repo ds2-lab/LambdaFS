@@ -21,12 +21,16 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.log4j.xml.SAXErrorHandler;
+
+import java.io.Serializable;
 
 /**
  * An immutable key which identifies a block.
  */
 @InterfaceAudience.Private
-final public class ExtendedBlockId {
+final public class ExtendedBlockId implements Serializable {
+  private static final long serialVersionUID = -986233975739513565L;
   /**
    * The block ID for this block.
    */
