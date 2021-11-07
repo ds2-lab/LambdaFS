@@ -69,6 +69,8 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
+import org.apache.hadoop.hdfs.serverless.metrics.OperationPerformed;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.Credentials;
@@ -141,6 +143,13 @@ public class DistributedFileSystem extends FileSystem {
 
   private class AlternativeDistributedFileSystem extends DistributedFileSystem{
     
+  }
+
+  /**
+   * Return the operations performed by this client.
+   */
+  public List<OperationPerformed> getOperationsPerformed() {
+    return this.dfs.getOperationsPerformed();
   }
 
   // Added for debugging serverless NN.

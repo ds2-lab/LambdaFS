@@ -111,6 +111,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsBlocksMetadata;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
+import org.apache.hadoop.hdfs.serverless.metrics.OperationPerformed;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -1353,6 +1354,18 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
       client.printOperationsPerformed();
     }
+  }
+
+  /**
+   * Return the operations performed by this client.
+   */
+  public List<OperationPerformed> getOperationsPerformed() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      return client.getOperationsPerformed();
+    }
+
+    return null;
   }
 
   // Added for debugging serverless NN.

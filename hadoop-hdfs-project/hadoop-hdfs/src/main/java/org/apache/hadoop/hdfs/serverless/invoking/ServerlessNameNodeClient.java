@@ -22,6 +22,7 @@ import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifie
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.tcpserver.HopsFSUserServer;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
@@ -187,6 +188,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         operationPerformed.setEndTime(System.nanoTime());
 
         return response;
+    }
+
+    /**
+     * Return the operations performed by this client.
+     */
+    public List<OperationPerformed> getOperationsPerformed() {
+        return new ArrayList<>(operationsPerformed.values());
     }
 
     /**
@@ -1477,74 +1485,5 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     @Override
     public long getEpochMS() throws IOException {
         return 0;
-    }
-
-    // "Op Name", "Start Time", "End Time", "Duration (ms)", "Deployment", "HTTP", "TCP"
-    public static class OperationPerformed implements Serializable, Comparable<OperationPerformed> {
-        private static final long serialVersionUID = -3094538262184661023L;
-
-        private final String operationName;
-
-        private final long startTime;
-
-        private long endTime;
-
-        private long duration;
-
-        private final String deployment;
-
-        private final boolean issuedViaTcp;
-
-        private final boolean issuedViaHttp;
-
-        public OperationPerformed(String operationName, long startTime, long endTime, String deployment,
-                                  boolean issuedViaHttp, boolean issuedViaTcp) {
-            this.operationName = operationName;
-            this.startTime = startTime / 1000000;
-            this.endTime = endTime / 1000000;
-            this.duration = endTime - startTime;
-            this.deployment = deployment;
-            this.issuedViaHttp = issuedViaHttp;
-            this.issuedViaTcp = issuedViaTcp;
-        }
-
-        /**
-         * Modify the endTime of this OperationPerformed instance.
-         * This also recomputes this instance's `duration` field.
-         *
-         * @param endTime The end time in nanoSeconds.
-         */
-        public void setEndTime(long endTime) {
-            this.endTime = endTime / 1000000;
-            this.duration = this.endTime - startTime;
-        }
-
-        public Object[] getAsArray() {
-            return new Object[] {
-                    this.operationName, this.startTime, this.endTime, this.duration, this.deployment,
-                    this.issuedViaHttp, this.issuedViaTcp
-            };
-        }
-
-        @Override
-        public String toString() {
-            String format = "%-25s %-25s %-25s %-12s %-12s %-6s %-6s";
-
-            return String.format(format, operationName, Instant.ofEpochMilli(startTime).toString(),
-                    Instant.ofEpochMilli(endTime).toString(), duration, deployment,
-                    (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
-
-//            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
-//                    (issuedViaHttp ? "HTTP" : "-") + " \t" + (issuedViaTcp ? "TCP" : "-");
-        }
-
-        /**
-         * Compare two instances of OperationPerformed.
-         * The comparison is based exclusively on their timeIssued field.
-         */
-        @Override
-        public int compareTo(OperationPerformed op) {
-            return Long.compare(endTime, op.endTime);
-        }
     }
 }
