@@ -578,8 +578,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   public boolean authorizedToPerformWrite(String src) throws IOException {
     LOG.debug("Checking if NameNode " + functionName + " is authorized to perform a write to file/directory " + src);
+
     INode inode = this.getINodeForCache(src);
-    int mappedDeployment = getMappedServerlessFunction(inode);
+    if (inode == null)
+      throw new IOException("Failed to retrieve INode '" + src + "' from intermediate storage...");
+
+    int mappedDeployment = getMappedServerlessFunction(src);
 
     // We'll go ahead and cache the INode locally if we're responsible for caching it since
     // we went to the effort of retrieving it from NDB already.
