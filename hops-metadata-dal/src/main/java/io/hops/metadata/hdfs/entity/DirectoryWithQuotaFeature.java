@@ -30,6 +30,7 @@
  */
 package io.hops.metadata.hdfs.entity;
 
+import java.io.Serializable;
 import java.util.Map;
 
 
@@ -38,7 +39,8 @@ import java.util.Map;
  * information like access time ( if we want to remove locks from the parent
  * dirs )
  */
-public class DirectoryWithQuotaFeature implements Comparable<DirectoryWithQuotaFeature> {
+public class DirectoryWithQuotaFeature implements Comparable<DirectoryWithQuotaFeature>, Serializable {
+  private static final long serialVersionUID = -860068864831375196L;
   private Long inodeId;
   private Long nsQuota; /// NameSpace quota
   private Long nsUsed;

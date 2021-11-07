@@ -16,9 +16,12 @@
 package io.hops.metadata.hdfs.entity;
 
 import io.hops.metadata.common.FinderType;
+
+import java.io.Serializable;
 import java.util.Map;
 
-public class QuotaUpdate {
+public class QuotaUpdate implements Serializable {
+  private static final long serialVersionUID = 3506957295881997912L;
   private int id;
   private long inodeId;
   private long namespaceDelta;
