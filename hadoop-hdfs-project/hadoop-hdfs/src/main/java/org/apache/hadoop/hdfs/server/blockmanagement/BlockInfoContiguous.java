@@ -45,6 +45,7 @@ public class BlockInfoContiguous extends Block {
   public static final BlockInfoContiguous[] EMPTY_ARRAY = {};
   private static final List<Replica> EMPTY_REPLICAS_ARRAY =
       new ArrayList<>();
+  private static final long serialVersionUID = 6396991769020142110L;
 
   public static enum Finder implements FinderType<BlockInfoContiguous> {
 

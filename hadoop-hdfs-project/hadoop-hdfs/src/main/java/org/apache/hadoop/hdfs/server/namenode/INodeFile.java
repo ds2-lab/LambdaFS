@@ -52,7 +52,9 @@ import java.util.Set;
  */
 @InterfaceAudience.Private
 public class INodeFile extends INodeWithAdditionalFields implements BlockCollection {
-  
+
+  private static final long serialVersionUID = -8883293723782738815L;
+
   /** The same as valueOf(inode, path, false). */
   public static INodeFile valueOf(INode inode, String path
       ) throws FileNotFoundException, StorageException, TransactionContextException {

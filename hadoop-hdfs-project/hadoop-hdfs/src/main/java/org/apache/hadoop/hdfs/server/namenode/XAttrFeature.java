@@ -32,6 +32,7 @@ import org.apache.hadoop.fs.XAttr;
 import com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -41,7 +42,7 @@ import java.util.List;
  * Feature for extended attributes.
  */
 @InterfaceAudience.Private
-public class XAttrFeature implements INode.Feature {
+public class XAttrFeature implements INode.Feature, Serializable {
   
   public static final ImmutableList<XAttr> EMPTY_ENTRY_LIST =
       ImmutableList.of();
@@ -53,7 +54,8 @@ public class XAttrFeature implements INode.Feature {
       return o1.getName().compareTo(o2.getName());
     }
   };
-  
+  private static final long serialVersionUID = -1460464763356045120L;
+
   private final long inodeId;
   
   public XAttrFeature(long inodeId){

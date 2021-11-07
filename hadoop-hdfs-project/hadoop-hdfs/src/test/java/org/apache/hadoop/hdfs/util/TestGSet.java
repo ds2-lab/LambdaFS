@@ -21,6 +21,7 @@ import org.apache.hadoop.util.Time;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.Serializable;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.Random;
@@ -423,7 +424,8 @@ public class TestGSet {
    * Elements of {@link LightWeightGSet} in this test
    */
   private static class IntElement
-      implements LightWeightGSet.LinkedElement, Comparable<IntElement> {
+      implements LightWeightGSet.LinkedElement, Comparable<IntElement>, Serializable {
+    private static final long serialVersionUID = 5641210076094659018L;
     private LightWeightGSet.LinkedElement next;
     final int id;
     final int value;

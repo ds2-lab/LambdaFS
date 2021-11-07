@@ -28,8 +28,8 @@ import io.hops.metadata.hdfs.entity.INodeIdentifier;
 import io.hops.metadata.hdfs.entity.INodeMetadataLogEntry;
 import io.hops.metadata.hdfs.entity.FileProvenanceEntry;
 import io.hops.transaction.EntityManager;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
+
+import java.io.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -47,9 +47,6 @@ import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockStoragePolicySuite;
 import org.apache.hadoop.util.StringUtils;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -69,11 +66,13 @@ import org.apache.hadoop.hdfs.util.LongBitFormat;
  * directory inodes.
  */
 @InterfaceAudience.Private
-public abstract class INode implements Comparable<byte[]>, LinkedElement {
+public abstract class INode implements Comparable<byte[]>, LinkedElement, Serializable {
   private static final Log LOG = LogFactory.getLog(INode.class);
 
   public static final List<INode> EMPTY_LIST =
       Collections.unmodifiableList(new ArrayList<INode>());
+  private static final long serialVersionUID = 5657160261080599329L;
+
   public enum Finder implements FinderType<INode> {
 
     ByINodeIdFTIS,//FTIS full table index scan

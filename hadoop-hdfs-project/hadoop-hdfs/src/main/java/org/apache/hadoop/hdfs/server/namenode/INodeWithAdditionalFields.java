@@ -36,7 +36,8 @@ import java.io.IOException;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
 
 public abstract class INodeWithAdditionalFields extends INode {
-  
+
+  private static final long serialVersionUID = -4457426078440517875L;
   /** The inode id */
   final protected long id;
   /**

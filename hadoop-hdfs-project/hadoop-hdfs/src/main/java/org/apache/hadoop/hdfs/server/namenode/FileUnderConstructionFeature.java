@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdfs.server.namenode;
 
 import java.io.IOException;
+import java.io.Serializable;
 
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
@@ -31,7 +32,8 @@ import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
  * I-node for file being written.
  */
 @InterfaceAudience.Private
-public class FileUnderConstructionFeature implements INode.Feature {
+public class FileUnderConstructionFeature implements INode.Feature, Serializable {
+  private static final long serialVersionUID = 85769320808297570L;
   private String clientName; // lease holder
   private final String clientMachine;
   private final INode inode;

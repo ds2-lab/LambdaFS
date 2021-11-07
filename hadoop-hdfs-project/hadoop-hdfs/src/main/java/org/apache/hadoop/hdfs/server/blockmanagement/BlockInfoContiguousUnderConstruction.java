@@ -39,6 +39,7 @@ public class BlockInfoContiguousUnderConstruction extends BlockInfoContiguous {
 
   private static final List<ReplicaUnderConstruction> EMPTY_REPLICAS_ARRAY =
       Collections.unmodifiableList(new ArrayList<ReplicaUnderConstruction>());
+  private static final long serialVersionUID = 1769975882725834469L;
   /**
    * Block state. See {@link BlockUCState}
    */
