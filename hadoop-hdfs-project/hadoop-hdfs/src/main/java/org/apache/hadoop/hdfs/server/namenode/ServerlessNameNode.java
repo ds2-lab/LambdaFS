@@ -73,6 +73,7 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
@@ -1283,10 +1284,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private LastBlockWithStatus append(JsonObject fsArgs) throws IOException {
-    String src = fsArgs.getAsJsonPrimitive("src").getAsString();
-    String clientName = fsArgs.getAsJsonPrimitive("clientName").getAsString();
+    String src = fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.SRC).getAsString();
+    String clientName = fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_NAME).getAsString();
 
-    byte[] enumSetSerialized = Base64.decodeBase64(fsArgs.getAsJsonPrimitive("enumSetBase64").getAsString());
+    byte[] enumSetSerialized = Base64.decodeBase64(fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.FLAG).getAsString());
 
     DataInputBuffer dataInput = new DataInputBuffer();
     dataInput.reset(enumSetSerialized, enumSetSerialized.length);

@@ -593,7 +593,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
-        opArguments.put("flag", enumSetBase64);
+        opArguments.put(ServerlessNameNodeKeys.FLAG, enumSetBase64);
 
         JsonObject responseJson;
         try {

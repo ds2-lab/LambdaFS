@@ -18,6 +18,7 @@ public class ServerlessNameNodeKeys {
     public static final String NAME_NODE_ID = "NAME_NODE_ID";
     public static final String PERFORMING_WRITE = "PERFORMING_WRITE";
     public static final String REDIRECTED_WRITE = "REDIRECTED_WRITE";
+    public static final String FLAG = "flag";
 
     public static final String REQUEST_METHOD = "requestMethod";
     public static final String CANCELLED = "cancelled";
