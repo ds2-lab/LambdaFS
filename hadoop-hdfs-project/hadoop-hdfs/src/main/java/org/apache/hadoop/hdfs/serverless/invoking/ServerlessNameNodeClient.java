@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
+import dnl.utils.text.table.TextTable;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
@@ -40,6 +41,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static com.google.common.hash.Hashing.consistentHash;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT;
 import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase.extractResultFromJsonResponse;
@@ -85,7 +87,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * For debugging, keep track of the operations we've performed.
      */
-    private List<OperationPerformed> operationsPerformed = new ArrayList<>();
+    private HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
 
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
@@ -144,11 +146,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
             // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
             if (mappedFunctionNumber != -1 && tcpServer.connectionExists(mappedFunctionNumber)) {
-                OperationPerformed operationPerformed
-                        = new OperationPerformed(true, true,
-                        "/whisk.system/namenode" + mappedFunctionNumber, operationName, Time.getUtcTime());
-                operationsPerformed.add(operationPerformed);
-
                 return issueConcurrentTcpHttpRequests(
                         operationName,
                         serverlessEndpoint,
@@ -164,33 +161,64 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         LOG.debug("Issuing HTTP request only for operation " + operationName);
 
+        String requestId = UUID.randomUUID().toString();
+
+        Object srcObj = opArguments.get("src");
+        String src = null;
+        if (srcObj != null)
+            src = (String)srcObj;
+
+        int mappedFunctionNumber = (src != null) ? consistentHash(src.hashCode(), 3) : 999;
+
         OperationPerformed operationPerformed
-                = new OperationPerformed(false, true, "/whisk.system/namenodeX",
-                operationName, Time.getUtcTime());
-        operationsPerformed.add(operationPerformed);
+                = new OperationPerformed(operationName, System.nanoTime(), -1,
+                "nameNode" + mappedFunctionNumber, true, true);
+        operationsPerformed.put(requestId, operationPerformed);
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
-        return dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+        JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 operationName,
                 dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments,
-                null,
+                requestId,
                 -1);
+
+        operationPerformed.setEndTime(System.nanoTime());
+
+        return response;
     }
 
     /**
      * Return the list of the operations we've performed. This is just used for debugging purposes.
      */
     public void printOperationsPerformed() {
-        Collections.sort(operationsPerformed);
+        List<OperationPerformed> opsPerformedList = new ArrayList<>(operationsPerformed.values());
+        Collections.sort(opsPerformedList);
+
+        String[] columnNames = {
+          "Op Name", "Start Time", "End Time", "Duration (ms)", "Deployment", "HTTP", "TCP"
+        };
+
+        Object[][] data = new Object[opsPerformedList.size()][];
+        for (int i = 0; i < opsPerformedList.size(); i++) {
+            OperationPerformed opPerformed = opsPerformedList.get(i);
+            data[i] = opPerformed.getAsArray();
+        }
+
         LOG.debug("====================== Operations Performed ======================");
-        LOG.debug("Number performed: " + operationsPerformed.size());
-//        String format = "%-32s %-24s %-4s %-3s";
-//        LOG.debug(String.format(format, "Operation Name", "Timestamp", "HTTP", "TCP"));
-        for (OperationPerformed operationPerformed : operationsPerformed)
-            LOG.debug(operationPerformed.toString());
+        TextTable textTable = new TextTable(columnNames, data);
+        textTable.setAddRowNumbering(true);
+        textTable.setSort(1);
+        textTable.printTable();
+
+
+//        LOG.debug("Number performed: " + operationsPerformed.size());
+////        String format = "%-32s %-24s %-4s %-3s";
+////        LOG.debug(String.format(format, "Operation Name", "Timestamp", "HTTP", "TCP"));
+//        for (OperationPerformed operationPerformed : opsPerformedList)
+//            LOG.debug(operationPerformed.toString());
         LOG.debug("==================================================================");
     }
 
@@ -216,6 +244,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String requestId = UUID.randomUUID().toString();
         LOG.debug("Issuing concurrent HTTP/TCP request for operation '" + operationName + "' now. Request ID = "
             + requestId);
+
+        OperationPerformed operationPerformed
+                = new OperationPerformed(operationName, opStart, -1,
+                "nameNode" + mappedFunctionNumber, true, true);
+        operationsPerformed.put(requestId, operationPerformed);
 
         // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
         ExecutorService executorService = Executors.newFixedThreadPool(2);
@@ -374,6 +407,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 long durationMilliseconds = TimeUnit.NANOSECONDS.toMillis(opDuration);
                 LOG.debug("Successfully obtained response from HTTP/TCP request for operation " +
                         operationName + " in " + durationMilliseconds + " milliseconds.");
+
+                operationPerformed.setEndTime(System.nanoTime());
                 return responseJson;
             } catch (ExecutionException | InterruptedException ex) {
                 // Log it.
@@ -1445,37 +1480,60 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         return 0;
     }
 
-    public class OperationPerformed implements Serializable, Comparable<OperationPerformed> {
+    // "Op Name", "Start Time", "End Time", "Duration (ms)", "Deployment", "HTTP", "TCP"
+    public static class OperationPerformed implements Serializable, Comparable<OperationPerformed> {
         private static final long serialVersionUID = -3094538262184661023L;
 
-        boolean issuedViaTcp;
+        private final String operationName;
 
-        boolean issuedViaHttp;
+        private final long startTime;
 
-        String operationName;
+        private long endTime;
 
-        String targetFunction;
+        private long duration;
 
-        long timeIssued;
+        private final String deployment;
 
-        public OperationPerformed(boolean issuedViaTcp, boolean issuedViaHttp, String targetFunction,
-                                  String operationName, long timeIssued) {
+        private final boolean issuedViaTcp;
+
+        private final boolean issuedViaHttp;
+
+        public OperationPerformed(String operationName, long startTime, long endTime, String deployment,
+                                  boolean issuedViaHttp, boolean issuedViaTcp) {
+            this.operationName = operationName;
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.duration = endTime - startTime;
+            this.deployment = deployment;
             this.issuedViaHttp = issuedViaHttp;
             this.issuedViaTcp = issuedViaTcp;
-            this.targetFunction = targetFunction;
-            this.operationName = operationName;
-            this.timeIssued = timeIssued;
         }
 
-        @Override
-        public String toString() {
-            String format = "%-24s %-30s %-26s %-6s %-6s";
-            return String.format(format, operationName, Instant.ofEpochMilli(timeIssued).toString(),
-                    targetFunction, (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
-
-//            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
-//                    (issuedViaHttp ? "HTTP" : "-") + " \t" + (issuedViaTcp ? "TCP" : "-");
+        /**
+         * Modify the endTime of this OperationPerformed instance.
+         * This also recomputes this instance's `duration` field.
+         */
+        public void setEndTime(long endTime) {
+            this.endTime = endTime;
+            this.duration = endTime - startTime;
         }
+
+        public Object[] getAsArray() {
+            return new Object[] {
+                    this.operationName, this.startTime, this.endTime, this.duration, this.deployment,
+                    this.issuedViaHttp, this.issuedViaTcp
+            };
+        }
+
+//        @Override
+//        public String toString() {
+//            String format = "%-24s %-30s %-26s %-6s %-6s";
+//            return String.format(format, operationName, Instant.ofEpochMilli(timeIssued).toString(),
+//                    targetFunction, (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
+//
+////            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
+////                    (issuedViaHttp ? "HTTP" : "-") + " \t" + (issuedViaTcp ? "TCP" : "-");
+//        }
 
         /**
          * Compare two instances of OperationPerformed.
@@ -1483,7 +1541,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
          */
         @Override
         public int compareTo(OperationPerformed op) {
-            return Long.compare(timeIssued, op.timeIssued);
+            return Long.compare(endTime, op.endTime);
         }
     }
 }
