@@ -77,6 +77,7 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
@@ -265,7 +266,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private Map<String, CheckedFunction<JsonObject, ? extends Serializable>> operations;
 
   /**
-   * HashSet containing the names of all write operations. 
+   * HashSet containing the names of all write operations.
    * Used to check if a given operation is a write operation or not.
    */
   private HashSet<String> writeOperations;
@@ -340,7 +341,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     DFS_NAMENODE_KERBEROS_PRINCIPAL_KEY, DFS_NAMENODE_KERBEROS_INTERNAL_SPNEGO_PRINCIPAL_KEY};
 
   private static final String USAGE =
-      "Usage: java NameNode [" + 
+      "Usage: java NameNode [" +
           //StartupOption.BACKUP.getName() + "] | [" +
           //StartupOption.CHECKPOINT.getName() + "] | [" +
           StartupOption.FORMAT.getName() + " [" +
@@ -388,9 +389,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   public static final Logger LOG = LoggerFactory.getLogger(ServerlessNameNode.class.getName());
   public static final Logger stateChangeLog = LoggerFactory.getLogger("org.apache.hadoop.hdfs.StateChange");
   public static final Logger blockStateChangeLog = LoggerFactory.getLogger("BlockStateChange");
- 
+
   private static final String NAMENODE_HTRACE_PREFIX = "namenode.htrace.";
-  
+
   protected FSNamesystem namesystem;
   protected final Configuration conf;
   private AtomicBoolean started = new AtomicBoolean(false);
@@ -632,6 +633,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     });
     operations.put("create", args -> (Serializable)create(args));
     operations.put("delete", args -> (Serializable)delete(args));
+    operations.put("getActiveNamenodesForClient", args -> (Serializable)getActiveNamenodesForClient(args));
     operations.put("getBlockLocations", args -> (Serializable)getBlockLocations(args));
     operations.put("getDatanodeReport", args -> (Serializable)getDatanodeReport(args));
     operations.put("getFileInfo", args -> (Serializable)getFileInfo(args));
@@ -674,6 +676,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return null;
     });
     operations.put("truncate", args -> (Serializable)truncate(args));
+    operations.put("updatePipeline", args -> {
+      updatePipeline(args);
+      return null;
+    });
+    operations.put("updateBlockForPipeline", args -> (Serializable)updateBlockForPipeline(args));
     operations.put("versionRequest", args -> (Serializable)versionRequest(args));
   }
 
@@ -1381,6 +1388,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     namesystem.setOwner(src, username, groupname);
   }
 
+
+
   private boolean mkdirs(JsonObject fsArgs) throws IOException, ClassNotFoundException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String maskedBase64 = fsArgs.getAsJsonPrimitive("masked").getAsString();
@@ -1754,7 +1763,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private JvmPauseMonitor pauseMonitor;
 
   protected LeaderElection leaderElection;
-  
+
   protected RevocationListFetcherService revocationListFetcherService;
   /**
    * for block report load balancing
@@ -1771,13 +1780,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private ObjectName nameNodeStatusBeanName;
   protected final Tracer tracer;
   protected final TracerConfigurationManager tracerConfigurationManager;
-  
+
   /**
    * The service name of the delegation token issued by the namenode. It is
    * the name service id in HA mode, or the rpc address in non-HA mode.
    */
   private String tokenServiceName;
-  
+
   /**
    * Format a new filesystem. Destroys any filesystem that may already exist
    * at this location.  *
@@ -1788,7 +1797,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   static NameNodeMetrics metrics;
   private static final StartupProgress startupProgress = new StartupProgress();
-  
+
   /**
    * Return the {@link FSNamesystem} object.
    *
@@ -1823,7 +1832,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   public static StartupProgress getStartupProgress() {
     return startupProgress;
   }
-  
+
   /**
    * Return the service name of the issued delegation token.
    *
@@ -1879,7 +1888,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           FileSystem.FS_DEFAULT_NAME_KEY, filesystemURI.toString()));
     }
     if (!HdfsConstants.HDFS_URI_SCHEME
-        .equalsIgnoreCase(filesystemURI.getScheme()) && 
+        .equalsIgnoreCase(filesystemURI.getScheme()) &&
         !HdfsConstants.ALTERNATIVE_HDFS_URI_SCHEME.equalsIgnoreCase(filesystemURI.getScheme())) {
       throw new IllegalArgumentException(String.format(
           "Invalid URI for NameNode address (check %s): %s is not of scheme '%s'.",
@@ -1984,7 +1993,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
     return bindAddress;
   }
-  
+
   /**
    * @return the NameNode HTTP address
    */
@@ -2269,7 +2278,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // startLeaderElectionService();
 
     startMDCleanerService();
-    
+
     namesystem.startCommonServices(conf);
     registerNNSMXBean();
 
@@ -2355,7 +2364,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         }
       }
     }
-    
+
     if (revocationListFetcherService != null) {
       try {
         revocationListFetcherService.serviceStop();
@@ -2363,7 +2372,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         LOG.warn("Exception while stopping CRL fetcher service, but we are shutting down anyway");
       }
     }
-    
+
     stopHttpServer();
   }
 
@@ -2516,7 +2525,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
     tracer.close();
   }
-  
+
 
   synchronized boolean isStopRequested() {
     return stopRequested;
@@ -2740,7 +2749,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             startOpt.setMaxConcurrentBlkReports(maxBRs);
             return startOpt;
       }
-      
+
       if (StartupOption.FORMAT.getName().equalsIgnoreCase(cmd)) {
         startOpt = StartupOption.FORMAT;
         for (i = i + 1; i < argsLen; i++) {
@@ -2764,7 +2773,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             }
             startOpt.setClusterId(clusterId);
           }
-          
+
           if (args[i].equalsIgnoreCase(StartupOption.FORCE.getName())) {
             startOpt.setForceFormat(true);
           }
@@ -2968,7 +2977,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return consistentHash(path.hashCode(), numUniqueServerlessNameNodes);
   }
 
-  /** 
+  /**
    */
   /*public static void main(String argv[]) throws Exception {
     if (DFSUtil.parseHelpArgument(argv, ServerlessNameNode.USAGE, System.out, true)) {
@@ -3135,6 +3144,66 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return activeNameNodes;
   }
 
+  /**
+   * Return the current version of the active name nodes list.
+   *
+   * ClientProtocol.
+   */
+  private SortedActiveNodeList getActiveNamenodesForClient(JsonObject fsArgs) {
+    return this.getActiveNameNodes();
+  }
+
+  /**
+   * ClientProtocol.
+   */
+  private LocatedBlock updateBlockForPipeline(JsonObject fsArgs) throws IOException, ClassNotFoundException {
+    String clientName = fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_NAME).getAsString();
+
+    ExtendedBlock block = null;
+    if (fsArgs.has("block")) {
+      String blockBase64 = fsArgs.getAsJsonPrimitive("block").getAsString();
+      block = (ExtendedBlock) InvokerUtilities.base64StringToObject(blockBase64);
+    }
+
+    return namesystem.updateBlockForPipeline(block, clientName);
+  }
+
+  /**
+   * ClientProtocol.
+   */
+  private void updatePipeline(JsonObject fsArgs) throws IOException, ClassNotFoundException {
+    String clientName = fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_NAME).getAsString();
+
+    ExtendedBlock oldBlock = null;
+    if (fsArgs.has("oldBlock")) {
+      String previousBase64 = fsArgs.getAsJsonPrimitive("oldBlock").getAsString();
+      oldBlock = (ExtendedBlock) InvokerUtilities.base64StringToObject(previousBase64);
+    }
+
+    ExtendedBlock newBlock = null;
+    if (fsArgs.has("newBlock")) {
+      String previousBase64 = fsArgs.getAsJsonPrimitive("newBlock").getAsString();
+      newBlock = (ExtendedBlock) InvokerUtilities.base64StringToObject(previousBase64);
+    }
+
+    DatanodeID[] newNodes = ServerlessUtilities.<DatanodeID>deserializeArgumentArray("newNodes", fsArgs);
+//    if (fsArgs.has("newNodes")) {
+//      // Decode and deserialize the DatanodeInfo[].
+//      JsonArray newNodesJsonArray = fsArgs.getAsJsonArray("newNodes");
+//      newNodes = new DatanodeID[newNodesJsonArray.size()];
+//
+//      for (int i = 0; i < newNodesJsonArray.size(); i++) {
+//        String newNodesBase64 = newNodesJsonArray.get(i).getAsString();
+//        DatanodeID newNode = (DatanodeID) InvokerUtilities.base64StringToObject(newNodesBase64);
+//        newNodes[i] = newNode;
+//      }
+//    }
+
+    String[] newStorageIDs = ServerlessUtilities.deserializeStringArray("newStorages", fsArgs);
+
+    namesystem.updatePipeline(clientName, oldBlock, newBlock, newNodes, newStorageIDs);
+  }
+
   private void startMDCleanerService(){
     mdCleaner.startMDCleanerMonitor(namesystem, leaderElection, failedSTOCleanDelay, slowSTOCleanDelay);
   }
@@ -3166,10 +3235,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     /*
      * httpServer.getHttpAddress() return the bind address. If we use 0.0.0.0 to listen to all interfaces the leader
      * election system will return 0.0.0.0 as the http address and the client will not be able to connect to the UI
-     * to mitigate this we retunr the address used by the RPC. This address will work because the http server is 
+     * to mitigate this we retunr the address used by the RPC. This address will work because the http server is
      * listening on very interfaces
      * */
-    
+
     if (DFSUtil.getHttpPolicy(conf).isHttpEnabled()) {
       if (httpServer.getHttpAddress().getAddress().getHostAddress().equals("0.0.0.0")) {
         httpAddress = rpcServer.getRpcAddress().getAddress().getHostAddress() + ":" + httpServer.getHttpAddress()
@@ -3187,7 +3256,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             .getPort();
       }
     }
-    
+
     leaderElection =
         new LeaderElection(new HdfsLeDescriptorFactory(), leadercheckInterval,
             missedHeartBeatThreshold, leIncrement, httpAddress,
@@ -3201,7 +3270,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.warn("NN was interrupted");
     }
   }
-  
+
   private void createAndStartCRLFetcherService(Configuration conf) throws Exception {
     if (conf.getBoolean(CommonConfigurationKeysPublic.IPC_SERVER_SSL_ENABLED,
         CommonConfigurationKeysPublic.IPC_SERVER_SSL_ENABLED_DEFAULT)) {
@@ -3216,7 +3285,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
     }
   }
- 
+
   /**
    * Returns whether the NameNode is completely started
    */

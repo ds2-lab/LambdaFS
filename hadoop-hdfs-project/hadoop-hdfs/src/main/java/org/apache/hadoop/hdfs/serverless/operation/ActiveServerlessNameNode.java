@@ -2,12 +2,14 @@ package org.apache.hadoop.hdfs.serverless.operation;
 
 import io.hops.leader_election.node.ActiveNode;
 
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 
 /**
  * Basically just holds onto the ID. All the other fields are meaningless for serverless name nodes.
  */
-public class ActiveServerlessNameNode implements ActiveNode {
+public class ActiveServerlessNameNode implements ActiveNode, Serializable {
+    private static final long serialVersionUID = 646982592726977047L;
     private final long id;
 
     public ActiveServerlessNameNode(long id) {

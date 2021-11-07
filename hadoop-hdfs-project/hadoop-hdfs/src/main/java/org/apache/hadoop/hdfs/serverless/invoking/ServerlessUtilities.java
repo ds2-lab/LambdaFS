@@ -1,8 +1,11 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -94,5 +97,51 @@ public class ServerlessUtilities {
             h = 31*h + string.charAt(i);
         }
         return h;
+    }
+
+    /**
+     * Deserialize an array of base64-encoded passed via Json as an argument to a file system operation.
+     * @param key The key that the argument is stored in the fsArgs object.
+     * @param fsArgs The file-system arguments passed by the client.
+     * @param <T> The type of the object we're extracting from the Json array.
+     * @return An array of T objects extracted from the Json arguments passed by the client.
+     */
+    public static <T> T[] deserializeArgumentArray(String key, JsonObject fsArgs) throws IOException, ClassNotFoundException {
+        T[] array = null;
+        if (fsArgs.has(key)) {
+            // Decode and deserialize the DatanodeInfo[].
+            JsonArray jsonArray = fsArgs.getAsJsonArray(key);
+            array = (T[]) new Object[jsonArray.size()];
+
+            for (int i = 0; i < jsonArray.size(); i++) {
+                String base64 = jsonArray.get(i).getAsString();
+                T newNode = (T) InvokerUtilities.base64StringToObject(base64);
+                array[i] = newNode;
+            }
+        }
+
+        return array;
+    }
+
+    /**
+     * Deserialize an array of Strings passed via Json as an argument to a file system operation.
+     *
+     * @param key The key that the argument is stored in the fsArgs object.
+     * @param fsArgs The file-system arguments passed by the client.
+     * @return An array of Strings extracted from the Json arguments passed by the client.
+     */
+    public static String[] deserializeStringArray(String key, JsonObject fsArgs) {
+        String[] array = null;
+        if (fsArgs.has(key)) {
+            // Decode and deserialize the DatanodeInfo[].
+            JsonArray jsonArray = fsArgs.getAsJsonArray(key);
+            array = new String[jsonArray.size()];
+
+            for (int i = 0; i < jsonArray.size(); i++) {
+                array[i] = jsonArray.get(i).getAsString();
+            }
+        }
+
+        return array;
     }
 }

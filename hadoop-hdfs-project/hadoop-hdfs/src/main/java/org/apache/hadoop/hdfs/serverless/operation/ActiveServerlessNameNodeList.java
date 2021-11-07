@@ -13,6 +13,7 @@ import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.*;
 
@@ -21,8 +22,9 @@ import java.util.*;
  * is in this list does not guarantee that it is running. The list is based on the metadata available in
  * intermediate storage. It is periodically updated by the NameNode's worker thread.
  */
-public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
+public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Serializable {
     public static final Logger LOG = LoggerFactory.getLogger(ActiveServerlessNameNodeList.class.getName());
+    private static final long serialVersionUID = -1602619427888192710L;
 
     // Initially unsorted, but gets sorted getSortedActiveNodes() gets called.
     // Becomes unsorted again once refresh() is called.

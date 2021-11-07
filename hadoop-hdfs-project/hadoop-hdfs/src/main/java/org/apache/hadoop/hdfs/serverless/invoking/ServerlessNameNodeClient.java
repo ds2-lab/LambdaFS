@@ -1180,12 +1180,51 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public LocatedBlock updateBlockForPipeline(ExtendedBlock block, String clientName) throws IOException {
-        throw new UnsupportedOperationException("Function has not yet been implemented.");
+        ArgumentContainer opArguments = new ArgumentContainer();
+
+        opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
+        opArguments.put("block", block);
+
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "updateBlockForPipeline",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation complete to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation complete to NameNode.");
+        }
+
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        if (result != null)
+            return (LocatedBlock)result;
+
+        return null;
     }
 
     @Override
-    public void updatePipeline(String clientName, ExtendedBlock oldBlock, ExtendedBlock newBlock, DatanodeID[] newNodes, String[] newStorages) throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
+    public void updatePipeline(String clientName, ExtendedBlock oldBlock, ExtendedBlock newBlock,
+                               DatanodeID[] newNodes, String[] newStorages) throws IOException {
+        ArgumentContainer opArguments = new ArgumentContainer();
+
+        opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
+        opArguments.put("oldBlock", oldBlock);
+        opArguments.put("newBlock", newBlock);
+        opArguments.put("newNodes", newNodes);
+        opArguments.put("newStorages", newStorages);
+
+        try {
+            submitOperationToNameNode(
+                    "updatePipeline",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation complete to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation complete to NameNode.");
+        }
     }
 
     @Override
@@ -1215,7 +1254,25 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public SortedActiveNodeList getActiveNamenodesForClient() throws IOException {
-        throw new UnsupportedOperationException("Function has not yet been implemented.");
+        ArgumentContainer opArguments = new ArgumentContainer();
+
+        JsonObject responseJson;
+        try {
+            responseJson = submitOperationToNameNode(
+                    "getActiveNamenodesForClient",
+                    dfsClient.serverlessEndpoint,
+                    null, // We do not have any additional/non-default arguments to pass to the NN.
+                    opArguments);
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while submitting operation complete to NameNode:", ex);
+            throw new IOException("Exception encountered while submitting operation complete to NameNode.");
+        }
+
+        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        if (result != null)
+            return (SortedActiveNodeList)result;
+
+        return null;
     }
 
     @Override
