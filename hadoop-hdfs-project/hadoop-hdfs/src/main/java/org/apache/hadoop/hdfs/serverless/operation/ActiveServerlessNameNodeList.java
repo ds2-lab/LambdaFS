@@ -68,10 +68,10 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
         }
 
         if (activeNodes.size() == 1)
-            LOG.debug("Finished refreshing active NameNode list. There is just one active name node now.");
+            LOG.debug("Finished refreshing active NameNode list. There is just one active NameNode in this deployment.");
         else
             LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
-                    " active NameNodes now.");
+                    " active NameNodes in this deployment.");
 
         LOG.debug("Active NameNode IDs: " + activeNodes);
     }
@@ -97,10 +97,10 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
         }
 
         if (activeNodes.size() == 1)
-            LOG.debug("Finished refreshing active NameNode list. There is just one active name node now.");
+            LOG.debug("Finished refreshing active NameNode list. There is just one active NameNode in this deployment.");
         else
             LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
-                    " active NameNodes now.");
+                    " active NameNodes in this deployment.");
 
         LOG.debug("Active NameNode IDs: " + activeNodes);
     }

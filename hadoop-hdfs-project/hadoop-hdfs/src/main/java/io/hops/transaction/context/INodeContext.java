@@ -118,6 +118,48 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     }
   }
 
+  /**
+   * Return a collection containing all INodes to be removed/deleted from intermediate storage.
+   * @return
+   */
+  public Collection<INode> getRemovedINodes() {
+    return getRemoved();
+  }
+
+  /**
+   * Return a collection containing all the new INodes to be persisted to intermediate storage.
+   * This collection includes renamed INodes.
+   */
+  public Collection<INode> getAddedINodes() {
+    Collection<INode> added = new ArrayList<INode>(getAdded());
+    added.addAll(renamedInodes);
+
+    return added;
+  }
+
+  /**
+   * Return a collection of all INodes that exist already in intermediate storage and will be
+   * updated in some way by the upcoming transactional commit.
+   */
+  public Collection<INode> getUpdatedINodes() {
+    return getModified();
+  }
+
+  /**
+   * Return a collection of INodes that will be invalidated by the upcoming transactional commit.
+   * That means that any Serverless NameNodes that are caching these INodes will need to invalidate
+   * their caches.
+   *
+   * Specifically, this includes any removed and modified INodes. This does NOT include any added INodes
+   * (i.e., INodes that do not already exist in intermediate storage).
+   */
+  public Collection<INode> getInvalidatedINodes() {
+    Collection<INode> invalidated = new ArrayList<INode>(getRemoved());
+    invalidated.addAll(getModified());
+
+    return invalidated;
+  }
+
   @Override
   public void prepare(TransactionLocks lks)
       throws TransactionContextException, StorageException {

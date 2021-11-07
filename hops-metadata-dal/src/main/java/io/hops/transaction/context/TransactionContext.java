@@ -52,6 +52,14 @@ public class TransactionContext {
     this.connector = connector;
   }
 
+  /**
+   * Return the {@link EntityContext} instance mapped by the given class, should one exist.
+   * Otherwise, returns null.
+   */
+  public EntityContext<?> getEntityContext(Class<?> clazz) {
+    return typeContextMap.get(clazz);
+  }
+
   private void resetContext() throws TransactionContextException {
     activeTxExpected = false;
     clearContext();

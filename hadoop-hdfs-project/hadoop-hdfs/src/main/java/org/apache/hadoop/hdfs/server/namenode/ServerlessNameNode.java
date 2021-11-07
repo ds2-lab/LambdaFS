@@ -3069,6 +3069,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
+   * Return the name of this Serverless Name Node.
+   */
+  public String getFunctionName() {
+    return this.functionName;
+  }
+
+  /**
    * Return the {@link LeaderElection} object.
    *
    * @return {@link LeaderElection} object.

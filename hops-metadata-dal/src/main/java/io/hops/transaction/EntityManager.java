@@ -49,6 +49,16 @@ public class EntityManager {
       RequestHandler.setStorageConnector(ci.getConnector());
     }
   }
+
+  /**
+   * Return the given {@link EntityContext} mapped by the given class, should one exist.
+   * Otherwise, returns null.
+   */
+  public static EntityContext<?> getEntityContext(Class<?> clazz) {
+    TransactionContext context = context();
+
+    return context.getEntityContext(clazz);
+  }
   
   private static TransactionContext context() {
     TransactionContext context = threadContext.get();

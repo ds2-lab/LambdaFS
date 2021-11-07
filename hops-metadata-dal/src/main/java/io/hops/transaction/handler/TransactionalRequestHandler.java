@@ -19,6 +19,7 @@ import io.hops.exception.*;
 import io.hops.log.NDCWrapper;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.TransactionInfo;
+import io.hops.transaction.context.EntityContext;
 import io.hops.transaction.context.TransactionsStats;
 import io.hops.transaction.lock.Lock;
 import io.hops.transaction.lock.TransactionLockAcquirer;
@@ -34,6 +35,18 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
   public TransactionalRequestHandler(OperationType opType) {
     super(opType);
   }
+
+  /**
+   * Override this function to implement a serverless consistency protocol. This will get called
+   * AFTER local, in-memory processing occurs but (immediately) before the changes are committed
+   * to NDB.
+   *
+   * @param arg Argument used by the consistency protocol implementation. In this case, we pass an INodeContext
+   *            object, if one exists.
+   *
+   * @return True if the transaction can safely proceed, otherwise false.
+   */
+  protected abstract boolean consistencyProtocol() throws IOException;
 
   @Override
   protected Object execute(Object info) throws IOException {
@@ -120,6 +133,17 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
             .collectStats(opType,
             ignoredException);
 
+        requestHandlerLOG.debug("Calling consistency protocol now...");
+        boolean canProceed = consistencyProtocol();
+
+        if (canProceed) {
+          requestHandlerLOG.debug("Consistency protocol executed successfully. Proceeding to commit now.");
+        } else {
+          requestHandlerLOG.error("Consistency protocol FAILED.");
+          throw new IOException("Consistency protocol FAILED.");
+        }
+
+        requestHandlerLOG.debug("Committing transaction now...");
         EntityManager.commit(locksAcquirer.getLocks());
         committed = true;
         commitTime = (System.currentTimeMillis() - oldTime);
