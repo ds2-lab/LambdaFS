@@ -221,7 +221,8 @@ public class NameNodeTCPClient {
                     IllegalArgumentException ex = new IllegalArgumentException(
                             "[TCP Client] Received object of unexpected type from client " + tcpClient
                                     + ". Object type: " + object.getClass().getSimpleName() + ".");
-                    tcpResult = new NameNodeResult(functionName, "N/A", "TCP");
+                    tcpResult = new NameNodeResult(functionName, "N/A", "TCP",
+                            serverlessNameNode.getId());
                     tcpResult.addException(ex);
                 }
 
@@ -318,7 +319,8 @@ public class NameNodeTCPClient {
             LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
         LOG.debug("======================================================\n");
 
-        NameNodeResult tcpResult = new NameNodeResult(functionName, requestId, "TCP");
+        NameNodeResult tcpResult = new NameNodeResult(functionName, requestId, "TCP",
+                serverlessNameNode.getId());
 
         // Create a new task. After this, we assign it to the worker thread and wait for the
         // result to be computed before returning it to the user.

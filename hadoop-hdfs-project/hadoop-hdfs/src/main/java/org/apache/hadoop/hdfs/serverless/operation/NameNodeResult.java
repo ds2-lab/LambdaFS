@@ -54,6 +54,11 @@ public class NameNodeResult implements Serializable {
     private final String functionName;
 
     /**
+     * The unique ID of the current NameNode instance.
+     */
+    private long nameNodeId;
+
+    /**
      * Flag which indicates whether there is a result.
      */
     private boolean hasResult = false;
@@ -85,8 +90,9 @@ public class NameNodeResult implements Serializable {
      */
     private long timeDeliveredBackToClient = -1L;
 
-    public NameNodeResult(String functionName, String requestId, String requestMethod) {
+    public NameNodeResult(String functionName, String requestId, String requestMethod, long nameNodeId) {
         this.functionName = functionName;
+        this.nameNodeId = nameNodeId;
         this.requestId = requestId;
         this.exceptions = new ArrayList<>();
         this.additionalFields = new HashMap<>();
@@ -178,6 +184,8 @@ public class NameNodeResult implements Serializable {
 
         LOG.debug("----------------------------------------------------");
 
+        LOG.debug("Function Name: " + this.functionName);
+        LOG.debug("NameNode ID: " + this.nameNodeId);
         LOG.debug("Number of exceptions: " + exceptions.size());
 
         if (exceptions.size() > 0) {
@@ -283,14 +291,11 @@ public class NameNodeResult implements Serializable {
         if (operation != null)
             json.addProperty(ServerlessNameNodeKeys.OPERATION, operation);
 
+        json.addProperty(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
         json.addProperty(ServerlessNameNodeKeys.FUNCTION_NAME, functionName);
-
         json.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
-
         json.addProperty(ServerlessNameNodeKeys.REQUEST_METHOD, requestMethod);
-
         json.addProperty(ServerlessNameNodeKeys.CANCELLED, false);
-
         json.addProperty(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
 
         return json;
@@ -324,6 +329,17 @@ public class NameNodeResult implements Serializable {
                     oldTimeFormatted + ") with new timestamp of " + newTimestamp + "(" + newTimeFormatted + ").");
 
         timeDeliveredBackToClient = newTimestamp;
+    }
+
+    /**
+     * Update the 'nameNodeId' instance variable. There are cases where we create an instance of this class
+     * before having access to the NameNode's ID, so we have to update the ID after instantiating this object in
+     * those cases.
+     *
+     * @param nameNodeId The NameNode's ID.
+     */
+    public void setNameNodeId(long nameNodeId) {
+        this.nameNodeId = nameNodeId;
     }
 
     /**

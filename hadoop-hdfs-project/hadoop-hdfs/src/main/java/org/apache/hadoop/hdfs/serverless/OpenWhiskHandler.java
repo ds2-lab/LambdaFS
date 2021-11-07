@@ -62,7 +62,7 @@ public class OpenWhiskHandler {
     public static synchronized ServerlessNameNode getOrCreateNameNodeInstance(String[] commandLineArguments, String functionName)
             throws Exception {
         if (instance != null) {
-            LOG.debug("Using existing NameNode instance.");
+            LOG.debug("Using existing NameNode instance with ID = " + instance.getId());
             return instance;
         }
 
@@ -246,7 +246,7 @@ public class OpenWhiskHandler {
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                      String functionName, String clientIPAddress, String requestId,
                                      String clientName, boolean isClientInvoker, boolean tcpEnabled) {
-        NameNodeResult result = new NameNodeResult(functionName, requestId, "HTTP");
+        NameNodeResult result = new NameNodeResult(functionName, requestId, "HTTP", -1);
 
         Instant creationStart = Instant.now();
         LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
@@ -266,6 +266,8 @@ public class OpenWhiskHandler {
 
         Instant creationEnd = Instant.now();
         Duration creationDuration = Duration.between(creationStart, creationEnd);
+        LOG.debug("Obtained NameNode instance with ID=" + serverlessNameNode.getId());
+        result.setNameNodeId(serverlessNameNode.getId());
         LOG.debug("Getting/creating NN instance took: "
                 + DurationFormatUtils.formatDurationHMS(creationDuration.toMillis()));
 

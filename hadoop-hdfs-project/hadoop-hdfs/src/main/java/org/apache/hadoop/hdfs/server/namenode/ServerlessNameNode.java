@@ -2068,16 +2068,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     nameNodeWorkQueue = new LinkedBlockingQueue<>();
 
-    // Create the thread and tell it to run!
-    workerThread = new NameNodeWorkerThread(conf, nameNodeWorkQueue, this, functionName);
-
-    LOG.debug("Started the NameNode worker thread.");
-
     // The existing code uses longs for NameNode IDs, so I'm just using this to generate a random ID.
     // This should be sufficiently random for our purposes. I don't think we'll encounter collisions.
     // Note, Long.MAX_VALUE in binary is 0111111111111111111111111111111111111111111111111111111111111111
     // https://stackoverflow.com/questions/15184820/how-to-generate-unique-positive-long-using-uuid
     this.nameNodeID = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+
+    LOG.debug("Assigned new NN instance ID " + nameNodeID);
+
+    // Create the thread and tell it to run!
+    workerThread = new NameNodeWorkerThread(conf, nameNodeWorkQueue, this,
+            functionName, this.nameNodeID);
+
+    LOG.debug("Started the NameNode worker thread.");
 
     // We need to do this AFTER the above call to `HdfsStorageFactory.setConfiguration(conf)`, as the ClusterJ/NDB
     // library is loaded during that call. If we try to create the event manager before that, we will get class

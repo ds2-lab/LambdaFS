@@ -104,6 +104,11 @@ public class NameNodeWorkerThread extends Thread {
     private final String functionName;
 
     /**
+     * The ID of the NameNode that this thread is running in.
+     */
+    private final long nameNodeId;
+
+    /**
      * The last time that the worker thread attempted to purge old results.
      */
     private long lastPurgePass;
@@ -112,13 +117,15 @@ public class NameNodeWorkerThread extends Thread {
             Configuration conf,
             BlockingQueue<FileSystemTask<Serializable>> workQueue,
             ServerlessNameNode serverlessNameNodeInstance,
-            String functionName) {
+            String functionName,
+            long nameNodeId) {
         this.serverlessNameNodeInstance = serverlessNameNodeInstance;
         this.workQueue = workQueue;
         this.previousResultPriorityQueue = new PriorityQueue<PreviousResult>();
         this.previousResultCache = new HashMap<String, PreviousResult>();
         this.purgeRecords = new HashMap<String, Long>();
         this.functionName = functionName;
+        this.nameNodeId = nameNodeId;
 
         this.currentlyExecutingTasks = new ConcurrentHashMap<>();
         this.completedTasks = new ConcurrentHashMap<>();
@@ -238,8 +245,8 @@ public class NameNodeWorkerThread extends Thread {
                 // This will ultimately be returned to the main thread to be merged with their NameNodeResult instance.
                 // The requestId and requestMethod fields won't be used during the merge, so we just use dummy values
                 // for them.
-                NameNodeResult workerResult = new NameNodeResult(
-                        this.functionName, "Unknown Request ID", "Unknown Request Method");
+                NameNodeResult workerResult = new NameNodeResult(this.functionName, "Unknown Request ID",
+                        "Unknown Request Method", this.nameNodeId);
 
                 // Check if this is a duplicate task.
                 if (isTaskDuplicate(task)) {
