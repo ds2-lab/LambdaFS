@@ -123,9 +123,7 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
     public abstract int compare(INode o1, INode o2);
   }
 
-
   protected byte blockStoragePolicyID;
-  
 
   protected boolean inTree = false;
   protected long parentId = 0;

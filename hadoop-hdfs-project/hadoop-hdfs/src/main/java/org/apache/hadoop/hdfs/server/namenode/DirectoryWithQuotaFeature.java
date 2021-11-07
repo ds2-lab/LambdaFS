@@ -29,11 +29,15 @@ import org.apache.hadoop.hdfs.protocol.QuotaByStorageTypeExceededException;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.util.EnumCounters;
 
+import java.io.Serializable;
+
 /**
  * Quota feature for {@link INodeDirectory}
  */
-public class DirectoryWithQuotaFeature implements INode.Feature {
-  
+public class DirectoryWithQuotaFeature implements INode.Feature, Serializable {
+
+  private static final long serialVersionUID = 7853052195523598736L;
+
   public static enum Finder implements FinderType<DirectoryWithQuotaFeature> {
 
     ByINodeId,

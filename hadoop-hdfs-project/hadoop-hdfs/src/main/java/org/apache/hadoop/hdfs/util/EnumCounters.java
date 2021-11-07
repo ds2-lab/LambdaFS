@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hdfs.util;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -35,7 +36,8 @@ import org.apache.commons.lang3.ArrayUtils;
  *
  * @param <E> the enum type
  */
-public class EnumCounters<E extends Enum<E>> {
+public class EnumCounters<E extends Enum<E>> implements Serializable {
+  private static final long serialVersionUID = 1602939235712676292L;
   /** The class of the enum. */
   private final Class<E> enumClass;
   /** An array of longs corresponding to the enum type.. */
