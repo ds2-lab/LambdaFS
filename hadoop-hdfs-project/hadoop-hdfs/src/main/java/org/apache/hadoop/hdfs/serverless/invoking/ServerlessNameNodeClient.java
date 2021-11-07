@@ -1,7 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
-import dnl.utils.text.table.TextTable;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
@@ -208,17 +207,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         }
 
         LOG.debug("====================== Operations Performed ======================");
-        TextTable textTable = new TextTable(columnNames, data);
-        textTable.setAddRowNumbering(true);
-        textTable.setSort(1);
-        textTable.printTable();
+//        TextTable textTable = new TextTable(columnNames, data);
+//        textTable.setAddRowNumbering(true);
+//        textTable.setSort(1);
+//        textTable.printTable();
 
 
-//        LOG.debug("Number performed: " + operationsPerformed.size());
-////        String format = "%-32s %-24s %-4s %-3s";
-////        LOG.debug(String.format(format, "Operation Name", "Timestamp", "HTTP", "TCP"));
-//        for (OperationPerformed operationPerformed : opsPerformedList)
-//            LOG.debug(operationPerformed.toString());
+        LOG.debug("Number performed: " + operationsPerformed.size());
+//        String format = "%-32s %-24s %-4s %-3s";
+//        LOG.debug(String.format(format, "Operation Name", "Timestamp", "HTTP", "TCP"));
+        for (OperationPerformed operationPerformed : opsPerformedList)
+            LOG.debug(operationPerformed.toString());
         LOG.debug("==================================================================");
     }
 
@@ -1525,15 +1524,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             };
         }
 
-//        @Override
-//        public String toString() {
-//            String format = "%-24s %-30s %-26s %-6s %-6s";
-//            return String.format(format, operationName, Instant.ofEpochMilli(timeIssued).toString(),
-//                    targetFunction, (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
-//
-////            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
-////                    (issuedViaHttp ? "HTTP" : "-") + " \t" + (issuedViaTcp ? "TCP" : "-");
-//        }
+        @Override
+        public String toString() {
+            String format = "%-30s %-30s %-30s %-8s %-30s %-6s %-6s";
+
+            return String.format(format, operationName, Instant.ofEpochMilli(startTime).toString(),
+                    Instant.ofEpochMilli(endTime).toString(), duration, deployment,
+                    (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
+
+//            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
+//                    (issuedViaHttp ? "HTTP" : "-") + " \t" + (issuedViaTcp ? "TCP" : "-");
+        }
 
         /**
          * Compare two instances of OperationPerformed.
