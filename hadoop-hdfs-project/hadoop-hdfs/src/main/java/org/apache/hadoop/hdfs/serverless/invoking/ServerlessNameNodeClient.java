@@ -1516,7 +1516,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
          */
         public void setEndTime(long endTime) {
             this.endTime = endTime / 1000000;
-            this.duration = endTime - startTime;
+            this.duration = this.endTime - startTime;
         }
 
         public Object[] getAsArray() {
