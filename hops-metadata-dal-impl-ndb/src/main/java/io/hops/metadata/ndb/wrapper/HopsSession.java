@@ -66,36 +66,6 @@ public class HopsSession {
   }
 
   /**
-   * Create and register an NDB event with the server.
-   *
-   * Note that this event does not do anything without creating an event operation with it. Also note that
-   * the event operation must have execute() called on it before it will begin reporting events.
-   *
-   * @param eventName The unique name to identify the event with.
-   * @param tableName The table with which the event should be associated.
-   * @param eventColumns The columns that are being monitored for the event.
-   * @param tableEvents The events that this event should listen for.
-   * @param recreateIfExists If true, then drop and recreate the event if it already exists.
-   */
-  public Event createAndRegisterEvent(
-          String eventName,
-          String tableName,
-          String[] eventColumns,
-          com.mysql.clusterj.TableEvent[] tableEvents,
-          boolean recreateIfExists) throws StorageException {
-    LOG.debug("Attempting to create and register event " + eventName + " now...");
-
-    Event event;
-    try {
-      event = session.createAndRegisterEvent(eventName, tableName, eventColumns, tableEvents, 1, recreateIfExists);
-    } catch (ClusterJException e) {
-      throw HopsExceptionHelper.wrap(e);
-    }
-
-    return event;
-  }
-
-  /**
    * Drop/unregister the event identified by the given name.
    *
    * @param eventName Unique identifier of the event.
@@ -135,6 +105,33 @@ public class HopsSession {
       return null;
 
     return new HopsEventOperationImpl(eventOperation, eventName);
+  }
+
+  /**
+   * Create and register an NDB event with the server.
+   *
+   * Note that this event does not do anything without creating an event operation with it. Also note that
+   * the event operation must have execute() called on it before it will begin reporting events.
+   *
+   * @param eventName The unique name to identify the event with.
+   * @param tableName The table with which the event should be associated.
+   * @param eventColumns The columns that are being monitored for the event.
+   * @param tableEvents The events that this event should listen for.
+   * @param recreateIfExists If true, then drop and recreate the event if it already exists.
+   */
+  public Event createAndRegisterEvent(
+          String eventName, String tableName, String[] eventColumns,
+          com.mysql.clusterj.TableEvent[] tableEvents, boolean recreateIfExists) throws StorageException {
+    LOG.debug("Attempting to create and register event " + eventName + " now...");
+
+    Event event;
+    try {
+      event = session.createAndRegisterEvent(eventName, tableName, eventColumns, tableEvents, 1, recreateIfExists);
+    } catch (ClusterJException e) {
+      throw HopsExceptionHelper.wrap(e);
+    }
+
+    return event;
   }
 
   /**

@@ -326,7 +326,8 @@ public class HopsEventManager implements EventManager {
      * indicate that something definitely went wrong; rather, the event could just already exist.
      */
     @Override
-    public synchronized boolean registerEvent(String eventName, String tableName, boolean recreateIfExists)
+    public synchronized boolean registerEvent(String eventName, String tableName,
+                                              String[] eventColumns, boolean recreateIfExists)
             throws StorageException {
         LOG.debug("Registering event " + eventName + " with NDB now...");
 
@@ -339,7 +340,8 @@ public class HopsEventManager implements EventManager {
         // Try to create the event. If something goes wrong, we'll throw an exception.
         Event event;
         try {
-            event = session.createAndRegisterEvent(eventName, tableName, eventsToSubscribeTo, recreateIfExists);
+            event = session.createAndRegisterEvent(eventName, tableName, eventColumns,
+                    eventsToSubscribeTo, recreateIfExists);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
@@ -448,7 +450,8 @@ public class HopsEventManager implements EventManager {
         // as the event could have been created by another NameNode. We would only want to recreate it
         // if we were changing something about the event's definition, and if all future NameNodes
         // expected this change, and if there were no other NameNodes currently using the event.
-        boolean registeredSuccessfully = registerEvent(eventName, INODES_TABLE_NAME, deleteIfExists);
+        boolean registeredSuccessfully = registerEvent(eventName, INODES_TABLE_NAME,
+                INODE_TABLE_EVENT_COLUMNS, deleteIfExists);
 
         if (!registeredSuccessfully) {
             LOG.error("Failed to successfully register default event " + eventName

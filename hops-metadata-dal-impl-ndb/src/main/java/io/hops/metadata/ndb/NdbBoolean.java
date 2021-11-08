@@ -32,6 +32,12 @@ public final class NdbBoolean {
     }
   }
 
+  /**
+   * Booleans are stored in intermediate storage as bytes (in the case of NDB). This allows us to convert
+   * between the NDB-representation of a boolean and the Java representation.
+   * @param val The byte value from NDB representing a boolean value.
+   * @return The boolean value of the byte.
+   */
   public static boolean convert(byte val) {
     if (val == TRUE) {
       return true;

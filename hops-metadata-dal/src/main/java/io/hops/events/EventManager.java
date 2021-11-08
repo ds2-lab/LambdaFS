@@ -36,10 +36,12 @@ public interface EventManager extends Runnable {
      * Create and register an event with the given name.
      * @param eventName Unique identifier of the event to be created.
      * @param recreateIfExists If true, delete and recreate the event if it already exists.
+     * @param eventColumns The columns that are being monitored for the event.
      * @throws StorageException if something goes wrong when registering the event.
      * @return True if an event was created, otherwise false.
      */
-    public boolean registerEvent(String eventName, String tableName, boolean recreateIfExists) throws StorageException;
+    public boolean registerEvent(String eventName, String tableName, String[] eventColumns,
+                                 boolean recreateIfExists) throws StorageException;
 
     /**
      * Delete the event with the given name.

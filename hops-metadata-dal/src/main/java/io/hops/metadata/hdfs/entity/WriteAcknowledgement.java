@@ -14,25 +14,33 @@ public class WriteAcknowledgement {
     /**
      * This is the unique ID of the write operation, so it can be distinguished from other write operations.
      */
-    private final String operationId;
+    private final long operationId;
 
     /**
      * Indicates whether this particular WriteAcknowledgement entry has been acknowledged or not.
      */
     private final boolean acknowledged;
 
-    public WriteAcknowledgement(long nameNodeId, int deploymentNumber, String operationId, boolean acknowledged) {
+    /**
+     * The time at which the associated write operation began.
+     */
+    private final long timestamp;
+
+    public WriteAcknowledgement(long nameNodeId, int deploymentNumber, long operationId,
+                                boolean acknowledged, long timestamp) {
         this.nameNodeId = nameNodeId;
         this.deploymentNumber = deploymentNumber;
         this.operationId = operationId;
         this.acknowledged = acknowledged;
+        this.timestamp = timestamp;
     }
 
     /**
      * Return an instance of this WriteAcknowledgement object with the 'acknowledged' field set to True.
      */
     public WriteAcknowledgement acknowledge() {
-        return new WriteAcknowledgement(this.nameNodeId, this.deploymentNumber, this.operationId, true);
+        return new WriteAcknowledgement(this.nameNodeId, this.deploymentNumber, this.operationId,
+                true, this.timestamp);
     }
 
     public long getNameNodeId() {
@@ -43,7 +51,7 @@ public class WriteAcknowledgement {
         return deploymentNumber;
     }
 
-    public String getOperationId() {
+    public long getOperationId() {
         return operationId;
     }
 
@@ -51,9 +59,11 @@ public class WriteAcknowledgement {
         return acknowledged;
     }
 
+    public long getTimestamp() { return timestamp; }
+
     @Override
     public String toString() {
         return "WriteAcknowledgement(nameNodeId=" + nameNodeId + ", deploymentNumber=" + deploymentNumber +
-                "operationId=" + operationId + ", acknowledged=" + acknowledged;
+                "operationId=" + operationId + ", acknowledged=" + acknowledged + ", timestamp=" + timestamp;
     }
 }

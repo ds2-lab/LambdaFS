@@ -3167,6 +3167,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
+   * Return the ZooKeeper client.
+   */
+  public ZKClient getZooKeeperClient() {
+    return zooKeeperClient;
+  }
+
+  /**
    * Return the current version of the active name nodes list.
    *
    * ClientProtocol.

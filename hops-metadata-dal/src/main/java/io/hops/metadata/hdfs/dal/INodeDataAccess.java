@@ -29,6 +29,20 @@ public interface INodeDataAccess<T> extends EntityDataAccess {
 
   T findInodeByIdFTIS(long inodeId) throws StorageException;
 
+  /**
+   * Set the `INV` column of the INode with the given ID to the specified value.
+   * @param inodeId The ID of the INode in question.
+   * @param flag The value to set the `INV` column.
+   */
+  void setInvalidFlag(long inodeId, boolean flag) throws StorageException;
+
+  /**
+   * Set the `INV` column of the INodes with the given IDs to the specified value.
+   * @param inodeIds The IDs of the INodes in question.
+   * @param flag The value to set the `INV` column.
+   */
+  void setInvalidFlag(long[] inodeIds, boolean flag) throws StorageException;
+
   Collection<T> findInodesByIdsFTIS(long[] inodeId) throws StorageException;
 
   List<T> findInodesByParentIdFTIS(long parentId) throws StorageException;

@@ -15,6 +15,7 @@ import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 public class WriteAcknowledgementClusterJ
@@ -29,7 +30,6 @@ public class WriteAcknowledgementClusterJ
         public long getNameNodeId();
         public void setNameNodeId(long nameNodeId);
 
-        @PrimaryKey
         @Column(name = DEPLOYMENT_NUMBER)
         public int getDeploymentNumber();
         public void setDeploymentNumber(int deploymentNumber);
@@ -38,13 +38,18 @@ public class WriteAcknowledgementClusterJ
         public byte getAcknowledged();
         public void setAcknowledged(byte acknowledged);
 
+        @PrimaryKey
         @Column(name = OPERATION_ID)
-        public String getOperationId();
-        public void setOperationId(String operationId);
+        public long getOperationId();
+        public void setOperationId(long operationId);
+
+        @Column(name = TIMESTAMP)
+        public long getTimestamp();
+        public void setTimestamp(long timestamp);
     }
 
     @Override
-    public WriteAcknowledgement getWriteAcknowledgement(long nameNodeId, String operationId) throws StorageException {
+    public WriteAcknowledgement getWriteAcknowledgement(long nameNodeId, long operationId) throws StorageException {
         LOG.debug("GET WriteAcknowledgement (nameNodeId=" + nameNodeId + ", operationId=" + operationId + ")");
         HopsSession session = connector.obtainSession();
 
@@ -99,6 +104,33 @@ public class WriteAcknowledgementClusterJ
     }
 
     @Override
+    public void deleteAcknowledgement(WriteAcknowledgement writeAcknowledgement) throws StorageException {
+        LOG.debug("DELETE " + writeAcknowledgement.toString());
+        HopsSession session = connector.obtainSession();
+        Object[] pk = new Object[2];
+        pk[0] = writeAcknowledgement.getNameNodeId();
+        pk[1] = writeAcknowledgement.getOperationId();
+        session.deletePersistent(WriteAcknowledgementDTO.class, pk);
+    }
+
+    @Override
+    public void deleteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements) throws StorageException {
+        LOG.debug("DELETE ALL " + writeAcknowledgements.toString());
+        HopsSession session = connector.obtainSession();
+
+        List<WriteAcknowledgementDTO> deletions = new ArrayList<WriteAcknowledgementDTO>();
+        for (WriteAcknowledgement writeAcknowledgement : writeAcknowledgements) {
+            Object[] pk = new Object[2];
+            pk[0] = writeAcknowledgement.getNameNodeId();
+            pk[1] = writeAcknowledgement.getOperationId();
+            WriteAcknowledgementDTO persistable = session.newInstance(WriteAcknowledgementDTO.class, pk);
+            deletions.add(persistable);
+        }
+
+        session.deletePersistentAll(deletions);
+    }
+
+    @Override
     public void addWriteAcknowledgement(WriteAcknowledgement writeAcknowledgement) throws StorageException {
         LOG.debug("ADD " + writeAcknowledgement.toString());
         HopsSession session = connector.obtainSession();
@@ -137,7 +169,30 @@ public class WriteAcknowledgementClusterJ
     }
 
     @Override
-    public List<WriteAcknowledgement> getWriteAcknowledgements(String operationId) throws StorageException {
+    public void addWriteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements) throws StorageException {
+        LOG.debug("ADD " + writeAcknowledgements.toString());
+        HopsSession session = connector.obtainSession();
+
+        List<WriteAcknowledgementDTO> writeAcknowledgementDTOs =
+                new ArrayList<WriteAcknowledgementDTO>();
+
+        try {
+            for (WriteAcknowledgement ack : writeAcknowledgements) {
+                WriteAcknowledgementDTO dto = session.newInstance(WriteAcknowledgementDTO.class);
+                copyState(dto, ack);
+                writeAcknowledgementDTOs.add(dto);
+            }
+
+            // Throw exception if any exist.
+            session.makePersistentAll(writeAcknowledgementDTOs);
+            LOG.debug("Successfully stored " + writeAcknowledgements);
+        } finally {
+            session.release(writeAcknowledgementDTOs);
+        }
+    }
+
+    @Override
+    public List<WriteAcknowledgement> getWriteAcknowledgements(long operationId) throws StorageException {
         LOG.debug("GET WriteAcknowledgements (operationId=" + operationId + ")");
         HopsSession session = connector.obtainSession();
 
@@ -172,7 +227,7 @@ public class WriteAcknowledgementClusterJ
     private WriteAcknowledgement convert(WriteAcknowledgementDTO src) {
         return new WriteAcknowledgement(
                 src.getNameNodeId(), src.getDeploymentNumber(), src.getOperationId(),
-                NdbBoolean.convert(src.getAcknowledged())
+                NdbBoolean.convert(src.getAcknowledged()), src.getTimestamp()
         );
     }
 
@@ -187,5 +242,6 @@ public class WriteAcknowledgementClusterJ
         dest.setAcknowledged(NdbBoolean.convert(src.getAcknowledged()));
         dest.setDeploymentNumber(src.getDeploymentNumber());
         dest.setOperationId(src.getOperationId());
+        dest.setTimestamp(src.getTimestamp());
     }
 }
