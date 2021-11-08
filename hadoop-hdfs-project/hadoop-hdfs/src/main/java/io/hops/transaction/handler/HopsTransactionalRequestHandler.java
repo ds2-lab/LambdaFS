@@ -15,7 +15,9 @@
  */
 package io.hops.transaction.handler;
 
+import io.hops.events.HopsEvent;
 import io.hops.events.HopsEventListener;
+import io.hops.events.HopsEventOperation;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.TransactionInfo;
@@ -174,8 +176,9 @@ public abstract class HopsTransactionalRequestHandler
   }
 
   @Override
-  public void eventReceived(Object eventData, String eventName) {
-    
+  public void eventReceived(HopsEventOperation eventData, String eventName) {
+    if (!eventName.equals(HopsEvent.ACK_TABLE_EVENT_NAME))
+      requestHandlerLOG.debug("HopsTransactionalRequestHandler received unexpected event " + eventName + "!");
   }
 
   /**
