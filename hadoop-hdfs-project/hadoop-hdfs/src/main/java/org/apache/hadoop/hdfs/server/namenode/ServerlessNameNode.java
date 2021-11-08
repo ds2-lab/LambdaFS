@@ -3084,6 +3084,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
+   * Return the deployment number of the serverless function in which we're running.
+   */
+  public int getDeploymentNumber() {
+    return this.deploymentNumber;
+  }
+
+  /**
    * Return the {@link LeaderElection} object.
    *
    * @return {@link LeaderElection} object.

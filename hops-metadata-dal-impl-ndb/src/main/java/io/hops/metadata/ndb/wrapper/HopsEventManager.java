@@ -6,6 +6,7 @@ import com.mysql.clusterj.core.store.EventOperation;
 import io.hops.events.EventManager;
 import io.hops.events.HopsEvent;
 import io.hops.events.HopsEventListener;
+import io.hops.events.HopsEventOperation;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.ndb.ClusterjConnector;
@@ -28,6 +29,10 @@ import java.util.List;
  * operations, the leader protocol subscribes to events on the `write_acknowledgements` table during the carrying
  * out of the consistency protocol. This required rewriting certain aspects of the class and also updating the
  * ClusterJ API to allow for equality checks between instances of NdbEventOperation objects.
+ *
+ * TODO: We can reuse the same event operation from multiple EventListeners. We need to keep track of
+ *       how many listeners we have registered for a given event operation. We should only unregister
+ *       the event operation if the number of listeners is zero.
  */
 public class HopsEventManager implements EventManager {
     static final Log LOG = LogFactory.getLog(HopsEventManager.class);
@@ -117,7 +122,12 @@ public class HopsEventManager implements EventManager {
      * We also have a reverse mapping from the event operations to their names, as they do not store
      * their names in the object.
      */
-    private final HashMap<HopsEventOperationImpl, String> eventOpToNameMapping;
+    private final HashMap<HopsEventOperation, String> eventOpToNameMapping;
+
+    /**
+     * Number of registered HopsEventListener objects per event operation.
+     */
+    private final HashMap<HopsEventOperation, Integer> numListenersMapping;
 
 //    /**
 //     * The active event operation. For now, we assume that there is just one active event
@@ -143,11 +153,12 @@ public class HopsEventManager implements EventManager {
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
         this.eventOpToNameMapping = new HashMap<>();
+        this.numListenersMapping = new HashMap<>();
     }
 
     // Inherit the javadoc.
     @Override
-    public void addListener(HopsEventListener listener, String eventName) {
+    public synchronized void addListener(HopsEventListener listener, String eventName) {
         if (listener == null)
             throw new IllegalArgumentException("Listener cannot be null.");
 
@@ -160,12 +171,46 @@ public class HopsEventManager implements EventManager {
         }
 
         eventListeners.add(listener);
+        updateCount(eventName, true);
+
         LOG.debug("Registered new event listener. Number of listeners: " + listeners.size() + ".");
+    }
+
+    /**
+     * Update the count of listeners associated with a given event (really, event operation).
+     * @param eventName The name of the event.
+     * @param increment Whether we're incrementing or decrementing the count.
+     */
+    private synchronized void updateCount(String eventName, boolean increment) {
+        HopsEventOperation eventOperation = eventOperationMap.get(eventName);
+
+        if (eventOperation == null)
+            throw new IllegalStateException("Adding an even listener before registering " +
+                    "the event operation is not permitted. Please register the event operation first, then add the " +
+                    "event listener afterwards.");
+
+        int currentCount = numListenersMapping.getOrDefault(eventOperation, 0);
+        int newCount;
+        if (increment)
+            newCount = currentCount + 1;
+        else
+            newCount = currentCount - 1;
+
+        assert(newCount >= 0);
+
+        if (currentCount == 1)
+            LOG.debug("There was 1 existing event listener for event operation " + eventName + ". Now there are " +
+                    newCount + ".");
+        else
+            LOG.debug("There were " + currentCount + " listeners for event op " + eventName + ". Now there are " +
+                    newCount + ".");
+
+        numListenersMapping.put(eventOperation, newCount);
     }
 
     // Inherit the javadoc.
     @Override
-    public void removeListener(HopsEventListener listener, String eventName) {
+    public synchronized void removeListener(HopsEventListener listener, String eventName) {
         List<HopsEventListener> eventListeners;
         if (this.listeners.containsKey(eventName)) {
             eventListeners = this.listeners.get(eventName);
@@ -175,6 +220,7 @@ public class HopsEventManager implements EventManager {
                         eventName + "!");
 
             eventListeners.remove(listener);
+            updateCount(eventName, false);
         } else {
             throw new IllegalArgumentException("We have no event listeners registered for event " + eventName + "!");
         }
@@ -186,7 +232,7 @@ public class HopsEventManager implements EventManager {
      * @param eventName The name of the Event for which we're creating an EventOperation.
      */
     @Override
-    public void createEventOperation(String eventName) throws StorageException {
+    public synchronized void createEventOperation(String eventName) throws StorageException {
         LOG.debug("Creating EventOperation for event " + eventName + " now...");
 
         EventOperation eventOperation;
@@ -221,7 +267,7 @@ public class HopsEventManager implements EventManager {
      * @return True if an event operation was dropped, otherwise false.
      */
     @Override
-    public boolean unregisterEventOperation(String eventName) throws StorageException {
+    public synchronized boolean unregisterEventOperation(String eventName) throws StorageException {
         LOG.debug("Unregistering EventOperation for event " + eventName + " with NDB now...");
 
         // If we aren't tracking an event with the given name, then the argument is invalid.
@@ -230,6 +276,13 @@ public class HopsEventManager implements EventManager {
                     + eventName + " currently being tracked by the EventManager.");
 
         HopsEventOperationImpl hopsEventOperation = eventOperationMap.get(eventName);
+
+        int currentNumberOfListeners = numListenersMapping.get(hopsEventOperation);
+        if (currentNumberOfListeners > 0) {
+            LOG.debug("There are still " + currentNumberOfListeners + " event listener(s) for event " +
+                    eventName + ". Will not unregister event operation for now.");
+            return false;
+        }
 
         // Try to drop the event. If something goes wrong, we'll throw an exception.
         boolean dropped;
@@ -273,7 +326,7 @@ public class HopsEventManager implements EventManager {
      * indicate that something definitely went wrong; rather, the event could just already exist.
      */
     @Override
-    public boolean registerEvent(String eventName, String tableName, boolean recreateIfExists)
+    public synchronized boolean registerEvent(String eventName, String tableName, boolean recreateIfExists)
             throws StorageException {
         LOG.debug("Registering event " + eventName + " with NDB now...");
 
@@ -313,7 +366,7 @@ public class HopsEventManager implements EventManager {
      * @throws StorageException if something goes wrong when unregistering the event.
      */
     @Override
-    public boolean unregisterEvent(String eventName)
+    public synchronized  boolean unregisterEvent(String eventName)
             throws StorageException, IllegalArgumentException, IllegalStateException {
         LOG.debug("Unregistering event " + eventName + " with NDB now...");
 

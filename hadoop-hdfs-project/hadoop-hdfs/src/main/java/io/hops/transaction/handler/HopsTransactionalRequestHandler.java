@@ -15,9 +15,12 @@
  */
 package io.hops.transaction.handler;
 
+import com.esotericsoftware.minlog.Log;
+import io.hops.events.EventManager;
 import io.hops.events.HopsEvent;
 import io.hops.events.HopsEventListener;
 import io.hops.events.HopsEventOperation;
+import io.hops.exception.StorageException;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.TransactionInfo;
@@ -126,8 +129,8 @@ public abstract class HopsTransactionalRequestHandler
     //     The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly.
     // (2) Add N-1 un-ACK'd records to the "ACKs" table, where N is the number of nodes in the Leader's deployment.
     //     (The Leader adds N-1 as it does not need to add a record for itself.)
-    // (3) The leader sets the INV flag of the target INode to 1 (i.e., true), thereby triggering a round of INVs from
-    //     intermediate storage (NDB).
+    // (3) The leader sets the INV flag of the target INode(s) to 1 (i.e., true), thereby triggering a round of INVs
+    //     from intermediate storage (NDB).
     // (4) Follower NNs will ACK their entry in the ACKs table upon receiving the INV from intermediate storage (NDB).
     //     The follower will also invalidate its cache at this point, thereby readying itself for the upcoming write.
     // (5) The Leader listens for updates on the ACK table, waiting for all entries to be ACK'd.
@@ -161,18 +164,59 @@ public abstract class HopsTransactionalRequestHandler
     requestHandlerLOG.debug("=-=-=-=-= CONSISTENCY PROTOCOL =-=-=-=-=");
     ServerlessNameNode serverlessNameNode = OpenWhiskHandler.instance;
 
+    // Sanity check. Make sure we have a valid reference to the ServerlessNameNode. This isn't the cleanest, but
+    // with the way HopsFS has structured its code, this is workable for our purposes.
     if (serverlessNameNode == null)
-      throw new IllegalStateException("Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
+      throw new IllegalStateException(
+              "Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
+
+    // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
+    // If we find that we are about to modify an INode for which we are not authorized, throw an exception.
+    for (INode invalidatedINode : invalidatedINodes) {
+      int mappedDeploymentNumber = serverlessNameNode.getMappedServerlessFunction(invalidatedINode);
+      int localDeploymentNumber = serverlessNameNode.getDeploymentNumber();
+
+      if (mappedDeploymentNumber != localDeploymentNumber) {
+        requestHandlerLOG.error("Transaction intends to update INode " + invalidatedINode.getFullPathName()
+                + ", however only NameNodes from deployment #" + mappedDeploymentNumber
+                + " should be modifying this INode. We are from deployment #" + localDeploymentNumber);
+        throw new IOException("Modification of INode " + invalidatedINode.getFullPathName()
+                + " is unauthorized for NameNodes from deployment #" + localDeploymentNumber
+                + "; only NameNodes from deployment #" + mappedDeploymentNumber + " may modify this INode.");
+      } else {
+        requestHandlerLOG.debug("Modification of INode " + invalidatedINode.getFullPathName() + " is permitted.");
+      }
+    }
 
     requestHandlerLOG.debug("Leader NameNode: " + serverlessNameNode.getFunctionName() + ", ID = "
             + serverlessNameNode.getId() + ", Follower NameNodes: "
             + serverlessNameNode.getActiveNameNodes().getActiveNodes().toString() + ".");
 
-    subscribeToAckEvents(serverlessNameNode);
-    issueInitialInvalidations(serverlessNameNode);
-    addAckTableRecords(serverlessNameNode);
+    // Carry out the consistency protocol.
+    subscribeToAckEvents(serverlessNameNode);       // Step 1
+    addAckTableRecords(serverlessNameNode);         // Step 2
+    issueInitialInvalidations(serverlessNameNode);  // Step 3
+
+    cleanUpAfterConsistencyProtocol();
 
     return true;
+  }
+
+  /**
+   * Perform any necessary clean-up steps after the consistency protocol has completed.
+   * This includes unsubscribing from ACK table events, removing the ACK entries from the table in NDB, etc.
+   *
+   * TODO: How does the 'INV' flag get reset? It might be the case that the data we intend to write during the
+   *       transaction will have the 'INV' configured to be false (so the data is valid), in which case it happens
+   *       automatically.
+   */
+  private void cleanUpAfterConsistencyProtocol(ServerlessNameNode serverlessNameNode) throws StorageException {
+    // Unsubscribe and unregister event listener.
+    EventManager eventManager = serverlessNameNode.getNdbEventManager();
+    eventManager.removeListener(this, HopsEvent.ACK_TABLE_EVENT_NAME);
+    eventManager.unregisterEventOperation(HopsEvent.ACK_TABLE_EVENT_NAME);
+
+    // Remove the ACK entries that we added.
   }
 
   @Override
@@ -187,15 +231,17 @@ public abstract class HopsTransactionalRequestHandler
    *    The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly.
    */
   private void subscribeToAckEvents(ServerlessNameNode serverlessNameNode) {
+    requestHandlerLOG.debug("=-----=-----= Step 1 - Subscribing to ACK Events =-----=-----=");
 
+    serverlessNameNode.getNdbEventManager().registerEvent()
   }
 
   /**
    * Perform Step (2) of the consistency protocol:
    *    Add N-1 un-ACK'd records to the "ACKs" table, where N is the number of nodes in the Leader's deployment.
    */
-  private void issueInitialInvalidations(ServerlessNameNode serverlessNameNode) {
-
+  private void addAckTableRecords(ServerlessNameNode serverlessNameNode) {
+    requestHandlerLOG.debug("=-----=-----= Step 2 - Adding ACK Records =-----=-----=");
   }
 
   /**
@@ -203,8 +249,8 @@ public abstract class HopsTransactionalRequestHandler
    *    The leader sets the INV flag of the target INode to 1 (i.e., true), thereby triggering a round of
    *    INVs from intermediate storage (NDB).
    */
-  private void addAckTableRecords(ServerlessNameNode serverlessNameNode) {
-
+  private void issueInitialInvalidations(ServerlessNameNode serverlessNameNode) {
+    requestHandlerLOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations =-----=-----=");
   }
 
   public void setUp() throws IOException {

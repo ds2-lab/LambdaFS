@@ -59,6 +59,14 @@ public interface EventManager extends Runnable {
     /**
      * Create and register an Event Operation for the specified event.
      *
+     * IMPORTANT: This should be called BEFORE adding the event listener.
+     *
+     * The full order would be:
+     *      createEventOperation()
+     *      addListener()
+     *      removeListener()
+     *      unregisterEventOperation()
+     *
      * @param eventName The name of the Event for which we're creating an EventOperation.
      */
     public void createEventOperation(String eventName) throws StorageException;
@@ -72,6 +80,22 @@ public interface EventManager extends Runnable {
 
     /**
      * Unregister and drop the EventOperation associated with the given event from NDB.
+     *
+     * IMPORTANT: This should be called AFTER removing the event listener.
+     *
+     * The full order would be:
+     *      createEventOperation()
+     *      addListener()
+     *      removeListener()
+     *      unregisterEventOperation()
+     *
+     * TODO: We can reuse the same event operation from multiple EventListeners. We need to keep track of
+     *       how many listeners we have registered for a given event operation. We should only unregister
+     *       the event operation if the number of listeners is zero.
+     *
+     *       This also means that the `removeListener()` function should be called BEFORE calling the
+     *       `unregisterEventOperation()` function!
+     *
      * @param eventName The unique identifier of the event whose EventOperation we wish to unregister.
      * @return True if an event operation was dropped, otherwise false.
      */
@@ -86,6 +110,15 @@ public interface EventManager extends Runnable {
     /**
      * Register an event listener with the event manager.
      *
+     * IMPORTANT: This should be called AFTER registering/creating the event operation. So 'createEventOperation()'
+     * should be called first.
+     *
+     * The full order would be:
+     *      createEventOperation()
+     *      addListener()
+     *      removeListener()
+     *      unregisterEventOperation()
+     *
      * @param listener the event listener to be registered.
      * @param eventName the name of the event for which we're registering an event listener.
      */
@@ -93,6 +126,15 @@ public interface EventManager extends Runnable {
 
     /**
      * Unregister an event listener with the event manager.
+     *
+     * IMPORTANT: This should be called BEFORE calling `unregisterEventOperation()`.
+     *
+     * The full order would be:
+     *      createEventOperation()
+     *      addListener()
+     *      removeListener()
+     *      unregisterEventOperation()
+     *
      * @param listener the event listener to be unregistered.
      * @param eventName the name of the event for which we're unregistering an event listener.
      *
