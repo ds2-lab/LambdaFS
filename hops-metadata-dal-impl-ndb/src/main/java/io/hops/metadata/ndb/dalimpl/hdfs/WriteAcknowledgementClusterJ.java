@@ -13,10 +13,7 @@ import io.hops.metadata.ndb.wrapper.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 public class WriteAcknowledgementClusterJ
         implements WriteAcknowledgementDataAccess<WriteAcknowledgement>, TablesDef.WriteAcknowledgementsTableDef {
@@ -80,6 +77,32 @@ public class WriteAcknowledgementClusterJ
 
         session.release(results);
         return writeAcknowledgement;
+    }
+
+    @Override
+    public Map<Long, Long> checkForPendingAcks(long nameNodeId) throws StorageException {
+        LOG.debug("CHECK PENDING ACKS - ID=" + nameNodeId);
+        HashMap<Long, Long> mapping = new HashMap<>();
+        HopsSession session = connector.obtainSession();
+
+        HopsQueryBuilder queryBuilder = session.getQueryBuilder();
+        HopsQueryDomainType<WriteAcknowledgementDTO> domainType =
+                queryBuilder.createQueryDefinition(WriteAcknowledgementDTO.class);
+
+        HopsPredicate nameNodeIdPredicate =
+                domainType.get("nameNodeId").equal(domainType.param("nameNodeIdParam"));
+        domainType.where(nameNodeIdPredicate);
+
+        HopsQuery<WriteAcknowledgementDTO> query = session.createQuery(domainType);
+        query.setParameter("nameNodeIdParam", nameNodeId);
+
+        List<WriteAcknowledgementDTO> dtoResults = query.getResultList();
+
+        for (WriteAcknowledgementDTO dto : dtoResults) {
+            mapping.put(dto.getOperationId(), dto.getTimestamp());
+        }
+
+        return mapping;
     }
 
     @Override

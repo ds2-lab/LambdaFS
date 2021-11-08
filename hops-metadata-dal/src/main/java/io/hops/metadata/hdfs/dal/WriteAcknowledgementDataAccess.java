@@ -6,6 +6,7 @@ import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Defines the interface for storing and retrieving WriteAcknowledgements from intermediate storage.
@@ -18,6 +19,17 @@ public interface WriteAcknowledgementDataAccess<T> extends EntityDataAccess {
      * @return The WriteAcknowledgement entry.
      */
     T getWriteAcknowledgement(long nameNodeId, long operationId) throws StorageException;
+
+    /**
+     * Check if there are any pending ACKs for the NameNode specified by the given ID.
+     * @param nameNodeId The NameNode for which to check for pending ACKs.
+     *
+     * @return A mapping from operationId to timestamp of all pending ACKs. That is, for each pending ACK for the
+     * NameNode identified by the given ID, an entry will be added to the map where the key is the ACK's write ID and
+     * the value is the timestamp at the associated write operation started.
+     * @throws StorageException
+     */
+    Map<Long, Long> checkForPendingAcks(long nameNodeId) throws StorageException;
 
     /**
      * Store the given write acknowledgement in intermediate storage.

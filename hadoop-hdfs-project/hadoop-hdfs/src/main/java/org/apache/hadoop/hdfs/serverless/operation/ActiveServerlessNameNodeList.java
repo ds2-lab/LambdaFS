@@ -40,6 +40,10 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
 
     /**
      * Refresh the active node list, using ZooKeeper as the means of tracking group membership.
+     *
+     * TODO: Should we add a Watcher that just calls this method as a callback to ZK events?
+     *       That way, our active NN list should always be updated (for the most part).
+     *
      * @param zkClient The ZooKeeper client from the {@link ServerlessNameNode} object.
      * @param groupName The name of the group of which we are a member.
      */

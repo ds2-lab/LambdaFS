@@ -17,7 +17,7 @@ import java.util.function.Consumer;
  * The synchronous version is implemented by {@link SyncZKClient}, while the asynchronous
  * version is implemented by {@link AsyncZKClient}.
  */
-interface ZKClient {
+public interface ZKClient {
     /**
      * Connect to the ZooKeeper ensemble.
      */
@@ -109,7 +109,7 @@ interface ZKClient {
      * @param groupName The group whose children we desire..
      * @return List of IDs of the members of the specified group.
      */
-    List<String> getGroupMembers(String groupName) throws Exception;
+    public List<String> getGroupMembers(String groupName) throws Exception;
 
 //    /**
 //     * Return the GroupMember instance associated with this client, if it exists. Otherwise, return null.

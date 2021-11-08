@@ -118,8 +118,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -222,6 +224,24 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * The units of this variable are milliseconds.
    */
   private long heartBeatInterval;
+
+  /**
+   * Indicates whether this NN is currently acting as a transaction leader.
+   */
+  private AtomicBoolean actingAsTxLeader = new AtomicBoolean(false);
+
+  /**
+   * The time at which the TX that we're leading began. (This is specifically when the consistency protocol began.)
+   *
+   * TODO: Should we use consistency protocol start time as the start time? Or something else?
+   */
+  private AtomicLong leaderTxStartTime = new AtomicLong(-1);
+
+  /**
+   * Indicates that there are pending write acknowledgements that we need to ACK once we've completed
+   * our own write operation. This is only used when we're serving as a transaction leader.
+   */
+  private AtomicBoolean pendingAcksFlag = new AtomicBoolean(false);
 
   /**
    * Worker queue for the worker thread. This is accessed both by this class and by NameNodeTCPClient objects.
@@ -744,6 +764,30 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     return null;
+  }
+
+  public void setTxLeaderFlag(boolean flag) {
+    actingAsTxLeader.set(flag);
+  }
+
+  public boolean getTxLeaderFlag() {
+    return actingAsTxLeader.get();
+  }
+
+  public void setTxLeaderStartTime(long startTime) {
+    leaderTxStartTime.set(startTime);
+  }
+
+  public long getTxLeaderStartTime() {
+    return leaderTxStartTime.get();
+  }
+
+  public void setPendingAcksFlag(boolean flag) {
+    pendingAcksFlag.set(flag);
+  }
+
+  public boolean getPendingAcksFlag() {
+    return pendingAcksFlag.get();
   }
 
   /**

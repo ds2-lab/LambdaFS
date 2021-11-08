@@ -16,7 +16,6 @@
 package io.hops.transaction.handler;
 
 import com.esotericsoftware.minlog.Log;
-import com.logicalclocks.shaded.org.checkerframework.checker.units.qual.C;
 import io.hops.events.EventManager;
 import io.hops.events.HopsEvent;
 import io.hops.events.HopsEventListener;
@@ -39,14 +38,13 @@ import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
-import org.apache.hadoop.hdfs.serverless.invoking.OpenWhiskInvoker;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.util.Time;
+import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 public abstract class HopsTransactionalRequestHandler
@@ -63,6 +61,11 @@ public abstract class HopsTransactionalRequestHandler
    * Used as a unique identifier for the operation. This is only used during write operations.
    */
   private final long operationId;
+
+  /**
+   * Used to access the serverless name node instance in the NDB event handler.
+   */
+  private ServerlessNameNode serverlessNameNodeInstance;
 
   /**
    * We use this CountDownLatch when waiting on ACKs and watching for changes in membership. Specifically,
@@ -172,12 +175,14 @@ public abstract class HopsTransactionalRequestHandler
     //     need ACKs from failed NNs, as they invalidate their cache upon returning.
     // (6) Once all the "ACK" table entries added by the Leader have been ACK'd by followers, the Leader will check to
     //     see if there are any new, concurrent write operations with a larger timestamp. If so, the Leader must
-    //     complete the next step FIRST before submitting any ACKs for those new writes.
-    // (7) The Leader will perform the "true" write operation to intermediate storage (NDB). Then, it can ACK any
-    //     new write operations that may be waiting.
-    // (8) Follower NNs will lazily update their caches on subsequent read operations.
+    //     first finish the write operation BEFORE submitting any ACKs for those new writes. Then, the leader can ACK
+    //     any new write operations that may be waiting.
+    // (7) Follower NNs will lazily update their caches on subsequent read operations.
     //
     //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
+    // TODO: When should NameNodes stop responding to ACKs during a transaction?
+    //       In theory, an earlier write will not ACK a later write until the earlier write finishes.
+    //       Of course, this could stall the pipeline... so this may need to be reworked anyway.
 
     if (!(entityContext instanceof INodeContext))
       throw new IllegalArgumentException("Consistency protocol requires an instance of INodeContext. " +
@@ -208,6 +213,10 @@ public abstract class HopsTransactionalRequestHandler
     if (serverlessNameNode == null)
       throw new IllegalStateException(
               "Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
+
+    serverlessNameNodeInstance = serverlessNameNode;
+    serverlessNameNode.setTxLeaderFlag(true);
+    serverlessNameNode.setTxLeaderStartTime(writeStartTime);
 
     // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
     // If we find that we are about to modify an INode for which we are not authorized, throw an exception.
@@ -270,6 +279,8 @@ public abstract class HopsTransactionalRequestHandler
       return false;
     }
 
+
+
     // Clean up ACKs, event operation, etc.
     cleanUpAfterConsistencyProtocol(serverlessNameNode, needToUnsubscribe, writeAcknowledgements);
 
@@ -277,10 +288,15 @@ public abstract class HopsTransactionalRequestHandler
   }
 
   /**
-   * This function performs steps 4 and 5 of the consistency protocol. We, as the leader, simply have to wait for the
-   * follower NNs to ACK our write operations.
+   * This is used as a listener for ZooKeeper events during the consistency protocol. This updates the
+   * datastructures tracking the ACKs we're waiting on in response to follower NNs dropping out during the
+   * consistency protocol.
+   *
+   * This function is called once AFTER being set as the event listener to ensure no membership changes occurred
+   * between when the leader NN first checked group membership to create the ACK entries and when the leader begins
+   * monitoring explicitly for changes in group membership.
    */
-  private void waitForAcks(ServerlessNameNode serverlessNameNode) throws Exception {
+  private synchronized void checkForAndHandleMembershipChanges(ServerlessNameNode serverlessNameNode) throws Exception {
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
 
     // Get the current members.
@@ -304,19 +320,52 @@ public abstract class HopsTransactionalRequestHandler
       requestHandlerLOG.warn("Found " + removeMe.size()
               + " NameNode(s) that we are waiting on, but are no longer part of the group.");
       requestHandlerLOG.warn("IDs of these NameNodes: " + removeMe);
-      removeMe.forEach(waitingForAcks::remove);
+      removeMe.forEach(s -> {
+        waitingForAcks.remove(s);   // Remove from the set of ACKs we're still waiting on.
+        countDownLatch.countDown(); // Decrement the count-down latch once for each entry we remove.
+      });
     }
 
     // If after removing all the failed follower NNs, we are not waiting on anybody, then we can just return.
-    if (waitingForAcks.size() == 0) {
-      requestHandlerLOG.debug("After removal of failed follower NameNodes, we have all required ACKs.");
-      return;
-    } else {
-      requestHandlerLOG.debug("We are still waiting on " + waitingForAcks.size() +
+    if (removeMe.size() > 0 && waitingForAcks.size() == 0) {
+      requestHandlerLOG.debug("After removal of " + removeMe.size() +
+              " failed follower NameNode(s), we have all required ACKs.");
+    } else if (removeMe.size() > 0) {
+      requestHandlerLOG.debug("After removal of " + removeMe.size() +
+              "failed follower NameNode(s), we are still waiting on " + waitingForAcks.size() +
               " more ACK(s) from " + waitingForAcks + ".");
+    } else {
+      requestHandlerLOG.debug("We did not remove any NameNodes from our ACK list. Still waiting on " +
+              waitingForAcks.size() + " ACK(s) from " + waitingForAcks + ".");
     }
+  }
 
-    // Wait until we're done.
+  /**
+   * This function performs steps 4 and 5 of the consistency protocol. We, as the leader, simply have to wait for the
+   * follower NNs to ACK our write operations.
+   */
+  private void waitForAcks(ServerlessNameNode serverlessNameNode) throws Exception {
+    requestHandlerLOG.debug("=-----=-----= Steps 4 & 5 - Adding ACK Records =-----=-----=");
+
+    ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
+
+    // Start listening for changes in group membership.
+    zkClient.addListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
+      if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+        try {
+          checkForAndHandleMembershipChanges(serverlessNameNode);
+        } catch (Exception e) {
+          requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
+          e.printStackTrace();
+        }
+      }
+    });
+
+    // This method is 'synchronized' so if the event handler already fired, we won't be able to get inside
+    // until after the event handler finishes. Shouldn't cause any concurrency issues...
+    checkForAndHandleMembershipChanges(serverlessNameNode);
+
+    // Wait until we're done. If the latch is already at zero, then this will not block.
     countDownLatch.await();
     requestHandlerLOG.debug("We have received all required ACKs for write operation " + operationId + ".");
   }
@@ -359,10 +408,14 @@ public abstract class HopsTransactionalRequestHandler
 
     // First, verify that this event pertains to our write operation. If it doesn't, we just return.
     long writeId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID);
-    if (writeId != operationId)
-      return;
-
     long nameNodeId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.NAME_NODE_ID);
+    if (writeId != operationId && nameNodeId != serverlessNameNodeInstance.getId())
+      return;
+    else if (nameNodeId == serverlessNameNodeInstance.getId()) {
+      requestHandlerLOG.warn("Discovered ACK entry assigned to self for write operation " + writeId);
+      serverlessNameNodeInstance.setPendingAcksFlag(true);
+    }
+
     boolean acknowledged =
             eventData.getBooleanPostValue(TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED);
 
@@ -380,6 +433,20 @@ public abstract class HopsTransactionalRequestHandler
       countDownLatch.countDown();
     }
 
+  }
+
+  @Override
+  protected void handlePendingAcks() {
+    // At this point, we consider ourselves to be done. Any ACKs received after this call will be ACK'd immediately.
+    serverlessNameNodeInstance.setTxLeaderFlag(false);
+
+    if (serverlessNameNodeInstance.getPendingAcksFlag()) {
+      requestHandlerLOG.debug("There are pending ACKs for us in NDB.");
+
+      // Iterate over all pending ACKs.
+      // All the pending ACKs should be for write operations that began AFTER our own.
+      // Earlier ACKs should've just been ACK'd when they were received.
+    }
   }
 
   /**
