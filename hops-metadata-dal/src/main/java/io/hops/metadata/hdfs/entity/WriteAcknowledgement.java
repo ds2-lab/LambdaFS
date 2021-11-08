@@ -8,10 +8,8 @@ public class WriteAcknowledgement {
 
     /**
      * The full deployment name of the functions involved in the write operation.
-     *
-     * TODO: Would it be better if this was JUST the deployment number?
      */
-    private final String functionName;
+    private final int deploymentNumber;
 
     /**
      * This is the unique ID of the write operation, so it can be distinguished from other write operations.
@@ -23,9 +21,9 @@ public class WriteAcknowledgement {
      */
     private final boolean acknowledged;
 
-    public WriteAcknowledgement(long nameNodeId, String functionName, String operationId, boolean acknowledged) {
+    public WriteAcknowledgement(long nameNodeId, int deploymentNumber, String operationId, boolean acknowledged) {
         this.nameNodeId = nameNodeId;
-        this.functionName = functionName;
+        this.deploymentNumber = deploymentNumber;
         this.operationId = operationId;
         this.acknowledged = acknowledged;
     }
@@ -34,15 +32,15 @@ public class WriteAcknowledgement {
      * Return an instance of this WriteAcknowledgement object with the 'acknowledged' field set to True.
      */
     public WriteAcknowledgement acknowledge() {
-        return new WriteAcknowledgement(this.nameNodeId, this.functionName, this.operationId, true);
+        return new WriteAcknowledgement(this.nameNodeId, this.deploymentNumber, this.operationId, true);
     }
 
     public long getNameNodeId() {
         return nameNodeId;
     }
 
-    public String getFunctionName() {
-        return functionName;
+    public int getDeploymentNumber() {
+        return deploymentNumber;
     }
 
     public String getOperationId() {
@@ -55,7 +53,7 @@ public class WriteAcknowledgement {
 
     @Override
     public String toString() {
-        return "WriteAcknowledgement(nameNodeId=" + nameNodeId + ", functionName=" + functionName +
+        return "WriteAcknowledgement(nameNodeId=" + nameNodeId + ", deploymentNumber=" + deploymentNumber +
                 "operationId=" + operationId + ", acknowledged=" + acknowledged;
     }
 }

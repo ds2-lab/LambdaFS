@@ -7,8 +7,8 @@ public interface HopsEventListener {
     /**
      * Called when an event is received by the HopsEventManager.
      *
-     * @param iNodeId The INode ID of the INode involved in the NDB operation that triggered the event.
-     * @param shouldInvalidate If true, then this event should invalidate the associated metadata.
+     * @param eventData Data related to the event operation.
+     * @param eventName The name of the event.
      */
-    void eventReceived(long iNodeId, boolean shouldInvalidate);
+    void eventReceived(Object eventData, String eventName);
 }

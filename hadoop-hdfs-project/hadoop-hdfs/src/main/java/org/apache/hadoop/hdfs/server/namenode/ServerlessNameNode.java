@@ -2191,7 +2191,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("- - - - - - - - - - - - - - - -");
 
     // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
-    ndbEventManager.addListener(namesystem);
+    ndbEventManager.addListener(namesystem, ndbEventManager.getINodeEventName());
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);

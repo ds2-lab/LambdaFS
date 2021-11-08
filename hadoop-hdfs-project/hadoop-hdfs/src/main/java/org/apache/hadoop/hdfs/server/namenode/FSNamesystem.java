@@ -978,12 +978,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
   /**
    * Handle an NDB event, which typically serves as an invalidation for a particular INode.
-   *
-   * @param iNodeId The INode ID of the INode involved in the NDB operation that triggered the event.
-   * @param shouldInvalidate If true, then this event should invalidate the associated metadata.
    */
   @Override
-  public void eventReceived(long iNodeId, boolean shouldInvalidate) {
+  public void eventReceived(Object eventData, String eventName) {
     LOG.debug("Received " + (shouldInvalidate ? "invalidating" : "non-invalidating") + " event for INode ID " +
             iNodeId);
 

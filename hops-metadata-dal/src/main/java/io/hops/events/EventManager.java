@@ -19,6 +19,34 @@ import io.hops.exception.StorageException;
  */
 public interface EventManager extends Runnable {
     /**
+     * Get the name of the event used to listen for changes to INodes in intermediate storage.
+     *
+     * TODO: This is not really generic...
+     */
+    public String getINodeEventName();
+
+    /**
+     * Get the name of the event used to listen for ACKs on the `write_acknowledgements` table.
+     *
+     * TODO: This is not really generic...
+     */
+    public String getAckTableEventName();
+
+    /**
+     * Get the event columns used in the INode table event.
+     *
+     * TODO: This is not really generic...
+     */
+    public String[] getINodeEventColumns();
+
+    /**
+     * Get the event columns used in the ACK table event.
+     *
+     * TODO: This is not really generic...
+     */
+    public String[] getAckTableEventColumns();
+
+    /**
      * Create and register an event with the given name.
      * @param eventName Unique identifier of the event to be created.
      * @param recreateIfExists If true, delete and recreate the event if it already exists.
@@ -71,15 +99,18 @@ public interface EventManager extends Runnable {
 
     /**
      * Register an event listener with the event manager.
+     *
      * @param listener the event listener to be registered.
+     * @param eventName the name of the event for which we're registering an event listener.
      */
-    public void addListener(HopsEventListener listener);
+    public void addListener(HopsEventListener listener, String eventName);
 
     /**
      * Unregister an event listener with the event manager.
      * @param listener the event listener to be unregistered.
-     * @return True if the listener was registered and now is not.
-     * False if the listener was not registered to begin with.
+     * @param eventName the name of the event for which we're unregistering an event listener.
+     *
+     * @throws IllegalArgumentException If we do not have the provided listener registered with the specified event.
      */
-    public boolean removeListener(HopsEventListener listener);
+    public void removeListener(HopsEventListener listener, String eventName);
 }

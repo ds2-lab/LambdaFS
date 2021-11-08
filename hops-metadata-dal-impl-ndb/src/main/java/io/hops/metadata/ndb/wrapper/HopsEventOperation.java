@@ -42,6 +42,24 @@ public class HopsEventOperation {
     }
 
     /**
+     * We can compare equality of the wrapped ClusterJ event operation objects.
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (!(other instanceof HopsEventOperation))
+            return false;
+
+        HopsEventOperation otherEventOperation = (HopsEventOperation)other;
+
+        return this.clusterJEventOperation.equals(otherEventOperation.clusterJEventOperation);
+    }
+
+    @Override
+    public int hashCode() {
+        return this.clusterJEventOperation.hashCode();
+    }
+
+    /**
      * Return the event name associated with this event operation, which could be null or "N/A"
      * if the name of the associated event was not available when this event operation object
      * was created (which is not uncommon).

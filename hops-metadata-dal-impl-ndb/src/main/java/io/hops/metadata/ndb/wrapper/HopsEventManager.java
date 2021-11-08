@@ -22,17 +22,24 @@ import java.util.List;
  * from NDB on the table for which the NameNode caches data serves to inform the NameNode that its cache is now
  * out-of-date.
  *
- * TODO:
- *  For now, I am assuming that there is just ONE active event operation, and that event operation
- *  is using default column tables and record attributes, as defined below in the static variables.
+ * Originally, we assumed that there would just be one active event operation at any given time. This assumption
+ * no longer holds. All NameNodes subscribe to event notifications on the `hdfs_inodes` table, and during write
+ * operations, the leader protocol subscribes to events on the `write_acknowledgements` table during the carrying
+ * out of the consistency protocol. This required rewriting certain aspects of the class and also updating the
+ * ClusterJ API to allow for equality checks between instances of NdbEventOperation objects.
  */
 public class HopsEventManager implements EventManager {
     static final Log LOG = LogFactory.getLog(HopsEventManager.class);
 
     /**
-     * Default event name that NameNodes use in order to watch for cache invalidations from NDB.
+     * Event name that NameNodes use in order to watch for INode cache invalidations from NDB.
      */
-    private static final String DEFAULT_EVENT_NAME = "namenode_cache_watch";
+    public static final String INODE_TABLE_EVENT_NAME = "namenode_cache_watch";
+
+    /**
+     * Event name that NameNodes use during write operations/consistency protocol to ACK invalidations.
+     */
+    public static final String ACK_TABLE_EVENT_NAME = "ack_table_watch";
 
     /**
      * Name of the NDB table that contains the INodes.
@@ -40,9 +47,15 @@ public class HopsEventManager implements EventManager {
     private static final String INODES_TABLE_NAME = "hdfs_inodes";
 
     /**
-     * Classes who want to be notified that an event has occurred so they can process the event.
+     * Name of table used during write operations/consistency protocol to ACK invalidations.
      */
-    private List<HopsEventListener> listeners = new ArrayList<>();
+    private static final String ACK_TABLE_NAME = "write_acknowledgements";
+
+    /**
+     * Classes who want to be notified that an event has occurred, so they can process the event.
+     * This maps the name of the event to the event listeners for that event.
+     */
+    private final HashMap<String, List<HopsEventListener>> listeners = new HashMap<>();
 
     /**
      * The columns of the INode NDB table, in the order that they're defined in the schema.
@@ -73,10 +86,18 @@ public class HopsEventManager implements EventManager {
      *
      * These should just be numerical (32- or 64-bit integers, ideally).
      */
-    private static final String[] INODE_TABLE_RECORD_ATTR_COLUMNS = new String[] {
+    private static final String[] INODE_TABLE_EVENT_COLUMNS = new String[] {
             "partition_id",     // int(11)
             "parent_id",        // int(11)
-            "id"                // int(11)
+            "id",               // int(11)
+            "inv",              // tinyint(4)
+    };
+
+    /**
+     * Columns for which we want to see values for ACK events.
+     */
+    private static final String[] ACK_EVENT_COLUMNS = new String[] {
+            "namenode_id",  "deployment_number", "acknowledged", "op_id"
     };
 
     /**
@@ -99,11 +120,17 @@ public class HopsEventManager implements EventManager {
     private final HashMap<String, HopsEventOperation> eventOperationMap;
 
     /**
-     * The active event operation. For now, we assume that there is just one active event
-     * operation at any given time. In the future, we may expand this functionality and support
-     * multiple concurrent event operations, assuming NDB supports this.
+     * We also have a reverse mapping from the event operations to their names, as they do not store
+     * their names in the object.
      */
-    private HopsEventOperation activeEventOperation;
+    private final HashMap<HopsEventOperation, String> eventOpToNameMapping;
+
+//    /**
+//     * The active event operation. For now, we assume that there is just one active event
+//     * operation at any given time. In the future, we may expand this functionality and support
+//     * multiple concurrent event operations, assuming NDB supports this.
+//     */
+//    private HopsEventOperation activeEventOperation;
 
     /**
      * The active session with the database. Used to issue operations related to events,
@@ -121,27 +148,42 @@ public class HopsEventManager implements EventManager {
         this.session = ClusterjConnector.getInstance().obtainSession(true);
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
+        this.eventOpToNameMapping = new HashMap<>();
     }
 
     // Inherit the javadoc.
     @Override
-    public void addListener(HopsEventListener listener) {
+    public void addListener(HopsEventListener listener, String eventName) {
         if (listener == null)
             throw new IllegalArgumentException("Listener cannot be null.");
 
-        this.listeners.add(listener);
+        List<HopsEventListener> eventListeners;
+        if (this.listeners.containsKey(eventName)) {
+            eventListeners = this.listeners.get(eventName);
+        } else {
+            eventListeners = new ArrayList<HopsEventListener>();
+            this.listeners.put(eventName, eventListeners);
+        }
+
+        eventListeners.add(listener);
         LOG.debug("Registered new event listener. Number of listeners: " + listeners.size() + ".");
     }
 
     // Inherit the javadoc.
     @Override
-    public boolean removeListener(HopsEventListener listener) {
-        if (listeners.contains(listener)) {
-            listeners.remove(listener);
-            return true;
-        }
+    public void removeListener(HopsEventListener listener, String eventName) {
+        List<HopsEventListener> eventListeners;
+        if (this.listeners.containsKey(eventName)) {
+            eventListeners = this.listeners.get(eventName);
 
-        return false;
+            if (!eventListeners.contains(listener))
+                throw new IllegalArgumentException("The provided event listener is not registered with " +
+                        eventName + "!");
+
+            eventListeners.remove(listener);
+        } else {
+            throw new IllegalArgumentException("We have no event listeners registered for event " + eventName + "!");
+        }
     }
 
     /**
@@ -164,6 +206,7 @@ public class HopsEventManager implements EventManager {
 
         HopsEventOperation hopsEventOperation = new HopsEventOperation(eventOperation, eventName);
         eventOperationMap.put(eventName, hopsEventOperation);
+        eventOpToNameMapping.put(hopsEventOperation, eventName);
     }
 
     /**
@@ -211,7 +254,29 @@ public class HopsEventManager implements EventManager {
         // Make sure to remove the event from the eventMap now that it has been dropped by NDB.
         LOG.debug("Successfully unregistered EventOperation for event " + eventName + " with NDB!");
         eventOperationMap.remove(eventName);
+        eventOpToNameMapping.remove(hopsEventOperation);
+        // TODO: Will this still work seeing as we already dropped the object? Does that change the hashCode?
         return true;
+    }
+
+    @Override
+    public String getINodeEventName() {
+        return INODE_TABLE_EVENT_NAME;
+    }
+
+    @Override
+    public String getAckTableEventName() {
+        return ACK_TABLE_EVENT_NAME;
+    }
+
+    @Override
+    public String[] getINodeEventColumns() {
+        return INODE_TABLE_EVENT_COLUMNS;
+    }
+
+    @Override
+    public String[] getAckTableEventColumns() {
+        return ACK_EVENT_COLUMNS;
     }
 
     /**
@@ -329,14 +394,15 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
-     * Perform the default setup/initialization of the event and event operation.
+     * Perform the default setup/initialization of the `hdfs_inodes` table event and event operation.
+     *
      * @param eventName The name of the event to create/look for. Pass null to use the default.
      * @param deleteIfExists Delete and recreate the event, if it already exists.
      */
     @Override
     public void defaultSetup(String eventName, boolean deleteIfExists) throws StorageException {
         if (eventName == null)
-            eventName = DEFAULT_EVENT_NAME;
+            eventName = INODE_TABLE_EVENT_NAME;
 
         if (deleteIfExists)
             LOG.warn("Will delete and recreate event " + eventName + " if it already exists!");
@@ -359,7 +425,7 @@ public class HopsEventManager implements EventManager {
         EventOperation clusterJEventOperation = eventOperation.getClusterJEventOperation();
 
         LOG.debug("Setting up record attributes for event " + eventName + " now...");
-        for (String columnName : INODE_TABLE_RECORD_ATTR_COLUMNS) {
+        for (String columnName : INODE_TABLE_EVENT_COLUMNS) {
             boolean success = eventOperation.addRecordAttribute(columnName);
 
             if (!success)
@@ -368,7 +434,6 @@ public class HopsEventManager implements EventManager {
 
         LOG.debug("Executing event operation for event " + eventName + " now...");
         clusterJEventOperation.execute();
-        activeEventOperation = eventOperation;
 
         defaultSetupPerformed = true;
     }
@@ -379,7 +444,7 @@ public class HopsEventManager implements EventManager {
      */
     @Override
     public synchronized int processEvents() {
-        HopsEventOperation nextEventOp = session.nextEvent(activeEventOperation.getEventName());
+        HopsEventOperation nextEventOp = session.nextEvent(null);
         int numEventsProcessed = 0;
 
         while (nextEventOp != null) {
@@ -398,15 +463,15 @@ public class HopsEventManager implements EventManager {
             switch (eventType) {
                 case DELETE:    // Fall through.
                 case UPDATE:
-                    long preValue = activeEventOperation.getLongPreValue("id");
-                    long postValue = activeEventOperation.getLongPostValue("id");
+                    long preValue = nextEventOp.getLongPreValue("id");
+                    long postValue = nextEventOp.getLongPostValue("id");
 
                     if (preValue != postValue)
                         LOG.warn("INode table entry unexpectedly changed ID values. Old ID = " +
                             preValue + ", new ID = " + postValue + ".");
 
                     // Need to invalidate the cache entry for the deleted/updated INode, if we're caching it.
-                    notifyEventListeners(postValue, true);
+                    notifyEventListeners(nextEventOp);
 
                     break;
                 case INSERT:    // Do nothing for now.
@@ -417,9 +482,9 @@ public class HopsEventManager implements EventManager {
             }
 
             // Print the pre- and post-values for the columns for which record attributes were created.
-            for (String columnName : INODE_TABLE_RECORD_ATTR_COLUMNS) {
-                long preValue = activeEventOperation.getLongPreValue(columnName);
-                long postValue = activeEventOperation.getLongPostValue(columnName);
+            for (String columnName : INODE_TABLE_EVENT_COLUMNS) {
+                long preValue = nextEventOp.getLongPreValue(columnName);
+                long postValue = nextEventOp.getLongPostValue(columnName);
 
                 LOG.debug("Pre-value for column " + columnName + ": " + preValue);
                 LOG.debug("Post-value for column " + columnName + ": " + postValue);
@@ -429,7 +494,7 @@ public class HopsEventManager implements EventManager {
             //  Determine whether or not to handle the event based on whether the parent INode ID
             //  caches to this INode (i.e., depending on whether this NameNode caches the relevant metadata or not).
 
-            nextEventOp = session.nextEvent(activeEventOperation.getEventName());
+            nextEventOp = session.nextEvent(null);
             numEventsProcessed++;
         }
 
@@ -441,14 +506,14 @@ public class HopsEventManager implements EventManager {
 
     /**
      * Notify anybody listening for events that we received an event.
-     *
-     * @param iNodeId The INode ID of the INode involved in the NDB operation that triggered the event.
-     * @param shouldInvalidate If true, then this event should invalidate the associated metadata.
      */
-    private void notifyEventListeners(long iNodeId, boolean shouldInvalidate) {
+    private void notifyEventListeners(HopsEventOperation eventOperation) {
+        String eventName = eventOpToNameMapping.get(eventOperation);
+        List<HopsEventListener> eventListeners = listeners.get(eventName);
+
         LOG.debug("Notifying " + listeners.size() + (listeners.size() == 1 ? " listener " : " listeners ")
-            + "of event on INode " + iNodeId + ".");
-        for (HopsEventListener listener : listeners)
-            listener.eventReceived(iNodeId, shouldInvalidate);
+            + "of event " + eventName + ".");
+        for (HopsEventListener listener : eventListeners)
+            listener.eventReceived(eventOperation, eventName);
     }
 }

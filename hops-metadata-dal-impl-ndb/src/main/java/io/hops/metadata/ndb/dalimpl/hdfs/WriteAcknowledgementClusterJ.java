@@ -30,17 +30,17 @@ public class WriteAcknowledgementClusterJ
         public void setNameNodeId(long nameNodeId);
 
         @PrimaryKey
-        @Column(name = FUNCTION_NAME)
-        public String getFunctionName();
-        public void setFunctionName(String nameNodeId);
+        @Column(name = DEPLOYMENT_NUMBER)
+        public int getDeploymentNumber();
+        public void setDeploymentNumber(int deploymentNumber);
 
         @Column(name = ACKNOWLEDGED)
         public byte getAcknowledged();
-        public void setAcknowledged(byte nameNodeId);
+        public void setAcknowledged(byte acknowledged);
 
         @Column(name = OPERATION_ID)
         public String getOperationId();
-        public void setOperationId(String nameNodeId);
+        public void setOperationId(String operationId);
     }
 
     @Override
@@ -171,7 +171,7 @@ public class WriteAcknowledgementClusterJ
      */
     private WriteAcknowledgement convert(WriteAcknowledgementDTO src) {
         return new WriteAcknowledgement(
-                src.getNameNodeId(), src.getFunctionName(), src.getOperationId(),
+                src.getNameNodeId(), src.getDeploymentNumber(), src.getOperationId(),
                 NdbBoolean.convert(src.getAcknowledged())
         );
     }
@@ -185,7 +185,7 @@ public class WriteAcknowledgementClusterJ
     private void copyState(WriteAcknowledgementDTO dest, WriteAcknowledgement src) {
         dest.setNameNodeId(src.getNameNodeId());
         dest.setAcknowledged(NdbBoolean.convert(src.getAcknowledged()));
-        dest.setFunctionName(src.getFunctionName());
+        dest.setDeploymentNumber(src.getDeploymentNumber());
         dest.setOperationId(src.getOperationId());
     }
 }

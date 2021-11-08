@@ -20,7 +20,7 @@ public class TablesDef {
   public interface WriteAcknowledgementsTableDef {
     String TABLE_NAME = "write_acknowledgements";
     String NAME_NODE_ID = "namenode_id";
-    String FUNCTION_NAME = "function_name";
+    String DEPLOYMENT_NUMBER = "deployment_number";
     String ACKNOWLEDGED = "acknowledged";
     String OPERATION_ID = "op_id";
   }
