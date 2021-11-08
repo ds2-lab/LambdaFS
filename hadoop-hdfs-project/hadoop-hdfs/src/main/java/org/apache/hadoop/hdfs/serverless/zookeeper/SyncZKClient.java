@@ -6,10 +6,13 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.nodes.GroupMember;
+import org.apache.curator.framework.recipes.watch.PersistentWatcher;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.x.async.AsyncCuratorFramework;
+import org.apache.hadoop.util.hash.Hash;
 import org.apache.zookeeper.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -51,6 +54,11 @@ public class SyncZKClient implements ZKClient {
     private GroupMember groupMember;
 
     /**
+     * Keep track of all our watchers. Generally there should just be one (for the group we're in).
+     */
+    private final HashMap<String, PersistentWatcher> watchers;
+
+    /**
      * Constructor.
      * @param hosts Hostnames of the ZooKeeper servers.
      * @param memberId Unique ID identifying this member in its ZK group.
@@ -76,6 +84,8 @@ public class SyncZKClient implements ZKClient {
         this.connectionString = connectionStringBuilder.toString();
 
         this.memberId = memberId;
+
+        this.watchers = new HashMap<>();
     }
 
     /**
@@ -131,6 +141,14 @@ public class SyncZKClient implements ZKClient {
 
         LOG.debug("Joining ZK group with path: " + path);
         this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
+
+        PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, path, false);
+        persistentWatcher.start();
+
+        if (this.watchers.containsKey(path))
+            LOG.warn("We already have a watcher for path " + path + ".");
+        else
+            this.watchers.put(path, persistentWatcher);
     }
 
     @Override
@@ -154,37 +172,65 @@ public class SyncZKClient implements ZKClient {
         joinGroup(groupName, memberId);
     }
 
-    public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception {
-        if (groupName == null)
-            throw new IllegalArgumentException("Group name argument cannot be null.");
+//    public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception {
+//        if (groupName == null)
+//            throw new IllegalArgumentException("Group name argument cannot be null.");
+//
+//        if (callback == null)
+//            throw new IllegalArgumentException("Callback argument cannot be null.");
+//
+//        String path = "/" + groupName;
+//
+//        LOG.debug("Getting children for group: " + path);
+//        List<String> children = this.client.getChildren().usingWatcher(new Watcher() {
+//            @Override
+//            public void process(WatchedEvent event) {
+//                LOG.debug("Watcher received event " + event.getType().name() + " for children of group: " + path);
+//
+//                // We only care about this event if it is about the children of the group changing.
+//                if (event.getType() == Event.EventType.NodeChildrenChanged) {
+//                    try {
+//                        LOG.debug("Executing callback for NodeChildrenChanged event on group " + path + " now...");
+//                        callback.run();
+//                    } catch (Exception ex) {
+//                        LOG.error("Error encountered while executing callback:", ex);
+//                    }
+//                }
+//            }
+//        }).forPath(path);
+//
+//        if (children.isEmpty())
+//            LOG.warn("There are no children in group: " + path);
+//
+//        return children;
+//    }
 
-        if (callback == null)
-            throw new IllegalArgumentException("Callback argument cannot be null.");
-
+    @Override
+    public void addListener(String groupName, Watcher watcher) {
         String path = "/" + groupName;
 
-        LOG.debug("Getting children for group: " + path);
-        List<String> children = this.client.getChildren().usingWatcher(new Watcher() {
-            @Override
-            public void process(WatchedEvent event) {
-                LOG.debug("Watcher received event " + event.getType().name() + " for children of group: " + path);
+        PersistentWatcher persistentWatcher = watchers.getOrDefault(path, null);
+        if (persistentWatcher == null) {
+            LOG.error("Tried to get non-existent watcher for path " + groupName + ".");
+            LOG.error("Valid watchers: " + watchers.keySet());
+            throw new IllegalArgumentException("We do not have a PersistentWatcher for the path: " + path);
+        }
 
-                // We only care about this event if it is about the children of the group changing.
-                if (event.getType() == Event.EventType.NodeChildrenChanged) {
-                    try {
-                        LOG.debug("Executing callback for NodeChildrenChanged event on group " + path + " now...");
-                        callback.run();
-                    } catch (Exception ex) {
-                        LOG.error("Error encountered while executing callback:", ex);
-                    }
-                }
-            }
-        }).forPath(path);
+        persistentWatcher.getListenable().addListener(watcher);
+    }
 
-        if (children.isEmpty())
-            LOG.warn("There are no children in group: " + path);
+    @Override
+    public void removeListener(String groupName, Watcher watcher) {
+        String path = "/" + groupName;
 
-        return children;
+        PersistentWatcher persistentWatcher = watchers.getOrDefault(path, null);
+        if (persistentWatcher == null) {
+            LOG.error("Tried to get non-existent watcher for path " + groupName + ".");
+            LOG.error("Valid watchers: " + watchers.keySet());
+            throw new IllegalArgumentException("We do not have a PersistentWatcher for the path: " + path);
+        }
+
+        persistentWatcher.getListenable().removeListener(watcher);
     }
 
     @Override

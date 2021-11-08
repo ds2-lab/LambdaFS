@@ -9,6 +9,7 @@ import org.apache.curator.framework.recipes.nodes.GroupMember;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.x.async.AsyncCuratorFramework;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.Watcher;
 
 import java.util.List;
 import java.util.Map;
@@ -100,6 +101,16 @@ public class AsyncZKClient implements ZKClient {
     }
 
     @Override
+    public void addListener(String groupName, Watcher watcher) {
+        throw new NotImplementedException("AsyncZKClient does not support the addListener() function yet.");
+    }
+
+    @Override
+    public void removeListener(String groupName, Watcher watcher) {
+        throw new NotImplementedException("AsyncZKClient does not support the removeListener() function yet.");
+    }
+
+    @Override
     public void joinGroup(String groupName, String memberId) throws Exception {
         String path = "/" + groupName; // The paths must be fully-qualified, so we prepend an '/'.
 
@@ -109,7 +120,7 @@ public class AsyncZKClient implements ZKClient {
 
     @Override
     public void createAndJoinGroup(String groupName, String memberId) {
-        throw new NotImplementedException("AsyncZKClient does not support the createAndJoinGroup() function.");
+        throw new NotImplementedException("AsyncZKClient does not support the createAndJoinGroup() function yet.");
     }
 
     @Override
@@ -117,11 +128,10 @@ public class AsyncZKClient implements ZKClient {
         LOG.debug("Closing AsyncZKClient now...");
     }
 
-    @Override
-    public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception {
-        throw new NotImplementedException("Not implemented!");
-    }
-
+//    @Override
+//    public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception {
+//        throw new NotImplementedException("Not implemented!");
+//    }
 //    @Override
 //    public GroupMember getGroupMember() {
 //        return null;
@@ -131,10 +141,9 @@ public class AsyncZKClient implements ZKClient {
 //    public Map<String, byte[]> getGroupMembers() {
 //        return null;
 //    }
-
-    public <T> List<String> getGroupMembers(String groupName, Callable<T> callback) throws Exception {
-        throw new NotImplementedException("Not implemented!");
-    }
+//    public <T> List<String> getGroupMembers(String groupName, Callable<T> callback) throws Exception {
+//        throw new NotImplementedException("Not implemented!");
+//    }
 
     public List<String> getGroupMembers(String groupName) throws Exception {
         throw new NotImplementedException("Not implemented!");
