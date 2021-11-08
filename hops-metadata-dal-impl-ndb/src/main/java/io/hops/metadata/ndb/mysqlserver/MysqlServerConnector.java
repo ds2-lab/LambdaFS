@@ -29,6 +29,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+
+import io.hops.metadata.ndb.DBSession;
+import io.hops.metadata.ndb.wrapper.HopsSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import java.sql.Connection;
@@ -63,6 +66,11 @@ public class MysqlServerConnector implements StorageConnector<Connection> {
   @Override
   public void setConfiguration(Properties conf) throws StorageException {
     this.conf = conf;
+  }
+
+  @Override
+  public Connection obtainSession(boolean requireUnique) throws StorageException {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   private void initializeConnectionPool(Properties conf) {

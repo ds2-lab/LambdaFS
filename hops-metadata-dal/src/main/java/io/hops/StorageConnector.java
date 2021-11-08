@@ -31,16 +31,16 @@ public interface StorageConnector<T> {
    */
   public <T> T obtainSession() throws StorageException;
 
-//  /**
-//   * Return a dbSession from a random dbSession factory in our pool.
-//   *
-//   * NOTE: If `requireUnique` was passed as false, then do not close the
-//   * dbSession returned by this call, or you will die.
-//   *
-//   * @param requireUnique If True, then create and return a new, unique session that is
-//   *                      NOT from the session pool.
-//   */
-//  public <T> T obtainSession(boolean requireUnique) throws StorageException;
+  /**
+   * Return a dbSession from a random dbSession factory in our pool.
+   *
+   * NOTE: If `requireUnique` was passed as false, then do not close the
+   * dbSession returned by this call, or you will die.
+   *
+   * @param requireUnique If True, then create and return a new, unique session that is
+   *                      NOT from the session pool.
+   */
+  public <T> T obtainSession(boolean requireUnique) throws StorageException;
 
   public void beginTransaction() throws StorageException;
 
