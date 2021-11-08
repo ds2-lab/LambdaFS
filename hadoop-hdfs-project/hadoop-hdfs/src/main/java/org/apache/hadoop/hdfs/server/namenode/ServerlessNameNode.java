@@ -2334,6 +2334,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return serverlessInvoker;
   }
 
+  /**
+   * Return the EventManager instance.
+   */
+  public EventManager getNdbEventManager() {
+    return ndbEventManager;
+  }
+
   private void stopCommonServices() {
     if (leaderElection != null && leaderElection.isRunning()) {
       try {

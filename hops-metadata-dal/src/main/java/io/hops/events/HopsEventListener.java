@@ -7,8 +7,8 @@ public interface HopsEventListener {
     /**
      * Called when an event is received by the HopsEventManager.
      *
-     * @param eventData Data related to the event operation.
+     * @param eventOperation The EventOperation object, from which we can extract event data.
      * @param eventName The name of the event.
      */
-    void eventReceived(Object eventData, String eventName);
+    void eventReceived(HopsEventOperation eventOperation, String eventName);
 }

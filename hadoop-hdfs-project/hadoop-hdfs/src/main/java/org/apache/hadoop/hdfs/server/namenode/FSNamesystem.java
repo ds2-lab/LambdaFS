@@ -27,13 +27,16 @@ import io.hops.common.IDsMonitor;
 import io.hops.common.INodeUtil;
 import io.hops.erasure_coding.Codec;
 import io.hops.erasure_coding.ErasureCodingManager;
+import io.hops.events.EventManager;
 import io.hops.events.HopsEvent;
 import io.hops.events.HopsEventListener;
+import io.hops.events.HopsEventOperation;
 import io.hops.exception.*;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.HdfsVariables;
 import io.hops.metadata.common.entity.Variable;
+import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.hdfs.dal.*;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.resolvingcache.Cache;
@@ -976,20 +979,24 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     return metadataCache;
   }
 
-  /**
-   * Handle an NDB event, which typically serves as an invalidation for a particular INode.
-   */
   @Override
-  public void eventReceived(Object eventData, String eventName) {
+  public void eventReceived(HopsEventOperation eventOperation, String eventName) {
     if (!eventName.equals(HopsEvent.INODE_TABLE_EVENT_NAME)) {
       LOG.error("Received unexpected event from NDB: " + eventName);
     }
 
-    LOG.debug("Received event " + eventName + " from NDB.");
+    LOG.debug("==== Received event " + eventName + " from NDB ====");
 
-    (eventData instanceof EventOper)
+    boolean invalidatedBeforeEvent = eventOperation.getBooleanPreValue(TablesDef.INodeTableDef.INVALIDATED);
+    boolean invalidatedAfterEvent = eventOperation.getBooleanPostValue(TablesDef.INodeTableDef.INVALIDATED);
+    long id = eventOperation.getLongPostValue(TablesDef.INodeTableDef.ID);
 
-    metadataCache.invalidateKey(iNodeId);
+    LOG.debug("Invalidated BEFORE event: " + invalidatedBeforeEvent);
+    LOG.debug("Invalidated AFTER event: " + invalidatedAfterEvent);
+    LOG.debug("INode ID: " + id);
+
+    if (invalidatedAfterEvent)
+      metadataCache.invalidateKey(id);
   }
 
   public static class GetBlockLocationsResult {

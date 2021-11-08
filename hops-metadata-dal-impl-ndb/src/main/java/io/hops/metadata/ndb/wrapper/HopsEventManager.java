@@ -7,6 +7,7 @@ import io.hops.events.EventManager;
 import io.hops.events.HopsEvent;
 import io.hops.events.HopsEventListener;
 import io.hops.exception.StorageException;
+import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.ndb.ClusterjConnector;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -77,17 +78,20 @@ public class HopsEventManager implements EventManager {
      * These should just be numerical (32- or 64-bit integers, ideally).
      */
     private static final String[] INODE_TABLE_EVENT_COLUMNS = new String[] {
-            "partition_id",     // int(11)
-            "parent_id",        // int(11)
-            "id",               // int(11)
-            "inv",              // tinyint(4)
+            TablesDef.INodeTableDef.PARTITION_ID,     // int(11)
+            TablesDef.INodeTableDef.PARENT_ID,        // int(11)
+            TablesDef.INodeTableDef.ID,               // int(11)
+            TablesDef.INodeTableDef.INVALIDATED,      // tinyint(4)
     };
 
     /**
      * Columns for which we want to see values for ACK events.
      */
     private static final String[] ACK_EVENT_COLUMNS = new String[] {
-            "namenode_id",  "deployment_number", "acknowledged", "op_id"
+            TablesDef.WriteAcknowledgementsTableDef.NAME_NODE_ID,       // bigint(20)
+            TablesDef.WriteAcknowledgementsTableDef.DEPLOYMENT_NUMBER,  // int(11)
+            TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED,       // tinyint(4)
+            TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID        // bigint(20)
     };
 
     /**
