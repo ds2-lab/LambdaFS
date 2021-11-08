@@ -22,6 +22,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.hops.DalDriver;
 import io.hops.events.EventManager;
+import io.hops.events.HopsEvent;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
@@ -2191,7 +2192,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("- - - - - - - - - - - - - - - -");
 
     // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
-    ndbEventManager.addListener(namesystem, ndbEventManager.getINodeEventName());
+    ndbEventManager.addListener(namesystem, HopsEvent.INODE_TABLE_EVENT_NAME);
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);

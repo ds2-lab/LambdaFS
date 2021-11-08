@@ -19,20 +19,6 @@ import io.hops.exception.StorageException;
  */
 public interface EventManager extends Runnable {
     /**
-     * Get the name of the event used to listen for changes to INodes in intermediate storage.
-     *
-     * TODO: This is not really generic...
-     */
-    public String getINodeEventName();
-
-    /**
-     * Get the name of the event used to listen for ACKs on the `write_acknowledgements` table.
-     *
-     * TODO: This is not really generic...
-     */
-    public String getAckTableEventName();
-
-    /**
      * Get the event columns used in the INode table event.
      *
      * TODO: This is not really generic...

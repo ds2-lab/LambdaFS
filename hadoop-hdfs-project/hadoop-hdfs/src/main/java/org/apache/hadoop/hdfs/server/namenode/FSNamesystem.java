@@ -981,8 +981,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    */
   @Override
   public void eventReceived(Object eventData, String eventName) {
-    LOG.debug("Received " + (shouldInvalidate ? "invalidating" : "non-invalidating") + " event for INode ID " +
-            iNodeId);
+    if (!eventName.equals(HopsEvent.INODE_TABLE_EVENT_NAME)) {
+      LOG.error("Received unexpected event from NDB: " + eventName);
+    }
+
+    LOG.debug("Received event " + eventName + " from NDB.");
+
+    (eventData instanceof EventOper)
 
     metadataCache.invalidateKey(iNodeId);
   }

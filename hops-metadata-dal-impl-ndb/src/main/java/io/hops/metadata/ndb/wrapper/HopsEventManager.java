@@ -32,16 +32,6 @@ public class HopsEventManager implements EventManager {
     static final Log LOG = LogFactory.getLog(HopsEventManager.class);
 
     /**
-     * Event name that NameNodes use in order to watch for INode cache invalidations from NDB.
-     */
-    public static final String INODE_TABLE_EVENT_NAME = "namenode_cache_watch";
-
-    /**
-     * Event name that NameNodes use during write operations/consistency protocol to ACK invalidations.
-     */
-    public static final String ACK_TABLE_EVENT_NAME = "ack_table_watch";
-
-    /**
      * Name of the NDB table that contains the INodes.
      */
     private static final String INODES_TABLE_NAME = "hdfs_inodes";
@@ -117,13 +107,13 @@ public class HopsEventManager implements EventManager {
     /**
      * All active EventOperation instances are contained in here.
      */
-    private final HashMap<String, HopsEventOperation> eventOperationMap;
+    private final HashMap<String, HopsEventOperationImpl> eventOperationMap;
 
     /**
      * We also have a reverse mapping from the event operations to their names, as they do not store
      * their names in the object.
      */
-    private final HashMap<HopsEventOperation, String> eventOpToNameMapping;
+    private final HashMap<HopsEventOperationImpl, String> eventOpToNameMapping;
 
 //    /**
 //     * The active event operation. For now, we assume that there is just one active event
@@ -204,7 +194,7 @@ public class HopsEventManager implements EventManager {
 
         LOG.debug("Successfully created EventOperation for event " + eventName + ".");
 
-        HopsEventOperation hopsEventOperation = new HopsEventOperation(eventOperation, eventName);
+        HopsEventOperationImpl hopsEventOperation = new HopsEventOperationImpl(eventOperation, eventName);
         eventOperationMap.put(eventName, hopsEventOperation);
         eventOpToNameMapping.put(hopsEventOperation, eventName);
     }
@@ -215,7 +205,7 @@ public class HopsEventManager implements EventManager {
      * This is for internal use only.
      * @param eventName The name of the event for which an event operation should be created.
      */
-    private HopsEventOperation createAndReturnEventOperation(String eventName) throws StorageException {
+    private HopsEventOperationImpl createAndReturnEventOperation(String eventName) throws StorageException {
         createEventOperation(eventName);
 
         return eventOperationMap.get(eventName);
@@ -235,7 +225,7 @@ public class HopsEventManager implements EventManager {
             throw new IllegalArgumentException("There is no event operation associated with an event called "
                     + eventName + " currently being tracked by the EventManager.");
 
-        HopsEventOperation hopsEventOperation = eventOperationMap.get(eventName);
+        HopsEventOperationImpl hopsEventOperation = eventOperationMap.get(eventName);
 
         // Try to drop the event. If something goes wrong, we'll throw an exception.
         boolean dropped;
@@ -257,16 +247,6 @@ public class HopsEventManager implements EventManager {
         eventOpToNameMapping.remove(hopsEventOperation);
         // TODO: Will this still work seeing as we already dropped the object? Does that change the hashCode?
         return true;
-    }
-
-    @Override
-    public String getINodeEventName() {
-        return INODE_TABLE_EVENT_NAME;
-    }
-
-    @Override
-    public String getAckTableEventName() {
-        return ACK_TABLE_EVENT_NAME;
     }
 
     @Override
@@ -402,7 +382,7 @@ public class HopsEventManager implements EventManager {
     @Override
     public void defaultSetup(String eventName, boolean deleteIfExists) throws StorageException {
         if (eventName == null)
-            eventName = INODE_TABLE_EVENT_NAME;
+            eventName = HopsEvent.INODE_TABLE_EVENT_NAME;
 
         if (deleteIfExists)
             LOG.warn("Will delete and recreate event " + eventName + " if it already exists!");
@@ -411,7 +391,7 @@ public class HopsEventManager implements EventManager {
         // as the event could have been created by another NameNode. We would only want to recreate it
         // if we were changing something about the event's definition, and if all future NameNodes
         // expected this change, and if there were no other NameNodes currently using the event.
-        boolean registeredSuccessfully = registerEvent(eventName, INODES_TABLE_NAME, false);
+        boolean registeredSuccessfully = registerEvent(eventName, INODES_TABLE_NAME, deleteIfExists);
 
         if (!registeredSuccessfully) {
             LOG.error("Failed to successfully register default event " + eventName
@@ -421,7 +401,7 @@ public class HopsEventManager implements EventManager {
         }
 
         LOG.debug("Creating event operation for event " + eventName + " now...");
-        HopsEventOperation eventOperation = createAndReturnEventOperation(eventName);
+        HopsEventOperationImpl eventOperation = createAndReturnEventOperation(eventName);
         EventOperation clusterJEventOperation = eventOperation.getClusterJEventOperation();
 
         LOG.debug("Setting up record attributes for event " + eventName + " now...");
@@ -444,7 +424,7 @@ public class HopsEventManager implements EventManager {
      */
     @Override
     public synchronized int processEvents() {
-        HopsEventOperation nextEventOp = session.nextEvent(null);
+        HopsEventOperationImpl nextEventOp = session.nextEvent(null);
         int numEventsProcessed = 0;
 
         while (nextEventOp != null) {
@@ -507,7 +487,7 @@ public class HopsEventManager implements EventManager {
     /**
      * Notify anybody listening for events that we received an event.
      */
-    private void notifyEventListeners(HopsEventOperation eventOperation) {
+    private void notifyEventListeners(HopsEventOperationImpl eventOperation) {
         String eventName = eventOpToNameMapping.get(eventOperation);
         List<HopsEventListener> eventListeners = listeners.get(eventName);
 

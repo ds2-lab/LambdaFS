@@ -3,13 +3,15 @@ package io.hops.metadata.ndb.wrapper;
 import com.mysql.clusterj.TableEvent;
 import com.mysql.clusterj.core.store.EventOperation;
 import com.mysql.clusterj.core.store.RecordAttr;
+import io.hops.events.HopsEventOperation;
+import io.hops.metadata.ndb.NdbBoolean;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.HashMap;
 
-public class HopsEventOperation {
-    static final Log LOG = LogFactory.getLog(HopsEventOperation.class);
+public class HopsEventOperationImpl implements HopsEventOperation {
+    static final Log LOG = LogFactory.getLog(HopsEventOperationImpl.class);
 
     /**
      * We need to maintain an instance to this class in order to perform the necessary operations.
@@ -34,7 +36,7 @@ public class HopsEventOperation {
      */
     private final String associatedEventName;
 
-    public HopsEventOperation(EventOperation clusterJEventOperation, String eventName) {
+    public HopsEventOperationImpl(EventOperation clusterJEventOperation, String eventName) {
         this.clusterJEventOperation = clusterJEventOperation;
         this.preValueRecordAttributes = new HashMap<>();
         this.postValueRecordAttributes = new HashMap<>();
@@ -46,10 +48,10 @@ public class HopsEventOperation {
      */
     @Override
     public boolean equals(Object other) {
-        if (!(other instanceof HopsEventOperation))
+        if (!(other instanceof HopsEventOperationImpl))
             return false;
 
-        HopsEventOperation otherEventOperation = (HopsEventOperation)other;
+        HopsEventOperationImpl otherEventOperation = (HopsEventOperationImpl)other;
 
         return this.clusterJEventOperation.equals(otherEventOperation.clusterJEventOperation);
     }
@@ -68,6 +70,22 @@ public class HopsEventOperation {
         return associatedEventName;
     }
 
+    @Override
+    public boolean getBooleanPreValue(String columnName) {
+        if (!preValueRecordAttributes.containsKey(columnName))
+            throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
+
+        return NdbBoolean.convert(preValueRecordAttributes.get(columnName).int8_value());
+    }
+
+    @Override
+    public boolean getBooleanPostValue(String columnName) {
+        if (!postValueRecordAttributes.containsKey(columnName))
+            throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
+
+        return NdbBoolean.convert(postValueRecordAttributes.get(columnName).int8_value());
+    }
+
     /**
      * Get the 32-bit int pre-value of a record attribute (i.e., value associated with an event).
      *
@@ -77,6 +95,7 @@ public class HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such pre-record attribute for the specified column.
      */
+    @Override
     public int getIntPreValue(String columnName) throws IllegalArgumentException {
         if (!preValueRecordAttributes.containsKey(columnName))
             throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
@@ -93,6 +112,7 @@ public class HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such post-record attribute for the specified column.
      */
+    @Override
     public int getIntPostValue(String columnName) throws IllegalArgumentException {
         if (!postValueRecordAttributes.containsKey(columnName))
             throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
@@ -109,6 +129,7 @@ public class HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such pre-record attribute for the specified column.
      */
+    @Override
     public long getLongPreValue(String columnName) throws IllegalArgumentException {
         if (!preValueRecordAttributes.containsKey(columnName))
             throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
@@ -125,6 +146,7 @@ public class HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such post-record attribute for the specified column.
      */
+    @Override
     public long getLongPostValue(String columnName) throws IllegalArgumentException {
         if (!postValueRecordAttributes.containsKey(columnName))
             throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);

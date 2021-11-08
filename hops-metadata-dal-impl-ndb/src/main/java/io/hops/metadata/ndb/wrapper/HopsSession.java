@@ -27,9 +27,7 @@ import com.mysql.clusterj.Transaction;
 import com.mysql.clusterj.core.store.Event;
 import com.mysql.clusterj.core.store.EventOperation;
 import com.mysql.clusterj.query.QueryBuilder;
-import com.mysql.ndbjtie.ndbapi.NdbEventOperation;
 import io.hops.exception.StorageException;
-import io.hops.metadata.ndb.DBSessionProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -130,13 +128,13 @@ public class HopsSession {
    * @return EventOperation associated with the next event that was received.
    *         This will return null if there are no other events to receive.
    */
-  public HopsEventOperation nextEvent(String eventName) {
+  public HopsEventOperationImpl nextEvent(String eventName) {
     EventOperation eventOperation = session.nextEvent();
 
     if (eventOperation == null)
       return null;
 
-    return new HopsEventOperation(eventOperation, eventName);
+    return new HopsEventOperationImpl(eventOperation, eventName);
   }
 
   /**
@@ -147,6 +145,7 @@ public class HopsSession {
    *
    * When this version of the `createAndRegisterEvent()` function is used, all columns of the table are included
    * in the event.
+   *
    * @param eventName The unique name to identify the event with.
    * @param tableName The table with which the event should be associated.
    * @param tableEvents The events that this event should listen for.
