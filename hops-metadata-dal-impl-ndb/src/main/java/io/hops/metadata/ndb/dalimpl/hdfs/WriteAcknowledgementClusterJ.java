@@ -105,6 +105,38 @@ public class WriteAcknowledgementClusterJ
         return mapping;
     }
 
+    // Only returns ACKs with an associated TX start-time >= the 'minTime' parameter.
+    @Override
+    public Map<Long, WriteAcknowledgement> checkForPendingAcks(long nameNodeId, long minTime) throws StorageException {
+        LOG.debug("CHECK PENDING ACKS - ID=" + nameNodeId + ", MinTime=" + minTime);
+        HashMap<Long, WriteAcknowledgement> mapping = new HashMap<>();
+        HopsSession session = connector.obtainSession();
+
+        HopsQueryBuilder queryBuilder = session.getQueryBuilder();
+        HopsQueryDomainType<WriteAcknowledgementDTO> domainType =
+                queryBuilder.createQueryDefinition(WriteAcknowledgementDTO.class);
+
+        HopsPredicate nameNodeIdPredicate =
+                domainType.get("nameNodeId").equal(domainType.param("nameNodeIdParam"));
+        HopsPredicate timePredicate =
+                domainType.get("timestamp").greaterEqual(domainType.param("timestampParameter"));
+        domainType.where(nameNodeIdPredicate.and(timePredicate));
+
+        HopsQuery<WriteAcknowledgementDTO> query = session.createQuery(domainType);
+        query.setParameter("nameNodeIdParam", nameNodeId);
+        query.setParameter("timestampParameter", minTime);
+
+        List<WriteAcknowledgementDTO> dtoResults = query.getResultList();
+
+        // There should just be one WriteAcknowledgementDTO object per operation since all of these ACKs
+        // are for our local NN, and each operation would require an ACK from our local NN at most once.
+        for (WriteAcknowledgementDTO dto : dtoResults) {
+            mapping.put(dto.getOperationId(), convert(dto));
+        }
+
+        return mapping;
+    }
+
     @Override
     public void acknowledge(WriteAcknowledgement writeAcknowledgement) throws StorageException {
         LOG.debug("ACK " + writeAcknowledgement.toString());

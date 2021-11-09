@@ -41,12 +41,11 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
    * AFTER local, in-memory processing occurs but (immediately) before the changes are committed
    * to NDB.
    *
-   * @param arg Argument used by the consistency protocol implementation. In this case, we pass an INodeContext
-   *            object, if one exists.
+   * @param txStartTime The time at which the transaction began. Used to order operations.
    *
    * @return True if the transaction can safely proceed, otherwise false.
    */
-  protected abstract boolean consistencyProtocol() throws IOException;
+  protected abstract boolean consistencyProtocol(long txStartTime) throws IOException;
 
   @Override
   protected Object execute(Object info) throws IOException {
@@ -134,7 +133,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
             ignoredException);
 
         requestHandlerLOG.debug("Calling consistency protocol now...");
-        boolean canProceed = consistencyProtocol();
+        boolean canProceed = consistencyProtocol(txStartTime);
 
         if (canProceed) {
           requestHandlerLOG.debug("Consistency protocol executed successfully. Proceeding to commit now.");
@@ -144,7 +143,18 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         }
 
         requestHandlerLOG.debug("Committing transaction now...");
-        EntityManager.commit(locksAcquirer.getLocks());
+        TransactionLocks transactionLocks = locksAcquirer.getLocks();
+
+        // We have now acquired the locks. At this point, we should check for any new write operations on
+        // the INodes we're updating. Since we hold locks, no new operations can come along and change the `INV` flag,
+        // so whatever exists now is what is going to exist until we finish the transaction.
+        //
+        // If there is a new write operation that has occurred after ours, we do not want to flip the `INV` flags back
+        // to false, as that will screw up the next write operation. So, our goal is to check for the existence of
+        // a later write and, if one exists, make sure all of our nodes have their `INV` flags set to true.
+        checkAndHandleNewConcurrentWrites(txStartTime);
+
+        EntityManager.commit(transactionLocks);
         committed = true;
         commitTime = (System.currentTimeMillis() - oldTime);
         if(stat != null){
@@ -171,6 +181,9 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         if (info != null && info instanceof TransactionInfo) {
           ((TransactionInfo) info).performPostTransactionAction();
         }
+
+        requestHandlerLOG.debug("Handling pending ACKs now...");
+        handlePendingAcks();
       } catch (Throwable t) {
         boolean suppressException = suppressFailureMsg(t, tryCount);
         if (!suppressException ) {
@@ -256,6 +269,20 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
   public abstract void acquireLock(TransactionLocks locks) throws IOException;
   
   protected abstract TransactionLockAcquirer newLockAcquirer();
+
+  /**
+   * This should be called after locks are acquired for the transaction. This function checks for pending
+   * ACKs in the `write_acknowledgements` table whose associated TX times are >= the current TX being performed
+   * locally. Specifically, this checks for pending ACKs whose target NN ID is the local NN's ID (i.e., the local
+   * ServerlessNameNode instance running in this container) and whose TX times satisfy the aforementioned constraint.
+   *
+   * If there are any such pending ACKs, we do NOT acknowledge them yet. Instead, for each ACK entry whose target NN ID
+   * is that of our local NN instance and whose write time is >= the local TX start time, we ensure the associated
+   * INode has `INV` set to true.
+   *
+   * @param txStartTime The time at which this transaction began.
+   */
+  protected abstract void checkAndHandleNewConcurrentWrites(long txStartTime) throws StorageException;
 
   @Override
   public TransactionalRequestHandler setParams(Object... params) {

@@ -27,6 +27,11 @@ public abstract class LightWeightRequestHandler extends RequestHandler {
   }
 
   @Override
+  protected void handlePendingAcks() {
+    throw new UnsupportedOperationException("LightWeightRequestHandler does not support function handlePendingAcks()");
+  }
+
+  @Override
   protected Object execute(Object info) throws IOException {
     int tryCount = 0;
     long totalTime = 0;

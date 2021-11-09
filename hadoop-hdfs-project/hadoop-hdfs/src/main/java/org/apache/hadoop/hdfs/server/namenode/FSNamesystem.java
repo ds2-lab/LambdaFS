@@ -138,6 +138,7 @@ import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.security.GeneralSecurityException;
 import java.text.DecimalFormat;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -321,7 +322,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   // precision of access times.
   private final long accessTimePrecision;
 
-  private ServerlessNameNode serverlessNameNode;
+  private final ServerlessNameNode serverlessNameNode;
   private final Configuration conf;
   private final QuotaUpdateManager quotaUpdateManager;
 
@@ -990,11 +991,30 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     boolean invalidatedBeforeEvent = eventOperation.getBooleanPreValue(TablesDef.INodeTableDef.INVALIDATED);
     boolean invalidatedAfterEvent = eventOperation.getBooleanPostValue(TablesDef.INodeTableDef.INVALIDATED);
     long id = eventOperation.getLongPostValue(TablesDef.INodeTableDef.ID);
+    long parentId = eventOperation.getLongPostValue(TablesDef.INodeTableDef.PARENT_ID);
 
     LOG.debug("Invalidated BEFORE event: " + invalidatedBeforeEvent);
     LOG.debug("Invalidated AFTER event: " + invalidatedAfterEvent);
-    LOG.debug("INode ID: " + id);
+    LOG.debug("INode ID: " + id + ", Parent INode ID: " + parentId);
 
+    // TODO: If we cache this INode and the 'INV' flag is set to true, then we need to check for ACKs.
+    //       However, if we are leading a transaction ourselves, we only ACK if the write operation started
+    //       BEFORE ours. If it started after ours, we need to finish ours first.
+
+    synchronized (serverlessNameNode) {
+      if (serverlessNameNode.getTxLeaderFlag()) {
+        long txStartTime = serverlessNameNode.getTxLeaderStartTime();
+        LOG.debug("We are currently the leader of a transaction operation that started at " +
+               new Date(txStartTime) + ". Queuing ACK temporarily.");
+
+        // TODO: This event could be for ANY INode. Not particularly helpful.
+        //       Need to check if we cache this INode and, if so, then we should set this as true.
+        //       Need to address the issues with caching by full path first though.
+        serverlessNameNode.setPendingAcksFlag(true);
+      }
+    }
+
+    // This would only invalidate something if the INode was one that we cached. Otherwise, this has no effect.
     if (invalidatedAfterEvent)
       metadataCache.invalidateKey(id);
   }

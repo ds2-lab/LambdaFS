@@ -425,7 +425,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * The value is computed by hashing the activation ID of the OpenWhisk function that created the instance.
    */
-  public long nameNodeID = -1L;
+  protected long nameNodeID = -1L;
 
   /**
    * This variable is used to keep track of the last storage report retrieved from intermediate storage.

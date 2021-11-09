@@ -201,6 +201,27 @@ public class LRUMetadataCache<T> {
     }
 
     /**
+     * Check if there is an entry for the given key in this cache, regardless of whether not that entry is
+     * marked as invalid or not. That is, this "skips" the check of whether this key is invalid.
+     */
+    public boolean containsKeySkipInvalidCheck(long inodeId) {
+        // If the key is a long, we need to check if we've mapped this long to a String key. If so,
+        // then we can get the string version and continue as before.
+        String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
+        return keyAsStr != null && cache.containsKey(keyAsStr);
+    }
+
+    /**
+     * Checks that the key has not been invalidated before checking the contents of the cache.
+     */
+    public boolean containsKey(long inodeId) {
+        // If the key is a long, we need to check if we've mapped this long to a String key. If so,
+        // then we can get the string version and continue as before.
+        String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
+        return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
+    }
+
+    /**
      * Invalidate a given key by passing the INode ID of the INode to be invalidated, rather than the
      * fully-qualified path.
      * @param inodeId The INode ID of the INode to be invalidated.

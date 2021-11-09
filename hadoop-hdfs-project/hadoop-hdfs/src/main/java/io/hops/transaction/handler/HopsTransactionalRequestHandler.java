@@ -15,7 +15,7 @@
  */
 package io.hops.transaction.handler;
 
-import com.esotericsoftware.minlog.Log;
+import com.mysql.ndbjtie.ndbapi.NdbDictionary;
 import io.hops.events.EventManager;
 import io.hops.events.HopsEvent;
 import io.hops.events.HopsEventListener;
@@ -39,7 +39,6 @@ import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
-import org.apache.hadoop.util.Time;
 import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
@@ -89,6 +88,46 @@ public abstract class HopsTransactionalRequestHandler
   protected TransactionLockAcquirer newLockAcquirer() {
     return new HdfsTransactionalLockAcquirer();
   }
+
+  @Override
+  protected void checkAndHandleNewConcurrentWrites(long txStartTime) throws StorageException {
+    requestHandlerLOG.debug("Checking for concurrent write operations that began after this local one.");
+    WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
+            (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
+
+    Map<Long, WriteAcknowledgement> mapping =
+            writeAcknowledgementDataAccess.checkForPendingAcks(serverlessNameNodeInstance.getId(), txStartTime);
+
+    if (mapping.size() > 0) {
+      if (mapping.size() == 1)
+        requestHandlerLOG.debug("There is 1 pending ACK for a write operation that began after this local one.");
+      else
+        requestHandlerLOG.debug("There are " + mapping.size() +
+                " pending ACKs for write operation(s) that began after this local one.");
+
+      // Build up a list of INodes (by their IDs) that we need to keep invalidated. They must remain invalidated
+      // because there are future write operations that are writing to them, so we don't want to set their valid
+      // flags to 'true' after this.
+      //
+      // Likewise, any INodes NOT in this list should be set to valid. Consider a scenario where we are the latest
+      // write operation in a series of concurrent/overlapping write operations. In this scenario, the INodes that we
+      // are modifying presumably already had their `INV` flags set to True. As I'm writing this, I'm not entirely sure
+      // if it's possible for us to get a local copy of an INode with an `INV` bit set to true, since eventually read
+      // operations will block and not return INodes with an `INV` column value of true. But in any case, we need to
+      // make sure the INodes we're modifying are valid after this. We locked the rows, so nobody else can change them.
+      // If another write comes along and invalidates them immediately, that's fine. But if we don't ensure they're all
+      // set to valid, then reads may continue to block indefinitely.
+      List<Long> nodesToKeepInvalidated = new ArrayList<Long>();
+      for (Map.Entry<Long, WriteAcknowledgement> entry : mapping.entrySet()) {
+        long operationId = entry.getKey();
+        WriteAcknowledgement ack = entry.getValue();
+
+        requestHandlerLOG.debug("        Operation ID: " + operationId + ", ACK: " + ack.toString());
+
+        nodesToKeepInvalidated.add();
+      }
+    }
+  }
   
   @Override
   protected Object execute(final Object namesystem) throws IOException {
@@ -136,19 +175,22 @@ public abstract class HopsTransactionalRequestHandler
   }
 
   @Override
-  protected final boolean consistencyProtocol() throws IOException {
+  protected final boolean consistencyProtocol(long txStartTime) throws IOException {
     EntityContext<?> inodeContext = EntityManager.getEntityContext(INode.class);
-    return doConsistencyProtocol(inodeContext);
+    return doConsistencyProtocol(inodeContext, txStartTime);
   }
 
   /**
    * This function should be overridden in order to provide a consistency protocol whenever necessary.
    *
+   * @param entityContext Must be an INodeContext object. Used to determine which INodes are being written to.
+   * @param txStartTime The time at which the transaction began. Used to order operations.
+   *
    * @return True if the transaction can safely proceed, otherwise false.
    */
-  public boolean doConsistencyProtocol(EntityContext<?> entityContext) throws IOException {
+  public boolean doConsistencyProtocol(EntityContext<?> entityContext, long txStartTime) throws IOException {
     //// // // // // // // // // // ////
-    // UPDATED CONSISTENCY PROTOCOL   //
+    // CURRENT CONSISTENCY PROTOCOL   //
     //// // // // // // // // // // ////
     //
     // TERMINOLOGY:
@@ -200,12 +242,9 @@ public abstract class HopsTransactionalRequestHandler
     if (numInvalidated == 0)
       return true;
 
-    // Record the time that the write operation started.
-    long writeStartTime = Time.getUtcTime();
-
     requestHandlerLOG.debug("=-=-=-=-= CONSISTENCY PROTOCOL =-=-=-=-=");
     requestHandlerLOG.debug("Operation ID: " + operationId);
-    requestHandlerLOG.debug("Operation Start Time: " + writeStartTime);
+    requestHandlerLOG.debug("Operation Start Time: " + txStartTime);
     ServerlessNameNode serverlessNameNode = OpenWhiskHandler.instance;
 
     // Sanity check. Make sure we have a valid reference to the ServerlessNameNode. This isn't the cleanest, but
@@ -216,7 +255,7 @@ public abstract class HopsTransactionalRequestHandler
 
     serverlessNameNodeInstance = serverlessNameNode;
     serverlessNameNode.setTxLeaderFlag(true);
-    serverlessNameNode.setTxLeaderStartTime(writeStartTime);
+    serverlessNameNode.setTxLeaderStartTime(txStartTime);
 
     // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
     // If we find that we are about to modify an INode for which we are not authorized, throw an exception.
@@ -253,7 +292,7 @@ public abstract class HopsTransactionalRequestHandler
     // STEP 3
     List<WriteAcknowledgement> writeAcknowledgements;
     try {
-      writeAcknowledgements = addAckTableRecords(serverlessNameNode, writeStartTime);
+      writeAcknowledgements = addAckTableRecords(serverlessNameNode, txStartTime);
     } catch (Exception ex) {
       requestHandlerLOG.error("Exception encountered on Step 3 of consistency protocol (adding ACKs to table).");
       ex.printStackTrace();
@@ -279,7 +318,9 @@ public abstract class HopsTransactionalRequestHandler
       return false;
     }
 
-
+    // Steps 6 and 7 happen automatically. We can return from this function to perform the writes.
+    // After that, the TransactionalRequestHandler object calls our handlePendingAcks() function
+    // to take care of everything mentioned during Step 6.
 
     // Clean up ACKs, event operation, etc.
     cleanUpAfterConsistencyProtocol(serverlessNameNode, needToUnsubscribe, writeAcknowledgements);
@@ -296,7 +337,8 @@ public abstract class HopsTransactionalRequestHandler
    * between when the leader NN first checked group membership to create the ACK entries and when the leader begins
    * monitoring explicitly for changes in group membership.
    */
-  private synchronized void checkForAndHandleMembershipChanges(ServerlessNameNode serverlessNameNode) throws Exception {
+  private synchronized void checkAndProcessMembershipChanges(ServerlessNameNode serverlessNameNode)
+          throws Exception {
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
 
     // Get the current members.
@@ -353,7 +395,7 @@ public abstract class HopsTransactionalRequestHandler
     zkClient.addListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
       if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
         try {
-          checkForAndHandleMembershipChanges(serverlessNameNode);
+          checkAndProcessMembershipChanges(serverlessNameNode);
         } catch (Exception e) {
           requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
           e.printStackTrace();
@@ -363,7 +405,7 @@ public abstract class HopsTransactionalRequestHandler
 
     // This method is 'synchronized' so if the event handler already fired, we won't be able to get inside
     // until after the event handler finishes. Shouldn't cause any concurrency issues...
-    checkForAndHandleMembershipChanges(serverlessNameNode);
+    checkAndProcessMembershipChanges(serverlessNameNode);
 
     // Wait until we're done. If the latch is already at zero, then this will not block.
     countDownLatch.await();
@@ -416,8 +458,7 @@ public abstract class HopsTransactionalRequestHandler
       serverlessNameNodeInstance.setPendingAcksFlag(true);
     }
 
-    boolean acknowledged =
-            eventData.getBooleanPostValue(TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED);
+    boolean acknowledged = eventData.getBooleanPostValue(TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED);
 
     if (acknowledged) {
       requestHandlerLOG.debug("Received ACK from NameNode " + nameNodeId + "!");
@@ -477,11 +518,11 @@ public abstract class HopsTransactionalRequestHandler
    *    We subscribe AFTER adding these entries just to avoid receiving events for inserting the new ACK entries, as
    *    we'd waste time processing those events (albeit a small amount of time).
    *
-   * @param writeStartTime The UTC timestamp at which this write operation began.
+   * @param txStartTime The UTC timestamp at which this write operation began.
    *
    * @return The number of ACK records that we added to intermediate storage.
    */
-  private List<WriteAcknowledgement> addAckTableRecords(ServerlessNameNode serverlessNameNode, long writeStartTime)
+  private List<WriteAcknowledgement> addAckTableRecords(ServerlessNameNode serverlessNameNode, long txStartTime)
           throws Exception {
     requestHandlerLOG.debug("=-----=-----= Step 2 - Adding ACK Records =-----=-----=");
 
@@ -508,7 +549,7 @@ public abstract class HopsTransactionalRequestHandler
 
       waitingForAcks.add(memberId);
       writeAcknowledgements.add(new WriteAcknowledgement(memberId, serverlessNameNode.getDeploymentNumber(),
-              operationId, false, writeStartTime));
+              operationId, false, txStartTime));
     }
 
     if (writeAcknowledgements.size() > 0) {
