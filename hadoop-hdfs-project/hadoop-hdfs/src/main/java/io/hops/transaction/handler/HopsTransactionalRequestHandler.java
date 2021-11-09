@@ -200,8 +200,9 @@ public abstract class HopsTransactionalRequestHandler
     // The updated consistency protocol for Serverless NameNodes is as follows:
     // (1) The leader sets the INV flag of the target INode(s) to 1 (i.e., true), thereby triggering a round of INVs
     //     from intermediate storage (NDB). We have to invalidate the node first so that nobody can read and cache
-    //     the node. If we were to add the ACK entries to the table BEFORE invalidating, a new NN could start up,
+    //     the node. If we were to add the ACK entries to the table BEFORE invalidating, a new NN could start up and
     //     read the soon-to-be invalidated target INode before we invalidate it, screwing up the whole protocol.
+    //	   (The new NN wouldn't know about the INVs, and it wouldn't block because the 'INV' wouldn't be set.)
     // (2) The Leader NN begins listening for changes in group membership from ZooKeeper.
     //     The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly. We
     //     need to subscribe first to ensure we receive notifications from follower NNs ACK'ing the entries. Since we
@@ -217,7 +218,7 @@ public abstract class HopsTransactionalRequestHandler
     //     need ACKs from failed NNs, as they invalidate their cache upon returning.
     // (6) Once all the "ACK" table entries added by the Leader have been ACK'd by followers, the Leader will check to
     //     see if there are any new, concurrent write operations with a larger timestamp. If so, the Leader must
-    //     first finish the write operation BEFORE submitting any ACKs for those new writes. Then, the leader can ACK
+    //     first finish its own write operation BEFORE submitting any ACKs for those new writes. Then, the leader can ACK
     //     any new write operations that may be waiting.
     // (7) Follower NNs will lazily update their caches on subsequent read operations.
     //
