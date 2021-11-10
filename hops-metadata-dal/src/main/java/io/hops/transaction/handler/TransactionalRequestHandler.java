@@ -64,6 +64,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
       long beginTxTime = -1;
       long acquireLockTime = -1;
       long inMemoryProcessingTime = -1;
+      long consistencyProtocolTime = -1;
       long commitTime = -1;
       long totalTime = -1;
       TransactionLockAcquirer locksAcquirer = null;
@@ -134,12 +135,15 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
 
         requestHandlerLOG.debug("Calling consistency protocol now...");
         boolean canProceed = consistencyProtocol(txStartTime);
+        consistencyProtocolTime = (System.currentTimeMillis() - oldTime);
+        oldTime = System.currentTimeMillis();
 
         if (canProceed) {
-          requestHandlerLOG.debug("Consistency protocol executed successfully. Proceeding to commit now.");
+          requestHandlerLOG.debug("Consistency protocol executed successfully. Time: " +
+                  consistencyProtocolTime + " ms");
         } else {
-          requestHandlerLOG.error("Consistency protocol FAILED.");
-          throw new IOException("Consistency protocol FAILED.");
+          requestHandlerLOG.error("Consistency protocol FAILED after " + consistencyProtocolTime + " ms.");
+          throw new IOException("Consistency protocol FAILED after " + consistencyProtocolTime + " ms.");
         }
 
         requestHandlerLOG.debug("Committing transaction now...");
@@ -173,6 +177,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
                   "RetryCount: " + (tryCount-1) + ", " +
                   "TX Stats -- Setup: " + setupTime + "ms, AcquireLocks: " + acquireLockTime + "ms, " +
                   "InMemoryProcessing: " + inMemoryProcessingTime + "ms, " +
+                  "ConsistencyProtocol: " + consistencyProtocolTime + "ms, " +
                   "CommitTime: " + commitTime + "ms. Locks: "+ getINodeLockInfo(locksAcquirer.getLocks()));
         }
         //post TX phase
