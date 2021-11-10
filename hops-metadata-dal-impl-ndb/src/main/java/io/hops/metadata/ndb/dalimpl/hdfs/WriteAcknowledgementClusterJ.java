@@ -143,8 +143,6 @@ public class WriteAcknowledgementClusterJ
     public void acknowledge(WriteAcknowledgement writeAcknowledgement) throws StorageException {
         LOG.debug("ACK " + writeAcknowledgement.toString());
 
-//        if (!writeAcknowledgement.getAcknowledged())
-//            throw new IllegalArgumentException("The 'acknowledged' field of the acknowledgement should be true.");
         writeAcknowledgement.acknowledge();
 
         HopsSession session = connector.obtainSession();
@@ -158,6 +156,27 @@ public class WriteAcknowledgementClusterJ
             LOG.debug("Successfully stored " + writeAcknowledgement.toString());
         } finally {
             session.release(writeAcknowledgementDTO);
+        }
+    }
+
+    @Override
+    public void acknowledge(List<WriteAcknowledgement> writeAcknowledgements) throws StorageException {
+        LOG.debug("ACK " + writeAcknowledgements.toString());
+
+        WriteAcknowledgementDTO[] dtos = new WriteAcknowledgementDTO[writeAcknowledgements.size()];
+        HopsSession session = connector.obtainSession();
+
+        for (int i = 0; i < writeAcknowledgements.size(); i++) {
+            WriteAcknowledgement ack = writeAcknowledgements.get(i);
+            ack.acknowledge();
+            dtos[i] = session.newInstance(WriteAcknowledgementDTO.class);
+            copyState(dtos[i], ack);
+        }
+
+        try {
+            session.updatePersistentAll(writeAcknowledgements);
+        } finally {
+            session.release(dtos);
         }
     }
 
