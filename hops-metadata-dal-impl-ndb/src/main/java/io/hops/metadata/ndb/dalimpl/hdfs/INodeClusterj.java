@@ -467,7 +467,8 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
             inode.getStoragePolicy(),
             inode.getNumAces(),
             inode.getNumUserXAttrs(),
-            inode.getNumSysXAttrs());
+            inode.getNumSysXAttrs(),
+            NdbBoolean.convert(inode.getInvalidated()));
   }
 //  public List<ProjectedINode> findInodesForSubtreeOperationsWithWriteLockFTIS(
 //      int parentId) throws StorageException {

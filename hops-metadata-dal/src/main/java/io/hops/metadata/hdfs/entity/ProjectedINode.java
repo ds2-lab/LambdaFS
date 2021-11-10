@@ -23,10 +23,10 @@ public class ProjectedINode extends INodeBase implements
       boolean isDir, short permission, int userID, int groupID, long header,
       boolean symlink, boolean dirWithQuota, boolean underConstruction,
       boolean subtreeLocked, long subtreeLockOwner, long fileSize, int logicalTime,
-      byte storagePolicy, int numAces, byte numUserXAttrs, byte numSysXAttrs) {
+      byte storagePolicy, int numAces, byte numUserXAttrs, byte numSysXAttrs, boolean invalidated) {
     super(id, parentId, name, partitionId, isDir, userID, groupID, permission, header,
         dirWithQuota, underConstruction, subtreeLocked, subtreeLockOwner,
-        fileSize, logicalTime, storagePolicy, numAces, numUserXAttrs, numSysXAttrs);
+        fileSize, logicalTime, storagePolicy, numAces, numUserXAttrs, numSysXAttrs, invalidated);
     this.symlink = symlink;
   }
 

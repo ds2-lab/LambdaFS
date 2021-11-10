@@ -425,33 +425,27 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
   /**
    * Count subtree {@link Quota#NAMESPACE} and {@link Quota#STORAGESPACE} usages.
    * 
-   * With the existence of {@link INodeReference}, the same inode and its
-   * subtree may be referred by multiple {@link WithName} nodes and a
-   * {@link DstReference} node. To avoid circles while quota usage computation,
+   * With the existence of INodeReference, the same inode and its
+   * subtree may be referred by multiple WithName nodes and a
+   * DstReference node. To avoid circles while quota usage computation,
    * we have the following rules:
    * 
    * <pre>
-   * 1. For a {@link DstReference} node, since the node must be in the current
+   * 1. For a DstReference node, since the node must be in the current
    * tree (or has been deleted as the end point of a series of rename 
    * operations), we compute the quota usage of the referred node (and its 
    * subtree) in the regular manner, i.e., including every inode in the current
    * tree and in snapshot copies, as well as the size of diff list.
    * 
-   * 2. For a {@link WithName} node, since the node must be in a snapshot, we 
+   * 2. For a WithName node, since the node must be in a snapshot, we
    * only count the quota usage for those nodes that still existed at the 
-   * creation time of the snapshot associated with the {@link WithName} node.
+   * creation time of the snapshot associated with the WithName node.
    * We do not count in the size of the diff list.  
    * <pre>
    *
    * @param bsps Block storage policy suite to calculate intended storage type usage
    * @param blockStoragePolicyId block storage policy id of the current INode
    * @param counts The subtree counts for returning.
-   * @param useCache Whether to use cached quota usage. Note that 
-   *                 {@link WithName} node never uses cache for its subtree.
-   * @param lastSnapshotId {@link Snapshot#CURRENT_STATE_ID} indicates the 
-   *                       computation is in the current tree. Otherwise the id
-   *                       indicates the computation range for a 
-   *                       {@link WithName} node.
    * @return The same objects as the counts parameter.
    */
   abstract QuotaCounts computeQuotaUsage( BlockStoragePolicySuite bsps,  byte blockStoragePolicyId, QuotaCounts counts)
@@ -985,6 +979,8 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
       return true;
     }
   }
+
+  public abstract boolean getInvalidated();
 
   public abstract long getHeader();
 
