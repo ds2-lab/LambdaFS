@@ -223,7 +223,15 @@ public class HopsEventOperationImpl implements HopsEventOperation {
      * Return the event table of this event.
      * @return the event type of this event.
      */
-    public TableEvent getEventType() {
+    @Override
+    public String getEventType() {
+        return clusterJEventOperation.getEventType().name();
+    }
+
+    /**
+     * For internal use only; get the ClusterJ TableEvent object indicating what type of event this is.
+     */
+    protected TableEvent getUnderlyingEventType() {
         return clusterJEventOperation.getEventType();
     }
 

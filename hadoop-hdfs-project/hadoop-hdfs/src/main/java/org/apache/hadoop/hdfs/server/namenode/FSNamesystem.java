@@ -986,37 +986,94 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       LOG.error("FSNamesystem received unexpected event from NDB: " + eventName);
     }
 
-    LOG.debug("==== Received event " + eventName + " from NDB ====");
-
     boolean invalidatedBeforeEvent = eventOperation.getBooleanPreValue(TablesDef.INodeTableDef.INVALIDATED);
     boolean invalidatedAfterEvent = eventOperation.getBooleanPostValue(TablesDef.INodeTableDef.INVALIDATED);
     long id = eventOperation.getLongPostValue(TablesDef.INodeTableDef.ID);
     long parentId = eventOperation.getLongPostValue(TablesDef.INodeTableDef.PARENT_ID);
 
-    LOG.debug("Invalidated BEFORE event: " + invalidatedBeforeEvent);
-    LOG.debug("Invalidated AFTER event: " + invalidatedAfterEvent);
+    LOG.debug("==== Received event " + eventName + " from NDB for INode " + id + " ====");
+
+    LOG.debug("Invalidated BEFORE: " + invalidatedBeforeEvent + ", invalidated AFTER: " + invalidatedAfterEvent);
     LOG.debug("INode ID: " + id + ", Parent INode ID: " + parentId);
 
     // TODO: If we cache this INode and the 'INV' flag is set to true, then we need to check for ACKs.
     //       However, if we are leading a transaction ourselves, we only ACK if the write operation started
     //       BEFORE ours. If it started after ours, we need to finish ours first.
 
-    synchronized (serverlessNameNode) {
-      if (serverlessNameNode.getTxLeaderFlag()) {
-        long txStartTime = serverlessNameNode.getTxLeaderStartTime();
-        LOG.debug("We are currently the leader of a transaction operation that started at " +
-               new Date(txStartTime) + ". Queuing ACK temporarily.");
+    int targetDeployment = getMappedServerlessFunction(parentId);
 
-        // TODO: This event could be for ANY INode. Not particularly helpful.
-        //       Need to check if we cache this INode and, if so, then we should set this as true.
-        //       Need to address the issues with caching by full path first though.
-        serverlessNameNode.setPendingAcksFlag(true);
-      }
+    // We only care if the event is about an INode that is mapped to our deployment.
+    boolean shouldIgnoreEvent = (targetDeployment == serverlessNameNode.getDeploymentNumber());
+    if (shouldIgnoreEvent) {
+      LOG.debug("Ignoring event for INode " + id + ", parentId=" + parentId + " (target deployment = " +
+              targetDeployment + ").");
     }
 
     // This would only invalidate something if the INode was one that we cached. Otherwise, this has no effect.
     if (invalidatedAfterEvent)
       metadataCache.invalidateKey(id);
+
+    WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
+            (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
+
+    ExponentialBackOff exponentialBackOff = new ExponentialBackOff.Builder()
+            .setMaximumRetries(5)
+            .setInitialIntervalMillis(100)
+            .setMaximumIntervalMillis(7500)
+            .setMultiplier(2.0)
+            .setRandomizationFactor(1.5)
+            .build();
+    List<WriteAcknowledgement> pendingAcks = null;  // This variable holds the result of the operation.
+
+    while (pendingAcks == null) {
+      try {
+        pendingAcks = writeAcknowledgementDataAccess.getPendingAcks(serverlessNameNode.getId());
+      } catch (StorageException e) {
+        LOG.error("Encountered exception while checking for pending ACKs for NameNode "
+                + serverlessNameNode.getId() + ":", e);
+
+        long backoffInterval = exponentialBackOff.getBackOffInMillis();
+        if (backoffInterval == -1) {
+          LOG.error("Failed to retrieve pending ACKs from intermediate storage after " +
+                  exponentialBackOff.getMaximumRetries() + " attempts.");
+          return;
+        }
+        doSleep(backoffInterval);
+      }
+    }
+
+    exponentialBackOff.reset();
+    boolean success = false;
+
+    while (!success) {
+      try {
+        writeAcknowledgementDataAccess.acknowledge(pendingAcks);
+        success = true;
+      } catch (StorageException e) {
+        LOG.error("Encountered exception while trying to acknowledge pending ACKs for NameNode "
+                + serverlessNameNode.getId() + ":", e);
+
+        long backoffInterval = exponentialBackOff.getBackOffInMillis();
+        if (backoffInterval == -1) {
+          LOG.error("Failed to acknowledge pending ACKs in intermediate storage after " +
+                  exponentialBackOff.getMaximumRetries() + " attempts.");
+          return;
+        }
+        doSleep(backoffInterval);
+      }
+    }
+  }
+
+  /**
+   * Hides the try-catch block for a call to Thread.sleep().
+   * @param sleepIntervalMilliseconds How long to sleep in milliseconds.
+   */
+  private void doSleep(long sleepIntervalMilliseconds) {
+    try {
+      Thread.sleep(sleepIntervalMilliseconds);
+    } catch (InterruptedException ex) {
+      ex.printStackTrace();
+    }
   }
 
   public static class GetBlockLocationsResult {
@@ -1747,8 +1804,17 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @param inode The INode in question.
    * @return The number of the serverless function responsible for caching this INode.
    */
-  public int getMappedServerlessFunction(INode inode) throws TransactionContextException, StorageException {
+  public int getMappedServerlessFunction(INode inode) {
     return serverlessNameNode.getMappedServerlessFunction(inode);
+  }
+
+  /**
+   * Get the serverless function number of the NameNode that should cache this INode.
+   * @param parentINodeId The parent INode ID of the node we're inquiring about.
+   * @return The number of the serverless function responsible for caching this INode.
+   */
+  public int getMappedServerlessFunction(long parentINodeId) {
+    return serverlessNameNode.getMappedServerlessFunction(parentINodeId);
   }
 
   /**

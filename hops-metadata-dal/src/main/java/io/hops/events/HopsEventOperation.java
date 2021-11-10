@@ -10,7 +10,7 @@ public interface HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such pre-record attribute for the specified column.
      */
-    public boolean getBooleanPreValue(String columnName);
+    boolean getBooleanPreValue(String columnName);
 
 
     /**
@@ -22,7 +22,7 @@ public interface HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such post-record attribute for the specified column.
      */
-    public boolean getBooleanPostValue(String columnName);
+    boolean getBooleanPostValue(String columnName);
 
     /**
      * Get the 32-bit int pre-value of a record attribute (i.e., value associated with an event).
@@ -33,7 +33,7 @@ public interface HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such pre-record attribute for the specified column.
      */
-    public int getIntPreValue(String columnName) throws IllegalArgumentException;
+    int getIntPreValue(String columnName) throws IllegalArgumentException;
 
     /**
      * Get the 32-bit int post-value of a record attribute (i.e., value associated with an event).
@@ -44,7 +44,7 @@ public interface HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such post-record attribute for the specified column.
      */
-    public int getIntPostValue(String columnName) throws IllegalArgumentException;
+    int getIntPostValue(String columnName) throws IllegalArgumentException;
 
     /**
      * Get the long pre-value of a record attribute (i.e., value associated with an event).
@@ -55,7 +55,7 @@ public interface HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such pre-record attribute for the specified column.
      */
-    public long getLongPreValue(String columnName) throws IllegalArgumentException;
+    long getLongPreValue(String columnName) throws IllegalArgumentException;
 
     /**
      * Get the long post-value of a record attribute (i.e., value associated with an event).
@@ -66,5 +66,11 @@ public interface HopsEventOperation {
      *
      * @throws IllegalArgumentException If there is no such post-record attribute for the specified column.
      */
-    public long getLongPostValue(String columnName) throws IllegalArgumentException;
+    long getLongPostValue(String columnName) throws IllegalArgumentException;
+
+    /**
+     * Return the event table of this event.
+     * @return the event type of this event.
+     */
+    String getEventType();
 }

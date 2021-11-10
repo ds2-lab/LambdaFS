@@ -67,7 +67,7 @@ public class ContentSummaryComputationContext {
   }
 
   //HOPS this is not very relevant as we do a subtree operation instead
-  //but this may be a source of inspiration to not hit to hard on the database when doing subtree operations
+  //but this may be a source of inspiration to not hit too hard on the database when doing subtree operations
   /**
    * Relinquish locks held during computation for a short while
    * and reacquire them. This will give other threads a chance

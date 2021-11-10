@@ -85,10 +85,10 @@ public abstract class RequestHandler {
     return execute(info);
   }
 
-  /**
-   * Handle any pending ACKs that we received while acting as a leader for a write transaction.
-   */
-  protected abstract void handlePendingAcks();
+//  /**
+//   * Handle any pending ACKs that we received while acting as a leader for a write transaction.
+//   */
+//  protected abstract void handlePendingAcks();
 
   protected abstract Object execute(Object info) throws IOException;
 

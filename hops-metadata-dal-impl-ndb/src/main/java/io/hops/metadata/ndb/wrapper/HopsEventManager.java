@@ -488,7 +488,7 @@ public class HopsEventManager implements EventManager {
         int numEventsProcessed = 0;
 
         while (nextEventOp != null) {
-            TableEvent eventType = nextEventOp.getEventType();
+            TableEvent eventType = nextEventOp.getUnderlyingEventType();
 
             // TODO:
             //  Possibly check the pre/post values associated with the event to determine the necessity of retrieving

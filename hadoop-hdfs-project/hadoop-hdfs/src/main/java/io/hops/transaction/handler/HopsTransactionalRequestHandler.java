@@ -15,11 +15,7 @@
  */
 package io.hops.transaction.handler;
 
-import com.mysql.ndbjtie.ndbapi.NdbDictionary;
-import io.hops.events.EventManager;
-import io.hops.events.HopsEvent;
-import io.hops.events.HopsEventListener;
-import io.hops.events.HopsEventOperation;
+import io.hops.events.*;
 import io.hops.exception.StorageException;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.metadata.HdfsStorageFactory;
@@ -89,45 +85,45 @@ public abstract class HopsTransactionalRequestHandler
     return new HdfsTransactionalLockAcquirer();
   }
 
-  @Override
-  protected void checkAndHandleNewConcurrentWrites(long txStartTime) throws StorageException {
-    requestHandlerLOG.debug("Checking for concurrent write operations that began after this local one.");
-    WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
-            (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
-
-    Map<Long, WriteAcknowledgement> mapping =
-            writeAcknowledgementDataAccess.checkForPendingAcks(serverlessNameNodeInstance.getId(), txStartTime);
-
-    if (mapping.size() > 0) {
-      if (mapping.size() == 1)
-        requestHandlerLOG.debug("There is 1 pending ACK for a write operation that began after this local one.");
-      else
-        requestHandlerLOG.debug("There are " + mapping.size() +
-                " pending ACKs for write operation(s) that began after this local one.");
-
-      // Build up a list of INodes (by their IDs) that we need to keep invalidated. They must remain invalidated
-      // because there are future write operations that are writing to them, so we don't want to set their valid
-      // flags to 'true' after this.
-      //
-      // Likewise, any INodes NOT in this list should be set to valid. Consider a scenario where we are the latest
-      // write operation in a series of concurrent/overlapping write operations. In this scenario, the INodes that we
-      // are modifying presumably already had their `INV` flags set to True. As I'm writing this, I'm not entirely sure
-      // if it's possible for us to get a local copy of an INode with an `INV` bit set to true, since eventually read
-      // operations will block and not return INodes with an `INV` column value of true. But in any case, we need to
-      // make sure the INodes we're modifying are valid after this. We locked the rows, so nobody else can change them.
-      // If another write comes along and invalidates them immediately, that's fine. But if we don't ensure they're all
-      // set to valid, then reads may continue to block indefinitely.
-      List<Long> nodesToKeepInvalidated = new ArrayList<Long>();
-      for (Map.Entry<Long, WriteAcknowledgement> entry : mapping.entrySet()) {
-        long operationId = entry.getKey();
-        WriteAcknowledgement ack = entry.getValue();
-
-        requestHandlerLOG.debug("        Operation ID: " + operationId + ", ACK: " + ack.toString());
-
-        nodesToKeepInvalidated.add();
-      }
-    }
-  }
+//  @Override
+//  protected void checkAndHandleNewConcurrentWrites(long txStartTime) throws StorageException {
+//    requestHandlerLOG.debug("Checking for concurrent write operations that began after this local one.");
+//    WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
+//            (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
+//
+//    Map<Long, WriteAcknowledgement> mapping =
+//            writeAcknowledgementDataAccess.checkForPendingAcks(serverlessNameNodeInstance.getId(), txStartTime);
+//
+//    if (mapping.size() > 0) {
+//      if (mapping.size() == 1)
+//        requestHandlerLOG.debug("There is 1 pending ACK for a write operation that began after this local one.");
+//      else
+//        requestHandlerLOG.debug("There are " + mapping.size() +
+//                " pending ACKs for write operation(s) that began after this local one.");
+//
+//      // Build up a list of INodes (by their IDs) that we need to keep invalidated. They must remain invalidated
+//      // because there are future write operations that are writing to them, so we don't want to set their valid
+//      // flags to 'true' after this.
+//      //
+//      // Likewise, any INodes NOT in this list should be set to valid. Consider a scenario where we are the latest
+//      // write operation in a series of concurrent/overlapping write operations. In this scenario, the INodes that we
+//      // are modifying presumably already had their `INV` flags set to True. As I'm writing this, I'm not entirely sure
+//      // if it's possible for us to get a local copy of an INode with an `INV` bit set to true, since eventually read
+//      // operations will block and not return INodes with an `INV` column value of true. But in any case, we need to
+//      // make sure the INodes we're modifying are valid after this. We locked the rows, so nobody else can change them.
+//      // If another write comes along and invalidates them immediately, that's fine. But if we don't ensure they're all
+//      // set to valid, then reads may continue to block indefinitely.
+//      List<Long> nodesToKeepInvalidated = new ArrayList<Long>();
+//      for (Map.Entry<Long, WriteAcknowledgement> entry : mapping.entrySet()) {
+//        long operationId = entry.getKey();
+//        WriteAcknowledgement ack = entry.getValue();
+//
+//        requestHandlerLOG.debug("   Operation ID: " + operationId + ", ACK: " + ack.toString());
+//
+//        nodesToKeepInvalidated.add();
+//      }
+//    }
+//  }
   
   @Override
   protected Object execute(final Object namesystem) throws IOException {
@@ -255,8 +251,6 @@ public abstract class HopsTransactionalRequestHandler
               "Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
 
     serverlessNameNodeInstance = serverlessNameNode;
-    serverlessNameNode.setTxLeaderFlag(true);
-    serverlessNameNode.setTxLeaderStartTime(txStartTime);
 
     // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
     // If we find that we are about to modify an INode for which we are not authorized, throw an exception.
@@ -450,14 +444,14 @@ public abstract class HopsTransactionalRequestHandler
       requestHandlerLOG.debug("HopsTransactionalRequestHandler received unexpected event " + eventName + "!");
 
     // First, verify that this event pertains to our write operation. If it doesn't, we just return.
-    long writeId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID);
+    long writeOpId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID);
     long nameNodeId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.NAME_NODE_ID);
-    if (writeId != operationId && nameNodeId != serverlessNameNodeInstance.getId())
+    if (writeOpId != operationId && nameNodeId != serverlessNameNodeInstance.getId())
       return;
-    else if (nameNodeId == serverlessNameNodeInstance.getId()) {
-      requestHandlerLOG.warn("Discovered ACK entry assigned to self for write operation " + writeId);
-      serverlessNameNodeInstance.setPendingAcksFlag(true);
-    }
+
+    String eventType = eventData.getEventType();
+    if (eventType.equals(HopsEventType.INSERT)) // We don't care about INSERT events.
+      return;
 
     boolean acknowledged = eventData.getBooleanPostValue(TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED);
 
@@ -473,21 +467,6 @@ public abstract class HopsTransactionalRequestHandler
       waitingForAcks.remove(nameNodeId);
 
       countDownLatch.countDown();
-    }
-
-  }
-
-  @Override
-  protected void handlePendingAcks() {
-    // At this point, we consider ourselves to be done. Any ACKs received after this call will be ACK'd immediately.
-    serverlessNameNodeInstance.setTxLeaderFlag(false);
-
-    if (serverlessNameNodeInstance.getPendingAcksFlag()) {
-      requestHandlerLOG.debug("There are pending ACKs for us in NDB.");
-
-      // Iterate over all pending ACKs.
-      // All the pending ACKs should be for write operations that began AFTER our own.
-      // Earlier ACKs should've just been ACK'd when they were received.
     }
   }
 

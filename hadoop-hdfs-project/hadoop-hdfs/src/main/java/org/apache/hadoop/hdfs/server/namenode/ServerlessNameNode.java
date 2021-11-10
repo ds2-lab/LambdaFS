@@ -105,6 +105,7 @@ import org.apache.hadoop.tracing.TraceAdminProtocol;
 import org.apache.hadoop.util.*;
 import org.apache.hadoop.util.ExitUtil.ExitException;
 import org.apache.zookeeper.ZooKeeper;
+import org.eclipse.jetty.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,6 +119,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -225,23 +227,33 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private long heartBeatInterval;
 
-  /**
-   * Indicates whether this NN is currently acting as a transaction leader.
-   */
-  private AtomicBoolean actingAsTxLeader = new AtomicBoolean(false);
-
-  /**
-   * The time at which the TX that we're leading began. (This is specifically when the consistency protocol began.)
-   *
-   * TODO: Should we use consistency protocol start time as the start time? Or something else?
-   */
-  private AtomicLong leaderTxStartTime = new AtomicLong(-1);
-
-  /**
-   * Indicates that there are pending write acknowledgements that we need to ACK once we've completed
-   * our own write operation. This is only used when we're serving as a transaction leader.
-   */
-  private AtomicBoolean pendingAcksFlag = new AtomicBoolean(false);
+//  /**
+//   * Indicates whether this NN is currently acting as a transaction leader.
+//   */
+//  private AtomicBoolean actingAsTxLeader = new AtomicBoolean(false);
+//
+//  /**
+//   * The time at which the TX that we're leading began. (This is specifically when the consistency protocol began.)
+//   *
+//   * TODO: Should we use consistency protocol start time as the start time? Or something else?
+//   */
+//  private AtomicLong leaderTxStartTime = new AtomicLong(-1);
+//
+//  /**
+//   * Indicates that there are pending write acknowledgements that we need to ACK once we've completed
+//   * our own write operation. This is only used when we're serving as a transaction leader.
+//   */
+//  private AtomicBoolean pendingAcksFlag = new AtomicBoolean(false);
+//
+//  /**
+//   * We use this to keep track of INodes that were invalidated while we were acting as the leader of a transaction.
+//   */
+//  // private ConcurrentLinkedQueue<Long> nodeIdsInvalidatedDuringTx = new ConcurrentLinkedQueue<>();
+//
+//  /**
+//   * We use this to keep track of INodes that were invalidated while we were acting as the leader of a transaction.
+//   */
+//  private final ConcurrentHashSet<Long> nodeIdsInvalidatedDuringTx = new ConcurrentHashSet<>();
 
   /**
    * Worker queue for the worker thread. This is accessed both by this class and by NameNodeTCPClient objects.
@@ -732,6 +744,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     activeNameNodes.refreshFromZooKeeper(this.zooKeeperClient, this.functionName);
   }
 
+//  /**
+//   * Enqueue the ID of an INode invalidated while we're acting as transaction leader.
+//   * @param id The ID of the INode that was invalidated.
+//   */
+//  public synchronized void enqueueINodeId(long id) {
+//    assert(actingAsTxLeader.get());
+//
+//    nodeIdsInvalidatedDuringTx.add(id);
+//  }
+
   /**
    * Used as the entry-point into the Serverless NameNode when executing a serverless function.
    *
@@ -766,29 +788,29 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return null;
   }
 
-  public void setTxLeaderFlag(boolean flag) {
-    actingAsTxLeader.set(flag);
-  }
-
-  public boolean getTxLeaderFlag() {
-    return actingAsTxLeader.get();
-  }
-
-  public void setTxLeaderStartTime(long startTime) {
-    leaderTxStartTime.set(startTime);
-  }
-
-  public long getTxLeaderStartTime() {
-    return leaderTxStartTime.get();
-  }
-
-  public void setPendingAcksFlag(boolean flag) {
-    pendingAcksFlag.set(flag);
-  }
-
-  public boolean getPendingAcksFlag() {
-    return pendingAcksFlag.get();
-  }
+//  public void setTxLeaderFlag(boolean flag) {
+//    actingAsTxLeader.set(flag);
+//  }
+//
+//  public boolean getTxLeaderFlag() {
+//    return actingAsTxLeader.get();
+//  }
+//
+//  public void setTxLeaderStartTime(long startTime) {
+//    leaderTxStartTime.set(startTime);
+//  }
+//
+//  public long getTxLeaderStartTime() {
+//    return leaderTxStartTime.get();
+//  }
+//
+//  public void setPendingAcksFlag(boolean flag) {
+//    pendingAcksFlag.set(flag);
+//  }
+//
+//  public boolean getPendingAcksFlag() {
+//    return pendingAcksFlag.get();
+//  }
 
   /**
    * Retrieve the DatanodeStorage instances stored in intermediate storage.
@@ -3004,8 +3026,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param inode The INode in question.
    * @return True if we should cache this INode locally, otherwise returns False.
    */
-  public boolean shouldCacheLocally(INode inode) throws TransactionContextException, StorageException {
+  public boolean shouldCacheLocally(INode inode) {
     return getMappedServerlessFunction(inode) == deploymentNumber;
+  }
+
+  /**
+   * Return True if we should cache this INode locally, otherwise return False.
+   * @param parentINodeId The parent INode ID of the node we're inquiring about.
+   * @return True if we should cache this INode locally, otherwise returns False.
+   */
+  public boolean shouldCacheLocally(long parentINodeId) {
+    return getMappedServerlessFunction(parentINodeId) == deploymentNumber;
   }
 
   /**
@@ -3013,9 +3044,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param inode The INode in question.
    * @return The number of the serverless function responsible for caching this INode.
    */
-  public int getMappedServerlessFunction(INode inode) throws TransactionContextException, StorageException {
-    //return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
-    return consistentHash(inode.getFullPathName().hashCode(), numUniqueServerlessNameNodes);
+  public int getMappedServerlessFunction(INode inode) {
+    return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
+    //return consistentHash(inode.getFullPathName().hashCode(), numUniqueServerlessNameNodes);
+  }
+
+  /**
+   * Get the serverless function number of the NameNode that should cache this INode.
+   * @param parentINodeId The parent INode ID of the node we're inquiring about.
+   * @return The number of the serverless function responsible for caching this INode.
+   */
+  public int getMappedServerlessFunction(long parentINodeId) {
+    return consistentHash(parentINodeId, numUniqueServerlessNameNodes);
   }
 
   /**
@@ -3024,9 +3064,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return The number of the serverless function responsible for caching this file/directory.
    */
   public int getMappedServerlessFunction(String path) throws IOException {
-    //INode inode = getINodeForCache(path);
-    //return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
-    return consistentHash(path.hashCode(), numUniqueServerlessNameNodes);
+    INode inode = getINodeForCache(path);
+    return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
+    //return consistentHash(path.hashCode(), numUniqueServerlessNameNodes);
   }
 
   /**

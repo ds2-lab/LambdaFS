@@ -19,7 +19,7 @@ public class WriteAcknowledgement {
     /**
      * Indicates whether this particular WriteAcknowledgement entry has been acknowledged or not.
      */
-    private final boolean acknowledged;
+    private boolean acknowledged;
 
     /**
      * The time at which the associated write operation began.
@@ -38,9 +38,8 @@ public class WriteAcknowledgement {
     /**
      * Return an instance of this WriteAcknowledgement object with the 'acknowledged' field set to True.
      */
-    public WriteAcknowledgement acknowledge() {
-        return new WriteAcknowledgement(this.nameNodeId, this.deploymentNumber, this.operationId,
-                true, this.timestamp);
+    public void acknowledge() {
+        this.acknowledged = true;
     }
 
     public long getNameNodeId() {

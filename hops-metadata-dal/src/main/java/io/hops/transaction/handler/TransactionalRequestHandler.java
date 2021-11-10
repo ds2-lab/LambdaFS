@@ -152,7 +152,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         // If there is a new write operation that has occurred after ours, we do not want to flip the `INV` flags back
         // to false, as that will screw up the next write operation. So, our goal is to check for the existence of
         // a later write and, if one exists, make sure all of our nodes have their `INV` flags set to true.
-        checkAndHandleNewConcurrentWrites(txStartTime);
+        // checkAndHandleNewConcurrentWrites(txStartTime);
 
         EntityManager.commit(transactionLocks);
         committed = true;
@@ -183,7 +183,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         }
 
         requestHandlerLOG.debug("Handling pending ACKs now...");
-        handlePendingAcks();
+        // handlePendingAcks();
       } catch (Throwable t) {
         boolean suppressException = suppressFailureMsg(t, tryCount);
         if (!suppressException ) {
@@ -270,19 +270,19 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
   
   protected abstract TransactionLockAcquirer newLockAcquirer();
 
-  /**
-   * This should be called after locks are acquired for the transaction. This function checks for pending
-   * ACKs in the `write_acknowledgements` table whose associated TX times are >= the current TX being performed
-   * locally. Specifically, this checks for pending ACKs whose target NN ID is the local NN's ID (i.e., the local
-   * ServerlessNameNode instance running in this container) and whose TX times satisfy the aforementioned constraint.
-   *
-   * If there are any such pending ACKs, we do NOT acknowledge them yet. Instead, for each ACK entry whose target NN ID
-   * is that of our local NN instance and whose write time is >= the local TX start time, we ensure the associated
-   * INode has `INV` set to true.
-   *
-   * @param txStartTime The time at which this transaction began.
-   */
-  protected abstract void checkAndHandleNewConcurrentWrites(long txStartTime) throws StorageException;
+//  /**
+//   * This should be called after locks are acquired for the transaction. This function checks for pending
+//   * ACKs in the `write_acknowledgements` table whose associated TX times are >= the current TX being performed
+//   * locally. Specifically, this checks for pending ACKs whose target NN ID is the local NN's ID (i.e., the local
+//   * ServerlessNameNode instance running in this container) and whose TX times satisfy the aforementioned constraint.
+//   *
+//   * If there are any such pending ACKs, we do NOT acknowledge them yet. Instead, for each ACK entry whose target NN ID
+//   * is that of our local NN instance and whose write time is >= the local TX start time, we ensure the associated
+//   * INode has `INV` set to true.
+//   *
+//   * @param txStartTime The time at which this transaction began.
+//   */
+//  protected abstract void checkAndHandleNewConcurrentWrites(long txStartTime) throws StorageException;
 
   @Override
   public TransactionalRequestHandler setParams(Object... params) {

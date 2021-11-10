@@ -80,9 +80,9 @@ public class WriteAcknowledgementClusterJ
     }
 
     @Override
-    public Map<Long, Long> checkForPendingAcks(long nameNodeId) throws StorageException {
+    public List<WriteAcknowledgement> getPendingAcks(long nameNodeId) throws StorageException {
         LOG.debug("CHECK PENDING ACKS - ID=" + nameNodeId);
-        HashMap<Long, Long> mapping = new HashMap<>();
+        List<WriteAcknowledgement> pendingAcks = new ArrayList<>();
         HopsSession session = connector.obtainSession();
 
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
@@ -99,17 +99,18 @@ public class WriteAcknowledgementClusterJ
         List<WriteAcknowledgementDTO> dtoResults = query.getResultList();
 
         for (WriteAcknowledgementDTO dto : dtoResults) {
-            mapping.put(dto.getOperationId(), dto.getTimestamp());
+            if (!NdbBoolean.convert(dto.getAcknowledged()))
+                pendingAcks.add(convert(dto));
         }
 
-        return mapping;
+        return pendingAcks;
     }
 
     // Only returns ACKs with an associated TX start-time >= the 'minTime' parameter.
     @Override
-    public Map<Long, WriteAcknowledgement> checkForPendingAcks(long nameNodeId, long minTime) throws StorageException {
+    public List<WriteAcknowledgement> getPendingAcks(long nameNodeId, long minTime) throws StorageException {
         LOG.debug("CHECK PENDING ACKS - ID=" + nameNodeId + ", MinTime=" + minTime);
-        HashMap<Long, WriteAcknowledgement> mapping = new HashMap<>();
+        List<WriteAcknowledgement> pendingAcks = new ArrayList<>();
         HopsSession session = connector.obtainSession();
 
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
@@ -131,18 +132,20 @@ public class WriteAcknowledgementClusterJ
         // There should just be one WriteAcknowledgementDTO object per operation since all of these ACKs
         // are for our local NN, and each operation would require an ACK from our local NN at most once.
         for (WriteAcknowledgementDTO dto : dtoResults) {
-            mapping.put(dto.getOperationId(), convert(dto));
+            if (!NdbBoolean.convert(dto.getAcknowledged()))
+                pendingAcks.add(convert(dto));
         }
 
-        return mapping;
+        return pendingAcks;
     }
 
     @Override
     public void acknowledge(WriteAcknowledgement writeAcknowledgement) throws StorageException {
         LOG.debug("ACK " + writeAcknowledgement.toString());
 
-        if (!writeAcknowledgement.getAcknowledged())
-            throw new IllegalArgumentException("The 'acknowledged' field of the acknowledgement should be true.");
+//        if (!writeAcknowledgement.getAcknowledged())
+//            throw new IllegalArgumentException("The 'acknowledged' field of the acknowledgement should be true.");
+        writeAcknowledgement.acknowledge();
 
         HopsSession session = connector.obtainSession();
 
