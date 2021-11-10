@@ -97,7 +97,8 @@ public class SyncZKClient implements ZKClient {
         // These are reasonable arguments for the ExponentialBackoffRetry. The first
         // retry will wait 1 second - the second will wait up to 2 seconds - the
         // third will wait up to 4 seconds.
-        ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 3);
+        // TODO: Make these configurable?
+        ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 5);
 
         return CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
     }

@@ -1021,7 +1021,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
             .setInitialIntervalMillis(100)
             .setMaximumIntervalMillis(7500)
             .setMultiplier(2.0)
-            .setRandomizationFactor(1.5)
+            .setRandomizationFactor(0.5)
             .build();
     List<WriteAcknowledgement> pendingAcks = null;  // This variable holds the result of the operation.
 

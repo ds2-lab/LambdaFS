@@ -5,6 +5,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.NullResult;
+import org.apache.hadoop.util.BackOff;
+import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
@@ -232,26 +234,34 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         //LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
         //LOG.debug("Request URI/URL: " + request.getURI().toURL());
 
-        int currentNumTries = 0;
+        ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
+                .setMaximumRetries(maxHttpRetries)
+                .setInitialIntervalMillis(100)
+                .setMaximumIntervalMillis(30000)
+                .setMultiplier(2)
+                .setRandomizationFactor(0.5)
+                .build();
+
+        long backoffInterval = exponentialBackoff.getBackOffInMillis();
 
         do {
             LOG.info("Invoking NameNode " + targetDeployment + " (op=" + operationName + "), attempt "
-                    + (currentNumTries + 1) + "/" + (maxHttpRetries + 1) + ".");
+                    + (exponentialBackoff.getNumberOfRetries() + 1) + "/" + (maxHttpRetries + 1) + ".");
 
             HttpResponse httpResponse;
             try {
                 httpResponse = httpClient.execute(request);
-                LOG.debug("Received HTTP response on attempt " + (currentNumTries + 1) + "!");
+                LOG.debug("Received HTTP response on attempt " + (exponentialBackoff.getNumberOfRetries() + 1) + "!");
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
-                LOG.debug("Attempt " + (currentNumTries + 1) + " to invoke NameNode " + functionUri +
-                        " timed out.");
-                doExponentialBackoff(currentNumTries);
-                currentNumTries++;
+                LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries() + 1) + " to invoke NameNode " +
+                        functionUri + " timed out.");
+                doSleep(backoffInterval);
+                backoffInterval = exponentialBackoff.getBackOffInMillis();
                 continue;
             } catch (IOException ex) {
                 LOG.error("Encountered IOException while invoking NN via HTTP:", ex);
-                doExponentialBackoff(currentNumTries);
-                currentNumTries++;
+                doSleep(backoffInterval);
+                backoffInterval = exponentialBackoff.getBackOffInMillis();
                 continue;
             } catch (Exception ex) {
                 LOG.error("Unexpected error encountered while invoking NN via HTTP:", ex);
@@ -267,17 +277,16 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             // yet, but if you try again a few seconds later, then the request will get through.
             if (responseCode >= 400 && responseCode <= 599) {
                 LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-                        (currentNumTries + 1) + "/" + (maxHttpRetries) + ".");
+                        (exponentialBackoff.getNumberOfRetries() + 1) + "/" + (maxHttpRetries) + ".");
 
-                doExponentialBackoff(currentNumTries);
-
-                currentNumTries++;
+                doSleep(backoffInterval);
+                backoffInterval = exponentialBackoff.getBackOffInMillis();
                 continue;
             }
 
             LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName + ").");
             return processHttpResponse(httpResponse);
-        } while (currentNumTries <= maxHttpRetries);
+        } while (backoffInterval != -1);
 
         throw new IOException("The file system operation could not be completed. " +
                 "Failed to invoke a Serverless NameNode after " + maxHttpRetries + " attempts.");

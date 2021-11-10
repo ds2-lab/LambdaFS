@@ -370,38 +370,50 @@ public abstract class ServerlessInvokerBase<T> {
         return configured;
     }
 
-    /**
-     * Perform the sleep associated with exponential backoff.
-     *
-     * This checks the value of currentNumTries and compares it against maxHttpRetries.
-     * If we're out of tries, then we do not bother sleeping. Instead, we just return immediately.
-     *
-     * @param currentNumTries How many times we've attempted a request thus far.
-     */
-    protected void doExponentialBackoff(int currentNumTries) {
-        // Only bother sleeping (exponential backoff) if we're going to try at least one more time.
-        if ((currentNumTries + 1) > maxHttpRetries)
-            return;
+//    /**
+//     * Perform the sleep associated with exponential backoff.
+//     *
+//     * This checks the value of currentNumTries and compares it against maxHttpRetries.
+//     * If we're out of tries, then we do not bother sleeping. Instead, we just return immediately.
+//     *
+//     * @param currentNumTries How many times we've attempted a request thus far.
+//     */
+//    protected void doExponentialBackoff(int currentNumTries) {
+//        // Only bother sleeping (exponential backoff) if we're going to try at least one more time.
+//        if ((currentNumTries + 1) > maxHttpRetries)
+//            return;
+//
+//        long sleepInterval = getExponentialBackoffInterval(currentNumTries);
+//        LOG.debug("Sleeping for " + sleepInterval + " milliseconds before issuing another request...");
+//        try {
+//            Thread.sleep(sleepInterval);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
-        long sleepInterval = getExponentialBackoffInterval(currentNumTries);
-        LOG.debug("Sleeping for " + sleepInterval + " milliseconds before issuing another request...");
+    /**
+     * Hide try-catch for Thread.sleep().
+     * @param backoffInterval How long to sleep in milliseconds.
+     */
+    protected void doSleep(long backoffInterval) {
         try {
-            Thread.sleep(sleepInterval);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.sleep(backoffInterval);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
         }
     }
 
-    /**
-     * Return the time to wait, in milliseconds, given the current number of attempts.
-     * @param n The current number of attempts.
-     * @return The time to wait, in milliseconds, before attempting another request.
-     */
-    private long getExponentialBackoffInterval(int n) {
-        double interval = Math.pow(2, n);
-        int jitter = random.nextInt( 1000);
-        return (long)Math.min(interval + jitter, maxBackoffMilliseconds);
-    }
+//    /**
+//     * Return the time to wait, in milliseconds, given the current number of attempts.
+//     * @param n The current number of attempts.
+//     * @return The time to wait, in milliseconds, before attempting another request.
+//     */
+//    private long getExponentialBackoffInterval(int n) {
+//        double interval = Math.pow(2, n);
+//        int jitter = random.nextInt( 1000);
+//        return (long)Math.min(interval + jitter, maxBackoffMilliseconds);
+//    }
 
     /**
      * There are some arguments that will be included every single time with the same values. This function
