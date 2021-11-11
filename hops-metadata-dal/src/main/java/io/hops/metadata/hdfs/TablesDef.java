@@ -119,7 +119,7 @@ public class TablesDef {
     String HEADER = "header";
     String SYMLINK = "symlink";
     String QUOTA_ENABLED = "quota_enabled";
-    String INVALIDATED = "inv";
+    //String INVALIDATED = "inv";
     String UNDER_CONSTRUCTION = "under_construction";
     String SUBTREE_LOCKED = "subtree_locked";
     String SUBTREE_LOCK_OWNER = "subtree_lock_owner";

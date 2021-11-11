@@ -542,10 +542,10 @@ public abstract class HopsTransactionalRequestHandler
           Collection<INode> invalidatedINodes) throws StorageException {
     requestHandlerLOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations =-----=-----=");
 
-    INodeDataAccess<INode> dataAccess =
-            (INodeDataAccess) HdfsStorageFactory.getDataAccess(INodeDataAccess.class);
+//    INodeDataAccess<INode> dataAccess =
+//            (INodeDataAccess) HdfsStorageFactory.getDataAccess(INodeDataAccess.class);
     long[] ids = invalidatedINodes.stream().mapToLong(INode::getId).toArray();
-    dataAccess.setInvalidFlag(ids, true);
+//    dataAccess.setInvalidFlag(ids, true);
   }
 
   public void setUp() throws IOException {

@@ -62,15 +62,15 @@ public class INodeDALAdaptor
     return convertDALtoHDFS(dataAccess.findInodeByIdFTIS(inodeId));
   }
 
-  @Override
-  public void setInvalidFlag(long inodeId, boolean flag) throws StorageException {
-    dataAccess.setInvalidFlag(inodeId, flag);
-  }
+//  @Override
+//  public void setInvalidFlag(long inodeId, boolean flag) throws StorageException {
+//    dataAccess.setInvalidFlag(inodeId, flag);
+//  }
 
-  @Override
-  public void setInvalidFlag(long[] inodeIds, boolean flag) throws StorageException {
-    dataAccess.setInvalidFlag(inodeIds, flag);
-  }
+//  @Override
+//  public void setInvalidFlag(long[] inodeIds, boolean flag) throws StorageException {
+//    dataAccess.setInvalidFlag(inodeIds, flag);
+//  }
 
   @Override
   public Collection<org.apache.hadoop.hdfs.server.namenode.INode> findInodesByIdsFTIS(long[] inodeId) throws

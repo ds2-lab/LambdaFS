@@ -162,9 +162,9 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
     byte getFileStoredInDd();
     void setFileStoredInDd(byte isFileStoredInDB);
 
-    @Column(name = INVALIDATED)
-    byte getInvalidated();
-    void setInvalidated(byte invalidated);
+//    @Column(name = INVALIDATED)
+//    byte getInvalidated();
+//    void setInvalidated(byte invalidated);
 
     @Column(name = LOGICAL_TIME)
     int getLogicalTime();
@@ -467,8 +467,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
             inode.getStoragePolicy(),
             inode.getNumAces(),
             inode.getNumUserXAttrs(),
-            inode.getNumSysXAttrs(),
-            NdbBoolean.convert(inode.getInvalidated()));
+            inode.getNumSysXAttrs());
   }
 //  public List<ProjectedINode> findInodesForSubtreeOperationsWithWriteLockFTIS(
 //      int parentId) throws StorageException {

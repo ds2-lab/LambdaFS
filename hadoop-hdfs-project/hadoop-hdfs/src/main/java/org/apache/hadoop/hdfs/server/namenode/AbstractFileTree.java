@@ -793,8 +793,7 @@ abstract class AbstractFileTree {
         from.getLocalStoragePolicyID(),
         from.getNumAces(),
         from.getNumUserXAttrs(),
-        from.getNumSysXAttrs(),
-        from.getInvalidated());
+        from.getNumSysXAttrs());
     return result;
   }
 }

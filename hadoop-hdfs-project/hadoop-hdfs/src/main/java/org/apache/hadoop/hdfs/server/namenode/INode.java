@@ -980,7 +980,7 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
     }
   }
 
-  public abstract boolean getInvalidated();
+//  public abstract boolean getInvalidated();
 
   public abstract long getHeader();
 

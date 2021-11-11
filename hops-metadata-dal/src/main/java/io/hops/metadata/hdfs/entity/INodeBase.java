@@ -38,7 +38,6 @@ public class INodeBase {
   protected int numAces;
   protected byte numUserXAttrs;
   protected byte numSysXAttrs;
-  protected boolean invalidated;
   
   public INodeBase(){}
 
@@ -46,7 +45,7 @@ public class INodeBase {
       int groupID, short permission, long header, boolean dirWithQuota,
       boolean underConstruction, boolean subtreeLocked, long
       subtreeLockOwner, long fileSize, int logicalTime, byte storagePolicyID,
-      int numAces, byte numUserXAttrs, byte numSysXAttrs, boolean invalidated) {
+      int numAces, byte numUserXAttrs, byte numSysXAttrs) {
     this.id = id;
     this.parentId = parentId;
     this.isDir = isDir;
@@ -66,12 +65,11 @@ public class INodeBase {
     this.numAces = numAces;
     this.numUserXAttrs = numUserXAttrs;
     this.numSysXAttrs = numSysXAttrs;
-    this.invalidated = invalidated;
   }
 
-  public void setInvalidated(boolean invalidated) { this.invalidated = invalidated; }
-
-  public boolean getInvalidated() { return this.invalidated; }
+//  public void setInvalidated(boolean invalidated) { this.invalidated = invalidated; }
+//
+//  public boolean getInvalidated() { return this.invalidated; }
 
   public long getId() {
     return id;
