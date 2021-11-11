@@ -7,7 +7,7 @@ public class Invalidation {
     /**
      * INode ID.
      */
-    private final int id;
+    private final int inodeId;
 
     /**
      * Parent INode ID.
@@ -30,8 +30,8 @@ public class Invalidation {
      */
     private final long operationId;
 
-    public Invalidation(int id, int parentId, long leaderNameNodeId, long txStartTime, long operationId) {
-        this.id = id;
+    public Invalidation(int inodeId, int parentId, long leaderNameNodeId, long txStartTime, long operationId) {
+        this.inodeId = inodeId;
         this.parentId = parentId;
         this.leaderNameNodeId = leaderNameNodeId;
         this.txStartTime = txStartTime;
@@ -54,7 +54,7 @@ public class Invalidation {
         return parentId;
     }
 
-    public int getId() {
-        return id;
+    public int getINodeId() {
+        return inodeId;
     }
 }

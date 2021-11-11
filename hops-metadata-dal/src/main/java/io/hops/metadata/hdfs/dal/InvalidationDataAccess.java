@@ -13,51 +13,53 @@ public interface InvalidationDataAccess<T> extends EntityDataAccess {
     /**
      * Store the given invalidation instance in intermediate storage.
      * @param invalidation The invalidation instance to add.
+     * @param deploymentNumber The deployment number of the NameNodes we're working with.
      */
-    void addInvalidation(T invalidation) throws StorageException;
+    void addInvalidation(T invalidation, int deploymentNumber) throws StorageException;
 
     /**
      * Store the given invalidation instances in intermediate storage.
      * @param invalidations The invalidation instances to add.
+     * @param deploymentNumber The deployment number of the NameNodes we're working with.
      */
-    void addInvalidations(Collection<T> invalidations) throws StorageException;
+    void addInvalidations(Collection<T> invalidations, int deploymentNumber) throws StorageException;
 
     /**
      * Store the given invalidation instances in intermediate storage.
      * @param invalidations The invalidation instances to add.
+     * @param deploymentNumber The deployment number of the NameNodes we're working with.
      */
-    void addInvalidations(T[] invalidations) throws StorageException;
+    void addInvalidations(T[] invalidations, int deploymentNumber) throws StorageException;
 
     /**
      * Retrieve all invalidations associated with a particular leader/follower NameNode.
-     * The specified ID should either be for a Leader NN or a follower NN. Whether it is for a leader or a
-     * follower is specified with the boolean parameter.
      *
-     * @param nameNodeId The ID of the NameNode in question.
-     * @param idIsForTarget If true, then the 'nameNodeId' parameter is taken to be for a target/recipient NN (the
-     *                      NN that is supposed to ACK the entry.) If false, then the 'nameNodeId' parameter taken
-     *                      to specify the leader NN (the NN that added the entries to intermediate storage).
+     * @param inodeId The ID of the INode that got invalidated.
+     * @param deploymentNumber The deployment number of the NameNodes we're working with.
      */
-    List<T> getInvalidations(long nameNodeId, boolean idIsForTarget) throws StorageException;
+    List<T> getInvalidationsForINode(long inodeId, int deploymentNumber) throws StorageException;
 
     /**
      * Remove some invalidations from intermediate storage.
      *
      * @param invalidations The invalidations to delete from intermediate storage.
+     * @param deploymentNumber The deployment number of the NameNodes we're working with.
      */
-    void deleteInvalidations(Collection<T> invalidations) throws StorageException;
+    void deleteInvalidations(Collection<T> invalidations, int deploymentNumber) throws StorageException;
 
     /**
      * Remove some invalidations from intermediate storage.
      *
      * @param invalidations The invalidations to delete from intermediate storage.
+     * @param deploymentNumber The deployment number of the NameNodes we're working with.
      */
-    void deleteInvalidations(T[] invalidations) throws StorageException;
+    void deleteInvalidations(T[] invalidations, int deploymentNumber) throws StorageException;
 
     /**
      * Remove an invalidation from intermediate storage.
      *
      * @param invalidation The invalidation to delete from intermediate storage.
+     * @param deploymentNumber The deployment number of the NameNodes we're working with.
      */
-    void deleteInvalidations(T invalidation) throws StorageException;
+    void deleteInvalidation(T invalidation, int deploymentNumber) throws StorageException;
 }

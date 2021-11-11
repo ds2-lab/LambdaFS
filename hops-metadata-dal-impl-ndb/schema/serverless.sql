@@ -83,6 +83,7 @@ CREATE TABLE `invalidations_deployment0` (
     `tx_start` bigint(20) NOT NULL,     -- The time at which the associated transaction began.
     `op_id` bigint(20) NOT NULL,        -- Unique identifier of the associated write operation/transaction.
     PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `invalidations_deployment1` (
@@ -92,6 +93,7 @@ CREATE TABLE `invalidations_deployment1` (
     `tx_start` bigint(20) NOT NULL,     -- The time at which the associated transaction began.
     `op_id` bigint(20) NOT NULL,        -- Unique identifier of the associated write operation/transaction.
     PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `invalidations_deployment2` (
@@ -101,6 +103,7 @@ CREATE TABLE `invalidations_deployment2` (
     `tx_start` bigint(20) NOT NULL,     -- The time at which the associated transaction began.
     `op_id` bigint(20) NOT NULL,        -- Unique identifier of the associated write operation/transaction.
     PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 ----------------------------------
@@ -114,7 +117,8 @@ CREATE TABLE `write_acks_deployment0` (
     `op_id` bigint(20) NOT NULL,                      -- Unique identifier of the write operation.
     `timestamp` bigint(20) NOT NULL,                  -- The time at which this write operation began.
     `leader_id` bigint(20) NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
-    PRIMARY KEY (`namenode_id`, `op_id`)
+    PRIMARY KEY (`namenode_id`, `op_id`, `leader_id`),
+    KEY no_leader (`namenode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `write_acks_deployment1` (
@@ -124,7 +128,8 @@ CREATE TABLE `write_acks_deployment1` (
     `op_id` bigint(20) NOT NULL,                      -- Unique identifier of the write operation.
     `timestamp` bigint(20) NOT NULL,                  -- The time at which this write operation began.
     `leader_id` bigint(20) NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
-    PRIMARY KEY (`namenode_id`, `op_id`)
+    PRIMARY KEY (`namenode_id`, `op_id`, `leader_id`),
+    KEY no_leader (`namenode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `write_acks_deployment2` (
@@ -134,5 +139,6 @@ CREATE TABLE `write_acks_deployment2` (
     `op_id` bigint(20) NOT NULL,                      -- Unique identifier of the write operation.
     `timestamp` bigint(20) NOT NULL,                  -- The time at which this write operation began.
     `leader_id` bigint(20) NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
-    PRIMARY KEY (`namenode_id`, `op_id`)
+    PRIMARY KEY (`namenode_id`, `op_id`, `leader_id`),
+    KEY no_leader (`namenode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;

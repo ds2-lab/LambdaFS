@@ -27,6 +27,7 @@ public interface WriteAcknowledgementDTO extends TablesDef.WriteAcknowledgements
     public long getTimestamp();
     public void setTimestamp(long timestamp);
 
+    @PrimaryKey
     @Column(name = LEADER_ID)
     public long getLeaderId();
     public void setLeaderId(long leaderId);
