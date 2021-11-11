@@ -986,26 +986,18 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       LOG.error("FSNamesystem received unexpected event from NDB: " + eventName);
     }
 
-    long id = eventOperation.getLongPostValue(TablesDef.INodeTableDef.ID);
-    long parentId = eventOperation.getLongPostValue(TablesDef.INodeTableDef.PARENT_ID);
+    long inodeId = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.INODE_ID);
+    long parentId = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.PARENT_ID);
+    long leaderNameNodeId = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.LEADER_ID);
+    long txStartTime = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.TX_START);
+    long operationId = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.OPERATION_ID);
 
-    LOG.debug("==== Received event " + eventName + " from NDB for INode " + id + " ====");
-    LOG.debug("INode ID: " + id + ", Parent INode ID: " + parentId);
+    LOG.debug("|===-===-===-===| RECEIVED INVALIDATION |===-===-===-===|");
+    String format = "%-12s %-12s %-21s %-21s %-21s";
+    LOG.debug(String.format(format, "INode ID", "Parent ID", "Leader NN ID", "TX Start Time", "Op ID"));
+    LOG.debug(String.format(format, inodeId, parentId, leaderNameNodeId, txStartTime, operationId));
 
-    // TODO: If we cache this INode and the 'INV' flag is set to true, then we need to check for ACKs.
-    //       However, if we are leading a transaction ourselves, we only ACK if the write operation started
-    //       BEFORE ours. If it started after ours, we need to finish ours first.
-
-    int targetDeployment = getMappedServerlessFunction(parentId);
-
-    // We only care if the event is about an INode that is mapped to our deployment.
-    boolean shouldIgnoreEvent = (targetDeployment == serverlessNameNode.getDeploymentNumber());
-    if (shouldIgnoreEvent) {
-      LOG.debug("Ignoring event for INode " + id + ", parentId=" + parentId + " (target deployment = " +
-              targetDeployment + ").");
-    }
-
-    metadataCache.invalidateKey(id);
+    metadataCache.invalidateKey(inodeId);
 
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
             (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
@@ -1019,13 +1011,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
             .build();
     List<WriteAcknowledgement> pendingAcks = null;  // This variable holds the result of the operation.
 
+    long nameNodeId = serverlessNameNode.getId();
+    int deploymentNumber = serverlessNameNode.getDeploymentNumber();
     while (pendingAcks == null) {
       try {
-        pendingAcks = writeAcknowledgementDataAccess.getPendingAcks(
-                serverlessNameNode.getId(), serverlessNameNode.getDeploymentNumber());
+        pendingAcks = writeAcknowledgementDataAccess.getPendingAcks(nameNodeId, deploymentNumber);
       } catch (StorageException e) {
-        LOG.error("Encountered exception while checking for pending ACKs for NameNode "
-                + serverlessNameNode.getId() + ":", e);
+        LOG.error("Encountered exception while checking for pending ACKs for NameNode " + nameNodeId + ":", e);
 
         long backoffInterval = exponentialBackOff.getBackOffInMillis();
         if (backoffInterval == -1) {
@@ -1042,7 +1034,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
     while (!success) {
       try {
-        writeAcknowledgementDataAccess.acknowledge(pendingAcks);
+        writeAcknowledgementDataAccess.acknowledge(pendingAcks, deploymentNumber);
         success = true;
       } catch (StorageException e) {
         LOG.error("Encountered exception while trying to acknowledge pending ACKs for NameNode "
