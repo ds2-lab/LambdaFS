@@ -21,7 +21,9 @@ import io.hops.leader_election.node.ActiveNode;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.hdfs.dal.INodeDataAccess;
+import io.hops.metadata.hdfs.dal.InvalidationDataAccess;
 import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
+import io.hops.metadata.hdfs.entity.Invalidation;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.TransactionInfo;
@@ -185,33 +187,32 @@ public abstract class HopsTransactionalRequestHandler
    * @return True if the transaction can safely proceed, otherwise false.
    */
   public boolean doConsistencyProtocol(EntityContext<?> entityContext, long txStartTime) throws IOException {
-  //// // // // // // // // // // ////
-  // CURRENT CONSISTENCY PROTOCOL   //
-  //// // // // // // // // // // ////
-  //
-  // TERMINOLOGY:
-  // - Leader NameNode: The NameNode performing the write operation.
-  // - Follower NameNode: NameNode instance from the same deployment as the Leader NameNode.
-  //
-  // The updated consistency protocol for Serverless NameNodes is as follows:
-  // (1) The Leader NN adds N-1 un-ACK'd records to the "ACKs" table, where N is the number of nodes in the Leader's deployment.
-  //     (The Leader adds N-1 as it does not need to add a record for itself.)
-  // (2) The Leader NN begins listening for changes in group membership from ZooKeeper.
-  //     The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly. We
-  //     need to subscribe first to ensure we receive notifications from follower NNs ACK'ing the entries.
-  // (3) The leader sets the INV flag of the target INode(s) to 1 (i.e., true), thereby triggering a round of INVs
-  //     from intermediate storage (NDB).
-  // (4) Follower NNs will ACK their entry in the ACKs table upon receiving the INV from intermediate storage (NDB).
-  //     The follower will also invalidate its cache at this point, thereby readying itself for the upcoming write.
-  // (5) The Leader listens for updates on the ACK table, waiting for all entries to be ACK'd.
-  //     If there are any NN failures during this phase, the Leader will detect them via ZK. The Leader does not
-  //     need ACKs from failed NNs, as they invalidate their cache upon returning.
-  // (6) Once all the "ACK" table entries added by the Leader have been ACK'd by followers, the Leader will check to
-  //     see if there are any new, concurrent write operations with a larger timestamp. If so, the Leader must
-  //     first finish its own write operation BEFORE submitting any ACKs for those new writes. Then, the leader can ACK
-  //     any new write operations that may be waiting.
-  //
-  //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
+    //// // // // // // // // // // ////
+    // CURRENT CONSISTENCY PROTOCOL   //
+    //// // // // // // // // // // ////
+    //
+    // TERMINOLOGY:
+    // - Leader NameNode: The NameNode performing the write operation.
+    // - Follower NameNode: NameNode instance from the same deployment as the Leader NameNode.
+    //
+    // The updated consistency protocol for Serverless NameNodes is as follows:
+    // (1) The Leader NN adds N-1 un-ACK'd records to the "ACKs" table of the Leader's deployment, where N is the
+    //     number of nodes in the Leader's deployment. (N-1 as it does not need to add a record for itself.)
+    // (2) The Leader NN begins listening for changes in group membership from ZooKeeper.
+    //     The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly. We
+    //     need to subscribe first to ensure we receive notifications from follower NNs ACK'ing the entries.
+    // (3) The leader issues one INV per modified INode to the target deployment's INV table.
+    // (4) Follower NNs will ACK their entry in the ACKs table upon receiving the INV from intermediate storage (NDB).
+    //     The follower will also invalidate its cache at this point, thereby readying itself for the upcoming write.
+    // (5) The Leader listens for updates on the ACK table, waiting for all entries to be ACK'd.
+    //     If there are any NN failures during this phase, the Leader will detect them via ZK. The Leader does not
+    //     need ACKs from failed NNs, as they invalidate their cache upon returning.
+    // (6) Once all the "ACK" table entries added by the Leader have been ACK'd by followers, the Leader will check to
+    //     see if there are any new, concurrent write operations with a larger timestamp. If so, the Leader must
+    //     first finish its own write operation BEFORE submitting any ACKs for those new writes. Then, the leader can
+    //     ACK any new write operations that may be waiting.
+    //
+    //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
 
     if (!(entityContext instanceof INodeContext))
       throw new IllegalArgumentException("Consistency protocol requires an instance of INodeContext. " +
@@ -242,6 +243,13 @@ public abstract class HopsTransactionalRequestHandler
 
     serverlessNameNodeInstance = serverlessNameNode;
 
+    // TODO: Implement subtree protocol. Required modifications for basic version involve
+    //       having the Leader NN join the ZK groups of whatever deployments it is modifying
+    //       and subscribing to ACK events on the tables for each of the other deployments.
+    //       It's basically just the "guest NN optimization" (where NN joins single other deployment
+    //       to help the other deployment serve reads), except here the NN joins possibly many other deployments.
+    //       For now, subtree operations will produce errors/fail.
+
     // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
     // If we find that we are about to modify an INode for which we are not authorized, throw an exception.
     for (INode invalidatedINode : invalidatedINodes) {
@@ -267,8 +275,12 @@ public abstract class HopsTransactionalRequestHandler
     // Technically this isn't true yet, but we'll need to unsubscribe after the call to `subscribeToAckEvents()`.
     boolean needToUnsubscribe = true;
 
-    // Carry out the consistency protocol.
-    // STEP 1
+    // ======================================
+    // === EXECUTING CONSISTENCY PROTOCOL ===
+    // ======================================
+    //
+    //
+    // =============== STEP 1 ===============
     List<WriteAcknowledgement> writeAcknowledgements;
     try {
       writeAcknowledgements = addAckTableRecords(serverlessNameNode, txStartTime);
@@ -278,11 +290,11 @@ public abstract class HopsTransactionalRequestHandler
       return false;
     }
 
-    // STEP 2
+    // =============== STEP 2 ===============
     subscribeToAckEvents(serverlessNameNode);
 
-    // STEP 3
-    issueInitialInvalidations(invalidatedINodes);
+    // =============== STEP 3 ===============
+    issueInitialInvalidations(invalidatedINodes, serverlessNameNode);
 
     // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
     if (writeAcknowledgements.size() == 0) {
@@ -554,15 +566,25 @@ public abstract class HopsTransactionalRequestHandler
    *    INVs from intermediate storage (NDB).
    *
    * @param invalidatedINodes The INodes involved in this write operation. We must invalidate these INodes.
+   * @param serverlessNameNode The local serverless name node.
    */
-  private void issueInitialInvalidations(
-          Collection<INode> invalidatedINodes) throws StorageException {
+  private void issueInitialInvalidations(Collection<INode> invalidatedINodes, ServerlessNameNode serverlessNameNode,
+                                         long txStartTime, long operationId)
+          throws StorageException {
     requestHandlerLOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations =-----=-----=");
 
-//    INodeDataAccess<INode> dataAccess =
-//            (INodeDataAccess) HdfsStorageFactory.getDataAccess(INodeDataAccess.class);
-    long[] ids = invalidatedINodes.stream().mapToLong(INode::getId).toArray();
-//    dataAccess.setInvalidFlag(ids, true);
+    InvalidationDataAccess<Invalidation> dataAccess =
+            (InvalidationDataAccess<Invalidation>)HdfsStorageFactory.getDataAccess(InvalidationDataAccess.class);
+    // long[] ids = invalidatedINodes.stream().mapToLong(INode::getId).toArray();
+
+    List<Invalidation> invalidations = new ArrayList<>();
+    for (INode invalidatedINode : invalidatedINodes) {
+      // int inodeId, int parentId, long leaderNameNodeId, long txStartTime, long operationId
+      invalidations.add(new Invalidation(invalidatedINode.getId(), invalidatedINode.getParentId(),
+              serverlessNameNode.getId(), txStartTime, operationId));
+    }
+
+    dataAccess.addInvalidations(invalidations, serverlessNameNode.getDeploymentNumber());
   }
 
   public void setUp() throws IOException {

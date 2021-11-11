@@ -858,8 +858,8 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
             .getFileStoredInDd()), persistable.getLogicalTime(),
             persistable.getStoragePolicy(), persistable.getChildrenNum(),
             persistable.getNumAces(), persistable.getNumUserXAttrs(),
-            persistable.getNumSysXAttrs(),
-            NdbBoolean.convert(persistable.getInvalidated()));
+            persistable.getNumSysXAttrs());
+            //NdbBoolean.convert(persistable.getInvalidated()));
 
     return node;
   }
@@ -893,7 +893,7 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
     persistable.setNumAces(inode.getNumAces());
     persistable.setNumUserXAttrs(inode.getNumUserXAttrs());
     persistable.setNumSysXAttrs(inode.getNumSysXAttrs());
-    persistable.setInvalidated(NdbBoolean.convert(inode.getInvalidated()));
+    //persistable.setInvalidated(NdbBoolean.convert(inode.getInvalidated()));
   }
 
   private void explain(HopsQuery<InodeDTO> query) {

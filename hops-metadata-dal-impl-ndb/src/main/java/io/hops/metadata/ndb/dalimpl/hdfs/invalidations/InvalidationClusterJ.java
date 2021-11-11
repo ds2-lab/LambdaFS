@@ -26,7 +26,7 @@ public class InvalidationClusterJ implements
     private static final Log LOG = LogFactory.getLog(InvalidationClusterJ.class);
     private final ClusterjConnector connector = ClusterjConnector.getInstance();
 
-    /**
+    /**+
      * Static list containing all the ClusterJ @PersistenceCapable interfaces, one for each deployment.
      */
     private static final List<Class<? extends InvalidationDTO>> targetDeployments = Arrays.asList(

@@ -7,12 +7,12 @@ import io.hops.metadata.hdfs.TablesDef;
 public interface InvalidationDTO extends TablesDef.InvalidationTablesDef {
     @PrimaryKey
     @Column(name = INODE_ID)
-    public int getINodeId();
-    public void setINodeId(int inodeId);
+    public long getINodeId();
+    public void setINodeId(long inodeId);
 
     @Column(name = PARENT_ID)
-    public int getParentId();
-    public void setParentId(int parentId);
+    public long getParentId();
+    public void setParentId(long parentId);
 
     @PrimaryKey
     @Column(name = LEADER_ID)

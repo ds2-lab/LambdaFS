@@ -7,12 +7,12 @@ public class Invalidation {
     /**
      * INode ID.
      */
-    private final int inodeId;
+    private final long inodeId;
 
     /**
      * Parent INode ID.
      */
-    private final int parentId;
+    private final long parentId;
 
     /**
      * Unique NameNode ID of the "Leader NameNode"; that is, the NameNode that
@@ -30,7 +30,7 @@ public class Invalidation {
      */
     private final long operationId;
 
-    public Invalidation(int inodeId, int parentId, long leaderNameNodeId, long txStartTime, long operationId) {
+    public Invalidation(long inodeId, long parentId, long leaderNameNodeId, long txStartTime, long operationId) {
         this.inodeId = inodeId;
         this.parentId = parentId;
         this.leaderNameNodeId = leaderNameNodeId;
@@ -50,11 +50,11 @@ public class Invalidation {
         return leaderNameNodeId;
     }
 
-    public int getParentId() {
+    public long getParentId() {
         return parentId;
     }
 
-    public int getINodeId() {
+    public long getINodeId() {
         return inodeId;
     }
 }
