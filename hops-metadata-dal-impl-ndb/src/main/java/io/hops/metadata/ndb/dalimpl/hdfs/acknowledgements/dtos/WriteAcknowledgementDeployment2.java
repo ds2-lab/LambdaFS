@@ -7,7 +7,7 @@ import io.hops.metadata.hdfs.TablesDef;
 
 import static io.hops.metadata.hdfs.TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME0;
 
-@PersistenceCapable(table = TABLE_NAME0)
+@PersistenceCapable(table = TABLE_NAME2)
 public interface WriteAcknowledgementDeployment2 extends WriteAcknowledgementDTO {
 
 }

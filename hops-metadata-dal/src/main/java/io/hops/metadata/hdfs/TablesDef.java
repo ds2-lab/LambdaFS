@@ -36,6 +36,7 @@ public class TablesDef {
     String DEPLOYMENT_NUMBER = "deployment_number";
     String ACKNOWLEDGED = "acknowledged";
     String OPERATION_ID = "op_id";
+    String LEADER_ID = "leader_id";
     String TIMESTAMP = "timestamp";
   }
 

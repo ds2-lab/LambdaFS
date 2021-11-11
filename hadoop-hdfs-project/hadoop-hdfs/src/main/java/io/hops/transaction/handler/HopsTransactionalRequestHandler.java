@@ -511,7 +511,7 @@ public abstract class HopsTransactionalRequestHandler
 
       waitingForAcks.add(memberId);
       writeAcknowledgements.add(new WriteAcknowledgement(memberId, serverlessNameNode.getDeploymentNumber(),
-              operationId, false, txStartTime));
+              operationId, false, txStartTime, serverlessNameNode.getId()));
     }
 
     if (writeAcknowledgements.size() > 0) {

@@ -108,28 +108,31 @@ CREATE TABLE `invalidations_deployment2` (
 ----------------------------------
 
 CREATE TABLE `write_acks_deployment0` (
-    `namenode_id` bigint(20) NOT NULL,                -- The ID of the NameNode object.
+    `namenode_id` bigint(20) NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
     `deployment_number` varchar(36) NOT NULL,         -- The name of the serverless function in which the NN is running.
     `acknowledged` tinyint(4) NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
     `op_id` bigint(20) NOT NULL,                      -- Unique identifier of the write operation.
     `timestamp` bigint(20) NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` bigint(20) NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
     PRIMARY KEY (`namenode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `write_acks_deployment1` (
-    `namenode_id` bigint(20) NOT NULL,                -- The ID of the NameNode object.
+    `namenode_id` bigint(20) NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
     `deployment_number` varchar(36) NOT NULL,         -- The name of the serverless function in which the NN is running.
     `acknowledged` tinyint(4) NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
     `op_id` bigint(20) NOT NULL,                      -- Unique identifier of the write operation.
     `timestamp` bigint(20) NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` bigint(20) NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
     PRIMARY KEY (`namenode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `write_acks_deployment2` (
-    `namenode_id` bigint(20) NOT NULL,                -- The ID of the NameNode object.
+    `namenode_id` bigint(20) NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
     `deployment_number` varchar(36) NOT NULL,         -- The name of the serverless function in which the NN is running.
     `acknowledged` tinyint(4) NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
     `op_id` bigint(20) NOT NULL,                      -- Unique identifier of the write operation.
     `timestamp` bigint(20) NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` bigint(20) NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
     PRIMARY KEY (`namenode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;

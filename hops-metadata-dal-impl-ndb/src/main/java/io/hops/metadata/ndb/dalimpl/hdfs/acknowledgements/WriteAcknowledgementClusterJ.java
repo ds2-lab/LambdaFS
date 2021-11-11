@@ -314,8 +314,7 @@ public class WriteAcknowledgementClusterJ
     private WriteAcknowledgement convert(WriteAcknowledgementDTO src) {
         return new WriteAcknowledgement(
                 src.getNameNodeId(), src.getDeploymentNumber(), src.getOperationId(),
-                NdbBoolean.convert(src.getAcknowledged()), src.getTimestamp()
-        );
+                NdbBoolean.convert(src.getAcknowledged()), src.getTimestamp(), src.getLeaderId());
     }
 
     /**

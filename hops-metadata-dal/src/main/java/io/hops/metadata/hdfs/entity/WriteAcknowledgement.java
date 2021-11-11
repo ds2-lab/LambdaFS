@@ -26,13 +26,20 @@ public class WriteAcknowledgement {
      */
     private final long timestamp;
 
+    /**
+     * The ID of the NameNode who created this write ack entry in the first place.
+     * They're the one performing the associated write operation/transaction.
+     */
+    private final long leaderNameNodeId;
+
     public WriteAcknowledgement(long nameNodeId, int deploymentNumber, long operationId,
-                                boolean acknowledged, long timestamp) {
+                                boolean acknowledged, long timestamp, long leaderNameNodeId) {
         this.nameNodeId = nameNodeId;
         this.deploymentNumber = deploymentNumber;
         this.operationId = operationId;
         this.acknowledged = acknowledged;
         this.timestamp = timestamp;
+        this.leaderNameNodeId = leaderNameNodeId;
     }
 
     /**
@@ -63,6 +70,11 @@ public class WriteAcknowledgement {
     @Override
     public String toString() {
         return "WriteAcknowledgement(nameNodeId=" + nameNodeId + ", deploymentNumber=" + deploymentNumber +
-                "operationId=" + operationId + ", acknowledged=" + acknowledged + ", timestamp=" + timestamp;
+                "operationId=" + operationId + ", acknowledged=" + acknowledged + ", timestamp=" + timestamp +
+                ", leaderId=" + leaderNameNodeId + ")";
+    }
+
+    public long getLeaderNameNodeId() {
+        return leaderNameNodeId;
     }
 }
