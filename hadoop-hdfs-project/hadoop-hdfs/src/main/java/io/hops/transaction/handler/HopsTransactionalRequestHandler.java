@@ -294,7 +294,7 @@ public abstract class HopsTransactionalRequestHandler
     subscribeToAckEvents(serverlessNameNode);
 
     // =============== STEP 3 ===============
-    issueInitialInvalidations(invalidatedINodes, serverlessNameNode);
+    issueInitialInvalidations(invalidatedINodes, serverlessNameNode, txStartTime);
 
     // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
     if (writeAcknowledgements.size() == 0) {
@@ -429,8 +429,9 @@ public abstract class HopsTransactionalRequestHandler
    * Unregister ourselves as an event listener for ACK table events, then unregister the event operation itself.
    */
   private void unsubscribeFromAckEvents(ServerlessNameNode serverlessNameNode) throws StorageException {
+    String targetTableName = HopsEvent.ACK_TABLE_EVENT_NAME + serverlessNameNode.getDeploymentNumber();
     EventManager eventManager = serverlessNameNode.getNdbEventManager();
-    eventManager.removeListener(this, HopsEvent.ACK_TABLE_EVENT_NAME);
+    eventManager.removeListener(this, targetTableName);
     eventManager.unregisterEventOperation(HopsEvent.ACK_TABLE_EVENT_NAME);
   }
 
@@ -489,18 +490,19 @@ public abstract class HopsTransactionalRequestHandler
         throw new StorageException("Unsupported deployment number: " + serverlessNameNode.getDeploymentNumber());
     }
 
+    String targetTableName = HopsEvent.ACK_TABLE_EVENT_NAME + serverlessNameNode.getDeploymentNumber();
     EventManager eventManager = serverlessNameNode.getNdbEventManager();
-    boolean eventCreated = eventManager.registerEvent(HopsEvent.ACK_TABLE_EVENT_NAME, tableName,
+    boolean eventCreated = eventManager.registerEvent(targetTableName, tableName,
             eventManager.getAckTableEventColumns(), false);
 
     if (eventCreated)
-      requestHandlerLOG.debug("Event " + HopsEvent.ACK_TABLE_EVENT_NAME + " created successfully.");
+      requestHandlerLOG.debug("Event " + targetTableName + " created successfully.");
     else
-      requestHandlerLOG.debug("Event " + HopsEvent.ACK_TABLE_EVENT_NAME
+      requestHandlerLOG.debug("Event " + targetTableName
               + " already exists. Reusing existing event.");
 
-    eventManager.createEventOperation(HopsEvent.ACK_TABLE_EVENT_NAME);
-    eventManager.addListener(this, HopsEvent.ACK_TABLE_EVENT_NAME);
+    eventManager.createEventOperation(targetTableName);
+    eventManager.addListener(this, targetTableName);
   }
 
   /**
@@ -566,10 +568,10 @@ public abstract class HopsTransactionalRequestHandler
    *    INVs from intermediate storage (NDB).
    *
    * @param invalidatedINodes The INodes involved in this write operation. We must invalidate these INodes.
-   * @param serverlessNameNode The local serverless name node.
+   * @param nn The local serverless name node.
+   * @param txStartTime The time at which the transaction began.
    */
-  private void issueInitialInvalidations(Collection<INode> invalidatedINodes, ServerlessNameNode serverlessNameNode,
-                                         long txStartTime, long operationId)
+  private void issueInitialInvalidations(Collection<INode> invalidatedINodes, ServerlessNameNode nn, long txStartTime)
           throws StorageException {
     requestHandlerLOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations =-----=-----=");
 
@@ -581,10 +583,10 @@ public abstract class HopsTransactionalRequestHandler
     for (INode invalidatedINode : invalidatedINodes) {
       // int inodeId, int parentId, long leaderNameNodeId, long txStartTime, long operationId
       invalidations.add(new Invalidation(invalidatedINode.getId(), invalidatedINode.getParentId(),
-              serverlessNameNode.getId(), txStartTime, operationId));
+              nn.getId(), txStartTime, operationId));
     }
 
-    dataAccess.addInvalidations(invalidations, serverlessNameNode.getDeploymentNumber());
+    dataAccess.addInvalidations(invalidations, nn.getDeploymentNumber());
   }
 
   public void setUp() throws IOException {
