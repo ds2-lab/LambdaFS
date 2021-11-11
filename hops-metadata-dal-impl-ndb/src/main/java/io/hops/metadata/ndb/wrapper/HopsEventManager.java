@@ -472,7 +472,7 @@ public class HopsEventManager implements EventManager {
     @Override
     public void defaultSetup(String eventName, boolean deleteIfExists, int deploymentNumber) throws StorageException {
         if (eventName == null)
-            eventName = HopsEvent.INODE_TABLE_EVENT_NAME;
+            eventName = HopsEvent.INV_TABLE_EVENT_NAME;
 
         if (deleteIfExists)
             LOG.warn("Will delete and recreate event " + eventName + " if it already exists!");
