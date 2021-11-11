@@ -409,7 +409,8 @@ public abstract class HopsTransactionalRequestHandler
     // Remove the ACK entries that we added.
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
             (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
-    writeAcknowledgementDataAccess.deleteAcknowledgements(writeAcknowledgements);
+    writeAcknowledgementDataAccess.deleteAcknowledgements(
+            writeAcknowledgements, serverlessNameNode.getDeploymentNumber());
   }
 
   /**
@@ -461,8 +462,23 @@ public abstract class HopsTransactionalRequestHandler
   private void subscribeToAckEvents(ServerlessNameNode serverlessNameNode) throws StorageException {
     requestHandlerLOG.debug("=-----=-----= Step 2 - Subscribing to ACK Events =-----=-----=");
 
+    String tableName;
+    switch (serverlessNameNode.getDeploymentNumber()) {
+      case 0:
+        tableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME0;
+        break;
+      case 1:
+        tableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME1;
+        break;
+      case 2:
+        tableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME2;
+        break;
+      default:
+        throw new StorageException("Unsupported deployment number: " + serverlessNameNode.getDeploymentNumber());
+    }
+
     EventManager eventManager = serverlessNameNode.getNdbEventManager();
-    boolean eventCreated = eventManager.registerEvent(HopsEvent.ACK_TABLE_EVENT_NAME, TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME,
+    boolean eventCreated = eventManager.registerEvent(HopsEvent.ACK_TABLE_EVENT_NAME, tableName,
             eventManager.getAckTableEventColumns(), false);
 
     if (eventCreated)
@@ -488,6 +504,7 @@ public abstract class HopsTransactionalRequestHandler
   private List<WriteAcknowledgement> addAckTableRecords(ServerlessNameNode serverlessNameNode, long txStartTime)
           throws Exception {
     requestHandlerLOG.debug("=-----=-----= Step 1 - Adding ACK Records =-----=-----=");
+    int deploymentNumber = serverlessNameNode.getDeploymentNumber();
 
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
     List<String> groupMemberIds = zkClient.getGroupMembers(serverlessNameNode.getFunctionName());
@@ -510,14 +527,14 @@ public abstract class HopsTransactionalRequestHandler
         continue;
 
       waitingForAcks.add(memberId);
-      writeAcknowledgements.add(new WriteAcknowledgement(memberId, serverlessNameNode.getDeploymentNumber(),
+      writeAcknowledgements.add(new WriteAcknowledgement(memberId, deploymentNumber,
               operationId, false, txStartTime, serverlessNameNode.getId()));
     }
 
     if (writeAcknowledgements.size() > 0) {
       requestHandlerLOG.debug("Preparing to add " + writeAcknowledgements.size()
               + " write acknowledgement(s) to intermediate storage.");
-      writeAcknowledgementDataAccess.addWriteAcknowledgements(writeAcknowledgements);
+      writeAcknowledgementDataAccess.addWriteAcknowledgements(writeAcknowledgements, deploymentNumber);
     } else {
       requestHandlerLOG.debug("We're the only Active NN rn. No need to create any ACK entries.");
     }

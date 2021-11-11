@@ -11,6 +11,11 @@ public class HopsEvent {
     public static final String INODE_TABLE_EVENT_NAME = "namenode_cache_watch";
 
     /**
+     * Event name for the invalidations table. Used for cache invalidations.
+     */
+    public static final String INV_TABLE_EVENT_NAME = "inv_table_watch";
+
+    /**
      * Event name that NameNodes use during write operations/consistency protocol to ACK invalidations.
      */
     public static final String ACK_TABLE_EVENT_NAME = "ack_table_watch";

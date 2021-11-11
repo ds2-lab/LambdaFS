@@ -986,14 +986,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       LOG.error("FSNamesystem received unexpected event from NDB: " + eventName);
     }
 
-//    boolean invalidatedBeforeEvent = eventOperation.getBooleanPreValue(TablesDef.INodeTableDef.INVALIDATED);
-//    boolean invalidatedAfterEvent = eventOperation.getBooleanPostValue(TablesDef.INodeTableDef.INVALIDATED);
     long id = eventOperation.getLongPostValue(TablesDef.INodeTableDef.ID);
     long parentId = eventOperation.getLongPostValue(TablesDef.INodeTableDef.PARENT_ID);
 
     LOG.debug("==== Received event " + eventName + " from NDB for INode " + id + " ====");
-
-//    LOG.debug("Invalidated BEFORE: " + invalidatedBeforeEvent + ", invalidated AFTER: " + invalidatedAfterEvent);
     LOG.debug("INode ID: " + id + ", Parent INode ID: " + parentId);
 
     // TODO: If we cache this INode and the 'INV' flag is set to true, then we need to check for ACKs.
@@ -1009,8 +1005,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
               targetDeployment + ").");
     }
 
-    // This would only invalidate something if the INode was one that we cached. Otherwise, this has no effect.
-//    if (invalidatedAfterEvent)
     metadataCache.invalidateKey(id);
 
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
@@ -1027,7 +1021,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
     while (pendingAcks == null) {
       try {
-        pendingAcks = writeAcknowledgementDataAccess.getPendingAcks(serverlessNameNode.getId());
+        pendingAcks = writeAcknowledgementDataAccess.getPendingAcks(
+                serverlessNameNode.getId(), serverlessNameNode.getDeploymentNumber());
       } catch (StorageException e) {
         LOG.error("Encountered exception while checking for pending ACKs for NameNode "
                 + serverlessNameNode.getId() + ":", e);

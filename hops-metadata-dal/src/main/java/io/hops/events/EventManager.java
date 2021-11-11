@@ -19,11 +19,11 @@ import io.hops.exception.StorageException;
  */
 public interface EventManager extends Runnable {
     /**
-     * Get the event columns used in the INode table event.
+     * Get the event columns used in the invalidation table event.
      *
      * TODO: This is not really generic...
      */
-    public String[] getINodeEventColumns();
+    public String[] getInvTableEventColumns();
 
     /**
      * Get the event columns used in the ACK table event.
@@ -77,8 +77,9 @@ public interface EventManager extends Runnable {
      * Perform the default setup/initialization of the event and event operation.
      * @param eventName The name of the event to create/look for.
      * @param deleteIfExists Delete and recreate the event, if it already exists.
+     * @param deploymentNumber The deployment number of the local serverless name node instance.
      */
-    public void defaultSetup(String eventName, boolean deleteIfExists) throws StorageException;
+    public void defaultSetup(String eventName, boolean deleteIfExists, int deploymentNumber) throws StorageException;
 
     /**
      * Unregister and drop the EventOperation associated with the given event from NDB.

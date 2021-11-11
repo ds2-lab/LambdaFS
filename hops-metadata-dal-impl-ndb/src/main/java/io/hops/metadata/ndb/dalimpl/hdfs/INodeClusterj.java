@@ -273,63 +273,63 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
     }
   }
 
-  @Override
-  public void setInvalidFlag(long inodeId, boolean flag) throws StorageException {
-    LOG.debug("SET INV FLAG -- ID=" + inodeId + " -- FLAG=" + flag);
-    HopsSession session = connector.obtainSession();
-
-    HopsQueryBuilder qb = session.getQueryBuilder();
-    HopsQueryDomainType<InodeDTO> dobj =
-            qb.createQueryDefinition(InodeDTO.class);
-    HopsPredicate pred1 = dobj.get("id").equal(dobj.param("idParam"));
-    dobj.where(pred1);
-
-    HopsQuery<InodeDTO> query = session.createQuery(dobj);
-    query.setParameter("idParam", inodeId);
-
-    List<InodeDTO> results = null;
-
-    try {
-      results = query.getResultList();
-      if (results.size() > 1) {
-        throw new StorageException("Fetching inode by id:" + inodeId + ". Only one record was expected. Found: " + results.size());
-      }
-
-      if (results.size() == 1) {
-        InodeDTO dto = results.get(0);
-        dto.setInvalidated(NdbBoolean.convert(flag));
-      }
-    } finally {
-      session.release(results);
-    }
-  }
-
-  @Override
-  public void setInvalidFlag(long[] inodeIds, boolean flag) throws StorageException {
-    LOG.debug("SET INV FLAG: IDs=" + Arrays.toString(inodeIds) + " -- FLAG=" + flag);
-    HopsSession session = connector.obtainSession();
-
-    HopsQueryBuilder qb = session.getQueryBuilder();
-    HopsQueryDomainType<InodeDTO> dobj =
-            qb.createQueryDefinition(InodeDTO.class);
-    HopsPredicate pred1 = dobj.get("id").in(dobj.param("idParam"));
-    dobj.where(pred1);
-
-    HopsQuery<InodeDTO> query = session.createQuery(dobj);
-    query.setParameter("idParam", Longs.asList(inodeIds));
-
-    List<InodeDTO> results = null;
-
-    try {
-      results = query.getResultList();
-
-      for (InodeDTO dto : results)
-        dto.setInvalidated(NdbBoolean.convert(flag));
-
-    }finally {
-      session.release(results);
-    }
-  }
+//  @Override
+//  public void setInvalidFlag(long inodeId, boolean flag) throws StorageException {
+//    LOG.debug("SET INV FLAG -- ID=" + inodeId + " -- FLAG=" + flag);
+//    HopsSession session = connector.obtainSession();
+//
+//    HopsQueryBuilder qb = session.getQueryBuilder();
+//    HopsQueryDomainType<InodeDTO> dobj =
+//            qb.createQueryDefinition(InodeDTO.class);
+//    HopsPredicate pred1 = dobj.get("id").equal(dobj.param("idParam"));
+//    dobj.where(pred1);
+//
+//    HopsQuery<InodeDTO> query = session.createQuery(dobj);
+//    query.setParameter("idParam", inodeId);
+//
+//    List<InodeDTO> results = null;
+//
+//    try {
+//      results = query.getResultList();
+//      if (results.size() > 1) {
+//        throw new StorageException("Fetching inode by id:" + inodeId + ". Only one record was expected. Found: " + results.size());
+//      }
+//
+//      if (results.size() == 1) {
+//        InodeDTO dto = results.get(0);
+//        dto.setInvalidated(NdbBoolean.convert(flag));
+//      }
+//    } finally {
+//      session.release(results);
+//    }
+//  }
+//
+//  @Override
+//  public void setInvalidFlag(long[] inodeIds, boolean flag) throws StorageException {
+//    LOG.debug("SET INV FLAG: IDs=" + Arrays.toString(inodeIds) + " -- FLAG=" + flag);
+//    HopsSession session = connector.obtainSession();
+//
+//    HopsQueryBuilder qb = session.getQueryBuilder();
+//    HopsQueryDomainType<InodeDTO> dobj =
+//            qb.createQueryDefinition(InodeDTO.class);
+//    HopsPredicate pred1 = dobj.get("id").in(dobj.param("idParam"));
+//    dobj.where(pred1);
+//
+//    HopsQuery<InodeDTO> query = session.createQuery(dobj);
+//    query.setParameter("idParam", Longs.asList(inodeIds));
+//
+//    List<InodeDTO> results = null;
+//
+//    try {
+//      results = query.getResultList();
+//
+//      for (InodeDTO dto : results)
+//        dto.setInvalidated(NdbBoolean.convert(flag));
+//
+//    }finally {
+//      session.release(results);
+//    }
+//  }
 
   @Override
   public Collection<INode> findInodesByIdsFTIS(long[] inodeId) throws StorageException {
