@@ -1,14 +1,15 @@
-package io.hops.metadata.ndb.dalimpl.hdfs;
+package io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements;
 
-import com.mysql.clusterj.annotation.Column;
-import com.mysql.clusterj.annotation.PersistenceCapable;
-import com.mysql.clusterj.annotation.PrimaryKey;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.NdbBoolean;
+import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDTO;
+import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDeployment0;
+import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDeployment1;
+import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDeployment2;
 import io.hops.metadata.ndb.wrapper.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -20,39 +21,36 @@ public class WriteAcknowledgementClusterJ
     private static final Log LOG = LogFactory.getLog(WriteAcknowledgementClusterJ.class);
     private final ClusterjConnector connector = ClusterjConnector.getInstance();
 
-    @PersistenceCapable(table = TABLE_NAME)
-    public interface WriteAcknowledgementDTO {
-        @PrimaryKey
-        @Column(name = NAME_NODE_ID)
-        public long getNameNodeId();
-        public void setNameNodeId(long nameNodeId);
+    /**
+     * Static list containing all the ClusterJ @PersistenceCapable interfaces, one for each deployment.
+     */
+    private static final List<Class<? extends WriteAcknowledgementDTO>> targetDeployments = Arrays.asList(
+            WriteAcknowledgementDeployment0.class,
+            WriteAcknowledgementDeployment1.class,
+            WriteAcknowledgementDeployment2.class
+    );
 
-        @Column(name = DEPLOYMENT_NUMBER)
-        public int getDeploymentNumber();
-        public void setDeploymentNumber(int deploymentNumber);
+    /**
+     * Return the interface associated with the specified deployment number.
+     * @param deploymentNumber The target deployment number.
+     */
+    private Class<? extends WriteAcknowledgementDTO> getDTOClass(int deploymentNumber) {
+        if (deploymentNumber < 0 || deploymentNumber > targetDeployments.size())
+            throw new IllegalArgumentException("Deployment number must be in the range [0," +
+                    targetDeployments.size() + "]. Specified value " + deploymentNumber + " is not in this range.");
 
-        @Column(name = ACKNOWLEDGED)
-        public byte getAcknowledged();
-        public void setAcknowledged(byte acknowledged);
-
-        @PrimaryKey
-        @Column(name = OPERATION_ID)
-        public long getOperationId();
-        public void setOperationId(long operationId);
-
-        @Column(name = TIMESTAMP)
-        public long getTimestamp();
-        public void setTimestamp(long timestamp);
+        return targetDeployments.get(deploymentNumber);
     }
 
     @Override
-    public WriteAcknowledgement getWriteAcknowledgement(long nameNodeId, long operationId) throws StorageException {
+    public WriteAcknowledgement getWriteAcknowledgement(long nameNodeId, long operationId, int deploymentNumber)
+            throws StorageException {
         LOG.debug("GET WriteAcknowledgement (nameNodeId=" + nameNodeId + ", operationId=" + operationId + ")");
         HopsSession session = connector.obtainSession();
 
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
-        HopsQueryDomainType<WriteAcknowledgementDTO> domainType =
-                queryBuilder.createQueryDefinition(WriteAcknowledgementDTO.class);
+        HopsQueryDomainType<? extends WriteAcknowledgementDTO> domainType =
+                queryBuilder.createQueryDefinition(getDTOClass(deploymentNumber));
 
         // We want to match against nameNodeId and operationId.
         HopsPredicate nameNodeIdPredicate =
@@ -64,11 +62,11 @@ public class WriteAcknowledgementClusterJ
         domainType.where(nameNodeIdPredicate.and(operationIdPredicate));
 
         // Create the query.
-        HopsQuery<WriteAcknowledgementDTO> query = session.createQuery(domainType);
+        HopsQuery<? extends WriteAcknowledgementDTO> query = session.createQuery(domainType);
         query.setParameter("nameNodeIdParam", nameNodeId);
         query.setParameter("operationIdParam", operationId);
 
-        List<WriteAcknowledgementDTO> results = query.getResultList();
+        List<? extends WriteAcknowledgementDTO> results = query.getResultList();
         WriteAcknowledgement writeAcknowledgement = null;
         if (results.size() == 1) {
             WriteAcknowledgementDTO writeAckDTO = results.get(0);
@@ -80,23 +78,24 @@ public class WriteAcknowledgementClusterJ
     }
 
     @Override
-    public List<WriteAcknowledgement> getPendingAcks(long nameNodeId) throws StorageException {
+    public List<WriteAcknowledgement> getPendingAcks(long nameNodeId, int deploymentNumber)
+            throws StorageException {
         LOG.debug("CHECK PENDING ACKS - ID=" + nameNodeId);
         List<WriteAcknowledgement> pendingAcks = new ArrayList<>();
         HopsSession session = connector.obtainSession();
 
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
-        HopsQueryDomainType<WriteAcknowledgementDTO> domainType =
-                queryBuilder.createQueryDefinition(WriteAcknowledgementDTO.class);
+        HopsQueryDomainType<? extends WriteAcknowledgementDTO> domainType =
+                queryBuilder.createQueryDefinition(getDTOClass(deploymentNumber));
 
         HopsPredicate nameNodeIdPredicate =
                 domainType.get("nameNodeId").equal(domainType.param("nameNodeIdParam"));
         domainType.where(nameNodeIdPredicate);
 
-        HopsQuery<WriteAcknowledgementDTO> query = session.createQuery(domainType);
+        HopsQuery<? extends WriteAcknowledgementDTO> query = session.createQuery(domainType);
         query.setParameter("nameNodeIdParam", nameNodeId);
 
-        List<WriteAcknowledgementDTO> dtoResults = query.getResultList();
+        List<? extends WriteAcknowledgementDTO> dtoResults = query.getResultList();
 
         for (WriteAcknowledgementDTO dto : dtoResults) {
             if (!NdbBoolean.convert(dto.getAcknowledged()))
@@ -108,14 +107,15 @@ public class WriteAcknowledgementClusterJ
 
     // Only returns ACKs with an associated TX start-time >= the 'minTime' parameter.
     @Override
-    public List<WriteAcknowledgement> getPendingAcks(long nameNodeId, long minTime) throws StorageException {
+    public List<WriteAcknowledgement> getPendingAcks(long nameNodeId, long minTime, int deploymentNumber)
+            throws StorageException {
         LOG.debug("CHECK PENDING ACKS - ID=" + nameNodeId + ", MinTime=" + minTime);
         List<WriteAcknowledgement> pendingAcks = new ArrayList<>();
         HopsSession session = connector.obtainSession();
 
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
-        HopsQueryDomainType<WriteAcknowledgementDTO> domainType =
-                queryBuilder.createQueryDefinition(WriteAcknowledgementDTO.class);
+        HopsQueryDomainType<? extends WriteAcknowledgementDTO> domainType =
+                queryBuilder.createQueryDefinition(getDTOClass(deploymentNumber));
 
         HopsPredicate nameNodeIdPredicate =
                 domainType.get("nameNodeId").equal(domainType.param("nameNodeIdParam"));
@@ -123,11 +123,11 @@ public class WriteAcknowledgementClusterJ
                 domainType.get("timestamp").greaterEqual(domainType.param("timestampParameter"));
         domainType.where(nameNodeIdPredicate.and(timePredicate));
 
-        HopsQuery<WriteAcknowledgementDTO> query = session.createQuery(domainType);
+        HopsQuery<? extends WriteAcknowledgementDTO> query = session.createQuery(domainType);
         query.setParameter("nameNodeIdParam", nameNodeId);
         query.setParameter("timestampParameter", minTime);
 
-        List<WriteAcknowledgementDTO> dtoResults = query.getResultList();
+        List<? extends WriteAcknowledgementDTO> dtoResults = query.getResultList();
 
         // There should just be one WriteAcknowledgementDTO object per operation since all of these ACKs
         // are for our local NN, and each operation would require an ACK from our local NN at most once.
@@ -140,27 +140,29 @@ public class WriteAcknowledgementClusterJ
     }
 
     @Override
-    public void acknowledge(WriteAcknowledgement writeAcknowledgement) throws StorageException {
+    public void acknowledge(WriteAcknowledgement writeAcknowledgement, int deploymentNumber)
+            throws StorageException {
         LOG.debug("ACK " + writeAcknowledgement.toString());
 
         writeAcknowledgement.acknowledge();
 
         HopsSession session = connector.obtainSession();
 
-        WriteAcknowledgementDTO writeAcknowledgementDTO = null;
+        WriteAcknowledgementDTO writeDTO = null;
 
         try {
-            writeAcknowledgementDTO = session.newInstance(WriteAcknowledgementDTO.class);
-            copyState(writeAcknowledgementDTO, writeAcknowledgement);
-            session.updatePersistent(writeAcknowledgementDTO); // Throw exception if it does NOT exist.
+            writeDTO = session.newInstance(getDTOClass(deploymentNumber));
+            copyState(writeDTO, writeAcknowledgement);
+            session.updatePersistent(writeDTO); // Throw exception if it does NOT exist.
             LOG.debug("Successfully stored " + writeAcknowledgement.toString());
         } finally {
-            session.release(writeAcknowledgementDTO);
+            session.release(writeDTO);
         }
     }
 
     @Override
-    public void acknowledge(List<WriteAcknowledgement> writeAcknowledgements) throws StorageException {
+    public void acknowledge(List<WriteAcknowledgement> writeAcknowledgements, int deploymentNumber)
+            throws StorageException {
         LOG.debug("ACK " + writeAcknowledgements.toString());
 
         WriteAcknowledgementDTO[] dtos = new WriteAcknowledgementDTO[writeAcknowledgements.size()];
@@ -169,7 +171,7 @@ public class WriteAcknowledgementClusterJ
         for (int i = 0; i < writeAcknowledgements.size(); i++) {
             WriteAcknowledgement ack = writeAcknowledgements.get(i);
             ack.acknowledge();
-            dtos[i] = session.newInstance(WriteAcknowledgementDTO.class);
+            dtos[i] = session.newInstance(getDTOClass(deploymentNumber));
             copyState(dtos[i], ack);
         }
 
@@ -181,26 +183,29 @@ public class WriteAcknowledgementClusterJ
     }
 
     @Override
-    public void deleteAcknowledgement(WriteAcknowledgement writeAcknowledgement) throws StorageException {
+    public void deleteAcknowledgement(WriteAcknowledgement writeAcknowledgement, int deploymentNumber)
+            throws StorageException {
         LOG.debug("DELETE " + writeAcknowledgement.toString());
         HopsSession session = connector.obtainSession();
         Object[] pk = new Object[2];
         pk[0] = writeAcknowledgement.getNameNodeId();
         pk[1] = writeAcknowledgement.getOperationId();
-        session.deletePersistent(WriteAcknowledgementDTO.class, pk);
+        session.deletePersistent(getDTOClass(deploymentNumber), pk);
     }
 
     @Override
-    public void deleteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements) throws StorageException {
+    public void deleteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements,
+                                       int deploymentNumber)
+            throws StorageException {
         LOG.debug("DELETE ALL " + writeAcknowledgements.toString());
         HopsSession session = connector.obtainSession();
 
-        List<WriteAcknowledgementDTO> deletions = new ArrayList<WriteAcknowledgementDTO>();
+        List<WriteAcknowledgementDTO> deletions = new ArrayList<>();
         for (WriteAcknowledgement writeAcknowledgement : writeAcknowledgements) {
             Object[] pk = new Object[2];
             pk[0] = writeAcknowledgement.getNameNodeId();
             pk[1] = writeAcknowledgement.getOperationId();
-            WriteAcknowledgementDTO persistable = session.newInstance(WriteAcknowledgementDTO.class, pk);
+            WriteAcknowledgementDTO persistable = session.newInstance(getDTOClass(deploymentNumber), pk);
             deletions.add(persistable);
         }
 
@@ -208,83 +213,88 @@ public class WriteAcknowledgementClusterJ
     }
 
     @Override
-    public void addWriteAcknowledgement(WriteAcknowledgement writeAcknowledgement) throws StorageException {
+    public void addWriteAcknowledgement(WriteAcknowledgement writeAcknowledgement, int deploymentNumber)
+            throws StorageException {
         LOG.debug("ADD " + writeAcknowledgement.toString());
         HopsSession session = connector.obtainSession();
 
-        WriteAcknowledgementDTO writeAcknowledgementDTO = null;
+        WriteAcknowledgementDTO writeDTO = null;
 
         try {
-            writeAcknowledgementDTO = session.newInstance(WriteAcknowledgementDTO.class);
-            copyState(writeAcknowledgementDTO, writeAcknowledgement);
-            session.makePersistent(writeAcknowledgementDTO); // Throw exception if it exists.
+            writeDTO = session.newInstance(getDTOClass(deploymentNumber));
+            copyState(writeDTO, writeAcknowledgement);
+            session.makePersistent(writeDTO); // Throw exception if it exists.
             LOG.debug("Successfully stored " + writeAcknowledgement.toString());
         } finally {
-            session.release(writeAcknowledgementDTO);
+            session.release(writeDTO);
         }
     }
 
     @Override
-    public void addWriteAcknowledgements(WriteAcknowledgement[] writeAcknowledgements) throws StorageException {
+    public void addWriteAcknowledgements(WriteAcknowledgement[] writeAcknowledgements, int deploymentNumber)
+            throws StorageException {
         LOG.debug("ADD " + Arrays.toString(writeAcknowledgements));
         HopsSession session = connector.obtainSession();
 
-        WriteAcknowledgementDTO[] writeAcknowledgementDTOs = new WriteAcknowledgementDTO[writeAcknowledgements.length];
+        WriteAcknowledgementDTO[] writeDTOs = new WriteAcknowledgementDTO[writeAcknowledgements.length];
 
         try {
             for (int i = 0; i < writeAcknowledgements.length; i++) {
-                writeAcknowledgementDTOs[i] = session.newInstance(WriteAcknowledgementDTO.class);
-                copyState(writeAcknowledgementDTOs[i], writeAcknowledgements[i]);
+                writeDTOs[i] = session.newInstance(getDTOClass(deploymentNumber));
+                copyState(writeDTOs[i], writeAcknowledgements[i]);
             }
 
             // Throw exception if any exist.
-            session.makePersistentAll(Arrays.asList(writeAcknowledgementDTOs));
+            session.makePersistentAll(Arrays.asList(writeDTOs));
             LOG.debug("Successfully stored " + Arrays.toString(writeAcknowledgements));
         } finally {
-            session.release(writeAcknowledgementDTOs);
+            session.release(writeDTOs);
         }
     }
 
     @Override
-    public void addWriteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements) throws StorageException {
+    public void addWriteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements,
+                                         int deploymentNumber)
+            throws StorageException {
         LOG.debug("ADD " + writeAcknowledgements.toString());
         HopsSession session = connector.obtainSession();
 
-        List<WriteAcknowledgementDTO> writeAcknowledgementDTOs =
-                new ArrayList<WriteAcknowledgementDTO>();
+        List<WriteAcknowledgementDTO> writeDTOs =
+                new ArrayList<>();
 
         try {
             for (WriteAcknowledgement ack : writeAcknowledgements) {
-                WriteAcknowledgementDTO dto = session.newInstance(WriteAcknowledgementDTO.class);
+                WriteAcknowledgementDTO dto = session.newInstance(getDTOClass(deploymentNumber));
                 copyState(dto, ack);
-                writeAcknowledgementDTOs.add(dto);
+                writeDTOs.add(dto);
             }
 
             // Throw exception if any exist.
-            session.makePersistentAll(writeAcknowledgementDTOs);
+            session.makePersistentAll(writeDTOs);
             LOG.debug("Successfully stored " + writeAcknowledgements);
         } finally {
-            session.release(writeAcknowledgementDTOs);
+            session.release(writeDTOs);
         }
     }
 
     @Override
-    public List<WriteAcknowledgement> getWriteAcknowledgements(long operationId) throws StorageException {
+    public List<WriteAcknowledgement> getWriteAcknowledgements(long operationId, int deploymentNumber)
+            throws StorageException {
         LOG.debug("GET WriteAcknowledgements (operationId=" + operationId + ")");
         HopsSession session = connector.obtainSession();
 
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
-        HopsQueryDomainType<WriteAcknowledgementDTO> domainType =
-                queryBuilder.createQueryDefinition(WriteAcknowledgementDTO.class);
+        HopsQueryDomainType<? extends WriteAcknowledgementDTO> domainType =
+                queryBuilder.createQueryDefinition(getDTOClass(deploymentNumber));
 
         HopsPredicate operationIdPredicate =
                 domainType.get("operationId").equal(domainType.param("operationIdParam"));
         domainType.where(operationIdPredicate);
 
-        HopsQuery<WriteAcknowledgementDTO> query = session.createQuery(domainType);
+        HopsQuery<? extends WriteAcknowledgementDTO> query = session.createQuery(domainType);
         query.setParameter("operationIdParameter", operationId);
 
-        List<WriteAcknowledgementDTO> dtoResults = query.getResultList();
+        List<? extends WriteAcknowledgementDTO> dtoResults = query.getResultList();
         List<WriteAcknowledgement> results = new ArrayList<>();
 
         for (WriteAcknowledgementDTO dto : dtoResults) {
@@ -295,7 +305,7 @@ public class WriteAcknowledgementClusterJ
     }
 
     /**
-     * Convert the given {@link io.hops.metadata.ndb.dalimpl.hdfs.WriteAcknowledgementClusterJ.WriteAcknowledgementDTO}
+     * Convert the given {@link WriteAcknowledgementDTO}
      * instance to an object of type {@link io.hops.metadata.hdfs.entity.WriteAcknowledgement}.
      * @param src The WriteAcknowledgementDTO source object.
      * @return An instance of WriteAcknowledgement whose instance variables have been populated from the {@code src}
@@ -310,7 +320,7 @@ public class WriteAcknowledgementClusterJ
 
     /**
      * Copy the state from the given {@link io.hops.metadata.hdfs.entity.WriteAcknowledgement} instance to the given
-     * {@link io.hops.metadata.ndb.dalimpl.hdfs.WriteAcknowledgementClusterJ.WriteAcknowledgementDTO} instance.
+     * {@link WriteAcknowledgementDTO} instance.
      * @param dest The WriteAcknowledgementDTO destination object.
      * @param src The WriteAcknowledgement source object.
      */

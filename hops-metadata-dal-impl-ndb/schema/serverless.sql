@@ -76,7 +76,7 @@ CREATE TABLE `intermediate_block_reports` (
 ------ Invalidation Tables ------
 ---------------------------------
 
-CREATE TABLE `deployment0_invalidations` (
+CREATE TABLE `invalidations_deployment0` (
     `inode_id` int(11) NOT NULL,        -- The INode's ID.
     `parent_id` int(11) NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
     `leader_id` bigint(20) NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
@@ -85,7 +85,7 @@ CREATE TABLE `deployment0_invalidations` (
     PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
-CREATE TABLE `deployment1_invalidations` (
+CREATE TABLE `invalidations_deployment1` (
     `inode_id` int(11) NOT NULL,        -- The INode's ID.
     `parent_id` int(11) NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
     `leader_id` bigint(20) NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
@@ -94,7 +94,7 @@ CREATE TABLE `deployment1_invalidations` (
     PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
-CREATE TABLE `deployment2_invalidations` (
+CREATE TABLE `invalidations_deployment2` (
     `inode_id` int(11) NOT NULL,        -- The INode's ID.
     `parent_id` int(11) NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
     `leader_id` bigint(20) NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
@@ -107,7 +107,7 @@ CREATE TABLE `deployment2_invalidations` (
 -- Write Acknowledgement Tables --
 ----------------------------------
 
-CREATE TABLE `deployment0_write_acks` (
+CREATE TABLE `write_acks_deployment0` (
     `namenode_id` bigint(20) NOT NULL,                -- The ID of the NameNode object.
     `deployment_number` varchar(36) NOT NULL,         -- The name of the serverless function in which the NN is running.
     `acknowledged` tinyint(4) NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
@@ -116,7 +116,7 @@ CREATE TABLE `deployment0_write_acks` (
     PRIMARY KEY (`namenode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
-CREATE TABLE `deployment1_write_acks` (
+CREATE TABLE `write_acks_deployment1` (
     `namenode_id` bigint(20) NOT NULL,                -- The ID of the NameNode object.
     `deployment_number` varchar(36) NOT NULL,         -- The name of the serverless function in which the NN is running.
     `acknowledged` tinyint(4) NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
@@ -125,7 +125,7 @@ CREATE TABLE `deployment1_write_acks` (
     PRIMARY KEY (`namenode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
-CREATE TABLE `deployment2_write_acks` (
+CREATE TABLE `write_acks_deployment2` (
     `namenode_id` bigint(20) NOT NULL,                -- The ID of the NameNode object.
     `deployment_number` varchar(36) NOT NULL,         -- The name of the serverless function in which the NN is running.
     `acknowledged` tinyint(4) NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
