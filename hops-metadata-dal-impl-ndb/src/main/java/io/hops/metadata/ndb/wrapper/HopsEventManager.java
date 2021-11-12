@@ -16,6 +16,7 @@ import org.apache.commons.logging.LogFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 /**
  * This class is responsible for listening to events from NDB and reacting to them appropriately.
@@ -36,6 +37,12 @@ import java.util.List;
  */
 public class HopsEventManager implements EventManager {
     static final Log LOG = LogFactory.getLog(HopsEventManager.class);
+
+    /**
+     * Used to signal that we're done with our set-up and it is safe to add event listeners for the
+     * default event operation.
+     */
+    private final Semaphore defaultSetupSemaphore = new Semaphore(-1);
 
     /**
      * Name of the NDB table that contains the INodes.
@@ -193,6 +200,8 @@ public class HopsEventManager implements EventManager {
         if (listener == null)
             throw new IllegalArgumentException("Listener cannot be null.");
 
+        LOG.debug("Adding Hops event listener for event " + eventName + ".");
+
         List<HopsEventListener> eventListeners;
         if (this.listeners.containsKey(eventName)) {
             eventListeners = this.listeners.get(eventName);
@@ -216,9 +225,9 @@ public class HopsEventManager implements EventManager {
         HopsEventOperation eventOperation = eventOperationMap.get(eventName);
 
         if (eventOperation == null)
-            throw new IllegalStateException("Adding an even listener before registering " +
-                    "the event operation is not permitted. Please register the event operation first, then add the " +
-                    "event listener afterwards.");
+            throw new IllegalStateException("Cannot update count for event " + eventName +
+                    ". Adding an even listener before registering the event operation is not permitted. Please " +
+                    "register the event operation first, then add the event listener afterwards.");
 
         int currentCount = numListenersMapping.getOrDefault(eventOperation, 0);
         int newCount;
@@ -438,6 +447,11 @@ public class HopsEventManager implements EventManager {
     }
 
     @Override
+    public void waitUntilSetupDone() throws InterruptedException {
+        defaultSetupSemaphore.acquire();
+    }
+
+    @Override
     public void run() {
         LOG.debug("The EventManager has started running.");
 
@@ -520,6 +534,9 @@ public class HopsEventManager implements EventManager {
 
         LOG.debug("Executing event operation for event " + defaultEventName + " now...");
         clusterJEventOperation.execute();
+
+        // Signal that we're done with this. Just add a ton of permits.
+        defaultSetupSemaphore.release(Integer.MAX_VALUE - 10);
     }
 
     /**

@@ -53,6 +53,13 @@ public interface EventManager extends Runnable {
     public boolean unregisterEvent(String eventName) throws StorageException;
 
     /**
+     * The calling thread waits on an internal semaphore until the Event Manager has finished its default setup.
+     * This is used to ensure the calling thread does not add an event listener for events created during default
+     * setup until the default setup has been completed.
+     */
+    public void waitUntilSetupDone() throws InterruptedException;
+
+    /**
      * Listen for events.
      */
     @Override

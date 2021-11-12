@@ -2252,8 +2252,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("Loaded namesystem in " + DurationFormatUtils.formatDurationHMS(loadNamesystemDuration.toMillis()));
     LOG.debug("- - - - - - - - - - - - - - - -");
 
+    // Make sure the event manager has finished setting up before we register an event listener with it.
+    try {
+      ndbEventManager.waitUntilSetupDone();
+    } catch (InterruptedException ex) {
+      LOG.error("Exception encountered while waiting for event manager to finish its setup.");
+      throw ex;
+    }
+
     // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
-    ndbEventManager.addListener(namesystem, HopsEvent.INV_TABLE_EVENT_NAME_BASE);
+    ndbEventManager.addListener(namesystem, HopsEvent.INV_TABLE_EVENT_NAME_BASE + deploymentNumber);
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);
@@ -2506,11 +2514,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *     confirguration
    * @throws IOException
    */
-  public ServerlessNameNode(Configuration conf, String functionName) throws IOException {
+  public ServerlessNameNode(Configuration conf, String functionName) throws Exception {
     this(conf, NamenodeRole.NAMENODE, functionName);
   }
 
-  protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws IOException {
+  protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws Exception {
     this.functionName = functionName;
     this.deploymentNumber = getFunctionNumberFromFunctionName();
 
@@ -2545,11 +2553,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       Duration enterActiveStateDuration = Duration.between(activeStateStart, activeStateEnd);
       LOG.debug("NameNode entered active state. Time elapsed: " +
               DurationFormatUtils.formatDurationHMS(enterActiveStateDuration.toMillis()));
-    } catch (IOException | HadoopIllegalArgumentException e) {
+    } catch (Exception e) {
       this.stop();
       throw e;
-    } catch (Exception e) {
-      e.printStackTrace();
     }
   }
 
@@ -2935,7 +2941,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
 
   public static ServerlessNameNode createNameNode(String argv[], Configuration conf, String functionName)
-      throws IOException {
+          throws Exception {
     LOG.info("createNameNode " + Arrays.asList(argv));
     if (conf == null) {
       conf = new HdfsConfiguration();
