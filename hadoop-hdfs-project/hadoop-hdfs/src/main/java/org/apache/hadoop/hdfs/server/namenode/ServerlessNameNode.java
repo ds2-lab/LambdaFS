@@ -24,7 +24,6 @@ import io.hops.DalDriver;
 import io.hops.events.EventManager;
 import io.hops.events.HopsEvent;
 import io.hops.exception.StorageException;
-import io.hops.exception.TransactionContextException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
 import io.hops.leader_election.node.ActiveNode;
@@ -3065,6 +3064,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   public int getMappedServerlessFunction(String path) throws IOException {
     INode inode = getINodeForCache(path);
+
+    if (inode == null) {
+      LOG.warn("INode for path '" + path +
+              "' is null. If we're not creating a directory right now, then that's a problem.");
+
+      // If we're creating a directory, then there's not much we can do here. So, we'll just create the directory
+      // ourselves. Since we're creating an entirely new INode, there's not going to be any cache consistency issues.
+      return deploymentNumber;
+    }
+
     return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
     //return consistentHash(path.hashCode(), numUniqueServerlessNameNodes);
   }
