@@ -62,8 +62,10 @@ public interface ZKClient {
      *
      * @param groupName The ZK directory/group to join.
      * @param memberId Used when creating the ephemeral ID of this node.
+     * @param invalidatable Entity with a cache that can be invalidated. We use the {@link Invalidatable} interface
+     *                      to hook into the object and invalidate its cache when connection to ZK is lost.
      */
-    void joinGroup(String groupName, String memberId) throws Exception;
+    void joinGroup(String groupName, String memberId, Invalidatable invalidatable) throws Exception;
 
     /**
      * Create and join a group with the given name. This just calls the `createGroup()` function followed by the
@@ -75,8 +77,10 @@ public interface ZKClient {
      *
      * @param groupName The name of the group to join.
      * @param memberId Used when creating the ephemeral ID of this node.
+     * @param invalidatable Entity with a cache that can be invalidated. We use the {@link Invalidatable} interface
+     *                      to hook into the object and invalidate its cache when connection to ZK is lost.
      */
-    void createAndJoinGroup(String groupName, String memberId) throws Exception;
+    void createAndJoinGroup(String groupName, String memberId, Invalidatable invalidatable) throws Exception;
 
     /**
      * Perform any necessary clean-up, such as stopping a

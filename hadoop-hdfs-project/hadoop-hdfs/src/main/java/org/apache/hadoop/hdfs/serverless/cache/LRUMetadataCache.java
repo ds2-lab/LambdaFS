@@ -239,6 +239,16 @@ public class LRUMetadataCache<T> {
     }
 
     /**
+     * Invalidate all entries in the cache.
+     */
+    public void invalidateEntireCache() {
+        LOG.warn("Invalidating ENTIRE cache. ");
+
+        for (String key : cache.keySet())
+            invalidateKey(key, true);
+    }
+
+    /**
      * Return the current set of keys in the cache.
      * @param includeInvalidKeys If true, the invalid keys will also be included in the returned list.
      */
@@ -273,8 +283,8 @@ public class LRUMetadataCache<T> {
      */
     public boolean invalidateKey(String key, boolean skipCheck) {
         if (skipCheck || containsKeySkipInvalidCheck(key)) {
-            LOG.debug("Invalidated key " + key + ".");
             invalidatedKeys.add(key);
+            LOG.debug("Invalidated key " + key + ".");
             return true;
         }
 

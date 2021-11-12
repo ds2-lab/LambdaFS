@@ -7,6 +7,8 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.nodes.GroupMember;
 import org.apache.curator.framework.recipes.watch.PersistentWatcher;
+import org.apache.curator.framework.state.ConnectionState;
+import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.x.async.AsyncCuratorFramework;
 import org.apache.hadoop.util.hash.Hash;
@@ -89,6 +91,13 @@ public class SyncZKClient implements ZKClient {
     }
 
     /**
+     * Return a flag indicating whether we're currently connected to ZooKeeper.
+     */
+    public boolean verifyConnection() {
+        return this.client.getZookeeperClient().isConnected();
+    }
+
+    /**
      * Connect to the ZooKeeper ensemble.
      *
      * @return A {@link ZooKeeper object} representing the connection to the server/ensemble.
@@ -131,7 +140,7 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public void joinGroup(String groupName, String memberId) throws Exception {
+    public void joinGroup(String groupName, String memberId, Invalidatable invalidatable) throws Exception {
         if (this.client == null)
             throw new IllegalStateException("ZooKeeper client must be instantiated before joining a group.");
 
@@ -150,6 +159,16 @@ public class SyncZKClient implements ZKClient {
             LOG.warn("We already have a watcher for path " + path + ".");
         else
             this.watchers.put(path, persistentWatcher);
+
+        // We need to invalidate our cache whenever our connection to ZooKeeper is lost.
+        client.getConnectionStateListenable().addListener((curatorFramework, connectionState) -> {
+            if (!connectionState.isConnected()) {
+                LOG.warn("Connection to ZooKeeper lost. Need to invalidate cache.");
+                invalidatable.invalidateCache();
+            } else {
+                LOG.debug("Connected established with ZooKeeper ensemble.");
+            }
+        });
     }
 
     @Override
@@ -161,7 +180,7 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public void createAndJoinGroup(String groupName, String memberId) throws Exception {
+    public void createAndJoinGroup(String groupName, String memberId, Invalidatable invalidatable) throws Exception {
         try {
             // This will throw an exception if the group already exists!
             createGroup(groupName);
@@ -170,7 +189,7 @@ public class SyncZKClient implements ZKClient {
             LOG.debug("ZooKeeper group '/" + groupName + "' already exists.");
         }
 
-        joinGroup(groupName, memberId);
+        joinGroup(groupName, memberId, invalidatable);
     }
 
 //    public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception {

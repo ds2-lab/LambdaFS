@@ -96,6 +96,7 @@ import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMetho
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+import org.apache.hadoop.hdfs.serverless.zookeeper.Invalidatable;
 import org.apache.hadoop.hdfs.util.EnumCounters;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -170,7 +171,7 @@ import static org.apache.hadoop.util.Time.now;
  */
 @InterfaceAudience.Private
 @Metrics(context="dfs")
-public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBean, HopsEventListener {
+public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBean, HopsEventListener, Invalidatable {
   public static final Log LOG = LogFactory.getLog(FSNamesystem.class);
 
   private static final ThreadLocal<StringBuilder> auditBuffer =
@@ -1059,6 +1060,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     } catch (InterruptedException ex) {
       ex.printStackTrace();
     }
+  }
+
+  @Override
+  public void invalidateCache() {
+    LOG.debug("Invalidating entire cache. Connection to ZooKeeper must have been lost.");
+    metadataCache.invalidateEntireCache();
   }
 
   public static class GetBlockLocationsResult {
