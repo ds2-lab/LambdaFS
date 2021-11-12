@@ -2163,7 +2163,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // library is loaded during that call. If we try to create the event manager before that, we will get class
     // not found errors.
     ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
-    ndbEventManager.defaultSetup(null, false, deploymentNumber);
+    ndbEventManager.setConfigurationParameters(null, false, deploymentNumber);
 
     // Note that we need to register the namesystem as an event listener with the event manager,
     // but the name system doesn't get loaded until a little later.

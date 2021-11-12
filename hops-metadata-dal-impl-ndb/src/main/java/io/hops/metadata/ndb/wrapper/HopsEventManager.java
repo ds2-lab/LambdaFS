@@ -163,15 +163,21 @@ public class HopsEventManager implements EventManager {
     private HopsSession session;
 
     /**
-     * Used to track if default setup has been performed. In most cases, we'll want to just use the
-     * default setup method, so we display a warning when that method has not been performed.
+     * Name to use for the invalidation event when creating it/checking that it exists during defaultSetup().
+     * This is set via the setConfigurationParameters() function.
      */
-    private boolean defaultSetupPerformed = false;
+    private String defaultEventName;
+
+    /**
+     * If true, delete and recreate the invalidation event if it already exists during defaultSetup().
+     * This is set via the setConfigurationParameters() function.
+     */
+    private boolean defaultDeleteIfExists;
 
     /**
      * The deployment number of the local serverless name node instance. Set by calling defaultSetup().
      */
-    private int deploymentNumber;
+    private int deploymentNumber = -1;
 
     public HopsEventManager() throws StorageException {
         this.session = ClusterjConnector.getInstance().obtainSession(true);
@@ -435,8 +441,11 @@ public class HopsEventManager implements EventManager {
     public void run() {
         LOG.debug("The EventManager has started running.");
 
-        if (!defaultSetupPerformed)
-            LOG.warn("Default set-up has NOT been performed.");
+        try {
+            defaultSetup();
+        } catch (StorageException e) {
+            throw new IllegalStateException("Failed to initialize the HopsEventManager.");
+        }
 
         LOG.debug("Number of events created: " + eventMap.size());
         LOG.debug("Number of event operations created: " + eventOperationMap.size());
@@ -462,22 +471,24 @@ public class HopsEventManager implements EventManager {
         }
     }
 
+    @Override
+    public void setConfigurationParameters(int deploymentNumber, String defaultEventName,
+                                           boolean defaultDeleteIfExists) {
+        this.deploymentNumber = deploymentNumber;
+        this.defaultEventName = defaultEventName;
+        this.defaultDeleteIfExists = defaultDeleteIfExists;
+    }
+
     /**
      * Perform the default setup/initialization of the `hdfs_inodes` table event and event operation.
-     *
-     * @param eventName The name of the event to create/look for. Pass null to use the default.
-     * @param deleteIfExists Delete and recreate the event, if it already exists.
-     * @param deploymentNumber The deployment number of the local serverless name node instance.
      */
     @Override
-    public void defaultSetup(String eventName, boolean deleteIfExists, int deploymentNumber) throws StorageException {
-        if (eventName == null)
-            eventName = HopsEvent.INV_TABLE_EVENT_NAME;
+    public void defaultSetup() throws StorageException {
+        if (defaultEventName == null)
+            defaultEventName = HopsEvent.INV_TABLE_EVENT_NAME;
 
-        if (deleteIfExists)
-            LOG.warn("Will delete and recreate event " + eventName + " if it already exists!");
-
-        this.deploymentNumber = deploymentNumber;
+        if (defaultDeleteIfExists)
+            LOG.warn("Will delete and recreate event " + defaultEventName + " if it already exists!");
 
         String tableName = INV_TABLE_NAME_BASE + deploymentNumber;
 
@@ -485,21 +496,21 @@ public class HopsEventManager implements EventManager {
         // as the event could have been created by another NameNode. We would only want to recreate it
         // if we were changing something about the event's definition, and if all future NameNodes
         // expected this change, and if there were no other NameNodes currently using the event.
-        boolean registeredSuccessfully = registerEvent(eventName, tableName,
-                INV_TABLE_EVENT_COLUMNS, deleteIfExists);
+        boolean registeredSuccessfully = registerEvent(defaultEventName, tableName,
+                INV_TABLE_EVENT_COLUMNS, defaultDeleteIfExists);
 
         if (!registeredSuccessfully) {
-            LOG.error("Failed to successfully register default event " + eventName
+            LOG.error("Failed to successfully register default event " + defaultEventName
                     + " on table " + tableName);
 
-            throw new StorageException("Failed to register event " + eventName + " on table " + tableName);
+            throw new StorageException("Failed to register event " + defaultEventName + " on table " + tableName);
         }
 
-        LOG.debug("Creating event operation for event " + eventName + " now...");
-        HopsEventOperationImpl eventOperation = createAndReturnEventOperation(eventName);
+        LOG.debug("Creating event operation for event " + defaultEventName + " now...");
+        HopsEventOperationImpl eventOperation = createAndReturnEventOperation(defaultEventName);
         EventOperation clusterJEventOperation = eventOperation.getClusterJEventOperation();
 
-        LOG.debug("Setting up record attributes for event " + eventName + " now...");
+        LOG.debug("Setting up record attributes for event " + defaultEventName + " now...");
         for (String columnName : INV_TABLE_EVENT_COLUMNS) {
             boolean success = eventOperation.addRecordAttribute(columnName);
 
@@ -507,10 +518,8 @@ public class HopsEventManager implements EventManager {
                 LOG.error("Failed to create record attribute(s) for column " + columnName + ".");
         }
 
-        LOG.debug("Executing event operation for event " + eventName + " now...");
+        LOG.debug("Executing event operation for event " + defaultEventName + " now...");
         clusterJEventOperation.execute();
-
-        defaultSetupPerformed = true;
     }
 
     /**

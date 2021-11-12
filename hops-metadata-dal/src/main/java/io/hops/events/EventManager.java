@@ -75,11 +75,18 @@ public interface EventManager extends Runnable {
 
     /**
      * Perform the default setup/initialization of the event and event operation.
-     * @param eventName The name of the event to create/look for.
-     * @param deleteIfExists Delete and recreate the event, if it already exists.
+     */
+    public void defaultSetup() throws StorageException;
+
+    /**
+     * Set the deployment number instance variable for this class.
+     *
+     * @param defaultEventName The name of the event to create/look for. Pass null to use the default.
+     * @param defaultDeleteIfExists Delete and recreate the event, if it already exists.
      * @param deploymentNumber The deployment number of the local serverless name node instance.
      */
-    public void defaultSetup(String eventName, boolean deleteIfExists, int deploymentNumber) throws StorageException;
+    public void setConfigurationParameters(int deploymentNumber, String defaultEventName,
+                                           boolean defaultDeleteIfExists);
 
     /**
      * Unregister and drop the EventOperation associated with the given event from NDB.
