@@ -240,6 +240,12 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>service-discovery-client</artifactId>
       <version>0.5-SNAPSHOT</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.zookeeper/zookeeper -->
+    <dependency>
+      <groupId>org.apache.zookeeper</groupId>
+      <artifactId>zookeeper</artifactId>
+      <version>3.7.0</version>
+    </dependency>
     <!-- Used by NN TCP client/server. Handles serialization. -->
     <dependency>
       <groupId>com.esotericsoftware</groupId>
