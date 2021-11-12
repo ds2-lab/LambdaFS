@@ -429,10 +429,10 @@ public abstract class HopsTransactionalRequestHandler
    * Unregister ourselves as an event listener for ACK table events, then unregister the event operation itself.
    */
   private void unsubscribeFromAckEvents(ServerlessNameNode serverlessNameNode) throws StorageException {
-    String targetTableName = HopsEvent.ACK_TABLE_EVENT_NAME + serverlessNameNode.getDeploymentNumber();
+    String eventName = HopsEvent.ACK_TABLE_EVENT_NAME + serverlessNameNode.getDeploymentNumber();
     EventManager eventManager = serverlessNameNode.getNdbEventManager();
-    eventManager.removeListener(this, targetTableName);
-    eventManager.unregisterEventOperation(HopsEvent.ACK_TABLE_EVENT_NAME);
+    eventManager.removeListener(this, eventName);
+    eventManager.unregisterEventOperation(eventName);
   }
 
   @Override
@@ -475,31 +475,31 @@ public abstract class HopsTransactionalRequestHandler
   private void subscribeToAckEvents(ServerlessNameNode serverlessNameNode) throws StorageException {
     requestHandlerLOG.debug("=-----=-----= Step 2 - Subscribing to ACK Events =-----=-----=");
 
-    String tableName;
+    String targetTableName;
     switch (serverlessNameNode.getDeploymentNumber()) {
       case 0:
-        tableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME0;
+        targetTableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME0;
         break;
       case 1:
-        tableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME1;
+        targetTableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME1;
         break;
       case 2:
-        tableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME2;
+        targetTableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME2;
         break;
       default:
         throw new StorageException("Unsupported deployment number: " + serverlessNameNode.getDeploymentNumber());
     }
 
-    String targetTableName = HopsEvent.ACK_TABLE_EVENT_NAME + serverlessNameNode.getDeploymentNumber();
+    String eventName = HopsEvent.ACK_TABLE_EVENT_NAME + serverlessNameNode.getDeploymentNumber();
     EventManager eventManager = serverlessNameNode.getNdbEventManager();
-    boolean eventCreated = eventManager.registerEvent(targetTableName, tableName,
+    boolean eventCreated = eventManager.registerEvent(eventName, targetTableName,
             eventManager.getAckTableEventColumns(), false);
 
     if (eventCreated)
-      requestHandlerLOG.debug("Event " + targetTableName + " created successfully.");
+      requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName + " created successfully.");
     else
-      requestHandlerLOG.debug("Event " + targetTableName
-              + " already exists. Reusing existing event.");
+      requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName +
+              " already exists. Reusing existing event.");
 
     eventManager.createEventOperation(targetTableName);
     eventManager.addListener(this, targetTableName);

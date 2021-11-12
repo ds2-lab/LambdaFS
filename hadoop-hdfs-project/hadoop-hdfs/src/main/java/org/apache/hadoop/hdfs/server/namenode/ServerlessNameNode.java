@@ -104,7 +104,6 @@ import org.apache.hadoop.tracing.TraceAdminProtocol;
 import org.apache.hadoop.util.*;
 import org.apache.hadoop.util.ExitUtil.ExitException;
 import org.apache.zookeeper.ZooKeeper;
-import org.eclipse.jetty.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,11 +117,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -2257,7 +2253,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("- - - - - - - - - - - - - - - -");
 
     // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
-    ndbEventManager.addListener(namesystem, HopsEvent.INV_TABLE_EVENT_NAME);
+    ndbEventManager.addListener(namesystem, HopsEvent.INV_TABLE_EVENT_NAME_BASE);
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);

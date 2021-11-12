@@ -27,7 +27,6 @@ import io.hops.common.IDsMonitor;
 import io.hops.common.INodeUtil;
 import io.hops.erasure_coding.Codec;
 import io.hops.erasure_coding.ErasureCodingManager;
-import io.hops.events.EventManager;
 import io.hops.events.HopsEvent;
 import io.hops.events.HopsEventListener;
 import io.hops.events.HopsEventOperation;
@@ -138,7 +137,6 @@ import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.security.GeneralSecurityException;
 import java.text.DecimalFormat;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -982,7 +980,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
   @Override
   public void eventReceived(HopsEventOperation eventOperation, String eventName) {
-    if (!eventName.equals(HopsEvent.INV_TABLE_EVENT_NAME)) {
+    if (!eventName.equals(HopsEvent.INV_TABLE_EVENT_NAME_BASE + serverlessNameNode.getDeploymentNumber())) {
       LOG.error("FSNamesystem received unexpected event from NDB: " + eventName);
     }
 

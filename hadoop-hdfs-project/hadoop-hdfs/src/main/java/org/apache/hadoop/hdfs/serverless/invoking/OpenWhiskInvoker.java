@@ -246,14 +246,14 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         do {
             LOG.info("Invoking NameNode " + targetDeployment + " (op=" + operationName + "), attempt "
-                    + (exponentialBackoff.getNumberOfRetries() + 1) + "/" + (maxHttpRetries + 1) + ".");
+                    + (exponentialBackoff.getNumberOfRetries() - 1) + "/" + (maxHttpRetries + 1) + ".");
 
             HttpResponse httpResponse;
             try {
                 httpResponse = httpClient.execute(request);
                 // LOG.debug("Received HTTP response on attempt " + (exponentialBackoff.getNumberOfRetries() + 1) + "!");
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
-                LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries() + 1) + " to invoke NameNode " +
+                LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries() - 1) + " to invoke NameNode " +
                         functionUri + " timed out.");
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
