@@ -31,6 +31,8 @@ import io.hops.metadata.ndb.dalimpl.configurationstore.ConfMutationClusterJ;
 import io.hops.metadata.ndb.dalimpl.election.HdfsLeaderClusterj;
 import io.hops.metadata.ndb.dalimpl.election.YarnLeaderClusterj;
 import io.hops.metadata.ndb.dalimpl.hdfs.*;
+import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.WriteAcknowledgementClusterJ;
+import io.hops.metadata.ndb.dalimpl.hdfs.invalidations.InvalidationClusterJ;
 import io.hops.metadata.ndb.dalimpl.yarn.rmstatestore.ReservationStateClusterJ;
 import io.hops.metadata.ndb.dalimpl.yarn.AppProvenanceClusterJ;
 import io.hops.metadata.ndb.dalimpl.yarn.quota.PriceMultiplicatorClusterJ;
@@ -106,6 +108,8 @@ public class NdbStorageFactory implements DalStorageFactory {
 
   private void initDataAccessMap() {
     // These are the classes that I've added for our Serverless NameNode.
+    dataAccessMap.put(InvalidationDataAccess.class, new InvalidationClusterJ());
+    dataAccessMap.put(WriteAcknowledgementDataAccess.class, new WriteAcknowledgementClusterJ());
     dataAccessMap.put(ServerlessNameNodeDataAccess.class, new ServerlessNameNodeClusterJ());
     dataAccessMap.put(DataNodeDataAccess.class, new DataNodeClusterJ());
     dataAccessMap.put(StorageReportDataAccess.class, new StorageReportClusterJ());

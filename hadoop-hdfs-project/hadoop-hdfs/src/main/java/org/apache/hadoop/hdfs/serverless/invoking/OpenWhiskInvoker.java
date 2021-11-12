@@ -251,7 +251,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             HttpResponse httpResponse;
             try {
                 httpResponse = httpClient.execute(request);
-                LOG.debug("Received HTTP response on attempt " + (exponentialBackoff.getNumberOfRetries() + 1) + "!");
+                // LOG.debug("Received HTTP response on attempt " + (exponentialBackoff.getNumberOfRetries() + 1) + "!");
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
                 LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries() + 1) + " to invoke NameNode " +
                         functionUri + " timed out.");
@@ -277,7 +277,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             // yet, but if you try again a few seconds later, then the request will get through.
             if (responseCode >= 400 && responseCode <= 599) {
                 LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-                        (exponentialBackoff.getNumberOfRetries() + 1) + "/" + (maxHttpRetries) + ".");
+                        (exponentialBackoff.getNumberOfRetries() - 1) + "/" + (maxHttpRetries) + ".");
 
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
