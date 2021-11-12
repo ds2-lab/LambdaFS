@@ -521,6 +521,7 @@ public abstract class HopsTransactionalRequestHandler
     int deploymentNumber = serverlessNameNode.getDeploymentNumber();
 
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
+    assert(zkClient != null);
     List<String> groupMemberIds = zkClient.getGroupMembers(serverlessNameNode.getFunctionName());
     List<ActiveNode> activeNodes = serverlessNameNode.getActiveNameNodes().getActiveNodes();
     requestHandlerLOG.debug("Active NameNodes at start of consistency protocol: " + activeNodes.toString());
