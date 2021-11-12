@@ -2,6 +2,12 @@ package org.apache.hadoop.hdfs.serverless.zookeeper;
 
 /**
  * Defines the various options for creating a PersistentWatcher when joining another deployment as a guest.
+ *
+ * NOTE: For now, this doesn't serve much of a purpose. The PersistentWatcher that is initially created is
+ * only concerned with changes in connection state (i.e., losing connection). There is a separate API for adding
+ * generic ZooKeeper listeners.
+ *
+ * So, we should basically always use DO_NOT_CREATE here.
  */
 public enum GuestWatcherOption {
     /**

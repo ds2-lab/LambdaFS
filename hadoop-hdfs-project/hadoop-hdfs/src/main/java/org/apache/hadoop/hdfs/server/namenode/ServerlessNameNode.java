@@ -1463,6 +1463,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (!checkPathLength(src)) {
       throw new IOException(
               "mkdirs: Pathname too long.  Limit " + MAX_PATH_LENGTH +
+              "mkdirs: Pathname too long.  Limit " + MAX_PATH_LENGTH +
                       " characters, " + MAX_PATH_DEPTH + " levels.");
     }
     return namesystem.mkdirs(src, new PermissionStatus(

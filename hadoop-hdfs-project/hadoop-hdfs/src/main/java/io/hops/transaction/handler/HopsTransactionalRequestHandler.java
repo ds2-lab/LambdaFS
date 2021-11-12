@@ -15,6 +15,7 @@
  */
 package io.hops.transaction.handler;
 
+import com.esotericsoftware.minlog.Log;
 import io.hops.events.*;
 import io.hops.exception.StorageException;
 import io.hops.leader_election.node.ActiveNode;
@@ -35,7 +36,9 @@ import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
+import org.apache.hadoop.hdfs.serverless.zookeeper.GuestWatcherOption;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
+import org.apache.hadoop.util.StringUtils;
 import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
@@ -249,21 +252,25 @@ public abstract class HopsTransactionalRequestHandler
     //       to help the other deployment serve reads), except here the NN joins possibly many other deployments.
     //       For now, subtree operations will produce errors/fail.
 
+    // Keep track of any other deployments we'll need to join to carry out this operation.
+    Set<Integer> additionalDeploymentsToJoin = new HashSet<>();
+
     // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
     // If we find that we are about to modify an INode for which we are not authorized, throw an exception.
     for (INode invalidatedINode : invalidatedINodes) {
       int mappedDeploymentNumber = serverlessNameNode.getMappedServerlessFunction(invalidatedINode);
       int localDeploymentNumber = serverlessNameNode.getDeploymentNumber();
 
+      // We'll have to guest-join the other deployment if the INode is not mapped to our deployment.
+      // This is common during subtree operations and when creating a new directory (as that modifies the parent
+      // INode of the new directory, which is possibly mapped to a different deployment).
       if (mappedDeploymentNumber != localDeploymentNumber) {
-        requestHandlerLOG.error("Transaction intends to update INode " + invalidatedINode.getFullPathName()
-                + ", however only NameNodes from deployment #" + mappedDeploymentNumber
-                + " should be modifying this INode. We are from deployment #" + localDeploymentNumber);
-        throw new IOException("Modification of INode " + invalidatedINode.getFullPathName()
-                + " is unauthorized for NameNodes from deployment #" + localDeploymentNumber
-                + "; only NameNodes from deployment #" + mappedDeploymentNumber + " may modify this INode.");
+        requestHandlerLOG.debug("INode " + invalidatedINode.getLocalName() +
+                " is mapped to a different deployment (" + mappedDeploymentNumber + ").");
+        additionalDeploymentsToJoin.add(mappedDeploymentNumber);
       } else {
-        requestHandlerLOG.debug("Modification of INode " + invalidatedINode.getFullPathName() + " is permitted.");
+        requestHandlerLOG.debug("Modification of INode " + invalidatedINode.getFullPathName() +
+                " is authorized for our deployment (" + localDeploymentNumber + ").");
       }
     }
 
@@ -463,6 +470,43 @@ public abstract class HopsTransactionalRequestHandler
       waitingForAcks.remove(nameNodeId);
 
       countDownLatch.countDown();
+    }
+  }
+
+  /**
+   * Join other deployments as a guest. This is required when modifying INodes from other deployments. Typically, we
+   * aim to avoid this. But it occurs commonly during subtree operations and when creating new directories.
+   * @param serverlessNameNode The local ServerlessNameNode instance.
+   * @param deploymentsToJoin Set containing the IDs of the deployments we need to join.
+   */
+  private void joinOtherDeploymentsAsGuest(ServerlessNameNode serverlessNameNode, Set<Integer> deploymentsToJoin)
+          throws Exception {
+    if (deploymentsToJoin.size() == 0) {
+      requestHandlerLOG.debug("There are no other deployments to join.");
+      return;
+    }
+
+    if (deploymentsToJoin.size() == 1)
+      requestHandlerLOG.debug("There is 1 other deployment to join: " + deploymentsToJoin);
+    else
+      requestHandlerLOG.debug("There are " + deploymentsToJoin.size() + " other deployments to join: " +
+              deploymentsToJoin);
+
+    ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
+    long localNameNodeId = serverlessNameNode.getId();
+
+    int counter = 1;
+    for (int deploymentId : deploymentsToJoin) {
+      requestHandlerLOG.debug("Joining deployment " + deploymentId + " as guest (" + counter + "/" +
+              deploymentsToJoin.size() + ").");
+
+      // TODO: Modify this API and the GuestWatcherOption interface. We can add a separate handler for guest
+      //       memberships where losing connection requires some sort of recovery; when connection is re-established,
+      //       we compare the membership to what we knew before, and adjust accordingly (i.e., check for any other
+      //       dropped members). Also, the persistent watcher we create when joining should immediately hook into
+      //       the ACK/INV mechanism here so that we do not need to call addListener() for each deployment we join.
+      zkClient.joinGroupAsGuest("namenode" + deploymentId, Long.toString(localNameNodeId), null,
+              GuestWatcherOption.DO_NOT_CREATE);
     }
   }
 
