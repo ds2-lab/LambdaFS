@@ -167,6 +167,8 @@ public class SyncZKClient implements ZKClient {
                 invalidatable.invalidateCache();
             } else {
                 LOG.debug("Connected established with ZooKeeper ensemble.");
+                // TODO: If our connection is automatically re-established, do we need to re-create our ZNode?
+                //       Or is that handled for us?
             }
         });
     }
