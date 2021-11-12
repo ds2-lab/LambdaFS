@@ -49,7 +49,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
@@ -2261,7 +2260,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
-    ndbEventManager.addListener(namesystem, HopsEvent.INV_TABLE_EVENT_NAME_BASE + deploymentNumber);
+    ndbEventManager.addListener(namesystem, HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber);
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);

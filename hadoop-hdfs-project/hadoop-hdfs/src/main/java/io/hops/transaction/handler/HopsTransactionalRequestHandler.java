@@ -428,7 +428,7 @@ public abstract class HopsTransactionalRequestHandler
    * Unregister ourselves as an event listener for ACK table events, then unregister the event operation itself.
    */
   private void unsubscribeFromAckEvents(ServerlessNameNode serverlessNameNode) throws StorageException {
-    String eventName = HopsEvent.ACK_TABLE_EVENT_NAME + serverlessNameNode.getDeploymentNumber();
+    String eventName = HopsEvent.ACK_EVENT_NAME_BASE + serverlessNameNode.getDeploymentNumber();
     EventManager eventManager = serverlessNameNode.getNdbEventManager();
     eventManager.removeListener(this, eventName);
     eventManager.unregisterEventOperation(eventName);
@@ -436,7 +436,7 @@ public abstract class HopsTransactionalRequestHandler
 
   @Override
   public void eventReceived(HopsEventOperation eventData, String eventName) {
-    if (!eventName.equals(HopsEvent.ACK_TABLE_EVENT_NAME))
+    if (!eventName.equals(HopsEvent.ACK_EVENT_NAME_BASE))
       requestHandlerLOG.debug("HopsTransactionalRequestHandler received unexpected event " + eventName + "!");
 
     // First, verify that this event pertains to our write operation. If it doesn't, we just return.
@@ -489,7 +489,7 @@ public abstract class HopsTransactionalRequestHandler
         throw new StorageException("Unsupported deployment number: " + serverlessNameNode.getDeploymentNumber());
     }
 
-    String eventName = HopsEvent.ACK_TABLE_EVENT_NAME + serverlessNameNode.getDeploymentNumber();
+    String eventName = HopsEvent.ACK_EVENT_NAME_BASE + serverlessNameNode.getDeploymentNumber();
     EventManager eventManager = serverlessNameNode.getNdbEventManager();
     boolean eventCreated = eventManager.registerEvent(eventName, targetTableName,
             eventManager.getAckTableEventColumns(), false);
@@ -500,8 +500,8 @@ public abstract class HopsTransactionalRequestHandler
       requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName +
               " already exists. Reusing existing event.");
 
-    eventManager.createEventOperation(targetTableName);
-    eventManager.addListener(this, targetTableName);
+    eventManager.createEventOperation(eventName);
+    eventManager.addListener(this, eventName);
   }
 
   /**

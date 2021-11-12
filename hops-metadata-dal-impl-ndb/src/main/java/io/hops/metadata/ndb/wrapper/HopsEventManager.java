@@ -281,9 +281,9 @@ public class HopsEventManager implements EventManager {
         eventOperationMap.put(eventName, hopsEventOperation);
         eventOpToNameMapping.put(hopsEventOperation, eventName);
 
-        if (eventName.equals(HopsEvent.ACK_TABLE_EVENT_NAME))
+        if (eventName.equals(HopsEvent.ACK_EVENT_NAME_BASE))
             eventColumnMap.put(hopsEventOperation, ACK_EVENT_COLUMNS);
-        else if (eventName.equals(HopsEvent.INV_TABLE_EVENT_NAME_BASE))
+        else if (eventName.equals(HopsEvent.INV_EVENT_NAME_BASE))
             eventColumnMap.put(hopsEventOperation, INV_TABLE_EVENT_COLUMNS);
     }
 
@@ -500,7 +500,7 @@ public class HopsEventManager implements EventManager {
     @Override
     public void defaultSetup() throws StorageException {
         if (defaultEventName == null)
-            defaultEventName = HopsEvent.INV_TABLE_EVENT_NAME_BASE + deploymentNumber;
+            defaultEventName = HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber;
 
         if (defaultDeleteIfExists)
             LOG.warn("Will delete and recreate event " + defaultEventName + " if it already exists!");

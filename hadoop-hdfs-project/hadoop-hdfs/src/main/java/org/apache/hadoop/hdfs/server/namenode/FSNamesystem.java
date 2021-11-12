@@ -981,7 +981,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
   @Override
   public void eventReceived(HopsEventOperation eventOperation, String eventName) {
-    if (!eventName.equals(HopsEvent.INV_TABLE_EVENT_NAME_BASE + serverlessNameNode.getDeploymentNumber())) {
+    if (!eventName.equals(HopsEvent.INV_EVENT_NAME_BASE + serverlessNameNode.getDeploymentNumber())) {
       LOG.error("FSNamesystem received unexpected event from NDB: " + eventName);
     }
 
