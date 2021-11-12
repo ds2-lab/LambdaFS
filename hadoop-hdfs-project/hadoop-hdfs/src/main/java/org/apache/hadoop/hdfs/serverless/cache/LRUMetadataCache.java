@@ -64,21 +64,6 @@ public class LRUMetadataCache<T> {
         this(DEFAULT_MAX_ENTRIES, DEFAULT_LOAD_FACTOR);
     }
 
-//    /**
-//     * Create an LRU Metadata Cache using the default load factor value and a specified maximum capacity.
-//     */
-//    public LRUMetadataCache(int capacity) {
-//        this(capacity, DEFAULT_LOAD_FACTOR);
-//    }
-//
-//
-//    /**
-//     * Create an LRU Metadata Cache using the default maximum capacity and a specified load factor value.
-//     */
-//    public LRUMetadataCache(float loadFactor) {
-//        this(DEFAULT_MAX_ENTRIES, loadFactor);
-//    }
-
     /**
      * Create an LRU Metadata Cache using a specified maximum capacity and load factor.
      */
@@ -96,15 +81,20 @@ public class LRUMetadataCache<T> {
      * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
      * invalidated.
      */
-    public synchronized T getByPath(String key) {
-        if (invalidatedKeys.contains(key))
-            return null;
+    public T getByPath(String key) {
+        _mutex.lock();
+        try {
+            if (invalidatedKeys.contains(key))
+                return null;
 
-        T returnValue = cache.get(key);
+            T returnValue = cache.get(key);
 
-        LOG.debug("Retrieved value " + returnValue.toString() + " from cache using key " + key + ".");
+            LOG.debug("Retrieved value " + returnValue.toString() + " from cache using key " + key + ".");
 
-        return returnValue;
+            return returnValue;
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -115,12 +105,17 @@ public class LRUMetadataCache<T> {
      * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
      * invalidated.
      */
-    public synchronized T getByINodeId(long iNodeId) {
-        if (idToNameMapping.containsKey(iNodeId)) {
-            String key = idToNameMapping.get(iNodeId);
-            return getByPath(key);
+    public T getByINodeId(long iNodeId) {
+        _mutex.lock();
+        try {
+            if (idToNameMapping.containsKey(iNodeId)) {
+                String key = idToNameMapping.get(iNodeId);
+                return getByPath(key);
+            }
+            return null;
+        } finally {
+             _mutex.unlock();
         }
-        return null;
     }
 
     /**
@@ -134,17 +129,22 @@ public class LRUMetadataCache<T> {
         if (value == null)
             throw new IllegalArgumentException("LRUMetadataCache does NOT support null values. Associated key: " + key);
 
-        T returnValue = cache.put(key, value);
-        idToNameMapping.put(iNodeId, key);
+        _mutex.lock();
+        try {
+            T returnValue = cache.put(key, value);
+            idToNameMapping.put(iNodeId, key);
 
-        boolean removed = invalidatedKeys.remove(key);
+            boolean removed = invalidatedKeys.remove(key);
 
-        if (removed)
-            LOG.debug("Previously invalid key " + key + " updated with valid cache value. Cache size: " + cache.size());
-        else
-            LOG.debug("Inserted metadata object into cache under key " + key + ". Cache size: " + cache.size());
+            if (removed)
+                LOG.debug("Previously invalid key " + key + " updated with valid cache value. Cache size: " + cache.size());
+            else
+                LOG.debug("Inserted metadata object into cache under key " + key + ". Cache size: " + cache.size());
 
-        return returnValue;
+            return returnValue;
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -154,18 +154,22 @@ public class LRUMetadataCache<T> {
         if (key == null)
             return false;
 
-        // If the given key is a string, then we can use it directly.
-        if (key instanceof String) {
-            return !invalidatedKeys.contains(key) && cache.containsKey(key);
-        }
-        else if (key instanceof Long) {
-            // If the key is a long, we need to check if we've mapped this long to a String key. If so,
-            // then we can get the string version and continue as before.
-            String keyAsStr = idToNameMapping.getOrDefault((Long)key, null);
-            return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
-        }
+        _mutex.lock();
+        try {
+            // If the given key is a string, then we can use it directly.
+            if (key instanceof String) {
+                return !invalidatedKeys.contains(key) && cache.containsKey(key);
+            } else if (key instanceof Long) {
+                // If the key is a long, we need to check if we've mapped this long to a String key. If so,
+                // then we can get the string version and continue as before.
+                String keyAsStr = idToNameMapping.getOrDefault((Long) key, null);
+                return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
+            }
 
-        return false;
+            return false;
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -174,12 +178,17 @@ public class LRUMetadataCache<T> {
      * @param includeInvalidKeys If true, include invalid keys in the size.
      */
     public int size(boolean includeInvalidKeys) {
-        int cacheSize = cache.size();
+        _mutex.lock();
+        try {
+            int cacheSize = cache.size();
 
-        if (!includeInvalidKeys)
-            cacheSize -= invalidatedKeys.size();
+            if (!includeInvalidKeys)
+                cacheSize -= invalidatedKeys.size();
 
-        return cacheSize;
+            return cacheSize;
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -197,7 +206,12 @@ public class LRUMetadataCache<T> {
      * invalidated.
      */
     public boolean containsKeySkipInvalidCheck(String key) {
-        return cache.containsKey(key);
+        _mutex.lock();
+        try {
+            return cache.containsKey(key);
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -207,8 +221,13 @@ public class LRUMetadataCache<T> {
     public boolean containsKeySkipInvalidCheck(long inodeId) {
         // If the key is a long, we need to check if we've mapped this long to a String key. If so,
         // then we can get the string version and continue as before.
-        String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
-        return keyAsStr != null && cache.containsKey(keyAsStr);
+        _mutex.lock();
+        try {
+            String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
+            return keyAsStr != null && cache.containsKey(keyAsStr);
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -217,8 +236,13 @@ public class LRUMetadataCache<T> {
     public boolean containsKey(long inodeId) {
         // If the key is a long, we need to check if we've mapped this long to a String key. If so,
         // then we can get the string version and continue as before.
-        String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
-        return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
+        _mutex.lock();
+        try {
+            String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
+            return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -229,13 +253,18 @@ public class LRUMetadataCache<T> {
      * @return True if the key was invalidated, otherwise false.
      */
     public boolean invalidateKey(long inodeId) {
-        if (idToNameMapping.containsKey(inodeId)) {
-            String key = idToNameMapping.get(inodeId);
+        _mutex.lock();
+        try  {
+            if (idToNameMapping.containsKey(inodeId)) {
+                String key = idToNameMapping.get(inodeId);
 
-            return invalidateKey(key, false);
+                return invalidateKey(key, false);
+            }
+
+            return false;
+        } finally {
+            _mutex.unlock();
         }
-
-        return false;
     }
 
     /**
@@ -243,9 +272,13 @@ public class LRUMetadataCache<T> {
      */
     public void invalidateEntireCache() {
         LOG.warn("Invalidating ENTIRE cache. ");
-
-        for (String key : cache.keySet())
-            invalidateKey(key, true);
+        _mutex.lock();
+        try {
+            for (String key : cache.keySet())
+                invalidateKey(key, true);
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -255,12 +288,17 @@ public class LRUMetadataCache<T> {
     public List<String> getPathKeys(boolean includeInvalidKeys) {
         ArrayList<String> keyList = new ArrayList<>();
 
-        for (String key : cache.keySet()) {
-            if (includeInvalidKeys || !invalidatedKeys.contains(key))
-                keyList.add(key);
-        }
+        _mutex.lock();
+        try {
+            for (String key : cache.keySet()) {
+                if (includeInvalidKeys || !invalidatedKeys.contains(key))
+                    keyList.add(key);
+            }
 
-        return keyList;
+            return keyList;
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -282,12 +320,17 @@ public class LRUMetadataCache<T> {
      * @return True if the key was invalidated, otherwise false.
      */
     public boolean invalidateKey(String key, boolean skipCheck) {
-        if (skipCheck || containsKeySkipInvalidCheck(key)) {
-            invalidatedKeys.add(key);
-            LOG.debug("Invalidated key " + key + ".");
-            return true;
-        }
+        _mutex.lock();
+        try {
+            if (skipCheck || containsKeySkipInvalidCheck(key)) {
+                invalidatedKeys.add(key);
+                LOG.debug("Invalidated key " + key + ".");
+                return true;
+            }
 
-        return false;
+            return false;
+        } finally {
+            _mutex.unlock();
+        }
     }
 }
