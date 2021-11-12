@@ -168,7 +168,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (srcObj != null)
             src = (String)srcObj;
 
-        int mappedFunctionNumber = (src != null) ? consistentHash(src.hashCode(), 3) : 999;
+        int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
 
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, System.nanoTime(), -1,
@@ -183,7 +183,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments,
                 requestId,
-                -1);
+                mappedFunctionNumber);
 
         operationPerformed.setEndTime(System.nanoTime());
 

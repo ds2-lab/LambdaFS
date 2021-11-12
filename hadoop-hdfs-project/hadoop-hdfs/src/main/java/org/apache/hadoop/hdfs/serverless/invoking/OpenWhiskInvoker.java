@@ -177,11 +177,11 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             if (fileSystemOperationArguments != null && fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
                 String sourceFileOrDirectory =
                         fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
-                // targetDeployment = cache.getFunction(sourceFileOrDirectory);
-                targetDeployment = consistentHash(sourceFileOrDirectory.hashCode(), numUniqueFunctions);
-
-                LOG.debug("Hashed target path " + sourceFileOrDirectory
-                        + " to deployment " + targetDeployment + ".");
+                targetDeployment = cache.getFunction(sourceFileOrDirectory);
+//                targetDeployment = consistentHash(sourceFileOrDirectory.hashCode(), numUniqueFunctions);
+//
+//                LOG.debug("Hashed target path " + sourceFileOrDirectory
+//                        + " to deployment " + targetDeployment + ".");
             } else {
                 LOG.debug("No `src` property found in file system arguments... " +
                         "skipping the checking of INode cache...");
