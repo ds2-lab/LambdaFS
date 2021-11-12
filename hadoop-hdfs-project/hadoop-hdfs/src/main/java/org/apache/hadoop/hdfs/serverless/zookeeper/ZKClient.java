@@ -14,8 +14,7 @@ import java.util.function.Consumer;
  *
  * Concrete implementations of this interface come in one of two flavors: synchronous and asynchronous.
  *
- * The synchronous version is implemented by {@link SyncZKClient}, while the asynchronous
- * version is implemented by {@link AsyncZKClient}.
+ * The synchronous version is implemented by {@link SyncZKClient}. There is presently no asynchronous version.
  */
 public interface ZKClient {
     /**
@@ -45,6 +44,8 @@ public interface ZKClient {
      *
      * So, this method creates a PERSISTENT ZNode.
      *
+     * NOTE: This also creates the persistent ZNodes for the permanent and guest sub-groups.
+     *
      * @param groupName The name to use for the new group/directory.
      *
      * @throws KeeperException.NodeExistsException If the group already exists (i.e., if there is already a persistent
@@ -54,7 +55,7 @@ public interface ZKClient {
 
     /**
      * Join an existing ZooKeeper group/directory by creating an ephemeral child node under
-     * the parent directory.
+     * the parent directory. We specifically join the PERMANENT sub-group.
      *
      * The ephemeral ZNode will exist as long as we (the client who created it) are alive and connected to ZooKeeper.
      * If we disconnect, then our ZNode will be deleted, signifying that we have left the group and are no longer
@@ -64,8 +65,21 @@ public interface ZKClient {
      * @param memberId Used when creating the ephemeral ID of this node.
      * @param invalidatable Entity with a cache that can be invalidated. We use the {@link Invalidatable} interface
      *                      to hook into the object and invalidate its cache when connection to ZK is lost.
+     * @param createWatch If true, create a PersistentWatcher instance to monitor changes in group membership.
      */
-    void joinGroup(String groupName, String memberId, Invalidatable invalidatable) throws Exception;
+    void joinGroupAsPermanent(String groupName, String memberId, Invalidatable invalidatable, boolean createWatch)
+            throws Exception;
+
+    /**
+     * Join an existing ZooKeeper group. We specifically join the GUEST sub-group.
+     * @param groupName The ZK directory/group to join.
+     * @param memberId Used when creating the ephemeral ID of this node.
+     * @param invalidatable Entity with a cache that can be invalidated. We use the {@link Invalidatable} interface
+     *                      to hook into the object and invalidate its cache when connection to ZK is lost.
+     * @param watcherOption Specifies the desired option for creating a PersistentWatcher.
+     */
+    void joinGroupAsGuest(String groupName, String memberId, Invalidatable invalidatable,
+                          GuestWatcherOption watcherOption) throws Exception;
 
     /**
      * Create and join a group with the given name. This just calls the `createGroup()` function followed by the
@@ -74,6 +88,9 @@ public interface ZKClient {
      * IMPORTANT: This function wraps the call to `createGroup()` in a try-catch and ignores the possible
      * NodeExistsException that gets thrown if the group already exists. During standard operation, the groups will
      * almost always already exist, so the `createGroup()` call is expected to throw an exception.
+     *
+     * NOTE: This will always join the PERMANENT sub-group for a particular deployment.
+     * NOTE: This will create a PersistentWatcher object for the parent path of the group we're joining.
      *
      * @param groupName The name of the group to join.
      * @param memberId Used when creating the ephemeral ID of this node.
@@ -93,6 +110,8 @@ public interface ZKClient {
      * Add a listener to the Watch for the given group. The listener will call the provided callback.
      * The callback should handle determining whether to act depending on which event fired.
      *
+     * This adds a listener to the PERMANENT sub-group.
+     *
      * @param groupName The name of the group for which a listener will be added. If we are not in this group, then
      *                  this will probably fail.
      * @param watcher Watcher object to be aded. Serves as the callback for the event notification.
@@ -100,7 +119,7 @@ public interface ZKClient {
     void addListener(String groupName, Watcher watcher);
 
     /**
-     * Remove a listener from the Watch for the given group.
+     * Remove a listener from the Watch for the given group. This removes the watcher from the PERMANENT sub-group.
      *
      * @param groupName The name of the group for which the listener will be removed. If we are not in this group,
      *                  then this will probably fail.
@@ -109,11 +128,28 @@ public interface ZKClient {
     void removeListener(String groupName, Watcher watcher);
 
     /**
-     * Get the children of the given group.
+     * Get the children of the given group. This returns PERMANENT group members.
+     *
      * @param groupName The group whose children we desire..
-     * @return List of IDs of the members of the specified group.
+     * @return List of IDs of the members of the permanent sub-group of the specified deployment group.
      */
-    public List<String> getGroupMembers(String groupName) throws Exception;
+    public List<String> getPermanentGroupMembers(String groupName) throws Exception;
+
+    /**
+     * Get the children of the given group. This returns GUEST group members.
+     *
+     * @param groupName The group whose children we desire.
+     * @return List of IDs of the members of the guest sub-group of the specified deployment group.
+     */
+    public List<String> getGuestGroupMembers(String groupName) throws Exception;
+
+    /**
+     * Get the group members for both the permanent and guest sub-groups of a particular deployment.
+     *
+     * @param groupName Identifies the deployment group in question.
+     * @return List of IDs of members from the guest and permanent sub-groups of the specified deployment group.
+     */
+    public List<String> getAllGroupMembers(String groupName) throws Exception;
 
 //    /**
 //     * Return the GroupMember instance associated with this client, if it exists. Otherwise, return null.

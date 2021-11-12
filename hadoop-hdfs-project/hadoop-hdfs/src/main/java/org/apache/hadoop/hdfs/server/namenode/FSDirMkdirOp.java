@@ -131,7 +131,7 @@ class FSDirMkdirOp {
         return fsd.getAuditFileInfo(iip);
       }
     };
-    return (HdfsFileStatus) mkdirsHandler.handle();
+    return (HdfsFileStatus) mkdirsHandler.handle(fsd.getFSNamesystem());
   }
 
   /**

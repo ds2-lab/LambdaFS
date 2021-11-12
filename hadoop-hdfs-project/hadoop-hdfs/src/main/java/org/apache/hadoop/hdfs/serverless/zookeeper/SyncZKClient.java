@@ -1,30 +1,34 @@
 package org.apache.hadoop.hdfs.serverless.zookeeper;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.framework.recipes.nodes.GroupMember;
 import org.apache.curator.framework.recipes.watch.PersistentWatcher;
-import org.apache.curator.framework.state.ConnectionState;
-import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.x.async.AsyncCuratorFramework;
-import org.apache.hadoop.util.hash.Hash;
 import org.apache.zookeeper.*;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.function.Consumer;
 
 /**
  * Encapsulates ZooKeeper/Apache Curator Framework functionality for the NameNode.
  */
 public class SyncZKClient implements ZKClient {
     public static final Log LOG = LogFactory.getLog(SyncZKClient.class);
+
+    /**
+     * Directory for permanent members of a deployment. The full path would be:
+     * /namenode[deployment_number][PERMANENT_DIR].
+     */
+    public static final String PERMANENT_DIR = "/permanent";
+
+    /**
+     * Directory for guest members of a deployment. The full path would be:
+     * /namenode[deployment_number][GUEST_DIR].
+     */
+    public static final String GUEST_DIR = "/guest";
 
     /**
      * Encapsulates a connection to the ZooKeeper ensemble.
@@ -41,19 +45,6 @@ public class SyncZKClient implements ZKClient {
      * {@link SyncZKClient#hosts} instance variable.
      */
     private final String connectionString;
-
-    /**
-     * Unique ID identifying this member in its ZK group.
-     */
-    private final String memberId;
-
-    /**
-     * GroupMember instance for this client.
-     *
-     * You can get a current view of the members by calling:
-     *      groupMember.getCurrentMembers();
-     */
-    private GroupMember groupMember;
 
     /**
      * Keep track of all our watchers. Generally there should just be one (for the group we're in).
@@ -84,9 +75,6 @@ public class SyncZKClient implements ZKClient {
                 connectionStringBuilder.append(',');
         }
         this.connectionString = connectionStringBuilder.toString();
-
-        this.memberId = memberId;
-
         this.watchers = new HashMap<>();
     }
 
@@ -131,41 +119,103 @@ public class SyncZKClient implements ZKClient {
         if (groupName == null)
             throw new IllegalArgumentException("Group name parameter must be non-null.");
 
-        String path = "/" + groupName; // The paths must be fully-qualified, so we prepend an '/'.
+        // Permanent refers to the fact that this is the path for permanent group members.
+        String permanentPath = getPath(groupName, null, true);
+        String guestPath = getPath(groupName, null, false);
 
-        LOG.debug("Creating ZK group with path: " + path);
-
+        LOG.debug("Creating ZK group with path: " + permanentPath);
         // This will throw an exception if the group already exists!
-        this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(path);
+        this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(permanentPath);
+
+        LOG.debug("Creating ZK group with path: " + guestPath);
+        // This will throw an exception if the group already exists!
+        this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(guestPath);
     }
 
     @Override
-    public void joinGroup(String groupName, String memberId, Invalidatable invalidatable) throws Exception {
+    public void joinGroupAsGuest(String groupName, String memberId, Invalidatable invalidatable,
+                                 GuestWatcherOption watcherOption) throws Exception {
         if (this.client == null)
             throw new IllegalStateException("ZooKeeper client must be instantiated before joining a group.");
 
         if (groupName == null)
             throw new IllegalArgumentException("Group name parameter must be non-null.");
 
-        String path = "/" + groupName + "/" + memberId; // The paths must be fully-qualified, so we prepend an '/'.
+        String path = getPath(groupName, memberId, false);
 
-        LOG.debug("Joining ZK group with path: " + path);
+        LOG.debug("Joining ZK (guest) group with path: " + path);
         this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
 
-        String parentPath = "/" + groupName;
-        PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, parentPath, false);
+        if (watcherOption == GuestWatcherOption.CREATE_WATCH_ON_PERMANENT) {
+            LOG.debug("Creating watcher on permanent sub-group for group " + groupName + ".");
+            String watcherPath = getPath(groupName, null, true);
+            createPersistentWatcher(watcherPath, false, invalidatable);
+        }
+        else if (watcherOption == GuestWatcherOption.CREATE_WATCH_ON_GUEST) {
+            LOG.debug("Creating watcher on guest sub-group for group " + groupName + ".");
+            String watcherPath = getPath(groupName, null, false);
+            createPersistentWatcher(watcherPath, false, invalidatable);
+        }
+        else if (watcherOption == GuestWatcherOption.CREATE_WATCH_ON_BOTH) {
+            LOG.debug("Creating watcher on both the permanent and guest sub-groups for group " + groupName + ".");
+            String watcherPathPermanent = getPath(groupName, null, true);
+            String watcherPathGuest = getPath(groupName, null, true);
+            createPersistentWatcher(watcherPathPermanent, false, invalidatable);
+            createPersistentWatcher(watcherPathGuest, false, invalidatable);
+        }
+        else {
+            LOG.warn("Skipping creation of PersistentWatcher instance for group " + groupName + ".");
+        }
+    }
+
+    @Override
+    public void joinGroupAsPermanent(String groupName, String memberId,
+                                     Invalidatable invalidatable, boolean createWatch) throws Exception {
+        if (this.client == null)
+            throw new IllegalStateException("ZooKeeper client must be instantiated before joining a group.");
+
+        if (groupName == null)
+            throw new IllegalArgumentException("Group name parameter must be non-null.");
+
+        String path = getPath(groupName, memberId, true);
+
+        LOG.debug("Joining ZK (permanent) group with path: " + path);
+        this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
+
+        String parentPath = getPath(groupName, null, true);
+        if (createWatch) {
+            LOG.debug("Creating PersistentWatcher for parent path '" + parentPath + "'");
+            createPersistentWatcher(parentPath, false, invalidatable);
+        } else {
+            LOG.warn("Skipping creation of PersistentWatcher for parent path '" + parentPath + "'");
+        }
+    }
+
+    /**
+     * Create and start a PersistentWatcher instance for the given path.
+     *
+     * @param path The path for which the PersistentWatcher is created.
+     * @param recursive Passed to the PersistentWatcher constructor. For now, this will always be false.
+     * @param invalidatable Used as a callback for state changes detected by the PersistentWatcher.
+     *                      If null, then no callback occurs, but a message is logged.
+     */
+    private void createPersistentWatcher(String path, boolean recursive, Invalidatable invalidatable) {
+        PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, path, recursive);
         persistentWatcher.start();
 
-        if (this.watchers.containsKey(parentPath))
-            LOG.warn("We already have a watcher for path " + parentPath + ".");
+        if (this.watchers.containsKey(path))
+            LOG.warn("We already have a watcher for path " + path + ".");
         else
-            this.watchers.put(parentPath, persistentWatcher);
+            this.watchers.put(path, persistentWatcher);
 
         // We need to invalidate our cache whenever our connection to ZooKeeper is lost.
         client.getConnectionStateListenable().addListener((curatorFramework, connectionState) -> {
             if (!connectionState.isConnected()) {
                 LOG.warn("Connection to ZooKeeper lost. Need to invalidate cache.");
-                invalidatable.invalidateCache();
+                if (invalidatable != null)
+                    invalidatable.invalidateCache();
+                else
+                    LOG.warn("Provided invalidatable object was null!");
             } else {
                 LOG.debug("Connected established with ZooKeeper ensemble.");
                 // TODO: If our connection is automatically re-established, do we need to re-create our ZNode?
@@ -177,9 +227,6 @@ public class SyncZKClient implements ZKClient {
     @Override
     public void close() {
         LOG.debug("Closing SyncZKClient now...");
-
-        if (this.groupMember != null)
-            this.groupMember.close();
     }
 
     @Override
@@ -192,45 +239,13 @@ public class SyncZKClient implements ZKClient {
             LOG.debug("ZooKeeper group '/" + groupName + "' already exists.");
         }
 
-        joinGroup(groupName, memberId, invalidatable);
+        // Pass 'true' to create a PersistentWatcher object for the parent path of the group we're joining.
+        joinGroupAsPermanent(groupName, memberId, invalidatable, true);
     }
-
-//    public List<String> getGroupMembers(String groupName, Runnable callback) throws Exception {
-//        if (groupName == null)
-//            throw new IllegalArgumentException("Group name argument cannot be null.");
-//
-//        if (callback == null)
-//            throw new IllegalArgumentException("Callback argument cannot be null.");
-//
-//        String path = "/" + groupName;
-//
-//        LOG.debug("Getting children for group: " + path);
-//        List<String> children = this.client.getChildren().usingWatcher(new Watcher() {
-//            @Override
-//            public void process(WatchedEvent event) {
-//                LOG.debug("Watcher received event " + event.getType().name() + " for children of group: " + path);
-//
-//                // We only care about this event if it is about the children of the group changing.
-//                if (event.getType() == Event.EventType.NodeChildrenChanged) {
-//                    try {
-//                        LOG.debug("Executing callback for NodeChildrenChanged event on group " + path + " now...");
-//                        callback.run();
-//                    } catch (Exception ex) {
-//                        LOG.error("Error encountered while executing callback:", ex);
-//                    }
-//                }
-//            }
-//        }).forPath(path);
-//
-//        if (children.isEmpty())
-//            LOG.warn("There are no children in group: " + path);
-//
-//        return children;
-//    }
 
     @Override
     public void addListener(String groupName, Watcher watcher) {
-        String path = "/" + groupName;
+        String path = getPath(groupName, null, true);
 
         PersistentWatcher persistentWatcher = watchers.getOrDefault(path, null);
         if (persistentWatcher == null) {
@@ -244,7 +259,7 @@ public class SyncZKClient implements ZKClient {
 
     @Override
     public void removeListener(String groupName, Watcher watcher) {
-        String path = "/" + groupName;
+        String path = getPath(groupName, null, true);
 
         PersistentWatcher persistentWatcher = watchers.getOrDefault(path, null);
         if (persistentWatcher == null) {
@@ -257,11 +272,11 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public List<String> getGroupMembers(String groupName) throws Exception {
+    public List<String> getGuestGroupMembers(String groupName) throws Exception {
         if (groupName == null)
             throw new IllegalArgumentException("Group name argument cannot be null.");
 
-        String path = "/" + groupName;
+        String path = getPath(groupName, null, false);
 
         LOG.debug("Getting children for group: " + path);
         List<String> children = this.client.getChildren().forPath(path);
@@ -272,36 +287,41 @@ public class SyncZKClient implements ZKClient {
         return children;
     }
 
-//    public Map<String, byte[]> getGroupMembers() {
-//        if (this.groupMember == null)
-//            throw new IllegalStateException("Must first join a group before retrieving group members.");
-//
-//        return this.groupMember.getCurrentMembers();
-//    }
+    @Override
+    public List<String> getPermanentGroupMembers(String groupName) throws Exception {
+        if (groupName == null)
+            throw new IllegalArgumentException("Group name argument cannot be null.");
 
-//    @Override
-//    public void createAndJoinGroup(String groupName) {
-//        String path = "/" + groupName; // The paths must be fully-qualified, so we prepend an '/'.
-//
-//        LOG.debug("Joining ZK group via GroupMember API with path: " + path);
-//        this.groupMember = new GroupMember(this.client, path, this.memberId, new byte[0]);
-//        this.groupMember.start();
-//    }
+        String path = getPath(groupName, null, true);
 
-//    @Override
-//    public GroupMember getGroupMember() {
-//        return this.groupMember;
-//    }
+        LOG.debug("Getting children for group: " + path);
+        List<String> children = this.client.getChildren().forPath(path);
 
-//    @Override
-//    public <T> void createWatch(String groupName, Callable<T> callback) {
-//        if (this.client == null)
-//            throw new IllegalStateException("Client must be created/instantiated before any watches can be created.");
-//        if (groupName == null)
-//            throw new IllegalArgumentException("Group name argument cannot be null.");
-//
-//        String path = "/" + groupName;
-//
-//        LOG.debug("Synchronously creating watch for path: " + path);
-//    }
+        if (children.isEmpty())
+            LOG.warn("There are no children in group: " + path);
+
+        return children;
+    }
+
+    @Override
+    public List<String> getAllGroupMembers(String groupName) throws Exception {
+        List<String> guestMembers = getGuestGroupMembers(groupName);
+        List<String> permanentMembers = getPermanentGroupMembers(groupName);
+        guestMembers.addAll(permanentMembers);
+
+        // At this point, guestMembers contains both the guest members and the permanent members.
+        return guestMembers;
+    }
+
+    /**
+     * Return the full path name constructed from the given parameters.
+     *
+     * @param groupName Corresponds to the deployment.
+     * @param memberId If this is non-null, then we return the path with our memberId included at the end.
+     * @param permanent If true, generate a path for the permanent sub-group. If false, generate a path
+     *                  for the guest sub-group.
+     */
+    private String getPath(String groupName, String memberId, boolean permanent) {
+        return "/" + groupName + (permanent ? PERMANENT_DIR : GUEST_DIR) + (memberId != null ? "/" + memberId : "");
+    }
 }

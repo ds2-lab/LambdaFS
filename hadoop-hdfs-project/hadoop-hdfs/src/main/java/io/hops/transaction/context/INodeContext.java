@@ -160,13 +160,13 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
     LOG.debug("Transaction will REMOVE the following INodes (" + removed.size() + "): " +
             StringUtils.join(removed, " ; "));
-    LOG.debug("Transaction will MODIFY the following INodes: " + modified.size() + "): " +
+    LOG.debug("Transaction will MODIFY the following INodes (" + modified.size() + "): " +
             StringUtils.join(modified, " ; "));
 
     Collection<INode> invalidated = new ArrayList<INode>(removed);
     invalidated.addAll(modified);
 
-    LOG.debug("Transaction will 'touch' a total of " + invalidated.size() + "INodes.");
+    LOG.debug("Transaction will 'touch' a total of " + invalidated.size() + " INodes.");
 
     return invalidated;
   }

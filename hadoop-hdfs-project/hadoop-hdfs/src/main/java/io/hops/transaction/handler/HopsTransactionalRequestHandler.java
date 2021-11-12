@@ -335,7 +335,7 @@ public abstract class HopsTransactionalRequestHandler
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
 
     // Get the current members.
-    List<String> groupMemberIdsAsStrings = zkClient.getGroupMembers(serverlessNameNode.getFunctionName());
+    List<String> groupMemberIdsAsStrings = zkClient.getPermanentGroupMembers(serverlessNameNode.getFunctionName());
 
     // Convert from strings to longs.
     List<Long> groupMemberIds = groupMemberIdsAsStrings.stream()
@@ -521,7 +521,7 @@ public abstract class HopsTransactionalRequestHandler
 
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
     assert(zkClient != null);
-    List<String> groupMemberIds = zkClient.getGroupMembers(serverlessNameNode.getFunctionName());
+    List<String> groupMemberIds = zkClient.getPermanentGroupMembers(serverlessNameNode.getFunctionName());
     List<ActiveNode> activeNodes = serverlessNameNode.getActiveNameNodes().getActiveNodes();
     requestHandlerLOG.debug("Active NameNodes at start of consistency protocol: " + activeNodes.toString());
 

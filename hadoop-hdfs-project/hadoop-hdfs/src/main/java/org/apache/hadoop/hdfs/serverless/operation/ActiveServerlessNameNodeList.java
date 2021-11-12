@@ -9,7 +9,6 @@ import io.hops.metadata.hdfs.entity.ServerlessNameNodeMeta;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
-import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +49,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
     public synchronized void refreshFromZooKeeper(ZKClient zkClient, String groupName) throws Exception {
         LOG.debug("Updating the list of active NameNodes from ZooKeeper. Group name: " + groupName);
 
-        List<String> groupMembers = zkClient.getGroupMembers(groupName);
+        List<String> groupMembers = zkClient.getPermanentGroupMembers(groupName);
         activeNodes.clear();
 
         for (String memberId : groupMembers) {
