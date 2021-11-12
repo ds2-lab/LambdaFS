@@ -13,6 +13,7 @@ import io.hops.metadata.ndb.dalimpl.hdfs.invalidations.dtos.InvalidationDeployme
 import io.hops.metadata.ndb.dalimpl.hdfs.invalidations.dtos.InvalidationDeployment1;
 import io.hops.metadata.ndb.dalimpl.hdfs.invalidations.dtos.InvalidationDeployment2;
 import io.hops.metadata.ndb.wrapper.*;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -64,7 +65,7 @@ public class InvalidationClusterJ implements
 
     @Override
     public void addInvalidations(Collection<Invalidation> invalidations, int deploymentNumber) throws StorageException {
-        LOG.debug("ADD " + invalidations.toString() + ", deployment=" + deploymentNumber);
+        LOG.debug("ADD " + StringUtils.join(invalidations, " ; ") + ", deployment=" + deploymentNumber);
         HopsSession session = connector.obtainSession();
         List<InvalidationDTO> dtos =
                 new ArrayList<>();

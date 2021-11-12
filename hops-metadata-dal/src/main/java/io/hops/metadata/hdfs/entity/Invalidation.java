@@ -38,6 +38,12 @@ public class Invalidation {
         this.operationId = operationId;
     }
 
+    @Override
+    public String toString() {
+        return "Invalidation (INodeID=" + inodeId + ", ParentINodeID=" + parentId + ", leaderNameNodeID=" +
+                leaderNameNodeId + ", txStartTime=" + txStartTime + ", operationID=" + operationId + ")";
+    }
+
     public long getOperationId() {
         return operationId;
     }

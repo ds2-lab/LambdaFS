@@ -11,6 +11,7 @@ import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgem
 import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDeployment1;
 import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDeployment2;
 import io.hops.metadata.ndb.wrapper.*;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -258,7 +259,7 @@ public class WriteAcknowledgementClusterJ
     public void addWriteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements,
                                          int deploymentNumber)
             throws StorageException {
-        LOG.debug("ADD " + writeAcknowledgements.toString());
+        LOG.debug("ADD " + StringUtils.join(writeAcknowledgements, " ; "));
         HopsSession session = connector.obtainSession();
 
         List<WriteAcknowledgementDTO> writeDTOs =

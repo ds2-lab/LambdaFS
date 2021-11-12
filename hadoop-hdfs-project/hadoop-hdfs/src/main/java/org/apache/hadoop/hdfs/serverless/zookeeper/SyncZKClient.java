@@ -152,13 +152,14 @@ public class SyncZKClient implements ZKClient {
         LOG.debug("Joining ZK group with path: " + path);
         this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
 
-        PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, path, false);
+        String parentPath = "/" + groupName;
+        PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, parentPath, false);
         persistentWatcher.start();
 
-        if (this.watchers.containsKey(path))
-            LOG.warn("We already have a watcher for path " + path + ".");
+        if (this.watchers.containsKey(parentPath))
+            LOG.warn("We already have a watcher for path " + parentPath + ".");
         else
-            this.watchers.put(path, persistentWatcher);
+            this.watchers.put(parentPath, persistentWatcher);
 
         // We need to invalidate our cache whenever our connection to ZooKeeper is lost.
         client.getConnectionStateListenable().addListener((curatorFramework, connectionState) -> {
