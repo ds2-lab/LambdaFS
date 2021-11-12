@@ -156,19 +156,6 @@ public class HopsEventManager implements EventManager {
      */
     private final HashMap<HopsEventOperation, Integer> numListenersMapping;
 
-//    /**
-//     * The active event operation. For now, we assume that there is just one active event
-//     * operation at any given time. In the future, we may expand this functionality and support
-//     * multiple concurrent event operations, assuming NDB supports this.
-//     */
-//    private HopsEventOperation activeEventOperation;
-
-    /**
-     * The active session with the database. Used to issue operations related to events,
-     * and to receive events from the database.
-     */
-    private HopsSession session;
-
     /**
      * Name to use for the invalidation event when creating it/checking that it exists during defaultSetup().
      * This is set via the setConfigurationParameters() function.
@@ -187,11 +174,17 @@ public class HopsEventManager implements EventManager {
     private int deploymentNumber = -1;
 
     public HopsEventManager() throws StorageException {
-        this.session = ClusterjConnector.getInstance().obtainSession(true);
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
         this.eventOpToNameMapping = new HashMap<>();
         this.numListenersMapping = new HashMap<>();
+    }
+
+    /**
+     * Get thread-local session from the ClusterJConnector.
+     */
+    private HopsSession obtainSession() throws StorageException {
+        return ClusterjConnector.getInstance().obtainSession();
     }
 
     // Inherit the javadoc.
@@ -277,7 +270,7 @@ public class HopsEventManager implements EventManager {
 
         EventOperation eventOperation;
         try {
-            eventOperation = session.createEventOperation(eventName);
+            eventOperation = obtainSession().createEventOperation(eventName);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
@@ -332,7 +325,7 @@ public class HopsEventManager implements EventManager {
         // Try to drop the event. If something goes wrong, we'll throw an exception.
         boolean dropped;
         try {
-            dropped = session.dropEventOperation(hopsEventOperation.getClusterJEventOperation());
+            dropped = obtainSession().dropEventOperation(hopsEventOperation.getClusterJEventOperation());
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
@@ -385,7 +378,7 @@ public class HopsEventManager implements EventManager {
         // Try to create the event. If something goes wrong, we'll throw an exception.
         Event event;
         try {
-            event = session.createAndRegisterEvent(eventName, tableName, eventColumns,
+            event = obtainSession().createAndRegisterEvent(eventName, tableName, eventColumns,
                     eventsToSubscribeTo, recreateIfExists);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
@@ -425,7 +418,7 @@ public class HopsEventManager implements EventManager {
         // Try to drop the event. If something goes wrong, we'll throw an exception.
         boolean dropped;
         try {
-             dropped = session.dropEvent(eventName);
+             dropped = obtainSession().dropEvent(eventName);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
@@ -464,6 +457,14 @@ public class HopsEventManager implements EventManager {
         LOG.debug("Number of events created: " + eventMap.size());
         LOG.debug("Number of event operations created: " + eventOperationMap.size());
 
+        HopsSession session = null;
+        try {
+            session = obtainSession();
+        } catch (StorageException ex) {
+            LOG.error("Failed to acquire a HopsSession instance:", ex);
+            throw new IllegalArgumentException("Failed to obtain a HopsSession instance; cannot poll for events.");
+        }
+
         // Loop forever, listening for events.
         while (true) {
             // As far as I can tell, this is NOT busy-waiting. This ultimately calls select(), or whatever
@@ -480,7 +481,7 @@ public class HopsEventManager implements EventManager {
                 continue;
 
             LOG.debug("Received at least one event!");
-            int numEventsProcessed = processEvents();
+            int numEventsProcessed = processEvents(session);
             LOG.debug("Processed " + numEventsProcessed + " event(s).");
         }
     }
@@ -543,8 +544,7 @@ public class HopsEventManager implements EventManager {
      * Called after `session.pollForEvents()` returns true.
      * @return the number of events that were processed.
      */
-    @Override
-    public synchronized int processEvents() {
+    private synchronized int processEvents(HopsSession session) {
         HopsEventOperationImpl nextEventOp = session.nextEvent(null);
         int numEventsProcessed = 0;
 

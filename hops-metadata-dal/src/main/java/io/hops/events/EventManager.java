@@ -118,11 +118,11 @@ public interface EventManager extends Runnable {
      */
     public boolean unregisterEventOperation(String eventName) throws StorageException;
 
-    /**
-     * This should be called once it is known that there are events to be processed.
-     * @return the number of events that were processed.
-     */
-    public int processEvents();
+//    /**
+//     * This should be called once it is known that there are events to be processed.
+//     * @return the number of events that were processed.
+//     */
+//    public int processEvents() throws StorageException;
 
     /**
      * Register an event listener with the event manager.
