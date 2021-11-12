@@ -3071,14 +3071,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    */
-  /*public static void main(String argv[]) throws Exception {
+  public static void main(String argv[]) throws Exception {
     if (DFSUtil.parseHelpArgument(argv, ServerlessNameNode.USAGE, System.out, true)) {
       System.exit(0);
     }
 
     try {
       StringUtils.startupShutdownMessage(ServerlessNameNode.class, argv, LOG);
-      ServerlessNameNode namenode = createNameNode(argv, null);
+      ServerlessNameNode namenode = createNameNode(argv, null, "LocalVMNameNode0");
       if (namenode != null) {
         namenode.join();
       }
@@ -3086,7 +3086,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.error("Failed to start namenode.", e);
       terminate(1, e);
     }
-  }*/
+  }
 
   private void enterActiveState() throws ServiceFailedException {
     try {

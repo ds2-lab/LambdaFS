@@ -77,8 +77,8 @@ CREATE TABLE `intermediate_block_reports` (
 ---------------------------------
 
 CREATE TABLE `invalidations_deployment0` (
-    `inode_id` int(11) NOT NULL,        -- The INode's ID.
-    `parent_id` int(11) NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `inode_id` bigint(20) NOT NULL,        -- The INode's ID.
+    `parent_id` bigint(20) NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
     `leader_id` bigint(20) NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
     `tx_start` bigint(20) NOT NULL,     -- The time at which the associated transaction began.
     `op_id` bigint(20) NOT NULL,        -- Unique identifier of the associated write operation/transaction.
@@ -87,8 +87,8 @@ CREATE TABLE `invalidations_deployment0` (
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `invalidations_deployment1` (
-    `inode_id` int(11) NOT NULL,        -- The INode's ID.
-    `parent_id` int(11) NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `inode_id` bigint(20) NOT NULL,        -- The INode's ID.
+    `parent_id` bigint(20) NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
     `leader_id` bigint(20) NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
     `tx_start` bigint(20) NOT NULL,     -- The time at which the associated transaction began.
     `op_id` bigint(20) NOT NULL,        -- Unique identifier of the associated write operation/transaction.
@@ -97,8 +97,8 @@ CREATE TABLE `invalidations_deployment1` (
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `invalidations_deployment2` (
-    `inode_id` int(11) NOT NULL,        -- The INode's ID.
-    `parent_id` int(11) NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `inode_id` bigint(20) NOT NULL,        -- The INode's ID.
+    `parent_id` bigint(20) NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
     `leader_id` bigint(20) NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
     `tx_start` bigint(20) NOT NULL,     -- The time at which the associated transaction began.
     `op_id` bigint(20) NOT NULL,        -- Unique identifier of the associated write operation/transaction.
