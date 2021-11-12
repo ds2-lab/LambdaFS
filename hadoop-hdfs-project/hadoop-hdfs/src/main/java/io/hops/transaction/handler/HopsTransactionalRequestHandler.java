@@ -80,6 +80,13 @@ public abstract class HopsTransactionalRequestHandler
    */
   private Map<Integer, List<WriteAcknowledgement>> writeAcknowledgementsMap;
 
+  /**
+   * Set of IDs denoting deployments from which we require ACKs. Our own deployment will always be involved.
+   * Other deployments may be involved during subtree operations and when creating new directories, as these
+   * types of operations modify INodes from multiple deployments.
+   * */
+  private Set<Integer> involvedDeployments;
+
   public HopsTransactionalRequestHandler(HDFSOperationType opType) {
     this(opType, null);
   }
@@ -261,7 +268,7 @@ public abstract class HopsTransactionalRequestHandler
     // Keep track of all deployments involved in this transaction. Our own deployment will always be involved (during
     // write operations, at least). Other deployments may be involved if we're modifying INodes from them. We may
     // modify nodes from other deployments during subtree operations and when creating a new directory.
-    Set<Integer> involvedDeployments = new HashSet<>();
+    involvedDeployments = new HashSet<>();
     involvedDeployments.add(serverlessNameNode.getDeploymentNumber()); // Add our own deployment number, obviously.
 
     // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
@@ -299,7 +306,7 @@ public abstract class HopsTransactionalRequestHandler
     int totalNumberOfACKsRequired;
     try {
       // Pass the set of additional deployments we needed to join, as we also need ACKs from those deployments.
-      totalNumberOfACKsRequired = addAckTableRecords(serverlessNameNode, txStartTime, involvedDeployments);
+      totalNumberOfACKsRequired = addAckTableRecords(serverlessNameNode, txStartTime);
     } catch (Exception ex) {
       requestHandlerLOG.error("Exception encountered on Step 3 of consistency protocol (adding ACKs to table).");
       ex.printStackTrace();
@@ -310,7 +317,7 @@ public abstract class HopsTransactionalRequestHandler
     // and begin monitoring for membership changes. Since we already added ACKs for every active instance, we aren't
     // going to miss any. We DO need to double-check that nobody dropped between when we first queried the deployments
     // for their membership and when we begin listening for changes, though. (We do the same for our own deployment.)
-    joinOtherDeploymentsAsGuest(serverlessNameNode, involvedDeployments);
+    joinOtherDeploymentsAsGuest(serverlessNameNode);
 
     // TODO: Query for any missed changes in group membership.
 
@@ -323,7 +330,7 @@ public abstract class HopsTransactionalRequestHandler
     // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
     if (totalNumberOfACKsRequired == 0) {
       requestHandlerLOG.debug("We're the only active NN in our deployment. Unsubscribing from ACK events now.");
-      unsubscribeFromAckEvents(serverlessNameNode, involvedDeployments);
+      unsubscribeFromAckEvents(serverlessNameNode);
       needToUnsubscribe = false;
     }
 
@@ -339,7 +346,7 @@ public abstract class HopsTransactionalRequestHandler
     }
 
     // Clean up ACKs, event operation, etc.
-    cleanUpAfterConsistencyProtocol(serverlessNameNode, needToUnsubscribe, involvedDeployments);
+    cleanUpAfterConsistencyProtocol(serverlessNameNode, needToUnsubscribe);
 
     // Steps 6 and 7 happen automatically. We can return from this function to perform the writes.
     return true;
@@ -440,18 +447,13 @@ public abstract class HopsTransactionalRequestHandler
    * @param needToUnsubscribe If true, then we still need to unsubscribe from ACK events. If false, then we
    *                          already unsubscribed from ACK events (presumably because we found that we didn't
    *                          actually need any ACKs and just unsubscribed immediately).
-   * @param involvedDeployments Set of IDs denoting deployments from which we require ACKs. Our own deployment will
-   *                            always be involved. Other deployments may be involved during subtree operations and
-   *                            when creating new directories, as these types of operations modify INodes from
-   *                            multiple deployments.
    */
-  private void cleanUpAfterConsistencyProtocol(ServerlessNameNode serverlessNameNode, boolean needToUnsubscribe,
-                                               Set<Integer> involvedDeployments)
+  private void cleanUpAfterConsistencyProtocol(ServerlessNameNode serverlessNameNode, boolean needToUnsubscribe)
           throws StorageException {
     // Unsubscribe and unregister event listener if we haven't done so already. (If we were the only active NN in
     // our deployment at the beginning of the protocol, then we would have already unsubscribed by this point.)
     if (needToUnsubscribe)
-      unsubscribeFromAckEvents(serverlessNameNode, involvedDeployments);
+      unsubscribeFromAckEvents(serverlessNameNode);
 
     // Remove the ACK entries that we added.
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
@@ -474,13 +476,8 @@ public abstract class HopsTransactionalRequestHandler
 
   /**
    * Unregister ourselves as an event listener for ACK table events, then unregister the event operation itself.
-   *
-   * @param involvedDeployments Set of IDs denoting deployments from which we require ACKs. Our own deployment will
-   *                            always be involved. Other deployments may be involved during subtree operations and
-   *                            when creating new directories, as these types of operations modify INodes from
-   *                            multiple deployments.
    */
-  private void unsubscribeFromAckEvents(ServerlessNameNode serverlessNameNode, Set<Integer> involvedDeployments)
+  private void unsubscribeFromAckEvents(ServerlessNameNode serverlessNameNode)
           throws StorageException {
     for (int deploymentNumber : involvedDeployments) {
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
@@ -526,30 +523,28 @@ public abstract class HopsTransactionalRequestHandler
    * Join other deployments as a guest. This is required when modifying INodes from other deployments. Typically, we
    * aim to avoid this. But it occurs commonly during subtree operations and when creating new directories.
    * @param serverlessNameNode The local ServerlessNameNode instance.
-   * @param deploymentsToJoin Set containing the IDs of the deployments we need to join.
    */
-  private void joinOtherDeploymentsAsGuest(ServerlessNameNode serverlessNameNode,
-                                           Set<Integer> deploymentsToJoin) throws IOException {
-    if (deploymentsToJoin.size() == 1) { // If there's just one, it is our own deployment.
+  private void joinOtherDeploymentsAsGuest(ServerlessNameNode serverlessNameNode) throws IOException {
+    if (involvedDeployments.size() == 1) { // If there's just one, it is our own deployment.
       requestHandlerLOG.debug("There are no other deployments to join.");
       return;
     }
 
-    requestHandlerLOG.debug("There are " + deploymentsToJoin.size() + " other deployments to join: " +
-              deploymentsToJoin);
+    requestHandlerLOG.debug("There are " + involvedDeployments.size() + " other deployments to join: " +
+            involvedDeployments);
 
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
     long localNameNodeId = serverlessNameNode.getId();
 
     // Join the other deployments as a guest, registering a membership-changed listener.
     int counter = 1;
-    for (int deploymentId : deploymentsToJoin) {
+    for (int deploymentId : involvedDeployments) {
       // We do not need to join our own deployment; we're already in our own deployment.
       if (deploymentId == serverlessNameNode.getDeploymentNumber())
         continue;
 
       requestHandlerLOG.debug("Joining deployment " + deploymentId + " as guest (" + counter + "/" +
-              deploymentsToJoin.size() + ").");
+              involvedDeployments.size() + ").");
       final String groupName = "namenode" + deploymentId;
 
       try {
@@ -573,41 +568,49 @@ public abstract class HopsTransactionalRequestHandler
   }
 
   /**
+   * Return the table name to subscribe to for ACK events, given the deployment number.
+   * @param deploymentNumber Deployment number for which a subscription should be created for the associated table.
+   * @return The name of the table for which an event subscription should be created.
+   * @throws StorageException If the deployment number refers to a non-existent deployment.
+   */
+  private String getTargetTableName(int deploymentNumber) throws StorageException {
+    switch (deploymentNumber) {
+      case 0:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME0;
+      case 1:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME1;
+      case 2:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME2;
+      default:
+        throw new StorageException("Unsupported deployment number: " + deploymentNumber);
+    }
+  }
+
+  /**
    * Perform Step (2) of the consistency protocol:
    *    The Leader NN begins listening for changes in group membership from ZooKeeper.
    *    The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly.
    */
-  private void subscribeToAckEvents(ServerlessNameNode serverlessNameNode) throws StorageException {
+  private void subscribeToAckEvents(ServerlessNameNode serverlessNameNode)
+          throws StorageException {
     requestHandlerLOG.debug("=-----=-----= Step 2 - Subscribing to ACK Events =-----=-----=");
 
-    String targetTableName;
-    switch (serverlessNameNode.getDeploymentNumber()) {
-      case 0:
-        targetTableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME0;
-        break;
-      case 1:
-        targetTableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME1;
-        break;
-      case 2:
-        targetTableName = TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME2;
-        break;
-      default:
-        throw new StorageException("Unsupported deployment number: " + serverlessNameNode.getDeploymentNumber());
+    for (int deploymentNumber : involvedDeployments) {
+      String targetTableName = getTargetTableName(deploymentNumber);
+      String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
+      EventManager eventManager = serverlessNameNode.getNdbEventManager();
+      boolean eventCreated = eventManager.registerEvent(eventName, targetTableName,
+              eventManager.getAckTableEventColumns(), false);
+
+      if (eventCreated)
+        requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName + " created successfully.");
+      else
+        requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName +
+                " already exists. Reusing existing event.");
+
+      eventManager.createEventOperation(eventName);
+      eventManager.addListener(this, eventName);
     }
-
-    String eventName = HopsEvent.ACK_EVENT_NAME_BASE + serverlessNameNode.getDeploymentNumber();
-    EventManager eventManager = serverlessNameNode.getNdbEventManager();
-    boolean eventCreated = eventManager.registerEvent(eventName, targetTableName,
-            eventManager.getAckTableEventColumns(), false);
-
-    if (eventCreated)
-      requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName + " created successfully.");
-    else
-      requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName +
-              " already exists. Reusing existing event.");
-
-    eventManager.createEventOperation(eventName);
-    eventManager.addListener(this, eventName);
   }
 
   /**
@@ -617,15 +620,10 @@ public abstract class HopsTransactionalRequestHandler
    *    we'd waste time processing those events (albeit a small amount of time).
    *
    * @param txStartTime The UTC timestamp at which this write operation began.
-   * @param involvedDeployments Set of IDs denoting deployments from which we require ACKs. Our own deployment will
-   *                            always be involved. Other deployments may be involved during subtree operations and
-   *                            when creating new directories, as these types of operations modify INodes from
-   *                            multiple deployments.
    *
    * @return The number of ACK records that we added to intermediate storage.
    */
-  private int addAckTableRecords(ServerlessNameNode serverlessNameNode,
-                                                        long txStartTime, Set<Integer> involvedDeployments)
+  private int addAckTableRecords(ServerlessNameNode serverlessNameNode, long txStartTime)
           throws Exception {
     requestHandlerLOG.debug("=-----=-----= Step 1 - Adding ACK Records =-----=-----=");
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
