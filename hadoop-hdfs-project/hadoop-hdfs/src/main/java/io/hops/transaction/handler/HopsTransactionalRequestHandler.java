@@ -15,7 +15,6 @@
  */
 package io.hops.transaction.handler;
 
-import com.esotericsoftware.minlog.Log;
 import io.hops.events.*;
 import io.hops.exception.StorageException;
 import io.hops.leader_election.node.ActiveNode;
@@ -31,6 +30,7 @@ import io.hops.transaction.context.EntityContext;
 import io.hops.transaction.context.INodeContext;
 import io.hops.transaction.lock.HdfsTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdfs.protocol.RecoveryInProgressException;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.INode;
@@ -38,7 +38,6 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.zookeeper.GuestWatcherOption;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
-import org.apache.hadoop.util.StringUtils;
 import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
@@ -73,6 +72,13 @@ public abstract class HopsTransactionalRequestHandler
    * reaches zero.
    */
   private CountDownLatch countDownLatch;
+
+  /**
+   * Used to keep track of write ACKs required from each deployment. Normally, we only require ACKs from our own
+   * deployment; however, we may require ACKs from other deployments during subtree operations and when creating
+   * new directories.
+   */
+  private Map<Integer, List<WriteAcknowledgement>> writeAcknowledgementsMap;
 
   public HopsTransactionalRequestHandler(HDFSOperationType opType) {
     this(opType, null);
@@ -252,8 +258,11 @@ public abstract class HopsTransactionalRequestHandler
     //       to help the other deployment serve reads), except here the NN joins possibly many other deployments.
     //       For now, subtree operations will produce errors/fail.
 
-    // Keep track of any other deployments we'll need to join to carry out this operation.
-    Set<Integer> additionalDeploymentsToJoin = new HashSet<>();
+    // Keep track of all deployments involved in this transaction. Our own deployment will always be involved (during
+    // write operations, at least). Other deployments may be involved if we're modifying INodes from them. We may
+    // modify nodes from other deployments during subtree operations and when creating a new directory.
+    Set<Integer> involvedDeployments = new HashSet<>();
+    involvedDeployments.add(serverlessNameNode.getDeploymentNumber()); // Add our own deployment number, obviously.
 
     // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
     // If we find that we are about to modify an INode for which we are not authorized, throw an exception.
@@ -267,7 +276,7 @@ public abstract class HopsTransactionalRequestHandler
       if (mappedDeploymentNumber != localDeploymentNumber) {
         requestHandlerLOG.debug("INode " + invalidatedINode.getLocalName() +
                 " is mapped to a different deployment (" + mappedDeploymentNumber + ").");
-        additionalDeploymentsToJoin.add(mappedDeploymentNumber);
+        involvedDeployments.add(mappedDeploymentNumber);
       } else {
         requestHandlerLOG.debug("Modification of INode " + invalidatedINode.getFullPathName() +
                 " is authorized for our deployment (" + localDeploymentNumber + ").");
@@ -287,14 +296,23 @@ public abstract class HopsTransactionalRequestHandler
     //
     //
     // =============== STEP 1 ===============
-    List<WriteAcknowledgement> writeAcknowledgements;
+    int totalNumberOfACKsRequired;
     try {
-      writeAcknowledgements = addAckTableRecords(serverlessNameNode, txStartTime);
+      // Pass the set of additional deployments we needed to join, as we also need ACKs from those deployments.
+      totalNumberOfACKsRequired = addAckTableRecords(serverlessNameNode, txStartTime, involvedDeployments);
     } catch (Exception ex) {
       requestHandlerLOG.error("Exception encountered on Step 3 of consistency protocol (adding ACKs to table).");
       ex.printStackTrace();
       return false;
     }
+
+    // Now that we've added ACKs based on the current membership of the group, we'll join the deployment as a guest
+    // and begin monitoring for membership changes. Since we already added ACKs for every active instance, we aren't
+    // going to miss any. We DO need to double-check that nobody dropped between when we first queried the deployments
+    // for their membership and when we begin listening for changes, though. (We do the same for our own deployment.)
+    joinOtherDeploymentsAsGuest(serverlessNameNode, involvedDeployments);
+
+    // TODO: Query for any missed changes in group membership.
 
     // =============== STEP 2 ===============
     subscribeToAckEvents(serverlessNameNode);
@@ -303,12 +321,11 @@ public abstract class HopsTransactionalRequestHandler
     issueInitialInvalidations(invalidatedINodes, serverlessNameNode, txStartTime);
 
     // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
-    if (writeAcknowledgements.size() == 0) {
+    if (totalNumberOfACKsRequired == 0) {
       requestHandlerLOG.debug("We're the only active NN in our deployment. Unsubscribing from ACK events now.");
-      unsubscribeFromAckEvents(serverlessNameNode);
+      unsubscribeFromAckEvents(serverlessNameNode, involvedDeployments);
       needToUnsubscribe = false;
     }
-
 
     try {
       // STEP 4 & 5
@@ -322,7 +339,7 @@ public abstract class HopsTransactionalRequestHandler
     }
 
     // Clean up ACKs, event operation, etc.
-    cleanUpAfterConsistencyProtocol(serverlessNameNode, needToUnsubscribe, writeAcknowledgements);
+    cleanUpAfterConsistencyProtocol(serverlessNameNode, needToUnsubscribe, involvedDeployments);
 
     // Steps 6 and 7 happen automatically. We can return from this function to perform the writes.
     return true;
@@ -336,13 +353,17 @@ public abstract class HopsTransactionalRequestHandler
    * This function is called once AFTER being set as the event listener to ensure no membership changes occurred
    * between when the leader NN first checked group membership to create the ACK entries and when the leader begins
    * monitoring explicitly for changes in group membership.
+   *
+   * @param groupName The name of the group for which membership changes are being processed.
    */
-  private synchronized void checkAndProcessMembershipChanges(ServerlessNameNode serverlessNameNode)
+  private synchronized void checkAndProcessMembershipChanges(ServerlessNameNode serverlessNameNode, String groupName)
           throws Exception {
+    requestHandlerLOG.debug("ZooKeeper detected membership change for group: " + groupName);
+
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
 
     // Get the current members.
-    List<String> groupMemberIdsAsStrings = zkClient.getPermanentGroupMembers(serverlessNameNode.getFunctionName());
+    List<String> groupMemberIdsAsStrings = zkClient.getPermanentGroupMembers(groupName);
 
     // Convert from strings to longs.
     List<Long> groupMemberIds = groupMemberIdsAsStrings.stream()
@@ -395,7 +416,7 @@ public abstract class HopsTransactionalRequestHandler
     zkClient.addListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
       if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
         try {
-          checkAndProcessMembershipChanges(serverlessNameNode);
+          checkAndProcessMembershipChanges(serverlessNameNode, serverlessNameNode.getFunctionName());
         } catch (Exception e) {
           requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
           e.printStackTrace();
@@ -405,7 +426,7 @@ public abstract class HopsTransactionalRequestHandler
 
     // This method is 'synchronized' so if the event handler already fired, we won't be able to get inside
     // until after the event handler finishes. Shouldn't cause any concurrency issues...
-    checkAndProcessMembershipChanges(serverlessNameNode);
+    checkAndProcessMembershipChanges(serverlessNameNode, serverlessNameNode.getFunctionName());
 
     // Wait until we're done. If the latch is already at zero, then this will not block.
     countDownLatch.await();
@@ -415,30 +436,58 @@ public abstract class HopsTransactionalRequestHandler
   /**
    * Perform any necessary clean-up steps after the consistency protocol has completed.
    * This includes unsubscribing from ACK table events, removing the ACK entries from the table in NDB, etc.
+   *
+   * @param needToUnsubscribe If true, then we still need to unsubscribe from ACK events. If false, then we
+   *                          already unsubscribed from ACK events (presumably because we found that we didn't
+   *                          actually need any ACKs and just unsubscribed immediately).
+   * @param involvedDeployments Set of IDs denoting deployments from which we require ACKs. Our own deployment will
+   *                            always be involved. Other deployments may be involved during subtree operations and
+   *                            when creating new directories, as these types of operations modify INodes from
+   *                            multiple deployments.
    */
   private void cleanUpAfterConsistencyProtocol(ServerlessNameNode serverlessNameNode, boolean needToUnsubscribe,
-                                               Collection<WriteAcknowledgement> writeAcknowledgements)
+                                               Set<Integer> involvedDeployments)
           throws StorageException {
     // Unsubscribe and unregister event listener if we haven't done so already. (If we were the only active NN in
     // our deployment at the beginning of the protocol, then we would have already unsubscribed by this point.)
     if (needToUnsubscribe)
-      unsubscribeFromAckEvents(serverlessNameNode);
+      unsubscribeFromAckEvents(serverlessNameNode, involvedDeployments);
 
     // Remove the ACK entries that we added.
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
             (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
-    writeAcknowledgementDataAccess.deleteAcknowledgements(
-            writeAcknowledgements, serverlessNameNode.getDeploymentNumber());
+
+    // Remove the ACKs we created for each deployment involved in this tranaction.
+    for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
+      int deploymentNumber = entry.getKey();
+      List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
+
+      if (writeAcknowledgements.size() == 1)
+        requestHandlerLOG.debug("Removing 1 ACK entry for deployment #" + deploymentNumber);
+      else
+        requestHandlerLOG.debug("Removing " + writeAcknowledgements.size() +
+                " ACK entries for deployment #" + deploymentNumber);
+
+      writeAcknowledgementDataAccess.deleteAcknowledgements(writeAcknowledgements, deploymentNumber);
+    }
   }
 
   /**
    * Unregister ourselves as an event listener for ACK table events, then unregister the event operation itself.
+   *
+   * @param involvedDeployments Set of IDs denoting deployments from which we require ACKs. Our own deployment will
+   *                            always be involved. Other deployments may be involved during subtree operations and
+   *                            when creating new directories, as these types of operations modify INodes from
+   *                            multiple deployments.
    */
-  private void unsubscribeFromAckEvents(ServerlessNameNode serverlessNameNode) throws StorageException {
-    String eventName = HopsEvent.ACK_EVENT_NAME_BASE + serverlessNameNode.getDeploymentNumber();
-    EventManager eventManager = serverlessNameNode.getNdbEventManager();
-    eventManager.removeListener(this, eventName);
-    eventManager.unregisterEventOperation(eventName);
+  private void unsubscribeFromAckEvents(ServerlessNameNode serverlessNameNode, Set<Integer> involvedDeployments)
+          throws StorageException {
+    for (int deploymentNumber : involvedDeployments) {
+      String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
+      EventManager eventManager = serverlessNameNode.getNdbEventManager();
+      eventManager.removeListener(this, eventName);
+      eventManager.unregisterEventOperation(eventName);
+    }
   }
 
   @Override
@@ -479,34 +528,47 @@ public abstract class HopsTransactionalRequestHandler
    * @param serverlessNameNode The local ServerlessNameNode instance.
    * @param deploymentsToJoin Set containing the IDs of the deployments we need to join.
    */
-  private void joinOtherDeploymentsAsGuest(ServerlessNameNode serverlessNameNode, Set<Integer> deploymentsToJoin)
-          throws Exception {
-    if (deploymentsToJoin.size() == 0) {
+  private void joinOtherDeploymentsAsGuest(ServerlessNameNode serverlessNameNode,
+                                           Set<Integer> deploymentsToJoin) throws IOException {
+    if (deploymentsToJoin.size() == 1) { // If there's just one, it is our own deployment.
       requestHandlerLOG.debug("There are no other deployments to join.");
       return;
     }
 
-    if (deploymentsToJoin.size() == 1)
-      requestHandlerLOG.debug("There is 1 other deployment to join: " + deploymentsToJoin);
-    else
-      requestHandlerLOG.debug("There are " + deploymentsToJoin.size() + " other deployments to join: " +
+    requestHandlerLOG.debug("There are " + deploymentsToJoin.size() + " other deployments to join: " +
               deploymentsToJoin);
 
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
     long localNameNodeId = serverlessNameNode.getId();
 
+    // Join the other deployments as a guest, registering a membership-changed listener.
     int counter = 1;
     for (int deploymentId : deploymentsToJoin) {
+      // We do not need to join our own deployment; we're already in our own deployment.
+      if (deploymentId == serverlessNameNode.getDeploymentNumber())
+        continue;
+
       requestHandlerLOG.debug("Joining deployment " + deploymentId + " as guest (" + counter + "/" +
               deploymentsToJoin.size() + ").");
+      final String groupName = "namenode" + deploymentId;
 
-      // TODO: Modify this API and the GuestWatcherOption interface. We can add a separate handler for guest
-      //       memberships where losing connection requires some sort of recovery; when connection is re-established,
-      //       we compare the membership to what we knew before, and adjust accordingly (i.e., check for any other
-      //       dropped members). Also, the persistent watcher we create when joining should immediately hook into
-      //       the ACK/INV mechanism here so that we do not need to call addListener() for each deployment we join.
-      zkClient.joinGroupAsGuest("namenode" + deploymentId, Long.toString(localNameNodeId), null,
-              GuestWatcherOption.DO_NOT_CREATE);
+      try {
+        // Join the group.
+        zkClient.joinGroupAsGuest("namenode" + deploymentId, Long.toString(localNameNodeId), watchedEvent -> {
+          // This specifically monitors for NNs leaving the group, rather than joining. NNs that join will have
+          // empty caches, so we do not need to worry about them.
+          if (watchedEvent.getType() == Watcher.Event.EventType.ChildWatchRemoved) {
+            try {
+              checkAndProcessMembershipChanges(serverlessNameNode, groupName);
+            } catch (Exception e) {
+              requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
+              e.printStackTrace();
+            }
+          }
+        }, GuestWatcherOption.DO_NOT_CREATE);
+      } catch (Exception e) {
+        throw new IOException("Exception encountered while guest-joining group " + groupName + ":", e);
+      }
     }
   }
 
@@ -555,55 +617,86 @@ public abstract class HopsTransactionalRequestHandler
    *    we'd waste time processing those events (albeit a small amount of time).
    *
    * @param txStartTime The UTC timestamp at which this write operation began.
+   * @param involvedDeployments Set of IDs denoting deployments from which we require ACKs. Our own deployment will
+   *                            always be involved. Other deployments may be involved during subtree operations and
+   *                            when creating new directories, as these types of operations modify INodes from
+   *                            multiple deployments.
    *
    * @return The number of ACK records that we added to intermediate storage.
    */
-  private List<WriteAcknowledgement> addAckTableRecords(ServerlessNameNode serverlessNameNode, long txStartTime)
+  private int addAckTableRecords(ServerlessNameNode serverlessNameNode,
+                                                        long txStartTime, Set<Integer> involvedDeployments)
           throws Exception {
     requestHandlerLOG.debug("=-----=-----= Step 1 - Adding ACK Records =-----=-----=");
-    int deploymentNumber = serverlessNameNode.getDeploymentNumber();
-
     ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
     assert(zkClient != null);
-    List<String> groupMemberIds = zkClient.getPermanentGroupMembers(serverlessNameNode.getFunctionName());
-    List<ActiveNode> activeNodes = serverlessNameNode.getActiveNameNodes().getActiveNodes();
-    requestHandlerLOG.debug("Active NameNodes at start of consistency protocol: " + activeNodes.toString());
 
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
             (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
+    writeAcknowledgementsMap = new HashMap<>();
 
-    List<WriteAcknowledgement> writeAcknowledgements = new ArrayList<WriteAcknowledgement>();
+    // For each deployment (which at least includes our own), get the current members and register a membership-
+    // changed listener. This enables us to monitor for any changes in group membership; in particular, we will
+    // receive notifications if any NameNodes leave a deployment.
+    for (int deploymentNumber : involvedDeployments) {
+      List<WriteAcknowledgement> writeAcknowledgements = new ArrayList<>();
+      final String groupName = "namenode" + deploymentNumber;
+      List<String> groupMemberIds = zkClient.getPermanentGroupMembers(groupName);
 
-    // Iterate over all the current group members. For each group member, we create a WriteAcknowledgement object,
-    // which we'll persist to intermediate storage. We skip ourselves, as we do not need to ACK our own write. We also
-    // create an entry for each follower NN in the `writeAckMap` to keep track of whether they've ACK'd their entry.
-    for (String memberIdAsString : groupMemberIds) {
-      long memberId = Long.parseLong(memberIdAsString);
+      if (groupMemberIds.size() == 1)
+        requestHandlerLOG.debug("There is 1 active instance in deployment #" + deploymentNumber +
+                "at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
+      else
+        requestHandlerLOG.debug("There are " + groupMemberIds.size() + " active instances in deployment #" +
+            deploymentNumber + "at the start of consistency protocol: " +
+                StringUtils.join(groupMemberIds, ", "));
 
-      // We do not need to add an entry for ourselves.
-      if (memberId == serverlessNameNode.getId())
-        continue;
+      // Iterate over all the current group members. For each group member, we create a WriteAcknowledgement object,
+      // which we'll persist to intermediate storage. We skip ourselves, as we do not need to ACK our own write. We also
+      // create an entry for each follower NN in the `writeAckMap` to keep track of whether they've ACK'd their entry.
+      for (String memberIdAsString : groupMemberIds) {
+        long memberId = Long.parseLong(memberIdAsString);
 
-      waitingForAcks.add(memberId);
-      writeAcknowledgements.add(new WriteAcknowledgement(memberId, deploymentNumber,
-              operationId, false, txStartTime, serverlessNameNode.getId()));
+        // We do not need to add an entry for ourselves.
+        if (memberId == serverlessNameNode.getId())
+          continue;
+
+        waitingForAcks.add(memberId);
+        writeAcknowledgements.add(new WriteAcknowledgement(memberId, deploymentNumber, operationId,
+                false, txStartTime, serverlessNameNode.getId()));
+      }
+
+      writeAcknowledgementsMap.put(deploymentNumber, writeAcknowledgements);
     }
 
-    if (writeAcknowledgements.size() > 0) {
-      requestHandlerLOG.debug("Preparing to add " + writeAcknowledgements.size()
-              + " write acknowledgement(s) to intermediate storage.");
-      writeAcknowledgementDataAccess.addWriteAcknowledgements(writeAcknowledgements, deploymentNumber);
-    } else {
-      requestHandlerLOG.debug("We're the only Active NN rn. No need to create any ACK entries.");
+    // Sum the number of ACKs required per deployment. We use this value when creating the
+    // CountDownLatch that blocks us from continuing with the protocol until all ACKs are received.
+    int totalNumberOfACKsRequired = 0;
+
+    for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
+      int deploymentNumber = entry.getKey();
+      List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
+
+      if (writeAcknowledgements.size() > 0) {
+        requestHandlerLOG.debug("Adding " + writeAcknowledgements.size()
+                + " ACK entries for deployment #" + deploymentNumber + ".");
+        writeAcknowledgementDataAccess.addWriteAcknowledgements(writeAcknowledgements, deploymentNumber);
+      } else {
+       requestHandlerLOG.debug("0 ACKs required from deployment #" + deploymentNumber + "...");
+      }
+
+      totalNumberOfACKsRequired += writeAcknowledgementsMap.size();
     }
+
+    requestHandlerLOG.debug("Grant total of " + totalNumberOfACKsRequired + " ACKs required.");
 
     // Instantiate the CountDownLatch variable. The value is set to the number of ACKs that we need
     // before we can proceed with the transaction. Receiving an ACK and a follower NN leaving the group
     // will trigger a decrement.
-    countDownLatch = new CountDownLatch(writeAcknowledgements.size());
+    countDownLatch = new CountDownLatch(totalNumberOfACKsRequired);
 
     // This will be zero if we are the only active NameNode.
-    return writeAcknowledgements;
+    return totalNumberOfACKsRequired;
   }
 
   /**

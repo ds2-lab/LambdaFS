@@ -133,7 +133,7 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public void joinGroupAsGuest(String groupName, String memberId, Invalidatable invalidatable,
+    public void joinGroupAsGuest(String groupName, String memberId, Watcher watcher,
                                  GuestWatcherOption watcherOption) throws Exception {
         if (this.client == null)
             throw new IllegalStateException("ZooKeeper client must be instantiated before joining a group.");
@@ -149,19 +149,19 @@ public class SyncZKClient implements ZKClient {
         if (watcherOption == GuestWatcherOption.CREATE_WATCH_ON_PERMANENT) {
             LOG.debug("Creating watcher on permanent sub-group for group " + groupName + ".");
             String watcherPath = getPath(groupName, null, true);
-            createPersistentWatcher(watcherPath, false, invalidatable);
+            createMemembershipChangedWatcher(watcherPath, false, watcher);
         }
         else if (watcherOption == GuestWatcherOption.CREATE_WATCH_ON_GUEST) {
             LOG.debug("Creating watcher on guest sub-group for group " + groupName + ".");
             String watcherPath = getPath(groupName, null, false);
-            createPersistentWatcher(watcherPath, false, invalidatable);
+            createMemembershipChangedWatcher(watcherPath, false, watcher);
         }
         else if (watcherOption == GuestWatcherOption.CREATE_WATCH_ON_BOTH) {
             LOG.debug("Creating watcher on both the permanent and guest sub-groups for group " + groupName + ".");
             String watcherPathPermanent = getPath(groupName, null, true);
             String watcherPathGuest = getPath(groupName, null, true);
-            createPersistentWatcher(watcherPathPermanent, false, invalidatable);
-            createPersistentWatcher(watcherPathGuest, false, invalidatable);
+            createMemembershipChangedWatcher(watcherPathPermanent, false, watcher);
+            createMemembershipChangedWatcher(watcherPathGuest, false, watcher);
         }
         else {
             LOG.warn("Skipping creation of PersistentWatcher instance for group " + groupName + ".");
@@ -185,10 +185,42 @@ public class SyncZKClient implements ZKClient {
         String parentPath = getPath(groupName, null, true);
         if (createWatch) {
             LOG.debug("Creating PersistentWatcher for parent path '" + parentPath + "'");
-            createPersistentWatcher(parentPath, false, invalidatable);
+            createStateChangedWatcher(parentPath, false, invalidatable);
         } else {
             LOG.warn("Skipping creation of PersistentWatcher for parent path '" + parentPath + "'");
         }
+    }
+
+    /**
+     * Create and start a PersistentWatcher for the given path.
+     * @param path The path for which to create the PersistentWatcher.
+     * @param recursive Passed to the PersistentWatcher constructor.
+     * @return the created PersistentWatcher instance. Note that the instance will already be started (i.e., it will
+     * have had .start() called on it).
+     */
+    private PersistentWatcher createAndStartPersistentWatcher(String path, boolean recursive) {
+        PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, path, recursive);
+        persistentWatcher.start();
+
+        if (this.watchers.containsKey(path))
+            LOG.warn("We already have a watcher for path " + path + ".");
+        else
+            this.watchers.put(path, persistentWatcher);
+
+        return persistentWatcher;
+    }
+
+    /**
+     * Create a PersistentWatcher instance that monitors for membership changes on the given path and calls the
+     * provided Watcher as a callback when events occur.
+     * @param path Path for which the PersistentWatcher will be created and for which membership changes will
+     *             be monitored.
+     * @param recursive Passed to the PersistentWatcher.
+     * @param watcher Callback used when membership changes occur.
+     */
+    private void createMemembershipChangedWatcher(String path, boolean recursive, Watcher watcher) {
+        PersistentWatcher persistentWatcher = createAndStartPersistentWatcher(path, recursive);
+        persistentWatcher.getListenable().addListener(watcher);
     }
 
     /**
@@ -199,14 +231,8 @@ public class SyncZKClient implements ZKClient {
      * @param invalidatable Used as a callback for state changes detected by the PersistentWatcher.
      *                      If null, then no callback occurs, but a message is logged.
      */
-    private void createPersistentWatcher(String path, boolean recursive, Invalidatable invalidatable) {
-        PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, path, recursive);
-        persistentWatcher.start();
-
-        if (this.watchers.containsKey(path))
-            LOG.warn("We already have a watcher for path " + path + ".");
-        else
-            this.watchers.put(path, persistentWatcher);
+    private void createStateChangedWatcher(String path, boolean recursive, Invalidatable invalidatable) {
+        PersistentWatcher persistentWatcher = createAndStartPersistentWatcher(path, recursive);
 
         // We need to invalidate our cache whenever our connection to ZooKeeper is lost.
         client.getConnectionStateListenable().addListener((curatorFramework, connectionState) -> {

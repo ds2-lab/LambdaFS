@@ -74,11 +74,11 @@ public interface ZKClient {
      * Join an existing ZooKeeper group. We specifically join the GUEST sub-group.
      * @param groupName The ZK directory/group to join.
      * @param memberId Used when creating the ephemeral ID of this node.
-     * @param invalidatable Entity with a cache that can be invalidated. We use the {@link Invalidatable} interface
-     *                      to hook into the object and invalidate its cache when connection to ZK is lost.
+     * @param watcher Used as a callback for membership changes. We register these at the beginning, right when
+     *                we join the group, as that's how guest-joins are used.
      * @param watcherOption Specifies the desired option for creating a PersistentWatcher.
      */
-    void joinGroupAsGuest(String groupName, String memberId, Invalidatable invalidatable,
+    void joinGroupAsGuest(String groupName, String memberId, Watcher watcher,
                           GuestWatcherOption watcherOption) throws Exception;
 
     /**
