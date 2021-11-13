@@ -498,7 +498,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return;
     }
 
-    LOG.debug("========== Processing Updates from Intermediate Storage ==========");
+//    LOG.debug("========== Processing Updates from Intermediate Storage ==========");
 
     registerDataNodesFromIntermediateStorage();
 
@@ -515,9 +515,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     Instant processUpdatesEnd = Instant.now();
     Duration updateDuration = Duration.between(processUpdatesStart, processUpdatesEnd);
 
-    LOG.debug("Successfully processed updates from intermediate storage. Time elapsed: " +
+//    LOG.debug("Successfully processed updates from intermediate storage. Time elapsed: " +
             DurationFormatUtils.formatDurationHMS(updateDuration.toMillis()));
-    LOG.debug("==================================================================");
+//    LOG.debug("==================================================================");
   }
 
   /**
@@ -843,7 +843,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> retrieveStorageReports(
           List<DatanodeDescriptor> datanodeDescriptors) throws IOException {
-    LOG.info("Retrieving StorageReport instances for " + datanodeDescriptors.size() + " data nodes now...");
+//    LOG.info("Retrieving StorageReport instances for " + datanodeDescriptors.size() + " data nodes now...");
 
     HashMap<String, List<io.hops.metadata.hdfs.entity.StorageReport>> storageReportMap = new HashMap<>();
 
@@ -891,14 +891,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //      return null;
 //    }
 
-    LOG.debug("Retrieving StorageReport instance for datanode " + datanodeUuid
-            + ". Reports were last retrieved " + millisecondsSinceLastReportRetrieval
-            + " ms ago (Current timestamp = " + now + ", previous timestamp  = " + lastStorageReportGroupId  + ").");
+//    LOG.debug("Retrieving StorageReport instance for datanode " + datanodeUuid
+//            + ". Reports were last retrieved " + millisecondsSinceLastReportRetrieval
+//            + " ms ago (Current timestamp = " + now + ", previous timestamp  = " + lastStorageReportGroupId  + ").");
 
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
         = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId, datanodeUuid);
 
-    LOG.debug("Retrieved " + storageReports.size() + " storage report instances from intermediate storage...");
+//    LOG.debug("Retrieved " + storageReports.size() + " storage report instances from intermediate storage...");
 
     // TODO: This is a weird hack. For some reason, no StorageReports are being returned here, even though
     //       when I query the DB in an actual MySQL terminal session, I get StorageReports. I want to see if there
@@ -935,7 +935,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     for (DatanodeDescriptor registration : datanodes) {
       String datanodeUuid = registration.getDatanodeUuid();
 
-      LOG.info("Retrieving DatanodeRegistration instances for datanode " + datanodeUuid);
+//      LOG.info("Retrieving DatanodeRegistration instances for datanode " + datanodeUuid);
       HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> datanodeStorageMap
               = this.retrieveAndConvertDatanodeStorages(registration);
 
@@ -959,7 +959,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       List<StorageReport> storageReports = entry.getValue();
 
       if (storageReports == null) {
-        LOG.warn("StorageReport list for DataNode " + datanodeUuid + " is null. Skipping.");
+//        LOG.warn("StorageReport list for DataNode " + datanodeUuid + " is null. Skipping.");
         convertedStorageReportMap.put(datanodeUuid, null);
         continue;
       }
@@ -1000,7 +1000,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       convertedStorageReportMap.put(datanodeUuid, convertedStorageReports);
     }
 
-    LOG.debug("Processing storage reports from " + convertedStorageReportMap.size() + " data nodes now...");
+    //LOG.debug("Processing storage reports from " + convertedStorageReportMap.size() + " data nodes now...");
 
     int numSuccess = 0;               // If we have zero successes and zero skips, that's a problem.
     int numSkippedIntentionally = 0;  // Keep track of how many we've skipped on purpose.
@@ -1071,9 +1071,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     IntermediateBlockReportDataAccess<IntermediateBlockReport> dataAccess =
             (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
 
-    LOG.info("Retrieving intermediate block reports from intermediate storage now...");
-    LOG.info("There are " + lastIntermediateBlockReportTimestamp.size()
-            + " DataNodes for which reports must be retrieved.");
+//    LOG.info("Retrieving intermediate block reports from intermediate storage now...");
+//    LOG.info("There are " + lastIntermediateBlockReportTimestamp.size()
+//            + " DataNodes for which reports must be retrieved.");
 
     // Keep track of the DNs whose intermediate block reports we process.
     // We'll update the timestamp after this loop.
@@ -1083,20 +1083,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       String datanodeUuid = entry.getKey();
       long lastTimestamp = entry.getValue();
 
-      LOG.info("Retrieving all reports with timestamp >= " + (lastTimestamp + 1) + " for DataNode "
-              + datanodeUuid + " now...");
+//      LOG.info("Retrieving all reports with timestamp >= " + (lastTimestamp + 1) + " for DataNode "
+//              + datanodeUuid + " now...");
 
       List<IntermediateBlockReport> reports = dataAccess.getReportsPublishedAfter(datanodeUuid, lastTimestamp);
 
-      LOG.info("Retrieved " + reports.size() + " intermediate block reports published by DataNode "
-              + datanodeUuid + ".");
+//      LOG.info("Retrieved " + reports.size() + " intermediate block reports published by DataNode "
+//              + datanodeUuid + ".");
 
       for (IntermediateBlockReport report : reports) {
         StorageReceivedDeletedBlocks[] blocksArr =
                 (StorageReceivedDeletedBlocks[])InvokerUtilities.base64StringToObject(report.getReceivedAndDeletedBlocks());
 
-        LOG.info("Processing " + blocksArr.length + " StorageReceivedDeletedBlocks instances from intermediate " +
-                "block report " + report.getReportId() + ", DataNode UUID = " + datanodeUuid + " now...");
+//        LOG.info("Processing " + blocksArr.length + " StorageReceivedDeletedBlocks instances from intermediate " +
+//                "block report " + report.getReportId() + ", DataNode UUID = " + datanodeUuid + " now...");
 
         for (StorageReceivedDeletedBlocks blocks : blocksArr) {
           namesystem.processIncrementalBlockReport(report.getDatanodeUuid(), blocks);
@@ -1122,18 +1122,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private List<DatanodeRegistration> registerDataNodesFromIntermediateStorage() throws IOException {
     // Retrieve the DataNodes from intermediate storage.
-    LOG.info("Retrieving list of DataNodes from intermediate storage now...");
+//    LOG.info("Retrieving list of DataNodes from intermediate storage now...");
     DataNodeDataAccess<DataNodeMeta> dataAccess = (DataNodeDataAccess)
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
 
-    LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
+//    LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("DataNodes retrieved: ");
-      for (DataNodeMeta dataNodeMeta : dataNodes)
-        LOG.debug(dataNodeMeta.toString());
-    }
+//    if (LOG.isDebugEnabled()) {
+//      LOG.debug("DataNodes retrieved: ");
+//      for (DataNodeMeta dataNodeMeta : dataNodes)
+//        LOG.debug(dataNodeMeta.toString());
+//    }
 
     NamespaceInfo nsInfo = namesystem.getNamespaceInfo();
 
@@ -1182,15 +1182,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
     }
 
-    LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
-    LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
+//    LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
+//    LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
 
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
     //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
 
     for (DataNodeMeta dataNodeMeta : dnMap.values()) {
       String datanodeUuid = dataNodeMeta.getDatanodeUuid();
-      LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
+//      LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
 
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
@@ -1219,10 +1219,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       try {
         if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
                 datanodeRegistration.getDatanodeUuid()) != null) {
-          LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
+//          LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
           continue;
         } else {
-          LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
+//          LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
           namesystem.registerDatanode(datanodeRegistration);
         }
 
