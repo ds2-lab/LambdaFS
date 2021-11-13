@@ -1,12 +1,12 @@
 package org.apache.hadoop.hdfs.serverless.zookeeper;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 
@@ -15,9 +15,12 @@ public class ZKMonitor implements Runnable {
     private Semaphore semaphore = new Semaphore(1);
     private String groupName;
 
+    private Set<String> groupMembers;
+
     public ZKMonitor(ZooKeeper zooKeeper, String groupName) {
         this.zooKeeper = zooKeeper;
         this.groupName = groupName;
+        this.groupMembers = new HashSet<>();
     }
 
     public static void main(String[] args) throws Exception {
@@ -65,6 +68,40 @@ public class ZKMonitor implements Runnable {
                 }
             }
         });
+
+        if (children.size() > 0) {
+            if (groupMembers.size() == 0) {
+                System.out.println(children.size() + " new NNs joined " + groupName + ": " +
+                        StringUtils.join(children, ", "));
+                groupMembers.addAll(children);
+            }
+            else {
+                for (String id : children) {
+                    List<String> newMembers = new ArrayList<>();
+                    if (!(groupMembers.contains(id))) {
+                        newMembers.add(id);
+                    }
+                    if (newMembers.size() > 0) {
+                        System.out.println(newMembers.size() + " new NNs joined " + groupName + ": " +
+                                StringUtils.join(newMembers, ", "));
+                        groupMembers.addAll(newMembers);
+                    }
+                }
+            }
+        }
+
+        for (String currentMemberId : groupMembers) {
+            List<String> removed = new ArrayList<>();
+            if (!(children.contains(currentMemberId))) {
+                removed.add(currentMemberId);
+            }
+
+            if (removed.size() > 0) {
+                System.out.println(removed.size() + " NNs left " + groupName + ": " +
+                        StringUtils.join(removed, ", "));
+            }
+        }
+
         if (children.isEmpty()) {
             System.out.printf("No members in group %s\n", groupName);
             return;
