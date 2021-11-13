@@ -136,6 +136,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
           try {
             requestHandlerLOG.debug("Executing consistency protocol in separate thread.");
             boolean success1 = consistencyProtocol(txStartTime);
+            requestHandlerLOG.debug("Finished consistency protocol with result " + success1);
             canProceedArr[0] = success1;
           } catch (IOException e) {
             e.printStackTrace();
@@ -143,10 +144,13 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
           }
         });
 
-        boolean canProceed;
+        boolean canProceed = false;
         consistencyProtocolThread.start();
         try {
+          requestHandlerLOG.debug("Joining the Consistency Protocol thread. Thread is alive: " +
+                  consistencyProtocolThread.isAlive());
           consistencyProtocolThread.join();
+          requestHandlerLOG.debug("Joined the thread.");
           canProceed = canProceedArr[0];
         } catch (InterruptedException e) {
           e.printStackTrace();
@@ -157,8 +161,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         oldTime = System.currentTimeMillis();
 
         if (canProceed) {
-//          requestHandlerLOG.debug("Consistency protocol executed successfully. Time: " +
-//                  consistencyProtocolTime + " ms");
+          requestHandlerLOG.debug("Consistency protocol executed successfully. Time: " +
+                  consistencyProtocolTime + " ms");
         } else {
           requestHandlerLOG.error("Consistency protocol FAILED after " + consistencyProtocolTime + " ms.");
           throw new IOException("Consistency protocol FAILED after " + consistencyProtocolTime + " ms.");
