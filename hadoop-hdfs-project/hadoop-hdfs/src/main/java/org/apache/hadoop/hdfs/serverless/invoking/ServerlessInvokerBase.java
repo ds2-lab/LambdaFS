@@ -54,7 +54,7 @@ public abstract class ServerlessInvokerBase<T> {
     /**
      * HTTPClient used to invoke serverless functions.
      */
-    protected final CloseableHttpClient httpClient;
+    protected CloseableHttpClient httpClient;
 
     /**
      * Maintains a mapping of files and directories to the serverless functions responsible for caching the
@@ -166,7 +166,6 @@ public abstract class ServerlessInvokerBase<T> {
      */
     protected ServerlessInvokerBase() throws NoSuchAlgorithmException, KeyManagementException {
         instantiateTrustManager();
-        httpClient = getHttpClient();
     }
 
     /**
@@ -191,6 +190,12 @@ public abstract class ServerlessInvokerBase<T> {
         if (debugEnabledNdb)
             LOG.debug("NDB debug string: " + debugStringNdb);
 
+        try {
+            httpClient = getHttpClient();
+        } catch (NoSuchAlgorithmException | KeyManagementException e) {
+            e.printStackTrace();
+            return;
+        }
         configured = true;
     }
 

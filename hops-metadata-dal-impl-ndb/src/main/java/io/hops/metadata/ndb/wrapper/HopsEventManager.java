@@ -367,7 +367,7 @@ public class HopsEventManager implements EventManager {
     public synchronized boolean registerEvent(String eventName, String tableName,
                                               String[] eventColumns, boolean recreateIfExists)
             throws StorageException {
-        LOG.debug("Registering event " + eventName + " with NDB now...");
+        LOG.debug("Registering event " + eventName + " on table " + tableName + " with NDB now...");
 
         // If we're already tracking this event, and we aren't supposed to recreate it, then just return.
         if (eventMap.containsKey(eventName) && !recreateIfExists) {
@@ -558,7 +558,7 @@ public class HopsEventManager implements EventManager {
                 String[] eventColumnNames = eventColumnMap.get(nextEventOp);
 
                 // Print the pre- and post-values for the columns for which record attributes were created.
-                for (String columnName : INV_TABLE_EVENT_COLUMNS) {
+                for (String columnName : eventColumnNames) {
                     long preValue = nextEventOp.getLongPreValue(columnName);
                     long postValue = nextEventOp.getLongPostValue(columnName);
 
