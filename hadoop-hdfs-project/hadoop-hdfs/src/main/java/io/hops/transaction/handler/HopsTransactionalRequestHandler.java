@@ -248,7 +248,7 @@ public abstract class HopsTransactionalRequestHandler
     requestHandlerLOG.debug("=-=-=-=-= CONSISTENCY PROTOCOL =-=-=-=-=");
     requestHandlerLOG.debug("Operation ID: " + operationId);
     requestHandlerLOG.debug("Operation Start Time: " + txStartTime);
-    ServerlessNameNode serverlessNameNodeInstance = OpenWhiskHandler.instance;
+    serverlessNameNodeInstance = OpenWhiskHandler.instance;
 
     // Sanity check. Make sure we have a valid reference to the ServerlessNameNode. This isn't the cleanest, but
     // with the way HopsFS has structured its code, this is workable for our purposes.
