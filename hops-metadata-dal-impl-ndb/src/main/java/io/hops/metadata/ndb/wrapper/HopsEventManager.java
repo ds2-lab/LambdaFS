@@ -10,6 +10,7 @@ import io.hops.events.HopsEventOperation;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.ndb.ClusterjConnector;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -594,6 +595,14 @@ public class HopsEventManager implements EventManager {
      */
     private void notifyEventListeners(HopsEventOperationImpl eventOperation) {
         String eventName = eventOpToNameMapping.get(eventOperation);
+
+        if (eventName == null) {
+            LOG.warn("Could not retrieve valid event name for HopsEventOperation " + eventName.hashCode() + "...");
+            LOG.warn("Valid HopsEventOperation objects to use as keys: " +
+                    StringUtils.join(eventOpToNameMapping.keySet(), ", ") + ".");
+            LOG.warn("Registered event names: " + StringUtils.join(eventOpToNameMapping.values(), ", "));
+        }
+
         List<HopsEventListener> eventListeners = listeners.get(eventName);
 
         LOG.debug("Notifying " + listeners.size() + (listeners.size() == 1 ? " listener " : " listeners ")
