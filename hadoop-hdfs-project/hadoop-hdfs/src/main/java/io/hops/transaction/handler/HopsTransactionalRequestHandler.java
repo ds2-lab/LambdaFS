@@ -306,7 +306,7 @@ public abstract class HopsTransactionalRequestHandler
     int totalNumberOfACKsRequired;
     try {
       // Pass the set of additional deployments we needed to join, as we also need ACKs from those deployments.
-      totalNumberOfACKsRequired = addAckTableRecords(serverlessNameNode, txStartTime);
+      totalNumberOfACKsRequired = addAckTableRecords(txStartTime);
     } catch (Exception ex) {
       requestHandlerLOG.error("Exception encountered on Step 3 of consistency protocol (adding ACKs to table).");
       ex.printStackTrace();
@@ -325,7 +325,7 @@ public abstract class HopsTransactionalRequestHandler
     subscribeToAckEvents(serverlessNameNode);
 
     // =============== STEP 3 ===============
-    issueInitialInvalidations(invalidatedINodes, serverlessNameNode, txStartTime);
+    issueInitialInvalidations(invalidatedINodes, txStartTime);
 
     // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
     if (totalNumberOfACKsRequired == 0) {
@@ -336,7 +336,7 @@ public abstract class HopsTransactionalRequestHandler
 
     try {
       // STEP 4 & 5
-      waitForAcks(serverlessNameNode);
+      waitForAcks();
     } catch (Exception ex) {
       requestHandlerLOG.error("Exception encountered on Step 4 and 5 of consistency protocol (waiting for ACKs).");
       requestHandlerLOG.error("We're still waiting on " + waitingForAcks.size() +
@@ -363,11 +363,10 @@ public abstract class HopsTransactionalRequestHandler
    *
    * @param groupName The name of the group for which membership changes are being processed.
    */
-  private synchronized void checkAndProcessMembershipChanges(ServerlessNameNode serverlessNameNode, String groupName)
-          throws Exception {
+  private synchronized void checkAndProcessMembershipChanges(String groupName) throws Exception {
     requestHandlerLOG.debug("ZooKeeper detected membership change for group: " + groupName);
 
-    ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
+    ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
 
     // Get the current members.
     List<String> groupMemberIdsAsStrings = zkClient.getPermanentGroupMembers(groupName);
@@ -414,16 +413,16 @@ public abstract class HopsTransactionalRequestHandler
    * This function performs steps 4 and 5 of the consistency protocol. We, as the leader, simply have to wait for the
    * follower NNs to ACK our write operations.
    */
-  private void waitForAcks(ServerlessNameNode serverlessNameNode) throws Exception {
+  private void waitForAcks() throws Exception {
     requestHandlerLOG.debug("=-----=-----= Steps 4 & 5 - Adding ACK Records =-----=-----=");
 
-    ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
+    ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
 
     // Start listening for changes in group membership.
-    zkClient.addListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
+    zkClient.addListener(serverlessNameNodeInstance.getFunctionName(), watchedEvent -> {
       if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
         try {
-          checkAndProcessMembershipChanges(serverlessNameNode, serverlessNameNode.getFunctionName());
+          checkAndProcessMembershipChanges(serverlessNameNodeInstance.getFunctionName());
         } catch (Exception e) {
           requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
           e.printStackTrace();
@@ -433,7 +432,7 @@ public abstract class HopsTransactionalRequestHandler
 
     // This method is 'synchronized' so if the event handler already fired, we won't be able to get inside
     // until after the event handler finishes. Shouldn't cause any concurrency issues...
-    checkAndProcessMembershipChanges(serverlessNameNode, serverlessNameNode.getFunctionName());
+    checkAndProcessMembershipChanges(serverlessNameNodeInstance.getFunctionName());
 
     // Wait until we're done. If the latch is already at zero, then this will not block.
     countDownLatch.await();
@@ -554,13 +553,14 @@ public abstract class HopsTransactionalRequestHandler
           // empty caches, so we do not need to worry about them.
           if (watchedEvent.getType() == Watcher.Event.EventType.ChildWatchRemoved) {
             try {
-              checkAndProcessMembershipChanges(serverlessNameNode, groupName);
+              checkAndProcessMembershipChanges(groupName);
             } catch (Exception e) {
               requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
               e.printStackTrace();
             }
           }
-        }, GuestWatcherOption.DO_NOT_CREATE);
+          // We only want to monitor the permanent sub-group for membership changes.
+        }, GuestWatcherOption.CREATE_WATCH_ON_PERMANENT);
       } catch (Exception e) {
         throw new IOException("Exception encountered while guest-joining group " + groupName + ":", e);
       }
@@ -623,10 +623,10 @@ public abstract class HopsTransactionalRequestHandler
    *
    * @return The number of ACK records that we added to intermediate storage.
    */
-  private int addAckTableRecords(ServerlessNameNode serverlessNameNode, long txStartTime)
+  private int addAckTableRecords(long txStartTime)
           throws Exception {
     requestHandlerLOG.debug("=-----=-----= Step 1 - Adding ACK Records =-----=-----=");
-    ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
+    ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
     assert(zkClient != null);
 
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
@@ -656,12 +656,12 @@ public abstract class HopsTransactionalRequestHandler
         long memberId = Long.parseLong(memberIdAsString);
 
         // We do not need to add an entry for ourselves.
-        if (memberId == serverlessNameNode.getId())
+        if (memberId == serverlessNameNodeInstance.getId())
           continue;
 
         waitingForAcks.add(memberId);
         writeAcknowledgements.add(new WriteAcknowledgement(memberId, deploymentNumber, operationId,
-                false, txStartTime, serverlessNameNode.getId()));
+                false, txStartTime, serverlessNameNodeInstance.getId()));
       }
 
       writeAcknowledgementsMap.put(deploymentNumber, writeAcknowledgements);
@@ -703,25 +703,25 @@ public abstract class HopsTransactionalRequestHandler
    *    INVs from intermediate storage (NDB).
    *
    * @param invalidatedINodes The INodes involved in this write operation. We must invalidate these INodes.
-   * @param nn The local serverless name node.
    * @param txStartTime The time at which the transaction began.
    */
-  private void issueInitialInvalidations(Collection<INode> invalidatedINodes, ServerlessNameNode nn, long txStartTime)
+  private void issueInitialInvalidations(Collection<INode> invalidatedINodes, long txStartTime)
           throws StorageException {
     requestHandlerLOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations =-----=-----=");
 
     InvalidationDataAccess<Invalidation> dataAccess =
             (InvalidationDataAccess<Invalidation>)HdfsStorageFactory.getDataAccess(InvalidationDataAccess.class);
-    // long[] ids = invalidatedINodes.stream().mapToLong(INode::getId).toArray();
 
-    List<Invalidation> invalidations = new ArrayList<>();
-    for (INode invalidatedINode : invalidatedINodes) {
-      // int inodeId, int parentId, long leaderNameNodeId, long txStartTime, long operationId
-      invalidations.add(new Invalidation(invalidatedINode.getId(), invalidatedINode.getParentId(),
-              nn.getId(), txStartTime, operationId));
+    for (int deploymentNumber : involvedDeployments) {
+      List<Invalidation> invalidations = new ArrayList<>();
+      for (INode invalidatedINode : invalidatedINodes) {
+        // int inodeId, int parentId, long leaderNameNodeId, long txStartTime, long operationId
+        invalidations.add(new Invalidation(invalidatedINode.getId(), invalidatedINode.getParentId(),
+                serverlessNameNodeInstance.getId(), txStartTime, operationId));
+      }
+
+      dataAccess.addInvalidations(invalidations, deploymentNumber);
     }
-
-    dataAccess.addInvalidations(invalidations, nn.getDeploymentNumber());
   }
 
   public void setUp() throws IOException {
