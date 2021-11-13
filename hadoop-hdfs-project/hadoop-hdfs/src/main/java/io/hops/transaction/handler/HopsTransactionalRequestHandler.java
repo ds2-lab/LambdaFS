@@ -673,6 +673,12 @@ public abstract class HopsTransactionalRequestHandler
       List<WriteAcknowledgement> writeAcknowledgements = new ArrayList<>();
       final String groupName = "namenode" + deploymentNumber;
       List<String> groupMemberIds = zkClient.getPermanentGroupMembers(groupName);
+      Set<Long> acksForCurrentDeployment = waitingForAcksPerDeployment.getOrDefault(deploymentNumber, null);
+
+      if (acksForCurrentDeployment == null) {
+        acksForCurrentDeployment = new HashSet<>();
+        waitingForAcksPerDeployment.put(deploymentNumber, acksForCurrentDeployment);
+      }
 
       if (groupMemberIds.size() == 1)
         requestHandlerLOG.debug("There is 1 active instance in deployment #" + deploymentNumber +
@@ -694,6 +700,7 @@ public abstract class HopsTransactionalRequestHandler
           continue;
 
         waitingForAcks.add(memberId);
+        acksForCurrentDeployment.add(memberId);
         writeAcknowledgements.add(new WriteAcknowledgement(memberId, deploymentNumber, operationId,
                 false, txStartTime, serverlessNameNodeInstance.getId()));
       }
