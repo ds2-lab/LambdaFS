@@ -131,7 +131,30 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
             .collectStats(opType,
             ignoredException);
 
-        boolean canProceed = consistencyProtocol(txStartTime);
+        final boolean[] canProceedArr = new boolean[1];
+        Thread consistencyProtocolThread = new Thread(new Runnable() {
+          @Override
+          public void run() {
+            try {
+              boolean success = consistencyProtocol(txStartTime);
+              canProceedArr[0] = success;
+            } catch (IOException e) {
+              e.printStackTrace();
+              canProceedArr[0] = false;
+            }
+          }
+        });
+
+        boolean canProceed;
+        consistencyProtocolThread.start();
+        try {
+          consistencyProtocolThread.join();
+          canProceed = canProceedArr[0];
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          canProceed = false;
+        }
+
         consistencyProtocolTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
 
