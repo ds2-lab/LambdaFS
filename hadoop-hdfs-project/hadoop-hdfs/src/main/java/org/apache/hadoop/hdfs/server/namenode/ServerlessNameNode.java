@@ -516,7 +516,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     Duration updateDuration = Duration.between(processUpdatesStart, processUpdatesEnd);
 
 //    LOG.debug("Successfully processed updates from intermediate storage. Time elapsed: " +
-            DurationFormatUtils.formatDurationHMS(updateDuration.toMillis()));
+//            DurationFormatUtils.formatDurationHMS(updateDuration.toMillis()));
 //    LOG.debug("==================================================================");
   }
 
