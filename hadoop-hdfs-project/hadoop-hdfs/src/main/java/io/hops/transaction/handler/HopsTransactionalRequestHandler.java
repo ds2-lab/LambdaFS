@@ -322,8 +322,6 @@ public abstract class HopsTransactionalRequestHandler
     // for their membership and when we begin listening for changes, though. (We do the same for our own deployment.)
     joinOtherDeploymentsAsGuest();
 
-    // TODO: Query for any missed changes in group membership.
-
     // =============== STEP 2 ===============
     subscribeToAckEvents();
 
@@ -440,7 +438,7 @@ public abstract class HopsTransactionalRequestHandler
    * follower NNs to ACK our write operations.
    */
   private void waitForAcks() throws Exception {
-    requestHandlerLOG.debug("=-----=-----= Steps 4 & 5 - Adding ACK Records =-----=-----=");
+    requestHandlerLOG.debug("=-----=-----= Steps 4 & 5 - Waiting for ACKs =-----=-----=");
 
     ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
     int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();

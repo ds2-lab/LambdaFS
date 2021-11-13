@@ -90,16 +90,17 @@ public class ZKMonitor implements Runnable {
             }
         }
 
+        List<String> removed = new ArrayList<>();
         for (String currentMemberId : groupMembers) {
-            List<String> removed = new ArrayList<>();
             if (!(children.contains(currentMemberId))) {
                 removed.add(currentMemberId);
             }
+        }
 
-            if (removed.size() > 0) {
-                System.out.println(removed.size() + " NNs left " + groupName + ": " +
-                        StringUtils.join(removed, ", "));
-            }
+        if (removed.size() > 0) {
+            System.out.println(removed.size() + " NNs left " + groupName + ": " +
+                    StringUtils.join(removed, ", "));
+            groupMembers.removeAll(removed);
         }
 
         if (children.isEmpty()) {

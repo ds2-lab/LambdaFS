@@ -165,7 +165,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
               StringUtils.join(removed, " ; "));
       LOG.debug("Transaction will MODIFY the following INodes (" + modified.size() + "): " +
               StringUtils.join(modified, " ; "));
-      LOG.debug("Transaction will 'touch' a total of " + invalidated.size() + " INodes.");
+      LOG.debug("Transaction will alter (i.e., remove or modify) a total of " + invalidated.size() + " INodes.");
     }
     return invalidated;
   }
