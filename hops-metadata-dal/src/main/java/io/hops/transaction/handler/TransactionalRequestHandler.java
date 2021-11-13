@@ -184,9 +184,6 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         if (info != null && info instanceof TransactionInfo) {
           ((TransactionInfo) info).performPostTransactionAction();
         }
-
-        requestHandlerLOG.debug("Handling pending ACKs now...");
-        // handlePendingAcks();
       } catch (Throwable t) {
         boolean suppressException = suppressFailureMsg(t, tryCount);
         if (!suppressException ) {

@@ -70,7 +70,7 @@ public class WriteAcknowledgement {
     @Override
     public String toString() {
         return "WriteAcknowledgement(nameNodeId=" + nameNodeId + ", deploymentNumber=" + deploymentNumber +
-                "operationId=" + operationId + ", acknowledged=" + acknowledged + ", timestamp=" + timestamp +
+                ", operationId=" + operationId + ", acknowledged=" + acknowledged + ", timestamp=" + timestamp +
                 ", leaderId=" + leaderNameNodeId + ")";
     }
 

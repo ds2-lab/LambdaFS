@@ -157,23 +157,15 @@ public abstract class HopsTransactionalRequestHandler
   
   @Override
   protected Object execute(final Object namesystem) throws IOException {
-//    if (opType.shouldUseConsistencyProtocol()) {
-//      requestHandlerLOG.debug("Transaction type <" + opType.getName()
-//              + "> *SHOULD* use the serverless consistency protocol.");
+//    if (namesystem instanceof FSNamesystem) {
+//      FSNamesystem namesystemInst = (FSNamesystem)namesystem;
+//      List<ActiveNode> activeNodes = namesystemInst.getActiveNameNodesInDeployment();
+//      requestHandlerLOG.debug("Active nodes: " + activeNodes.toString());
+//    } else if (namesystem == null) {
+//      requestHandlerLOG.debug("Transaction namesystem object is null! Cannot determine active nodes.");
 //    } else {
-//      requestHandlerLOG.debug("Transaction type <" + opType.getName()
-//              + "> does NOT need to use the serverless consistency protocol.");
+//      requestHandlerLOG.debug("Transaction namesystem object is of type " + namesystem.getClass().getSimpleName());
 //    }
-//    requestHandlerLOG.debug("Transaction is operating on path: " + path);
-    if (namesystem instanceof FSNamesystem) {
-      FSNamesystem namesystemInst = (FSNamesystem)namesystem;
-      List<ActiveNode> activeNodes = namesystemInst.getActiveNameNodesInDeployment();
-      requestHandlerLOG.debug("Active nodes: " + activeNodes.toString());
-    } else if (namesystem == null) {
-      requestHandlerLOG.debug("Transaction namesystem object is null! Cannot determine active nodes.");
-    } else {
-      requestHandlerLOG.debug("Transaction namesystem object is of type " + namesystem.getClass().getSimpleName());
-    }
 
     return super.execute(new TransactionInfo() {
       @Override
@@ -682,10 +674,10 @@ public abstract class HopsTransactionalRequestHandler
 
       if (groupMemberIds.size() == 1)
         requestHandlerLOG.debug("There is 1 active instance in deployment #" + deploymentNumber +
-                "at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
+                " at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
       else
         requestHandlerLOG.debug("There are " + groupMemberIds.size() + " active instances in deployment #" +
-            deploymentNumber + "at the start of consistency protocol: " +
+            deploymentNumber + " at the start of consistency protocol: " +
                 StringUtils.join(groupMemberIds, ", "));
 
       // Iterate over all the current group members. For each group member, we create a WriteAcknowledgement object,
