@@ -28,13 +28,13 @@ public class ZKMonitor implements Runnable {
             }
         });
         connectedSignal.await();
-        Thread t1 = new Thread(new ZKMonitor(zk, "/namenode0/permanent"));
-        Thread t2 = new Thread(new ZKMonitor(zk, "/namenode1/permanent"));
-        Thread t3 = new Thread(new ZKMonitor(zk, "/namenode2/permanent"));
+        Thread t1 = new Thread(new ZKMonitor(zk, "namenode0/permanent"));
+        Thread t2 = new Thread(new ZKMonitor(zk, "namenode1/permanent"));
+        Thread t3 = new Thread(new ZKMonitor(zk, "namenode2/permanent"));
 
-        Thread t1g = new Thread(new ZKMonitor(zk, "/namenode0/guest"));
-        Thread t2g = new Thread(new ZKMonitor(zk, "/namenode1/guest"));
-        Thread t3g = new Thread(new ZKMonitor(zk, "/namenode2/guest"));
+        Thread t1g = new Thread(new ZKMonitor(zk, "namenode0/guest"));
+        Thread t2g = new Thread(new ZKMonitor(zk, "namenode1/guest"));
+        Thread t3g = new Thread(new ZKMonitor(zk, "namenode2/guest"));
 
         t1.start();
         t2.start();
