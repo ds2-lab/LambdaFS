@@ -107,8 +107,6 @@ public class SyncZKClient implements ZKClient {
         LOG.debug("Connected successfully to ZK ensemble. Starting ZK client now...");
         this.client.start();
         LOG.debug("Successfully started ZK client.");
-
-        AsyncCuratorFramework asyncClient = AsyncCuratorFramework.wrap(client);
     }
 
     @Override
