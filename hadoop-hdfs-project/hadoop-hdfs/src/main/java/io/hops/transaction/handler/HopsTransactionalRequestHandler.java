@@ -349,7 +349,12 @@ public abstract class HopsTransactionalRequestHandler
     }
 
     // Clean up ACKs, event operation, etc.
-    cleanUpAfterConsistencyProtocol(needToUnsubscribe);
+    try {
+      cleanUpAfterConsistencyProtocol(needToUnsubscribe);
+    } catch (Exception e) {
+      // We should still be able to continue, despite failing to clean up after ourselves...
+      requestHandlerLOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
+    }
 
     // Steps 6 and 7 happen automatically. We can return from this function to perform the writes.
     return true;
@@ -467,18 +472,21 @@ public abstract class HopsTransactionalRequestHandler
 
   /**
    * Perform any necessary clean-up steps after the consistency protocol has completed.
-   * This includes unsubscribing from ACK table events, removing the ACK entries from the table in NDB, etc.
+   * This includes unsubscribing from ACK table events, removing the ACK entries from the table in NDB, leaving any
+   * deployments that we joined as a guest, etc.
    *
    * @param needToUnsubscribe If true, then we still need to unsubscribe from ACK events. If false, then we
    *                          already unsubscribed from ACK events (presumably because we found that we didn't
    *                          actually need any ACKs and just unsubscribed immediately).
    */
   private void cleanUpAfterConsistencyProtocol(boolean needToUnsubscribe)
-          throws StorageException {
+          throws Exception {
     // Unsubscribe and unregister event listener if we haven't done so already. (If we were the only active NN in
     // our deployment at the beginning of the protocol, then we would have already unsubscribed by this point.)
     if (needToUnsubscribe)
       unsubscribeFromAckEvents();
+
+    leaveDeployments();
 
     // Remove the ACK entries that we added.
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
@@ -496,6 +504,21 @@ public abstract class HopsTransactionalRequestHandler
                 " ACK entries for deployment #" + deploymentNumber);
 
       writeAcknowledgementDataAccess.deleteAcknowledgements(writeAcknowledgements, deploymentNumber);
+    }
+  }
+
+  /**
+   * Leave deployments that we joined as a guest.
+   */
+  private void leaveDeployments() throws Exception {
+    ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
+
+    for (int deployentNumber : involvedDeployments) {
+      if (deployentNumber == serverlessNameNodeInstance.getDeploymentNumber())
+        continue;
+
+      zkClient.leaveGroup("namenode" + deployentNumber,
+              Long.toString(serverlessNameNodeInstance.getId()), false);
     }
   }
 

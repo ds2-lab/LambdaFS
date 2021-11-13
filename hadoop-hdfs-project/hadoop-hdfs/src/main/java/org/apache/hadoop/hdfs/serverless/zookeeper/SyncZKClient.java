@@ -296,6 +296,15 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
+    public void leaveGroup(String groupName, String memberId, boolean permanent) throws Exception {
+        String path = getPath(groupName, memberId, permanent);
+
+        LOG.debug("Leaving ZK group specified by path: '" + path + "'");
+
+        this.client.delete().forPath(path);
+    }
+
+    @Override
     public List<String> getGuestGroupMembers(String groupName) throws Exception {
         if (groupName == null)
             throw new IllegalArgumentException("Group name argument cannot be null.");

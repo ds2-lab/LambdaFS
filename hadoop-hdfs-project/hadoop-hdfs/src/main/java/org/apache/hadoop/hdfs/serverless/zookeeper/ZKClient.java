@@ -82,6 +82,16 @@ public interface ZKClient {
                           GuestWatcherOption watcherOption) throws Exception;
 
     /**
+     * Leave the group by deleting the ephemeral ZNode indicated by the path /groupName/permanent/memberId if
+     * permanent is true, or /groupName/guest/memberId if permanent is false.
+     * @param groupName Corresponds to the deployment.
+     * @param memberId The ID of the NameNode that is leaving.
+     * @param permanent If true, leave the permanent sub-group. If false, leave the guest sub group.
+     * @throws Exception
+     */
+    void leaveGroup(String groupName, String memberId, boolean permanent) throws Exception;
+
+    /**
      * Create and join a group with the given name. This just calls the `createGroup()` function followed by the
      * `joinGroup()` function.
      *
