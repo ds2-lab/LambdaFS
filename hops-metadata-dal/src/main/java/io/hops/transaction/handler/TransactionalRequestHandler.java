@@ -131,20 +131,18 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
             .collectStats(opType,
             ignoredException);
 
-        requestHandlerLOG.debug("Calling consistency protocol now...");
         boolean canProceed = consistencyProtocol(txStartTime);
         consistencyProtocolTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
 
         if (canProceed) {
-          requestHandlerLOG.debug("Consistency protocol executed successfully. Time: " +
-                  consistencyProtocolTime + " ms");
+          //requestHandlerLOG.debug("Consistency protocol executed successfully. Time: " +
+          //        consistencyProtocolTime + " ms");
         } else {
           requestHandlerLOG.error("Consistency protocol FAILED after " + consistencyProtocolTime + " ms.");
           throw new IOException("Consistency protocol FAILED after " + consistencyProtocolTime + " ms.");
         }
 
-        requestHandlerLOG.debug("Committing transaction now...");
         TransactionLocks transactionLocks = locksAcquirer.getLocks();
 
         // We have now acquired the locks. At this point, we should check for any new write operations on

@@ -160,9 +160,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     Collection<INode> invalidated = new ArrayList<INode>(removed);
     invalidated.addAll(modified);
 
-    if (removed.size() == 0 && modified.size() == 0)
-      LOG.debug("Transaction will not modify any INodes.");
-    else {
+    if (removed.size() > 0 || modified.size() > 0) {
       LOG.debug("Transaction will REMOVE the following INodes (" + removed.size() + "): " +
               StringUtils.join(removed, " ; "));
       LOG.debug("Transaction will MODIFY the following INodes (" + modified.size() + "): " +
@@ -186,9 +184,9 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     added.addAll(renamedInodes);
     Collection<INode> modified = getModified();
 
-    LOG.debug("Preparing for transaction. Removed INodes: " + removed.toString());
-    LOG.debug("Added (or renamed) INodes: " + added.toString());
-    LOG.debug("Modified INodes: " + modified.toString());
+//    LOG.debug("Preparing for transaction. Removed INodes: " + removed.toString());
+//    LOG.debug("Added (or renamed) INodes: " + added.toString());
+//    LOG.debug("Modified INodes: " + modified.toString());
 
     if (lks.containsLock(Lock.Type.INode)) {
       BaseINodeLock hlk = (BaseINodeLock) lks.getLock(Lock.Type.INode);
