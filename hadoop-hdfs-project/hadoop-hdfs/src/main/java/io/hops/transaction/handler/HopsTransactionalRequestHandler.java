@@ -382,10 +382,16 @@ public abstract class HopsTransactionalRequestHandler
             .boxed()
             .collect(Collectors.toList());
 
+    requestHandlerLOG.debug("Deployment #" + deploymentNumber + " has " + groupMemberIds.size() +
+            " active instance(s): " + StringUtils.join(groupMemberIds, ", "));
+
     // For each NN that we're waiting on, check that it is still a member of the group. If it is not, then remove it.
     List<Long> removeMe = new ArrayList<>();
 
     Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(deploymentNumber);
+
+    requestHandlerLOG.debug("Presently, we require ACKs from the following deployment #" + deploymentNumber +
+            " instances: " + deploymentAcks);
 
     // Compare the group member IDs to the ACKs from JUST this deployment, not the master list of all ACKs from all
     // deployments. If we were to iterate over the master list of all ACKs (that is not partitioned by deployment),
@@ -399,7 +405,7 @@ public abstract class HopsTransactionalRequestHandler
     // Stop waiting on any NNs that have failed since the consistency protocol began.
     if (removeMe.size() > 0) {
       requestHandlerLOG.warn("Found " + removeMe.size()
-              + " NameNode(s) that we are waiting on, but are no longer part of the group.");
+              + " NameNode(s) that we're waiting on, but are no longer active.");
       requestHandlerLOG.warn("IDs of these NameNodes: " + removeMe);
       removeMe.forEach(s -> {
         waitingForAcks.remove(s);   // Remove from the set of ACKs we're still waiting on.
