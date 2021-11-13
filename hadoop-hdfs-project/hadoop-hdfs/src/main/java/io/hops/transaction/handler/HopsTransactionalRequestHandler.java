@@ -56,6 +56,19 @@ public abstract class HopsTransactionalRequestHandler
   private HashSet<Long> waitingForAcks = new HashSet<>();
 
   /**
+   * Mapping from deployment number to the set of NN IDs, representing the set of ACKs we're still waiting on
+   * for that deployment.
+   */
+  private HashMap<Integer, Set<Long>> waitingForAcksPerDeployment = new HashMap<>();
+
+  /**
+   * HashMap from NameNodeID to deployment number, as we can't really recovery deployment number for a given
+   * event in the event-received handler. But we can if we note which deployment a given NN is from, because
+   * events contain NameNodeID information.
+   */
+  private HashMap<Long, Integer> nameNodeIdToDeploymentNumberMapping = new HashMap<>();
+
+  /**
    * Used as a unique identifier for the operation. This is only used during write operations.
    */
   private final long operationId;
@@ -359,9 +372,11 @@ public abstract class HopsTransactionalRequestHandler
    * between when the leader NN first checked group membership to create the ACK entries and when the leader begins
    * monitoring explicitly for changes in group membership.
    *
-   * @param groupName The name of the group for which membership changes are being processed.
+   * @param deploymentNumber The deployment number of the given group. Note that the group name is just
+   *                         "namenode" + deploymentNumber.
    */
-  private synchronized void checkAndProcessMembershipChanges(String groupName) throws Exception {
+  private synchronized void checkAndProcessMembershipChanges(int deploymentNumber) throws Exception {
+    String groupName = "namenode" + deploymentNumber;
     requestHandlerLOG.debug("ZooKeeper detected membership change for group: " + groupName);
 
     ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
@@ -377,7 +392,14 @@ public abstract class HopsTransactionalRequestHandler
 
     // For each NN that we're waiting on, check that it is still a member of the group. If it is not, then remove it.
     List<Long> removeMe = new ArrayList<>();
-    for (long memberId : waitingForAcks) {
+
+    Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(deploymentNumber);
+
+    // Compare the group member IDs to the ACKs from JUST this deployment, not the master list of all ACKs from all
+    // deployments. If we were to iterate over the master list of all ACKs (that is not partitioned by deployment),
+    // then any ACK from another deployment would obviously not be in the groupMemberIds variable, since those group
+    // member IDs are just from one particular deployment.
+    for (long memberId : deploymentAcks) {
       if (!groupMemberIds.contains(memberId))
         removeMe.add(memberId);
     }
@@ -389,6 +411,7 @@ public abstract class HopsTransactionalRequestHandler
       requestHandlerLOG.warn("IDs of these NameNodes: " + removeMe);
       removeMe.forEach(s -> {
         waitingForAcks.remove(s);   // Remove from the set of ACKs we're still waiting on.
+        deploymentAcks.remove(s);   // Remove from the set of ACKs specific to the deployment.
         countDownLatch.countDown(); // Decrement the count-down latch once for each entry we remove.
       });
     }
@@ -401,9 +424,11 @@ public abstract class HopsTransactionalRequestHandler
       requestHandlerLOG.debug("After removal of " + removeMe.size() +
               "failed follower NameNode(s), we are still waiting on " + waitingForAcks.size() +
               " more ACK(s) from " + waitingForAcks + ".");
-    } else {
+    } else if (waitingForAcks.size() > 0) {
       requestHandlerLOG.debug("We did not remove any NameNodes from our ACK list. Still waiting on " +
               waitingForAcks.size() + " ACK(s) from " + waitingForAcks + ".");
+    } else {
+      requestHandlerLOG.debug("We are not waiting on any ACKs, despite removing no NNs from our ACK list.");
     }
   }
 
@@ -415,12 +440,14 @@ public abstract class HopsTransactionalRequestHandler
     requestHandlerLOG.debug("=-----=-----= Steps 4 & 5 - Adding ACK Records =-----=-----=");
 
     ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
+    int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
 
-    // Start listening for changes in group membership.
+    // Start listening for changes in group membership. We've already added a listener for all deployments
+    // that are not our own in the 'joinOtherDeploymentsAsGuest()' function, so this is just for our local deployment.
     zkClient.addListener(serverlessNameNodeInstance.getFunctionName(), watchedEvent -> {
       if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
         try {
-          checkAndProcessMembershipChanges(serverlessNameNodeInstance.getFunctionName());
+          checkAndProcessMembershipChanges(localDeploymentNumber);
         } catch (Exception e) {
           requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
           e.printStackTrace();
@@ -428,9 +455,12 @@ public abstract class HopsTransactionalRequestHandler
       }
     });
 
-    // This method is 'synchronized' so if the event handler already fired, we won't be able to get inside
-    // until after the event handler finishes. Shouldn't cause any concurrency issues...
-    checkAndProcessMembershipChanges(serverlessNameNodeInstance.getFunctionName());
+    // This is a sanity check. For all non-local deployments, there is a small chance there was a membership changed
+    // in-between us joining the group/creating ACKs and establishing listeners and all that, so this makes sure
+    // our global image of deployment membership is correct. Likewise, there is a chance that membership for our local
+    // deployment has changed in between when we created the ACK entries and when we added the ZK listener just now.
+    for (int deploymentNumber : involvedDeployments)
+      checkAndProcessMembershipChanges(deploymentNumber);
 
     // Wait until we're done. If the latch is already at zero, then this will not block.
     countDownLatch.await();
@@ -492,6 +522,7 @@ public abstract class HopsTransactionalRequestHandler
     // First, verify that this event pertains to our write operation. If it doesn't, we just return.
     long writeOpId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID);
     long nameNodeId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.NAME_NODE_ID);
+    int mappedDeployment = nameNodeIdToDeploymentNumberMapping.get(nameNodeId);
     if (writeOpId != operationId && nameNodeId != serverlessNameNodeInstance.getId())
       return;
 
@@ -502,7 +533,8 @@ public abstract class HopsTransactionalRequestHandler
     boolean acknowledged = eventData.getBooleanPostValue(TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED);
 
     if (acknowledged) {
-      requestHandlerLOG.debug("Received ACK from NameNode " + nameNodeId + "!");
+      requestHandlerLOG.debug("Received ACK from NameNode " + nameNodeId + " (deployment = " +
+              mappedDeployment + ")!");
 
       // If we're receiving an ACK for this NameNode, then it better be the case that
       // we're waiting on it. Otherwise, something is wrong.
@@ -511,6 +543,9 @@ public abstract class HopsTransactionalRequestHandler
                 ", but that NN is not in our 'waiting on' list. Size of list: " + waitingForAcks.size() + ".");
 
       waitingForAcks.remove(nameNodeId);
+
+      Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(mappedDeployment);
+      deploymentAcks.remove(nameNodeId);
 
       countDownLatch.countDown();
     }
@@ -534,23 +569,24 @@ public abstract class HopsTransactionalRequestHandler
 
     // Join the other deployments as a guest, registering a membership-changed listener.
     int counter = 1;
-    for (int deploymentId : involvedDeployments) {
+    for (int deploymentNumber : involvedDeployments) {
       // We do not need to join our own deployment; we're already in our own deployment.
-      if (deploymentId == serverlessNameNodeInstance.getDeploymentNumber())
+      if (deploymentNumber == serverlessNameNodeInstance.getDeploymentNumber())
         continue;
 
-      requestHandlerLOG.debug("Joining deployment " + deploymentId + " as guest (" + counter + "/" +
+      requestHandlerLOG.debug("Joining deployment " + deploymentNumber + " as guest (" + counter + "/" +
               involvedDeployments.size() + ").");
-      final String groupName = "namenode" + deploymentId;
+      final String groupName = "namenode" + deploymentNumber;
 
       try {
         // Join the group.
-        zkClient.joinGroupAsGuest("namenode" + deploymentId, Long.toString(localNameNodeId), watchedEvent -> {
+        zkClient.joinGroupAsGuest("namenode" + deploymentNumber, Long.toString(localNameNodeId), watchedEvent -> {
           // This specifically monitors for NNs leaving the group, rather than joining. NNs that join will have
           // empty caches, so we do not need to worry about them.
           if (watchedEvent.getType() == Watcher.Event.EventType.ChildWatchRemoved) {
             try {
-              checkAndProcessMembershipChanges(groupName);
+              // We call this again in waitForAcks() as a sanity check to make sure we haven't missed anything.
+              checkAndProcessMembershipChanges(deploymentNumber);
             } catch (Exception e) {
               requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
               e.printStackTrace();
@@ -651,6 +687,7 @@ public abstract class HopsTransactionalRequestHandler
       // create an entry for each follower NN in the `writeAckMap` to keep track of whether they've ACK'd their entry.
       for (String memberIdAsString : groupMemberIds) {
         long memberId = Long.parseLong(memberIdAsString);
+        nameNodeIdToDeploymentNumberMapping.put(memberId, deploymentNumber); // Note which deployment this NN is from.
 
         // We do not need to add an entry for ourselves.
         if (memberId == serverlessNameNodeInstance.getId())
