@@ -292,12 +292,12 @@ public abstract class HopsTransactionalRequestHandler
       // This is common during subtree operations and when creating a new directory (as that modifies the parent
       // INode of the new directory, which is possibly mapped to a different deployment).
       if (mappedDeploymentNumber != localDeploymentNumber) {
-        requestHandlerLOG.debug("INode " + invalidatedINode.getLocalName() +
-                " is mapped to a different deployment (" + mappedDeploymentNumber + ").");
+        requestHandlerLOG.debug("INode '" + invalidatedINode.getLocalName() +
+                "' is mapped to a different deployment (" + mappedDeploymentNumber + ").");
         involvedDeployments.add(mappedDeploymentNumber);
       } else {
-        requestHandlerLOG.debug("Modification of INode " + invalidatedINode.getFullPathName() +
-                " is authorized for our deployment (" + localDeploymentNumber + ").");
+        requestHandlerLOG.debug("Modification of INode '" + invalidatedINode.getFullPathName() +
+                "' is authorized for our deployment (" + localDeploymentNumber + ").");
       }
     }
 
@@ -724,10 +724,10 @@ public abstract class HopsTransactionalRequestHandler
        requestHandlerLOG.debug("0 ACKs required from deployment #" + deploymentNumber + "...");
       }
 
-      totalNumberOfACKsRequired += writeAcknowledgementsMap.size();
+      totalNumberOfACKsRequired += writeAcknowledgements.size();
     }
 
-    requestHandlerLOG.debug("Grant total of " + totalNumberOfACKsRequired + " ACKs required.");
+    requestHandlerLOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
 
     // Instantiate the CountDownLatch variable. The value is set to the number of ACKs that we need
     // before we can proceed with the transaction. Receiving an ACK and a follower NN leaving the group

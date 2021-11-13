@@ -73,7 +73,6 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
       ignoredException = null;
       committed = false;
 
-      requestHandlerLOG.debug("Setting preventStorageCalls to FALSE.");
       EntityManager.preventStorageCall(false);
       boolean success = false;
       try {
@@ -111,7 +110,6 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         //sometimes in setup we call light weight request handler that messes up with the NDC
         removeNDC();
         setNDC(info);
-        requestHandlerLOG.debug("Setting preventStorageCalls to TRUE.");
         EntityManager.preventStorageCall(true);
         try {
           txRetValue = performTask();
