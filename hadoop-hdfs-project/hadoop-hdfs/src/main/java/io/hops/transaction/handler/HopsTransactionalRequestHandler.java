@@ -194,8 +194,38 @@ public abstract class HopsTransactionalRequestHandler
 
   @Override
   protected final boolean consistencyProtocol(long txStartTime) throws IOException {
-    EntityContext<?> inodeContext = EntityManager.getEntityContext(INode.class);
-    return doConsistencyProtocol(inodeContext, txStartTime);
+    EntityContext<?> inodeContext= EntityManager.getEntityContext(INode.class);
+    final boolean[] canProceed = new boolean[1];
+    final Throwable[] exception = new Throwable[1];
+    Thread protocolRunner = new Thread(() -> {
+      try {
+        canProceed[0] = doConsistencyProtocol(inodeContext, txStartTime);
+      } catch (IOException e) {
+        exception[0] = e;
+        canProceed[0] = false;
+      }
+    });
+
+    protocolRunner.start();
+
+    try {
+      protocolRunner.join();
+    } catch (InterruptedException ex) {
+      throw new IOException("Encountered InterruptedException while waiting for consistency protocol to finish: ", ex);
+    }
+
+    boolean proceedWithTx = canProceed[0];
+
+    if (!proceedWithTx) {
+      Throwable t = exception[0];
+
+      if (t instanceof IOException)
+        throw (IOException)t;
+      else
+        throw new IOException("Exception encountered during consistency protocol: ", t);
+    }
+
+    return proceedWithTx;
   }
 
   /**

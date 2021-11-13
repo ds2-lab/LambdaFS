@@ -17,6 +17,7 @@ package io.hops.transaction.handler;
 
 import io.hops.exception.*;
 import io.hops.log.NDCWrapper;
+import io.hops.metadata.hdfs.entity.INode;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.TransactionInfo;
 import io.hops.transaction.context.EntityContext;
@@ -131,31 +132,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
             .collectStats(opType,
             ignoredException);
 
-        final boolean[] canProceedArr = new boolean[1];
-        Thread consistencyProtocolThread = new Thread(() -> {
-          try {
-            requestHandlerLOG.debug("Executing consistency protocol in separate thread.");
-            boolean success1 = consistencyProtocol(txStartTime);
-            requestHandlerLOG.debug("Finished consistency protocol with result " + success1);
-            canProceedArr[0] = success1;
-          } catch (IOException e) {
-            e.printStackTrace();
-            canProceedArr[0] = false;
-          }
-        });
-
-        boolean canProceed = false;
-        consistencyProtocolThread.start();
-        try {
-          requestHandlerLOG.debug("Joining the Consistency Protocol thread. Thread is alive: " +
-                  consistencyProtocolThread.isAlive());
-          consistencyProtocolThread.join();
-          requestHandlerLOG.debug("Joined the thread.");
-          canProceed = canProceedArr[0];
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          canProceed = false;
-        }
+        boolean canProceed = consistencyProtocol(txStartTime);
 
         consistencyProtocolTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
