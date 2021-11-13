@@ -248,15 +248,13 @@ public abstract class HopsTransactionalRequestHandler
     requestHandlerLOG.debug("=-=-=-=-= CONSISTENCY PROTOCOL =-=-=-=-=");
     requestHandlerLOG.debug("Operation ID: " + operationId);
     requestHandlerLOG.debug("Operation Start Time: " + txStartTime);
-    ServerlessNameNode serverlessNameNode = OpenWhiskHandler.instance;
+    ServerlessNameNode serverlessNameNodeInstance = OpenWhiskHandler.instance;
 
     // Sanity check. Make sure we have a valid reference to the ServerlessNameNode. This isn't the cleanest, but
     // with the way HopsFS has structured its code, this is workable for our purposes.
-    if (serverlessNameNode == null)
+    if (serverlessNameNodeInstance == null)
       throw new IllegalStateException(
               "Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
-
-    serverlessNameNodeInstance = serverlessNameNode;
 
     // TODO: Implement subtree protocol. Required modifications for basic version involve
     //       having the Leader NN join the ZK groups of whatever deployments it is modifying
@@ -269,13 +267,13 @@ public abstract class HopsTransactionalRequestHandler
     // write operations, at least). Other deployments may be involved if we're modifying INodes from them. We may
     // modify nodes from other deployments during subtree operations and when creating a new directory.
     involvedDeployments = new HashSet<>();
-    involvedDeployments.add(serverlessNameNode.getDeploymentNumber()); // Add our own deployment number, obviously.
+    involvedDeployments.add(serverlessNameNodeInstance.getDeploymentNumber()); // Add our own deployment number, obviously.
 
     // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
     // If we find that we are about to modify an INode for which we are not authorized, throw an exception.
     for (INode invalidatedINode : invalidatedINodes) {
-      int mappedDeploymentNumber = serverlessNameNode.getMappedServerlessFunction(invalidatedINode);
-      int localDeploymentNumber = serverlessNameNode.getDeploymentNumber();
+      int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedServerlessFunction(invalidatedINode);
+      int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
 
       // We'll have to guest-join the other deployment if the INode is not mapped to our deployment.
       // This is common during subtree operations and when creating a new directory (as that modifies the parent
@@ -290,9 +288,9 @@ public abstract class HopsTransactionalRequestHandler
       }
     }
 
-    requestHandlerLOG.debug("Leader NameNode: " + serverlessNameNode.getFunctionName() + ", ID = "
-            + serverlessNameNode.getId() + ", Follower NameNodes: "
-            + serverlessNameNode.getActiveNameNodes().getActiveNodes().toString() + ".");
+    requestHandlerLOG.debug("Leader NameNode: " + serverlessNameNodeInstance.getFunctionName() + ", ID = "
+            + serverlessNameNodeInstance.getId() + ", Follower NameNodes: "
+            + serverlessNameNodeInstance.getActiveNameNodes().getActiveNodes().toString() + ".");
 
     // Technically this isn't true yet, but we'll need to unsubscribe after the call to `subscribeToAckEvents()`.
     boolean needToUnsubscribe = true;
@@ -317,12 +315,12 @@ public abstract class HopsTransactionalRequestHandler
     // and begin monitoring for membership changes. Since we already added ACKs for every active instance, we aren't
     // going to miss any. We DO need to double-check that nobody dropped between when we first queried the deployments
     // for their membership and when we begin listening for changes, though. (We do the same for our own deployment.)
-    joinOtherDeploymentsAsGuest(serverlessNameNode);
+    joinOtherDeploymentsAsGuest();
 
     // TODO: Query for any missed changes in group membership.
 
     // =============== STEP 2 ===============
-    subscribeToAckEvents(serverlessNameNode);
+    subscribeToAckEvents();
 
     // =============== STEP 3 ===============
     issueInitialInvalidations(invalidatedINodes, txStartTime);
@@ -330,7 +328,7 @@ public abstract class HopsTransactionalRequestHandler
     // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
     if (totalNumberOfACKsRequired == 0) {
       requestHandlerLOG.debug("We're the only active NN in our deployment. Unsubscribing from ACK events now.");
-      unsubscribeFromAckEvents(serverlessNameNode);
+      unsubscribeFromAckEvents();
       needToUnsubscribe = false;
     }
 
@@ -346,7 +344,7 @@ public abstract class HopsTransactionalRequestHandler
     }
 
     // Clean up ACKs, event operation, etc.
-    cleanUpAfterConsistencyProtocol(serverlessNameNode, needToUnsubscribe);
+    cleanUpAfterConsistencyProtocol(needToUnsubscribe);
 
     // Steps 6 and 7 happen automatically. We can return from this function to perform the writes.
     return true;
@@ -447,12 +445,12 @@ public abstract class HopsTransactionalRequestHandler
    *                          already unsubscribed from ACK events (presumably because we found that we didn't
    *                          actually need any ACKs and just unsubscribed immediately).
    */
-  private void cleanUpAfterConsistencyProtocol(ServerlessNameNode serverlessNameNode, boolean needToUnsubscribe)
+  private void cleanUpAfterConsistencyProtocol(boolean needToUnsubscribe)
           throws StorageException {
     // Unsubscribe and unregister event listener if we haven't done so already. (If we were the only active NN in
     // our deployment at the beginning of the protocol, then we would have already unsubscribed by this point.)
     if (needToUnsubscribe)
-      unsubscribeFromAckEvents(serverlessNameNode);
+      unsubscribeFromAckEvents();
 
     // Remove the ACK entries that we added.
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
@@ -476,11 +474,11 @@ public abstract class HopsTransactionalRequestHandler
   /**
    * Unregister ourselves as an event listener for ACK table events, then unregister the event operation itself.
    */
-  private void unsubscribeFromAckEvents(ServerlessNameNode serverlessNameNode)
+  private void unsubscribeFromAckEvents()
           throws StorageException {
     for (int deploymentNumber : involvedDeployments) {
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
-      EventManager eventManager = serverlessNameNode.getNdbEventManager();
+      EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();
       eventManager.removeListener(this, eventName);
       eventManager.unregisterEventOperation(eventName);
     }
@@ -521,9 +519,8 @@ public abstract class HopsTransactionalRequestHandler
   /**
    * Join other deployments as a guest. This is required when modifying INodes from other deployments. Typically, we
    * aim to avoid this. But it occurs commonly during subtree operations and when creating new directories.
-   * @param serverlessNameNode The local ServerlessNameNode instance.
    */
-  private void joinOtherDeploymentsAsGuest(ServerlessNameNode serverlessNameNode) throws IOException {
+  private void joinOtherDeploymentsAsGuest() throws IOException {
     if (involvedDeployments.size() == 1) { // If there's just one, it is our own deployment.
       requestHandlerLOG.debug("There are no other deployments to join.");
       return;
@@ -532,14 +529,14 @@ public abstract class HopsTransactionalRequestHandler
     requestHandlerLOG.debug("There are " + involvedDeployments.size() + " other deployments to join: " +
             involvedDeployments);
 
-    ZKClient zkClient = serverlessNameNode.getZooKeeperClient();
-    long localNameNodeId = serverlessNameNode.getId();
+    ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
+    long localNameNodeId = serverlessNameNodeInstance.getId();
 
     // Join the other deployments as a guest, registering a membership-changed listener.
     int counter = 1;
     for (int deploymentId : involvedDeployments) {
       // We do not need to join our own deployment; we're already in our own deployment.
-      if (deploymentId == serverlessNameNode.getDeploymentNumber())
+      if (deploymentId == serverlessNameNodeInstance.getDeploymentNumber())
         continue;
 
       requestHandlerLOG.debug("Joining deployment " + deploymentId + " as guest (" + counter + "/" +
@@ -591,14 +588,14 @@ public abstract class HopsTransactionalRequestHandler
    *    The Leader NN begins listening for changes in group membership from ZooKeeper.
    *    The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly.
    */
-  private void subscribeToAckEvents(ServerlessNameNode serverlessNameNode)
+  private void subscribeToAckEvents()
           throws StorageException {
     requestHandlerLOG.debug("=-----=-----= Step 2 - Subscribing to ACK Events =-----=-----=");
 
     for (int deploymentNumber : involvedDeployments) {
       String targetTableName = getTargetTableName(deploymentNumber);
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
-      EventManager eventManager = serverlessNameNode.getNdbEventManager();
+      EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();
       boolean eventCreated = eventManager.registerEvent(eventName, targetTableName,
               eventManager.getAckTableEventColumns(), false);
 
@@ -712,13 +709,36 @@ public abstract class HopsTransactionalRequestHandler
     InvalidationDataAccess<Invalidation> dataAccess =
             (InvalidationDataAccess<Invalidation>)HdfsStorageFactory.getDataAccess(InvalidationDataAccess.class);
 
-    for (int deploymentNumber : involvedDeployments) {
-      List<Invalidation> invalidations = new ArrayList<>();
-      for (INode invalidatedINode : invalidatedINodes) {
-        // int inodeId, int parentId, long leaderNameNodeId, long txStartTime, long operationId
-        invalidations.add(new Invalidation(invalidatedINode.getId(), invalidatedINode.getParentId(),
-                serverlessNameNodeInstance.getId(), txStartTime, operationId));
+    Map<Integer, List<Invalidation>> invalidationsMap = new HashMap<>();
+
+    for (INode invalidatedINode : invalidatedINodes) {
+      int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedServerlessFunction(invalidatedINode);
+      List<Invalidation> invalidations = invalidationsMap.getOrDefault(mappedDeploymentNumber, null);
+
+      if (invalidations == null) {
+        invalidations = new ArrayList<Invalidation>();
+        invalidationsMap.put(mappedDeploymentNumber, invalidations);
       }
+
+      // int inodeId, int parentId, long leaderNameNodeId, long txStartTime, long operationId
+      invalidations.add(new Invalidation(invalidatedINode.getId(), invalidatedINode.getParentId(),
+              serverlessNameNodeInstance.getId(), txStartTime, operationId));
+    }
+
+    for (Map.Entry<Integer, List<Invalidation>> entry : invalidationsMap.entrySet()) {
+      int deploymentNumber = entry.getKey();
+      List<Invalidation> invalidations = entry.getValue();
+
+      int numInvalidations = invalidations.size();
+      if (numInvalidations == 0) {
+        requestHandlerLOG.debug("Adding 0 INV entries for deployment #" + deploymentNumber + ".");
+        continue;
+      }
+      else if (numInvalidations == 1)
+        requestHandlerLOG.debug("Adding 1 INV entry for deployment #" + deploymentNumber + ".");
+      else
+        requestHandlerLOG.debug("Adding " + numInvalidations + " INV entries for deployment #" +
+                deploymentNumber + ".");
 
       dataAccess.addInvalidations(invalidations, deploymentNumber);
     }
