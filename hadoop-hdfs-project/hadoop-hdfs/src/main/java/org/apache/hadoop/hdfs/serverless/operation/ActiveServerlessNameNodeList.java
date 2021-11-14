@@ -76,7 +76,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
 //            LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
 //                    " active NameNodes in this deployment.");
 
-        LOG.debug("Active NameNode IDs: " + activeNodes);
+//        LOG.debug("Active NameNode IDs: " + activeNodes);
     }
 
     /**
