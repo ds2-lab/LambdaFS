@@ -166,18 +166,17 @@ public class WriteAcknowledgementClusterJ
             throws StorageException {
         LOG.debug("ACK " + writeAcknowledgements.toString());
 
-        WriteAcknowledgementDTO[] dtos = new WriteAcknowledgementDTO[writeAcknowledgements.size()];
+        List<WriteAcknowledgementDTO> dtos = new ArrayList<WriteAcknowledgementDTO>();
         HopsSession session = connector.obtainSession();
 
-        for (int i = 0; i < writeAcknowledgements.size(); i++) {
-            WriteAcknowledgement ack = writeAcknowledgements.get(i);
-            ack.acknowledge();
-            dtos[i] = session.newInstance(getDTOClass(deploymentNumber));
-            copyState(dtos[i], ack);
+        for (WriteAcknowledgement writeAcknowledgement : writeAcknowledgements) {
+            WriteAcknowledgementDTO dto = session.newInstance(WriteAcknowledgementDTO.class);
+            copyState(dto, writeAcknowledgement);
+            dtos.add(dto);
         }
 
         try {
-            session.updatePersistentAll(writeAcknowledgements);
+            session.updatePersistentAll(dtos);
         } finally {
             session.release(dtos);
         }
