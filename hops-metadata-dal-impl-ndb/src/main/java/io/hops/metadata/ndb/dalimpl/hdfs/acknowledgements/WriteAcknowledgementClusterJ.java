@@ -218,7 +218,7 @@ public class WriteAcknowledgementClusterJ
     @Override
     public void addWriteAcknowledgement(WriteAcknowledgement writeAcknowledgement, int deploymentNumber)
             throws StorageException {
-        LOG.debug("ADD " + writeAcknowledgement.toString());
+        LOG.debug("ADD INDIVIDUAL: " + writeAcknowledgement.toString());
         HopsSession session = connector.obtainSession();
 
         WriteAcknowledgementDTO writeDTO = null;
@@ -236,7 +236,7 @@ public class WriteAcknowledgementClusterJ
     @Override
     public void addWriteAcknowledgements(WriteAcknowledgement[] writeAcknowledgements, int deploymentNumber)
             throws StorageException {
-        LOG.debug("ADD " + Arrays.toString(writeAcknowledgements));
+        LOG.debug("ADD ARRAY: " + Arrays.toString(writeAcknowledgements));
         HopsSession session = connector.obtainSession();
 
         WriteAcknowledgementDTO[] writeDTOs = new WriteAcknowledgementDTO[writeAcknowledgements.length];
@@ -259,7 +259,7 @@ public class WriteAcknowledgementClusterJ
     public void addWriteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements,
                                          int deploymentNumber)
             throws StorageException {
-        LOG.debug("ADD " + StringUtils.join(writeAcknowledgements, " ; "));
+        LOG.debug("ADD COLLECTION: " + StringUtils.join(writeAcknowledgements, " ; "));
         HopsSession session = connector.obtainSession();
 
         List<WriteAcknowledgementDTO> writeDTOs =
@@ -332,5 +332,6 @@ public class WriteAcknowledgementClusterJ
         dest.setDeploymentNumber(src.getDeploymentNumber());
         dest.setOperationId(src.getOperationId());
         dest.setTimestamp(src.getTimestamp());
+        dest.setLeaderId(src.getLeaderNameNodeId());
     }
 }
