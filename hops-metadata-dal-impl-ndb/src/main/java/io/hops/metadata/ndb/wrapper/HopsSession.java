@@ -95,9 +95,9 @@ public class HopsSession {
   /**
    * Return the EventOperation associated with the next event that was received.
    *
-   * This call will not work if:
+   * This call will NOT work if:
    *  (1) execute() has not yet been called on the event operation, and
-   *  (2) pollEvents() has been called and indicated that at least one event has been received.
+   *  (2) pollEvents() has not yet been called and indicated that at least one event has been received.
    *
    * @param eventName The name of the event we're checking on. It is acceptable for null to be passed if the name is
    *                  not available. The name is just passed to the HopsEventOperation constructor, and that object
@@ -110,6 +110,10 @@ public class HopsSession {
 
     if (eventOperation == null)
       return null;
+
+    // Since it was returned by nextEvent(), we can call true on this.
+    // TODO: Should we set the flag to false once we're done processing this?
+    eventOperation.setCanCallNextEvent(true);
 
     return EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
   }

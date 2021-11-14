@@ -589,6 +589,7 @@ public class HopsEventManager implements EventManager {
                     break;
             }
 
+            // TODO: Should we call .setCanCallNextEvent(false) on the event we just processed to mark it as such?
             nextEventOp = session.nextEvent(null);
             numEventsProcessed++;
         }
