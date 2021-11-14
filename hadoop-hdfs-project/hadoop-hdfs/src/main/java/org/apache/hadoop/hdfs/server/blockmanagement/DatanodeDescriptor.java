@@ -558,7 +558,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
     this.volumeFailures = volFailures;
     this.volumeFailureSummary = volumeFailureSummary;
 
-    LOG.debug("Processing " + reports.length + " Storage Reports now...");
+//    LOG.debug("Processing " + reports.length + " Storage Reports now...");
 
     for (StorageReport report : reports) {
       try {

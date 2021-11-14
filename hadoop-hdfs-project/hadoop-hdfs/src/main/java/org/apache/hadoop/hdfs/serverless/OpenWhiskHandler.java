@@ -3,19 +3,15 @@ package org.apache.hadoop.hdfs.serverless;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mysql.clusterj.ClusterJHelper;
-import com.mysql.clusterj.Dbug;
-import com.mysql.clusterj.tie.DbugImpl;
-import io.hops.exception.StorageException;
-import io.hops.exception.TransactionContextException;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.DuplicateRequest;
-import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +23,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.*;
 
-import static com.google.common.hash.Hashing.consistentHash;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.FORCE_REDO;
 
@@ -157,6 +152,9 @@ public class OpenWhiskHandler {
             LOG.debug("NDB debugging has been enabled. Using dbug string \"" +
                     debugString + "\"");
             ClusterJHelper.newDbug().push(debugString);
+
+            LOG.debug("Also enabling ClusterJ debug logging...");
+            LogManager.getLogger("com.mysql.clusterj").setLevel(Level.DEBUG);
         } else {
             LOG.debug("NDB debugging is NOT enabled.");
         }
