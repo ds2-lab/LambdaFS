@@ -69,6 +69,14 @@ public interface HopsEventOperation {
     long getLongPostValue(String columnName) throws IllegalArgumentException;
 
     /**
+     * Activates the NdbEventOperation to start receiving events. The
+     * changed attribute values may be retrieved after Ndb::nextEvent()
+     * has returned not NULL. The getValue() methods must be called
+     * prior to execute().
+     */
+    void execute();
+
+    /**
      * Return the event table of this event.
      * @return the event type of this event.
      */

@@ -92,7 +92,7 @@ public class HopsEventOperationImpl implements HopsEventOperation {
             LOG.error("Failed to find specified post-value record attribute '" + columnName +
                     "' for event operation " + Integer.toHexString(this.hashCode()) + ".");
             LOG.error("Valid post-value record attributes include: " +
-                    StringUtils.join(preValueRecordAttributes.keySet(), ", "));
+                    StringUtils.join(postValueRecordAttributes.keySet(), ", "));
             throw new IllegalArgumentException("No post-value record attribute exists for column " + columnName);
         }
         return NdbBoolean.convert(postValueRecordAttributes.get(columnName).int8_value());
@@ -135,7 +135,7 @@ public class HopsEventOperationImpl implements HopsEventOperation {
             LOG.error("Failed to find specified post-value record attribute '" + columnName +
                     "' for event operation " + Integer.toHexString(this.hashCode()) + ".");
             LOG.error("Valid post-value record attributes include: " +
-                    StringUtils.join(preValueRecordAttributes.keySet(), ", "));
+                    StringUtils.join(postValueRecordAttributes.keySet(), ", "));
             throw new IllegalArgumentException("No post-value record attribute exists for column " + columnName);
         }
 
@@ -179,11 +179,16 @@ public class HopsEventOperationImpl implements HopsEventOperation {
             LOG.error("Failed to find specified post-value record attribute '" + columnName +
                     "' for event operation " + Integer.toHexString(this.hashCode()) + ".");
             LOG.error("Valid post-value record attributes include: " +
-                    StringUtils.join(preValueRecordAttributes.keySet(), ", "));
+                    StringUtils.join(postValueRecordAttributes.keySet(), ", "));
             throw new IllegalArgumentException("No post-value record attribute exists for column " + columnName);
         }
 
         return postValueRecordAttributes.get(columnName).int64_value();
+    }
+
+    @Override
+    public void execute() {
+        this.clusterJEventOperation.execute();
     }
 
     /**
@@ -202,19 +207,19 @@ public class HopsEventOperationImpl implements HopsEventOperation {
         boolean postCreated = false;
 
         if (!preValueRecordAttributes.containsKey(columnName)) {
-            LOG.debug("Created pre-value record attribute for column " + columnName +
-                    " for event " + associatedEventName + ".");
             RecordAttr preAttribute = clusterJEventOperation.getPreValue(columnName);
             preValueRecordAttributes.put(columnName, preAttribute);
             preCreated = true;
+            LOG.debug("Created pre-value record attribute for column " + columnName +
+                    " for event " + associatedEventName + ".");
         }
 
         if (!postValueRecordAttributes.containsKey(columnName)) {
-            LOG.debug("Created post-value record attribute for column " + columnName +
-                    " for event " + associatedEventName + ".");
             RecordAttr postAttribute = clusterJEventOperation.getValue(columnName);
             postValueRecordAttributes.put(columnName, postAttribute);
             postCreated = true;
+            LOG.debug("Created post-value record attribute for column " + columnName +
+                    " for event " + associatedEventName + ".");
         }
 
         // If at least one of these was created, then we'll return true.

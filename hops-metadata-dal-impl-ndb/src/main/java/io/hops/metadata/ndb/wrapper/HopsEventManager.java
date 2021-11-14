@@ -23,7 +23,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * This class is responsible for listening to events from NDB and reacting to them appropriately.
+ * This class is responsible for listening to events from NDB and reacting to them appropriately. This is how
+ * the HopsFS codebase interfaces with events.
  *
  * The events serve as cache invalidations for NameNodes. The NameNodes cache metadata locally in-memory. An Event
  * from NDB on the table for which the NameNode caches data serves to inform the NameNode that its cache is now
@@ -34,10 +35,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * operations, the leader protocol subscribes to events on the `write_acknowledgements` table during the carrying
  * out of the consistency protocol. This required rewriting certain aspects of the class and also updating the
  * ClusterJ API to allow for equality checks between instances of NdbEventOperation objects.
- *
- * TODO: We can reuse the same event operation from multiple EventListeners. We need to keep track of
- *       how many listeners we have registered for a given event operation. We should only unregister
- *       the event operation if the number of listeners is zero.
  */
 public class HopsEventManager implements EventManager {
     static final Log LOG = LogFactory.getLog(HopsEventManager.class);
@@ -540,7 +537,6 @@ public class HopsEventManager implements EventManager {
 
         LOG.debug("Creating event operation for event " + defaultEventName + " now...");
         HopsEventOperationImpl eventOperation = createAndReturnEventOperation(defaultEventName);
-        EventOperation clusterJEventOperation = eventOperation.getClusterJEventOperation();
 
         LOG.debug("Setting up record attributes for event " + defaultEventName + " now...");
         for (String columnName : INV_TABLE_EVENT_COLUMNS) {
@@ -551,7 +547,7 @@ public class HopsEventManager implements EventManager {
         }
 
         LOG.debug("Executing event operation for event " + defaultEventName + " now...");
-        clusterJEventOperation.execute();
+        eventOperation.execute();
 
         // Signal that we're done with this. Just add a ton of permits.
         defaultSetupSemaphore.release(Integer.MAX_VALUE - 10);

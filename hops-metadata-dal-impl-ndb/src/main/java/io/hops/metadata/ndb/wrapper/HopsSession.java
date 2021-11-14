@@ -28,6 +28,7 @@ import com.mysql.clusterj.core.store.Event;
 import com.mysql.clusterj.core.store.EventOperation;
 import com.mysql.clusterj.query.QueryBuilder;
 import io.hops.exception.StorageException;
+import io.hops.metadata.ndb.EventOperationLifecycleManager;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -104,7 +105,7 @@ public class HopsSession {
     if (eventOperation == null)
       return null;
 
-    return new HopsEventOperationImpl(eventOperation, eventName);
+    return EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
   }
 
   /**
