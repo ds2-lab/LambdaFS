@@ -59,8 +59,8 @@ public class HopsEventOperationImpl implements HopsEventOperation {
 
     @Override
     public int hashCode() {
-        LOG.debug("Returning hashCode() for underlying clusterJEventOperation " +
-                Integer.toHexString(clusterJEventOperation.hashCode()) + ".");
+//        LOG.debug("Returning hashCode() for underlying clusterJEventOperation " +
+//                Integer.toHexString(clusterJEventOperation.hashCode()) + ".");
         return this.clusterJEventOperation.hashCode();
     }
 
@@ -191,17 +191,7 @@ public class HopsEventOperationImpl implements HopsEventOperation {
         this.clusterJEventOperation.execute();
     }
 
-    /**
-     * Add a pre- and post-value record attribute for the given column name to this event operation.
-     *
-     * @param columnName The name of the column for which a record attribute will be created.
-     *
-     * @return True if at least one of the pre- and post-value record attributes were created, otherwise false.
-     * False may be returned if both record attribute already exist. Generally either both should exist or neither
-     * should exist.
-     *
-     * If an error occurs while creating the record attribute, then an exception will be thrown.
-     */
+    @Override
     public boolean addRecordAttribute(String columnName) {
         boolean preCreated = false;
         boolean postCreated = false;

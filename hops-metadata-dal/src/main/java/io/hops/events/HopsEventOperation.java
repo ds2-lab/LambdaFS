@@ -2,6 +2,19 @@ package io.hops.events;
 
 public interface HopsEventOperation {
     /**
+     * Add a pre- and post-value record attribute for the given column name to this event operation.
+     *
+     * @param columnName The name of the column for which a record attribute will be created.
+     *
+     * @return True if at least one of the pre- and post-value record attributes were created, otherwise false.
+     * False may be returned if both record attribute already exist. Generally either both should exist or neither
+     * should exist.
+     *
+     * If an error occurs while creating the record attribute, then an exception will be thrown.
+     */
+    boolean addRecordAttribute(String columnName);
+
+    /**
      * Get the boolean pre-value of a record attribute (i.e., value associated with an event).
      *
      * @param columnName The name of the column whose value is desired.

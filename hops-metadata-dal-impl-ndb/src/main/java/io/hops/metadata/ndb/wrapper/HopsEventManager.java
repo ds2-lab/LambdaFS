@@ -3,10 +3,7 @@ package io.hops.metadata.ndb.wrapper;
 import com.mysql.clusterj.*;
 import com.mysql.clusterj.core.store.Event;
 import com.mysql.clusterj.core.store.EventOperation;
-import io.hops.events.EventManager;
-import io.hops.events.HopsEvent;
-import io.hops.events.HopsEventListener;
-import io.hops.events.HopsEventOperation;
+import io.hops.events.*;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.ndb.ClusterjConnector;
@@ -144,7 +141,7 @@ public class HopsEventManager implements EventManager {
     /**
      * All active EventOperation instances are contained in here.
      */
-    private final HashMap<String, HopsEventOperationImpl> eventOperationMap;
+    private final HashMap<String, HopsEventOperation> eventOperationMap;
 
     /**
      * We also have a reverse mapping from the event operations to their names, as they do not store
@@ -273,17 +270,16 @@ public class HopsEventManager implements EventManager {
     public synchronized void createEventOperation(String eventName) throws StorageException {
         LOG.debug("Creating EventOperation for event " + eventName + " now...");
 
-        EventOperation eventOperation;
+        HopsEventOperation hopsEventOperation;
         try {
-            eventOperation = obtainSession().createEventOperation(eventName);
+            hopsEventOperation = obtainSession().createEventOperation(eventName);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
 
         LOG.debug("Successfully created EventOperation for event " + eventName + ": " +
-                Integer.toHexString(eventOperation.hashCode()));
+                Integer.toHexString(hopsEventOperation.hashCode()));
 
-        HopsEventOperationImpl hopsEventOperation = new HopsEventOperationImpl(eventOperation, eventName);
         eventOperationMap.put(eventName, hopsEventOperation);
         eventOpToNameMapping.put(hopsEventOperation, eventName);
 
@@ -307,7 +303,7 @@ public class HopsEventManager implements EventManager {
      * This is for internal use only.
      * @param eventName The name of the event for which an event operation should be created.
      */
-    private HopsEventOperationImpl createAndReturnEventOperation(String eventName) throws StorageException {
+    private HopsEventOperation createAndReturnEventOperation(String eventName) throws StorageException {
         createEventOperation(eventName);
 
         return eventOperationMap.get(eventName);
@@ -327,7 +323,7 @@ public class HopsEventManager implements EventManager {
             throw new IllegalArgumentException("There is no event operation associated with an event called "
                     + eventName + " currently being tracked by the EventManager.");
 
-        HopsEventOperationImpl hopsEventOperation = eventOperationMap.get(eventName);
+        HopsEventOperation hopsEventOperation = eventOperationMap.get(eventName);
 
         int currentNumberOfListeners = numListenersMapping.get(hopsEventOperation);
         if (currentNumberOfListeners > 0) {
@@ -336,10 +332,14 @@ public class HopsEventManager implements EventManager {
             return false;
         }
 
+        // Make sure to remove the event from the eventMap.
+        eventOperationMap.remove(eventName);
+        eventOpToNameMapping.remove(hopsEventOperation);
+
         // Try to drop the event. If something goes wrong, we'll throw an exception.
         boolean dropped;
         try {
-            dropped = obtainSession().dropEventOperation(hopsEventOperation.getClusterJEventOperation());
+            dropped = obtainSession().dropEventOperation(hopsEventOperation);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
@@ -350,11 +350,7 @@ public class HopsEventManager implements EventManager {
             throw new IllegalStateException("Failed to unregister EventOperation associated with event " + eventName +
                     " from NDB, despite the fact that the event operation exists within the EventManager.");
 
-        // Make sure to remove the event from the eventMap now that it has been dropped by NDB.
         LOG.debug("Successfully unregistered EventOperation for event " + eventName + " with NDB!");
-        eventOperationMap.remove(eventName);
-        eventOpToNameMapping.remove(hopsEventOperation);
-        // TODO: Will this still work seeing as we already dropped the object? Does that change the hashCode?
         return true;
     }
 
@@ -536,7 +532,7 @@ public class HopsEventManager implements EventManager {
         }
 
         LOG.debug("Creating event operation for event " + defaultEventName + " now...");
-        HopsEventOperationImpl eventOperation = createAndReturnEventOperation(defaultEventName);
+        HopsEventOperation eventOperation = createAndReturnEventOperation(defaultEventName);
 
         LOG.debug("Setting up record attributes for event " + defaultEventName + " now...");
         for (String columnName : INV_TABLE_EVENT_COLUMNS) {
@@ -558,13 +554,13 @@ public class HopsEventManager implements EventManager {
      * @return the number of events that were processed.
      */
     private synchronized int processEvents(HopsSession session) {
-        HopsEventOperationImpl nextEventOp = session.nextEvent(null);
+        HopsEventOperation nextEventOp = session.nextEvent(null);
         int numEventsProcessed = 0;
 
         while (nextEventOp != null) {
-            TableEvent eventType = nextEventOp.getUnderlyingEventType();
+            String eventType = nextEventOp.getEventType();
 
-            LOG.debug("Received " + eventType.name() + " event from NDB: " +
+            LOG.debug("Received " + eventType + " event from NDB: " +
                     Integer.toHexString(nextEventOp.hashCode()) + ".");
 
             // Print the columns if we can determine what their names are from our mapping.
@@ -582,14 +578,14 @@ public class HopsEventManager implements EventManager {
             }
 
             switch (eventType) {
-                case DELETE:    // Do nothing for now.
+                case HopsEventType.DELETE:    // Do nothing for now.
                     break;
-                case UPDATE:    // Fall through.
-                case INSERT:
+                case HopsEventType.UPDATE:    // Fall through.
+                case HopsEventType.INSERT:
                     notifyEventListeners(nextEventOp);
                     break;
                 default:
-                    LOG.debug("Received unexpected " + eventType.name() + " event from NDB.");
+                    LOG.debug("Received unexpected " + eventType + " event from NDB.");
                     break;
             }
 
@@ -606,7 +602,7 @@ public class HopsEventManager implements EventManager {
     /**
      * Notify anybody listening for events that we received an event.
      */
-    private void notifyEventListeners(HopsEventOperationImpl eventOperation) {
+    private void notifyEventListeners(HopsEventOperation eventOperation) {
         String eventName = eventOpToNameMapping.get(eventOperation);
 
         if (eventName == null) {

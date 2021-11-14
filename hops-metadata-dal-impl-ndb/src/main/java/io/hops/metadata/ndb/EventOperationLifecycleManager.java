@@ -1,6 +1,7 @@
 package io.hops.metadata.ndb;
 
 import com.mysql.clusterj.core.store.EventOperation;
+import io.hops.events.HopsEventOperation;
 import io.hops.metadata.ndb.wrapper.HopsEventOperationImpl;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,7 +39,7 @@ public class EventOperationLifecycleManager {
      * The main thread, worker thread, event manager thread, and consistency protocol thread may access this map,
      * so we set the concurrency level to four.
      */
-    private final ConcurrentHashMap<EventOperation, HopsEventOperationImpl> eventOperationHashMap =
+    private final ConcurrentHashMap<EventOperation, HopsEventOperation> eventOperationHashMap =
             new ConcurrentHashMap<>(20, 0.75f /* default */, 4);
 
     /**
@@ -74,7 +75,7 @@ public class EventOperationLifecycleManager {
      * @return An existing HopsEventOperation if possible, otherwise a new HopsEventOperation. In either case, the
      * HopsEventOperation is wrapping the given EventOperation object.
      */
-    public HopsEventOperationImpl getOrCreateInstance(String eventName, EventOperation eventOperation) {
+    public HopsEventOperation getOrCreateInstance(String eventName, EventOperation eventOperation) {
         // If there is no existing HopsEventOperationImpl instance associated with the given ClusterJ
         // EventOperation instance, then we create a new HopsEventOperationImpl, persist the new mapping in the
         // HashMap, and return the newly-created HopsEventOperationImpl instance. This all happens atomically.

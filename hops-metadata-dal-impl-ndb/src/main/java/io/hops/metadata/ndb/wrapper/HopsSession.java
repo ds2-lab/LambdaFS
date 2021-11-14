@@ -27,6 +27,7 @@ import com.mysql.clusterj.Transaction;
 import com.mysql.clusterj.core.store.Event;
 import com.mysql.clusterj.core.store.EventOperation;
 import com.mysql.clusterj.query.QueryBuilder;
+import io.hops.events.HopsEventOperation;
 import io.hops.exception.StorageException;
 import io.hops.metadata.ndb.EventOperationLifecycleManager;
 import org.apache.commons.logging.Log;
@@ -82,8 +83,13 @@ public class HopsSession {
    * @param eventOp The event operation to be dropped.
    * @return True if the operation was dropped, otherwise false.
    */
-  public boolean dropEventOperation(EventOperation eventOp) {
-    return session.dropEventOperation(eventOp);
+  public boolean dropEventOperation(HopsEventOperation eventOp) {
+    if (!(eventOp instanceof HopsEventOperationImpl))
+      throw new IllegalArgumentException("The given event operation is not of a valid type: " +
+              (eventOp != null ? eventOp.getClass().getSimpleName() : "null"));
+
+    HopsEventOperationImpl eventOperationImpl = (HopsEventOperationImpl)eventOp;
+    return session.dropEventOperation(eventOperationImpl.getClusterJEventOperation());
   }
 
   /**
@@ -99,7 +105,7 @@ public class HopsSession {
    * @return EventOperation associated with the next event that was received.
    *         This will return null if there are no other events to receive.
    */
-  public HopsEventOperationImpl nextEvent(String eventName) {
+  public HopsEventOperation nextEvent(String eventName) {
     EventOperation eventOperation = session.nextEvent();
 
     if (eventOperation == null)
@@ -174,7 +180,7 @@ public class HopsSession {
    *
    * @return Object representing an event operation, NULL on failure
    */
-  public EventOperation createEventOperation(String eventName) throws StorageException {
+  public HopsEventOperation createEventOperation(String eventName) throws StorageException {
     LOG.debug("Attempting to create event operation for event " + eventName + " now...");
 
     EventOperation eventOperation;
@@ -184,7 +190,7 @@ public class HopsSession {
       throw HopsExceptionHelper.wrap(e);
     }
 
-    return eventOperation;
+    return EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
   }
 
   public <T> HopsQuery<T> createQuery(HopsQueryDomainType<T> queryDefinition)
