@@ -113,8 +113,8 @@ public class HopsEventManager implements EventManager {
      * Columns to use for the invalidation table event.
      */
     private static final String[] INV_TABLE_EVENT_COLUMNS = new String[] {
-        TablesDef.InvalidationTablesDef.INODE_ID,        // int(11)
-        TablesDef.InvalidationTablesDef.PARENT_ID,       // int(11)
+        TablesDef.InvalidationTablesDef.INODE_ID,        // bigint(20)
+        TablesDef.InvalidationTablesDef.PARENT_ID,       // bigint(20)
         TablesDef.InvalidationTablesDef.LEADER_ID,       // bigint(20), so it's a long.
         TablesDef.InvalidationTablesDef.TX_START,        // bigint(20), so it's a long.
         TablesDef.InvalidationTablesDef.OPERATION_ID,    // bigint(20), so it's a long.

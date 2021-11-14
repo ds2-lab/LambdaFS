@@ -609,10 +609,10 @@ public class DatanodeDescriptor extends DatanodeInfo {
    */
   private void pruneStorageMap(final StorageReport[] reports) {
     synchronized (storageMap) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Number of storages reported in heartbeat=" + reports.length
-            + "; Number of storages in storageMap=" + storageMap.size());
-      }
+//      if (LOG.isDebugEnabled()) {
+//        LOG.debug("Number of storages reported in heartbeat=" + reports.length
+//            + "; Number of storages in storageMap=" + storageMap.size());
+//      }
 
       HashMap<String, DatanodeStorageInfo> excessStorages;
 
@@ -633,11 +633,11 @@ public class DatanodeDescriptor extends DatanodeInfo {
 //                    + " because there are no blocks associated with it.");
 //            LOG.warn("Not going to do this though as it may mess up serverless name node functioning.");
             // storageMap.remove(storageInfo.getStorageID());
-          } else if (LOG.isDebugEnabled()) {
+          } /*else if (LOG.isDebugEnabled()) {
             // This can occur until all block reports are received.
             LOG.debug("Deferring removal of stale storage " + storageInfo +
                 " with " + storageInfo.numBlocks() + " blocks");
-          }
+          }*/
         } catch (IOException e) {
           // Skip for a bit
           LOG.warn(e, e);

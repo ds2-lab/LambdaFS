@@ -5,6 +5,7 @@ import com.mysql.clusterj.core.store.EventOperation;
 import com.mysql.clusterj.core.store.RecordAttr;
 import io.hops.events.HopsEventOperation;
 import io.hops.metadata.ndb.NdbBoolean;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -74,17 +75,26 @@ public class HopsEventOperationImpl implements HopsEventOperation {
 
     @Override
     public boolean getBooleanPreValue(String columnName) {
-        if (!preValueRecordAttributes.containsKey(columnName))
+        if (!preValueRecordAttributes.containsKey(columnName))  {
+            LOG.error("Failed to find desired pre-value record attribute '" + columnName +
+                    "' for event operation " + Integer.toHexString(this.hashCode()) + ".");
+            LOG.error("Valid pre-value record attributes include: " +
+                    StringUtils.join(preValueRecordAttributes.keySet(), ", "));
             throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
+        }
 
         return NdbBoolean.convert(preValueRecordAttributes.get(columnName).int8_value());
     }
 
     @Override
     public boolean getBooleanPostValue(String columnName) {
-        if (!postValueRecordAttributes.containsKey(columnName))
-            throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
-
+        if (!postValueRecordAttributes.containsKey(columnName)) {
+            LOG.error("Failed to find specified post-value record attribute '" + columnName +
+                    "' for event operation " + Integer.toHexString(this.hashCode()) + ".");
+            LOG.error("Valid post-value record attributes include: " +
+                    StringUtils.join(preValueRecordAttributes.keySet(), ", "));
+            throw new IllegalArgumentException("No post-value record attribute exists for column " + columnName);
+        }
         return NdbBoolean.convert(postValueRecordAttributes.get(columnName).int8_value());
     }
 
@@ -99,8 +109,13 @@ public class HopsEventOperationImpl implements HopsEventOperation {
      */
     @Override
     public int getIntPreValue(String columnName) throws IllegalArgumentException {
-        if (!preValueRecordAttributes.containsKey(columnName))
+        if (!preValueRecordAttributes.containsKey(columnName)) {
+            LOG.error("Failed to find desired pre-value record attribute '" + columnName +
+                    "' for event operation " + Integer.toHexString(this.hashCode()) + ".");
+            LOG.error("Valid pre-value record attributes include: " +
+                    StringUtils.join(preValueRecordAttributes.keySet(), ", "));
             throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
+        }
 
         return preValueRecordAttributes.get(columnName).int32_value();
     }
@@ -116,8 +131,13 @@ public class HopsEventOperationImpl implements HopsEventOperation {
      */
     @Override
     public int getIntPostValue(String columnName) throws IllegalArgumentException {
-        if (!postValueRecordAttributes.containsKey(columnName))
-            throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
+        if (!postValueRecordAttributes.containsKey(columnName)) {
+            LOG.error("Failed to find specified post-value record attribute '" + columnName +
+                    "' for event operation " + Integer.toHexString(this.hashCode()) + ".");
+            LOG.error("Valid post-value record attributes include: " +
+                    StringUtils.join(preValueRecordAttributes.keySet(), ", "));
+            throw new IllegalArgumentException("No post-value record attribute exists for column " + columnName);
+        }
 
         return postValueRecordAttributes.get(columnName).int32_value();
     }
@@ -133,8 +153,13 @@ public class HopsEventOperationImpl implements HopsEventOperation {
      */
     @Override
     public long getLongPreValue(String columnName) throws IllegalArgumentException {
-        if (!preValueRecordAttributes.containsKey(columnName))
+        if (!preValueRecordAttributes.containsKey(columnName)) {
+            LOG.error("Failed to find desired pre-value record attribute '" + columnName +
+                    "' for event operation " + Integer.toHexString(this.hashCode()) + ".");
+            LOG.error("Valid pre-value record attributes include: " +
+                    StringUtils.join(preValueRecordAttributes.keySet(), ", "));
             throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
+        }
 
         return preValueRecordAttributes.get(columnName).int64_value();
     }
@@ -150,8 +175,13 @@ public class HopsEventOperationImpl implements HopsEventOperation {
      */
     @Override
     public long getLongPostValue(String columnName) throws IllegalArgumentException {
-        if (!postValueRecordAttributes.containsKey(columnName))
-            throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
+        if (!postValueRecordAttributes.containsKey(columnName)) {
+            LOG.error("Failed to find specified post-value record attribute '" + columnName +
+                    "' for event operation " + Integer.toHexString(this.hashCode()) + ".");
+            LOG.error("Valid post-value record attributes include: " +
+                    StringUtils.join(preValueRecordAttributes.keySet(), ", "));
+            throw new IllegalArgumentException("No post-value record attribute exists for column " + columnName);
+        }
 
         return postValueRecordAttributes.get(columnName).int64_value();
     }
