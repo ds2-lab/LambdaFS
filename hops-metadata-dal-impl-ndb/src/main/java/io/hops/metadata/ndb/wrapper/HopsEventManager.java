@@ -597,7 +597,8 @@ public class HopsEventManager implements EventManager {
         String eventName = eventOpToNameMapping.get(eventOperation);
 
         if (eventName == null) {
-            LOG.warn("Could not retrieve valid event name for HopsEventOperation " + eventName.hashCode() + "...");
+            LOG.warn("Could not retrieve valid event name for HopsEventOperation " +
+                    eventOperation.hashCode() + "...");
             LOG.warn("Valid HopsEventOperation objects to use as keys: " +
                     StringUtils.join(eventOpToNameMapping.keySet(), ", ") + ".");
             LOG.warn("Registered event names: " + StringUtils.join(eventOpToNameMapping.values(), ", "));
