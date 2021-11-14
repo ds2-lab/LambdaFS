@@ -276,7 +276,8 @@ public class HopsEventManager implements EventManager {
             throw HopsExceptionHelper.wrap(e);
         }
 
-        LOG.debug("Successfully created EventOperation for event " + eventName + ".");
+        LOG.debug("Successfully created EventOperation for event " + eventName + ": " +
+                Integer.toHexString(eventOperation.hashCode()));
 
         HopsEventOperationImpl hopsEventOperation = new HopsEventOperationImpl(eventOperation, eventName);
         eventOperationMap.put(eventName, hopsEventOperation);
@@ -552,7 +553,8 @@ public class HopsEventManager implements EventManager {
         while (nextEventOp != null) {
             TableEvent eventType = nextEventOp.getUnderlyingEventType();
 
-            LOG.debug("Received " + eventType.name() + " event from NDB.");
+            LOG.debug("Received " + eventType.name() + " event from NDB: " +
+                    Integer.toHexString(nextEventOp.hashCode()) + ".");
 
             // Print the columns if we can determine what their names are from our mapping.
             if (eventColumnMap.containsKey(nextEventOp)) {
@@ -598,7 +600,7 @@ public class HopsEventManager implements EventManager {
 
         if (eventName == null) {
             LOG.warn("Could not retrieve valid event name for HopsEventOperation " +
-                    eventOperation.hashCode() + "...");
+                    Integer.toHexString(eventOperation.hashCode()) + "...");
             LOG.warn("Valid HopsEventOperation objects to use as keys: " +
                     StringUtils.join(eventOpToNameMapping.keySet(), ", ") + ".");
             LOG.warn("Registered event names: " + StringUtils.join(eventOpToNameMapping.values(), ", "));
