@@ -170,7 +170,7 @@ public class WriteAcknowledgementClusterJ
         HopsSession session = connector.obtainSession();
 
         for (WriteAcknowledgement writeAcknowledgement : writeAcknowledgements) {
-            WriteAcknowledgementDTO dto = session.newInstance(WriteAcknowledgementDTO.class);
+            WriteAcknowledgementDTO dto = session.newInstance(getDTOClass(deploymentNumber));
             copyState(dto, writeAcknowledgement);
             dtos.add(dto);
         }
