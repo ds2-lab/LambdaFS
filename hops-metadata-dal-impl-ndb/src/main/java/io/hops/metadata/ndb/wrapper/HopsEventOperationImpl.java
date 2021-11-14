@@ -58,6 +58,8 @@ public class HopsEventOperationImpl implements HopsEventOperation {
 
     @Override
     public int hashCode() {
+        LOG.debug("Returning hashCode() for underlying clusterJEventOperation " +
+                Integer.toHexString(clusterJEventOperation.hashCode()) + ".");
         return this.clusterJEventOperation.hashCode();
     }
 
