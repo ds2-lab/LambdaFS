@@ -297,8 +297,8 @@ public class HopsEventManager implements EventManager {
 
         _mutex.lock();
         try {
-            allHashCodeHexStringsEverCreated.add(Integer.toHexString(eventOperation.hashCode()));
-            hashCodeHexStringToEventName.put(Integer.toHexString(eventOperation.hashCode()), eventName);
+            allHashCodeHexStringsEverCreated.add(Integer.toHexString(hopsEventOperation.hashCode()));
+            hashCodeHexStringToEventName.put(Integer.toHexString(hopsEventOperation.hashCode()), eventName);
         } finally {
             _mutex.unlock();
         }
@@ -614,22 +614,26 @@ public class HopsEventManager implements EventManager {
         String eventName = eventOpToNameMapping.get(eventOperation);
 
         if (eventName == null) {
-            LOG.warn("Could not retrieve valid event name for HopsEventOperation " +
+            LOG.error("Could not retrieve valid event name for HopsEventOperation " +
                     Integer.toHexString(eventOperation.hashCode()) + "...");
-            LOG.warn("Valid HopsEventOperation objects to use as keys: " +
+            LOG.error("Valid HopsEventOperation objects to use as keys: " +
                     StringUtils.join(eventOpToNameMapping.keySet(), ", ") + ".");
-            LOG.warn("Registered event names: " + StringUtils.join(eventOpToNameMapping.values(), ", "));
+            LOG.error("Registered event names: " + StringUtils.join(eventOpToNameMapping.values(), ", "));
 
             _mutex.lock();
             try {
                 for (String s : allHashCodeHexStringsEverCreated) {
                     String associatedEventName = hashCodeHexStringToEventName.get(s);
 
-                    LOG.warn("EventOperation '" + s + "' created for event '" + associatedEventName + "'.");
+                    LOG.error("EventOperation '" + s + "' created for event '" + associatedEventName + "'.");
                 }
             } finally {
                 _mutex.unlock();
             }
+
+            LOG.error("Returning without notifying anyone, as we cannot figure out who we're supposed to notify...");
+
+            return;
         }
 
         List<HopsEventListener> eventListeners = listeners.get(eventName);
