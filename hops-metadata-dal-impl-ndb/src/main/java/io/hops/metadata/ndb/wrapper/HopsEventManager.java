@@ -17,7 +17,10 @@ import org.apache.commons.logging.LogFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class is responsible for listening to events from NDB and reacting to them appropriately.
@@ -260,6 +263,10 @@ public class HopsEventManager implements EventManager {
         }
     }
 
+    private static List<String> allHashCodeHexStringsEverCreated = new ArrayList<String>();
+    private static Map<String, String> hashCodeHexStringToEventName = new HashMap<>();
+    private static Lock _mutex = new ReentrantLock();
+
     /**
      * Create and register an Event Operation for the specified event.
      *
@@ -287,6 +294,14 @@ public class HopsEventManager implements EventManager {
             eventColumnMap.put(hopsEventOperation, ACK_EVENT_COLUMNS);
         else if (eventName.equals(HopsEvent.INV_EVENT_NAME_BASE))
             eventColumnMap.put(hopsEventOperation, INV_TABLE_EVENT_COLUMNS);
+
+        _mutex.lock();
+        try {
+            allHashCodeHexStringsEverCreated.add(Integer.toHexString(eventOperation.hashCode()));
+            hashCodeHexStringToEventName.put(Integer.toHexString(eventOperation.hashCode()), eventName);
+        } finally {
+            _mutex.unlock();
+        }
     }
 
     /**
@@ -604,6 +619,17 @@ public class HopsEventManager implements EventManager {
             LOG.warn("Valid HopsEventOperation objects to use as keys: " +
                     StringUtils.join(eventOpToNameMapping.keySet(), ", ") + ".");
             LOG.warn("Registered event names: " + StringUtils.join(eventOpToNameMapping.values(), ", "));
+
+            _mutex.lock();
+            try {
+                for (String s : allHashCodeHexStringsEverCreated) {
+                    String associatedEventName = hashCodeHexStringToEventName.get(s);
+
+                    LOG.warn("EventOperation '" + s + "' created for event '" + associatedEventName + "'.");
+                }
+            } finally {
+                _mutex.unlock();
+            }
         }
 
         List<HopsEventListener> eventListeners = listeners.get(eventName);
