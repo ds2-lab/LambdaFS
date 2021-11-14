@@ -111,11 +111,15 @@ public class HopsSession {
     if (eventOperation == null)
       return null;
 
+    HopsEventOperation hopsEventOperation =
+            EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
+
     // Since it was returned by nextEvent(), we can call true on this.
     // TODO: Should we set the flag to false once we're done processing this?
-    eventOperation.setCanCallNextEvent(true);
+    HopsEventOperationImpl hopsEventOperationImpl = (HopsEventOperationImpl)hopsEventOperation;
+    hopsEventOperationImpl.getClusterJEventOperation().setCanCallNextEvent(true);
 
-    return EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
+    return hopsEventOperation;
   }
 
   /**
