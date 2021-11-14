@@ -47,13 +47,13 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
      * @param groupName The name of the group of which we are a member.
      */
     public synchronized void refreshFromZooKeeper(ZKClient zkClient, String groupName) throws Exception {
-        LOG.debug("Updating the list of active NameNodes from ZooKeeper. Group name: " + groupName);
+        // LOG.debug("Updating the list of active NameNodes from ZooKeeper. Group name: " + groupName);
 
         List<String> groupMembers = zkClient.getPermanentGroupMembers(groupName);
         activeNodes.clear();
 
         for (String memberId : groupMembers) {
-            LOG.debug("Discovered GroupMember " + memberId + ".");
+            // LOG.debug("Discovered GroupMember " + memberId + ".");
 
             long id;
             try {
@@ -70,11 +70,11 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
                 localNameNode = activeNameNode;
         }
 
-        if (activeNodes.size() == 1)
-            LOG.debug("Finished refreshing active NameNode list. There is just one active NameNode in this deployment.");
-        else
-            LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
-                    " active NameNodes in this deployment.");
+//        if (activeNodes.size() == 1)
+//            LOG.debug("Finished refreshing active NameNode list. There is just one active NameNode in this deployment.");
+//        else
+//            LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
+//                    " active NameNodes in this deployment.");
 
         LOG.debug("Active NameNode IDs: " + activeNodes);
     }
@@ -83,7 +83,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
      * Query intermediate storage for updated serverless name node metadata.
      */
     public synchronized void refreshFromStorage() throws StorageException {
-        LOG.debug("Updating the list of active NameNodes from intermediate storage.");
+//        LOG.debug("Updating the list of active NameNodes from intermediate storage.");
 
         ServerlessNameNodeDataAccess<ServerlessNameNodeMeta> dataAccess =
                 (ServerlessNameNodeDataAccess) HdfsStorageFactory.getDataAccess(ServerlessNameNodeDataAccess.class);
@@ -99,13 +99,13 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
                 localNameNode = activeNameNode;
         }
 
-        if (activeNodes.size() == 1)
-            LOG.debug("Finished refreshing active NameNode list. There is just one active NameNode in this deployment.");
-        else
-            LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
-                    " active NameNodes in this deployment.");
+//        if (activeNodes.size() == 1)
+//            LOG.debug("Finished refreshing active NameNode list. There is just one active NameNode in this deployment.");
+//        else
+//            LOG.debug("Finished refreshing active NameNode list. There are " + activeNodes.size() +
+//                    " active NameNodes in this deployment.");
 
-        LOG.debug("Active NameNode IDs: " + activeNodes);
+//        LOG.debug("Active NameNode IDs: " + activeNodes);
     }
 
     @Override

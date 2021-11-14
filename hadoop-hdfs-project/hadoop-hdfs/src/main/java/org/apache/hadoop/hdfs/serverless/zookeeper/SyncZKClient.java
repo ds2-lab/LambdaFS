@@ -311,11 +311,11 @@ public class SyncZKClient implements ZKClient {
 
         String path = getPath(groupName, null, false);
 
-        LOG.debug("Getting children for group: " + path);
+//        LOG.debug("Getting children for group: " + path);
         List<String> children = this.client.getChildren().forPath(path);
 
-        if (children.isEmpty())
-            LOG.warn("There are no children in group: " + path);
+//        if (children.isEmpty())
+//            LOG.warn("There are no children in group: " + path);
 
         return children;
     }
@@ -327,11 +327,11 @@ public class SyncZKClient implements ZKClient {
 
         String path = getPath(groupName, null, true);
 
-        LOG.debug("Getting children for group: " + path);
+//        LOG.debug("Getting children for group: " + path);
         List<String> children = this.client.getChildren().forPath(path);
 
-        if (children.isEmpty())
-            LOG.warn("There are no children in group: " + path);
+//        if (children.isEmpty())
+//            LOG.warn("There are no children in group: " + path);
 
         return children;
     }

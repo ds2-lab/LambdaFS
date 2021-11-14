@@ -230,10 +230,10 @@ public class NameNodeWorkerThread extends Thread {
                 task = workQueue.poll(5000, TimeUnit.MILLISECONDS);
 
                 if (task == null) {
-                    LOG.debug("Worker thread did not find anything to do...");
+                    // LOG.debug("Worker thread did not find anything to do...");
 
                     NameNodeTCPClient nameNodeTCPClient = serverlessNameNodeInstance.getNameNodeTcpClient();
-                    LOG.debug("Number of TCP Clients of the NameNode: " + nameNodeTCPClient.numClients());
+                    // LOG.debug("Number of TCP Clients of the NameNode: " + nameNodeTCPClient.numClients());
 
                     doRoutineActivities();
                     continue;
@@ -320,8 +320,8 @@ public class NameNodeWorkerThread extends Thread {
      * @return The number of previous results that were removed from the cache.
      */
     public int doPurge() {
-        LOG.debug("Purging previously-calculated results from the cache now. Size of cache pre-purge is: " +
-                previousResultCache.size());
+//        LOG.debug("Purging previously-calculated results from the cache now. Size of cache pre-purge is: " +
+//                previousResultCache.size());
         long now = Time.getUtcTime();
         int numPurged = 0;
 
@@ -333,7 +333,7 @@ public class NameNodeWorkerThread extends Thread {
                 previousResultPriorityQueue.poll();             // Remove it from the priority queue.
                 previousResultCache.remove(result.requestId);   // Remove it from the cache itself.
                 purgeRecords.put(result.requestId, now);        // Make note of when we purged it.
-                LOG.debug("Purging previous result for task " + result.requestId + " from result cache.");
+                // LOG.debug("Purging previous result for task " + result.requestId + " from result cache.");
                 numPurged++;
                 continue;
             }
@@ -344,8 +344,8 @@ public class NameNodeWorkerThread extends Thread {
             break;
         }
 
-        LOG.debug("Removed " + numPurged + (numPurged == 1 ? " entry " : " entries ") +
-                "from the cache. Size of cache is now " + previousResultCache.size());
+//        LOG.debug("Removed " + numPurged + (numPurged == 1 ? " entry " : " entries ") +
+//                "from the cache. Size of cache is now " + previousResultCache.size());
         return numPurged;
     }
 

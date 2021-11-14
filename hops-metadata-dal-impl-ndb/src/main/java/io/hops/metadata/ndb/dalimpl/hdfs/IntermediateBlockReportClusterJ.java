@@ -49,7 +49,7 @@ public class IntermediateBlockReportClusterJ
 
     @Override
     public IntermediateBlockReport getReport(int reportId, String datanodeUuid) throws StorageException {
-        LOG.debug("GET IntermediateStorageReport -- reportId: " + reportId + ", datanodeUuid: " + datanodeUuid);
+//        LOG.debug("GET IntermediateStorageReport -- reportId: " + reportId + ", datanodeUuid: " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
 
@@ -87,7 +87,7 @@ public class IntermediateBlockReportClusterJ
 
     @Override
     public List<IntermediateBlockReport> getReports(String datanodeUuid) throws StorageException {
-        LOG.debug("GET IntermediateStorageReports -- datanodeUuid: " + datanodeUuid);
+//        LOG.debug("GET IntermediateStorageReports -- datanodeUuid: " + datanodeUuid);
 
         List<IntermediateBlockReportDTO> storeReportDTOs = getIntermediateBlockReportDTOs(
                 connector.obtainSession(), datanodeUuid);
@@ -115,8 +115,8 @@ public class IntermediateBlockReportClusterJ
     
     @Override
     public List<IntermediateBlockReport> getReportsPublishedAfter(String datanodeUuid, long publishedAt) throws StorageException {
-        LOG.debug("GET IntermediateBlockReport -- DN UUID: " + datanodeUuid + ", publishedAt: " +
-                publishedAt);
+//        LOG.debug("GET IntermediateBlockReport -- DN UUID: " + datanodeUuid + ", publishedAt: " +
+//                publishedAt);
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
@@ -146,8 +146,8 @@ public class IntermediateBlockReportClusterJ
 
     @Override
     public List<IntermediateBlockReport> getReports(String datanodeUuid, int minimumReportId) throws StorageException {
-        LOG.debug("GET IntermediateStorageReport -- minimumReportId: " + minimumReportId
-                + ", datanodeUuid: " + datanodeUuid);
+//        LOG.debug("GET IntermediateStorageReport -- minimumReportId: " + minimumReportId
+//                + ", datanodeUuid: " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();

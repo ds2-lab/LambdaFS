@@ -51,7 +51,7 @@ public class DatanodeStorageClusterJ
      */
     @Override
     public DatanodeStorage getDatanodeStorage(String storageId, String datanodeUuid) throws StorageException {
-        LOG.info("GET DatanodeStorage with ID: " + storageId + ", DN UUID: " + datanodeUuid);
+//        LOG.debug("GET DatanodeStorage with ID: " + storageId + ", DN UUID: " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
 
@@ -85,7 +85,7 @@ public class DatanodeStorageClusterJ
 
     @Override
     public List<DatanodeStorage> getDatanodeStorages(String datanodeUuid) throws StorageException {
-        LOG.info("GET DatanodeStorages associated with DataNode " + datanodeUuid);
+//        LOG.debug("GET DatanodeStorages associated with DataNode " + datanodeUuid);
 
         HopsSession session = connector.obtainSession();
         HopsQueryBuilder queryBuilder = session.getQueryBuilder();
@@ -100,7 +100,7 @@ public class DatanodeStorageClusterJ
 
         List<DatanodeStorageDTO> dtoResults = query.getResultList();
 
-        LOG.debug("Query result contained " + dtoResults.size() + " entries.");
+//        LOG.debug("Query result contained " + dtoResults.size() + " entries.");
 
         List<DatanodeStorage> results = new ArrayList<>();
 
@@ -118,15 +118,15 @@ public class DatanodeStorageClusterJ
      */
     @Override
     public void removeDatanodeStorage(String storageId, String datanodeUuid) throws StorageException {
-        LOG.info("REMOVE DatanodeStorage " + storageId);
+//        LOG.debug("REMOVE DatanodeStorage " + storageId);
 
         HopsSession session = connector.obtainSession();
         Object[] primaryKey = {storageId, datanodeUuid};
         DatanodeStorageDTO deleteMe = session.find(DatanodeStorageDTO.class, primaryKey);
         session.deletePersistent(DatanodeStorageDTO.class, deleteMe);
 
-        LOG.debug("Successfully removed/deleted DatanodeStorage with storageId "
-                + storageId + ", datanodeUuid = " + datanodeUuid);
+//        LOG.debug("Successfully removed/deleted DatanodeStorage with storageId "
+//                + storageId + ", datanodeUuid = " + datanodeUuid);
     }
 
     @Override
@@ -151,7 +151,7 @@ public class DatanodeStorageClusterJ
 
     @Override
     public void addDatanodeStorage(DatanodeStorage datanodeStorage) throws StorageException {
-        // LOG.info("ADD DatanodeStorage " + datanodeStorage.toString());
+        // LOG.debug("ADD DatanodeStorage " + datanodeStorage.toString());
         DatanodeStorageDTO toAdd = null;
         HopsSession session = connector.obtainSession();
 
