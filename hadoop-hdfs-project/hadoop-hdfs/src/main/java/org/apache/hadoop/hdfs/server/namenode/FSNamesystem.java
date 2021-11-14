@@ -1028,6 +1028,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       }
     }
 
+    LOG.debug("Discovered " + pendingAcks.size() + (pendingAcks.size() == 1 ? " pending ack" : " pending acks") +
+            " in intermediate storage: " + org.apache.commons.lang3.StringUtils.join(pendingAcks, ", ") + ".");
+
     exponentialBackOff.reset();
     boolean success = false;
 
