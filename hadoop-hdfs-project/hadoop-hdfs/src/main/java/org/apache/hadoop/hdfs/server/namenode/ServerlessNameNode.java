@@ -814,7 +814,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private HashMap<String, org.apache.hadoop.hdfs.server.protocol.DatanodeStorage> retrieveAndConvertDatanodeStorages(
           DatanodeDescriptor datanodeDescriptor) throws IOException {
-    LOG.info("Retrieving DatanodeStorage instances from intermediate storage now...");
+//    LOG.info("Retrieving DatanodeStorage instances from intermediate storage now...");
 
     DatanodeStorageDataAccess<DatanodeStorage> dataAccess =
             (DatanodeStorageDataAccess)HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);

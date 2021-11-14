@@ -297,7 +297,7 @@ public class DatanodeInfo extends DatanodeID implements Node {
   
   /** Sets cache used. */
   public void setCacheUsed(long cacheUsed) {
-    LOG.debug("Datanode " + this.getDatanodeUuid() + " is setting cache used " + cacheUsed);
+//    LOG.debug("Datanode " + this.getDatanodeUuid() + " is setting cache used " + cacheUsed);
     this.cacheUsed = cacheUsed;
   }
 

@@ -540,7 +540,7 @@ public class DatanodeDescriptor extends DatanodeInfo {
           !heartbeatedSinceRegistration;
     }
 
-    LOG.warn("Setting `checkFailedStorages` to false, hard-coded!");
+//    LOG.warn("Setting `checkFailedStorages` to false, hard-coded!");
     checkFailedStorages = false;
 
     if (checkFailedStorages) {

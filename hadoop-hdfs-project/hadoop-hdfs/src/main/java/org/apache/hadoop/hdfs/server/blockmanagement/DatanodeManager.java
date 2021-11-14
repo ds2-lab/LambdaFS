@@ -1317,13 +1317,13 @@ public class DatanodeManager {
       }
     }
     
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("getDatanodeListForReport with " +
-          "includedNodes = " + hostFileManager.getIncludes() +
-          ", excludedNodes = " + hostFileManager.getExcludes() +
-          ", foundNodes = " + foundNodes +
-          ", nodes = " + nodes);
-    }
+//    if (LOG.isDebugEnabled()) {
+//      LOG.debug("getDatanodeListForReport with " +
+//          "includedNodes = " + hostFileManager.getIncludes() +
+//          ", excludedNodes = " + hostFileManager.getExcludes() +
+//          ", foundNodes = " + foundNodes +
+//          ", nodes = " + nodes);
+//    }
     return nodes;
   }
 
@@ -1357,8 +1357,8 @@ public class DatanodeManager {
                                              StorageReport[] reports) throws IOException {
     synchronized (heartbeatManager) {
       synchronized (datanodeMap) {
-        LOG.debug("Processing StorageReports for DataNode " + datanodeDescriptor.getDatanodeUuid()
-                + " now. There are " + reports.length + " report(s) to process.");
+//        LOG.debug("Processing StorageReports for DataNode " + datanodeDescriptor.getDatanodeUuid()
+//                + " now. There are " + reports.length + " report(s) to process.");
         DatanodeDescriptor nodeInfo = null;
         String dataNodeUuid = datanodeDescriptor.getDatanodeUuid();
 
