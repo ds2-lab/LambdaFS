@@ -2154,19 +2154,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("Started the NameNode worker thread.");
 
-    // We need to do this AFTER the above call to `HdfsStorageFactory.setConfiguration(conf)`, as the ClusterJ/NDB
-    // library is loaded during that call. If we try to create the event manager before that, we will get class
-    // not found errors.
-    ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
-    ndbEventManager.setConfigurationParameters(deploymentNumber, null, false, namesystem);
-
-    // Note that we need to register the namesystem as an event listener with the event manager,
-    // but the name system doesn't get loaded until a little later.
-    eventManagerThread = new Thread(ndbEventManager);
-    eventManagerThread.start();
-
-    LOG.debug("Started the NDB EventManager thread.");
-
     functionUriBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
@@ -2244,7 +2231,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 
     loadNamesystem(conf);
-    LOG.debug("Finished loading the namesystem.");
 
     Instant loadNamesystemDone = Instant.now();
     Duration loadNamesystemDuration = Duration.between(intermediateInitDone, loadNamesystemDone);
@@ -2252,16 +2238,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("Loaded namesystem in " + DurationFormatUtils.formatDurationHMS(loadNamesystemDuration.toMillis()));
     LOG.debug("- - - - - - - - - - - - - - - -");
 
-//    // Make sure the event manager has finished setting up before we register an event listener with it.
-//    try {
-//      ndbEventManager.waitUntilSetupDone();
-//    } catch (InterruptedException ex) {
-//      LOG.error("Exception encountered while waiting for event manager to finish its setup.");
-//      throw ex;
-//    }
+    // We need to do this AFTER the above call to `HdfsStorageFactory.setConfiguration(conf)`, as the ClusterJ/NDB
+    // library is loaded during that call. If we try to create the event manager before that, we will get class
+    // not found errors.
+    ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
+    ndbEventManager.setConfigurationParameters(deploymentNumber, null, false, namesystem);
 
-//    // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
-//    ndbEventManager.addListener(namesystem, HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber);
+    // Note that we need to register the namesystem as an event listener with the event manager,
+    // but the name system doesn't get loaded until a little later.
+    eventManagerThread = new Thread(ndbEventManager);
+    eventManagerThread.start();
+
+    LOG.debug("Started the NDB EventManager thread.");
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);
@@ -2270,6 +2258,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     metrics.getJvmMetrics().setPauseMonitor(pauseMonitor);
 
     Instant metadataInitStart = Instant.now();
+
+    Duration pauseMonitorAndEventManagerDuration = Duration.between(loadNamesystemDone, metadataInitStart);
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+    LOG.debug("Started the Event Manager and Pause Monitor in " +
+            DurationFormatUtils.formatDurationHMS(pauseMonitorAndEventManagerDuration.toMillis()));
+    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
     // writeMetadataToIntermediateStorage();
 
     this.zooKeeperClient = new SyncZKClient(
@@ -2282,7 +2276,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     Instant metadataInitEnd = Instant.now();
     Duration metadataInitDuration = Duration.between(metadataInitStart, metadataInitEnd);
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-    LOG.debug("Wrote NN metadata to storage and refreshed active NN list in " +
+    LOG.debug("Connected to ZooKeeper and refreshed active NameNode list in " +
             DurationFormatUtils.formatDurationHMS(metadataInitDuration.toMillis()));
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 

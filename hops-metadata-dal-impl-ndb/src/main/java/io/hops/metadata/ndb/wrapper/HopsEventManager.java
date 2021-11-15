@@ -201,6 +201,11 @@ public class HopsEventManager implements EventManager {
     private HopsEventListener invalidationListener;
 
     /**
+     * Indicates that setConfiguration() has been called on this instance, which is a requirement.
+     */
+    private boolean configurationSet;
+
+    /**
      * The deployment number of the local serverless name node instance. Set by calling defaultSetup().
      */
     private int deploymentNumber = -1;
@@ -637,16 +642,30 @@ public class HopsEventManager implements EventManager {
     @Override
     public void setConfigurationParameters(int deploymentNumber, String defaultEventName,
                                            boolean defaultDeleteIfExists, HopsEventListener invalidationListener) {
+        if (deploymentNumber < 0)
+            throw new IllegalArgumentException("Deployment number must be greater than zero.");
+
+        if (defaultEventName == null)
+            throw new IllegalArgumentException("The default event name must be non-null.");
+
+        if (invalidationListener == null)
+            throw new IllegalArgumentException("The invalidation event listener must be non-null.");
+
         this.deploymentNumber = deploymentNumber;
         this.defaultEventName = defaultEventName;
         this.defaultDeleteIfExists = defaultDeleteIfExists;
         this.invalidationListener = invalidationListener;
+
+        this.configurationSet = true;
     }
 
     /**
      * Perform the default setup/initialization of the `hdfs_inodes` table event and event operation.
      */
     private void defaultSetup() throws StorageException {
+        if (!configurationSet)
+            throw new StorageException("Must call setConfiguration() on the event manager before it begins running!");
+
         if (defaultEventName == null)
             defaultEventName = HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber;
 
@@ -680,11 +699,10 @@ public class HopsEventManager implements EventManager {
                 LOG.error("Failed to create record attribute(s) for column " + columnName + ".");
         }
 
+        addListener(defaultEventName, invalidationListener);
+
         LOG.debug("Executing event operation for event " + defaultEventName + " now...");
         eventOperation.execute();
-
-        assert(invalidationListener != null);
-        addListener(defaultEventName, invalidationListener);
 
         // Signal that we're done with this. Just add a ton of permits.
         defaultSetupSemaphore.release(Integer.MAX_VALUE - 10);
