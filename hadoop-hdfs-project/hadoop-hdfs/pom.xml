@@ -396,8 +396,8 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
             <configuration>
               <artifactSet>
                 <includes>
-                  <include>io.hops.metadata.hops-metadata-dal</include>
-                  <include>io.hops.metadata.hops-metadata-dal-impl-ndb</include>
+                  <include>io.hops.metadata:hops-metadata-dal:jar:3.2.0.3-SNAPSHOT</include>
+                  <include>io.hops.metadata:hops-metadata-dal-impl-ndb:jar:3.2.0.3-SNAPSHOT</include>
                 </includes>
               </artifactSet>
             </configuration>
