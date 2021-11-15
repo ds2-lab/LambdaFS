@@ -102,10 +102,12 @@ public interface EventManager extends Runnable {
     /**
      * Set the deployment number instance variable for this class.
      *
-     * @param defaultEventName The name of the event to create/look for. Pass null to use the default.
+     * @param defaultEventName The name of the event to create/look for. Pass null to use the default. If null, will
+     *      *                  default to {@link HopsEvent#INV_EVENT_NAME_BASE} + the local deployment number.
      * @param defaultDeleteIfExists Delete and recreate the event, if it already exists.
      * @param deploymentNumber The deployment number of the local serverless name node instance.
      * @param invalidationListener The event listener that will handle invalidations from intermediate storage.
+     *                             Must not be null.
      */
     public void setConfigurationParameters(int deploymentNumber, String defaultEventName,
                                            boolean defaultDeleteIfExists, HopsEventListener invalidationListener);

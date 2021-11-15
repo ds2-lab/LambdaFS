@@ -646,7 +646,7 @@ public class HopsEventManager implements EventManager {
             throw new IllegalArgumentException("Deployment number must be greater than zero.");
 
         if (defaultEventName == null)
-            throw new IllegalArgumentException("The default event name must be non-null.");
+            defaultEventName = HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber;
 
         if (invalidationListener == null)
             throw new IllegalArgumentException("The invalidation event listener must be non-null.");
