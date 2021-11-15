@@ -978,7 +978,7 @@ public class HopsEventManager implements EventManager {
         for (int i = 0; i < 3; i++) {
             String targetTableName = getTargetTableName(i);
             String eventName = HopsEvent.ACK_EVENT_NAME_BASE + i;
-            registerEvent(eventName, targetTableName, ACK_EVENT_COLUMNS, false);
+            registerEvent(eventName, targetTableName, ACK_EVENT_COLUMNS, true);
             HopsEventOperation ackOp = createAndReturnEventOperation(eventName);
             for (String columnName : ACK_EVENT_COLUMNS) {
                 boolean success = ackOp.addRecordAttribute(columnName);
