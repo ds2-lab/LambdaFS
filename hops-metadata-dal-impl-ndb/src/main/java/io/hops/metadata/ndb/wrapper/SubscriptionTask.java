@@ -3,6 +3,7 @@ package io.hops.metadata.ndb.wrapper;
 import io.hops.events.HopsEventListener;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -75,11 +76,7 @@ public final class SubscriptionTask implements Serializable {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + requestId.hashCode();
-
-        return result;
+        return Objects.hash(requestId);
     }
 
     public SubscriptionOperation getSubscriptionOperation() {

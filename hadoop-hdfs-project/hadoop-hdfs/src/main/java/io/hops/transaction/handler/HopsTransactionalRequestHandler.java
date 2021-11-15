@@ -688,11 +688,11 @@ public abstract class HopsTransactionalRequestHandler
     // to continue until we know we'll receive the event notifications.
     List<Semaphore> semaphores = new ArrayList<Semaphore>();
 
+    EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();
     for (int deploymentNumber : involvedDeployments) {
       String targetTableName = getTargetTableName(deploymentNumber);
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
-      EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();
-      boolean eventCreated = eventManager.registerEvent(eventName, targetTableName,
+      boolean eventCreated = eventManager.requestRegisterEvent(eventName, targetTableName,
               eventManager.getAckTableEventColumns(), false);
 
       if (eventCreated)

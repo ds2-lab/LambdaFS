@@ -43,8 +43,8 @@ public interface EventManager extends Runnable {
      * @throws StorageException if something goes wrong when registering the event.
      * @return True if an event was created, otherwise false.
      */
-    public boolean registerEvent(String eventName, String tableName, String[] eventColumns,
-                                 boolean recreateIfExists) throws StorageException;
+    public Semaphore requestRegisterEvent(String eventName, String tableName, String[] eventColumns,
+                                        boolean recreateIfExists) throws StorageException;
 
     /**
      * Delete the event with the given name.
@@ -53,7 +53,7 @@ public interface EventManager extends Runnable {
      *
      * @throws StorageException if something goes wrong when unregistering the event.
      */
-    public boolean unregisterEvent(String eventName) throws StorageException;
+    public Semaphore requestUnregisterEvent(String eventName) throws StorageException;
 
     /**
      * The calling thread waits on an internal semaphore until the Event Manager has finished its default setup.

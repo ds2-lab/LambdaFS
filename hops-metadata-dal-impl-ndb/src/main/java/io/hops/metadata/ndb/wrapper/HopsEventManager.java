@@ -7,8 +7,6 @@ import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.ndb.ClusterjConnector;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -82,7 +80,21 @@ public class HopsEventManager implements EventManager {
     private static final String ACK_TABLE_NAME_BASE = "write_acknowledgements";
 
     /**
-     * Internal queue used to keep track of requests to create new EventOperations.
+     * Internal queue to keep track of requests to create/register events.
+     */
+    private final BlockingQueue<EventTask> createEventQueue;
+
+    /**
+     * Internal queue to keep track of requests to drop/unregister events.
+     */
+    private final BlockingQueue<EventTask> dropEventQueue;
+
+    private final ConcurrentHashMap<EventTask, Semaphore> eventCreationNotifiers;
+
+    private final ConcurrentHashMap<EventTask, Semaphore> eventRemovalNotifiers;
+
+    /**
+     * Internal queue used to keep track of requests to create event subscriptions.
      *
      * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
      * to the session that created it. This means that the {@link HopsEventManager} needs to create the subscriptions
@@ -95,8 +107,11 @@ public class HopsEventManager implements EventManager {
      * decrement when we create the operation for them. So they can block to make sure the subscription gets created
      * before continuing, if desired.
      */
-    private final ConcurrentHashMap<SubscriptionTask, Semaphore> creationNotifiers;
+    private final ConcurrentHashMap<SubscriptionTask, Semaphore> subscriptionCreationNotifiers;
 
+    /**
+     * Internal queue used to keep track of requests to drop event subscriptions.
+     */
     private final BlockingQueue<SubscriptionTask> dropSubscriptionRequestQueue;
 
     /**
@@ -104,7 +119,7 @@ public class HopsEventManager implements EventManager {
      * decrement when we drop the operation for them. So they can block to make sure the subscription gets dropped
      * before continuing, if desired.
      */
-    private final ConcurrentHashMap<SubscriptionTask, Semaphore> droppedNotifiers;
+    private final ConcurrentHashMap<SubscriptionTask, Semaphore> subscriptionDeletionNotifiers;
 
     /**
      * The columns of the INode NDB table, in the order that they're defined in the schema.
@@ -231,8 +246,12 @@ public class HopsEventManager implements EventManager {
         this.eventOpToNameMapping = new HashMap<>();
         this.createSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.dropSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
-        this.creationNotifiers = new ConcurrentHashMap<>();
-        this.droppedNotifiers = new ConcurrentHashMap<>();
+        this.subscriptionCreationNotifiers = new ConcurrentHashMap<>();
+        this.subscriptionDeletionNotifiers = new ConcurrentHashMap<>();
+        this.createEventQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
+        this.dropEventQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
+        this.eventCreationNotifiers = new ConcurrentHashMap<>();
+        this.eventRemovalNotifiers = new ConcurrentHashMap<>();
     }
 
     private HopsSession obtainSession() throws StorageException {
@@ -342,7 +361,7 @@ public class HopsEventManager implements EventManager {
         }
 
         Semaphore creationNotifier = new Semaphore(0);
-        creationNotifiers.put(createSubscriptionRequest, creationNotifier);
+        subscriptionCreationNotifiers.put(createSubscriptionRequest, creationNotifier);
 
         return creationNotifier;
     }
@@ -363,7 +382,7 @@ public class HopsEventManager implements EventManager {
         }
 
         Semaphore creationNotifier = new Semaphore(0);
-        creationNotifiers.put(createSubscriptionRequest, creationNotifier);
+        subscriptionCreationNotifiers.put(createSubscriptionRequest, creationNotifier);
 
         return creationNotifier;
     }
@@ -479,7 +498,7 @@ public class HopsEventManager implements EventManager {
         }
 
         Semaphore dropNotifier = new Semaphore(0);
-        droppedNotifiers.put(dropRequest, dropNotifier);
+        subscriptionDeletionNotifiers.put(dropRequest, dropNotifier);
 
         return dropNotifier;
     }
@@ -495,25 +514,19 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
-     * Create and register an event with the given name.
-     * @param eventName Unique identifier of the event to be created.
-     * @param recreateIfExists If true, delete and recreate the event if it already exists.
-     * @throws StorageException if something goes wrong when registering the event.
-     *
-     * @return True if an event was created, otherwise false. Note that returning false does not
-     * indicate that something definitely went wrong; rather, the event could just already exist.
+     * Register an event with intermediate storage.
+     * @param eventName The name of the event.
+     * @param tableName The table on which the event will be registered.
+     * @param eventColumns The columns of the table that will be involved with the event.
+     * @param recreateIfExists If true, recreate the event if it already exists.
      */
-    @Override
-    public synchronized boolean registerEvent(String eventName, String tableName,
-                                              String[] eventColumns, boolean recreateIfExists)
-            throws StorageException {
+    private void registerEvent(String eventName, String tableName, String[] eventColumns,
+                               boolean recreateIfExists) throws StorageException {
         LOG.debug("Registering event " + eventName + " on table " + tableName + " with NDB now...");
 
         // If we're already tracking this event, and we aren't supposed to recreate it, then just return.
-        if (eventMap.containsKey(eventName) && !recreateIfExists) {
+        if (eventMap.containsKey(eventName) && !recreateIfExists)
             LOG.debug("Event " + eventName + " is already being tracked by the EventManager.");
-            return false;
-        }
 
         // Try to create the event. If something goes wrong, we'll throw an exception.
         Event event;
@@ -534,20 +547,28 @@ public class HopsEventManager implements EventManager {
                 EventDurability.convert(event.getDurability()),
                 event.getEventColumns());
         eventMap.put(eventName, hopsEvent);
-
-        return true;
     }
 
     /**
-     * Delete the event with the given name.
-     * @param eventName Unique identifier of the event to be deleted.
-     * @return True if an event with the given name was deleted, otherwise false.
-     *
-     * @throws StorageException if something goes wrong when unregistering the event.
+     * Register the event encapsulated by the given {@link EventTask} instance.
+     * @param eventTask Represents the event to be created.
      */
-    @Override
-    public synchronized  boolean unregisterEvent(String eventName)
-            throws StorageException, IllegalArgumentException, IllegalStateException {
+    private void registerEvent(EventTask eventTask) throws StorageException {
+        String eventName = eventTask.getEventName();
+        String tableName = eventTask.getTableName();
+        String[] eventColumns =  eventTask.getEventColumns();
+        boolean recreateIfExists = eventTask.isRecreateIfExists();
+
+        registerEvent(eventName, tableName, eventColumns, recreateIfExists);
+    }
+
+    /**
+     * Unregister the event encapsulated by the given {@link EventTask} instance.
+     * @param eventTask Represents the event to be unregistered.
+     */
+    private void unregisterEvent(EventTask eventTask) throws StorageException {
+        String eventName = eventTask.getEventName();
+
         LOG.debug("Unregistering event " + eventName + " with NDB now...");
 
         // If we aren't tracking an event with the given name, then the argument is invalid.
@@ -558,7 +579,7 @@ public class HopsEventManager implements EventManager {
         // Try to drop the event. If something goes wrong, we'll throw an exception.
         boolean dropped;
         try {
-             dropped = obtainSession().dropEvent(eventName);
+            dropped = obtainSession().dropEvent(eventName);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
@@ -576,12 +597,99 @@ public class HopsEventManager implements EventManager {
         // Make sure to remove the event from the eventMap now that it has been dropped by NDB.
         LOG.debug("Successfully unregistered event " + eventName + " with NDB!");
         eventMap.remove(eventName);
-        return true;
+    }
+
+    /**
+     * Create and register an event with the given name.
+     * @param eventName Unique identifier of the event to be created.
+     * @param recreateIfExists If true, delete and recreate the event if it already exists.
+     * @throws StorageException if something goes wrong when registering the event.
+     *
+     * @return True if an event was created, otherwise false. Note that returning false does not
+     * indicate that something definitely went wrong; rather, the event could just already exist.
+     */
+    @Override
+    public Semaphore requestRegisterEvent(String eventName, String tableName, String[] eventColumns,
+                                     boolean recreateIfExists) throws StorageException {
+        EventTask eventRegistrationTask = new EventTask(eventName, tableName, eventColumns, recreateIfExists);
+
+        try {
+            createEventQueue.put(eventRegistrationTask);
+        } catch (InterruptedException e) {
+            throw new StorageException("Failed to enqueue request to drop subscription for event " +
+                    eventName + " due to interrupted exception:", e);
+        }
+
+        Semaphore eventRegisteredNotifier = new Semaphore(0);
+        eventCreationNotifiers.put(eventRegistrationTask, eventRegisteredNotifier);
+
+        return eventRegisteredNotifier;
+    }
+
+    /**
+     * Delete the event with the given name.
+     * @param eventName Unique identifier of the event to be deleted.
+     * @return True if an event with the given name was deleted, otherwise false.
+     *
+     * @throws StorageException if something goes wrong when unregistering the event.
+     */
+    @Override
+    public Semaphore requestUnregisterEvent(String eventName)
+            throws StorageException, IllegalArgumentException, IllegalStateException {
+        EventTask unregisterEventTask = new EventTask(eventName, null, null, false);
+
+        try {
+            dropEventQueue.put(unregisterEventTask);
+        } catch (InterruptedException e) {
+            throw new StorageException("Failed to enqueue request to drop subscription for event " +
+                    eventName + " due to interrupted exception:", e);
+        }
+
+        Semaphore eventDroppedNotifier = new Semaphore(0);
+        eventRemovalNotifiers.put(unregisterEventTask, eventDroppedNotifier);
+
+        return eventDroppedNotifier;
     }
 
     @Override
     public void waitUntilSetupDone() throws InterruptedException {
         defaultSetupSemaphore.acquire();
+    }
+
+    /**
+     * Process any requests we've received to register events with NDB.
+     */
+    private void processEventRegistrationRequests() {
+        int requestsProcessed = 0;
+        while (createEventQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
+            EventTask eventRegistrationTask = createEventQueue.poll();
+
+            try {
+                registerEvent(eventRegistrationTask);
+            } catch (StorageException e) {
+                LOG.error("Failed to register event " + eventRegistrationTask.getEventName() + ": ", e);
+            }
+
+            requestsProcessed++;
+        }
+    }
+
+    /**
+     * Process any requests we've received to unregister events with NDB.
+     */
+    private void processEventUnregistrationRequests() {
+        int requestsProcessed = 0;
+        while (dropEventQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
+            EventTask eventDropTask = dropEventQueue.poll();
+
+            try {
+                unregisterEvent(eventDropTask);
+            } catch (StorageException e) {
+                LOG.error("Failed to unregister event " + eventDropTask.getEventName() + ": ", e);
+            }
+
+            requestsProcessed++;
+        }
     }
 
     /**
@@ -616,7 +724,7 @@ public class HopsEventManager implements EventManager {
                     addListener(eventName, eventListener);
             }
 
-            Semaphore creationNotifier = creationNotifiers.get(createSubscriptionRequest);
+            Semaphore creationNotifier = subscriptionCreationNotifiers.get(createSubscriptionRequest);
 
             if (creationNotifier == null)
                 throw new IllegalStateException("We do not have an subscription creation notifier for event " +
@@ -639,7 +747,7 @@ public class HopsEventManager implements EventManager {
             HopsEventListener eventListener = dropSubscriptionRequest.getEventListener();
 
             assert(dropSubscriptionRequest.getSubscriptionOperation() ==
-                    SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
+                    SubscriptionTask.SubscriptionOperation.DROP_SUBSCRIPTION);
 
             // If we get null, then just exit.
             if (eventName == null)
@@ -654,7 +762,7 @@ public class HopsEventManager implements EventManager {
 
             requestsProcessed++;
 
-            Semaphore droppedNotifier = creationNotifiers.get(dropSubscriptionRequest);
+            Semaphore droppedNotifier = subscriptionDeletionNotifiers.get(dropSubscriptionRequest);
 
             if (droppedNotifier == null)
                 throw new IllegalStateException("We do not have an subscription dropped notifier for event " +
@@ -711,6 +819,9 @@ public class HopsEventManager implements EventManager {
                 LOG.debug("Processed " + numEventsProcessed + " event(s).");
             }
 
+            processEventRegistrationRequests();     // Process requests to create/register new events.
+            processEventUnregistrationRequests();   // Process requests to drop/unregister events.
+
             processCreateSubscriptionRequests();    // Process requests to create subscriptions.
             processDropSubscriptionRequests();      // Process requests to drop subscriptions.
         }
@@ -755,15 +866,14 @@ public class HopsEventManager implements EventManager {
         // as the event could have been created by another NameNode. We would only want to recreate it
         // if we were changing something about the event's definition, and if all future NameNodes
         // expected this change, and if there were no other NameNodes currently using the event.
-        boolean registeredSuccessfully = registerEvent(defaultEventName, tableName,
-                INV_TABLE_EVENT_COLUMNS, defaultDeleteIfExists);
+        registerEvent(defaultEventName, tableName, INV_TABLE_EVENT_COLUMNS, defaultDeleteIfExists);
 
-        if (!registeredSuccessfully) {
-            LOG.error("Failed to successfully register default event " + defaultEventName
-                    + " on table " + tableName);
-
-            throw new StorageException("Failed to register event " + defaultEventName + " on table " + tableName);
-        }
+//        if (!registeredSuccessfully) {
+//            LOG.error("Failed to successfully register default event " + defaultEventName
+//                    + " on table " + tableName);
+//
+//            throw new StorageException("Failed to register event " + defaultEventName + " on table " + tableName);
+//        }
 
         LOG.debug("Creating event operation for event " + defaultEventName + " now...");
         HopsEventOperation eventOperation = createAndReturnEventOperation(defaultEventName);
