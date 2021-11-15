@@ -5,6 +5,7 @@ import com.mysql.clusterj.core.store.Event;
 import io.hops.events.*;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
+import io.hops.metadata.ndb.ClusterjConnector;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -210,7 +211,7 @@ public class HopsEventManager implements EventManager {
         this.createSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.dropSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
 
-        this.session = obtainSession();
+        this.session = ClusterjConnector.getInstance().obtainSession();
     }
 
     private HopsSession obtainSession() throws StorageException {
