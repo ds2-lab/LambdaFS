@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,7 +62,7 @@ public class HopsEventManager implements EventManager {
      * This session is used exclusively by the thread running the HopsEventManager. If another
      * thread accesses this session, then we'll likely crash due to how the C++ NDB library works.
      */
-    private final HopsSession session;
+    private HopsSession session;
 
     /**
      * Name of the NDB table that contains the INodes.
@@ -210,13 +211,10 @@ public class HopsEventManager implements EventManager {
         this.numListenersMapping = new HashMap<>();
         this.createSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.dropSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
-
-        this.session = ClusterjConnector.getInstance().obtainSession();
     }
 
     private HopsSession obtainSession() throws StorageException {
         return this.session;
-        // return ClusterjConnector.getInstance().obtainSession();
     }
 
     // Inherit the javadoc.
@@ -510,6 +508,14 @@ public class HopsEventManager implements EventManager {
     @Override
     public void run() {
         LOG.debug("The EventManager has started running.");
+
+        // We initialize the session instance variable within the run() method so that we obtain the session
+        // in the thread that the Event Manager runs in.
+        try {
+            this.session = ClusterjConnector.getInstance().obtainSession();
+        } catch (StorageException e) {
+            LOG.error("Failed to obtain session for Event Manager:", e);
+        }
 
         try {
             defaultSetup();
