@@ -975,7 +975,7 @@ public class HopsEventManager implements EventManager {
         LOG.debug("Executing event operation for event " + defaultEventName + " now...");
         eventOperation.execute();
 
-        for (int i = 0; i < 3; i++) {
+        /*for (int i = 0; i < 3; i++) {
             String targetTableName = getTargetTableName(i);
             String eventName = HopsEvent.ACK_EVENT_NAME_BASE + i;
             registerEvent(eventName, targetTableName, ACK_EVENT_COLUMNS, true);
@@ -992,7 +992,7 @@ public class HopsEventManager implements EventManager {
                 LOG.debug("EVENT NAME: " + eventName1);
                 LOG.debug("EVENT TYPE: " + eventOperation1.getEventType());
             });
-        }
+        }*/
 
         // Signal that we're done with this. Just add a ton of permits.
         defaultSetupSemaphore.release(Integer.MAX_VALUE - 10);
