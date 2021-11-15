@@ -985,6 +985,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       LOG.error("FSNamesystem received unexpected event from NDB: " + eventName);
     }
 
+    long localNameNodeId = serverlessNameNode.getId();
+    int localDeploymentNumber = serverlessNameNode.getDeploymentNumber();
+
     long inodeId = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.INODE_ID);
     long parentId = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.PARENT_ID);
     long leaderNameNodeId = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.LEADER_ID);
@@ -995,6 +998,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     String format = "%-12s %-12s %-21s %-21s %-21s";
     LOG.debug(String.format(format, "INode ID", "Parent ID", "Leader NN ID", "TX Start Time", "Op ID"));
     LOG.debug(String.format(format, inodeId, parentId, leaderNameNodeId, txStartTime, operationId));
+
+    if (leaderNameNodeId == localNameNodeId) {
+      LOG.debug("This invalidation was triggered by our own write operation. Ignoring.");
+      return;
+    }
 
     metadataCache.invalidateKey(inodeId);
 
@@ -1010,13 +1018,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
             .build();
     List<WriteAcknowledgement> pendingAcks = null;  // This variable holds the result of the operation.
 
-    long nameNodeId = serverlessNameNode.getId();
-    int deploymentNumber = serverlessNameNode.getDeploymentNumber();
     while (pendingAcks == null) {
       try {
-        pendingAcks = writeAcknowledgementDataAccess.getPendingAcks(nameNodeId, deploymentNumber);
+        pendingAcks = writeAcknowledgementDataAccess.getPendingAcks(localNameNodeId, localDeploymentNumber);
       } catch (StorageException e) {
-        LOG.error("Encountered exception while checking for pending ACKs for NameNode " + nameNodeId + ":", e);
+        LOG.error("Encountered exception while checking for pending ACKs for NameNode " + localNameNodeId + ":", e);
 
         long backoffInterval = exponentialBackOff.getBackOffInMillis();
         if (backoffInterval == -1) {
@@ -1036,7 +1042,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
     while (!success) {
       try {
-        writeAcknowledgementDataAccess.acknowledge(pendingAcks, deploymentNumber);
+        writeAcknowledgementDataAccess.acknowledge(pendingAcks, localDeploymentNumber);
         success = true;
         LOG.debug("Successfully ACK'd " + pendingAcks.size() + " pending ack " +
                 (pendingAcks.size() == 1 ? "entry" : "entries") + " in intermediate storage.");
