@@ -1038,6 +1038,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       try {
         writeAcknowledgementDataAccess.acknowledge(pendingAcks, deploymentNumber);
         success = true;
+        LOG.debug("Successfully ACK'd " + pendingAcks.size() + " pending ack " +
+                (pendingAcks.size() == 1 ? "entry" : "entries") + " in intermediate storage.");
       } catch (StorageException e) {
         LOG.error("Encountered exception while trying to acknowledge pending ACKs for NameNode "
                 + serverlessNameNode.getId() + ":", e);

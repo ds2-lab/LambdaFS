@@ -108,14 +108,17 @@ public class HopsSession {
   public HopsEventOperation nextEvent(String eventName) {
     EventOperation eventOperation = session.nextEvent();
 
-    if (eventOperation == null)
+    if (eventOperation == null) {
+      LOG.warn("Underlying session object returned null EventOperation...");
       return null;
+    }
 
     HopsEventOperation hopsEventOperation =
             EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
 
     // Since it was returned by nextEvent(), we can call true on this.
     // TODO: Should we set the flag to false once we're done processing this?
+    //       We have to set it explicitly because we're reusing an old instance...
     HopsEventOperationImpl hopsEventOperationImpl = (HopsEventOperationImpl)hopsEventOperation;
     hopsEventOperationImpl.getClusterJEventOperation().setCanCallNextEvent(true);
 

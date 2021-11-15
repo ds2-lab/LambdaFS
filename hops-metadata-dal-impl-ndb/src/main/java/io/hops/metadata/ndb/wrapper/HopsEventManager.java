@@ -39,7 +39,7 @@ public class HopsEventManager implements EventManager {
     /**
      * How long we poll for events before giving up and checking if we have any requests to create event subscriptions.
      */
-    private static final int POLL_TIME_MILLISECONDS = 50;
+    private static final int POLL_TIME_MILLISECONDS = 100;
 
     /**
      * The capacity of the BlockingQueues in which requests to create/drop event subscriptions are placed.
@@ -871,6 +871,20 @@ public class HopsEventManager implements EventManager {
             if (events) {
                 LOG.debug("Received at least one event!");
                 int numEventsProcessed = processEvents(session);
+
+                if (numEventsProcessed == 0) {
+                    LOG.warn("Session poll indicated that events were present, but none were processed...");
+
+                    // Try sleeping for a bit to see if there are any events when we check again.
+                    try {
+                        Thread.sleep(POLL_TIME_MILLISECONDS);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                    numEventsProcessed = processEvents(session);
+                }
+
                 LOG.debug("Processed " + numEventsProcessed + " event(s).");
             }
 
@@ -954,7 +968,7 @@ public class HopsEventManager implements EventManager {
      * Called after `session.pollForEvents()` returns true.
      * @return the number of events that were processed.
      */
-    private synchronized int processEvents(HopsSession session) {
+    private int processEvents(HopsSession session) {
         HopsEventOperation nextEventOp = session.nextEvent(null);
         int numEventsProcessed = 0;
 

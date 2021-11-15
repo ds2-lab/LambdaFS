@@ -705,6 +705,8 @@ public abstract class HopsTransactionalRequestHandler
     for (Semaphore creationNotifier : semaphores) {
       creationNotifier.acquire();
     }
+
+    requestHandlerLOG.debug("Successfully acquired " + semaphores.size() + " semaphore(s).");
   }
 
   /**
