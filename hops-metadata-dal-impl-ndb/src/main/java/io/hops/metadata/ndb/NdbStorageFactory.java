@@ -69,7 +69,7 @@ public class NdbStorageFactory implements DalStorageFactory {
    * Syntax:
    *  Major.Minor.Build.Revision
    */
-  private static final String versionNumber = "0.3.0.0";
+  private static final String versionNumber = "0.3.1.0";
 
   private final Map<Class, EntityDataAccess> dataAccessMap =
       new HashMap<>();
