@@ -17,7 +17,6 @@ package io.hops.transaction.handler;
 
 import io.hops.events.*;
 import io.hops.exception.StorageException;
-import io.hops.leader_election.node.ActiveNode;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.hdfs.dal.InvalidationDataAccess;
@@ -559,7 +558,7 @@ public abstract class HopsTransactionalRequestHandler
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
       EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();
       eventManager.removeListener(this, eventName);
-      eventManager.unregisterEventOperation(eventName);
+      eventManager.requestDropEventSubscription(eventName);
     }
   }
 
@@ -690,7 +689,7 @@ public abstract class HopsTransactionalRequestHandler
         requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName +
                 " already exists. Reusing existing event.");
 
-      eventManager.createEventOperation(eventName);
+      eventManager.requestCreateEventSubscription(eventName);
       eventManager.addListener(this, eventName);
     }
   }

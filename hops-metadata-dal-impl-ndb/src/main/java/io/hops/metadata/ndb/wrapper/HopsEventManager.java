@@ -2,11 +2,9 @@ package io.hops.metadata.ndb.wrapper;
 
 import com.mysql.clusterj.*;
 import com.mysql.clusterj.core.store.Event;
-import com.mysql.clusterj.core.store.EventOperation;
 import io.hops.events.*;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
-import io.hops.metadata.ndb.ClusterjConnector;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -15,9 +13,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class is responsible for listening to events from NDB and reacting to them appropriately. This is how
@@ -34,13 +32,35 @@ import java.util.concurrent.locks.ReentrantLock;
  * ClusterJ API to allow for equality checks between instances of NdbEventOperation objects.
  */
 public class HopsEventManager implements EventManager {
-    static final Log LOG = LogFactory.getLog(HopsEventManager.class);
+    private static final Log LOG = LogFactory.getLog(HopsEventManager.class);
+
+    /**
+     * How long we poll for events before giving up and checking if we have any requests to create event subscriptions.
+     */
+    private static final int POLL_TIME_MILLISECONDS = 50;
+
+    /**
+     * The capacity of the BlockingQueues in which requests to create/drop event subscriptions are placed.
+     */
+    private static final int REQUEST_QUEUE_CAPACITIES = 25;
+
+    /**
+     * The maximum number of requests to create a new event subscription that we'll process before stopping to
+     * listen for more events.
+     */
+    private static final int MAX_SUBSCRIPTION_REQUESTS = REQUEST_QUEUE_CAPACITIES;
 
     /**
      * Used to signal that we're done with our set-up and it is safe to add event listeners for the
      * default event operation.
      */
     private final Semaphore defaultSetupSemaphore = new Semaphore(-1);
+
+    /**
+     * This session is used exclusively by the thread running the HopsEventManager. If another
+     * thread accesses this session, then we'll likely crash due to how the C++ NDB library works.
+     */
+    private final HopsSession session;
 
     /**
      * Name of the NDB table that contains the INodes.
@@ -67,6 +87,17 @@ public class HopsEventManager implements EventManager {
      * Mapping from event operation to event columns, so we can print the columns when we receive an event.
      */
     private final HashMap<HopsEventOperation, String[]> eventColumnMap = new HashMap<>();
+
+    /**
+     * Internal queue used to keep track of requests to create new EventOperations.
+     *
+     * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
+     * to the session that created it. This means that the {@link HopsEventManager} needs to create the subscriptions
+     * itself using its own, private {@link HopsSession} instance.
+     */
+    private final BlockingQueue<String> createSubscriptionRequestQueue;
+
+    private final BlockingQueue<String> dropSubscriptionRequestQueue;
 
     /**
      * The columns of the INode NDB table, in the order that they're defined in the schema.
@@ -176,13 +207,15 @@ public class HopsEventManager implements EventManager {
         this.eventOperationMap = new HashMap<>();
         this.eventOpToNameMapping = new HashMap<>();
         this.numListenersMapping = new HashMap<>();
+        this.createSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
+        this.dropSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
+
+        this.session = obtainSession();
     }
 
-    /**
-     * Get thread-local session from the ClusterJConnector.
-     */
     private HopsSession obtainSession() throws StorageException {
-        return ClusterjConnector.getInstance().obtainSession();
+        return this.session;
+        // return ClusterjConnector.getInstance().obtainSession();
     }
 
     // Inherit the javadoc.
@@ -257,19 +290,28 @@ public class HopsEventManager implements EventManager {
         }
     }
 
-    private static List<String> allHashCodeHexStringsEverCreated = new ArrayList<String>();
-    private static Map<String, String> hashCodeHexStringToEventName = new HashMap<>();
-    private static Lock _mutex = new ReentrantLock();
+    private static final List<String> allHashCodeHexStringsEverCreated = new ArrayList<String>();
+    private static final Map<String, String> hashCodeHexStringToEventName = new HashMap<>();
+    // private static Lock _mutex = new ReentrantLock();
+
+    // See the inherited JavaDoc for important information about why this function is designed the way it is.
+    @Override
+    public void requestCreateEventSubscription(String eventName) throws StorageException {
+        LOG.debug("Issuing request to create subscription for event " + eventName + " now...");
+
+        try {
+            createSubscriptionRequestQueue.put(eventName);
+        } catch (InterruptedException e) {
+            throw new StorageException("Failed to enqueue request to create subscription for event " +
+                    eventName + " due to interrupted exception:", e);
+        }
+    }
 
     /**
-     * Create and register an Event Operation for the specified event.
-     *
-     * @param eventName The name of the Event for which we're creating an EventOperation.
+     * This should only be called internally by whatever thread is running this HopsEventManager instance.
+     * @param eventName The name of the event for which we are creating a subscription.
      */
-    @Override
-    public synchronized void createEventOperation(String eventName) throws StorageException {
-        LOG.debug("Creating EventOperation for event " + eventName + " now...");
-
+    private void createEventOperation(String eventName) throws StorageException {
         HopsEventOperation hopsEventOperation;
         try {
             hopsEventOperation = obtainSession().createEventOperation(eventName);
@@ -288,17 +330,18 @@ public class HopsEventManager implements EventManager {
         else if (eventName.equals(HopsEvent.INV_EVENT_NAME_BASE))
             eventColumnMap.put(hopsEventOperation, INV_TABLE_EVENT_COLUMNS);
 
-        _mutex.lock();
-        try {
-            allHashCodeHexStringsEverCreated.add(Integer.toHexString(hopsEventOperation.hashCode()));
-            hashCodeHexStringToEventName.put(Integer.toHexString(hopsEventOperation.hashCode()), eventName);
-        } finally {
-            _mutex.unlock();
-        }
+        allHashCodeHexStringsEverCreated.add(Integer.toHexString(hopsEventOperation.hashCode()));
+        hashCodeHexStringToEventName.put(Integer.toHexString(hopsEventOperation.hashCode()), eventName);
     }
 
     /**
      * Create an event operation for the event specified by the given event name and return it.
+     *
+     * This function is for internal use only. It directly calls the `createEventOperation()` function, which
+     * actually creates an EventOperaiton using the HopsEventMangaer's private, internal HopsSession instance. As
+     * a result, if this function is somehow accessed by another thread, the subscription created will never
+     * actually be used (since it will be created using another thread's HopsSession, which presumably won't
+     * ever be checked for events).
      *
      * This is for internal use only.
      * @param eventName The name of the event for which an event operation should be created.
@@ -310,12 +353,11 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
-     * Unregister and drop the EventOperation associated with the given event from NDB.
-     * @param eventName The unique identifier of the event whose EventOperation we wish to unregister.
-     * @return True if an event operation was dropped, otherwise false.
+     * Actually unregister an event operation. This should only be used internally, for the same reasons that the
+     * createEventOperation function is only used internally.
+     * @param eventName Name associated with the event operation that is being unregistered.
      */
-    @Override
-    public synchronized boolean unregisterEventOperation(String eventName) throws StorageException {
+    private void unregisterEventOperation(String eventName) throws StorageException {
         LOG.debug("Unregistering EventOperation for event " + eventName + " with NDB now...");
 
         // If we aren't tracking an event with the given name, then the argument is invalid.
@@ -329,7 +371,6 @@ public class HopsEventManager implements EventManager {
         if (currentNumberOfListeners > 0) {
             LOG.debug("There are still " + currentNumberOfListeners + " event listener(s) for event " +
                     eventName + ". Will not unregister event operation for now.");
-            return false;
         }
 
         // Make sure to remove the event from the eventMap.
@@ -351,7 +392,18 @@ public class HopsEventManager implements EventManager {
                     " from NDB, despite the fact that the event operation exists within the EventManager.");
 
         LOG.debug("Successfully unregistered EventOperation for event " + eventName + " with NDB!");
-        return true;
+    }
+
+    @Override
+    public void requestDropEventSubscription(String eventName) throws StorageException {
+        LOG.debug("Issuing request to drop subscription for event " + eventName + " now...");
+
+        try {
+            dropSubscriptionRequestQueue.put(eventName);
+        } catch (InterruptedException e) {
+            throw new StorageException("Failed to enqueue request to drop subscription for event " +
+                    eventName + " due to interrupted exception:", e);
+        }
     }
 
     @Override
@@ -481,18 +533,53 @@ public class HopsEventManager implements EventManager {
             // the equivalent is for the given operating system. And Linux, Windows, etc. suspend the
             // process if there are no file descriptors available, so this is not a busy wait.
             //
-            // Also, I originally passed -1 here, but this did not appear to cause the event manager to block
-            // for very long. Like less than a second, tens of milliseconds. So I just have it wait for a minute
-            // before trying again.
-            boolean events = session.pollForEvents(60000);
+            // We check for a short amount of time. If no events are found, then we check and see if we have any
+            // requests to create new event subscriptions. If we do, then we'll handle those for a bit before
+            // checking for more events.
+            boolean events = session.pollForEvents(POLL_TIME_MILLISECONDS);
 
             // Just continue if we didn't find any events.
-            if (!events)
-                continue;
+            if (events) {
+                LOG.debug("Received at least one event!");
+                int numEventsProcessed = processEvents(session);
+                LOG.debug("Processed " + numEventsProcessed + " event(s).");
+            }
 
-            LOG.debug("Received at least one event!");
-            int numEventsProcessed = processEvents(session);
-            LOG.debug("Processed " + numEventsProcessed + " event(s).");
+            int requestsProcessed = 0;
+            while (createSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
+                String eventName = createSubscriptionRequestQueue.poll();
+
+                // If we get null, then just exit.
+                if (eventName == null)
+                    break;
+
+                try {
+                    createEventOperation(eventName);
+                } catch (StorageException e) {
+                    LOG.error("Encountered exception while trying to create event subscription for event " +
+                            eventName + ":", e);
+                }
+
+                requestsProcessed++;
+            }
+
+            requestsProcessed = 0;
+            while (dropSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
+                String eventName = dropSubscriptionRequestQueue.poll();
+
+                // If we get null, then just exit.
+                if (eventName == null)
+                    break;
+
+                try {
+                    unregisterEventOperation(eventName);
+                } catch (StorageException e) {
+                    LOG.error("Encountered exception while trying to create event subscription for event " +
+                            eventName + ":", e);
+                }
+
+                requestsProcessed++;
+            }
         }
     }
 
@@ -613,15 +700,10 @@ public class HopsEventManager implements EventManager {
                     StringUtils.join(eventOpToNameMapping.keySet(), ", ") + ".");
             LOG.error("Registered event names: " + StringUtils.join(eventOpToNameMapping.values(), ", "));
 
-            _mutex.lock();
-            try {
-                for (String s : allHashCodeHexStringsEverCreated) {
-                    String associatedEventName = hashCodeHexStringToEventName.get(s);
+            for (String s : allHashCodeHexStringsEverCreated) {
+                String associatedEventName = hashCodeHexStringToEventName.get(s);
 
-                    LOG.error("EventOperation '" + s + "' created for event '" + associatedEventName + "'.");
-                }
-            } finally {
-                _mutex.unlock();
+                LOG.error("EventOperation '" + s + "' created for event '" + associatedEventName + "'.");
             }
 
             LOG.error("Returning without notifying anyone, as we cannot figure out who we're supposed to notify...");

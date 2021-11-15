@@ -34,6 +34,7 @@ public interface EventManager extends Runnable {
 
     /**
      * Create and register an event with the given name.
+     *
      * @param eventName Unique identifier of the event to be created.
      * @param recreateIfExists If true, delete and recreate the event if it already exists.
      * @param eventColumns The columns that are being monitored for the event.
@@ -66,7 +67,16 @@ public interface EventManager extends Runnable {
     public void run();
 
     /**
-     * Create and register an Event Operation for the specified event.
+     * Issue a request to create and register an Event Operation for the specified event. The recipient of this
+     * request is simply the thread running this EventManager instance.
+     *
+     * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
+     * to the session that created it. This means that the {@link EventManager} needs to create the subscriptions
+     * itself using its own, private HopsSession instance.
+     *
+     * As a result, this method does not directly create an event operation. Instead, it enqueues a message for the
+     * thread running the event manager. This message will direct the thread to create a subscription using its own
+     * private session object.
      *
      * IMPORTANT: This should be called BEFORE adding the event listener.
      *
@@ -78,7 +88,7 @@ public interface EventManager extends Runnable {
      *
      * @param eventName The name of the Event for which we're creating an EventOperation.
      */
-    public void createEventOperation(String eventName) throws StorageException;
+    public void requestCreateEventSubscription(String eventName) throws StorageException;
 
     /**
      * Perform the default setup/initialization of the event and event operation.
@@ -114,9 +124,8 @@ public interface EventManager extends Runnable {
      *       `unregisterEventOperation()` function!
      *
      * @param eventName The unique identifier of the event whose EventOperation we wish to unregister.
-     * @return True if an event operation was dropped, otherwise false.
      */
-    public boolean unregisterEventOperation(String eventName) throws StorageException;
+    public void requestDropEventSubscription(String eventName) throws StorageException;
 
 //    /**
 //     * This should be called once it is known that there are events to be processed.
