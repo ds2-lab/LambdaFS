@@ -93,21 +93,21 @@ public class HopsEventManager implements EventManager {
 
     private final ConcurrentHashMap<EventTask, Semaphore> eventRemovalNotifiers;
 
-    /**
-     * Internal queue used to keep track of requests to create event subscriptions.
-     *
-     * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
-     * to the session that created it. This means that the {@link HopsEventManager} needs to create the subscriptions
-     * itself using its own, private {@link HopsSession} instance.
-     */
-    private final BlockingQueue<SubscriptionTask> createSubscriptionRequestQueue;
+//    /**
+//     * Internal queue used to keep track of requests to create event subscriptions.
+//     *
+//     * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
+//     * to the session that created it. This means that the {@link HopsEventManager} needs to create the subscriptions
+//     * itself using its own, private {@link HopsSession} instance.
+//     */
+//    private final BlockingQueue<SubscriptionTask> createSubscriptionRequestQueue;
 
-    /**
-     * When somebody issues us a request to create an event subscription, we return a semaphore that we'll
-     * decrement when we create the operation for them. So they can block to make sure the subscription gets created
-     * before continuing, if desired.
-     */
-    private final ConcurrentHashMap<SubscriptionTask, Semaphore> subscriptionCreationNotifiers;
+//    /**
+//     * When somebody issues us a request to create an event subscription, we return a semaphore that we'll
+//     * decrement when we create the operation for them. So they can block to make sure the subscription gets created
+//     * before continuing, if desired.
+//     */
+//    private final ConcurrentHashMap<SubscriptionTask, Semaphore> subscriptionCreationNotifiers;
 
     /**
      * Internal queue used to keep track of requests to drop event subscriptions.
@@ -244,9 +244,9 @@ public class HopsEventManager implements EventManager {
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
         this.eventOpToNameMapping = new HashMap<>();
-        this.createSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
+//        this.createSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.dropSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
-        this.subscriptionCreationNotifiers = new ConcurrentHashMap<>();
+//        this.subscriptionCreationNotifiers = new ConcurrentHashMap<>();
         this.subscriptionDeletionNotifiers = new ConcurrentHashMap<>();
         this.createEventQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.dropEventQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
@@ -704,7 +704,7 @@ public class HopsEventManager implements EventManager {
 
             SubscriptionTask subscriptionTask = eventRegistrationTask.getSubscriptionTask();
             if (subscriptionTask != null)
-                processCreateSubscriptionTask(subscriptionTask);
+                processCreateSubscriptionTask(subscriptionTask eventRegisteredNotifier);
         }
     }
 
@@ -752,8 +752,9 @@ public class HopsEventManager implements EventManager {
      * IMPORTANT: This calls release(1) on the Semaphore associated with the SubscriptionTask instance.
      *
      * @param createSubscriptionRequest The task that we're processing.
+     * @param notifier The Semaphore for this subscription. It's the same Semaphore used for the event itself.
      */
-    private void processCreateSubscriptionTask(SubscriptionTask createSubscriptionRequest) {
+    private void processCreateSubscriptionTask(SubscriptionTask createSubscriptionRequest, Semaphore notifier) {
         String eventName = createSubscriptionRequest.getEventName();
         LOG.debug("Processing subscription creation request for event " + eventName);
         HopsEventListener eventListener = createSubscriptionRequest.getEventListener();
@@ -773,13 +774,11 @@ public class HopsEventManager implements EventManager {
                     eventName + ":", e);
         }
 
-        Semaphore creationNotifier = subscriptionCreationNotifiers.get(createSubscriptionRequest);
-
-        if (creationNotifier == null)
+        if (notifier == null)
             throw new IllegalStateException("We do not have an subscription creation notifier for event " +
                     eventName + "!");
 
-        creationNotifier.release(1);
+        notifier.release(1);
 
         if (eventOperation != null) {
             eventOperation.execute();
@@ -787,7 +786,7 @@ public class HopsEventManager implements EventManager {
             // If there's an event listener, we'll add it. Then release the semaphore again.
             if (eventListener != null) {
                 addListener(eventName, eventListener);
-                creationNotifier.release(1);
+                notifier.release(1);
             }
         }
     }
