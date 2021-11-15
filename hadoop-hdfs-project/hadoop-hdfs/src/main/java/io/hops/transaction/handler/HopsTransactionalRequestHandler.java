@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public abstract class HopsTransactionalRequestHandler
@@ -499,7 +500,12 @@ public abstract class HopsTransactionalRequestHandler
       checkAndProcessMembershipChanges(deploymentNumber);
 
     // Wait until we're done. If the latch is already at zero, then this will not block.
-    countDownLatch.await();
+    try {
+      countDownLatch.await(15, TimeUnit.SECONDS);
+    } catch (InterruptedException ex) {
+      throw new IOException("Timed out while waiting for ACKs from other NameNodes. Waiting on a total of " +
+              waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
+    }
     requestHandlerLOG.debug("We have received all required ACKs for write operation " + operationId + ".");
   }
 
