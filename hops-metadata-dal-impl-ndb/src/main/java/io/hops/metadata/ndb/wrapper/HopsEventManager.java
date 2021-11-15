@@ -704,7 +704,7 @@ public class HopsEventManager implements EventManager {
 
             SubscriptionTask subscriptionTask = eventRegistrationTask.getSubscriptionTask();
             if (subscriptionTask != null)
-                processCreateSubscriptionTask(subscriptionTask eventRegisteredNotifier);
+                processCreateSubscriptionTask(subscriptionTask, eventRegisteredNotifier);
         }
     }
 
