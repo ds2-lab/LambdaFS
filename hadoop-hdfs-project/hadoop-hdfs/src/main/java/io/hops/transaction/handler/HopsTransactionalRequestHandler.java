@@ -692,14 +692,20 @@ public abstract class HopsTransactionalRequestHandler
     for (int deploymentNumber : involvedDeployments) {
       String targetTableName = getTargetTableName(deploymentNumber);
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
-      boolean eventCreated = eventManager.requestRegisterEvent(eventName, targetTableName,
+
+      // TODO: Create combined method where you can request an event along with an event operation to be created
+      //       on the event after the event is created.
+      Semaphore eventCreatedNotifier = eventManager.requestRegisterEvent(eventName, targetTableName,
               eventManager.getAckTableEventColumns(), false);
 
-      if (eventCreated)
-        requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName + " created successfully.");
-      else
-        requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName +
-                " already exists. Reusing existing event.");
+      // TODO: Do not do things like this. Use the API described above.
+      eventCreatedNotifier.acquire();
+
+//      if (eventCreated)
+//        requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName + " created successfully.");
+//      else
+//        requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName +
+//                " already exists. Reusing existing event.");
 
       Semaphore creationNotifier = eventManager.requestCreateSubscriptionWithListener(eventName, this);
       semaphores.add(creationNotifier);
