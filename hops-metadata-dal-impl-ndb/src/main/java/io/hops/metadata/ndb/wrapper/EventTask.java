@@ -14,13 +14,16 @@ public class EventTask {
     private final String tableName;
     private final String[] eventColumns;
     private final boolean recreateIfExists;
+    private final SubscriptionTask subscriptionTask;
 
-    public EventTask(String eventName, String tableName, String[] eventColumns, boolean recreateIfExists) {
+    public EventTask(String eventName, String tableName, String[] eventColumns, boolean recreateIfExists,
+                     SubscriptionTask subscriptionTask) {
         this.requestId = UUID.randomUUID().toString();
         this.eventName = eventName;
         this.tableName = tableName;
         this.eventColumns = eventColumns;
         this.recreateIfExists = recreateIfExists;
+        this.subscriptionTask = subscriptionTask;
     }
 
     @Override
@@ -56,5 +59,9 @@ public class EventTask {
 
     public boolean isRecreateIfExists() {
         return recreateIfExists;
+    }
+
+    public SubscriptionTask getSubscriptionTask() {
+        return subscriptionTask;
     }
 }

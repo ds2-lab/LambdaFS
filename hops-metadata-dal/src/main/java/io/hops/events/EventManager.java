@@ -37,14 +37,27 @@ public interface EventManager extends Runnable {
     /**
      * Create and register an event with the given name.
      *
+     * IMPORTANT: The Semaphore that gets returned behaves in the following way:
+     *      - If 'alsoCreateSubscription' is false, then the Semaphore will block until the event is created.
+     *      - If 'alsoCreateSubscription' is true and eventListener is null, then the Semaphore will block until
+     *        the event is created AND the subscription is created.
+     *      - If 'alsoCreateSubscription' and 'eventListener' is non-null, then the Semaphore will block until the
+     *        event is created AND the subscription is created AND the listener is added.
+     *
      * @param eventName Unique identifier of the event to be created.
      * @param recreateIfExists If true, delete and recreate the event if it already exists.
      * @param eventColumns The columns that are being monitored for the event.
+     * @param tableName The name of the table on which the event is to be created.
+     * @param alsoCreateSubscription If true, then we also create an event subscription after creating the event.
+     * @param eventListener If non-null and 'alsoCreateSubscription' is true, then we'll add this as a listener
+     *                      once the subscription is created.
+     *
      * @throws StorageException if something goes wrong when registering the event.
      * @return True if an event was created, otherwise false.
      */
     public Semaphore requestRegisterEvent(String eventName, String tableName, String[] eventColumns,
-                                        boolean recreateIfExists) throws StorageException;
+                                          boolean recreateIfExists, boolean alsoCreateSubscription,
+                                          HopsEventListener eventListener) throws StorageException;
 
     /**
      * Delete the event with the given name.
@@ -68,39 +81,44 @@ public interface EventManager extends Runnable {
     @Override
     public void run();
 
-    /**
-     * Issue a request to create an event subscription for the specified event. The recipient of this
-     * request is simply the thread running this EventManager instance.
-     *
-     * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
-     * to the session that created it. This means that the {@link EventManager} needs to create the subscriptions
-     * itself using its own, private HopsSession instance.
-     *
-     * As a result, this method does not directly create an event operation. Instead, it enqueues a message for the
-     * thread running the event manager. This message will direct the thread to create a subscription using its own
-     * private session object.
-     *
-     * IMPORTANT: If the subscription should have an event listener associated with it, then the subscriptions
-     *            should be created with the 'requestCreateSubscriptionWithListener()' function.
-     *
-     * @param eventName The name of the Event for which we're creating an EventOperation.
-     *
-     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
-     * this to block until we create the subscription, if desired.
-     */
-    public Semaphore requestCreateSubscription(String eventName) throws StorageException;
+//    /**
+//     * Issue a request to create an event subscription for the specified event. The recipient of this
+//     * request is simply the thread running this EventManager instance.
+//     *
+//     * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
+//     * to the session that created it. This means that the {@link EventManager} needs to create the subscriptions
+//     * itself using its own, private HopsSession instance.
+//     *
+//     * As a result, this method does not directly create an event operation. Instead, it enqueues a message for the
+//     * thread running the event manager. This message will direct the thread to create a subscription using its own
+//     * private session object.
+//     *
+//     * IMPORTANT: If the subscription should have an event listener associated with it, then the subscriptions
+//     *            should be created with the 'requestCreateSubscriptionWithListener()' function.
+//     *
+//     *            ALSO, this function should only be called if the associated event already exists OR if a request
+//     *            has been made to create the associated event. Because you can request a subscription on an event
+//     *            that itself has been requested (but not yet created), this function will not throw an error if you
+//     *            request an event that neither exists nor has been submitted for creation.
+//     *
+//     * @param eventName The name of the Event for which we're creating an EventOperation.
+//     *
+//     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
+//     * this to block until we create the subscription, if desired.
+//     */
+//    public Semaphore requestCreateSubscription(String eventName) throws StorageException;
 
-    /**
-     * Issue a request to create an event subscription for the specified event. In addition, an event listener
-     * is registered with the given event.
-     * @param eventName The name of the Event for which we're creating an EventOperation.
-     * @param eventListener the event listener to be registered.
-     *
-     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
-     * this to block until we create the subscription, if desired.
-     */
-    public Semaphore requestCreateSubscriptionWithListener(String eventName, HopsEventListener eventListener)
-            throws StorageException;
+//    /**
+//     * Issue a request to create an event subscription for the specified event. In addition, an event listener
+//     * is registered with the given event.
+//     * @param eventName The name of the Event for which we're creating an EventOperation.
+//     * @param eventListener the event listener to be registered.
+//     *
+//     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
+//     * this to block until we create the subscription, if desired.
+//     */
+//    public Semaphore requestCreateSubscriptionWithListener(String eventName, HopsEventListener eventListener)
+//            throws StorageException;
 
 //    /**
 //     * Perform the default setup/initialization of the event and event operation.
