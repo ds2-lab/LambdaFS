@@ -39,7 +39,7 @@ public class HopsEventManager implements EventManager {
     /**
      * How long we poll for events before giving up and checking if we have any requests to create event subscriptions.
      */
-    private static final int POLL_TIME_MILLISECONDS = 100;
+    private static final int POLL_TIME_MILLISECONDS = 300;
 
     /**
      * The capacity of the BlockingQueues in which requests to create/drop event subscriptions are placed.
