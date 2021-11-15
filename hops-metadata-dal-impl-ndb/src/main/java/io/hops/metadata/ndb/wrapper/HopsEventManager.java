@@ -604,15 +604,20 @@ public class HopsEventManager implements EventManager {
                 if (eventName == null)
                     break;
 
+                HopsEventOperation eventOperation = null;
                 try {
-                    createEventOperation(eventName);
+                    eventOperation = createAndReturnEventOperation(eventName);
                 } catch (StorageException e) {
                     LOG.error("Encountered exception while trying to create event subscription for event " +
                             eventName + ":", e);
                 }
 
-                if (eventListener != null)
-                    addListener(eventName, eventListener);
+                if (eventOperation != null) {
+                    eventOperation.execute();
+
+                    if (eventListener != null)
+                        addListener(eventName, eventListener);
+                }
 
                 requestsProcessed++;
             }
