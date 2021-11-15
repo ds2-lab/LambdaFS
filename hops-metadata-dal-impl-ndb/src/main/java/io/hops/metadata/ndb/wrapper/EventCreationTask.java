@@ -10,7 +10,7 @@ import java.io.Serializable;
  * to the session that created it. This means that the {@link HopsEventManager} needs to create the subscriptions
  * itself using its own, private {@link HopsSession} instance.
  *
- * So when clients call {@link HopsEventManager#requestCreateEventSubscription(String)}, they're actually enqueuing an instance
+ * So when clients call {@link HopsEventManager#requestCreateSubscription(String)}, they're actually enqueuing an instance
  * of this class in an internal BlockingQueue of the Event Manager.
  */
 public final class EventCreationTask implements Serializable {

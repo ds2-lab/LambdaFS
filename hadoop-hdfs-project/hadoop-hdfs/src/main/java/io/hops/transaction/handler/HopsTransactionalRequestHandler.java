@@ -557,8 +557,8 @@ public abstract class HopsTransactionalRequestHandler
     for (int deploymentNumber : involvedDeployments) {
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
       EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();
-      eventManager.removeListener(this, eventName);
-      eventManager.requestDropEventSubscription(eventName);
+      // eventManager.removeListener(this, eventName);
+      eventManager.requestDropSubscription(eventName, this);
     }
   }
 
@@ -689,8 +689,8 @@ public abstract class HopsTransactionalRequestHandler
         requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName +
                 " already exists. Reusing existing event.");
 
-      eventManager.requestCreateEventSubscription(eventName);
-      eventManager.addListener(this, eventName);
+      eventManager.requestCreateSubscriptionWithListener(eventName, this);
+      // eventManager.addListener(this, eventName);
     }
   }
 

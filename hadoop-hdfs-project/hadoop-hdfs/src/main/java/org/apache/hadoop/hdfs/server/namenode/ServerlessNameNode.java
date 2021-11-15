@@ -2158,7 +2158,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // library is loaded during that call. If we try to create the event manager before that, we will get class
     // not found errors.
     ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
-    ndbEventManager.setConfigurationParameters(deploymentNumber, null, false);
+    ndbEventManager.setConfigurationParameters(deploymentNumber, null, false, namesystem);
 
     // Note that we need to register the namesystem as an event listener with the event manager,
     // but the name system doesn't get loaded until a little later.
@@ -2252,16 +2252,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("Loaded namesystem in " + DurationFormatUtils.formatDurationHMS(loadNamesystemDuration.toMillis()));
     LOG.debug("- - - - - - - - - - - - - - - -");
 
-    // Make sure the event manager has finished setting up before we register an event listener with it.
-    try {
-      ndbEventManager.waitUntilSetupDone();
-    } catch (InterruptedException ex) {
-      LOG.error("Exception encountered while waiting for event manager to finish its setup.");
-      throw ex;
-    }
+//    // Make sure the event manager has finished setting up before we register an event listener with it.
+//    try {
+//      ndbEventManager.waitUntilSetupDone();
+//    } catch (InterruptedException ex) {
+//      LOG.error("Exception encountered while waiting for event manager to finish its setup.");
+//      throw ex;
+//    }
 
-    // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
-    ndbEventManager.addListener(namesystem, HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber);
+//    // Now that the namesystem has been loaded, we register it as an event listener with the event manager.
+//    ndbEventManager.addListener(namesystem, HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber);
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);

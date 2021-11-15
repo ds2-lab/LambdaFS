@@ -7,10 +7,11 @@ import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.ndb.ClusterjConnector;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -80,26 +81,15 @@ public class HopsEventManager implements EventManager {
     private static final String ACK_TABLE_NAME_BASE = "write_acknowledgements";
 
     /**
-     * Classes who want to be notified that an event has occurred, so they can process the event.
-     * This maps the name of the event to the event listeners for that event.
-     */
-    private final HashMap<String, List<HopsEventListener>> listeners = new HashMap<>();
-
-    /**
-     * Mapping from event operation to event columns, so we can print the columns when we receive an event.
-     */
-    private final HashMap<HopsEventOperation, String[]> eventColumnMap = new HashMap<>();
-
-    /**
      * Internal queue used to keep track of requests to create new EventOperations.
      *
      * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
      * to the session that created it. This means that the {@link HopsEventManager} needs to create the subscriptions
      * itself using its own, private {@link HopsSession} instance.
      */
-    private final BlockingQueue<String> createSubscriptionRequestQueue;
+    private final BlockingQueue<Pair<String, HopsEventListener>> createSubscriptionRequestQueue;
 
-    private final BlockingQueue<String> dropSubscriptionRequestQueue;
+    private final BlockingQueue<Pair<String, HopsEventListener>> dropSubscriptionRequestQueue;
 
     /**
      * The columns of the INode NDB table, in the order that they're defined in the schema.
@@ -167,6 +157,17 @@ public class HopsEventManager implements EventManager {
     };
 
     /**
+     * Classes who want to be notified that an event has occurred, so they can process the event.
+     * This maps the name of the event to the event listeners for that event.
+     */
+    private final HashMap<String, List<HopsEventListener>> listenersMap = new HashMap<>();
+
+    /**
+     * Mapping from event operation to event columns, so we can print the columns when we receive an event.
+     */
+    private final HashMap<HopsEventOperation, String[]> eventColumnMap = new HashMap<>();
+
+    /**
      * All registered events are contained in here.
      */
     private final HashMap<String, HopsEvent> eventMap;
@@ -183,11 +184,6 @@ public class HopsEventManager implements EventManager {
     private final HashMap<HopsEventOperation, String> eventOpToNameMapping;
 
     /**
-     * Number of registered HopsEventListener objects per event operation.
-     */
-    private final HashMap<HopsEventOperation, Integer> numListenersMapping;
-
-    /**
      * Name to use for the invalidation event when creating it/checking that it exists during defaultSetup().
      * This is set via the setConfigurationParameters() function.
      */
@@ -200,6 +196,11 @@ public class HopsEventManager implements EventManager {
     private boolean defaultDeleteIfExists;
 
     /**
+     * Used during the default setup. This is the event listener responsible for handling cache invalidations.
+     */
+    private HopsEventListener invalidationListener;
+
+    /**
      * The deployment number of the local serverless name node instance. Set by calling defaultSetup().
      */
     private int deploymentNumber = -1;
@@ -208,7 +209,6 @@ public class HopsEventManager implements EventManager {
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
         this.eventOpToNameMapping = new HashMap<>();
-        this.numListenersMapping = new HashMap<>();
         this.createSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.dropSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
     }
@@ -217,73 +217,83 @@ public class HopsEventManager implements EventManager {
         return this.session;
     }
 
-    // Inherit the javadoc.
-    @Override
-    public synchronized void addListener(HopsEventListener listener, String eventName) {
+    /**
+     * Register an event listener.
+     *
+     * @param listener the event listener to be registered.
+     * @param eventName the name of the event for which we're registering an event listener.
+     */
+    private void addListener(String eventName, HopsEventListener listener) {
         if (listener == null)
-            throw new IllegalArgumentException("Listener cannot be null.");
+            throw new IllegalArgumentException("The event listener cannot be null.");
 
         LOG.debug("Adding Hops event listener for event " + eventName + ".");
 
         List<HopsEventListener> eventListeners;
-        if (this.listeners.containsKey(eventName)) {
-            eventListeners = this.listeners.get(eventName);
+        if (this.listenersMap.containsKey(eventName)) {
+            eventListeners = this.listenersMap.get(eventName);
         } else {
             eventListeners = new ArrayList<HopsEventListener>();
-            this.listeners.put(eventName, eventListeners);
+            this.listenersMap.put(eventName, eventListeners);
         }
 
         eventListeners.add(listener);
-        updateCount(eventName, true);
+        // updateCount(eventName, true);
 
-        LOG.debug("Registered new event listener. Number of listeners: " + listeners.size() + ".");
+        LOG.debug("Registered new event listener. Number of listeners: " + listenersMap.size() + ".");
     }
+
+//    /**
+//     * Update the count of listeners associated with a given event (really, event operation).
+//     * @param eventName The name of the event.
+//     * @param increment Whether we're incrementing or decrementing the count.
+//     */
+//    private synchronized void updateCount(String eventName, boolean increment) {
+//        HopsEventOperation eventOperation = eventOperationMap.get(eventName);
+//
+//        if (eventOperation == null)
+//            throw new IllegalStateException("Cannot update count for event " + eventName +
+//                    ". Adding an even listener before registering the event operation is not permitted. Please " +
+//                    "register the event operation first, then add the event listener afterwards.");
+//
+//        int currentCount = numListenersMapping.getOrDefault(eventOperation, 0);
+//        int newCount;
+//        if (increment)
+//            newCount = currentCount + 1;
+//        else
+//            newCount = currentCount - 1;
+//
+//        assert(newCount >= 0);
+//
+//        if (currentCount == 1)
+//            LOG.debug("There was 1 existing event listener for event operation " + eventName + ". Now there are " +
+//                    newCount + ".");
+//        else
+//            LOG.debug("There were " + currentCount + " listeners for event op " + eventName + ". Now there are " +
+//                    newCount + ".");
+//
+//        numListenersMapping.put(eventOperation, newCount);
+//    }
 
     /**
-     * Update the count of listeners associated with a given event (really, event operation).
-     * @param eventName The name of the event.
-     * @param increment Whether we're incrementing or decrementing the count.
+     * Unregister an event listener.
+     *
+     * @param listener the event listener to be unregistered.
+     * @param eventName the name of the event for which we're unregistering an event listener.
+     *
+     * @throws IllegalArgumentException If we do not have the provided listener registered with the specified event.
      */
-    private synchronized void updateCount(String eventName, boolean increment) {
-        HopsEventOperation eventOperation = eventOperationMap.get(eventName);
-
-        if (eventOperation == null)
-            throw new IllegalStateException("Cannot update count for event " + eventName +
-                    ". Adding an even listener before registering the event operation is not permitted. Please " +
-                    "register the event operation first, then add the event listener afterwards.");
-
-        int currentCount = numListenersMapping.getOrDefault(eventOperation, 0);
-        int newCount;
-        if (increment)
-            newCount = currentCount + 1;
-        else
-            newCount = currentCount - 1;
-
-        assert(newCount >= 0);
-
-        if (currentCount == 1)
-            LOG.debug("There was 1 existing event listener for event operation " + eventName + ". Now there are " +
-                    newCount + ".");
-        else
-            LOG.debug("There were " + currentCount + " listeners for event op " + eventName + ". Now there are " +
-                    newCount + ".");
-
-        numListenersMapping.put(eventOperation, newCount);
-    }
-
-    // Inherit the javadoc.
-    @Override
-    public synchronized void removeListener(HopsEventListener listener, String eventName) {
+    private void removeListener(String eventName, HopsEventListener listener) {
         List<HopsEventListener> eventListeners;
-        if (this.listeners.containsKey(eventName)) {
-            eventListeners = this.listeners.get(eventName);
+        if (this.listenersMap.containsKey(eventName)) {
+            eventListeners = this.listenersMap.get(eventName);
 
             if (!eventListeners.contains(listener))
                 throw new IllegalArgumentException("The provided event listener is not registered with " +
                         eventName + "!");
 
             eventListeners.remove(listener);
-            updateCount(eventName, false);
+            // updateCount(eventName, false);
         } else {
             throw new IllegalArgumentException("We have no event listeners registered for event " + eventName + "!");
         }
@@ -293,13 +303,31 @@ public class HopsEventManager implements EventManager {
     private static final Map<String, String> hashCodeHexStringToEventName = new HashMap<>();
     // private static Lock _mutex = new ReentrantLock();
 
-    // See the inherited JavaDoc for important information about why this function is designed the way it is.
+
     @Override
-    public void requestCreateEventSubscription(String eventName) throws StorageException {
-        LOG.debug("Issuing request to create subscription for event " + eventName + " now...");
+    public void requestCreateSubscriptionWithListener(String eventName, HopsEventListener listener)
+            throws StorageException {
+        LOG.debug("Issuing request to create subscription for event " + eventName + " now.");
+
+        Pair<String, HopsEventListener> createSubscriptionRequest = new ImmutablePair<>(eventName, listener);
 
         try {
-            createSubscriptionRequestQueue.put(eventName);
+            createSubscriptionRequestQueue.put(createSubscriptionRequest);
+        } catch (InterruptedException e) {
+            throw new StorageException("Failed to enqueue request to create subscription for event " +
+                    eventName + " due to interrupted exception:", e);
+        }
+    }
+
+    // See the inherited JavaDoc for important information about why this function is designed the way it is.
+    @Override
+    public void requestCreateSubscription(String eventName) throws StorageException {
+        LOG.debug("Issuing request to create subscription for event " + eventName + " now.");
+
+        Pair<String, HopsEventListener> createSubscriptionRequest = new ImmutablePair<>(eventName, null);
+
+        try {
+            createSubscriptionRequestQueue.put(createSubscriptionRequest);
         } catch (InterruptedException e) {
             throw new StorageException("Failed to enqueue request to create subscription for event " +
                     eventName + " due to interrupted exception:", e);
@@ -355,8 +383,9 @@ public class HopsEventManager implements EventManager {
      * Actually unregister an event operation. This should only be used internally, for the same reasons that the
      * createEventOperation function is only used internally.
      * @param eventName Name associated with the event operation that is being unregistered.
+     * @param eventListener EventListener associated with the event we're removing.
      */
-    private void unregisterEventOperation(String eventName) throws StorageException {
+    private void unregisterEventOperation(String eventName, HopsEventListener eventListener) throws StorageException {
         LOG.debug("Unregistering EventOperation for event " + eventName + " with NDB now...");
 
         // If we aren't tracking an event with the given name, then the argument is invalid.
@@ -364,12 +393,20 @@ public class HopsEventManager implements EventManager {
             throw new IllegalArgumentException("There is no event operation associated with an event called "
                     + eventName + " currently being tracked by the EventManager.");
 
+        // First, unregister the event listener, as we do that no matter what.
+        if (eventListener != null)
+            removeListener(eventName, eventListener);
+
         HopsEventOperation hopsEventOperation = eventOperationMap.get(eventName);
 
-        int currentNumberOfListeners = numListenersMapping.get(hopsEventOperation);
+        List<HopsEventListener> listeners = listenersMap.get(eventName);
+        int currentNumberOfListeners = (listeners == null ? 0 : listeners.size());
         if (currentNumberOfListeners > 0) {
             LOG.debug("There are still " + currentNumberOfListeners + " event listener(s) for event " +
-                    eventName + ". Will not unregister event operation for now.");
+                    eventName + ". Will not drop the subscription. (Only removed the event listener.)");
+            return;
+        } else {
+            LOG.debug("There are no more event listeners associated with the event. Dropping subscription.");
         }
 
         // Make sure to remove the event from the eventMap.
@@ -394,11 +431,11 @@ public class HopsEventManager implements EventManager {
     }
 
     @Override
-    public void requestDropEventSubscription(String eventName) throws StorageException {
+    public void requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException {
         LOG.debug("Issuing request to drop subscription for event " + eventName + " now...");
 
         try {
-            dropSubscriptionRequestQueue.put(eventName);
+            dropSubscriptionRequestQueue.put(new ImmutablePair<>(eventName, eventListener));
         } catch (InterruptedException e) {
             throw new StorageException("Failed to enqueue request to drop subscription for event " +
                     eventName + " due to interrupted exception:", e);
@@ -554,7 +591,9 @@ public class HopsEventManager implements EventManager {
 
             int requestsProcessed = 0;
             while (createSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
-                String eventName = createSubscriptionRequestQueue.poll();
+                Pair<String, HopsEventListener> createSubscriptionRequest = createSubscriptionRequestQueue.poll();
+                String eventName = createSubscriptionRequest.getLeft();
+                HopsEventListener eventListener = createSubscriptionRequest.getRight();
 
                 // If we get null, then just exit.
                 if (eventName == null)
@@ -567,19 +606,24 @@ public class HopsEventManager implements EventManager {
                             eventName + ":", e);
                 }
 
+                if (eventListener != null)
+                    addListener(eventName, eventListener);
+
                 requestsProcessed++;
             }
 
             requestsProcessed = 0;
             while (dropSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
-                String eventName = dropSubscriptionRequestQueue.poll();
+                Pair<String, HopsEventListener> dropSubscriptionRequest = dropSubscriptionRequestQueue.poll();
+                String eventName = dropSubscriptionRequest.getLeft();
+                HopsEventListener eventListener = dropSubscriptionRequest.getRight();
 
                 // If we get null, then just exit.
                 if (eventName == null)
                     break;
 
                 try {
-                    unregisterEventOperation(eventName);
+                    unregisterEventOperation(eventName, eventListener);
                 } catch (StorageException e) {
                     LOG.error("Encountered exception while trying to create event subscription for event " +
                             eventName + ":", e);
@@ -592,17 +636,17 @@ public class HopsEventManager implements EventManager {
 
     @Override
     public void setConfigurationParameters(int deploymentNumber, String defaultEventName,
-                                           boolean defaultDeleteIfExists) {
+                                           boolean defaultDeleteIfExists, HopsEventListener invalidationListener) {
         this.deploymentNumber = deploymentNumber;
         this.defaultEventName = defaultEventName;
         this.defaultDeleteIfExists = defaultDeleteIfExists;
+        this.invalidationListener = invalidationListener;
     }
 
     /**
      * Perform the default setup/initialization of the `hdfs_inodes` table event and event operation.
      */
-    @Override
-    public void defaultSetup() throws StorageException {
+    private void defaultSetup() throws StorageException {
         if (defaultEventName == null)
             defaultEventName = HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber;
 
@@ -638,6 +682,9 @@ public class HopsEventManager implements EventManager {
 
         LOG.debug("Executing event operation for event " + defaultEventName + " now...");
         eventOperation.execute();
+
+        assert(invalidationListener != null);
+        addListener(defaultEventName, invalidationListener);
 
         // Signal that we're done with this. Just add a ton of permits.
         defaultSetupSemaphore.release(Integer.MAX_VALUE - 10);
@@ -718,9 +765,9 @@ public class HopsEventManager implements EventManager {
             return;
         }
 
-        List<HopsEventListener> eventListeners = listeners.get(eventName);
+        List<HopsEventListener> eventListeners = listenersMap.get(eventName);
 
-        LOG.debug("Notifying " + listeners.size() + (listeners.size() == 1 ? " listener " : " listeners ")
+        LOG.debug("Notifying " + listenersMap.size() + (listenersMap.size() == 1 ? " listener " : " listeners ")
             + "of event " + eventName + ".");
         for (HopsEventListener listener : eventListeners)
             listener.eventReceived(eventOperation, eventName);
