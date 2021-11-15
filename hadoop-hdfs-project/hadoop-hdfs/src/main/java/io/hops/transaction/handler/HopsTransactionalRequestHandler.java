@@ -352,12 +352,13 @@ public abstract class HopsTransactionalRequestHandler
     joinOtherDeploymentsAsGuest();
 
     // =============== STEP 2 ===============
-    try {
-      subscribeToAckEvents();
-    } catch (InterruptedException e) {
-      requestHandlerLOG.error("Encountered error while waiting on event manager to create event subscription:", e);
-      return false;
-    }
+//    try {
+//      subscribeToAckEvents();
+//    } catch (InterruptedException e) {
+//      requestHandlerLOG.error("Encountered error while waiting on event manager to create event subscription:", e);
+//      return false;
+//    }
+    requestHandlerLOG.debug("Skipping Step 2 - Subscribe to ACK Events");
 
     // =============== STEP 3 ===============
     issueInitialInvalidations(invalidatedINodes, txStartTime);

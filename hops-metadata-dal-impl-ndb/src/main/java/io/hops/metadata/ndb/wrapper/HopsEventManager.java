@@ -264,7 +264,7 @@ public class HopsEventManager implements EventManager {
      * @param listener the event listener to be registered.
      * @param eventName the name of the event for which we're registering an event listener.
      */
-    private void addListener(String eventName, HopsEventListener listener) {
+    public void addListener(String eventName, HopsEventListener listener) {
         if (listener == null)
             throw new IllegalArgumentException("The event listener cannot be null.");
 
@@ -637,6 +637,7 @@ public class HopsEventManager implements EventManager {
                     eventName + " due to interrupted exception:", e);
         }
 
+        LOG.debug("Creating Semaphore with " + startingPermits + " starting permits.");
         Semaphore eventRegisteredNotifier = new Semaphore(startingPermits);
         eventCreationNotifiers.put(eventRegistrationTask, eventRegisteredNotifier);
 
@@ -781,12 +782,13 @@ public class HopsEventManager implements EventManager {
         notifier.release(1);
 
         if (eventOperation != null) {
-            eventOperation.execute();
-
             // If there's an event listener, we'll add it. Then release the semaphore again.
             if (eventListener != null) {
                 addListener(eventName, eventListener);
+                eventOperation.execute(); // If we have a listener to add, we add it before executing.
                 notifier.release(1);
+            } else {
+                eventOperation.execute(); // No listener, so just execute. No need to decrement again.
             }
         }
     }
@@ -872,18 +874,18 @@ public class HopsEventManager implements EventManager {
                 LOG.debug("Received at least one event!");
                 int numEventsProcessed = processEvents(session);
 
-                if (numEventsProcessed == 0) {
-                    LOG.warn("Session poll indicated that events were present, but none were processed...");
-
-                    // Try sleeping for a bit to see if there are any events when we check again.
-                    try {
-                        Thread.sleep(POLL_TIME_MILLISECONDS);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-
-                    numEventsProcessed = processEvents(session);
-                }
+//                if (numEventsProcessed == 0) {
+//                    LOG.warn("Session poll indicated that events were present, but none were processed...");
+//
+//                    // Try sleeping for a bit to see if there are any events when we check again.
+//                    try {
+//                        Thread.sleep(POLL_TIME_MILLISECONDS);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+//
+//                    numEventsProcessed = processEvents(session);
+//                }
 
                 LOG.debug("Processed " + numEventsProcessed + " event(s).");
             }
@@ -914,6 +916,19 @@ public class HopsEventManager implements EventManager {
         this.invalidationListener = invalidationListener;
 
         this.configurationSet = true;
+    }
+
+    private String getTargetTableName(int deploymentNumber) throws StorageException {
+        switch (deploymentNumber) {
+            case 0:
+                return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME0;
+            case 1:
+                return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME1;
+            case 2:
+                return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME2;
+            default:
+                throw new StorageException("Unsupported deployment number: " + deploymentNumber);
+        }
     }
 
     /**
@@ -959,6 +974,25 @@ public class HopsEventManager implements EventManager {
 
         LOG.debug("Executing event operation for event " + defaultEventName + " now...");
         eventOperation.execute();
+
+        for (int i = 0; i < 3; i++) {
+            String targetTableName = getTargetTableName(i);
+            String eventName = HopsEvent.ACK_EVENT_NAME_BASE + i;
+            registerEvent(eventName, targetTableName, ACK_EVENT_COLUMNS, false);
+            HopsEventOperation ackOp = createAndReturnEventOperation(eventName);
+            for (String columnName : ACK_EVENT_COLUMNS) {
+                boolean success = ackOp.addRecordAttribute(columnName);
+
+                if (!success)
+                    LOG.error("Failed to create record attribute(s) for column " + columnName + ".");
+            }
+
+            addListener(eventName, (eventOperation1, eventName1) -> {
+                LOG.debug("=-=-= RECEIVED ACK EVENT =-=-=");
+                LOG.debug("EVENT NAME: " + eventName1);
+                LOG.debug("EVENT TYPE: " + eventOperation1.getEventType());
+            });
+        }
 
         // Signal that we're done with this. Just add a ton of permits.
         defaultSetupSemaphore.release(Integer.MAX_VALUE - 10);
