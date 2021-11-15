@@ -303,6 +303,12 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <version>3.2.0.3-SNAPSHOT</version>
     </dependency>
     <dependency>
+      <groupId>io.hops.metadata</groupId>
+      <artifactId>hops-metadata-dal-impl-ndb</artifactId>
+      <scope>compile</scope>
+      <version>3.2.0.3-SNAPSHOT</version>
+    </dependency>
+    <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-minikdc</artifactId>
       <scope>test</scope>
@@ -377,6 +383,27 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.2.4</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <artifactSet>
+                <includes>
+                  <include>io.hops.metadata.hops-metadata-dal</include>
+                  <include>io.hops.metadata.hops-metadata-dal-impl-ndb</include>
+                </includes>
+              </artifactSet>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
