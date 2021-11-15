@@ -42,6 +42,7 @@ import org.apache.zookeeper.Watcher;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 public abstract class HopsTransactionalRequestHandler
@@ -340,8 +341,7 @@ public abstract class HopsTransactionalRequestHandler
       // Pass the set of additional deployments we needed to join, as we also need ACKs from those deployments.
       totalNumberOfACKsRequired = addAckTableRecords(txStartTime);
     } catch (Exception ex) {
-      requestHandlerLOG.error("Exception encountered on Step 3 of consistency protocol (adding ACKs to table).");
-      ex.printStackTrace();
+      requestHandlerLOG.error("Exception encountered on Step 3 of consistency protocol (adding ACKs to table):", ex);
       return false;
     }
 
@@ -352,7 +352,12 @@ public abstract class HopsTransactionalRequestHandler
     joinOtherDeploymentsAsGuest();
 
     // =============== STEP 2 ===============
-    subscribeToAckEvents();
+    try {
+      subscribeToAckEvents();
+    } catch (InterruptedException e) {
+      requestHandlerLOG.error("Encountered error while waiting on event manager to create event subscription:", e);
+      return false;
+    }
 
     // =============== STEP 3 ===============
     issueInitialInvalidations(invalidatedINodes, txStartTime);
@@ -557,7 +562,9 @@ public abstract class HopsTransactionalRequestHandler
     for (int deploymentNumber : involvedDeployments) {
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
       EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();
-      // eventManager.removeListener(this, eventName);
+
+      // This returns a semaphore that we could use to wait, but we don't really care when the operation gets dropped.
+      // We just don't care to receive events anymore. We can continue just fine if we receive them for a bit.
       eventManager.requestDropSubscription(eventName, this);
     }
   }
@@ -673,8 +680,13 @@ public abstract class HopsTransactionalRequestHandler
    *    The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly.
    */
   private void subscribeToAckEvents()
-          throws StorageException {
+          throws StorageException, InterruptedException {
     requestHandlerLOG.debug("=-----=-----= Step 2 - Subscribing to ACK Events =-----=-----=");
+
+    // Each time we request that the event manager create an event subscription for us, it returns a semaphore
+    // we can use to block until the event operation is created. We want to do this here, as we do not want
+    // to continue until we know we'll receive the event notifications.
+    List<Semaphore> semaphores = new ArrayList<Semaphore>();
 
     for (int deploymentNumber : involvedDeployments) {
       String targetTableName = getTargetTableName(deploymentNumber);
@@ -689,8 +701,12 @@ public abstract class HopsTransactionalRequestHandler
         requestHandlerLOG.debug("Event " + eventName + " on table " + targetTableName +
                 " already exists. Reusing existing event.");
 
-      eventManager.requestCreateSubscriptionWithListener(eventName, this);
-      // eventManager.addListener(this, eventName);
+      Semaphore creationNotifier = eventManager.requestCreateSubscriptionWithListener(eventName, this);
+      semaphores.add(creationNotifier);
+    }
+
+    for (Semaphore creationNotifier : semaphores) {
+      creationNotifier.acquire();
     }
   }
 

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -87,9 +88,23 @@ public class HopsEventManager implements EventManager {
      * to the session that created it. This means that the {@link HopsEventManager} needs to create the subscriptions
      * itself using its own, private {@link HopsSession} instance.
      */
-    private final BlockingQueue<Pair<String, HopsEventListener>> createSubscriptionRequestQueue;
+    private final BlockingQueue<SubscriptionTask> createSubscriptionRequestQueue;
 
-    private final BlockingQueue<Pair<String, HopsEventListener>> dropSubscriptionRequestQueue;
+    /**
+     * When somebody issues us a request to create an event subscription, we return a semaphore that we'll
+     * decrement when we create the operation for them. So they can block to make sure the subscription gets created
+     * before continuing, if desired.
+     */
+    private final ConcurrentHashMap<SubscriptionTask, Semaphore> creationNotifiers;
+
+    private final BlockingQueue<SubscriptionTask> dropSubscriptionRequestQueue;
+
+    /**
+     * When somebody issues us a request to drop an event subscription, we return a semaphore that we'll
+     * decrement when we drop the operation for them. So they can block to make sure the subscription gets dropped
+     * before continuing, if desired.
+     */
+    private final ConcurrentHashMap<SubscriptionTask, Semaphore> droppedNotifiers;
 
     /**
      * The columns of the INode NDB table, in the order that they're defined in the schema.
@@ -210,12 +225,14 @@ public class HopsEventManager implements EventManager {
      */
     private int deploymentNumber = -1;
 
-    public HopsEventManager() throws StorageException {
+    public HopsEventManager() {
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
         this.eventOpToNameMapping = new HashMap<>();
         this.createSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.dropSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
+        this.creationNotifiers = new ConcurrentHashMap<>();
+        this.droppedNotifiers = new ConcurrentHashMap<>();
     }
 
     private HopsSession obtainSession() throws StorageException {
@@ -310,11 +327,12 @@ public class HopsEventManager implements EventManager {
 
 
     @Override
-    public void requestCreateSubscriptionWithListener(String eventName, HopsEventListener listener)
+    public Semaphore requestCreateSubscriptionWithListener(String eventName, HopsEventListener listener)
             throws StorageException {
         LOG.debug("Issuing request to create subscription for event " + eventName + " now.");
 
-        Pair<String, HopsEventListener> createSubscriptionRequest = new ImmutablePair<>(eventName, listener);
+        SubscriptionTask createSubscriptionRequest = new SubscriptionTask(eventName, listener,
+                SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
 
         try {
             createSubscriptionRequestQueue.put(createSubscriptionRequest);
@@ -322,14 +340,20 @@ public class HopsEventManager implements EventManager {
             throw new StorageException("Failed to enqueue request to create subscription for event " +
                     eventName + " due to interrupted exception:", e);
         }
+
+        Semaphore creationNotifier = new Semaphore(0);
+        creationNotifiers.put(createSubscriptionRequest, creationNotifier);
+
+        return creationNotifier;
     }
 
     // See the inherited JavaDoc for important information about why this function is designed the way it is.
     @Override
-    public void requestCreateSubscription(String eventName) throws StorageException {
+    public Semaphore requestCreateSubscription(String eventName) throws StorageException {
         LOG.debug("Issuing request to create subscription for event " + eventName + " now.");
 
-        Pair<String, HopsEventListener> createSubscriptionRequest = new ImmutablePair<>(eventName, null);
+        SubscriptionTask createSubscriptionRequest = new SubscriptionTask(eventName, null,
+                SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
 
         try {
             createSubscriptionRequestQueue.put(createSubscriptionRequest);
@@ -337,6 +361,11 @@ public class HopsEventManager implements EventManager {
             throw new StorageException("Failed to enqueue request to create subscription for event " +
                     eventName + " due to interrupted exception:", e);
         }
+
+        Semaphore creationNotifier = new Semaphore(0);
+        creationNotifiers.put(createSubscriptionRequest, creationNotifier);
+
+        return creationNotifier;
     }
 
     /**
@@ -436,15 +465,23 @@ public class HopsEventManager implements EventManager {
     }
 
     @Override
-    public void requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException {
+    public Semaphore requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException {
         LOG.debug("Issuing request to drop subscription for event " + eventName + " now...");
 
+        SubscriptionTask dropRequest = new SubscriptionTask(eventName, eventListener,
+                SubscriptionTask.SubscriptionOperation.DROP_SUBSCRIPTION);
+
         try {
-            dropSubscriptionRequestQueue.put(new ImmutablePair<>(eventName, eventListener));
+            dropSubscriptionRequestQueue.put(dropRequest);
         } catch (InterruptedException e) {
             throw new StorageException("Failed to enqueue request to drop subscription for event " +
                     eventName + " due to interrupted exception:", e);
         }
+
+        Semaphore dropNotifier = new Semaphore(0);
+        droppedNotifiers.put(dropRequest, dropNotifier);
+
+        return dropNotifier;
     }
 
     @Override
@@ -547,6 +584,86 @@ public class HopsEventManager implements EventManager {
         defaultSetupSemaphore.acquire();
     }
 
+    /**
+     * Process any requests we've received to create event subscriptions.
+     */
+    private void processCreateSubscriptionRequests() {
+        int requestsProcessed = 0;
+        while (createSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
+            SubscriptionTask createSubscriptionRequest = createSubscriptionRequestQueue.poll();
+            String eventName = createSubscriptionRequest.getEventName();
+            HopsEventListener eventListener = createSubscriptionRequest.getEventListener();
+
+            assert(createSubscriptionRequest.getSubscriptionOperation() ==
+                    SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
+
+            // If we get null, then just exit.
+            if (eventName == null)
+                break;
+
+            HopsEventOperation eventOperation = null;
+            try {
+                eventOperation = createAndReturnEventOperation(eventName);
+            } catch (StorageException e) {
+                LOG.error("Encountered exception while trying to create event subscription for event " +
+                        eventName + ":", e);
+            }
+
+            if (eventOperation != null) {
+                eventOperation.execute();
+
+                if (eventListener != null)
+                    addListener(eventName, eventListener);
+            }
+
+            Semaphore creationNotifier = creationNotifiers.get(createSubscriptionRequest);
+
+            if (creationNotifier == null)
+                throw new IllegalStateException("We do not have an subscription creation notifier for event " +
+                        eventName + "!");
+
+            creationNotifier.release(1);
+
+            requestsProcessed++;
+        }
+    }
+
+    /**
+     * Process any requests we've received to drop event subscriptions.
+     */
+    public void processDropSubscriptionRequests() {
+        int requestsProcessed = 0;
+        while (dropSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
+            SubscriptionTask dropSubscriptionRequest = dropSubscriptionRequestQueue.poll();
+            String eventName = dropSubscriptionRequest.getEventName();
+            HopsEventListener eventListener = dropSubscriptionRequest.getEventListener();
+
+            assert(dropSubscriptionRequest.getSubscriptionOperation() ==
+                    SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
+
+            // If we get null, then just exit.
+            if (eventName == null)
+                break;
+
+            try {
+                unregisterEventOperation(eventName, eventListener);
+            } catch (StorageException e) {
+                LOG.error("Encountered exception while trying to create event subscription for event " +
+                        eventName + ":", e);
+            }
+
+            requestsProcessed++;
+
+            Semaphore droppedNotifier = creationNotifiers.get(dropSubscriptionRequest);
+
+            if (droppedNotifier == null)
+                throw new IllegalStateException("We do not have an subscription dropped notifier for event " +
+                        eventName + "!");
+
+            droppedNotifier.release(1);
+        }
+    }
+
     @Override
     public void run() {
         LOG.debug("The EventManager has started running.");
@@ -594,53 +711,8 @@ public class HopsEventManager implements EventManager {
                 LOG.debug("Processed " + numEventsProcessed + " event(s).");
             }
 
-            int requestsProcessed = 0;
-            while (createSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
-                Pair<String, HopsEventListener> createSubscriptionRequest = createSubscriptionRequestQueue.poll();
-                String eventName = createSubscriptionRequest.getLeft();
-                HopsEventListener eventListener = createSubscriptionRequest.getRight();
-
-                // If we get null, then just exit.
-                if (eventName == null)
-                    break;
-
-                HopsEventOperation eventOperation = null;
-                try {
-                    eventOperation = createAndReturnEventOperation(eventName);
-                } catch (StorageException e) {
-                    LOG.error("Encountered exception while trying to create event subscription for event " +
-                            eventName + ":", e);
-                }
-
-                if (eventOperation != null) {
-                    eventOperation.execute();
-
-                    if (eventListener != null)
-                        addListener(eventName, eventListener);
-                }
-
-                requestsProcessed++;
-            }
-
-            requestsProcessed = 0;
-            while (dropSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
-                Pair<String, HopsEventListener> dropSubscriptionRequest = dropSubscriptionRequestQueue.poll();
-                String eventName = dropSubscriptionRequest.getLeft();
-                HopsEventListener eventListener = dropSubscriptionRequest.getRight();
-
-                // If we get null, then just exit.
-                if (eventName == null)
-                    break;
-
-                try {
-                    unregisterEventOperation(eventName, eventListener);
-                } catch (StorageException e) {
-                    LOG.error("Encountered exception while trying to create event subscription for event " +
-                            eventName + ":", e);
-                }
-
-                requestsProcessed++;
-            }
+            processCreateSubscriptionRequests();    // Process requests to create subscriptions.
+            processDropSubscriptionRequests();      // Process requests to drop subscriptions.
         }
     }
 

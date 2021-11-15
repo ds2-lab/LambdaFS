@@ -2,6 +2,8 @@ package io.hops.events;
 
 import io.hops.exception.StorageException;
 
+import java.util.concurrent.Semaphore;
+
 /**
  * Generic interface defining the API of the EventManager.
  *
@@ -82,16 +84,22 @@ public interface EventManager extends Runnable {
      *            should be created with the 'requestCreateSubscriptionWithListener()' function.
      *
      * @param eventName The name of the Event for which we're creating an EventOperation.
+     *
+     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
+     * this to block until we create the subscription, if desired.
      */
-    public void requestCreateSubscription(String eventName) throws StorageException;
+    public Semaphore requestCreateSubscription(String eventName) throws StorageException;
 
     /**
      * Issue a request to create an event subscription for the specified event. In addition, an event listener
      * is registered with the given event.
      * @param eventName The name of the Event for which we're creating an EventOperation.
      * @param eventListener the event listener to be registered.
+     *
+     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
+     * this to block until we create the subscription, if desired.
      */
-    public void requestCreateSubscriptionWithListener(String eventName, HopsEventListener eventListener)
+    public Semaphore requestCreateSubscriptionWithListener(String eventName, HopsEventListener eventListener)
             throws StorageException;
 
 //    /**
@@ -128,8 +136,11 @@ public interface EventManager extends Runnable {
      *
      * @param eventName The unique identifier of the event whose EventOperation we wish to unregister.
      * @param eventListener the event listener to be registered.
+     *
+     * @return A semaphore with 0 permits. We'll add a permit to it when we drop the subscription. Clients can use
+     * this to block until we drop the subscription, if desired.
      */
-    public void requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException;
+    public Semaphore requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException;
 
 //    /**
 //     * This should be called once it is known that there are events to be processed.
