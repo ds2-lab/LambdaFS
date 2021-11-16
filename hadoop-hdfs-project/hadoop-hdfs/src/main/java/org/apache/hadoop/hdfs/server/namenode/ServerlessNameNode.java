@@ -22,7 +22,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.hops.DalDriver;
 import io.hops.events.EventManager;
-import io.hops.events.HopsEvent;
 import io.hops.exception.StorageException;
 import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
@@ -220,34 +219,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * The units of this variable are milliseconds.
    */
   private long heartBeatInterval;
-
-//  /**
-//   * Indicates whether this NN is currently acting as a transaction leader.
-//   */
-//  private AtomicBoolean actingAsTxLeader = new AtomicBoolean(false);
-//
-//  /**
-//   * The time at which the TX that we're leading began. (This is specifically when the consistency protocol began.)
-//   *
-//   * TODO: Should we use consistency protocol start time as the start time? Or something else?
-//   */
-//  private AtomicLong leaderTxStartTime = new AtomicLong(-1);
-//
-//  /**
-//   * Indicates that there are pending write acknowledgements that we need to ACK once we've completed
-//   * our own write operation. This is only used when we're serving as a transaction leader.
-//   */
-//  private AtomicBoolean pendingAcksFlag = new AtomicBoolean(false);
-//
-//  /**
-//   * We use this to keep track of INodes that were invalidated while we were acting as the leader of a transaction.
-//   */
-//  // private ConcurrentLinkedQueue<Long> nodeIdsInvalidatedDuringTx = new ConcurrentLinkedQueue<>();
-//
-//  /**
-//   * We use this to keep track of INodes that were invalidated while we were acting as the leader of a transaction.
-//   */
-//  private final ConcurrentHashSet<Long> nodeIdsInvalidatedDuringTx = new ConcurrentHashSet<>();
 
   /**
    * Worker queue for the worker thread. This is accessed both by this class and by NameNodeTCPClient objects.
@@ -464,6 +435,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private int workerThreadTimeoutMilliseconds;
 
   /**
+   * How long we should wait for ACKs during a transaction in which we're serving as the Leader.
+   *
+   * At some point, we need to stop waiting so reads/writes aren't blocked indefinitely.
+   *
+   * Units: milliseconds.
+   */
+  private int txAckTimeout;
+
+  /**
    * Determines if the given request (identified by its request ID) has already been received and processed by the NN.
    *
    * @param requestId The ID of the request.
@@ -572,6 +552,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   public void enqueueFileSystemTask(FileSystemTask<Serializable> task) throws InterruptedException {
     this.nameNodeWorkQueue.put(task);
+  }
+
+  public int getTxAckTimeout() {
+    return txAckTimeout;
   }
 
   /**
@@ -900,10 +884,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
 //    LOG.debug("Retrieved " + storageReports.size() + " storage report instances from intermediate storage...");
 
-    // TODO: This is a weird hack. For some reason, no StorageReports are being returned here, even though
-    //       when I query the DB in an actual MySQL terminal session, I get StorageReports. I want to see if there
-    //       is a race condition where ClusterJ just isn't seeing it. So I'm not going to update the timestamp unless
-    //       we actually retrieve a storage report.
+    // Sometimes there is a "race" where the DN wrote the storage report per its heartbeat interval, but we don't
+    // see it yet. Not sure why it happens. But we don't update the timestamp unless we actually read a storage report.
+    // That way, we'll just get the report the next time we query for reports.
     if (storageReports.size() > 0)
       // Update the entry for this DN, as we just retrieved its Storage Reports.
       lastStorageReportGroupIds.put(datanodeUuid, now);
@@ -2155,6 +2138,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("Started the NameNode worker thread.");
 
     functionUriBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+
+    this.txAckTimeout =
+            conf.getInt(SERVERLESS_TRANSACTION_ACK_TIMEOUT, SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT);
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
             conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));

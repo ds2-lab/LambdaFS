@@ -292,13 +292,6 @@ public abstract class HopsTransactionalRequestHandler
       throw new IllegalStateException(
               "Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
 
-    // TODO: Implement subtree protocol. Required modifications for basic version involve
-    //       having the Leader NN join the ZK groups of whatever deployments it is modifying
-    //       and subscribing to ACK events on the tables for each of the other deployments.
-    //       It's basically just the "guest NN optimization" (where NN joins single other deployment
-    //       to help the other deployment serve reads), except here the NN joins possibly many other deployments.
-    //       For now, subtree operations will produce errors/fail.
-
     // Keep track of all deployments involved in this transaction. Our own deployment will always be involved (during
     // write operations, at least). Other deployments may be involved if we're modifying INodes from them. We may
     // modify nodes from other deployments during subtree operations and when creating a new directory.
@@ -499,13 +492,22 @@ public abstract class HopsTransactionalRequestHandler
     for (int deploymentNumber : involvedDeployments)
       checkAndProcessMembershipChanges(deploymentNumber);
 
+    requestHandlerLOG.debug("Waiting for the remaining " + waitingForAcks.size() +
+            " ACK(s) now. Will timeout after " + serverlessNameNodeInstance.getTxAckTimeout() + " milliseconds.");
+
     // Wait until we're done. If the latch is already at zero, then this will not block.
+    boolean success;
     try {
-      countDownLatch.await(15, TimeUnit.SECONDS);
+      success = countDownLatch.await(serverlessNameNodeInstance.getTxAckTimeout(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException ex) {
-      throw new IOException("Timed out while waiting for ACKs from other NameNodes. Waiting on a total of " +
+      throw new IOException("Interrupted waiting for ACKs from other NameNodes. Waiting on a total of " +
               waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
     }
+
+    if (!success)
+      throw new IOException("Timed out while waiting for ACKs from other NameNodes. Waiting on a total of " +
+              waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
+
     requestHandlerLOG.debug("We have received all required ACKs for write operation " + operationId + ".");
   }
 

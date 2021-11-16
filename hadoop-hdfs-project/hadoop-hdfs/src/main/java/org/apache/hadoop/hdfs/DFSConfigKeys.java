@@ -148,6 +148,16 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
           "10.241.64.14:2181"   // HopsFS Development VM.
   };
 
+  /**
+   * How long the Leader NN should wait for ACKs before aborting the transaction. As of right now, the
+   * Leader NN needs to abort after a little while, or all reads and writes on data modified by the transaction
+   * will be blocked (since the transaction locks the rows in intermediate storage).
+   *
+   * This is in milliseconds.
+   */
+  public static final String SERVERLESS_TRANSACTION_ACK_TIMEOUT = "serverless.tx.ack.timeout";
+  public static final int SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT = 15000;
+
   // END OF SERVERLESS
 
   //db storage
