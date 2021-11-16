@@ -594,23 +594,22 @@ public abstract class HopsTransactionalRequestHandler
       return;
     }
 
-    // First, verify that this event pertains to our write operation. If it doesn't, we just return.
-    long writeOpId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID);
-    long nameNodeId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.NAME_NODE_ID);
-    int mappedDeployment = nameNodeIdToDeploymentNumberMapping.get(nameNodeId);
-
-    requestHandlerLOG.debug("Received event: '" + eventName + "'");
-    requestHandlerLOG.debug("Write Operation ID: " + writeOpId + ", Recipient ID: " + nameNodeId +
-            ", Deployment Number: " + mappedDeployment);
-
-    if (writeOpId != operationId && nameNodeId != serverlessNameNodeInstance.getId())
-      return;
-
     String eventType = eventData.getEventType();
     if (eventType.equals(HopsEventType.INSERT)) // We don't care about INSERT events.
       return;
 
+    // First, verify that this event pertains to our write operation. If it doesn't, we just return.
+    long writeOpId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID);
+    long nameNodeId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.NAME_NODE_ID);
     boolean acknowledged = eventData.getBooleanPostValue(TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED);
+    int mappedDeployment = nameNodeIdToDeploymentNumberMapping.get(nameNodeId);
+
+    requestHandlerLOG.debug("Received event: '" + eventName + "'");
+    requestHandlerLOG.debug("Write Operation ID: " + writeOpId + ", Recipient ID: " + nameNodeId +
+            ", Deployment Number: " + mappedDeployment + ", Acknowledged: " + acknowledged);
+
+    if (writeOpId != operationId) // If it is for a different write operation, then we don't care about it.
+      return;
 
     if (acknowledged) {
       requestHandlerLOG.debug("Received ACK from NameNode " + nameNodeId + " (deployment = " +
