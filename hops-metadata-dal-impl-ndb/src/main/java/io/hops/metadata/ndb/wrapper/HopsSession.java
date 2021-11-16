@@ -192,7 +192,7 @@ public class HopsSession {
    * @return Object representing an event operation, NULL on failure
    */
   public HopsEventOperation createEventOperation(String eventName) throws StorageException {
-    LOG.debug("Attempting to create event operation for event " + eventName + " now...");
+    LOG.debug("Creating subscription on event '" + eventName + "' now...");
 
     EventOperation eventOperation;
     try {

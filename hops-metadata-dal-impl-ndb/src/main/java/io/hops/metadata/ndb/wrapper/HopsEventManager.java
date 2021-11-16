@@ -268,7 +268,7 @@ public class HopsEventManager implements EventManager {
         if (listener == null)
             throw new IllegalArgumentException("The event listener cannot be null.");
 
-        LOG.debug("Adding Hops event listener for event " + eventName + ".");
+        LOG.debug("Adding event listener for event '" + eventName + "'.");
 
         List<HopsEventListener> eventListeners;
         if (this.listenersMap.containsKey(eventName)) {
@@ -400,7 +400,7 @@ public class HopsEventManager implements EventManager {
             throw HopsExceptionHelper.wrap(e);
         }
 
-        LOG.debug("Successfully created EventOperation for event " + eventName + ": " +
+        LOG.debug("Successfully created subscription on event '" + eventName + "': " +
                 Integer.toHexString(hopsEventOperation.hashCode()));
 
         eventOperationMap.put(eventName, hopsEventOperation);

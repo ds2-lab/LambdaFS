@@ -500,6 +500,7 @@ public abstract class HopsTransactionalRequestHandler
 
     requestHandlerLOG.debug("Waiting for the remaining " + waitingForAcks.size() +
             " ACK(s) now. Will timeout after " + serverlessNameNodeInstance.getTxAckTimeout() + " milliseconds.");
+    requestHandlerLOG.debug("Count value of CountDownLatch: " + countDownLatch.getCount());
 
     // Wait until we're done. If the latch is already at zero, then this will not block.
     boolean success;
@@ -514,6 +515,7 @@ public abstract class HopsTransactionalRequestHandler
       throw new IOException("Timed out while waiting for ACKs from other NameNodes. Waiting on a total of " +
               waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
 
+    assert(waitingForAcks.isEmpty());
     requestHandlerLOG.debug("We have received all required ACKs for write operation " + operationId + ".");
   }
 
