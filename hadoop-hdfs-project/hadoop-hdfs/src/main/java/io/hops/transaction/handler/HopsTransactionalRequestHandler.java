@@ -589,7 +589,7 @@ public abstract class HopsTransactionalRequestHandler
 
   @Override
   public void eventReceived(HopsEventOperation eventData, String eventName) {
-    if (!eventName.equals(HopsEvent.ACK_EVENT_NAME_BASE))
+    if (!eventName.contains(HopsEvent.ACK_EVENT_NAME_BASE))
       requestHandlerLOG.debug("HopsTransactionalRequestHandler received unexpected event " + eventName + "!");
 
     // First, verify that this event pertains to our write operation. If it doesn't, we just return.
@@ -715,13 +715,14 @@ public abstract class HopsTransactionalRequestHandler
       semaphores.add(creationNotifier);
     }
 
+    // Sleep for a moment...
+    Thread.sleep(100);
+
     requestHandlerLOG.debug("Acquiring " + semaphores.size() + " semaphore(s) now.");
 
     for (Semaphore creationNotifier : semaphores) {
       creationNotifier.acquire();
     }
-
-    Thread.sleep(250);
 
     requestHandlerLOG.debug("Successfully acquired " + semaphores.size() + " semaphore(s).");
   }

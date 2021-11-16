@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -705,7 +706,7 @@ public class HopsEventManager implements EventManager {
 
             SubscriptionTask subscriptionTask = eventRegistrationTask.getSubscriptionTask();
             if (subscriptionTask != null)
-                processCreateSubscriptionTask(subscriptionTask, eventRegisteredNotifier);
+                processCreateSubscriptionTask(subscriptionTask, eventRegistrationTask, eventRegisteredNotifier);
         }
     }
 
@@ -736,26 +737,17 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
-     * Process any requests we've received to create event subscriptions.
-     */
-//    private void processCreateSubscriptionRequests() {
-//        int requestsProcessed = 0;
-//        while (createSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
-//            SubscriptionTask createSubscriptionRequest = createSubscriptionRequestQueue.poll();
-//            processCreateSubscriptionTask(createSubscriptionRequest);
-//            requestsProcessed++;
-//        }
-//    }
-
-    /**
      * Process a SubscriptionTask to create a subscription for an existing event.
      *
      * IMPORTANT: This calls release(1) on the Semaphore associated with the SubscriptionTask instance.
      *
      * @param createSubscriptionRequest The task that we're processing.
+     * @param eventRegistrationTask The associated EventTask. We need this to get the event columns.
      * @param notifier The Semaphore for this subscription. It's the same Semaphore used for the event itself.
      */
-    private void processCreateSubscriptionTask(SubscriptionTask createSubscriptionRequest, Semaphore notifier) {
+    private void processCreateSubscriptionTask(SubscriptionTask createSubscriptionRequest,
+                                               EventTask eventRegistrationTask,
+                                               Semaphore notifier) {
         String eventName = createSubscriptionRequest.getEventName();
         LOG.debug("Processing subscription creation request for event " + eventName);
         HopsEventListener eventListener = createSubscriptionRequest.getEventListener();
@@ -775,13 +767,29 @@ public class HopsEventManager implements EventManager {
                     eventName + ":", e);
         }
 
+        // Make sure we have a notifier.
         if (notifier == null)
             throw new IllegalStateException("We do not have an subscription creation notifier for event " +
                     eventName + "!");
 
+        // Make sure we were successful in creating this event operation.
+        if (eventOperation == null)
+            throw new IllegalStateException("Failed to register event subscription with NDB for event '" +
+                    eventName + "'");
+
         notifier.release(1);
 
         if (eventOperation != null) {
+            // Add record attributes for each of the specified columns. We use these to get MySQL table column values.
+            String[] eventColumns = eventRegistrationTask.getEventColumns();
+            for (String columnName : eventColumns) {
+                boolean success = eventOperation.addRecordAttribute(columnName);
+
+                if (!success)
+                    LOG.error("Failed to create record attribute(s) for column " + columnName + ", event name = '" +
+                            eventName + "'");
+            }
+
             // If there's an event listener, we'll add it. Then release the semaphore again.
             if (eventListener != null) {
                 addListener(eventName, eventListener);
