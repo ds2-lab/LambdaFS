@@ -255,7 +255,7 @@ public class HopsEventManager implements EventManager {
         this.eventRemovalNotifiers = new ConcurrentHashMap<>();
     }
 
-    private HopsSession obtainSession() throws StorageException {
+    private HopsSession obtainSession() {
         return this.session;
     }
 
@@ -407,9 +407,9 @@ public class HopsEventManager implements EventManager {
         eventOperationMap.put(eventName, hopsEventOperation);
         eventOpToNameMapping.put(hopsEventOperation, eventName);
 
-        if (eventName.equals(HopsEvent.ACK_EVENT_NAME_BASE))
+        if (eventName.contains(HopsEvent.ACK_EVENT_NAME_BASE))
             eventColumnMap.put(hopsEventOperation, ACK_EVENT_COLUMNS);
-        else if (eventName.equals(HopsEvent.INV_EVENT_NAME_BASE))
+        else if (eventName.contains(HopsEvent.INV_EVENT_NAME_BASE))
             eventColumnMap.put(hopsEventOperation, INV_TABLE_EVENT_COLUMNS);
 
         allHashCodeHexStringsEverCreated.add(Integer.toHexString(hopsEventOperation.hashCode()));
@@ -860,14 +860,6 @@ public class HopsEventManager implements EventManager {
         LOG.debug("Number of events created: " + eventMap.size());
         LOG.debug("Number of event operations created: " + eventOperationMap.size());
 
-        HopsSession session = null;
-        try {
-            session = obtainSession();
-        } catch (StorageException ex) {
-            LOG.error("Failed to acquire a HopsSession instance:", ex);
-            throw new IllegalArgumentException("Failed to obtain a HopsSession instance; cannot poll for events.");
-        }
-
         // Loop forever, listening for events.
         while (true) {
             // As far as I can tell, this is NOT busy-waiting. This ultimately calls select(), or whatever
@@ -882,21 +874,7 @@ public class HopsEventManager implements EventManager {
             // Just continue if we didn't find any events.
             if (events) {
                 LOG.debug("Received at least one event!");
-                int numEventsProcessed = processEvents(session);
-
-//                if (numEventsProcessed == 0) {
-//                    LOG.warn("Session poll indicated that events were present, but none were processed...");
-//
-//                    // Try sleeping for a bit to see if there are any events when we check again.
-//                    try {
-//                        Thread.sleep(POLL_TIME_MILLISECONDS);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//
-//                    numEventsProcessed = processEvents(session);
-//                }
-
+                int numEventsProcessed = processEvents();
                 LOG.debug("Processed " + numEventsProcessed + " event(s).");
             }
 
@@ -1012,7 +990,7 @@ public class HopsEventManager implements EventManager {
      * Called after `session.pollForEvents()` returns true.
      * @return the number of events that were processed.
      */
-    private int processEvents(HopsSession session) {
+    private int processEvents() {
         HopsEventOperation nextEventOp = session.nextEvent(null);
         int numEventsProcessed = 0;
 
@@ -1084,9 +1062,7 @@ public class HopsEventManager implements EventManager {
         }
 
         List<HopsEventListener> eventListeners = listenersMap.get(eventName);
-
-        LOG.debug("Notifying " + listenersMap.size() + (listenersMap.size() == 1 ? " listener " : " listeners ")
-            + "of event " + eventName + ".");
+        LOG.debug("Notifying " + eventListeners.size() + (eventListeners.size() == 1 ? " listener " : " listeners ") + "of event " + eventName + ".");
         for (HopsEventListener listener : eventListeners)
             listener.eventReceived(eventOperation, eventName);
     }

@@ -591,6 +591,8 @@ public abstract class HopsTransactionalRequestHandler
   public void eventReceived(HopsEventOperation eventData, String eventName) {
     if (!eventName.contains(HopsEvent.ACK_EVENT_NAME_BASE))
       requestHandlerLOG.debug("HopsTransactionalRequestHandler received unexpected event " + eventName + "!");
+    else
+      requestHandlerLOG.debug("Received event: " + eventName);
 
     // First, verify that this event pertains to our write operation. If it doesn't, we just return.
     long writeOpId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID);
