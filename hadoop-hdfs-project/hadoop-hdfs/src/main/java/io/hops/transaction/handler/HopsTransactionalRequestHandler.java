@@ -350,6 +350,15 @@ public abstract class HopsTransactionalRequestHandler
       subscribeToAckEvents();
     } catch (InterruptedException e) {
       requestHandlerLOG.error("Encountered error while waiting on event manager to create event subscription:", e);
+
+      // Try to remove the ACK entries that we added earlier before we abort the protocol.
+      try {
+        requestHandlerLOG.debug("Removing the write ACKs we added earlier before terminating the transaction.");
+        deleteWriteAcknowledgements();
+      } catch (StorageException ex) {
+        requestHandlerLOG.error("Encountered storage exception when removing ACK events we added earlier: ", ex);
+      }
+
       return false;
     }
 //    requestHandlerLOG.debug("Skipping Step 2 - Subscribe to ACK Events");
@@ -372,6 +381,17 @@ public abstract class HopsTransactionalRequestHandler
       requestHandlerLOG.error("We're still waiting on " + waitingForAcks.size() +
               " ACKs from the following NameNodes: " + waitingForAcks);
       ex.printStackTrace();
+
+      // Clean things up before aborting.
+      // TODO: Move this to after we rollback so other reads/writes can proceed immediately without
+      //       having to wait for us to clean-up.
+      try {
+        cleanUpAfterConsistencyProtocol(needToUnsubscribe);
+      } catch (Exception e) {
+        // We should still be able to continue, despite failing to clean up after ourselves...
+        requestHandlerLOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
+      }
+
       return false;
     }
 
@@ -538,6 +558,13 @@ public abstract class HopsTransactionalRequestHandler
 
     leaveDeployments();
 
+    deleteWriteAcknowledgements();
+  }
+
+  /**
+   * Delete the write acknowledgement entries we created during the consistency protocol.
+   */
+  private void deleteWriteAcknowledgements() throws StorageException {
     // Remove the ACK entries that we added.
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
             (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
