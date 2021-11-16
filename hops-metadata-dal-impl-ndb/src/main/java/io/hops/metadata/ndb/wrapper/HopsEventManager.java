@@ -785,9 +785,11 @@ public class HopsEventManager implements EventManager {
             // If there's an event listener, we'll add it. Then release the semaphore again.
             if (eventListener != null) {
                 addListener(eventName, eventListener);
+                LOG.debug("Executing event operation for event '" + eventName + "'");
                 eventOperation.execute(); // If we have a listener to add, we add it before executing.
                 notifier.release(1);
             } else {
+                LOG.debug("No event listener to add. Executing event operation for event '" + eventName + "'");
                 eventOperation.execute(); // No listener, so just execute. No need to decrement again.
             }
         }
