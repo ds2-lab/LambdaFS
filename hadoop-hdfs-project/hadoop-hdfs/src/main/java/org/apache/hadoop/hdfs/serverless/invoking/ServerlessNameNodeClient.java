@@ -171,7 +171,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, System.nanoTime(), -1,
+                = new OperationPerformed(operationName, System.nanoTime(), 999,
                 "nameNode" + mappedFunctionNumber, true, true);
         operationsPerformed.put(requestId, operationPerformed);
 
@@ -253,7 +253,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             + requestId);
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, opStart, -1,
+                = new OperationPerformed(operationName, opStart, 999,
                 "nameNode" + mappedFunctionNumber, true, true);
         operationsPerformed.put(requestId, operationPerformed);
 

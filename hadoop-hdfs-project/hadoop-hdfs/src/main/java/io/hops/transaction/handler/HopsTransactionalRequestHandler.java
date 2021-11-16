@@ -645,7 +645,7 @@ public abstract class HopsTransactionalRequestHandler
       // If we're receiving an ACK for this NameNode, then it better be the case that
       // we're waiting on it. Otherwise, something is wrong.
       if (!waitingForAcks.contains(nameNodeId))
-        throw new IllegalStateException("We received an ACK from NN " + nameNodeId +
+        requestHandlerLOG.warn("We received an ACK from NN " + nameNodeId +
                 ", but that NN is not in our 'waiting on' list. Size of list: " + waitingForAcks.size() + ".");
 
       waitingForAcks.remove(nameNodeId);
