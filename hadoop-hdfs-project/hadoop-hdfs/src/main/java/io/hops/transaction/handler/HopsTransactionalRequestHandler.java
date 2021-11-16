@@ -398,10 +398,17 @@ public abstract class HopsTransactionalRequestHandler
    *
    * @param deploymentNumber The deployment number of the given group. Note that the group name is just
    *                         "namenode" + deploymentNumber.
+   * @param calledManually Indicates that we called this function manually rather than automatically in response
+   *                       to a ZooKeeper event. Really just used for debugging.
    */
-  private synchronized void checkAndProcessMembershipChanges(int deploymentNumber) throws Exception {
+  private synchronized void checkAndProcessMembershipChanges(int deploymentNumber, boolean calledManually)
+          throws Exception {
     String groupName = "namenode" + deploymentNumber;
-    requestHandlerLOG.debug("ZooKeeper detected membership change for group: " + groupName);
+
+    if (calledManually)
+      requestHandlerLOG.debug("ZooKeeper detected membership change for group: " + groupName);
+    else
+      requestHandlerLOG.debug("Checking for membership changes for deployment #" + deploymentNumber);
 
     ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
 
@@ -422,8 +429,7 @@ public abstract class HopsTransactionalRequestHandler
 
     Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(deploymentNumber);
 
-    requestHandlerLOG.debug("Presently, we require ACKs from the following deployment #" + deploymentNumber +
-            " instances: " + deploymentAcks);
+    requestHandlerLOG.debug("ACKs required from: " + deploymentAcks);
 
     // Compare the group member IDs to the ACKs from JUST this deployment, not the master list of all ACKs from all
     // deployments. If we were to iterate over the master list of all ACKs (that is not partitioned by deployment),
@@ -455,10 +461,10 @@ public abstract class HopsTransactionalRequestHandler
               "failed follower NameNode(s), we are still waiting on " + waitingForAcks.size() +
               " more ACK(s) from " + waitingForAcks + ".");
     } else if (waitingForAcks.size() > 0) {
-      requestHandlerLOG.debug("We did not remove any NameNodes from our ACK list. Still waiting on " +
-              waitingForAcks.size() + " ACK(s) from " + waitingForAcks + ".");
+      requestHandlerLOG.debug("No NNs removed from waiting-on ACK list. Still waiting on " + waitingForAcks.size() +
+              " more ACK(s) from " + waitingForAcks + ".");
     } else {
-      requestHandlerLOG.debug("We are not waiting on any ACKs, despite removing no NNs from our ACK list.");
+      requestHandlerLOG.debug("No NNs removed from waiting-on ACK list. Not waiting on any ACKs.");
     }
   }
 
@@ -477,7 +483,7 @@ public abstract class HopsTransactionalRequestHandler
     zkClient.addListener(serverlessNameNodeInstance.getFunctionName(), watchedEvent -> {
       if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
         try {
-          checkAndProcessMembershipChanges(localDeploymentNumber);
+          checkAndProcessMembershipChanges(localDeploymentNumber, false);
         } catch (Exception e) {
           requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
           e.printStackTrace();
@@ -490,7 +496,7 @@ public abstract class HopsTransactionalRequestHandler
     // our global image of deployment membership is correct. Likewise, there is a chance that membership for our local
     // deployment has changed in between when we created the ACK entries and when we added the ZK listener just now.
     for (int deploymentNumber : involvedDeployments)
-      checkAndProcessMembershipChanges(deploymentNumber);
+      checkAndProcessMembershipChanges(deploymentNumber, true);
 
     requestHandlerLOG.debug("Waiting for the remaining " + waitingForAcks.size() +
             " ACK(s) now. Will timeout after " + serverlessNameNodeInstance.getTxAckTimeout() + " milliseconds.");
@@ -522,6 +528,7 @@ public abstract class HopsTransactionalRequestHandler
    */
   private void cleanUpAfterConsistencyProtocol(boolean needToUnsubscribe)
           throws Exception {
+    requestHandlerLOG.debug("Performing clean-up procedure for consistency protocol now.");
     // Unsubscribe and unregister event listener if we haven't done so already. (If we were the only active NN in
     // our deployment at the beginning of the protocol, then we would have already unsubscribed by this point.)
     if (needToUnsubscribe)
@@ -650,7 +657,7 @@ public abstract class HopsTransactionalRequestHandler
           if (watchedEvent.getType() == Watcher.Event.EventType.ChildWatchRemoved) {
             try {
               // We call this again in waitForAcks() as a sanity check to make sure we haven't missed anything.
-              checkAndProcessMembershipChanges(deploymentNumber);
+              checkAndProcessMembershipChanges(deploymentNumber, false);
             } catch (Exception e) {
               requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
               e.printStackTrace();
