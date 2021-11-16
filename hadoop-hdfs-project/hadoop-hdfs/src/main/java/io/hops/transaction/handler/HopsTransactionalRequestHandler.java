@@ -589,15 +589,20 @@ public abstract class HopsTransactionalRequestHandler
 
   @Override
   public void eventReceived(HopsEventOperation eventData, String eventName) {
-    if (!eventName.contains(HopsEvent.ACK_EVENT_NAME_BASE))
-      requestHandlerLOG.debug("HopsTransactionalRequestHandler received unexpected event " + eventName + "!");
-    else
-      requestHandlerLOG.debug("Received event: " + eventName);
+    if (!eventName.contains(HopsEvent.ACK_EVENT_NAME_BASE)) {
+      requestHandlerLOG.error("HopsTransactionalRequestHandler received unexpected event " + eventName + "!");
+      return;
+    }
 
     // First, verify that this event pertains to our write operation. If it doesn't, we just return.
     long writeOpId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID);
     long nameNodeId = eventData.getLongPostValue(TablesDef.WriteAcknowledgementsTableDef.NAME_NODE_ID);
     int mappedDeployment = nameNodeIdToDeploymentNumberMapping.get(nameNodeId);
+
+    requestHandlerLOG.debug("Received event: '" + eventName + "'");
+    requestHandlerLOG.debug("Write Operation ID: " + writeOpId + ", Recipient ID: " + nameNodeId +
+            ", Deployment Number: " + mappedDeployment);
+
     if (writeOpId != operationId && nameNodeId != serverlessNameNodeInstance.getId())
       return;
 
