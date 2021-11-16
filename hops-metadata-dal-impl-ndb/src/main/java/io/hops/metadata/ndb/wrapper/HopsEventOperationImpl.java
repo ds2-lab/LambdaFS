@@ -83,7 +83,7 @@ public class HopsEventOperationImpl implements HopsEventOperation {
             throw new IllegalArgumentException("No pre-value record attribute exists for column " + columnName);
         }
 
-        return NdbBoolean.convert(preValueRecordAttributes.get(columnName).int8_value());
+        return NdbBoolean.convert(preValueRecordAttributes.get(columnName).u_char_value());
     }
 
     @Override
@@ -95,7 +95,7 @@ public class HopsEventOperationImpl implements HopsEventOperation {
                     StringUtils.join(postValueRecordAttributes.keySet(), ", "));
             throw new IllegalArgumentException("No post-value record attribute exists for column " + columnName);
         }
-        return NdbBoolean.convert(postValueRecordAttributes.get(columnName).int8_value());
+        return NdbBoolean.convert(postValueRecordAttributes.get(columnName).u_char_value());
     }
 
     /**

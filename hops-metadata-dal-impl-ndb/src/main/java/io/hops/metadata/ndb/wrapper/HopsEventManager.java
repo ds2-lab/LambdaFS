@@ -1,5 +1,6 @@
 package io.hops.metadata.ndb.wrapper;
 
+import com.google.common.collect.ImmutableMap;
 import com.mysql.clusterj.*;
 import com.mysql.clusterj.core.store.Event;
 import io.hops.events.*;
@@ -177,6 +178,61 @@ public class HopsEventManager implements EventManager {
             TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED,       // tinyint(4)
             TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID        // bigint(20)
     };
+
+    /**
+     * Mapping of the column name to its type, so we can automatically print the values correctly.
+     */
+    private static final Map<String, Class<?>> ACK_EVENT_COLUMN_TYPES =
+            ImmutableMap.of(
+                TablesDef.WriteAcknowledgementsTableDef.NAME_NODE_ID,       long.class,
+                TablesDef.WriteAcknowledgementsTableDef.DEPLOYMENT_NUMBER,  int.class,
+                TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED,       boolean.class,
+                TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID,       long.class);
+
+    /**
+     * Mapping of the column name to its type, so we can automatically print the values correctly.
+     */
+    private static final Map<String, Class<?>> INV_TABLE_EVENT_COLUMN_TYPES =
+            ImmutableMap.of(
+                    TablesDef.InvalidationTablesDef.INODE_ID,       long.class,
+                    TablesDef.InvalidationTablesDef.PARENT_ID,      long.class,
+                    TablesDef.InvalidationTablesDef.LEADER_ID,      long.class,
+                    TablesDef.InvalidationTablesDef.TX_START,       long.class,
+                    TablesDef.InvalidationTablesDef.OPERATION_ID,   long.class);
+
+    /**
+     * Print the pre- and post-values of the columns for a particular event.
+     * @param columnTypeMapping Mapping from column name to class (representing its type).
+     * @param eventOperation The event operation for which we are printing values.
+     */
+    private void printPrePostColumnValues(Map<String, Class<?>> columnTypeMapping, HopsEventOperation eventOperation) {
+        for (Map.Entry<String, Class<?>> entry : columnTypeMapping.entrySet()) {
+            String columnName = entry.getKey();
+            Class<?> columnType = entry.getValue();
+
+            if (long.class.equals(columnType)) {
+                long preValue = eventOperation.getLongPreValue(columnName);
+                long postValue = eventOperation.getLongPostValue(columnName);
+
+                LOG.debug("Pre-value for column " + columnName + ": " + preValue);
+                LOG.debug("Post-value for column " + columnName + ": " + postValue);
+            }
+            else if (int.class.equals(columnType)) {
+                int preValue = eventOperation.getIntPreValue(columnName);
+                int postValue = eventOperation.getIntPostValue(columnName);
+
+                LOG.debug("Pre-value for column " + columnName + ": " + preValue);
+                LOG.debug("Post-value for column " + columnName + ": " + postValue);
+            }
+            else if (boolean.class.equals(columnType)) {
+                boolean preValue = eventOperation.getBooleanPreValue(columnName);
+                boolean postValue = eventOperation.getBooleanPostValue(columnName);
+
+                LOG.debug("Pre-value for column " + columnName + ": " + preValue);
+                LOG.debug("Post-value for column " + columnName + ": " + postValue);
+            }
+        }
+    }
 
     /**
      * These are the events that all NameNodes subscribe to.
@@ -996,22 +1052,20 @@ public class HopsEventManager implements EventManager {
 
         while (nextEventOp != null) {
             String eventType = nextEventOp.getEventType();
+            String eventName = eventOpToNameMapping.get(nextEventOp);
 
-            LOG.debug("Received " + eventType + " event from NDB: " +
+            LOG.debug("Received " + eventType + " for event " + eventName + " from NDB: " +
                     Integer.toHexString(nextEventOp.hashCode()) + ".");
 
-            // Print the columns if we can determine what their names are from our mapping.
-            if (eventColumnMap.containsKey(nextEventOp)) {
-                String[] eventColumnNames = eventColumnMap.get(nextEventOp);
-
-                // Print the pre- and post-values for the columns for which record attributes were created.
-                for (String columnName : eventColumnNames) {
-                    long preValue = nextEventOp.getLongPreValue(columnName);
-                    long postValue = nextEventOp.getLongPostValue(columnName);
-
-                    LOG.debug("Pre-value for column " + columnName + ": " + preValue);
-                    LOG.debug("Post-value for column " + columnName + ": " + postValue);
-                }
+            if (eventName != null) {
+                if (eventName.contains(HopsEvent.INV_EVENT_NAME_BASE))
+                    printPrePostColumnValues(INV_TABLE_EVENT_COLUMN_TYPES, nextEventOp);
+                else if (eventName.contains(HopsEvent.ACK_EVENT_NAME_BASE))
+                    printPrePostColumnValues(ACK_EVENT_COLUMN_TYPES, nextEventOp);
+                else
+                    LOG.warn("Unable to print event column values for event " + eventName + "...");
+            } else {
+                LOG.warn("Unable to determine name of event we just received...");
             }
 
             switch (eventType) {
