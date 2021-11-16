@@ -188,10 +188,9 @@ public class WriteAcknowledgementClusterJ
             throws StorageException {
         LOG.debug("DELETE " + writeAcknowledgement.toString());
         HopsSession session = connector.obtainSession();
-        Object[] pk = new Object[3];
+        Object[] pk = new Object[2];
         pk[0] = writeAcknowledgement.getNameNodeId();
         pk[1] = writeAcknowledgement.getOperationId();
-        pk[2] = writeAcknowledgement.getLeaderNameNodeId();
         session.deletePersistent(getDTOClass(deploymentNumber), pk);
     }
 
@@ -204,10 +203,9 @@ public class WriteAcknowledgementClusterJ
 
         List<WriteAcknowledgementDTO> deletions = new ArrayList<>();
         for (WriteAcknowledgement writeAcknowledgement : writeAcknowledgements) {
-            Object[] pk = new Object[3];
+            Object[] pk = new Object[2];
             pk[0] = writeAcknowledgement.getNameNodeId();
             pk[1] = writeAcknowledgement.getOperationId();
-            pk[2] = writeAcknowledgement.getLeaderNameNodeId();
             WriteAcknowledgementDTO persistable = session.newInstance(getDTOClass(deploymentNumber), pk);
             deletions.add(persistable);
         }
