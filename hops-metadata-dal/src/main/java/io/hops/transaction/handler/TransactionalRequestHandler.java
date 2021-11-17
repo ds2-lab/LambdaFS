@@ -31,11 +31,18 @@ import org.apache.commons.logging.LogFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public abstract class TransactionalRequestHandler extends RequestHandler {
   public TransactionalRequestHandler(OperationType opType) {
     super(opType);
+    this.operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
   }
+
+  /**
+   * Used as a unique identifier for the operation. This is only used during write operations.
+   */
+  protected final long operationId;
 
   /**
    * Override this function to implement a serverless consistency protocol. This will get called
@@ -138,11 +145,11 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         oldTime = System.currentTimeMillis();
 
         if (canProceed) {
-          requestHandlerLOG.debug("Consistency protocol executed successfully. Time: " +
-                  consistencyProtocolTime + " ms");
+          requestHandlerLOG.debug("Consistency protocol for TX " + operationId +
+                  " succeeded after " + consistencyProtocolTime + " ms");
         } else {
-          requestHandlerLOG.error("Consistency protocol FAILED after " + consistencyProtocolTime + " ms.");
-          throw new IOException("Consistency protocol FAILED after " + consistencyProtocolTime + " ms.");
+          throw new IOException("Consistency protocol for TX " + operationId + " FAILED after " +
+                  consistencyProtocolTime + " ms.");
         }
 
         TransactionLocks transactionLocks = locksAcquirer.getLocks();
@@ -192,7 +199,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
             opName = opName + ":" + subOpName;
           }
           String inodeLocks = locksAcquirer != null ? getINodeLockInfo(locksAcquirer.getLocks()):"";
-          requestHandlerLOG.warn(opName + "TX Failed. " +
+          requestHandlerLOG.warn(opName + "TX " + operationId + " Failed. " +
                   "TX Time: " + (System.currentTimeMillis() - txStartTime) + " ms, " +
                   // -1 because 'tryCount` also counts the initial attempt which is technically not a retry
                   "RetryCount: " + (tryCount-1) + ", " +
@@ -213,7 +220,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         removeNDC();
         if (!committed && locksAcquirer!=null) {
           try {
-            requestHandlerLOG.debug("TX Failed. Rollback TX");
+            requestHandlerLOG.debug("TX " + operationId + " Failed. Rolling back TX " + operationId + "...");
             EntityManager.rollback(locksAcquirer.getLocks());
           } catch (Exception e) {
             requestHandlerLOG.warn("Could not rollback transaction", e);

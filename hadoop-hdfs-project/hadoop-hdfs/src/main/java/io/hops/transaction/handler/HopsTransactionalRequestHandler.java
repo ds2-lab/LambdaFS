@@ -70,11 +70,6 @@ public abstract class HopsTransactionalRequestHandler
   private HashMap<Long, Integer> nameNodeIdToDeploymentNumberMapping = new HashMap<>();
 
   /**
-   * Used as a unique identifier for the operation. This is only used during write operations.
-   */
-  private final long operationId;
-
-  /**
    * Used to access the serverless name node instance in the NDB event handler.
    */
   private ServerlessNameNode serverlessNameNodeInstance;
@@ -108,7 +103,6 @@ public abstract class HopsTransactionalRequestHandler
   public HopsTransactionalRequestHandler(HDFSOperationType opType, String path) {
     super(opType);
     this.path = path;
-    this.operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
   }
 
   @Override
