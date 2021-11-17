@@ -223,7 +223,7 @@ public abstract class HopsTransactionalRequestHandler
       if (t instanceof IOException)
         throw (IOException)t;
       else
-        throw new IOException("Exception encountered during consistency protocol: ", t);
+        throw new IOException("Exception encountered during consistency protocol: " + t.getMessage(), t);
     }
 
     return proceedWithTx;
@@ -292,14 +292,16 @@ public abstract class HopsTransactionalRequestHandler
       throw new IllegalStateException(
               "Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
 
-    // Keep track of all deployments involved in this transaction. Our own deployment will always be involved (during
-    // write operations, at least). Other deployments may be involved if we're modifying INodes from them. We may
-    // modify nodes from other deployments during subtree operations and when creating a new directory.
+    // NOTE: The local deployment will NOT always be involved now that the subtree protocol uses this same code.
+    //       Before the subtree protocol used this code, the only NNs that could modify an INode were those from
+    //       the mapped deployment. As a result, the Leader NN's deployment would always be involved. But now that the
+    //       subtree protocol uses this code, the Leader may not be modifying an INode from its own deployment. So, we
+    //       do not automatically add the local deployment to the set of involved deployments. If the local deployment
+    //       needs to be invalidated, then it will be added when we see that a modified INode is mapped to it.
+    //
+    // Keep track of all deployments involved in this transaction.
     involvedDeployments = new HashSet<>();
-    involvedDeployments.add(serverlessNameNodeInstance.getDeploymentNumber()); // Add our own deployment number, obviously.
 
-    // Sanity check. Make sure we're only modifying INodes that we are authorized to modify.
-    // If we find that we are about to modify an INode for which we are not authorized, throw an exception.
     for (INode invalidatedINode : invalidatedINodes) {
       int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedServerlessFunction(invalidatedINode);
       int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
@@ -449,7 +451,8 @@ public abstract class HopsTransactionalRequestHandler
 
     Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(deploymentNumber);
 
-    requestHandlerLOG.debug("ACKs required from: " + deploymentAcks);
+    requestHandlerLOG.debug("ACKs required from deployment #" + deploymentNumber + ": " +
+            StringUtils.join(deploymentAcks, ", "));
 
     // Compare the group member IDs to the ACKs from JUST this deployment, not the master list of all ACKs from all
     // deployments. If we were to iterate over the master list of all ACKs (that is not partitioned by deployment),
