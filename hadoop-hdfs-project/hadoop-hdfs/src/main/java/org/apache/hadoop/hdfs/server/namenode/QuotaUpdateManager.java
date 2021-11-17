@@ -216,7 +216,7 @@ public class QuotaUpdateManager {
     if (updates.size() == 0) {
       return false;
     }
-    return (boolean) new HopsTransactionalRequestHandler(HDFSOperationType.APPLY_QUOTA_UPDATE) {
+    HopsTransactionalRequestHandler handler = new HopsTransactionalRequestHandler(HDFSOperationType.APPLY_QUOTA_UPDATE) {
       INodeIdentifier iNodeIdentifier;
 
       @Override
@@ -304,7 +304,8 @@ public class QuotaUpdateManager {
         }
         return hasParentUpdate;
       }
-    }.handle(this);
+    };
+    return (boolean) handler.handle(this);
   }
 
   /**
