@@ -667,12 +667,7 @@ public abstract class HopsTransactionalRequestHandler
    * aim to avoid this. But it occurs commonly during subtree operations and when creating new directories.
    */
   private void joinOtherDeploymentsAsGuest() throws IOException {
-    if (involvedDeployments.size() == 1) { // If there's just one, it is our own deployment.
-      requestHandlerLOG.debug("There are no other deployments to join.");
-      return;
-    }
-
-    requestHandlerLOG.debug("There are " + involvedDeployments.size() + " other deployments to join: " +
+    requestHandlerLOG.debug("There are potentially " + involvedDeployments.size() + " other deployments to join: " +
             involvedDeployments);
 
     ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
