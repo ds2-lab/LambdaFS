@@ -654,6 +654,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("getStats", args -> (Serializable)getStats(args));
     operations.put("isFileClosed", args -> (Serializable)isFileClosed(args));
     operations.put("mkdirs", args -> (Serializable)mkdirs(args));
+    operations.put("ping", args ->  {
+      LOG.debug("We've been pinged!");
+      return null;
+    });
     operations.put("removeUser", args -> {
       removeUser(args);
       return null;
