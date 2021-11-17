@@ -255,6 +255,10 @@ public class QuotaUpdateManager {
 
         QuotaCounts counts = new QuotaCounts.Builder().build();
         for (QuotaUpdate update : dbUpdates) {
+          if (update == null) {
+            LOG.warn("QuotaUpdate variable is null. Cannot check for updates.");
+            return null;
+          }
           counts.addStorageSpace(update.getStorageSpaceDelta());
           counts.addNameSpace(update.getNamespaceDelta());
           
