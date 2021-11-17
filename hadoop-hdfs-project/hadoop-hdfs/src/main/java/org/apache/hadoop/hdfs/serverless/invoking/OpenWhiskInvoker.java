@@ -218,6 +218,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.IS_CLIENT_INVOKER, isClientInvoker);
+        nameNodeArguments.addProperty(ServerlessNameNodeKeys.INVOKER_IDENTITY, invokerIdentity);
 
         addStandardArguments(nameNodeArguments, requestId);
 

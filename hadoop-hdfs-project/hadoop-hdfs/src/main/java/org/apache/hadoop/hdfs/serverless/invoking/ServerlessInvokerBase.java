@@ -74,6 +74,15 @@ public abstract class ServerlessInvokerBase<T> {
     protected boolean isClientInvoker;
 
     /**
+     * Name of the entity using this invoker.
+     *
+     * For DataNodes, this is DN-[the DataNode's transfer IP]:[the DataNode's transfer port].
+     * For Clients, this is C-[the client's ID].
+     * For NameNodes, this is NN[DeploymentNumber]-[the NameNode's ID].
+     */
+    protected String invokerIdentity;
+
+    /**
      * Unique identifier of the particular client using this class.
      *
      * This name will be set automatically if a client/user is invoking. Otherwise, we default to DataNode.
@@ -171,7 +180,7 @@ public abstract class ServerlessInvokerBase<T> {
     /**
      * Set parameters of the invoker specified in the HopsFS configuration.
      */
-    public void setConfiguration(Configuration conf) {
+    public void setConfiguration(Configuration conf, String invokerIdentity) {
         LOG.debug("Configuring ServerlessInvokerBase now...");
         cache = new FunctionMetadataMap(conf);
         numUniqueFunctions = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
@@ -182,6 +191,8 @@ public abstract class ServerlessInvokerBase<T> {
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
         httpTimeoutMilliseconds = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT,
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
+
+        this.invokerIdentity = invokerIdentity;
 
         // NDB
         debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);

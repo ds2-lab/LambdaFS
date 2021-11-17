@@ -253,6 +253,8 @@ public class QuotaUpdateManager {
           return false;
         }
 
+        // TODO: Why can this happen now? Something about the consistency protocol (presumably) has made it so
+        //       we can get NullPointerExceptions here.
         QuotaCounts counts = new QuotaCounts.Builder().build();
         for (QuotaUpdate update : dbUpdates) {
           if (update == null) {

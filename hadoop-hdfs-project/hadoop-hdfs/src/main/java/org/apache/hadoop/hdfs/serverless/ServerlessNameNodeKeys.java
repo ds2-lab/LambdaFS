@@ -8,6 +8,7 @@ public class ServerlessNameNodeKeys {
     public static final String OPERATION = "op";
     public static final String CLIENT_NAME = "clientName";
     public static final String IS_CLIENT_INVOKER = "isClientInvoker";
+    public static final String INVOKER_IDENTITY = "INVOKER_IDENTITY";
     public static final String FILE_SYSTEM_OP_ARGS = "fsArgs";
     public static final String RESULT = "RESULT";
     public static final String EXCEPTIONS = "EXCEPTIONS";

@@ -176,12 +176,14 @@ public class OpenWhiskHandler {
         // Flag that indicates whether this action was invoked by a client or a DataNode.
         boolean isClientInvoker = userArguments.getAsJsonPrimitive(
                 ServerlessNameNodeKeys.IS_CLIENT_INVOKER).getAsBoolean();
+        String invokerIdentity = userArguments.getAsJsonArray(
+                ServerlessNameNodeKeys.INVOKER_IDENTITY).getAsString();
 
         LOG.info("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
         LOG.debug("Top-level OpenWhisk arguments: " + args);
         LOG.debug("User-passed OpenWhisk arguments: " + userArguments);
         LOG.info("Serverless function name: " + functionName);
-        LOG.info("Invoked by: " + (isClientInvoker ? "CLIENT" : "DATANODE"));
+        LOG.info("Invoked by: " + invokerIdentity);
         LOG.info("Client's name: " + clientName);
         LOG.info("Client IP address: " + (clientIpAddress == null ? "N/A" : clientIpAddress));
         LOG.info("Function container was " + (isCold ? "COLD" : "WARM") + ".");
@@ -283,7 +285,7 @@ public class OpenWhiskHandler {
 
         // Check to see if this is a duplicate request, in which case we should return a message indicating as such.
         if (!redoEvenIfDuplicate && serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
-            LOG.warn("This request (" + requestId + ") has already been received via TCP. Returning now...");
+            LOG.warn("This request (" + requestId + ") has already been received. Exiting now...");
             result.addResult(new DuplicateRequest("HTTP", requestId), true);
             return result;
         } else if (redoEvenIfDuplicate) {
