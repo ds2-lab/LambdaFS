@@ -56,7 +56,7 @@ public class NameNodeTCPClient {
      * ServerlessHopsFSClient represents a particular client of HopsFS that the NameNode is talking to. We map
      * each of these "HopsFS client" representations to the TCP Client associated with them.
      */
-    private final HashMap<ServerlessHopsFSClient, Client> tcpClients;
+    private final ConcurrentHashMap<ServerlessHopsFSClient, Client> tcpClients;
 
     /**
      * The name of the serverless function in which this TCP client exists.
@@ -114,7 +114,7 @@ public class NameNodeTCPClient {
     public NameNodeTCPClient(Configuration conf, String functionName, ServerlessNameNode serverlessNameNode) {
         this.functionName = functionName;
         this.serverlessNameNode = serverlessNameNode;
-        this.tcpClients = new HashMap<>();
+        this.tcpClients = new ConcurrentHashMap<>();
         this.functionUriBase = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT, DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
 
         this.writeBufferSize = defaultWriteBufferSizeBytes;

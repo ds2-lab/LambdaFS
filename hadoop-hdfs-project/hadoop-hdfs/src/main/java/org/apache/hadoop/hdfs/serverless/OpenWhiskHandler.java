@@ -151,7 +151,11 @@ public class OpenWhiskHandler {
         if (debugEnabled && debugString != null) {
             LOG.debug("NDB debugging has been enabled. Using dbug string \"" +
                     debugString + "\"");
-            ClusterJHelper.newDbug().push(debugString);
+
+            // I am not sure if we need to make sure this is not called concurrently, but just in case...
+            synchronized (OpenWhiskHandler.class) {
+                ClusterJHelper.newDbug().push(debugString);
+            }
 
             LOG.debug("Also enabling ClusterJ debug logging...");
             LogManager.getLogger("com.mysql.clusterj").setLevel(Level.DEBUG);
@@ -291,18 +295,6 @@ public class OpenWhiskHandler {
         } else if (redoEvenIfDuplicate) {
             LOG.warn("Apparently, request " + requestId + " must be re-executed...");
         }
-
-        // Now we need to process various updates that are stored in intermediate storage by DataNodes.
-        // These include storage reports, block reports, and new DataNode registrations.
-        // Note that we perform this step even if this is a warm function with an existing NameNode,
-        // as new DataNodes could have been added to the file system, and storage reports are published routinely.
-//        try {
-//            serverlessNameNode.getAndProcessUpdatesFromIntermediateStorage();
-//        }
-//        catch (IOException | ClassNotFoundException ex) {
-//            LOG.error("Encountered exception while retrieving and processing updates from intermediate storage: ", ex);
-//            result.addException(ex);
-//        }
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.

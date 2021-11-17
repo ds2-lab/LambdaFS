@@ -2300,7 +2300,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Start the NameNodeWorkerThread if it has not already been started.
    */
-  public void tryStartWorkerThread() {
+  public synchronized void tryStartWorkerThread() {
     if (workerThread.isAlive())
       return;
 
