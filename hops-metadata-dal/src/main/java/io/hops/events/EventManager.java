@@ -21,11 +21,15 @@ import java.util.concurrent.Semaphore;
  */
 public interface EventManager extends Runnable {
     /**
-     * Get the event columns used in the invalidation table event.
+     * Get the integer representation of the event types for ACK events.
      *
-     * TODO: This is not really generic...
+     * Basically, there are different kinds of events: UPDATE, INSERT, DELETE, etc.
+     *
+     * These have IDs associated with them. The IDs are hard-coded in the concrete implementation. So, we
+     * provide this public API for accessing them, so clients who want to subscribe to events can specify
+     * which types of events they're interested in.
      */
-    public String[] getInvTableEventColumns();
+    public Integer[] getAckEventTypeIDs();
 
     /**
      * Get the event columns used in the ACK table event.
@@ -51,13 +55,17 @@ public interface EventManager extends Runnable {
      * @param alsoCreateSubscription If true, then we also create an event subscription after creating the event.
      * @param eventListener If non-null and 'alsoCreateSubscription' is true, then we'll add this as a listener
      *                      once the subscription is created.
+     * @param tableEvents Event type IDs of the events we want to receive (e.g., INSERT, DELETE, UPDATE).
+     *                    For now, these are hard-coded in the concrete implementation of this interface.
+     *                    We reference the hard-coded values to specify them.
      *
      * @throws StorageException if something goes wrong when registering the event.
      * @return True if an event was created, otherwise false.
      */
     public Semaphore requestRegisterEvent(String eventName, String tableName, String[] eventColumns,
                                           boolean recreateIfExists, boolean alsoCreateSubscription,
-                                          HopsEventListener eventListener) throws StorageException;
+                                          HopsEventListener eventListener, Integer[] tableEvents)
+            throws StorageException;
 
     /**
      * Delete the event with the given name.

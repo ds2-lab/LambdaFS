@@ -1,7 +1,9 @@
 package io.hops.metadata.ndb.wrapper;
 
+import com.mysql.clusterj.TableEvent;
 import io.hops.events.EventManager;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -13,17 +15,24 @@ public class EventTask {
     private final String eventName;
     private final String tableName;
     private final String[] eventColumns;
+    private final TableEvent[] tableEvents;
     private final boolean recreateIfExists;
     private final SubscriptionTask subscriptionTask;
 
     public EventTask(String eventName, String tableName, String[] eventColumns, boolean recreateIfExists,
-                     SubscriptionTask subscriptionTask) {
+                     SubscriptionTask subscriptionTask, Integer[] tableEvents) {
         this.requestId = UUID.randomUUID().toString();
         this.eventName = eventName;
         this.tableName = tableName;
         this.eventColumns = eventColumns;
         this.recreateIfExists = recreateIfExists;
         this.subscriptionTask = subscriptionTask;
+
+        // Convert the integers to table events.
+        if (tableEvents != null)
+            this.tableEvents = Arrays.stream(tableEvents).map(TableEvent::convert).toArray(TableEvent[]::new);
+        else
+            this.tableEvents = null;
     }
 
     @Override
@@ -63,5 +72,9 @@ public class EventTask {
 
     public SubscriptionTask getSubscriptionTask() {
         return subscriptionTask;
+    }
+
+    public TableEvent[] getTableEvents() {
+        return tableEvents;
     }
 }

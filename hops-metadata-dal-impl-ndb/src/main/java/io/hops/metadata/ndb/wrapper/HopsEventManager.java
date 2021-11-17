@@ -11,11 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -125,18 +121,6 @@ public class HopsEventManager implements EventManager {
 
     /**
      * The columns of the INode NDB table, in the order that they're defined in the schema.
-     *
-     * TODO:
-     *  We may want to add a column to keep track of who last modified the row so that NNs can determine
-     *  whether or not they need to retrieve the data from NDB or not when receiving an event. That is, if NN 1
-     *  receives an Event that the row was updated after they (NN1) performed the update, then obviously NN1 already
-     *  has the updated metadata and shouldn't read anything from NDB. But if NN2 receives this event, then they would
-     *  see that a different NN updated the row, and thus they'd retrieve the data from NDB.
-     *
-     * TODO:
-     *  Also, only a few necessary columns should have their values read during Event reception. In addition to the
-     *  column described above, NN's could also inspect the parent_id column to determine if the Event pertains to
-     *  metadata that they are caching. If not, then the event can be safely ignored.
      */
     private static final String[] INODE_TABLE_COLUMNS = new String[] {
             "partition_id", "parent_id", "name", "id", "user_id", "group_id", "modification_time",
@@ -235,12 +219,21 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
-     * These are the events that all NameNodes subscribe to.
+     * These are the events that all NameNodes subscribe to for ACK events. We only want to receive
+     * notifications about updates, as updating an existing entry is now NameNodes perform an acknowledgement.
+     *
+     * We do not want to receive notifications when they are added or deleted.
      */
-    private static final TableEvent[] eventsToSubscribeTo = new TableEvent[] {
-            TableEvent.INSERT,
-            TableEvent.DELETE,
-            TableEvent.UPDATE
+    private static final Integer[] ACK_TABLE_EVENTS = new Integer[] {
+            TableEvent.convert(TableEvent.UPDATE)
+    };
+
+    /**
+     * Invalidation events should only notify us on an insertion. They are never updated,
+     * and deleting them as part of clean-up is not something we need to be informed of.
+     */
+    private static final Integer[] INV_TABLE_EVENTS = new Integer[] {
+            TableEvent.convert(TableEvent.INSERT)
     };
 
     /**
@@ -562,8 +555,8 @@ public class HopsEventManager implements EventManager {
     }
 
     @Override
-    public String[] getInvTableEventColumns() {
-        return INV_TABLE_EVENT_COLUMNS;
+    public Integer[] getAckEventTypeIDs() {
+        return ACK_TABLE_EVENTS;
     }
 
     @Override
@@ -577,9 +570,11 @@ public class HopsEventManager implements EventManager {
      * @param tableName The table on which the event will be registered.
      * @param eventColumns The columns of the table that will be involved with the event.
      * @param recreateIfExists If true, recreate the event if it already exists.
+     * @param tableEvents The event types that we want to receive for the given subscription (e.g., update,
+     *                    insert, delete, etc.).
      */
     private void registerEvent(String eventName, String tableName, String[] eventColumns,
-                               boolean recreateIfExists) throws StorageException {
+                               boolean recreateIfExists, TableEvent[] tableEvents) throws StorageException {
         LOG.debug("Registering event " + eventName + " on table " + tableName + " with NDB now...");
 
         // If we're already tracking this event, and we aren't supposed to recreate it, then just return.
@@ -590,7 +585,7 @@ public class HopsEventManager implements EventManager {
         Event event;
         try {
             event = obtainSession().createAndRegisterEvent(eventName, tableName, eventColumns,
-                    eventsToSubscribeTo, recreateIfExists);
+                    tableEvents, recreateIfExists);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
@@ -616,8 +611,9 @@ public class HopsEventManager implements EventManager {
         String tableName = eventTask.getTableName();
         String[] eventColumns =  eventTask.getEventColumns();
         boolean recreateIfExists = eventTask.isRecreateIfExists();
+        TableEvent[] tableEvents = eventTask.getTableEvents();
 
-        registerEvent(eventName, tableName, eventColumns, recreateIfExists);
+        registerEvent(eventName, tableName, eventColumns, recreateIfExists, tableEvents);
     }
 
     /**
@@ -660,7 +656,8 @@ public class HopsEventManager implements EventManager {
     @Override
     public Semaphore requestRegisterEvent(String eventName, String tableName, String[] eventColumns,
                                           boolean recreateIfExists, boolean alsoCreateSubscription,
-                                          HopsEventListener eventListener) throws StorageException {
+                                          HopsEventListener eventListener, Integer[] tableEvents)
+            throws StorageException {
         if (!alsoCreateSubscription && eventListener != null) {
             LOG.error("Indicated that no subscription should be created for event " + eventName +
                     ", but also provided an event listener...");
@@ -685,7 +682,7 @@ public class HopsEventManager implements EventManager {
 
         // The 'subscriptionTask' parameter will be null if `alsoCreateSubscription` is false.
         EventTask eventRegistrationTask =
-                new EventTask(eventName, tableName, eventColumns, recreateIfExists, subscriptionTask);
+                new EventTask(eventName, tableName, eventColumns, recreateIfExists, subscriptionTask, tableEvents);
 
         try {
             createEventQueue.put(eventRegistrationTask);
@@ -712,7 +709,7 @@ public class HopsEventManager implements EventManager {
     public Semaphore requestUnregisterEvent(String eventName)
             throws StorageException, IllegalArgumentException, IllegalStateException {
         EventTask unregisterEventTask = new EventTask(eventName, null, null,
-                false, null);
+                false, null, null);
 
         try {
             dropEventQueue.put(unregisterEventTask);
@@ -994,14 +991,12 @@ public class HopsEventManager implements EventManager {
         // as the event could have been created by another NameNode. We would only want to recreate it
         // if we were changing something about the event's definition, and if all future NameNodes
         // expected this change, and if there were no other NameNodes currently using the event.
-        registerEvent(defaultEventName, tableName, INV_TABLE_EVENT_COLUMNS, defaultDeleteIfExists);
-
-//        if (!registeredSuccessfully) {
-//            LOG.error("Failed to successfully register default event " + defaultEventName
-//                    + " on table " + tableName);
-//
-//            throw new StorageException("Failed to register event " + defaultEventName + " on table " + tableName);
-//        }
+        //
+        // We convert the integer representation of the event types for invalidation events as that last
+        // parameter. Specifically, we're using Java 8 streams to convert each integer ID to the corresponding
+        // ClusterJ TableEvent enum.
+        registerEvent(defaultEventName, tableName, INV_TABLE_EVENT_COLUMNS, defaultDeleteIfExists,
+                Arrays.stream(INV_TABLE_EVENTS).map(TableEvent::convert).toArray(TableEvent[]::new));
 
         LOG.debug("Creating event operation for event " + defaultEventName + " now...");
         HopsEventOperation eventOperation = createAndReturnEventOperation(defaultEventName);

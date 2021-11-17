@@ -229,6 +229,8 @@ public abstract class HopsTransactionalRequestHandler
     return proceedWithTx;
   }
 
+  // TODO: Does the consistency protocol step on the subtree protocol? Since setting the subtree lock flag
+  //       requires going thru the consistency protocol.
   /**
    * This function should be overridden in order to provide a consistency protocol whenever necessary.
    *
@@ -747,7 +749,8 @@ public abstract class HopsTransactionalRequestHandler
       String targetTableName = getTargetTableName(deploymentNumber);
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
       Semaphore creationNotifier = eventManager.requestRegisterEvent(eventName, targetTableName,
-              eventManager.getAckTableEventColumns(), true, true, this);
+              eventManager.getAckTableEventColumns(), true, true,
+              this, eventManager.getAckEventTypeIDs());
       semaphores.add(creationNotifier);
     }
 
