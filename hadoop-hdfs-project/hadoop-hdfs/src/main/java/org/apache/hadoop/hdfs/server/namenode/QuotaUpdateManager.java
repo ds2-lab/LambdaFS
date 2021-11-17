@@ -259,7 +259,7 @@ public class QuotaUpdateManager {
         for (QuotaUpdate update : dbUpdates) {
           if (update == null) {
             LOG.warn("QuotaUpdate variable is null. Cannot check for updates.");
-            return null;
+            return false;
           }
           counts.addStorageSpace(update.getStorageSpaceDelta());
           counts.addNameSpace(update.getNamespaceDelta());
