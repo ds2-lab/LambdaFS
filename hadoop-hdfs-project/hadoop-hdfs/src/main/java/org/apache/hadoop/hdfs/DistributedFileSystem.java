@@ -85,6 +85,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -143,6 +145,17 @@ public class DistributedFileSystem extends FileSystem {
 
   private class AlternativeDistributedFileSystem extends DistributedFileSystem{
     
+  }
+
+  /**
+   * Ping a particular serverless NameNode deployment (i.e., invoke a NameNode from the specified deployment).
+   * @param targetDeployment The deployment from which a NameNode will be invoked.
+   */
+  public void ping(int targetDeployment) throws IOException {
+    Instant start = Instant.now();
+    dfs.ping(targetDeployment);
+    Instant end = Instant.now();
+    Duration duration = Duration.between(start, end);
   }
 
   /**

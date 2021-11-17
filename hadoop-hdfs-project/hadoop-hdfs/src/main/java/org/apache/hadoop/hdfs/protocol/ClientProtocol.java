@@ -65,6 +65,8 @@ import org.apache.hadoop.security.token.TokenInfo;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
 import org.apache.hadoop.fs.CacheFlag;
@@ -1364,11 +1366,18 @@ public interface ClientProtocol {
   
 
   /**
-   * Ping RPC to check if the namenode is alive
+   * Ping RPC to check if the NameNode is alive
    * @throws IOException
    */
   @Idempotent
   public void ping() throws IOException;
+
+  /**
+   * Ping a particular serverless NameNode deployment (i.e., invoke a NameNode from the specified deployment).
+   * @param targetDeployment The deployment from which a NameNode will be invoked.
+   */
+  @Idempotent
+  public void ping(int targetDeployment) throws IOException;
 
   /**
    * The client requesting an updated list of the active namenodes in the

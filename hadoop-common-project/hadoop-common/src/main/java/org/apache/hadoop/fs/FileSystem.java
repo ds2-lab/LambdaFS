@@ -243,6 +243,12 @@ public abstract class FileSystem extends Configured
     return uri;
   }
 
+  /**
+   * Invoke a NameNode from the specified deployment.
+   * @param targetDeployment Deployment from which a NameNode will be invoked.
+   */
+  public abstract void ping(int targetDeployment) throws IOException;
+
   /** Get the alternative default filesystem scheme from a configuration.
    * @param conf the configuration to use
    * @return the uri of the default filesystem

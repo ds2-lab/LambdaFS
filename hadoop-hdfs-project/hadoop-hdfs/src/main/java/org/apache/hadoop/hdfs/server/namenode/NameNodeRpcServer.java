@@ -33,6 +33,7 @@ import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
 import io.hops.metadata.hdfs.entity.RetryCacheEntry;
 import io.hops.security.UsersGroups;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
@@ -1502,7 +1503,12 @@ class NameNodeRpcServer implements NamenodeProtocols {
   @Override
   public void ping() throws IOException {
   }
-  
+
+  @Override
+  public void ping(int targetDeployment) throws IOException {
+    throw new NotImplementedException("The NameNode RPC Server does not support a targeted ping operation.");
+  }
+
   @Override
   public SortedActiveNodeList getActiveNamenodesForClient() throws IOException {
     return nn.getActiveNameNodes();

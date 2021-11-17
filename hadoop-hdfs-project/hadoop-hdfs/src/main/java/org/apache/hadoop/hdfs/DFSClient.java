@@ -23,6 +23,8 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -735,6 +737,19 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     if(proxy != null){
       RPC.stopProxy(proxy);
     }
+  }
+
+  /**
+   * Ping a particular serverless NameNode deployment (i.e., invoke a NameNode from the specified deployment).
+   * @param targetDeployment The deployment from which a NameNode will be invoked.
+   */
+  public void ping(int targetDeployment) throws IOException {
+    Instant start = Instant.now();
+
+    this.namenode.ping(targetDeployment);
+
+    Instant end = Instant.now();
+    Duration duration = Duration.between(start, end);
   }
 
   /** Abort and release resources held.  Ignore all errors. */

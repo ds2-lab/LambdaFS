@@ -236,7 +236,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param nameNodeArguments The command-line arguments to be given to the NN, should it be created within the NN
      *                          function container (i.e., during a cold start).
      * @param opArguments The arguments to be passed to the specified file system operation.
-     * @param mappedFunctionNumber The function number of the serverless NameNode deployment associated with the
+     * @param targetDeployment The deployment number of the serverless NameNode deployment associated with the
      *                             target file or directory.
      * @return The result of executing the desired FS operation on the NameNode.
      */
@@ -244,7 +244,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                                       String serverlessEndpoint,
                                                       HashMap<String, Object> nameNodeArguments,
                                                       ArgumentContainer opArguments,
-                                                      int mappedFunctionNumber)
+                                                      int targetDeployment)
             throws InterruptedException, ExecutionException, IOException {
 
         long opStart = System.nanoTime();
@@ -254,7 +254,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, opStart, 999,
-                "nameNode" + mappedFunctionNumber, true, true);
+                "nameNode" + targetDeployment, true, true);
         operationsPerformed.put(requestId, operationPerformed);
 
         // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
@@ -271,7 +271,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
 
             // We're effectively wrapping a Future in a Future here...
-            return tcpServer.issueTcpRequestAndWait(mappedFunctionNumber, false, payload);
+            return tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload);
         });
 
         LOG.debug("Successfully submitted TCP request. Submitting HTTP request now...");
@@ -1250,6 +1250,28 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     @Override
     public void ping() throws IOException {
 		throw new UnsupportedOperationException("Function has not yet been implemented.");
+    }
+
+    @Override
+    public void ping(int targetDeployment) throws IOException {
+        String requestId = UUID.randomUUID().toString();
+
+        OperationPerformed operationPerformed
+                = new OperationPerformed("ping", System.nanoTime(), 999,
+                "nameNode" + targetDeployment, true, true);
+        operationsPerformed.put(requestId, operationPerformed);
+
+        // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
+        // file/directory, then we'll just use an HTTP request.
+        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                "ping",
+                dfsClient.serverlessEndpoint,
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                new ArgumentContainer(),
+                requestId,
+                targetDeployment);
+
+        operationPerformed.setEndTime(System.nanoTime());
     }
 
     @Override
