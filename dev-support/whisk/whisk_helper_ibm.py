@@ -39,11 +39,14 @@ if __name__ == "__main__":
         default = "scusemua/java8action:latest",
         help = "The name of the docker image to use. Default: \"scusemua/java8action:latest\"")
 
-    parser.add_argument("-c", "--create",
+    parser.add_argument("-c", "--concurrency", default = 1, type = int, dest = "concurrency",
+                        help = "the maximum intra-container concurrent activation LIMIT for the action (default 1)")
+
+    parser.add_argument("--create",
         action = "store_true",
         help = "Create new functions (rather than update existing functions. Only one of `create` and `update` should be true.")
 
-    parser.add_argument("-u", "--update",
+    parser.add_argument("--update",
         action = "store_true",
         help = "Update existing functions (rather than create new functions. Only one of `create` and `update` should be true.")
 
@@ -63,6 +66,7 @@ if __name__ == "__main__":
     docker_image = arguments.docker_image
     main_class = arguments.main_class
     jar_path = arguments.jar_path
+    concurrency = arguments.concurrency
 
     # Only one of `do_create` and `do_update` should be true.
     if (do_create and do_update):
@@ -82,11 +86,11 @@ if __name__ == "__main__":
         if do_create:
             logger.debug("Creating function with name \"%s\"" % function_name)
             #command = "wsk -i action create /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
-            command = "wsk -i action create /whisk.system/%s %s --main %s --web true --kind namenode:1" % (function_name, jar_path, main_class)
+            command = "wsk -i action create /whisk.system/%s %s --main %s --web true --kind namenode:1 --concurrency %d" % (function_name, jar_path, main_class, concurrency)
         else:
             logger.debug("Updating function with name \"%s\"" % function_name)
             #command = "wsk -i action update /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
-            command = "wsk -i action update /whisk.system/%s %s --main %s --web true --kind namenode:1" % (function_name, jar_path, main_class)
+            command = "wsk -i action update /whisk.system/%s %s --main %s --web true --kind namenode:1 --concurrency %d" % (function_name, jar_path, main_class, concurrency)
 
         split_command = command.split(" ")
 
