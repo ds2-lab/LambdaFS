@@ -835,13 +835,8 @@ public class HopsEventManager implements EventManager {
         if (eventOperation != null) {
             // Add record attributes for each of the specified columns. We use these to get MySQL table column values.
             String[] eventColumns = eventRegistrationTask.getEventColumns();
-            for (String columnName : eventColumns) {
-                boolean success = eventOperation.addRecordAttribute(columnName);
-
-                if (!success)
-                    LOG.error("Failed to create record attribute(s) for column " + columnName + ", event name = '" +
-                            eventName + "'");
-            }
+            for (String columnName : eventColumns)
+                eventOperation.addRecordAttribute(columnName);
 
             // If there's an event listener, we'll add it. Then release the semaphore again.
             if (eventListener != null) {
@@ -1002,12 +997,8 @@ public class HopsEventManager implements EventManager {
         HopsEventOperation eventOperation = createAndReturnEventOperation(defaultEventName);
 
         LOG.debug("Setting up record attributes for event " + defaultEventName + " now...");
-        for (String columnName : INV_TABLE_EVENT_COLUMNS) {
-            boolean success = eventOperation.addRecordAttribute(columnName);
-
-            if (!success)
-                LOG.error("Failed to create record attribute(s) for column " + columnName + ".");
-        }
+        for (String columnName : INV_TABLE_EVENT_COLUMNS)
+            eventOperation.addRecordAttribute(columnName);
 
         addListener(defaultEventName, invalidationListener);
 

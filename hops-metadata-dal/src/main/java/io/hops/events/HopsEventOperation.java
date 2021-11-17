@@ -6,13 +6,12 @@ public interface HopsEventOperation {
      *
      * @param columnName The name of the column for which a record attribute will be created.
      *
-     * @return True if at least one of the pre- and post-value record attributes were created, otherwise false.
-     * False may be returned if both record attribute already exist. Generally either both should exist or neither
-     * should exist.
-     *
+     * Previously, we would return a boolean indicating success. But this boolean really served no purpose.
      * If an error occurs while creating the record attribute, then an exception will be thrown.
+     * And now that event operations can be re-used, we may end up not creating any NdbRecAttr objects
+     * simply because they already exist.
      */
-    boolean addRecordAttribute(String columnName);
+    void addRecordAttribute(String columnName);
 
     /**
      * Get the boolean pre-value of a record attribute (i.e., value associated with an event).

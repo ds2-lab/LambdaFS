@@ -192,14 +192,14 @@ public class HopsEventOperationImpl implements HopsEventOperation {
     }
 
     @Override
-    public boolean addRecordAttribute(String columnName) {
-        boolean preCreated = false;
-        boolean postCreated = false;
+    public void addRecordAttribute(String columnName) {
+        //boolean preCreated = false;
+        //boolean postCreated = false;
 
         if (!preValueRecordAttributes.containsKey(columnName)) {
             RecordAttr preAttribute = clusterJEventOperation.getPreValue(columnName);
             preValueRecordAttributes.put(columnName, preAttribute);
-            preCreated = true;
+            //preCreated = true;
             LOG.debug("Created pre-value record attribute for column " + columnName +
                     " for event " + associatedEventName + ".");
         }
@@ -207,13 +207,13 @@ public class HopsEventOperationImpl implements HopsEventOperation {
         if (!postValueRecordAttributes.containsKey(columnName)) {
             RecordAttr postAttribute = clusterJEventOperation.getValue(columnName);
             postValueRecordAttributes.put(columnName, postAttribute);
-            postCreated = true;
+            //postCreated = true;
             LOG.debug("Created post-value record attribute for column " + columnName +
                     " for event " + associatedEventName + ".");
         }
 
         // If at least one of these was created, then we'll return true.
-        return (preCreated || postCreated);
+        //return (preCreated || postCreated);
     }
 
     /**
