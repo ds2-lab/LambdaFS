@@ -86,11 +86,11 @@ if __name__ == "__main__":
         if do_create:
             logger.debug("Creating function with name \"%s\"" % function_name)
             #command = "wsk -i action create /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
-            command = "wsk -i action create /whisk.system/%s %s --main %s --web true --kind namenode:1 --concurrency %d" % (function_name, jar_path, main_class, concurrency)
+            command = "wsk -i action create /whisk.system/%s %s --main %s --web true --concurrency %d --kind namenode:1" % (function_name, jar_path, main_class, concurrency)
         else:
             logger.debug("Updating function with name \"%s\"" % function_name)
             #command = "wsk -i action update /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
-            command = "wsk -i action update /whisk.system/%s %s --main %s --web true --kind namenode:1 --concurrency %d" % (function_name, jar_path, main_class, concurrency)
+            command = "wsk -i action update /whisk.system/%s %s --main %s --web true --concurrency %d --kind namenode:1" % (function_name, jar_path, main_class, concurrency)
 
         split_command = command.split(" ")
 
