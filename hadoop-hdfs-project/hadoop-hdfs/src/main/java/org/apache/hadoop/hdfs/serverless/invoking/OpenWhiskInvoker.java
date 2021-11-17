@@ -278,7 +278,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             // yet, but if you try again a few seconds later, then the request will get through.
             if (responseCode >= 400 && responseCode <= 599) {
                 LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-                        (exponentialBackoff.getNumberOfRetries() - 1) + "/" + (maxHttpRetries) + ".");
+                        (exponentialBackoff.getNumberOfRetries() - 1) + "/" + (maxHttpRetries + 1) + ".");
 
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
@@ -290,7 +290,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         } while (backoffInterval != -1);
 
         throw new IOException("The file system operation could not be completed. " +
-                "Failed to invoke a Serverless NameNode after " + maxHttpRetries + " attempts.");
+                "Failed to invoke a Serverless NameNode after " + (maxHttpRetries + 1) + " attempts.");
     }
 
     /**

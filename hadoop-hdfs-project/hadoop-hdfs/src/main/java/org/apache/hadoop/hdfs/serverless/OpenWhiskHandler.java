@@ -176,7 +176,7 @@ public class OpenWhiskHandler {
         // Flag that indicates whether this action was invoked by a client or a DataNode.
         boolean isClientInvoker = userArguments.getAsJsonPrimitive(
                 ServerlessNameNodeKeys.IS_CLIENT_INVOKER).getAsBoolean();
-        String invokerIdentity = userArguments.getAsJsonArray(
+        String invokerIdentity = userArguments.getAsJsonPrimitive(
                 ServerlessNameNodeKeys.INVOKER_IDENTITY).getAsString();
 
         LOG.info("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
