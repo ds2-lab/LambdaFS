@@ -595,12 +595,12 @@ public abstract class HopsTransactionalRequestHandler
   private void leaveDeployments() throws Exception {
     ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
 
+    String memberId = serverlessNameNodeInstance.getId() + "-" + Thread.currentThread().getId();
     for (int deployentNumber : involvedDeployments) {
       if (deployentNumber == serverlessNameNodeInstance.getDeploymentNumber())
         continue;
 
-      zkClient.leaveGroup("namenode" + deployentNumber,
-              Long.toString(serverlessNameNodeInstance.getId()), false);
+      zkClient.leaveGroup("namenode" + deployentNumber, memberId, false);
     }
   }
 
@@ -684,9 +684,16 @@ public abstract class HopsTransactionalRequestHandler
               involvedDeployments.size() + ").");
       final String groupName = "namenode" + deploymentNumber;
 
+      // During subtree transactions, the NameNode may use a large number of threads to concurrently operate on
+      // different parts of the subtree. As a result, the NN may try to guest-join the ZooKeeper group multiple
+      // times. For now, we just append the thread ID to the NameNode's ID to use as our ZooKeeper ID for the guest
+      // group. This is a little messy, but nobody references the guest group anyway. At some point, if we never
+      // begin using it, we could just eliminate the behavior (i.e., NameNodes would not explicitly join as a guest).
+      String memberId = localNameNodeId + "-" + Thread.currentThread().getId();
+
       try {
         // Join the group.
-        zkClient.joinGroupAsGuest("namenode" + deploymentNumber, Long.toString(localNameNodeId), watchedEvent -> {
+        zkClient.joinGroupAsGuest("namenode" + deploymentNumber, memberId, watchedEvent -> {
           // This specifically monitors for NNs leaving the group, rather than joining. NNs that join will have
           // empty caches, so we do not need to worry about them.
           if (watchedEvent.getType() == Watcher.Event.EventType.ChildWatchRemoved) {
