@@ -220,19 +220,33 @@ public abstract class HopsTransactionalRequestHandler
     if (!proceedWithTx) {
       Throwable t = exception[0];
 
+      // If no exception was explicitly thrown, then we'll just say that in the exception that we throw.
+      if (t == null)
+        throw new IOException("Transaction encountered critical error, but no exception was thrown. Probably timed out.");
+
+      // If there was an exception thrown, then we'll rethrow it as-is if it is an IOException.
+      // If it is not an IOException, then we'll wrap it in an IOException.
       if (t instanceof IOException)
         throw (IOException)t;
       else
         throw new IOException("Exception encountered during consistency protocol: " + t.getMessage(), t);
     }
 
-    return proceedWithTx;
+    // 'proceedWithTx' will always be true at this point, since we throw an exception if it is false.
+    return true;
   }
 
   // TODO: Does the consistency protocol step on the subtree protocol? Since setting the subtree lock flag
   //       requires going thru the consistency protocol.
   /**
    * This function should be overridden in order to provide a consistency protocol whenever necessary.
+   *
+   * We put this in a separate function from {@link HopsTransactionalRequestHandler#consistencyProtocol(long)} as
+   * we want it to run it its own thread. If we do not put it in its own thread, then none of the ACK entries
+   * or INV entries will actually be added to intermediate storage. The NDB Session object used by the thread
+   * performing the transaction is, of course, in an NDB transaction. So, none of the updates would get
+   * applied until the tx is committed. This includes ACKs and INVs. Using a separate thread (and therefore a
+   * unique, separate Session instance) circumvents this issue.
    *
    * @param entityContext Must be an INodeContext object. Used to determine which INodes are being written to.
    * @param txStartTime The time at which the transaction began. Used to order operations.
@@ -396,7 +410,8 @@ public abstract class HopsTransactionalRequestHandler
         requestHandlerLOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
       }
 
-      return false;
+      // Throw an exception so that it gets caught and reported as an exception, rather than just returning false.
+      throw new IOException("Exception encountered while waiting for ACKs (" + ex.getMessage() + "): ", ex);
     }
 
     // Clean up ACKs, event operation, etc.
