@@ -230,11 +230,6 @@ public class NameNodeWorkerThread extends Thread {
                 task = workQueue.poll(5000, TimeUnit.MILLISECONDS);
 
                 if (task == null) {
-                    // LOG.debug("Worker thread did not find anything to do...");
-
-                    NameNodeTCPClient nameNodeTCPClient = serverlessNameNodeInstance.getNameNodeTcpClient();
-                    // LOG.debug("Number of TCP Clients of the NameNode: " + nameNodeTCPClient.numClients());
-
                     doRoutineActivities();
                     continue;
                 }
@@ -264,6 +259,7 @@ public class NameNodeWorkerThread extends Thread {
                             "already being a task with the same ID present.");
 
                 Serializable result = null;
+                boolean success = false;
                 try {
                     result = serverlessNameNodeInstance.performOperation(
                             task.getOperationName(), task.getOperationArguments());
@@ -272,6 +268,8 @@ public class NameNodeWorkerThread extends Thread {
                         workerResult.addResult(NullResult.getInstance(), true);
                     else
                         workerResult.addResult(result, true);
+
+                    success = true;
                 } catch (Exception ex) {
                     LOG.error("Worker thread encountered exception while executing file system operation " +
                             task.getOperationName() + " for task " + task.getTaskId() + ".", ex);
@@ -284,17 +282,16 @@ public class NameNodeWorkerThread extends Thread {
 
                 currentlyExecutingTasks.remove(task.getTaskId());
 
-                // Do something with the task.
-                // if (result != null)
-                //     task.postResult(result);
-                // else
-                //     task.postResult(NullResult.getInstance());
                 task.postResult(workerResult);
 
-                prev = completedTasks.putIfAbsent(task.getTaskId(), task);
-                if (prev != null)
-                    LOG.error("Enqueued task " + task.getTaskId() + " into CompletedTasks despite there " +
-                            "already being a task with the same ID present.");
+                // We only add the task to the `completedTasks` mapping if we executed it successfully.
+                // If there was an error, then may be automatically re-submitted by the client.
+                if (success) {
+                    prev = completedTasks.putIfAbsent(task.getTaskId(), task);
+                    if (prev != null)
+                        LOG.error("Enqueued task " + task.getTaskId() + " into CompletedTasks despite there " +
+                                "already being a task with the same ID present.");
+                }
 
                 // Cache the result for a bit.
                 LOG.debug("Caching result of task " + task.getTaskId() + "(op=" + task.getOperationName()
