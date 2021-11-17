@@ -453,6 +453,11 @@ public abstract class HopsTransactionalRequestHandler
 
     Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(deploymentNumber);
 
+    if (deploymentAcks == null) {
+      requestHandlerLOG.debug("We do not require any ACKs from deployment #" + deploymentAcks + ".");
+      return;
+    }
+
     requestHandlerLOG.debug("ACKs required from deployment #" + deploymentNumber + ": " +
             StringUtils.join(deploymentAcks, ", "));
 
