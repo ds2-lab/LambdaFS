@@ -51,7 +51,7 @@ public class NameNodeResult implements Serializable {
     /**
      * The name of the serverless function all of this is running in/on.
      */
-    private final String functionName;
+    private final int deploymentNumber;
 
     /**
      * The unique ID of the current NameNode instance.
@@ -90,8 +90,8 @@ public class NameNodeResult implements Serializable {
      */
     private long timeDeliveredBackToClient = -1L;
 
-    public NameNodeResult(String functionName, String requestId, String requestMethod, long nameNodeId) {
-        this.functionName = functionName;
+    public NameNodeResult(int deploymentNumber, String requestId, String requestMethod, long nameNodeId) {
+        this.deploymentNumber = deploymentNumber;
         this.nameNodeId = nameNodeId;
         this.requestId = requestId;
         this.exceptions = new ArrayList<>();
@@ -184,8 +184,8 @@ public class NameNodeResult implements Serializable {
 
         LOG.debug("----------------------------------------------------");
 
-        LOG.debug("Function Name: " + this.functionName);
         LOG.debug("NameNode ID: " + this.nameNodeId);
+        LOG.debug("Deployment number: " + this.deploymentNumber);
         LOG.debug("Number of exceptions: " + exceptions.size());
 
         if (exceptions.size() > 0) {
@@ -292,7 +292,7 @@ public class NameNodeResult implements Serializable {
             json.addProperty(ServerlessNameNodeKeys.OPERATION, operation);
 
         json.addProperty(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
-        json.addProperty(ServerlessNameNodeKeys.FUNCTION_NAME, functionName);
+        json.addProperty(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER, deploymentNumber);
         json.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
         json.addProperty(ServerlessNameNodeKeys.REQUEST_METHOD, requestMethod);
         json.addProperty(ServerlessNameNodeKeys.CANCELLED, false);

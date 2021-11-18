@@ -267,6 +267,7 @@ public class QuotaUpdateManager {
           for (Map.Entry<QuotaUpdate.StorageType, Long> entry : update.getTypeSpaces().entrySet()) {
             counts.addTypeSpace(StorageType.valueOf(entry.getKey().name()), entry.getValue());
           }
+
           LOG.debug("handling " + update);
           EntityManager.remove(update);
         }

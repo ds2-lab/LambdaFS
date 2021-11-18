@@ -250,7 +250,8 @@ public class OpenWhiskHandler {
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                      String functionName, String clientIPAddress, String requestId,
                                      String clientName, boolean isClientInvoker, boolean tcpEnabled) {
-        NameNodeResult result = new NameNodeResult(functionName, requestId, "HTTP", -1);
+        NameNodeResult result = new NameNodeResult(ServerlessNameNode.getFunctionNumberFromFunctionName(functionName),
+                requestId, "HTTP", -1);
 
         Instant creationStart = Instant.now();
         LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");

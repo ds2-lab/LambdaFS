@@ -4,10 +4,8 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
-import com.esotericsoftware.minlog.Log;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import jdk.nashorn.internal.runtime.regexp.joni.ast.StringNode;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -16,11 +14,9 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import java.io.IOException;
 import java.net.BindException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_RESULT;
@@ -55,19 +51,29 @@ public class HopsFSUserServer {
     /**
      * Cache mapping of serverless function names to the connections to that particular serverless function.
      *
-     * Each deployment of the serverless name node has a name (e.g., "namenode1", "namenode2", etc.). We map
-     * these names to the connection associated with that namenode.
+     * We map functions based on their unique IDs, which are longs, but we convert them to strings as connection names
+     * are strings.
      *
      * This is a concurrent hash map as it will be referenced both by the main thread and background
      * threads when issuing TCP requests to NameNodes.
      */
-    private final ConcurrentHashMap<String, NameNodeConnection> activeConnections;
+    private final ConcurrentHashMap<Long, NameNodeConnection> allActiveConnections;
+
+    /**
+     * Caches the active connections in lists per deployment.
+     */
+    private final ConcurrentHashMap<Integer, ConcurrentHashMap<Long, NameNodeConnection>> activeConnectionsPerDeployment;
 
     /**
      * The TCP Server maintains a collection of Futures for clients that are awaiting a response from
      * the NameNode to which they issued a request.
      */
     private final ConcurrentHashMap<String, RequestResponseFuture> activeFutures;
+
+    /**
+     * Mostly just used for debugging. We map the unique IDs of NameNodes to their deployments.
+     */
+    private final ConcurrentHashMap<Long, Integer> nameNodeIdToDeploymentMapping;
 
     /**
      * A collection of all the futures that we've completed in one way or another (either they
@@ -77,10 +83,11 @@ public class HopsFSUserServer {
 
     /**
      * Associate with each connection the list of futures that have been submitted and NOT completed.
+     * The keys are NameNode IDs.
      *
      * If the connection is lost, then these futures must be re-submitted via HTTP.
      */
-    private final ConcurrentHashMap<String, List<RequestResponseFuture>> submittedFutures;
+    private final ConcurrentHashMap<Long, List<RequestResponseFuture>> submittedFutures;
 
     /**
      * Mapping of task/request ID to the NameNode to which the task/request was submitted.
@@ -91,6 +98,11 @@ public class HopsFSUserServer {
      * Indicates whether the TCP server should ultimately be started and enabled.
      */
     private final boolean enabled;
+
+    /**
+     * Number of unique deployments.
+     */
+    private final int totalNumberOfDeployments;
 
     /**
      * Constructor.
@@ -112,6 +124,8 @@ public class HopsFSUserServer {
 
         enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+        totalNumberOfDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
+                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
         LOG.info("TCP server " + (enabled ? "ENABLED." : "DISABLED."));
 
@@ -122,11 +136,18 @@ public class HopsFSUserServer {
 
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
-        this.activeConnections = new ConcurrentHashMap<>();
+        this.allActiveConnections = new ConcurrentHashMap<>();
         this.submittedFutures = new ConcurrentHashMap<>();
         this.activeFutures = new ConcurrentHashMap<>();
         this.completedFutures = new ConcurrentHashMap<>();
         this.futureToNameNodeMapping = new ConcurrentHashMap<>();
+        this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
+        this.activeConnectionsPerDeployment = new ConcurrentHashMap<>();
+
+        // Populate the active connections mapping with default, empty hash maps for each deployment.
+        for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {
+            activeConnectionsPerDeployment.put(deployNum, new ConcurrentHashMap<>());
+        }
 
         String functionEndpoint = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT,
                 DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
@@ -217,7 +238,8 @@ public class HopsFSUserServer {
                         LOG.debug(body.toString());
                     }
 
-                    String functionName = body.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION_NAME).getAsString();
+                    int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
+                    long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
                     String operation = body.getAsJsonPrimitive("op").getAsString();
 
                     String requestId = null;
@@ -226,8 +248,8 @@ public class HopsFSUserServer {
                     if (body.has("requestId"))
                         requestId = body.getAsJsonPrimitive("requestId").getAsString();
 
-                    LOG.debug("[TCP SERVER] FunctionName: " + functionName + ", RequestID: " + requestId
-                            + ", Operation: " + operation);
+                    LOG.debug("[TCP SERVER] NN ID: " + nameNodeId + ", Deployment #: " + deploymentNumber +
+                            ", RequestID: " + requestId + ", Operation: " + operation);
 
                     // There are currently two different operations that a NameNode may perform.
                     // The first is registration. This operation results in the connection to the NameNode
@@ -237,12 +259,14 @@ public class HopsFSUserServer {
                         // The NameNode is registering with the client (i.e., connecting for the first time,
                         // or at least they are connecting after having previously lost connection).
                         case OPERATION_REGISTER:
-                            LOG.debug("[TCP SERVER] Received registration operation from NameNode " + functionName);
-                            registerNameNode(connection, functionName);
+                            LOG.debug("[TCP SERVER] Received registration operation from NameNode " +
+                                    nameNodeId + ", Deployment #" + deploymentNumber);
+                            registerNameNode(connection, deploymentNumber, nameNodeId);
                             break;
                         // The NameNode is returning a result (of a file system operation) to the client.
                         case OPERATION_RESULT:
-                            LOG.debug("[TCP SERVER] Received result from NameNode " + functionName);
+                            LOG.debug("[TCP SERVER] Received result from NameNode " + nameNodeId +
+                                    ", Deployment #" + deploymentNumber);
 
                             // If there is no request ID, then we have no idea which operation this result is
                             // associated with, and thus we cannot do anything with it.
@@ -273,8 +297,8 @@ public class HopsFSUserServer {
 
                             break;
                         default:
-                            LOG.warn("[TCP SERVER] Unknown operation received from NameNode " + functionName + ": "
-                                    + operation);
+                            LOG.warn("[TCP SERVER] Unknown operation received from NameNode " + nameNodeId +
+                                    ", Deployment #" + deploymentNumber + ": '" + operation + "'");
                     }
                 }
                 else if (object instanceof FrameworkMessage.KeepAlive) {
@@ -296,21 +320,24 @@ public class HopsFSUserServer {
             public void disconnected(Connection conn) {
                 NameNodeConnection connection = (NameNodeConnection)conn;
 
-                if (connection.name != null) {
-                    LOG.debug("[TCP SERVER] Connection to " + connection.name + " lost.");
-                    activeConnections.remove(connection.name);
+                if (connection.name != -1) {
+                    LOG.debug("[TCP SERVER] Connection to NN" + connection.name + " lost.");
+                    allActiveConnections.remove(connection.name);
+
+                    int mappedDeploymentNumber = nameNodeIdToDeploymentMapping.get(connection.name);
+                    ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
+                            activeConnectionsPerDeployment.get(mappedDeploymentNumber);
+                    deploymentConnections.remove(connection.name);
 
                     List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
 
                     if (incompleteFutures == null) {
-                        LOG.debug("There were no futures associated with now-closed connection " +
-                                connection.name);
+                        LOG.debug("There were no futures associated with now-closed connection " + connection.name);
                         return;
                     }
 
                     LOG.warn("There were " + incompleteFutures.size()
-                            + " incomplete future(s) associated with now-terminated connection " +
-                            connection.name);
+                            + " incomplete future(s) associated with now-terminated connection " + connection.name);
 
                     // Cancel each of the futures.
                     for (RequestResponseFuture future : incompleteFutures) {
@@ -334,12 +361,13 @@ public class HopsFSUserServer {
      * Register the remote serverless NameNode locally. This involves assigning a name to the connection
      * object as well as caching the active connection locally.
      * @param connection The connection to the serverless name node.
-     * @param functionName The (unique) name of the serverless name node.
+     * @param nameNodeId The unique ID of the NameNode.
+     * @param deploymentNumber The deployment in which the NameNode is running.
      */
-    private void registerNameNode(NameNodeConnection connection, String functionName) {
-        connection.name = functionName;
+    private void registerNameNode(NameNodeConnection connection, int deploymentNumber, long nameNodeId) {
+        connection.name = nameNodeId;
 
-        cacheConnection(connection, functionName);
+        cacheConnection(connection, deploymentNumber, nameNodeId);
     }
 
     /**
@@ -347,45 +375,52 @@ public class HopsFSUserServer {
      * is already a connection associated with the given functionName cached.
      *
      * @param connection The connection with the name node.
-     * @param functionName The name of the function to which we are connected.
-     * @return true if the function was cached successfully, false if we already have this connection cached.
+     * @param nameNodeId The unique ID of the NameNode.
+     * @param deploymentNumber The deployment in which the NameNode is running.
      */
-    private void cacheConnection(NameNodeConnection connection, String functionName) {
-        if (activeConnections.containsKey(functionName)) {
-            NameNodeConnection oldConnection = activeConnections.get(functionName);
+    private void cacheConnection(NameNodeConnection connection, int deploymentNumber, long nameNodeId) {
+        if (allActiveConnections.containsKey(nameNodeId)) {
+            NameNodeConnection oldConnection = allActiveConnections.get(nameNodeId);
+            // Sanity check.
+            int existingDeploymentNumber = nameNodeIdToDeploymentMapping.get(nameNodeId);
+
+            if (existingDeploymentNumber != deploymentNumber)
+                throw new IllegalStateException("Received connection from NN " + nameNodeId +
+                        ". NN currently reports deployment # as " + deploymentNumber +
+                        ", but we prev. cached its deployment # as " + existingDeploymentNumber);
 
             if (oldConnection.isConnected()) {
-                LOG.error("[TCP Server] Already have an ACTIVE conn to NameNode " + functionName + ".");
-                LOG.warn("[TCP Server] Replacing old, ACTIVE conn to NameNode " + functionName +
-                        " with a new one...");
+                LOG.warn("[TCP Server] Already have an ACTIVE conn to NameNode " + nameNodeId +
+                        " (deployment #" + deploymentNumber + ".");
+                LOG.warn("[TCP Server] Replacing old, ACTIVE conn to NameNode " + nameNodeId +
+                        " (deployment #" + deploymentNumber + ") with a new one...");
 
                 oldConnection.close();
             } else {
-                LOG.error("[TCP Server] Already have a conn to NameNode " + functionName
-                        + ", but it is apparently no longer connected...");
-                LOG.warn("[TCP Server] Replacing old, now-disconnected conn to NameNode " + functionName +
-                        " with the new one...");
+                LOG.error("[TCP Server] Already have a conn to NameNode " + nameNodeId + " (deployment #" +
+                        deploymentNumber + "), but it is apparently no longer connected...");
+                LOG.warn("[TCP Server] Replacing old, now-disconnected conn to NameNode " + nameNodeId +
+                        " (deployment #" + deploymentNumber + ") with the new one...");
             }
         } else {
             // We don't want to print this debug message along with the ones from the if-statement above, so
             // we put it in the else block. It isn't contradictory or anything, but it'd be redundant.
-            LOG.debug("Caching active connection with serverless function \"" + functionName + "\" now...");
+            LOG.debug("Caching connection to NN " + nameNodeId + " (deployment #" + deploymentNumber + ") now.");
         }
 
-        activeConnections.put(functionName, connection);
+        allActiveConnections.put(nameNodeId, connection);
+        nameNodeIdToDeploymentMapping.put(nameNodeId, deploymentNumber);
     }
 
     /**
      * Get the TCP connection associated with the NameNode deployment identified by the given function number.
      *
      * Returns null if no such connection exists.
-     * @param functionNumber The NameNode deployment for which the connection is desired.
+     * @param nameNodeId The unique ID of the NameNode for which the connection is desired.
      * @return TCP connection to the desired NameNode if it exists, otherwise null.
      */
-    private NameNodeConnection getConnection(int functionNumber) {
-        String serverlessFunctionName = baseFunctionName + functionNumber;
-
-        return activeConnections.getOrDefault(serverlessFunctionName, null);
+    private NameNodeConnection getConnection(long nameNodeId) {
+        return allActiveConnections.getOrDefault(nameNodeId, null);
     }
 
     /**
@@ -393,74 +428,99 @@ public class HopsFSUserServer {
      *
      * If the connection is still active, it will only be removed if the `deleteIfActive` flag is set to true.
      * In this scenario, the connection will first be closed before it is removed from the connection cache.
-     * @param functionNumber The deployment number of the name node in question.
+     * @param nameNodeId The unique ID of the NN for which the connection should be deleted.
      * @param deleteIfActive Flag indicating whether the connection should still be closed if it is currently
      *                       active.
      * @param errorIfActive Throw an error if the function is found to be active. This is useful if we believe the
      *                      connection is already closed and that is why we are removing it.
      * @return True if a connection was removed, otherwise false.
      */
-    private boolean deleteConnection(int functionNumber, boolean deleteIfActive, boolean errorIfActive) {
-        String functionName = baseFunctionName + functionNumber;
-
-        NameNodeConnection conn = activeConnections.getOrDefault(functionName, null);
+    private boolean deleteConnection(long nameNodeId, boolean deleteIfActive, boolean errorIfActive) {
+        NameNodeConnection conn = allActiveConnections.getOrDefault(nameNodeId, null);
 
         if (conn != null) {
             if (conn.isConnected()) {
 
                 if (errorIfActive) {
-                    throw new IllegalStateException("[TCP SERVER] Connection to " + functionName
+                    throw new IllegalStateException("[TCP SERVER] Connection to NN " + nameNodeId
                             + " was found to be active.");
                 }
 
                 if (deleteIfActive) {
                     conn.close();
-                    activeConnections.remove(functionName);
+                    allActiveConnections.remove(nameNodeId);
+
+                    // Remove from the mapping for the NN's specific deployment.
+                    int deploymentNumber = nameNodeIdToDeploymentMapping.get(nameNodeId);
+                    ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
+                            activeConnectionsPerDeployment.get(deploymentNumber);
+                    deploymentConnections.remove(nameNodeId);
+
 
                     // Remove the list of futures associated with this connection.
                     // TODO: Should we resubmit these via HTTP? Or just drop them, effectively?
                     //       Currently, we're just dropping them.
                     List<RequestResponseFuture> incompleteFutures = submittedFutures.get(conn.name);
                     if (incompleteFutures.size() > 0) {
-                        LOG.warn("Connection to NameNode " + functionName + " has " + incompleteFutures.size() +
+                        LOG.warn("Connection to NameNode " + nameNodeId + " has " + incompleteFutures.size() +
                                 " incomplete futures associated with it, yet we're deleting the connection...");
                     }
                     submittedFutures.remove(conn.name);
 
-                    LOG.debug("[TCP SERVER] Closed and removed connection to " + functionName);
+                    LOG.debug("[TCP SERVER] Closed and removed connection to NN " + nameNodeId);
                     return true;
                 } else {
-                    LOG.debug("[TCP SERVER] Cannot remove connection to " + functionName
+                    LOG.debug("[TCP SERVER] Cannot remove connection to NN " + nameNodeId
                             + " because it is still active " + "(and the override flag was not set to true).");
                     return false;
                 }
             } else {
-                activeConnections.remove(functionName);
-                LOG.debug("[TCP SERVER] Removed already-closed connection to " + functionName);
+                allActiveConnections.remove(nameNodeId);
+
+                // Remove from the mapping for the NN's specific deployment.
+                int deploymentNumber = nameNodeIdToDeploymentMapping.get(nameNodeId);
+                ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
+                        activeConnectionsPerDeployment.get(deploymentNumber);
+                deploymentConnections.remove(nameNodeId);
+
+                LOG.debug("[TCP SERVER] Removed already-closed connection to NN " + nameNodeId);
                 return true;
             }
         } else {
-            LOG.warn("[TCP SERVER] Cannot remove connection to " + functionName + ". No such connection exists!");
+            LOG.warn("[TCP SERVER] Cannot remove connection to NN " + nameNodeId + ". No such connection exists!");
             return false;
         }
     }
 
     /**
-     * Checks if there is an active connection established to the NameNode with the given function number.
+     * Check if there exists at least one connection to a NameNode in the specified deployment.
      *
-     * @param functionNumber The function number of the desired NameNode.
+     * @param deploymentNumber The deployment to which we're asking if at least one connection exists.
      * @return True if a connection currently exists, otherwise false.
      */
-    public boolean connectionExists(int functionNumber) {
-        Connection tcpConnection = getConnection(functionNumber);
+    public boolean connectionExists(int deploymentNumber) {
+        ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
+                activeConnectionsPerDeployment.get(deploymentNumber);
+
+        return deploymentConnections.size() > 0;
+    }
+
+    /**
+     * Checks if there is an active connection established to the NameNode with the given ID.
+     *
+     * @param nameNodeId The ID of the NN for which we're querying the existence of a connection.
+     * @return True if a connection currently exists, otherwise false.
+     */
+    public boolean connectionExists(long nameNodeId) {
+        Connection tcpConnection = getConnection(nameNodeId);
 
         if(tcpConnection != null) {
             if (tcpConnection.isConnected())
                 return true;
 
             // If the connection is NOT active, then we need to remove it from our cache of connections.
-            deleteConnection(functionNumber, false, true);
-            LOG.warn("Found that connection to NameNode " + functionNumber + " is NOT connected while checking" +
+            deleteConnection(nameNodeId, false, true);
+            LOG.warn("Found that connection to NN " + nameNodeId + " is NOT connected while checking" +
                     " if it exists. Removing it from the connection mapping...");
         }
 
@@ -470,8 +530,8 @@ public class HopsFSUserServer {
     public void printDebugInformation() {
         LOG.debug("========== TCP Server Debug Information ==========");
         LOG.debug("CONNECTIONS:");
-        LOG.debug("     Number of active connections: " + activeConnections.size());
-        ConcurrentHashMap.KeySetView<String, NameNodeConnection> keySetView = activeConnections.keySet();
+        LOG.debug("     Number of active connections: " + allActiveConnections.size());
+        ConcurrentHashMap.KeySetView<Long, NameNodeConnection> keySetView = allActiveConnections.keySet();
         LOG.debug("     Connected to:");
         keySetView.forEach(funcName -> LOG.debug("         " + funcName));
         LOG.debug("FUTURES:");
@@ -485,17 +545,15 @@ public class HopsFSUserServer {
      * associated request to the Future.
      *
      * Checks for duplicate futures before registering it.
-     * @return True if the Future was registered successfully.
      */
-    public boolean registerRequestResponseFuture(RequestResponseFuture requestResponseFuture) {
+    public void registerRequestResponseFuture(RequestResponseFuture requestResponseFuture) {
         if (activeFutures.containsKey(requestResponseFuture.getRequestId()) ||
             completedFutures.containsKey(requestResponseFuture.getRequestId())) {
-            return false;
+            return;
         }
 
         LOG.debug("[TCP Server] Registering future for request " + requestResponseFuture.getRequestId() + ".");
         activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
-        return true;
     }
 
     /**
@@ -529,14 +587,14 @@ public class HopsFSUserServer {
     /**
      * Issue a TCP request to the given NameNode. Ths function will check to ensure that the connection exists
      * first before issuing the connection.
-     * @param functionNumber The NameNode to issue a request to.
+     * @param deploymentNumber The NameNode to issue a request to.
      * @param bypassCheck Do not check if the connection exists.
      * @param payload The payload to send to the NameNode in the TCP request.
      * @return A Future representing the eventual response from the NameNode.
      */
-    public RequestResponseFuture issueTcpRequest(int functionNumber, boolean bypassCheck, JsonObject payload) {
-        if (!bypassCheck && !connectionExists(functionNumber)) {
-            LOG.warn("[TCP SERVER] Was about to issue TCP request to NameNode deployment " + functionNumber +
+    public RequestResponseFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck, JsonObject payload) {
+        if (!bypassCheck && !connectionExists(deploymentNumber)) {
+            LOG.warn("[TCP SERVER] Was about to issue TCP request to NameNode deployment " + deploymentNumber +
                     ", but connection no longer exists...");
             return null;
         }
@@ -549,7 +607,7 @@ public class HopsFSUserServer {
         registerRequestResponseFuture(requestResponseFuture);
 
         // Send the TCP request to the NameNode.
-        NameNodeConnection tcpConnection = getConnection(functionNumber);
+        NameNodeConnection tcpConnection = getConnection(deploymentNumber);
         int bytesSent = tcpConnection.sendTCP(payload.toString());
 
         // If 'bytesSent' is zero, then an error must have occurred.
@@ -557,7 +615,7 @@ public class HopsFSUserServer {
         if (bytesSent == 0)
             LOG.error("Transmission of TCP request " + requestId + " sent 0 bytes.");
         else
-            LOG.debug("Sent " + bytesSent + " bytes to NameNode" + functionNumber + ".");
+            LOG.debug("Sent " + bytesSent + " bytes to NameNode" + deploymentNumber + ".");
 
         // Make note of this future as being incomplete.
         List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(
@@ -595,11 +653,22 @@ public class HopsFSUserServer {
      * connection IDs to perform state look-up.
      */
     static class NameNodeConnection extends Connection {
-        public String name;
+        /**
+         * Name of the connection. It's just the unique ID of the NameNode to which we are connected.
+         * NameNode IDs are longs, so that's why this is of type long.
+         */
+        public long name = -1; // Hides super type.
+
+        /**
+         * Default constructor.
+         */
+        public NameNodeConnection() {
+
+        }
 
         @Override
         public String toString() {
-            return this.name != null ? this.name : super.toString();
+            return this.name != -1 ? String.valueOf(this.name) : super.toString();
         }
     }
 }

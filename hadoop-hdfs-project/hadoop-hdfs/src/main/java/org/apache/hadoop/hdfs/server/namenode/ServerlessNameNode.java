@@ -427,7 +427,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Used to communicate with Serverless HopsFS clients via TCP.
    */
-  private final NameNodeTCPClient nameNodeTCPClient;
+  private NameNodeTCPClient nameNodeTCPClient;
 
   /**
    * How long to wait for the serverless name node worker thread to process a given task before timing out.
@@ -2151,6 +2151,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     this.serverlessInvoker.setConfiguration(conf, "NN" + deploymentNumber + "-" + getId());
     this.serverlessInvoker.setIsClientInvoker(false); // We are not a client.
 
+    this.nameNodeTCPClient = new NameNodeTCPClient(conf,this, nameNodeID, deploymentNumber);
+
     Instant serverlessInitDone = Instant.now();
     Duration serverlessInitDuration = Duration.between(nameNodeInitStart, serverlessInitDone);
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
@@ -2511,14 +2513,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws Exception {
     this.functionName = functionName;
-    this.deploymentNumber = getFunctionNumberFromFunctionName();
+    this.deploymentNumber = getFunctionNumberFromFunctionName(functionName);
 
     if (this.deploymentNumber < 0)
       throw new IOException("Failed to extract valid deployment number from function name '" +
               functionName + "'");
 
     LOG.debug("We are function '" + this.functionName + "' from deployment #" + this.deploymentNumber + ".");
-    this.nameNodeTCPClient = new NameNodeTCPClient(conf, functionName, this);
     // Subtract five seconds (i.e., 6000 milliseconds) to account for invocation overheads and other start-up times.
     // The default DN heartbeat interval (and therefore, StorageReport interval) is three seconds, so this should
     // ensure that the NN finds at least 1-2 storage reports, which can be used to bootstrap the DN storages.
@@ -2605,7 +2606,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param functionName The name of this serverless function.
    * @return The number, which will be >= 0 if valid, otherwise < 0.
    */
-  private int getFunctionNumberFromFunctionName(String functionName) {
+  public static int getFunctionNumberFromFunctionName(String functionName) {
     Pattern lastIntPattern = Pattern.compile("[^0-9]+([0-9]+)$");
     Matcher matcher = lastIntPattern.matcher(functionName);
     if (matcher.find()) {
@@ -2614,17 +2615,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     return -1;
-  }
-
-  /**
-   * Returns the number of this serverless function using this function's 'functionName' field.
-   *
-   * If this returns -1, then that means it could not extract the number from the name.
-   * A "correct" number will always be >= 0.
-   * @return The number, which will be >= 0 if valid, otherwise < 0.
-   */
-  private int getFunctionNumberFromFunctionName() {
-    return getFunctionNumberFromFunctionName(this.functionName);
   }
 
   /**

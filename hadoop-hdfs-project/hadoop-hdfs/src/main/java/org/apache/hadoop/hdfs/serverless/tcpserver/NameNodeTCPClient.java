@@ -59,9 +59,14 @@ public class NameNodeTCPClient {
     private final ConcurrentHashMap<ServerlessHopsFSClient, Client> tcpClients;
 
     /**
-     * The name of the serverless function in which this TCP client exists.
+     * The deployment number of the local serverless name node instance.
      */
-    private final String functionName;
+    private final int deploymentNumber;
+
+    /**
+     * The unique ID of the local serverless name node instance.
+     */
+    private final long nameNodeId;
 
     /**
      * The ServerlessNameNode instance that this TCP Client is associated with.
@@ -108,20 +113,24 @@ public class NameNodeTCPClient {
      * Constructor.
      *
      * @param conf Configuration passed to the serverless NameNode.
-     * @param functionName The name of the serverless function in which this TCP client exists.
+     * @param nameNodeId The unique ID of the local serverless name node instance.
+     * @param deploymentNumber The deployment number of the local serverless name node instance.
      * @param serverlessNameNode The ServerlessNameNode instance.
      */
-    public NameNodeTCPClient(Configuration conf, String functionName, ServerlessNameNode serverlessNameNode) {
-        this.functionName = functionName;
+    public NameNodeTCPClient(Configuration conf, ServerlessNameNode serverlessNameNode,
+                             long nameNodeId, int deploymentNumber) {
         this.serverlessNameNode = serverlessNameNode;
+        this.nameNodeId = nameNodeId;
+        this.deploymentNumber = deploymentNumber;
         this.tcpClients = new ConcurrentHashMap<>();
         this.functionUriBase = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT, DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
 
         this.writeBufferSize = defaultWriteBufferSizeBytes;
         this.objectBufferSize = defaultObjectBufferSizeBytes;
 
-        LOG.debug("Created NameNodeTCPClient(funcName=" + functionName + ", functionUriBase=" + functionUriBase +
-                ", writeBufferSize=" + writeBufferSize + " bytes, objectBufferSize=" + objectBufferSize + " bytes).");
+        LOG.debug("Created NameNodeTCPClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
+                ", functionUriBase=" + functionUriBase + ", writeBufferSize=" + writeBufferSize +
+                " bytes, objectBufferSize=" + objectBufferSize + " bytes).");
     }
 
     /**
@@ -221,7 +230,7 @@ public class NameNodeTCPClient {
                     IllegalArgumentException ex = new IllegalArgumentException(
                             "[TCP Client] Received object of unexpected type from client " + tcpClient
                                     + ". Object type: " + object.getClass().getSimpleName() + ".");
-                    tcpResult = new NameNodeResult(functionName, "N/A", "TCP",
+                    tcpResult = new NameNodeResult(deploymentNumber, "N/A", "TCP",
                             serverlessNameNode.getId());
                     tcpResult.addException(ex);
                 }
@@ -319,7 +328,7 @@ public class NameNodeTCPClient {
             LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
         LOG.debug("======================================================\n");
 
-        NameNodeResult tcpResult = new NameNodeResult(functionName, requestId, "TCP",
+        NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP",
                 serverlessNameNode.getId());
 
         // Create a new task. After this, we assign it to the worker thread and wait for the
@@ -381,7 +390,8 @@ public class NameNodeTCPClient {
         // Complete the registration with the TCP server.
         JsonObject registration = new JsonObject();
         registration.addProperty(ServerlessNameNodeKeys.OPERATION, ServerlessClientServerUtilities.OPERATION_REGISTER);
-        registration.addProperty(ServerlessNameNodeKeys.FUNCTION_NAME, functionName);
+        registration.addProperty(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER, deploymentNumber);
+        registration.addProperty(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
 
         LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP() + " now...");
         int bytesSent = tcpClient.sendTCP(registration.toString());

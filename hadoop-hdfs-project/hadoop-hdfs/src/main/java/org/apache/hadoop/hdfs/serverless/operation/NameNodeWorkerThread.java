@@ -240,8 +240,8 @@ public class NameNodeWorkerThread extends Thread {
                 // This will ultimately be returned to the main thread to be merged with their NameNodeResult instance.
                 // The requestId and requestMethod fields won't be used during the merge, so we just use dummy values
                 // for them.
-                NameNodeResult workerResult = new NameNodeResult(this.functionName, "Unknown Request ID",
-                        "Unknown Request Method", this.nameNodeId);
+                NameNodeResult workerResult = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
+                        "Unknown Request ID", "Unknown Request Method", this.nameNodeId);
 
                 // Check if this is a duplicate task.
                 if (isTaskDuplicate(task)) {
