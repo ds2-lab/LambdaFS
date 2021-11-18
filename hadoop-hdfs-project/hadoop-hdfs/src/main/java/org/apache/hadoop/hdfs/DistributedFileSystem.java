@@ -165,7 +165,7 @@ public class DistributedFileSystem extends FileSystem {
    */
   public void prewarm(int numPingsPerDeployment) throws IOException {
     Instant start = Instant.now();
-    dfs.ping(numPingsPerDeployment);
+    dfs.prewarm(numPingsPerDeployment);
     Instant end = Instant.now();
     Duration duration = Duration.between(start, end);
     LOG.debug("Prewarm duration: " + duration.toString());
