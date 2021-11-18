@@ -79,14 +79,14 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     @Override
     public String toString() {
-        String format = "%-16s %-38s %-20s %-20s %-8s %-5s %-5s %-5s";
+        String format = "%-16s %-38s %-26s %-26s %-8s %-5s %-5s %-5s";
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd hh:mm:ss:SSS")
                 .withLocale( Locale.US )
                 .withZone( ZoneId.of("UTC"));
 
-        return String.format(format, operationName, requestId, formatter.format(Instant.ofEpochMilli(startTime)),
-                formatter.format(Instant.ofEpochMilli(endTime)), duration, deployment,
+        return String.format(format, operationName, requestId, Instant.ofEpochMilli(startTime).toString(),
+                Instant.ofEpochMilli(endTime).toString(), duration, deployment,
                 (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
 
 //            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
