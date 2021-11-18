@@ -136,7 +136,6 @@ public interface ZKClient {
      */
     void close();
 
-
     /**
      * Add a listener to the Watch for the given group. The listener will call the provided callback.
      * The callback should handle determining whether to act depending on which event fired.

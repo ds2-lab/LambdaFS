@@ -200,10 +200,11 @@ public class SyncZKClient implements ZKClient {
      */
     private PersistentWatcher createAndStartPersistentWatcher(String path, boolean recursive) {
         if (this.watchers.containsKey(path)) {
-            LOG.warn("We already have a watcher for path " + path + ".");
+            LOG.debug("We already have a PersistentWatcher for path " + path + ".");
             return this.watchers.get(path);
         }
         else {
+            LOG.debug("Creating new PersistentWatcher for path '" + path + '"');
             PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, path, recursive);
             persistentWatcher.start();
             this.watchers.put(path, persistentWatcher);
