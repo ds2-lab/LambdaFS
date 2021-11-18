@@ -295,6 +295,7 @@ public abstract class HopsTransactionalRequestHandler
     requestHandlerLOG.debug("Operation ID: " + operationId);
     requestHandlerLOG.debug("Operation Start Time: " + txStartTime);
     serverlessNameNodeInstance = OpenWhiskHandler.instance;
+    printSuccessMessage = true;
 
     // Sanity check. Make sure we have a valid reference to the ServerlessNameNode. This isn't the cleanest, but
     // with the way HopsFS has structured its code, this is workable for our purposes.

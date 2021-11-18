@@ -44,6 +44,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
    */
   protected final long operationId;
 
+  protected boolean printSuccessMessage = false;
+
   /**
    * Override this function to implement a serverless consistency protocol. This will get called
    * AFTER local, in-memory processing occurs but (immediately) before the changes are committed
@@ -145,8 +147,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         oldTime = System.currentTimeMillis();
 
         if (canProceed) {
-          requestHandlerLOG.debug("Consistency protocol for TX " + operationId +
-                  " succeeded after " + consistencyProtocolTime + " ms");
+          if (printSuccessMessage)
+            requestHandlerLOG.debug("Consistency protocol for TX " + operationId + " succeeded after " + consistencyProtocolTime + " ms");
         } else {
           throw new IOException("Consistency protocol for TX " + operationId + " FAILED after " +
                   consistencyProtocolTime + " ms.");
