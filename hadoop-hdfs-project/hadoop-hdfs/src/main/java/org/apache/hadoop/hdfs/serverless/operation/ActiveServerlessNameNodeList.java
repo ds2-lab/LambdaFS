@@ -5,6 +5,7 @@ import io.hops.leader_election.node.SortedActiveNodeList;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
+import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,11 +49,13 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
             final String groupName = "namenode" + deploymentNumber;
 
             zkClient.addListener(groupName, watchedEvent -> {
-                try {
-                    refreshFromZooKeeper(zkClient);
-                } catch (Exception ex) {
-                    LOG.error("Exception encountered while refreshing active NNs in deployment #" +
-                            deploymentNumber + " from ZooKeeper (in Watcher): ", ex);
+                if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+                    try {
+                        refreshFromZooKeeper(zkClient);
+                    } catch (Exception ex) {
+                        LOG.error("Exception encountered while refreshing active NNs in deployment #" +
+                                deploymentNumber + " from ZooKeeper (in Watcher): ", ex);
+                    }
                 }
             });
 
