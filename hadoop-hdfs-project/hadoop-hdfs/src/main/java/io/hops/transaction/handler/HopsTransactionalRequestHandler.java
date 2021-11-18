@@ -661,8 +661,8 @@ public abstract class HopsTransactionalRequestHandler
       // If we're receiving an ACK for this NameNode, then it better be the case that
       // we're waiting on it. Otherwise, something is wrong.
       if (!waitingForAcks.contains(nameNodeId)) {
-        requestHandlerLOG.warn("We received an ACK from NN " + nameNodeId +
-                ", but that NN is not in our 'waiting on' list. Size of list: " + waitingForAcks.size() + ".");
+        requestHandlerLOG.warn("Leader NN " + serverlessNameNodeInstance.getId() + " for TX " + operationId +
+                " received unexpected ACK from NN " + nameNodeId + ". Size of list: " + waitingForAcks.size() + ".");
         return;
       }
 
