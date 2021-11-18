@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless.metrics;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 
 // "Op Name", "Start Time", "End Time", "Duration (ms)", "Deployment", "HTTP", "TCP"
@@ -30,6 +31,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     private final String operationName;
 
+    private final String requestId;
+
     private final long startTime;
 
     private long endTime;
@@ -42,9 +45,10 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     private final boolean issuedViaHttp;
 
-    public OperationPerformed(String operationName, long startTime, long endTime, String deployment,
-                              boolean issuedViaHttp, boolean issuedViaTcp) {
+    public OperationPerformed(String operationName, String requestId, long startTime, long endTime,
+                              String deployment, boolean issuedViaHttp, boolean issuedViaTcp) {
         this.operationName = operationName;
+        this.requestId = requestId;
         this.startTime = startTime / 1000000;
         this.endTime = endTime / 1000000;
         this.duration = endTime - startTime;
@@ -73,10 +77,12 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     @Override
     public String toString() {
-        String format = "%-25s %-25s %-25s %-12s %-12s %-6s %-6s";
+        String format = "%-20s %-36s %-20s %-20s %-12s %-6s %-5s %-5s";
 
-        return String.format(format, operationName, Instant.ofEpochMilli(startTime).toString(),
-                Instant.ofEpochMilli(endTime).toString(), duration, deployment,
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd hh:mm:ss:SSS");
+
+        return String.format(format, operationName, requestId, formatter.format(Instant.ofEpochMilli(startTime)),
+                formatter.format(Instant.ofEpochMilli(endTime)), duration, deployment,
                 (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
 
 //            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
@@ -90,5 +96,9 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     @Override
     public int compareTo(OperationPerformed op) {
         return Long.compare(endTime, op.endTime);
+    }
+
+    public String getRequestId() {
+        return requestId;
     }
 }

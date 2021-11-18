@@ -175,8 +175,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, System.nanoTime(), 999,
-                "nameNode" + mappedFunctionNumber, true, true);
+                = new OperationPerformed(operationName, requestId, System.nanoTime(), 999,
+                "NN" + mappedFunctionNumber, true, true);
         operationsPerformed.put(requestId, operationPerformed);
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
@@ -218,19 +218,19 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             data[i] = opPerformed.getAsArray();
         }
 
-        LOG.debug("====================== Operations Performed ======================");
+        System.out.println("====================== Operations Performed ======================");
 //        TextTable textTable = new TextTable(columnNames, data);
 //        textTable.setAddRowNumbering(true);
 //        textTable.setSort(1);
 //        textTable.printTable();
 
 
-        LOG.debug("Number performed: " + operationsPerformed.size());
+        System.out.println("Number performed: " + operationsPerformed.size());
 //        String format = "%-32s %-24s %-4s %-3s";
 //        LOG.debug(String.format(format, "Operation Name", "Timestamp", "HTTP", "TCP"));
         for (OperationPerformed operationPerformed : opsPerformedList)
-            LOG.debug(operationPerformed.toString());
-        LOG.debug("==================================================================");
+            System.out.println(operationPerformed.toString());
+        System.out.println("==================================================================");
     }
 
     /**
@@ -257,8 +257,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             + requestId);
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, opStart, 999,
-                "nameNode" + targetDeployment, true, true);
+                = new OperationPerformed(operationName, requestId, opStart, 999,
+                "NN" + targetDeployment, true, true);
         operationsPerformed.put(requestId, operationPerformed);
 
         // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
@@ -1268,8 +1268,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 String requestId = UUID.randomUUID().toString();
 
                 OperationPerformed operationPerformed
-                        = new OperationPerformed("ping", System.nanoTime(), 999,
-                        "nameNode" + deploymentNumber, true, true);
+                        = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
+                        "NN" + deploymentNumber, true, true);
                 operationsPerformed.put(requestId, operationPerformed);
 
                 // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
@@ -1292,8 +1292,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String requestId = UUID.randomUUID().toString();
 
         OperationPerformed operationPerformed
-                = new OperationPerformed("ping", System.nanoTime(), 999,
-                "nameNode" + targetDeployment, true, true);
+                = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
+                "NN" + targetDeployment, true, true);
         operationsPerformed.put(requestId, operationPerformed);
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
