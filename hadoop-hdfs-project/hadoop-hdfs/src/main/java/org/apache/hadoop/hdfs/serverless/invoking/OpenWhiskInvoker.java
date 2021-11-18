@@ -11,6 +11,7 @@ import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.entity.StringEntity;
@@ -249,7 +250,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             LOG.info("Invoking NameNode " + targetDeployment + " (op=" + operationName + "), attempt "
                     + (exponentialBackoff.getNumberOfRetries() - 1) + "/" + (maxHttpRetries + 1) + ".");
 
-            HttpResponse httpResponse;
+            CloseableHttpResponse httpResponse;
             try {
                 httpResponse = httpClient.execute(request);
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
@@ -286,11 +287,16 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
+                httpResponse.close();
                 continue;
             }
 
             LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName + ").");
-            return processHttpResponse(httpResponse);
+            JsonObject processedResponse = processHttpResponse(httpResponse);
+
+            httpResponse.close();
+
+            return processedResponse;
         } while (backoffInterval != -1);
 
         throw new IOException("The file system operation could not be completed. " +
