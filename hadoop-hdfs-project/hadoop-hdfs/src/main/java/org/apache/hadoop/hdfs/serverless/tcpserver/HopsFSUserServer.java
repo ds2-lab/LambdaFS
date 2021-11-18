@@ -521,8 +521,14 @@ public class HopsFSUserServer {
      * @return True if a connection currently exists, otherwise false.
      */
     public boolean connectionExists(int deploymentNumber) {
+        if (deploymentNumber == -1)
+            return false;
+
         ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                 activeConnectionsPerDeployment.get(deploymentNumber);
+
+        if (deploymentConnections == null)
+            throw new IllegalStateException("Deployment connections is null for deployment " + deploymentNumber);
 
         return deploymentConnections.size() > 0;
     }
