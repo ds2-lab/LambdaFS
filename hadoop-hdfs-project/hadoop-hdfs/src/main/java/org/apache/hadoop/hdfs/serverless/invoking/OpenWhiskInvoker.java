@@ -252,7 +252,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             HttpResponse httpResponse;
             try {
                 httpResponse = httpClient.execute(request);
-                // LOG.debug("Received HTTP response on attempt " + (exponentialBackoff.getNumberOfRetries() + 1) + "!");
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
                 LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke NameNode " +
                         functionUri + " timed out.");
@@ -270,6 +269,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 LOG.error("Unexpected error encountered while invoking NN via HTTP:", ex);
                 throw new IOException("The file system operation could not be completed. "
                     + "Encountered unexpected " + ex.getClass().getSimpleName() + " while invoking NN.");
+            } finally {
+                // Make the request reusable.
+                request.releaseConnection();
             }
 
             int responseCode = httpResponse.getStatusLine().getStatusCode();
