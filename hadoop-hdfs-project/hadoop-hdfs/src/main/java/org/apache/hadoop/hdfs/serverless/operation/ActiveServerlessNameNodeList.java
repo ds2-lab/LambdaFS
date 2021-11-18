@@ -75,6 +75,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
         int deploymentNumber = 0;
         activeNodes = new ArrayList<>();
         while (deploymentNumber < this.numDeployments) {
+            LOG.debug("Querying ZK for deployment #" + deploymentNumber + " membership.");
             final String groupName = "namenode" + deploymentNumber;
             List<String> groupMembers = zkClient.getPermanentGroupMembers(groupName);
 
