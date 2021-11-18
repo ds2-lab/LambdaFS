@@ -220,7 +220,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         removeNDC();
         if (!committed && locksAcquirer!=null) {
           try {
-            requestHandlerLOG.debug("TX " + operationId + " Failed. Rolling back TX " + operationId + "...");
+            requestHandlerLOG.debug("TX " + operationId + " Failed. Rolling back now...");
+            requestHandlerLOG.debug((new Throwable()).getStackTrace());
             EntityManager.rollback(locksAcquirer.getLocks());
           } catch (Exception e) {
             requestHandlerLOG.warn("Could not rollback transaction", e);

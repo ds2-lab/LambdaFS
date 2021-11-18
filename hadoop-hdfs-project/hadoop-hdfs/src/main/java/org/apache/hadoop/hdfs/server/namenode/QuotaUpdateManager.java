@@ -253,10 +253,10 @@ public class QuotaUpdateManager {
           return false;
         }
 
-        // TODO: Why can this happen now? Something about the consistency protocol (presumably) has made it so
-        //       we can get NullPointerExceptions here.
         QuotaCounts counts = new QuotaCounts.Builder().build();
         for (QuotaUpdate update : dbUpdates) {
+          // TODO: Why can this happen now? Something about the consistency protocol (presumably) has made it so
+          //       we can get NullPointerExceptions here.
           if (update == null) {
             LOG.warn("QuotaUpdate variable is null. Cannot check for updates.");
             return false;
@@ -281,7 +281,7 @@ public class QuotaUpdateManager {
           if (q != null) {
             q.addSpaceConsumed2Cache(counts);
             
-            LOG.debug("applying aggregated update for directory " + dir.getId() +
+            LO  G.debug("applying aggregated update for directory " + dir.getId() +
                 " with quota " + counts);
           }
         }
