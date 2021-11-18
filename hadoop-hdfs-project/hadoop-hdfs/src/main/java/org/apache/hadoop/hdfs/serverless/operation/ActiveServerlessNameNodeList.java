@@ -124,6 +124,11 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
                 "Getting an ActiveNode by IP address is not supported for serverless name nodes.");
     }
 
+    @Override
+    public ActiveNode getLeader() {
+        return null;
+    }
+
 //    /**
 //     * This simply returns the ActiveNode corresponding to the NameNode instance running locally.
 //     */
