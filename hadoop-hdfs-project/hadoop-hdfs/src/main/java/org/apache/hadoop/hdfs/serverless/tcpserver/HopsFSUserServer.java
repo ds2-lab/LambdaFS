@@ -538,6 +538,12 @@ public class HopsFSUserServer {
             int deploymentNumber = entry.getKey();
             ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = entry.getValue();
             LOG.debug("     Deployment #" + deploymentNumber + ": ");
+
+            if (deploymentConnections.size() == 0) {
+                LOG.debug("               No connections established");
+                continue;
+            }
+
             ConcurrentHashMap.KeySetView<Long, NameNodeConnection> keySetView = deploymentConnections.keySet();
             keySetView.forEach(funcName -> LOG.debug("               " + funcName));
         }
