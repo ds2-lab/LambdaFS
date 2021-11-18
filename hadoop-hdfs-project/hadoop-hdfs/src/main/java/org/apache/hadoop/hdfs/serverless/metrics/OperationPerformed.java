@@ -2,8 +2,10 @@ package org.apache.hadoop.hdfs.serverless.metrics;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.Locale;
 
 // "Op Name", "Start Time", "End Time", "Duration (ms)", "Deployment", "HTTP", "TCP"
 public class OperationPerformed implements Serializable, Comparable<OperationPerformed> {
@@ -79,7 +81,9 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     public String toString() {
         String format = "%-20s %-36s %-20s %-20s %-12s %-6s %-5s %-5s";
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd hh:mm:ss:SSS");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd hh:mm:ss:SSS")
+                .withLocale( Locale.US )
+                .withZone( ZoneId.of("UTC"));
 
         return String.format(format, operationName, requestId, formatter.format(Instant.ofEpochMilli(startTime)),
                 formatter.format(Instant.ofEpochMilli(endTime)), duration, deployment,
