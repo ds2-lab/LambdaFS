@@ -156,7 +156,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * This is in milliseconds.
    */
   public static final String SERVERLESS_TRANSACTION_ACK_TIMEOUT = "serverless.tx.ack.timeout";
-  public static final int SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT = 5000;
+  public static final int SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT = 10000;
 
   // END OF SERVERLESS
 
