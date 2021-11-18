@@ -11,6 +11,7 @@ import org.apache.zookeeper.*;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Encapsulates ZooKeeper/Apache Curator Framework functionality for the NameNode.
@@ -49,14 +50,13 @@ public class SyncZKClient implements ZKClient {
     /**
      * Keep track of all our watchers. Generally there should just be one (for the group we're in).
      */
-    private final HashMap<String, PersistentWatcher> watchers;
+    private final ConcurrentHashMap<String, PersistentWatcher> watchers;
 
     /**
      * Constructor.
      * @param hosts Hostnames of the ZooKeeper servers.
-     * @param memberId Unique ID identifying this member in its ZK group.
      */
-    public SyncZKClient(String[] hosts, String memberId) {
+    public SyncZKClient(String[] hosts) {
         if (hosts == null)
             throw new IllegalArgumentException("The 'hosts' array argument must be non-null.");
 
@@ -75,7 +75,7 @@ public class SyncZKClient implements ZKClient {
                 connectionStringBuilder.append(',');
         }
         this.connectionString = connectionStringBuilder.toString();
-        this.watchers = new HashMap<>();
+        this.watchers = new ConcurrentHashMap<>();
     }
 
     /**
@@ -183,7 +183,7 @@ public class SyncZKClient implements ZKClient {
         String parentPath = getPath(groupName, null, true);
         if (createWatch) {
             LOG.debug("Creating PersistentWatcher for parent path '" + parentPath + "'");
-            createStateChangedWatcher(parentPath, false, invalidatable);
+            createStateChangedWatcher(invalidatable);
         } else {
             LOG.warn("Skipping creation of PersistentWatcher for parent path '" + parentPath + "'");
         }
@@ -191,21 +191,24 @@ public class SyncZKClient implements ZKClient {
 
     /**
      * Create and start a PersistentWatcher for the given path.
+     *
      * @param path The path for which to create the PersistentWatcher.
      * @param recursive Passed to the PersistentWatcher constructor.
+     *
      * @return the created PersistentWatcher instance. Note that the instance will already be started (i.e., it will
      * have had .start() called on it).
      */
     private PersistentWatcher createAndStartPersistentWatcher(String path, boolean recursive) {
-        PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, path, recursive);
-        persistentWatcher.start();
-
-        if (this.watchers.containsKey(path))
+        if (this.watchers.containsKey(path)) {
             LOG.warn("We already have a watcher for path " + path + ".");
-        else
+            return this.watchers.get(path);
+        }
+        else {
+            PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, path, recursive);
+            persistentWatcher.start();
             this.watchers.put(path, persistentWatcher);
-
-        return persistentWatcher;
+            return persistentWatcher;
+        }
     }
 
     /**
@@ -224,14 +227,10 @@ public class SyncZKClient implements ZKClient {
     /**
      * Create and start a PersistentWatcher instance for the given path.
      *
-     * @param path The path for which the PersistentWatcher is created.
-     * @param recursive Passed to the PersistentWatcher constructor. For now, this will always be false.
      * @param invalidatable Used as a callback for state changes detected by the PersistentWatcher.
      *                      If null, then no callback occurs, but a message is logged.
      */
-    private void createStateChangedWatcher(String path, boolean recursive, Invalidatable invalidatable) {
-        PersistentWatcher persistentWatcher = createAndStartPersistentWatcher(path, recursive);
-
+    private void createStateChangedWatcher(Invalidatable invalidatable) {
         // We need to invalidate our cache whenever our connection to ZooKeeper is lost.
         client.getConnectionStateListenable().addListener((curatorFramework, connectionState) -> {
             if (!connectionState.isConnected()) {
@@ -273,9 +272,8 @@ public class SyncZKClient implements ZKClient {
 
         PersistentWatcher persistentWatcher = watchers.getOrDefault(path, null);
         if (persistentWatcher == null) {
-            LOG.error("Tried to get non-existent watcher for path " + groupName + ".");
-            LOG.error("Valid watchers: " + watchers.keySet());
-            throw new IllegalArgumentException("We do not have a PersistentWatcher for the path: " + path);
+            LOG.warn("Tried to get non-existent watcher for path " + groupName + ".");
+            persistentWatcher = createAndStartPersistentWatcher(path, false);
         }
 
         persistentWatcher.getListenable().addListener(watcher);

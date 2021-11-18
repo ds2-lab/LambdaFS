@@ -37,6 +37,7 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.zookeeper.GuestWatcherOption;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
+import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
@@ -96,6 +97,13 @@ public abstract class HopsTransactionalRequestHandler
    * */
   private Set<Integer> involvedDeployments;
 
+  /**
+   * Watchers we create to observe membership changes on other deployments.
+   *
+   * We remove these when we leave the deployment.
+   */
+  private final HashMap<Integer, Watcher> watchers;
+
   public HopsTransactionalRequestHandler(HDFSOperationType opType) {
     this(opType, null);
   }
@@ -103,6 +111,7 @@ public abstract class HopsTransactionalRequestHandler
   public HopsTransactionalRequestHandler(HDFSOperationType opType, String path) {
     super(opType);
     this.path = path;
+    this.watchers = new HashMap<>();
   }
 
   @Override
@@ -613,6 +622,7 @@ public abstract class HopsTransactionalRequestHandler
         continue;
 
       zkClient.leaveGroup("namenode" + deployentNumber, memberId, false);
+      zkClient.removeListener("namenode" + deployentNumber, this.watchers.get(deployentNumber));
     }
   }
 
@@ -705,22 +715,27 @@ public abstract class HopsTransactionalRequestHandler
       // begin using it, we could just eliminate the behavior (i.e., NameNodes would not explicitly join as a guest).
       String memberId = localNameNodeId + "-" + Thread.currentThread().getId();
 
+      Watcher membershipChangedWatcher = watchedEvent -> {
+        // This specifically monitors for NNs leaving the group, rather than joining. NNs that join will have
+        // empty caches, so we do not need to worry about them.
+        if (watchedEvent.getType() == Watcher.Event.EventType.ChildWatchRemoved) {
+          try {
+            // We call this again in waitForAcks() as a sanity check to make sure we haven't missed anything.
+            checkAndProcessMembershipChanges(deploymentNumber, false);
+          } catch (Exception e) {
+            requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
+            e.printStackTrace();
+          }
+        }
+        // We only want to monitor the permanent sub-group for membership changes.
+      };
+
+      this.watchers.put(deploymentNumber, membershipChangedWatcher);
+
       try {
         // Join the group.
-        zkClient.joinGroupAsGuest("namenode" + deploymentNumber, memberId, watchedEvent -> {
-          // This specifically monitors for NNs leaving the group, rather than joining. NNs that join will have
-          // empty caches, so we do not need to worry about them.
-          if (watchedEvent.getType() == Watcher.Event.EventType.ChildWatchRemoved) {
-            try {
-              // We call this again in waitForAcks() as a sanity check to make sure we haven't missed anything.
-              checkAndProcessMembershipChanges(deploymentNumber, false);
-            } catch (Exception e) {
-              requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
-              e.printStackTrace();
-            }
-          }
-          // We only want to monitor the permanent sub-group for membership changes.
-        }, GuestWatcherOption.CREATE_WATCH_ON_PERMANENT);
+        zkClient.joinGroupAsGuest("namenode" + deploymentNumber, memberId, membershipChangedWatcher,
+                GuestWatcherOption.CREATE_WATCH_ON_PERMANENT);
       } catch (Exception e) {
         throw new IOException("Exception encountered while guest-joining group " + groupName + ":", e);
       }

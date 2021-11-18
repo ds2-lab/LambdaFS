@@ -143,9 +143,11 @@ public interface ZKClient {
      *
      * This adds a listener to the PERMANENT sub-group.
      *
+     * This will create and start a Persistent Watcher for the generated path if one does not already exist.
+     *
      * @param groupName The name of the group for which a listener will be added. If we are not in this group, then
      *                  this will probably fail.
-     * @param watcher Watcher object to be aded. Serves as the callback for the event notification.
+     * @param watcher Watcher object to be added. Serves as the callback for the event notification.
      */
     void addListener(String groupName, Watcher watcher);
 
