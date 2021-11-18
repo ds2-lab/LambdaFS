@@ -16,6 +16,7 @@ import java.net.BindException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
@@ -427,6 +428,24 @@ public class HopsFSUserServer {
     }
 
     /**
+     * Get a TCP connection for a NameNode from the specified deployment. Returns a random, active connection if one
+     * exists. Otherwise, returns null.
+     */
+    private NameNodeConnection getConnection(int deploymentNumber) {
+        ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
+                activeConnectionsPerDeployment.get(deploymentNumber);
+
+        // Return a random NameNode connection.
+        Random rng = new Random();
+        NameNodeConnection[] values = deploymentConnections.values().toArray(new NameNodeConnection[0]);
+
+        if (values.length == 0)
+            return null;
+
+        return values[rng.nextInt(values.length)];
+    }
+
+    /**
      * Remove the connection to the NameNode identified by the given functionNumber from the connection cache.
      *
      * If the connection is still active, it will only be removed if the `deleteIfActive` flag is set to true.
@@ -622,6 +641,13 @@ public class HopsFSUserServer {
 
         // Send the TCP request to the NameNode.
         NameNodeConnection tcpConnection = getConnection(deploymentNumber);
+
+        if (tcpConnection == null) {
+            LOG.warn("[TCP SERVER] Was about to issue TCP request to NameNode deployment " + deploymentNumber +
+                    ", but connection no longer exists...");
+            return null;
+        }
+
         int bytesSent = tcpConnection.sendTCP(payload.toString());
 
         // If 'bytesSent' is zero, then an error must have occurred.
@@ -648,17 +674,22 @@ public class HopsFSUserServer {
      * This function then waits for a response from the NameNode to be returned.
      *
      * This should NOT be called from the main thread.
-     * @param functionNumber The NameNode to issue a request to.
+     * @param deploymentNumber The NameNode to issue a request to.
      * @param bypassCheck Do not check if the connection exists.
      * @param payload The payload to send to the NameNode in the TCP request.
      * @return The response from the NameNode, or null if the request failed for some reason.
      */
-    public JsonObject issueTcpRequestAndWait(int functionNumber, boolean bypassCheck, JsonObject payload)
+    public JsonObject issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, JsonObject payload)
             throws ExecutionException, InterruptedException {
-        RequestResponseFuture requestResponseFuture = issueTcpRequest(functionNumber, bypassCheck, payload);
+        RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck, payload);
+
+        if (requestResponseFuture == null) {
+            LOG.error("Issuing TCP request returned null instead of future. Must have been no connections.");
+            return null;
+        }
 
         LOG.debug("[TCP SERVER] Waiting for result from future for request " + requestResponseFuture.getRequestId()
-                + ", associated serverless function NameNode " + functionNumber);
+                + ", associated serverless function NameNode " + deploymentNumber);
         return requestResponseFuture.get();
     }
 

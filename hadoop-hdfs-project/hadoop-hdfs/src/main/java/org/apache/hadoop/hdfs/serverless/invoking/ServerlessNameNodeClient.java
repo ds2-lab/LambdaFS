@@ -316,6 +316,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             LOG.debug("===============================================");
             Future<JsonObject> potentialResult = completionService.take();
 
+            // If we get null, then a likely scenario is the TCP server lost connection to NN in specified deployment
+            // between when we checked if the connection existed and when we actually tried to issue the request. In
+            // this case, we basically just treat this like HTTP-only invocation. Just continue and wait for the
+            // HTTP request to resolve.
+            if (potentialResult == null) {
+                LOG.warn("Completion service returned a null future. Likely the case that TCP request failed.");
+                continue;
+            }
+
             try {
                 JsonObject responseJson = potentialResult.get();
 
