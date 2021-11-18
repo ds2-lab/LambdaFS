@@ -50,27 +50,27 @@ public class FileSystemTaskUtils {
             String src = fsArgs.getAsJsonPrimitive("src").getAsString();
             authorized = FileSystemTaskUtils.checkIfAuthorized(op, src, serverlessNameNode);
 
-            if (!authorized) {
-                int targetDeployment = serverlessNameNode.getMappedServerlessFunction(src);
-                LOG.debug("We are NOT authorized to perform a write operation on target file/directory " + src);
-                LOG.debug("Redirecting request to deployment #" + targetDeployment + " instead...");
-
-                // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
-                ExecutorService executorService = Executors.newFixedThreadPool(1);
-
-                // Create a CompletionService to listen for results from the futures we're going to create.
-                CompletionService<JsonObject> completionService =
-                        new ExecutorCompletionService<JsonObject>(executorService);
-
-                // Submit the HTTP request here.
-                Future<JsonObject> future = completionService.submit(() ->
-                        serverlessNameNode.getServerlessInvoker().redirectRequest(op, functionUriBase, new JsonObject(),
-                                fsArgs,  requestId, targetDeployment));
-
-                return new RedirectedRequestFuture(requestId, op, future);
-            } else {
-                LOG.debug("We ARE authorized to perform a write operation on target file/directory '" + src + "'.");
-            }
+//            if (!authorized) {
+//                int targetDeployment = serverlessNameNode.getMappedServerlessFunction(src);
+//                LOG.debug("We are NOT authorized to perform a write operation on target file/directory " + src);
+//                LOG.debug("Redirecting request to deployment #" + targetDeployment + " instead...");
+//
+//                // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
+//                ExecutorService executorService = Executors.newFixedThreadPool(1);
+//
+//                // Create a CompletionService to listen for results from the futures we're going to create.
+//                CompletionService<JsonObject> completionService =
+//                        new ExecutorCompletionService<JsonObject>(executorService);
+//
+//                // Submit the HTTP request here.
+//                Future<JsonObject> future = completionService.submit(() ->
+//                        serverlessNameNode.getServerlessInvoker().redirectRequest(op, functionUriBase, new JsonObject(),
+//                                fsArgs,  requestId, targetDeployment));
+//
+//                return new RedirectedRequestFuture(requestId, op, future);
+//            } else {
+//                LOG.debug("We ARE authorized to perform a write operation on target file/directory '" + src + "'.");
+//            }
         }
 
         FileSystemTask<Serializable> newTask = new FileSystemTask<Serializable>(requestId, op, fsArgs);
