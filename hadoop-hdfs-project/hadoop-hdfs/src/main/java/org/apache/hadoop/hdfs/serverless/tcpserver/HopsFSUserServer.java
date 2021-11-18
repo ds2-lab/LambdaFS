@@ -411,6 +411,7 @@ public class HopsFSUserServer {
         }
 
         allActiveConnections.put(nameNodeId, connection);
+        activeConnectionsPerDeployment.get(deploymentNumber).put(nameNodeId, connection);
         nameNodeIdToDeploymentMapping.put(nameNodeId, deploymentNumber);
     }
 
