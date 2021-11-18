@@ -323,9 +323,6 @@ public abstract class HopsTransactionalRequestHandler
         requestHandlerLOG.debug("INode '" + invalidatedINode.getLocalName() +
                 "' is mapped to a different deployment (" + mappedDeploymentNumber + ").");
         involvedDeployments.add(mappedDeploymentNumber);
-      } else {
-        requestHandlerLOG.debug("Modification of INode '" + invalidatedINode.getFullPathName() +
-                "' is authorized for our deployment (" + localDeploymentNumber + ").");
       }
     }
 
@@ -663,9 +660,11 @@ public abstract class HopsTransactionalRequestHandler
 
       // If we're receiving an ACK for this NameNode, then it better be the case that
       // we're waiting on it. Otherwise, something is wrong.
-      if (!waitingForAcks.contains(nameNodeId))
+      if (!waitingForAcks.contains(nameNodeId)) {
         requestHandlerLOG.warn("We received an ACK from NN " + nameNodeId +
                 ", but that NN is not in our 'waiting on' list. Size of list: " + waitingForAcks.size() + ".");
+        return;
+      }
 
       waitingForAcks.remove(nameNodeId);
 
