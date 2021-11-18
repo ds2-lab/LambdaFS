@@ -156,6 +156,19 @@ public class DistributedFileSystem extends FileSystem {
     dfs.ping(targetDeployment);
     Instant end = Instant.now();
     Duration duration = Duration.between(start, end);
+    LOG.debug("Ping duration: " + duration.toString());
+  }
+
+  /**
+   * Attempt to pre-warm the NameNodes by pinging each deployment the specified number of times.
+   * @param numPingsPerDeployment Number of times to ping the deployment.
+   */
+  public void prewarm(int numPingsPerDeployment) throws IOException {
+    Instant start = Instant.now();
+    dfs.ping(numPingsPerDeployment);
+    Instant end = Instant.now();
+    Duration duration = Duration.between(start, end);
+    LOG.debug("Prewarm duration: " + duration.toString());
   }
 
   /**

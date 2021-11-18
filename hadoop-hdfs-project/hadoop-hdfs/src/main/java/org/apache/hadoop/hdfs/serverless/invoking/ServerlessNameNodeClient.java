@@ -16,6 +16,7 @@ import org.apache.hadoop.fs.permission.AclStatus;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
@@ -30,14 +31,10 @@ import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.util.Time;
-import org.codehaus.jackson.impl.JsonReadContext;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.Serializable;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -80,6 +77,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private final HopsFSUserServer tcpServer;
 
     /**
+     * Number of unique deployments.
+     */
+    private final int totalNumberOfDeployments;
+
+    /**
      * Flag that dictates whether TCP requests can be used to perform FS operations.
      */
     private final boolean tcpEnabled;
@@ -94,6 +96,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
         tcpEnabled = conf.getBoolean(SERVERLESS_TCP_REQUESTS_ENABLED, SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+        totalNumberOfDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
+                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
         LOG.info("Serverless endpoint: " + serverlessEndpointBase);
         LOG.info("Serverless platform: " + serverlessPlatformName);
@@ -1250,6 +1254,37 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     @Override
     public void ping() throws IOException {
 		throw new UnsupportedOperationException("Function has not yet been implemented.");
+    }
+
+    /**
+     * Attempt to pre-warm the NameNodes by pinging each deployment the specified number of times.
+     * @param numPingsPerDeployment Number of times to ping the deployment.
+     */
+    @Override
+    public void prewarm(int numPingsPerDeployment) throws IOException {
+        for (int deploymentNumber = 0; deploymentNumber < totalNumberOfDeployments; deploymentNumber++) {
+            LOG.debug("Invoking deployment " + deploymentNumber + " a total of " + numPingsPerDeployment + "x.");
+            for (int i = 0; i < numPingsPerDeployment; i++) {
+                String requestId = UUID.randomUUID().toString();
+
+                OperationPerformed operationPerformed
+                        = new OperationPerformed("ping", System.nanoTime(), 999,
+                        "nameNode" + deploymentNumber, true, true);
+                operationsPerformed.put(requestId, operationPerformed);
+
+                // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
+                // file/directory, then we'll just use an HTTP request.
+                dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                        "ping",
+                        dfsClient.serverlessEndpoint,
+                        null, // We do not have any additional/non-default arguments to pass to the NN.
+                        new ArgumentContainer(),
+                        requestId,
+                        deploymentNumber);
+
+                operationPerformed.setEndTime(System.nanoTime());
+            }
+        }
     }
 
     @Override

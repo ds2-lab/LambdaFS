@@ -1506,7 +1506,12 @@ class NameNodeRpcServer implements NamenodeProtocols {
 
   @Override
   public void ping(int targetDeployment) throws IOException {
-    throw new NotImplementedException("The NameNode RPC Server does not support a targeted ping operation.");
+    throw new NotImplementedException("The NameNode RPC Server does not support the targeted ping operation.");
+  }
+
+  @Override
+  public void prewarm(int numPingsPerDeployment) throws IOException {
+    throw new NotImplementedException("The NameNode RPC Server does not support the prewarm operation.");
   }
 
   @Override
