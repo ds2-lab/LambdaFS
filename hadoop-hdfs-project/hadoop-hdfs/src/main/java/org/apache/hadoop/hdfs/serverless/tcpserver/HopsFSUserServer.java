@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.net.BindException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
@@ -71,7 +72,8 @@ public class HopsFSUserServer {
     private final ConcurrentHashMap<String, RequestResponseFuture> activeFutures;
 
     /**
-     * Mostly just used for debugging. We map the unique IDs of NameNodes to their deployments.
+     * We also map the unique IDs of NameNodes to their deployments. This is used for debugging/logging and for
+     * obtaining a connection to a NameNode from a specific deployment when invoking NNs.
      */
     private final ConcurrentHashMap<Long, Integer> nameNodeIdToDeploymentMapping;
 
@@ -531,9 +533,14 @@ public class HopsFSUserServer {
         LOG.debug("========== TCP Server Debug Information ==========");
         LOG.debug("CONNECTIONS:");
         LOG.debug("     Number of active connections: " + allActiveConnections.size());
-        ConcurrentHashMap.KeySetView<Long, NameNodeConnection> keySetView = allActiveConnections.keySet();
         LOG.debug("     Connected to:");
-        keySetView.forEach(funcName -> LOG.debug("         " + funcName));
+        for (Map.Entry<Integer, ConcurrentHashMap<Long, NameNodeConnection>> entry : activeConnectionsPerDeployment.entrySet()) {
+            int deploymentNumber = entry.getKey();
+            ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = entry.getValue();
+            LOG.debug("     Deployment #" + deploymentNumber + ": ");
+            ConcurrentHashMap.KeySetView<Long, NameNodeConnection> keySetView = deploymentConnections.keySet();
+            keySetView.forEach(funcName -> LOG.debug("               " + funcName));
+        }
         LOG.debug("FUTURES:");
         LOG.debug("     Number of active futures: " + activeFutures.size());
         LOG.debug("     Number of completed futures: " + completedFutures.size());
