@@ -254,13 +254,15 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 httpResponse = httpClient.execute(request);
                 // LOG.debug("Received HTTP response on attempt " + (exponentialBackoff.getNumberOfRetries() + 1) + "!");
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
-                LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries() - 1) + " to invoke NameNode " +
+                LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke NameNode " +
                         functionUri + " timed out.");
+                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
                 continue;
             } catch (IOException ex) {
                 LOG.error("Encountered IOException while invoking NN via HTTP:", ex);
+                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
                 continue;
@@ -278,8 +280,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             // yet, but if you try again a few seconds later, then the request will get through.
             if (responseCode >= 400 && responseCode <= 599) {
                 LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-                        (exponentialBackoff.getNumberOfRetries() - 1) + "/" + (maxHttpRetries + 1) + ".");
-
+                        (exponentialBackoff.getNumberOfRetries()) + "/" + (maxHttpRetries + 1) + ".");
+                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
                 continue;
