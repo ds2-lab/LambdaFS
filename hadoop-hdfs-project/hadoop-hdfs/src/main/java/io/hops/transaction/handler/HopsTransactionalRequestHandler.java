@@ -648,9 +648,9 @@ public abstract class HopsTransactionalRequestHandler
     boolean acknowledged = eventData.getBooleanPostValue(TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED);
     int mappedDeployment = nameNodeIdToDeploymentNumberMapping.get(nameNodeId);
 
-    requestHandlerLOG.debug("Received event: '" + eventName + "'");
-    requestHandlerLOG.debug("Write Operation ID: " + writeOpId + ", Recipient ID: " + nameNodeId +
-            ", Deployment Number: " + mappedDeployment + ", Acknowledged: " + acknowledged);
+//    requestHandlerLOG.debug("Received event: '" + eventName + "'");
+//    requestHandlerLOG.debug("Write Operation ID: " + writeOpId + ", Recipient ID: " + nameNodeId +
+//            ", Deployment Number: " + mappedDeployment + ", Acknowledged: " + acknowledged);
 
     if (writeOpId != operationId) // If it is for a different write operation, then we don't care about it.
       return;

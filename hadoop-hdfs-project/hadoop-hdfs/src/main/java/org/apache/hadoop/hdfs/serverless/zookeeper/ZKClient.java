@@ -54,6 +54,27 @@ public interface ZKClient {
     void createGroup(String groupName) throws Exception, KeeperException.NodeExistsException;
 
     /**
+     * Check if the NameNode identified by the given ID exists in the specified group.
+     * @param groupName The group in which we're checking for membership.
+     * @param memberId The NameNode in question.
+     *
+     * @return True if the NN exists/is a member, otherwise false.
+     */
+    boolean checkForPermanentGroupMember(String groupName, String memberId) throws Exception;
+
+    /**
+     * Check if the NameNode identified by the given ID exists in the specified deployment.
+     *
+     * This assumes the group name for the deployment is "namenode[deploymentNumber]".
+     *
+     * @param deploymentNumber The deployment in which we're checking for membership.
+     * @param memberId The NameNode in question.
+     *
+     * @return True if the NN exists/is a member, otherwise false.
+     */
+    boolean checkForPermanentGroupMember(int deploymentNumber, String memberId) throws Exception;
+
+    /**
      * Join an existing ZooKeeper group/directory by creating an ephemeral child node under
      * the parent directory. We specifically join the PERMANENT sub-group.
      *

@@ -321,6 +321,29 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
+    public boolean checkForPermanentGroupMember(String groupName, String memberId) throws Exception {
+        if (groupName == null)
+            throw new IllegalArgumentException("Group name argument cannot be null.");
+
+        if (memberId == null)
+            throw new IllegalArgumentException("Member ID argument cannot be null.");
+
+        String path = getPath(groupName, memberId, true);
+
+        return (client.checkExists().forPath(path) == null);
+    }
+
+    @Override
+    public boolean checkForPermanentGroupMember(int deploymentNumber, String memberId) throws Exception {
+        if (memberId == null)
+            throw new IllegalArgumentException("Member ID argument cannot be null.");
+
+        String path = getPath("namenode" + deploymentNumber, memberId, true);
+
+        return (client.checkExists().forPath(path) == null);
+    }
+
+    @Override
     public List<String> getPermanentGroupMembers(String groupName) throws Exception {
         if (groupName == null)
             throw new IllegalArgumentException("Group name argument cannot be null.");

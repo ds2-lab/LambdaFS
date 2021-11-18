@@ -71,6 +71,7 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
@@ -721,9 +722,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   public synchronized void refreshActiveNameNodesList() throws Exception {
     if (activeNameNodes == null)
-      activeNameNodes = new ActiveServerlessNameNodeList(getId());
+      activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.deploymentNumber);
 
-    activeNameNodes.refreshFromZooKeeper(this.zooKeeperClient, this.functionName);
+    activeNameNodes.refreshFromZooKeeper(this.zooKeeperClient);
   }
 
 //  /**
@@ -3207,20 +3208,63 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
   }
 
+  /**
+   * IMPORTANT: We no longer use the activeNameNodes parameter!
+   *
+   * We retrieve the global/singleton NameNode instance from the OpenWhiskHandler. We then retrieve
+   * the list of active nodes directly from there, as they could have changed at any point. Thus, we
+   * are using the most up-to-date information we have available.
+   *
+   * We first check if the specified NN is contained within our local list of active NameNodes.
+   * If it is not contained within that list, then we check the other deployments.
+   *
+   * @param activeNamenodes IGNORED.
+   * @param namenodeId The ID of the NameNode whose existence we're interested in.
+   *
+   * @return True if the NameNode is alive in any deployment.
+   */
   public static boolean isNameNodeAlive(Collection<ActiveNode> activeNamenodes, long namenodeId) {
-    LOG.debug("Checking if NameNode " + namenodeId + " is alive...");
-    if (activeNamenodes == null) {
-      LOG.debug("ActiveNameNodes is null... assuming the NN is alive to be conservative.");
-      // We do not know yet, be conservative
-      return true;
-    }
+    ServerlessNameNode instance = OpenWhiskHandler.instance;
+    assert(instance != null);
 
-    for (ActiveNode namenode : activeNamenodes) {
-      if (namenode.getId() == namenodeId) {
+    LOG.debug("Checking if NameNode " + namenodeId + " is alive...");
+
+    // First check local cache. This contains the NNs currently alive within our deployment.
+    for (ActiveNode nameNode : instance.getActiveNameNodes().getActiveNodes()) {
+      if (nameNode.getId() == namenodeId) {
         LOG.debug("NameNode " + namenodeId + " IS alive, according to our records.");
         return true;
       }
     }
+
+    // If not in cache, then check ZooKeeper. We'll check for the existence of a persistent ZNode
+    // in the permanent sub-group of each deployment. If one does not exist, then the NN is dead.
+    ZKClient zkClient = instance.getZooKeeperClient();
+    int numDeployments = instance.getNumUniqueServerlessNameNodes();
+
+    // If we encounter an exception, then we'll just be conservative and assume the NameNode is alive.
+    boolean exceptionEncountered = false;
+
+    for (int i = 0; i < numDeployments; i++) {
+      try {
+        boolean alive = zkClient.checkForPermanentGroupMember(i, String.valueOf(namenodeId));
+
+        if (alive)
+          return true;
+      } catch (Exception ex) {
+        LOG.error("Exception encountered while checking deployment #" + i + " for existence of NN " +
+                namenodeId + ": ", ex);
+        exceptionEncountered = true;
+        break;
+      }
+    }
+
+    if (exceptionEncountered) {
+      LOG.warn("Since exception was encountered while checking liveness of NN " + namenodeId +
+              ", we'll assume it is alive for now...");
+      return true;
+    }
+
     LOG.debug("NameNode " + namenodeId + " is NOT alive, according to our records.");
     return false;
   }

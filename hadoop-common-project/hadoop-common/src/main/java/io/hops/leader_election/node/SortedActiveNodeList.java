@@ -30,6 +30,6 @@ public interface SortedActiveNodeList {
 
   public ActiveNode getActiveNode(InetSocketAddress address);
 
-  public ActiveNode getLeader();
+  // public ActiveNode getLeader();
 
 }

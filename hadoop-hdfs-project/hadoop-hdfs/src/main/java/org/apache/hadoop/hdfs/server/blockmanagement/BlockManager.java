@@ -3436,9 +3436,7 @@ public class BlockManager {
             .getDataAccess(MisReplicatedRangeQueueDataAccess.class);
         List<MisReplicatedRange> ranges = da.getAll();
         Set<Long> activeNodes = new HashSet<>();
-        // TODO: This could be modified to support serverless by checking how many deployments of the NN
-        //  there are, and then just using those in place of the "active namenodes", as each unique
-        //  deployment of the NN is essentially an "active namenode".
+
         for (ActiveNode nn : namesystem.getNameNode().getActiveNameNodes().getActiveNodes()) {
           activeNodes.add(nn.getId());
         }

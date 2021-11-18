@@ -1241,27 +1241,27 @@ class BPOfferService implements Runnable {
     return prevBlockReportId;
   }
   
-  void updateNNList(SortedActiveNodeList list) throws IOException {
-    writeLock();
-    try {
-      ArrayList<InetSocketAddress> nnAddresses = new ArrayList<InetSocketAddress>();
-      for (ActiveNode ann : list.getActiveNodes()) {
-        nnAddresses.add(ann.getRpcServerAddressForDatanodes());
-      }
-
-      refreshNNList(nnAddresses);
-
-      if (list.getLeader() != null) {
-        bpServiceToActive = getAnActor(list.getLeader().getRpcServerAddressForDatanodes());
-      }
-
-      nnList.clear();
-      nnList.addAll(list.getActiveNodes());
-      blackListNN.clear();
-    } finally {
-      writeUnlock();
-    }
-  }
+//  void updateNNList(SortedActiveNodeList list) throws IOException {
+//    writeLock();
+//    try {
+//      ArrayList<InetSocketAddress> nnAddresses = new ArrayList<InetSocketAddress>();
+//      for (ActiveNode ann : list.getActiveNodes()) {
+//        nnAddresses.add(ann.getRpcServerAddressForDatanodes());
+//      }
+//
+//      refreshNNList(nnAddresses);
+//
+//      if (list.getLeader() != null) {
+//        bpServiceToActive = getAnActor(list.getLeader().getRpcServerAddressForDatanodes());
+//      }
+//
+//      nnList.clear();
+//      nnList.addAll(list.getActiveNodes());
+//      blackListNN.clear();
+//    } finally {
+//      writeUnlock();
+//    }
+//  }
 
   long nnListLastUpdate = 0;
 

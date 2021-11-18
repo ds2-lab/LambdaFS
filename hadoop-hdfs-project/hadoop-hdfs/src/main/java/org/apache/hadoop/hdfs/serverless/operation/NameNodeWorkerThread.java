@@ -211,7 +211,10 @@ public class NameNodeWorkerThread extends Thread {
     private void doRoutineActivities() {
         // Check if we need to purge any results before continuing to the next loop.
         tryPurge();
-        tryUpdateActiveNameNodeList();
+
+        // COMMENTED OUT:
+        // We use a persistent watcher to automatically get notified of changes in group membership.
+        // tryUpdateActiveNameNodeList();
         tryUpdateFromIntermediateStorage();
     }
 
