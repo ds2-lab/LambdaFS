@@ -281,7 +281,7 @@ public class QuotaUpdateManager {
           if (q != null) {
             q.addSpaceConsumed2Cache(counts);
             
-            LO  G.debug("applying aggregated update for directory " + dir.getId() +
+            LOG.debug("applying aggregated update for directory " + dir.getId() +
                 " with quota " + counts);
           }
         }
