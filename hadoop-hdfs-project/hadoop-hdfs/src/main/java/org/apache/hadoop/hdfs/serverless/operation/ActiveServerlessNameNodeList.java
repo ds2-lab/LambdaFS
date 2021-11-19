@@ -97,7 +97,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
                     continue;
                 }
 
-                ActiveServerlessNameNode activeNameNode = new ActiveServerlessNameNode(id);
+                ActiveServerlessNameNode activeNameNode = new ActiveServerlessNameNode(id, deploymentNumber);
                 activeNodes.add(activeNameNode);
 
                 // We also keep track of the nodes per deployment.
@@ -130,7 +130,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
                 continue;
             }
 
-            ActiveServerlessNameNode activeNameNode = new ActiveServerlessNameNode(id);
+            ActiveServerlessNameNode activeNameNode = new ActiveServerlessNameNode(id, deploymentNumber);
 
             // We also keep track of the nodes per deployment.
             activeNodesInSpecifiedDeployment.add(activeNameNode);

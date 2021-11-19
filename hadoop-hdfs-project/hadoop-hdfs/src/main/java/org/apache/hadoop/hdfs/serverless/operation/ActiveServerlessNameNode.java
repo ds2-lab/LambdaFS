@@ -11,9 +11,16 @@ import java.net.InetSocketAddress;
 public class ActiveServerlessNameNode implements ActiveNode, Serializable {
     private static final long serialVersionUID = 646982592726977047L;
     private final long id;
+    private final int deploymentNumber;
 
     public ActiveServerlessNameNode(long id) {
         this.id = id;
+        this.deploymentNumber = -1;
+    }
+
+    public ActiveServerlessNameNode(long id, int deploymentNumber) {
+        this.id = id;
+        this.deploymentNumber = deploymentNumber;
     }
 
     @Override
@@ -68,7 +75,7 @@ public class ActiveServerlessNameNode implements ActiveNode, Serializable {
 
     @Override
     public String toString() {
-        return "ActiveServerlessNameNode(ID=" + id + ")";
+        return "ActiveServerlessNN(ID=" + id + ", Deployment#=" + deploymentNumber + ")";
     }
 
     @Override

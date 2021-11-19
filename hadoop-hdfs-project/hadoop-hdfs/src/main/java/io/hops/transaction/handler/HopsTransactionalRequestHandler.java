@@ -664,6 +664,8 @@ public abstract class HopsTransactionalRequestHandler
     if (acknowledged) {
       // It's possible that there are multiple transactions going on simultaneously, so we may receive ACKs for
       // NameNodes that we aren't waiting on. We just ignore these.
+      // TODO: May want to verify, in general, that we aren't actually receiving too many ACKs, like routinely
+      //       verify that there isn't a bug causing NameNodes to ACK the same entry several times.
       if (!waitingForAcks.contains(nameNodeId))
         return;
 
