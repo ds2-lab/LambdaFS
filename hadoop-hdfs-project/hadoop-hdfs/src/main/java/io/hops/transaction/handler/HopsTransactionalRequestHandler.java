@@ -658,24 +658,17 @@ public abstract class HopsTransactionalRequestHandler
     boolean acknowledged = eventData.getBooleanPostValue(TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED);
     int mappedDeployment = nameNodeIdToDeploymentNumberMapping.get(nameNodeId);
 
-//    requestHandlerLOG.debug("Received event: '" + eventName + "'");
-//    requestHandlerLOG.debug("Write Operation ID: " + writeOpId + ", Recipient ID: " + nameNodeId +
-//            ", Deployment Number: " + mappedDeployment + ", Acknowledged: " + acknowledged);
-
     if (writeOpId != operationId) // If it is for a different write operation, then we don't care about it.
       return;
 
     if (acknowledged) {
+      // It's possible that there are multiple transactions going on simultaneously, so we may receive ACKs for
+      // NameNodes that we aren't waiting on. We just ignore these.
+      if (!waitingForAcks.contains(nameNodeId))
+        return;
+
       requestHandlerLOG.debug("Received ACK from NameNode " + nameNodeId + " (deployment = " +
               mappedDeployment + ")!");
-
-      // If we're receiving an ACK for this NameNode, then it better be the case that
-      // we're waiting on it. Otherwise, something is wrong.
-      if (!waitingForAcks.contains(nameNodeId)) {
-        requestHandlerLOG.warn("Leader NN " + serverlessNameNodeInstance.getId() + " for TX " + operationId +
-                " received unexpected ACK from NN " + nameNodeId + ". Size of list: " + waitingForAcks.size() + ".");
-        return;
-      }
 
       waitingForAcks.remove(nameNodeId);
 
