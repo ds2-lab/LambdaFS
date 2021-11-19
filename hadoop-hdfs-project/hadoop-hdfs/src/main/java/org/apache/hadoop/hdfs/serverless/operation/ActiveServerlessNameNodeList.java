@@ -54,20 +54,20 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
         while (deploymentNumber < numDeployments) {
             LOG.debug("Adding ZK 'group membership changed' listener on deployment #" + deploymentNumber + ".");
             final String groupName = "namenode" + deploymentNumber;
-
+            final int currentDeployment = deploymentNumber;
             zkClient.addListener(groupName, watchedEvent -> {
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     try {
-                        LOG.debug("Change in membership detected for deployment #" + deploymentNumber + "!");
-                        refreshFromZooKeeper(zkClient, deploymentNumber);
+                        LOG.debug("Change in membership detected for deployment #" + currentDeployment + "!");
+                        refreshFromZooKeeper(zkClient, currentDeployment);
                     } catch (Exception ex) {
                         LOG.error("Exception encountered while refreshing active NNs in deployment #" +
-                                deploymentNumber + " from ZooKeeper (in Watcher): ", ex);
+                                currentDeployment + " from ZooKeeper (in Watcher): ", ex);
                     }
                 }
             });
 
-            numDeployments++;
+            deploymentNumber++;
         }
     }
 
