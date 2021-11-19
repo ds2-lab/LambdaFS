@@ -3249,7 +3249,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         boolean alive = zkClient.checkForPermanentGroupMember(i, String.valueOf(namenodeId));
 
         if (alive) {
-          LOG.debug("NameNode " + namenodeId + " IS alvie in deployment #" + i + " according to ZooKeeper.");
+          LOG.debug("NameNode " + namenodeId + " IS alive in deployment #" + i + " according to ZooKeeper.");
           return true;
         }
       } catch (Exception ex) {

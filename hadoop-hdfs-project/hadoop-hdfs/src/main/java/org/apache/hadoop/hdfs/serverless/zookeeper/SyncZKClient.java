@@ -309,7 +309,7 @@ public class SyncZKClient implements ZKClient {
 
         String path = getPath(groupName, memberId, true);
 
-        return (client.checkExists().forPath(path) == null);
+        return (client.checkExists().forPath(path) != null);
     }
 
     @Override
