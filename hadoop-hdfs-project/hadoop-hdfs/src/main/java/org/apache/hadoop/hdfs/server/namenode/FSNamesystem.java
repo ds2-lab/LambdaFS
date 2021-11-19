@@ -994,7 +994,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     long txStartTime = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.TX_START);
     long operationId = eventOperation.getLongPostValue(TablesDef.InvalidationTablesDef.OPERATION_ID);
 
-    LOG.debug("|===-===-===-===| RECEIVED INVALIDATION |===-===-===-===|");
+    LOG.debug("|===-===-===-===| NN " + localNameNodeId + " RECEIVED INVALIDATION |===-===-===-===|");
     String format = "%-12s %-12s %-21s %-21s %-21s";
     LOG.debug(String.format(format, "INode ID", "Parent ID", "Leader NN ID", "TX Start Time", "Op ID"));
     LOG.debug(String.format(format, inodeId, parentId, leaderNameNodeId, txStartTime, operationId));

@@ -50,8 +50,6 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
         this.activeNodesPerDeployment = new HashMap<>();
         this.numDeployments = numDeployments;
 
-        int numListenersCreated = 0;
-
         int deploymentNumber = 0;
         while (deploymentNumber < numDeployments) {
             LOG.debug("Adding ZK 'group membership changed' listener on deployment #" + deploymentNumber + ".");
@@ -69,11 +67,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
                 }
             });
 
-            numListenersCreated++;
             deploymentNumber++;
-
-            if (numListenersCreated > numDeployments)
-                throw new IllegalStateException("Created too many listeners.");
         }
     }
 
