@@ -258,8 +258,8 @@ public class NameNodeWorkerThread extends Thread {
 
                 FileSystemTask<Serializable> prev = currentlyExecutingTasks.putIfAbsent(task.getTaskId(), task);
                 if (prev != null)
-                    LOG.error("Enqueued task " + task.getTaskId() + " into CurrentlyExecutingTasks despite there " +
-                            "already being a task with the same ID present.");
+                    LOG.error("Tried to enqueue task " + task.getTaskId() + " into CurrentlyExecutingTasks despite " +
+                            "there already being a task with the same ID present.");
 
                 Serializable result = null;
                 boolean success = false;

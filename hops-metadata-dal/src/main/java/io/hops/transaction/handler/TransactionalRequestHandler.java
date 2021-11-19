@@ -30,6 +30,7 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -223,7 +224,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         if (!committed && locksAcquirer!=null) {
           try {
             requestHandlerLOG.warn("TX " + operationId + " Failed. Rolling back now...");
-            requestHandlerLOG.debug((new Throwable()).getStackTrace());
+            requestHandlerLOG.debug(Arrays.toString((new Throwable()).getStackTrace()));
             EntityManager.rollback(locksAcquirer.getLocks());
           } catch (Exception e) {
             requestHandlerLOG.warn("Could not rollback transaction", e);

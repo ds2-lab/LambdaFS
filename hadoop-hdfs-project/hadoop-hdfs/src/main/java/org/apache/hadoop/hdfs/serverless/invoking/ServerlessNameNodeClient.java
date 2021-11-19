@@ -410,7 +410,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         resubmitted = true;
                     } else {
                         LOG.debug("Have not yet received HTTP response. Will continue waiting...");
-                    }
+                    } // if (numHttpReceived > 0)
+
+                    // We haven't received an HTTP message yet, so we'll just wait and see if we get one.
                     continue;
                 }
 
