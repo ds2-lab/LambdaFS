@@ -45,11 +45,11 @@ public class FileSystemTaskUtils {
 
         // Some operations do not have a 'src' argument as they're not operating on a particular file or directory.
         // In that case, any NameNode is obviously authorized to perform the action.
-        boolean authorized;
-        if (fsArgs.has("src")) {
-            String src = fsArgs.getAsJsonPrimitive("src").getAsString();
-            authorized = FileSystemTaskUtils.checkIfAuthorized(op, src, serverlessNameNode);
-
+//        boolean authorized;
+//        if (fsArgs.has("src")) {
+//            String src = fsArgs.getAsJsonPrimitive("src").getAsString();
+//            authorized = FileSystemTaskUtils.checkIfAuthorized(op, src, serverlessNameNode);
+//
 //            if (!authorized) {
 //                int targetDeployment = serverlessNameNode.getMappedServerlessFunction(src);
 //                LOG.debug("We are NOT authorized to perform a write operation on target file/directory " + src);
@@ -71,7 +71,7 @@ public class FileSystemTaskUtils {
 //            } else {
 //                LOG.debug("We ARE authorized to perform a write operation on target file/directory '" + src + "'.");
 //            }
-        }
+//        }
 
         FileSystemTask<Serializable> newTask = new FileSystemTask<Serializable>(requestId, op, fsArgs);
 

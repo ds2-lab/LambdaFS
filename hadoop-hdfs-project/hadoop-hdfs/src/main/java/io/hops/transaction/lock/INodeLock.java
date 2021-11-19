@@ -261,16 +261,22 @@ public class INodeLock extends BaseINodeLock {
         // ignore this lock. this is needed for sub operations in a sub tree ops protocol
         locked = false;
       }
-    } else { // the lock flag is set but the lock is dead
+    } else {
+      // TODO: We need to double-check this. But for Serverless HopsFS, if ZooKeeper does not detect that the
+      //       NameNode is alive, then we can safely assume that it is dead.
+      LOG.debug("The subtree is supposedly locked, but ZooKeeper has indicated that the owner of the lock is " +
+              "no longer running. Ignoring the lock.");
+
+      // the lock flag is set but the lock is dead
       // you can ignore the lock after some time. it is possible that
       // the NN is alive and its ID just changed because it is slow to HB
-      long timePassed = System.currentTimeMillis() - getStoLockTime(iNode.getId());
-      if (timePassed < ServerlessNameNode.getFailedSTOCleanDelay()) {
-        locked = true;
-      } else {
-        LOG.debug("Ignoring subtree lock as more than " + timePassed + " ms has passed.  Max " +
-                "lock retention time is:" + ServerlessNameNode.getFailedSTOCleanDelay());
-      }
+//      long timePassed = System.currentTimeMillis() - getStoLockTime(iNode.getId());
+//      if (timePassed < ServerlessNameNode.getFailedSTOCleanDelay()) {
+//        locked = true;
+//      } else {
+//        LOG.debug("Ignoring subtree lock as more than " + timePassed + " ms has passed.  Max " +
+//                "lock retention time is:" + ServerlessNameNode.getFailedSTOCleanDelay());
+//      }
     }
 
     if (locked) {

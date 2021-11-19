@@ -3231,7 +3231,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // First check local cache. This contains the NNs currently alive within our deployment.
     for (ActiveNode nameNode : instance.getActiveNameNodes().getActiveNodes()) {
       if (nameNode.getId() == namenodeId) {
-        LOG.debug("NameNode " + namenodeId + " IS alive, according to our records.");
+        LOG.debug("NameNode " + namenodeId + " IS alive, according to our local records.");
         return true;
       }
     }
@@ -3248,8 +3248,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       try {
         boolean alive = zkClient.checkForPermanentGroupMember(i, String.valueOf(namenodeId));
 
-        if (alive)
+        if (alive) {
+          LOG.debug("NameNode " + namenodeId + " IS alvie in deployment #" + i + " according to ZooKeeper.");
           return true;
+        }
       } catch (Exception ex) {
         LOG.error("Exception encountered while checking deployment #" + i + " for existence of NN " +
                 namenodeId + ": ", ex);
