@@ -52,6 +52,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
 
         int deploymentNumber = 0;
         while (deploymentNumber < numDeployments) {
+            LOG.debug("Adding ZK 'group membership changed' listener on deployment #" + deploymentNumber + ".");
             final String groupName = "namenode" + deploymentNumber;
 
             zkClient.addListener(groupName, watchedEvent -> {
