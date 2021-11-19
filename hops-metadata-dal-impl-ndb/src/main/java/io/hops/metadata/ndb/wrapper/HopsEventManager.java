@@ -1040,8 +1040,8 @@ public class HopsEventManager implements EventManager {
             String eventType = nextEventOp.getEventType();
             String eventName = eventOpToNameMapping.get(nextEventOp);
 
-            LOG.debug("Received " + eventType + " for event " + eventName + " from NDB: " +
-                    Integer.toHexString(nextEventOp.hashCode()) + ".");
+            //LOG.debug("Received " + eventType + " for event " + eventName + " from NDB: " +
+            //        Integer.toHexString(nextEventOp.hashCode()) + ".");
 
 //            if (eventName != null) {
 //                if (eventName.contains(HopsEvent.INV_EVENT_NAME_BASE))
@@ -1102,7 +1102,7 @@ public class HopsEventManager implements EventManager {
         }
 
         List<HopsEventListener> eventListeners = listenersMap.get(eventName);
-        LOG.debug("Notifying " + eventListeners.size() + (eventListeners.size() == 1 ? " listener " : " listeners ") + "of event " + eventName + ".");
+        // LOG.debug("Notifying " + eventListeners.size() + (eventListeners.size() == 1 ? " listener " : " listeners ") + "of event " + eventName + ".");
         for (HopsEventListener listener : eventListeners)
             listener.eventReceived(eventOperation, eventName);
     }

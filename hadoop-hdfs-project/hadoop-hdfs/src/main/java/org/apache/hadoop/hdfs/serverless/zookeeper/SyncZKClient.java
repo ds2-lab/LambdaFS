@@ -7,6 +7,7 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.watch.PersistentWatcher;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.*;
+import org.apache.zookeeper.data.Stat;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -329,13 +330,7 @@ public class SyncZKClient implements ZKClient {
 
         String path = getPath(groupName, null, true);
 
-//        LOG.debug("Getting children for group: " + path);
-        List<String> children = this.client.getChildren().forPath(path);
-
-//        if (children.isEmpty())
-//            LOG.warn("There are no children in group: " + path);
-
-        return children;
+        return this.client.getChildren().forPath(path);
     }
 
     @Override
