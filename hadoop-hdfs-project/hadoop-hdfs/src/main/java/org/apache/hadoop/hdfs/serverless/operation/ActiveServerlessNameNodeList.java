@@ -22,6 +22,11 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
     public static final Logger LOG = LoggerFactory.getLogger(ActiveServerlessNameNodeList.class.getName());
     private static final long serialVersionUID = -1602619427888192710L;
 
+    /**
+     * The active NameNodes partitioned by deployment.
+     */
+    private HashMap<Integer, List<ActiveNode>> activeNodesPerDeployment;
+
     // Initially unsorted, but gets sorted getSortedActiveNodes() gets called.
     // Becomes unsorted again once refresh() is called.
     private ArrayList<ActiveNode> activeNodes;
@@ -42,6 +47,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
      */
     public ActiveServerlessNameNodeList(ZKClient zkClient, int numDeployments) {
         this.activeNodes = new ArrayList<>();
+        this.activeNodesPerDeployment = new HashMap<>();
         this.numDeployments = numDeployments;
 
         int deploymentNumber = 0;
@@ -51,7 +57,8 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
             zkClient.addListener(groupName, watchedEvent -> {
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     try {
-                        refreshFromZooKeeper(zkClient);
+                        LOG.debug("Change in membership detected for deployment #" + deploymentNumber + "!");
+                        refreshFromZooKeeper(zkClient, deploymentNumber);
                     } catch (Exception ex) {
                         LOG.error("Exception encountered while refreshing active NNs in deployment #" +
                                 deploymentNumber + " from ZooKeeper (in Watcher): ", ex);
@@ -74,10 +81,11 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
     public synchronized void refreshFromZooKeeper(ZKClient zkClient) throws Exception {
         int deploymentNumber = 0;
         activeNodes = new ArrayList<>();
+        LOG.debug("Querying ZooKeeper for membership changes in ALL deployments.");
         while (deploymentNumber < this.numDeployments) {
-            LOG.debug("Querying ZK for deployment #" + deploymentNumber + " membership.");
             final String groupName = "namenode" + deploymentNumber;
             List<String> groupMembers = zkClient.getPermanentGroupMembers(groupName);
+            List<ActiveNode> activeNodesInCurrentDeployment = new ArrayList<>(groupMembers.size());
 
             for (String memberId : groupMembers) {
                 long id;
@@ -90,11 +98,51 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
 
                 ActiveServerlessNameNode activeNameNode = new ActiveServerlessNameNode(id);
                 activeNodes.add(activeNameNode);
+
+                // We also keep track of the nodes per deployment.
+                activeNodesInCurrentDeployment.add(activeNameNode);
             }
+            activeNodesPerDeployment.put(deploymentNumber, activeNodesInCurrentDeployment);
             deploymentNumber++;
         }
 
         Collections.sort(activeNodes);
+    }
+
+    /**
+     * Refresh the membership of the specified deployment.
+     * @param zkClient ZooKeeper client.
+     * @param deploymentNumber Deployment whose membership should be refreshed.
+     */
+    public synchronized void refreshFromZooKeeper(ZKClient zkClient, int deploymentNumber) throws Exception {
+        final String groupName = "namenode" + deploymentNumber;
+        List<String> groupMembers = zkClient.getPermanentGroupMembers(groupName);
+        List<ActiveNode> activeNodesInSpecifiedDeployment = new ArrayList<>(groupMembers.size());
+        LOG.debug("Querying ZooKeeper for membership changes in deployments #" + deploymentNumber + ".");
+
+        for (String memberId : groupMembers) {
+            long id;
+            try {
+                id = Long.parseLong(memberId);
+            } catch (NumberFormatException ex) {
+                LOG.error("GroupMember " + memberId + " has incorrectly-formatted ID. Discarding.");
+                continue;
+            }
+
+            ActiveServerlessNameNode activeNameNode = new ActiveServerlessNameNode(id);
+
+            // We also keep track of the nodes per deployment.
+            activeNodesInSpecifiedDeployment.add(activeNameNode);
+        }
+
+        // Update the list of nodes for the specified deployment.
+        activeNodesPerDeployment.put(deploymentNumber, activeNodesInSpecifiedDeployment);
+
+        // Clear the current list of active nodes. Then add the list of active nodes for each deployment
+        // to the master list. This seems inefficient, but the sizes of the lists should be relatively small,
+        // and theoretically lots of cache hits may be fast enough.
+        activeNodes.clear();
+        activeNodesPerDeployment.values().forEach(activeNodes::addAll);
     }
 
     @Override
