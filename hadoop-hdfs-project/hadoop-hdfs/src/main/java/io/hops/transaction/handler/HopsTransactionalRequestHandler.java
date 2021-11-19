@@ -358,61 +358,66 @@ public abstract class HopsTransactionalRequestHandler
       return false;
     }
 
-    // Now that we've added ACKs based on the current membership of the group, we'll join the deployment as a guest
-    // and begin monitoring for membership changes. Since we already added ACKs for every active instance, we aren't
-    // going to miss any. We DO need to double-check that nobody dropped between when we first queried the deployments
-    // for their membership and when we begin listening for changes, though. (We do the same for our own deployment.)
-    joinOtherDeploymentsAsGuest();
+    // We only need to perform these steps of the protocol if the total number of ACKs required is at least one.
+    if (totalNumberOfACKsRequired > 0) {
+      // Now that we've added ACKs based on the current membership of the group, we'll join the deployment as a guest
+      // and begin monitoring for membership changes. Since we already added ACKs for every active instance, we aren't
+      // going to miss any. We DO need to double-check that nobody dropped between when we first queried the deployments
+      // for their membership and when we begin listening for changes, though. (We do the same for our own deployment.)
+      joinOtherDeploymentsAsGuest();
 
-    // =============== STEP 2 ===============
-    try {
-      subscribeToAckEvents();
-    } catch (InterruptedException e) {
-      requestHandlerLOG.error("Encountered error while waiting on event manager to create event subscription:", e);
-
-      // Try to remove the ACK entries that we added earlier before we abort the protocol.
+      // =============== STEP 2 ===============
       try {
-        requestHandlerLOG.debug("Removing the write ACKs we added earlier before terminating the transaction.");
-        deleteWriteAcknowledgements();
-      } catch (StorageException ex) {
-        requestHandlerLOG.error("Encountered storage exception when removing ACK events we added earlier: ", ex);
-      }
+        subscribeToAckEvents();
+      } catch (InterruptedException e) {
+        requestHandlerLOG.error("Encountered error while waiting on event manager to create event subscription:", e);
 
-      return false;
-    }
+        // Try to remove the ACK entries that we added earlier before we abort the protocol.
+        try {
+          requestHandlerLOG.debug("Removing the write ACKs we added earlier before terminating the transaction.");
+          deleteWriteAcknowledgements();
+        } catch (StorageException ex) {
+          requestHandlerLOG.error("Encountered storage exception when removing ACK events we added earlier: ", ex);
+        }
+
+        return false;
+      }
 //    requestHandlerLOG.debug("Skipping Step 2 - Subscribe to ACK Events");
 
-    // =============== STEP 3 ===============
-    issueInitialInvalidations(invalidatedINodes, txStartTime);
+      // =============== STEP 3 ===============
+      issueInitialInvalidations(invalidatedINodes, txStartTime);
 
-    // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
-    if (totalNumberOfACKsRequired == 0) {
-      requestHandlerLOG.debug("We do not require any ACKs. Unsubscribing from ACK table events now.");
-      unsubscribeFromAckEvents();
-      needToUnsubscribe = false;
-    }
-
-    try {
-      // STEP 4 & 5
-      waitForAcks();
-    } catch (Exception ex) {
-      requestHandlerLOG.error("Exception encountered on Step 4 and 5 of consistency protocol (waiting for ACKs).");
-      requestHandlerLOG.error("We're still waiting on " + waitingForAcks.size() +
-              " ACKs from the following NameNodes: " + waitingForAcks);
-      ex.printStackTrace();
-
-      // Clean things up before aborting.
-      // TODO: Move this to after we rollback so other reads/writes can proceed immediately without
-      //       having to wait for us to clean-up.
-      try {
-        cleanUpAfterConsistencyProtocol(needToUnsubscribe);
-      } catch (Exception e) {
-        // We should still be able to continue, despite failing to clean up after ourselves...
-        requestHandlerLOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
+      // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
+      if (totalNumberOfACKsRequired == 0) {
+        requestHandlerLOG.debug("We do not require any ACKs. Unsubscribing from ACK table events now.");
+        unsubscribeFromAckEvents();
+        needToUnsubscribe = false;
       }
 
-      // Throw an exception so that it gets caught and reported as an exception, rather than just returning false.
-      throw new IOException("Exception encountered while waiting for ACKs (" + ex.getMessage() + "): ", ex);
+      try {
+        // STEP 4 & 5
+        waitForAcks();
+      } catch (Exception ex) {
+        requestHandlerLOG.error("Exception encountered on Step 4 and 5 of consistency protocol (waiting for ACKs).");
+        requestHandlerLOG.error("We're still waiting on " + waitingForAcks.size() +
+                " ACKs from the following NameNodes: " + waitingForAcks);
+        ex.printStackTrace();
+
+        // Clean things up before aborting.
+        // TODO: Move this to after we rollback so other reads/writes can proceed immediately without
+        //       having to wait for us to clean-up.
+        try {
+          cleanUpAfterConsistencyProtocol(needToUnsubscribe);
+        } catch (Exception e) {
+          // We should still be able to continue, despite failing to clean up after ourselves...
+          requestHandlerLOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
+        }
+
+        // Throw an exception so that it gets caught and reported as an exception, rather than just returning false.
+        throw new IOException("Exception encountered while waiting for ACKs (" + ex.getMessage() + "): ", ex);
+      }
+    } else {
+      requestHandlerLOG.debug("We do not require any ACKs, so we can skip the rest of the consistency protocol.");
     }
 
     // Clean up ACKs, event operation, etc.

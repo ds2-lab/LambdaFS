@@ -282,8 +282,7 @@ class FSDirDeleteOp {
   }
     
   private static Future multiTransactionDeleteInternal(final FSNamesystem fsn, final String src,
-      final long subTreeRootId)
-      throws StorageException, TransactionContextException, IOException {
+      final long subTreeRootId) {
     final FSDirectory fsd = fsn.getFSDirectory();
 
     LOG.debug("Performing multi-transaction internal delete for " + src + " now...");

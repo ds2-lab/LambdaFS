@@ -161,10 +161,45 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     invalidated.addAll(modified);
 
     if (removed.size() > 0 || modified.size() > 0) {
+      // We try to print their full path names here if we can. But if not, then print local names.
+      // If we're running in a thread from the FSNamesystem's executor service for subtree operations,
+      // then we'll probably not be able to resolve the full path names. This is due to the transaction
+      // context being local to each thread, so we don't have the ability to access storage right now.
+      List<String> removedToStr = new ArrayList<>();
+      List<String> modifiedToStr = new ArrayList<>();
+
+      try {
+        for (INode removedNode : removed) {
+          String fullPath = removedNode.getFullPathName();
+          removedToStr.add(fullPath);
+        }
+
+        for (INode modifiedNode : modified) {
+          String fullPath = modifiedNode.getFullPathName();
+          modifiedToStr.add(fullPath);
+        }
+      } catch (RuntimeException ex) {
+        removedToStr.clear();
+        modifiedToStr.clear();
+
+        // This can happen if we're a thread from an Executor Service during a subtree operation.
+        for (INode removedNode : removed) {
+          String fullPath = removedNode.getLocalName();
+          removedToStr.add(fullPath);
+        }
+
+        for (INode modifiedNode : modified) {
+          String fullPath = modifiedNode.getLocalName();
+          modifiedToStr.add(fullPath);
+        }
+      } catch (TransactionContextException | StorageException ex) {
+        ex.printStackTrace();
+      }
+
       LOG.debug("Transaction will REMOVE the following INodes (" + removed.size() + "): " +
-              StringUtils.join(removed, " ; "));
+              StringUtils.join(removedToStr, ", "));
       LOG.debug("Transaction will MODIFY the following INodes (" + modified.size() + "): " +
-              StringUtils.join(modified, " ; "));
+              StringUtils.join(modifiedToStr, ", "));
       LOG.debug("Transaction will alter (i.e., remove or modify) a total of " + invalidated.size() + " INodes.");
     }
     return invalidated;
