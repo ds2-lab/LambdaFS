@@ -204,19 +204,6 @@ public class SyncZKClient implements ZKClient {
     }
 
     /**
-     * Create a PersistentWatcher instance that monitors for membership changes on the given path and calls the
-     * provided Watcher as a callback when events occur.
-     * @param path Path for which the PersistentWatcher will be created and for which membership changes will
-     *             be monitored.
-     * @param recursive Passed to the PersistentWatcher.
-     * @param watcher Callback used when membership changes occur.
-     */
-    private void createMemembershipChangedWatcher(String path, boolean recursive, Watcher watcher) {
-        PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, recursive);
-        persistentWatcher.getListenable().addListener(watcher);
-    }
-
-    /**
      * Create and start a PersistentWatcher instance for the given path.
      *
      * @param invalidatable Used as a callback for state changes detected by the PersistentWatcher.
@@ -263,12 +250,14 @@ public class SyncZKClient implements ZKClient {
         String path = getPath(groupName, null, true);
         PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, false);
         persistentWatcher.getListenable().addListener(watcher);
+        LOG.debug("Successfully added listener to PersistentWatcher on path '" + path + "'");
     }
 
     private void addGuestListener(String groupName, Watcher watcher) {
         String path = getPath(groupName, null, false);
         PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, false);
         persistentWatcher.getListenable().addListener(watcher);
+        LOG.debug("Successfully added 'guest' listener to PersistentWatcher on path '" + path + "'");
     }
 
     @Override
