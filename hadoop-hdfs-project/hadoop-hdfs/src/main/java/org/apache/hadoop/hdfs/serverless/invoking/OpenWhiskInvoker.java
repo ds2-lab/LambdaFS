@@ -250,7 +250,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             LOG.info("Invoking NameNode " + targetDeployment + " (op=" + operationName + "), attempt "
                     + (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries + ".");
 
-            CloseableHttpResponse httpResponse;
+            CloseableHttpResponse httpResponse = null;
             JsonObject processedResponse;
             try {
                 httpResponse = httpClient.execute(request);
@@ -273,7 +273,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 }
 
                 processedResponse = processHttpResponse(httpResponse);
-                httpResponse.close();
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
                 LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke NameNode " +
                         functionUri + " timed out.");
@@ -294,6 +293,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
             } finally {
                 // Make the request reusable.
                 request.releaseConnection();
+
+                if (httpResponse != null)
+                    httpResponse.close();
             }
 
             return processedResponse;
