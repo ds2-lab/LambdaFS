@@ -242,7 +242,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * This is used when hashing parent inode IDs to particular serverless name nodes.
    */
-  private int numUniqueServerlessNameNodes;
+  private int numDeployments;
 
   /**
    * We issue HTTP requests here to invoke NameNodes.
@@ -454,8 +454,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return workerThread.isTaskDuplicate(requestId);
   }
 
-  public int getNumUniqueServerlessNameNodes() {
-    return numUniqueServerlessNameNodes;
+  public int getNumDeployments() {
+    return numDeployments;
   }
 
   public NameNodeTCPClient getNameNodeTcpClient() {
@@ -722,7 +722,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   public synchronized void refreshActiveNameNodesList() throws Exception {
     if (activeNameNodes == null)
-      activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.deploymentNumber);
+      activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.numDeployments);
 
     activeNameNodes.refreshFromZooKeeper(this.zooKeeperClient);
   }
@@ -2161,11 +2161,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             DurationFormatUtils.formatDurationHMS(serverlessInitDuration.toMillis()));
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 
-    numUniqueServerlessNameNodes = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+    numDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
     workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,
             SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT);
-    LOG.debug("Number of unique serverless name nodes: " + numUniqueServerlessNameNodes);
+    LOG.debug("Number of unique serverless name nodes: " + numDeployments);
 
     int baseWaitTime = conf.getInt(DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_KEY,
             DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_DEFAULT);
@@ -3027,7 +3027,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return The number of the serverless function responsible for caching this INode.
    */
   public int getMappedServerlessFunction(INode inode) {
-    return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
+    return consistentHash(inode.getParentId(), numDeployments);
     //return consistentHash(inode.getFullPathName().hashCode(), numUniqueServerlessNameNodes);
   }
 
@@ -3037,7 +3037,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return The number of the serverless function responsible for caching this INode.
    */
   public int getMappedServerlessFunction(long parentINodeId) {
-    return consistentHash(parentINodeId, numUniqueServerlessNameNodes);
+    return consistentHash(parentINodeId, numDeployments);
   }
 
   /**
@@ -3057,7 +3057,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return deploymentNumber;
     }
 
-    return consistentHash(inode.getParentId(), numUniqueServerlessNameNodes);
+    return consistentHash(inode.getParentId(), numDeployments);
     //return consistentHash(path.hashCode(), numUniqueServerlessNameNodes);
   }
 
@@ -3239,7 +3239,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // If not in cache, then check ZooKeeper. We'll check for the existence of a persistent ZNode
     // in the permanent sub-group of each deployment. If one does not exist, then the NN is dead.
     ZKClient zkClient = instance.getZooKeeperClient();
-    int numDeployments = instance.getNumUniqueServerlessNameNodes();
+    int numDeployments = instance.getNumDeployments();
 
     // If we encounter an exception, then we'll just be conservative and assume the NameNode is alive.
     boolean exceptionEncountered = false;
