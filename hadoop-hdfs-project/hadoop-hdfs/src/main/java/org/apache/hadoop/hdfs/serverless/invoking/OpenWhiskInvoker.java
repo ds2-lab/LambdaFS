@@ -251,8 +251,29 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                     + (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries + ".");
 
             CloseableHttpResponse httpResponse;
+            JsonObject processedResponse;
             try {
                 httpResponse = httpClient.execute(request);
+                LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName + ").");
+
+                int responseCode = httpResponse.getStatusLine().getStatusCode();
+
+                // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
+                // generally indicate a client error, but sometimes I receive this error right after
+                // updating the NameNodes. OpenWhisk complains that the function hasn't been initialized
+                // yet, but if you try again a few seconds later, then the request will get through.
+                if (responseCode >= 400 && responseCode <= 599) {
+                    LOG.error("Received HTTP response code " + responseCode + " on attempt " +
+                            (exponentialBackoff.getNumberOfRetries()) + "/" + maxHttpRetries + ".");
+                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                    doSleep(backoffInterval);
+                    backoffInterval = exponentialBackoff.getBackOffInMillis();
+                    httpResponse.close();
+                    continue;
+                }
+
+                processedResponse = processHttpResponse(httpResponse);
+                httpResponse.close();
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
                 LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke NameNode " +
                         functionUri + " timed out.");
@@ -274,27 +295,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 // Make the request reusable.
                 request.releaseConnection();
             }
-
-            int responseCode = httpResponse.getStatusLine().getStatusCode();
-
-            // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
-            // generally indicate a client error, but sometimes I receive this error right after
-            // updating the NameNodes. OpenWhisk complains that the function hasn't been initialized
-            // yet, but if you try again a few seconds later, then the request will get through.
-            if (responseCode >= 400 && responseCode <= 599) {
-                LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-                        (exponentialBackoff.getNumberOfRetries()) + "/" + maxHttpRetries + ".");
-                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                doSleep(backoffInterval);
-                backoffInterval = exponentialBackoff.getBackOffInMillis();
-                httpResponse.close();
-                continue;
-            }
-
-            LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName + ").");
-            JsonObject processedResponse = processHttpResponse(httpResponse);
-
-            httpResponse.close();
 
             return processedResponse;
         } while (backoffInterval != -1);

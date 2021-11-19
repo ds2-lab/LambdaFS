@@ -1038,21 +1038,6 @@ public class HopsEventManager implements EventManager {
 
         while (nextEventOp != null) {
             String eventType = nextEventOp.getEventType();
-            String eventName = eventOpToNameMapping.get(nextEventOp);
-
-            //LOG.debug("Received " + eventType + " for event " + eventName + " from NDB: " +
-            //        Integer.toHexString(nextEventOp.hashCode()) + ".");
-
-//            if (eventName != null) {
-//                if (eventName.contains(HopsEvent.INV_EVENT_NAME_BASE))
-//                    printPrePostColumnValues(INV_TABLE_EVENT_COLUMN_TYPES, nextEventOp);
-//                else if (eventName.contains(HopsEvent.ACK_EVENT_NAME_BASE))
-//                    printPrePostColumnValues(ACK_EVENT_COLUMN_TYPES, nextEventOp);
-//                else
-//                    LOG.warn("Unable to print event column values for event " + eventName + "...");
-//            } else {
-//                LOG.warn("Unable to determine name of event we just received...");
-//            }
 
             switch (eventType) {
                 case HopsEventType.DELETE:    // Do nothing for now.

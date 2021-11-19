@@ -387,7 +387,7 @@ public abstract class HopsTransactionalRequestHandler
 
     // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
     if (totalNumberOfACKsRequired == 0) {
-      requestHandlerLOG.debug("We're the only active NN in our deployment. Unsubscribing from ACK events now.");
+      requestHandlerLOG.debug("We do not require any ACKs. Unsubscribing from ACK table events now.");
       unsubscribeFromAckEvents();
       needToUnsubscribe = false;
     }
@@ -812,6 +812,10 @@ public abstract class HopsTransactionalRequestHandler
             (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
     writeAcknowledgementsMap = new HashMap<>();
 
+    // If there are no active instances in the deployments that are theoretically involved, then we just remove
+    // them from the set of active deployments, as we don't need ACKs from them, nor do we need to store any INVs.
+    Set<Integer> toRemove = new HashSet<>();
+
     // For each deployment (which at least includes our own), get the current members and register a membership-
     // changed listener. This enables us to monitor for any changes in group membership; in particular, we will
     // receive notifications if any NameNodes leave a deployment.
@@ -834,6 +838,11 @@ public abstract class HopsTransactionalRequestHandler
             deploymentNumber + " at the start of consistency protocol: " +
                 StringUtils.join(groupMemberIds, ", "));
 
+      if (groupMemberIds.size() == 0) {
+        toRemove.add(deploymentNumber);
+        continue;
+      }
+
       // Iterate over all the current group members. For each group member, we create a WriteAcknowledgement object,
       // which we'll persist to intermediate storage. We skip ourselves, as we do not need to ACK our own write. We also
       // create an entry for each follower NN in the `writeAckMap` to keep track of whether they've ACK'd their entry.
@@ -852,6 +861,13 @@ public abstract class HopsTransactionalRequestHandler
       }
 
       writeAcknowledgementsMap.put(deploymentNumber, writeAcknowledgements);
+    }
+
+    for (Integer deploymentToRemove : toRemove) {
+      requestHandlerLOG.debug("Removing deployment #" + deploymentToRemove +
+              " from list of involved deployments as deployment #" + deploymentToRemove +
+              " contains zero active instances.");
+      involvedDeployments.remove(deploymentToRemove);
     }
 
     // Sum the number of ACKs required per deployment. We use this value when creating the
@@ -906,7 +922,7 @@ public abstract class HopsTransactionalRequestHandler
       List<Invalidation> invalidations = invalidationsMap.getOrDefault(mappedDeploymentNumber, null);
 
       if (invalidations == null) {
-        invalidations = new ArrayList<Invalidation>();
+        invalidations = new ArrayList<>();
         invalidationsMap.put(mappedDeploymentNumber, invalidations);
       }
 
