@@ -194,7 +194,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
 
   //quota
   public static final String DFS_NAMENODE_QUOTA_ENABLED_KEY = "dfs.namenode.quota.enabled";
-  public static final boolean DFS_NAMENODE_QUOTA_ENABLED_DEFAULT = true;
+  public static final boolean DFS_NAMENODE_QUOTA_ENABLED_DEFAULT = false;
   public static final String DFS_NAMENODE_QUOTA_UPDATE_INTERVAL_KEY = "dfs.namenode.quota.update.interval";
   public static final int DFS_NAMENODE_QUOTA_UPDATE_INTERVAL_DEFAULT = 1000;
   public static final String DFS_NAMENODE_QUOTA_UPDATE_LIMIT_KEY = "dfs.namenode.quota.update.limit";
