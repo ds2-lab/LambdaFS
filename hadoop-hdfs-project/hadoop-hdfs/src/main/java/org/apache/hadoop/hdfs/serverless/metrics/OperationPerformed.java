@@ -41,14 +41,17 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     private long duration;
 
-    private final String deployment;
+    private final int deployment;
 
     private final boolean issuedViaTcp;
 
     private final boolean issuedViaHttp;
 
+    private long nameNodeId;
+
     public OperationPerformed(String operationName, String requestId, long startTime, long endTime,
-                              String deployment, boolean issuedViaHttp, boolean issuedViaTcp) {
+                              int deployment, boolean issuedViaHttp, boolean issuedViaTcp,
+                              long nameNodeId) {
         this.operationName = operationName;
         this.requestId = requestId;
         this.startTime = startTime / 1000000;
@@ -57,6 +60,11 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.deployment = deployment;
         this.issuedViaHttp = issuedViaHttp;
         this.issuedViaTcp = issuedViaTcp;
+        this.nameNodeId = nameNodeId;
+    }
+
+    public void setNameNodeId(long nameNodeId) {
+        this.nameNodeId = nameNodeId;
     }
 
     /**
@@ -79,14 +87,14 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     @Override
     public String toString() {
-        String format = "%-16s %-38s %-26s %-26s %-8s %-5s %-5s %-5s";
+        String format = "%-16s %-38s %-26s %-26s %-8s %-3s %-38s %-5s %-5s";
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd hh:mm:ss:SSS")
                 .withLocale( Locale.US )
                 .withZone( ZoneId.of("UTC"));
 
         return String.format(format, operationName, requestId, Instant.ofEpochMilli(startTime).toString(),
-                Instant.ofEpochMilli(endTime).toString(), duration, deployment,
+                Instant.ofEpochMilli(endTime).toString(), duration, deployment, nameNodeId,
                 (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
 
 //            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +

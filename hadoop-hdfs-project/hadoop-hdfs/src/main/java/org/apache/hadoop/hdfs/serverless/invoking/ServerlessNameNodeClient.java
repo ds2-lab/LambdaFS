@@ -31,6 +31,7 @@ import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.util.Time;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -174,10 +175,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
 
-        OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, requestId, System.nanoTime(), 999,
-                "NN" + mappedFunctionNumber, true, true);
-        operationsPerformed.put(requestId, operationPerformed);
+        long startTime = Time.getUtcTime();
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
@@ -189,7 +187,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 requestId,
                 mappedFunctionNumber);
 
-        operationPerformed.setEndTime(System.nanoTime());
+        long nameNodeId = -1;
+        if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
+            nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
+
+        int deployment = mappedFunctionNumber;
+        if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER))
+            deployment = response.get(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
+
+        OperationPerformed operationPerformed
+                = new OperationPerformed(operationName, requestId, startTime, Time.getUtcTime(),
+                deployment, true, true, nameNodeId);
+        operationsPerformed.put(requestId, operationPerformed);
 
         return response;
     }
@@ -257,8 +266,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             + requestId);
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, requestId, opStart, 999,
-                "NN" + targetDeployment, true, true);
+                = new OperationPerformed(operationName, requestId, Time.getUtcTime(), 999,
+                targetDeployment, true, true, 0);
         operationsPerformed.put(requestId, operationPerformed);
 
         // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
@@ -431,6 +440,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         operationName + " in " + durationMilliseconds + " milliseconds.");
 
                 operationPerformed.setEndTime(System.nanoTime());
+
+                if (responseJson.has(ServerlessNameNodeKeys.NAME_NODE_ID))
+                    operationPerformed.setNameNodeId(responseJson.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong());
+
                 return responseJson;
             } catch (ExecutionException | InterruptedException ex) {
                 // Log it.
@@ -1280,7 +1293,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 OperationPerformed operationPerformed
                         = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
-                        "NN" + deploymentNumber, true, true);
+                        deploymentNumber, true, true, -1);
                 operationsPerformed.put(requestId, operationPerformed);
 
                 // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
@@ -1304,7 +1317,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         OperationPerformed operationPerformed
                 = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
-                "NN" + targetDeployment, true, true);
+                targetDeployment, true, true, -1);
         operationsPerformed.put(requestId, operationPerformed);
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
