@@ -2268,13 +2268,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     this.zooKeeperClient = new SyncZKClient(conf);
     this.zooKeeperClient.connect();
-    this.zooKeeperClient.createAndJoinGroup(this.functionName, String.valueOf(this.nameNodeID), namesystem);
+    // Do NOT join the ZK ensemble until we are fully started up.
+    // If we join the ZK ensemble and then encounter a critical error, other NNs will think there
+    // exists some NN that is alive when in fact no such NN exists because we crashed later on in
+    // our start-up process. We'll enter the ZK ensemble when we enter the active state at the very
+    // end of the initialization process.
 
-    refreshActiveNameNodesList();
     Instant metadataInitEnd = Instant.now();
     Duration metadataInitDuration = Duration.between(metadataInitStart, metadataInitEnd);
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-    LOG.debug("Connected to ZooKeeper and refreshed active NameNode list in " +
+    LOG.debug("Connected to ZooKeeper in " +
             DurationFormatUtils.formatDurationHMS(metadataInitDuration.toMillis()));
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 
@@ -3091,6 +3094,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     try {
       namesystem.startActiveServices();
       startTrashEmptier(conf);
+      this.zooKeeperClient.createAndJoinGroup(this.functionName, String.valueOf(this.nameNodeID), namesystem);
+      refreshActiveNameNodesList();
     } catch (Throwable t) {
       doImmediateShutdown(t);
     }
@@ -3136,6 +3141,16 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     } catch (Throwable ignored) {
       // This is unlikely to happen, but there's nothing we can do if it does.
     }
+
+    if (this.zooKeeperClient != null) {
+      try {
+        LOG.debug("Attempting to disconnect from ZooKeeper ensemble before ungraceful termination...");
+        this.zooKeeperClient.leaveGroup("namenode" + deploymentNumber, Long.toString(getId()), true);
+      } catch (Exception e) {
+        LOG.error("Exception encountered while trying to disconnect from ZooKeeper:", e);
+      }
+    }
+
     terminate(1, t);
   }
 
