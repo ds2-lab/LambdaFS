@@ -22,7 +22,7 @@ public class ZKMonitor implements Runnable {
     /**
      * Control printing between the threads.
      */
-    private Lock printLock = new ReentrantLock();
+    private static Lock printLock = new ReentrantLock();
 
     public ZKMonitor(ZooKeeper zooKeeper, String groupName) {
         this.zooKeeper = zooKeeper;
