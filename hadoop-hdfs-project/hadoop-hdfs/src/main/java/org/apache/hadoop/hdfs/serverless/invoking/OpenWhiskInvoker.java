@@ -238,10 +238,10 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(maxHttpRetries)
-                .setInitialIntervalMillis(500)
+                .setInitialIntervalMillis(1000)
                 .setMaximumIntervalMillis(30000)
-                .setMultiplier(2)
-                .setRandomizationFactor(0.65)
+                .setMultiplier(2.25)
+                .setRandomizationFactor(0.5)
                 .build();
 
         long backoffInterval = exponentialBackoff.getBackOffInMillis();
