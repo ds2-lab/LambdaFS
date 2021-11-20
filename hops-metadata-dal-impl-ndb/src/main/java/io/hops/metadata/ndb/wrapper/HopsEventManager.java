@@ -324,7 +324,7 @@ public class HopsEventManager implements EventManager {
         if (this.listenersMap.containsKey(eventName)) {
             eventListeners = this.listenersMap.get(eventName);
         } else {
-            eventListeners = new ArrayList<HopsEventListener>();
+            eventListeners = new ArrayList<>();
             this.listenersMap.put(eventName, eventListeners);
         }
 

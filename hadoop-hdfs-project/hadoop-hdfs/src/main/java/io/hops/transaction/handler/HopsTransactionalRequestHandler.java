@@ -563,7 +563,7 @@ public abstract class HopsTransactionalRequestHandler
     }
 
     if (!success) {
-      requestHandlerLOG.error("Timed out while waiting for ACKs from other NNs. Waiting on a total of " +
+      requestHandlerLOG.warn("Timed out while waiting for ACKs from other NNs. Waiting on a total of " +
               waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
       requestHandlerLOG.debug("Checking liveliness of NNs that we're still waiting on...");
 
@@ -581,7 +581,7 @@ public abstract class HopsTransactionalRequestHandler
             requestHandlerLOG.warn("NN " + nameNodeId + " is no longer alive, yet we're still waiting on them.");
             waitingForAcks.remove(nameNodeId);
           } else {
-            requestHandlerLOG.warn("NN " + nameNodeId + " is still alive, but has not ACK'd for some reason.");
+            requestHandlerLOG.error("NN " + nameNodeId + " is still alive, but has not ACK'd for some reason.");
           }
         }
       }
@@ -749,7 +749,7 @@ public abstract class HopsTransactionalRequestHandler
       Watcher membershipChangedWatcher = watchedEvent -> {
         // This specifically monitors for NNs leaving the group, rather than joining. NNs that join will have
         // empty caches, so we do not need to worry about them.
-        if (watchedEvent.getType() == Watcher.Event.EventType.ChildWatchRemoved) {
+        if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
           try {
             // We call this again in waitForAcks() as a sanity check to make sure we haven't missed anything.
             checkAndProcessMembershipChanges(deploymentNumber, false);
