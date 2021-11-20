@@ -175,7 +175,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
 
-        long startTime = Time.getUtcTime();
+        long startTime = System.currentTimeMillis();
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
@@ -196,7 +196,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             deployment = response.get(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, requestId, startTime, Time.getUtcTime(),
+                = new OperationPerformed(operationName, requestId, startTime, System.currentTimeMillis(),
                 deployment, true, true, nameNodeId);
         operationsPerformed.put(requestId, operationPerformed);
 
@@ -266,7 +266,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             + requestId);
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, requestId, Time.getUtcTime(), 999,
+                = new OperationPerformed(operationName, requestId, System.currentTimeMillis(), 999,
                 targetDeployment, true, true, 0);
         operationsPerformed.put(requestId, operationPerformed);
 
@@ -439,7 +439,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 LOG.debug("Successfully obtained response from HTTP/TCP request for operation " +
                         operationName + " in " + durationMilliseconds + " milliseconds.");
 
-                operationPerformed.setEndTime(System.nanoTime());
+                operationPerformed.setEndTime(System.currentTimeMillis());
 
                 if (responseJson.has(ServerlessNameNodeKeys.NAME_NODE_ID))
                     operationPerformed.setNameNodeId(responseJson.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong());
@@ -1292,7 +1292,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 String requestId = UUID.randomUUID().toString();
 
                 OperationPerformed operationPerformed
-                        = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
+                        = new OperationPerformed("ping", requestId, System.currentTimeMillis(), 999,
                         deploymentNumber, true, true, -1);
                 operationsPerformed.put(requestId, operationPerformed);
 
@@ -1306,7 +1306,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         requestId,
                         deploymentNumber);
 
-                operationPerformed.setEndTime(System.nanoTime());
+                operationPerformed.setEndTime(System.currentTimeMillis());
             }
         }
     }
@@ -1316,7 +1316,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String requestId = UUID.randomUUID().toString();
 
         OperationPerformed operationPerformed
-                = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
+                = new OperationPerformed("ping", requestId, System.currentTimeMillis(), 999,
                 targetDeployment, true, true, -1);
         operationsPerformed.put(requestId, operationPerformed);
 
@@ -1330,7 +1330,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 requestId,
                 targetDeployment);
 
-        operationPerformed.setEndTime(System.nanoTime());
+        operationPerformed.setEndTime(System.currentTimeMillis());
     }
 
     @Override

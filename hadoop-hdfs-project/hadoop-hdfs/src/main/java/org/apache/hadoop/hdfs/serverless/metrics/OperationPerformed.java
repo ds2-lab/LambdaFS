@@ -89,9 +89,9 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     public String toString() {
         String format = "%-16s %-38s %-26s %-26s %-8s %-3s %-38s %-5s %-5s";
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd hh:mm:ss:SSS")
-                .withLocale( Locale.US )
-                .withZone( ZoneId.of("UTC"));
+//        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd hh:mm:ss:SSS")
+//                .withLocale( Locale.US )
+//                .withZone( ZoneId.of("UTC"));
 
         return String.format(format, operationName, requestId, Instant.ofEpochMilli(startTime).toString(),
                 Instant.ofEpochMilli(endTime).toString(), duration, deployment, nameNodeId,
