@@ -9,6 +9,8 @@ import org.apache.zookeeper.ZooKeeper;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ZKMonitor implements Runnable {
     private ZooKeeper zooKeeper;
@@ -16,6 +18,11 @@ public class ZKMonitor implements Runnable {
     private String groupName;
 
     private Set<String> groupMembers;
+
+    /**
+     * Control printing between the threads.
+     */
+    private Lock printLock = new ReentrantLock();
 
     public ZKMonitor(ZooKeeper zooKeeper, String groupName) {
         this.zooKeeper = zooKeeper;
@@ -69,10 +76,14 @@ public class ZKMonitor implements Runnable {
             }
         });
 
+        // Accumulate messages to print here. Then we'll grab the print lock, print everything, then unlock.
+        List<String> updates = new ArrayList<>();
+
         if (children.size() > 0) {
             if (groupMembers.size() == 0) {
-                System.out.println(children.size() + " new NNs joined " + groupName + ": " +
-                        StringUtils.join(children, ", "));
+                String msg = children.size() + " new NNs joined " + groupName + ": " +
+                        StringUtils.join(children, ", ");
+                updates.add(msg);
                 groupMembers.addAll(children);
             }
             else {
@@ -82,8 +93,9 @@ public class ZKMonitor implements Runnable {
                         newMembers.add(id);
                     }
                     if (newMembers.size() > 0) {
-                        System.out.println(newMembers.size() + " new NNs joined " + groupName + ": " +
-                                StringUtils.join(newMembers, ", "));
+                        String msg = newMembers.size() + " new NNs joined " + groupName + ": " +
+                                StringUtils.join(newMembers, ", ");
+                        updates.add(msg);
                         groupMembers.addAll(newMembers);
                     }
                 }
@@ -98,18 +110,32 @@ public class ZKMonitor implements Runnable {
         }
 
         if (removed.size() > 0) {
-            System.out.println(removed.size() + " NNs left " + groupName + ": " +
-                    StringUtils.join(removed, ", "));
+            String msg = removed.size() + " NNs left " + groupName + ": " +
+                    StringUtils.join(removed, ", ");
+            updates.add(msg);
             groupMembers.removeAll(removed);
         }
 
         if (children.isEmpty()) {
-            System.out.printf("No members in group %s\n", groupName);
+            String msg = String.format("No members in group %s\n", groupName);
+            updates.add(msg);
             return;
         }
         Collections.sort(children);
-        System.out.println(path + ": " + children);
-        System.out.println("--------------------");
+
+        printLock.lock();
+        try {
+            System.out.println("========================================");
+            System.out.println("=-------------- UPDATES --------------=");
+            for (String update : updates) {
+                System.out.println(update);
+            }
+            System.out.println("=---------- CURRENT MEMBERS ----------=");
+            System.out.println(path + ": " + StringUtils.join(children, ", "));
+            System.out.println("========================================");
+        } finally {
+            printLock.unlock();
+        }
     }
 
     @Override
