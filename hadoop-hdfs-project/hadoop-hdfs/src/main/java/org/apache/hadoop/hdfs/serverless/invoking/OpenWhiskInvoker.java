@@ -13,10 +13,15 @@ import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.params.ConnPerRoute;
+import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
+import org.apache.http.params.BasicHttpParams;
 import org.apache.http.util.EntityUtils;
 
 import java.net.SocketTimeoutException;
@@ -463,11 +468,16 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 .setSocketTimeout(httpTimeoutMilliseconds)
                 .build();
 
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+        connectionManager.setMaxTotal(25);
+        connectionManager.setDefaultMaxPerRoute(25);
+
         return HttpClients
             .custom()
             .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
             .setSSLContext(sc)
             .setDefaultRequestConfig(requestConfig)
+            .setConnectionManager(connectionManager)
             .build();
     }
 
