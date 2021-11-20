@@ -2266,12 +2266,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // writeMetadataToIntermediateStorage();
 
     this.zooKeeperClient = new SyncZKClient(conf);
-    this.zooKeeperClient.connect();
+
     // Do NOT join the ZK ensemble until we are fully started up.
     // If we join the ZK ensemble and then encounter a critical error, other NNs will think there
     // exists some NN that is alive when in fact no such NN exists because we crashed later on in
     // our start-up process. We'll enter the ZK ensemble when we enter the active state at the very
     // end of the initialization process.
+    this.zooKeeperClient.connect();
+    // Note that, since we haven't joined a group yet, we won't be considered active. So, we won't
+    // actually be included in the initialization of the active NN list. We'll be added later after
+    // we join our deployment's ZooKeeper group.
+    refreshActiveNameNodesList();
 
     Instant metadataInitEnd = Instant.now();
     Duration metadataInitDuration = Duration.between(metadataInitStart, metadataInitEnd);
@@ -3095,7 +3100,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       startTrashEmptier(conf);
       this.zooKeeperClient.createAndJoinGroup(this.functionName, String.valueOf(this.nameNodeID), namesystem);
       eventManagerThread.start();
-      refreshActiveNameNodesList();
     } catch (Throwable t) {
       doImmediateShutdown(t);
     }
@@ -3189,14 +3193,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return leaderElection;
   }
 
+  // TODO: Figure out what to do about leader NN semantics for serverless.
   public boolean isLeader() {
-    /*if (leaderElection != null) {
-      return leaderElection.isLeader();
-    } else {
+    if (activeNameNodes != null) {
+      if (activeNameNodes.getActiveNodes().size() <= 1)
+        return true;
       return false;
-    }*/
+    }
 
-    // LOG.warn("Returning hard-coded `true` for isLeader().");
     return true;
   }
 
@@ -3296,8 +3300,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *  (2) The list is updated when the NameNode is first created.
    */
   public SortedActiveNodeList getActiveNameNodes() {
-    if (activeNameNodes == null)
-      LOG.warn("Returning NULL from getActiveNameNodes()...");
     return activeNameNodes;
   }
 
