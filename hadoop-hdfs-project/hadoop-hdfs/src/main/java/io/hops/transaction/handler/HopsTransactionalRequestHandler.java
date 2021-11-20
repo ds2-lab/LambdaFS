@@ -562,9 +562,38 @@ public abstract class HopsTransactionalRequestHandler
               waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
     }
 
-    if (!success)
-      throw new IOException("Timed out while waiting for ACKs from other NameNodes. Waiting on a total of " +
+    if (!success) {
+      requestHandlerLOG.error("Timed out while waiting for ACKs from other NNs. Waiting on a total of " +
               waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
+      requestHandlerLOG.debug("Checking liveliness of NNs that we're still waiting on...");
+
+      // If we timed-out, verify that the NameNodes we're waiting on are still, in fact, alive.
+      for (int deployment : involvedDeployments) {
+        Set<Long> waitingOnInDeployment = waitingForAcksPerDeployment.get(deployment);
+
+        if (waitingOnInDeployment == null)
+          continue;
+
+        for (long nameNodeId : waitingOnInDeployment) {
+          boolean isAlive = zkClient.checkForPermanentGroupMember(deployment, Long.toString(nameNodeId));
+
+          if (!isAlive) {
+            requestHandlerLOG.warn("NN " + nameNodeId + " is no longer alive, yet we're still waiting on them.");
+            waitingForAcks.remove(nameNodeId);
+          } else {
+            requestHandlerLOG.warn("NN " + nameNodeId + " is still alive, but has not ACK'd for some reason.");
+          }
+        }
+      }
+
+      if (waitingForAcks.size() == 0) {
+        requestHandlerLOG.warn("There are no unreceived ACKs after checking liveliness of other NNs.");
+      } else {
+        requestHandlerLOG.error("There are still unreceived ACKs after checking liveliness of other NNs.");
+        throw new IOException("Timed out while waiting for ACKs from other NameNodes. Waiting on a total of " +
+                waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
+      }
+    }
 
     assert(waitingForAcks.isEmpty());
     requestHandlerLOG.debug("We have received all required ACKs for write operation " + operationId + ".");
@@ -590,6 +619,8 @@ public abstract class HopsTransactionalRequestHandler
     leaveDeployments();
 
     deleteWriteAcknowledgements();
+
+    // TODO: Delete INVs as well?
   }
 
   /**
