@@ -2247,7 +2247,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.error("Event Manager encountered an exception:", e);
     };
     eventManagerThread.setUncaughtExceptionHandler(uncaughtExceptionHandler);
-    eventManagerThread.start();
 
     LOG.debug("Started the NDB EventManager thread.");
 
@@ -3095,6 +3094,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       namesystem.startActiveServices();
       startTrashEmptier(conf);
       this.zooKeeperClient.createAndJoinGroup(this.functionName, String.valueOf(this.nameNodeID), namesystem);
+      eventManagerThread.start();
       refreshActiveNameNodesList();
     } catch (Throwable t) {
       doImmediateShutdown(t);
