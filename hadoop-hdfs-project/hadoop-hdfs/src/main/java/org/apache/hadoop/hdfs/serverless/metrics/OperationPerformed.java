@@ -87,7 +87,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     @Override
     public String toString() {
-        String format = "%-16s %-38s %-26s %-26s %-8s %-3s %-38s %-5s %-5s";
+        String format = "%-16s %-38s %-26s %-26s %-8s %-3s %-22s %-5s %-5s";
 
 //        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd hh:mm:ss:SSS")
 //                .withLocale( Locale.US )
