@@ -167,7 +167,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * to detect ZooKeeper membership changes.
    */
   public static final String SERVERLESS_ZOOKEEPER_SESSION_TIMEOUT = "serverless.zookeeper.sessiontimeout";
-  public static final int SERVERLESS_ZOOKEEPER_SESSION_TIMEOUT_DEFAULT = 7500;
+  public static final int SERVERLESS_ZOOKEEPER_SESSION_TIMEOUT_DEFAULT = 10000;
 
   /**
    * How long the Leader NN should wait for ACKs before aborting the transaction. As of right now, the
@@ -177,7 +177,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * This is in milliseconds.
    */
   public static final String SERVERLESS_TRANSACTION_ACK_TIMEOUT = "serverless.tx.ack.timeout";
-  public static final int SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT = 15000;
+  public static final int SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT = 20000;
 
   // END OF SERVERLESS
 
