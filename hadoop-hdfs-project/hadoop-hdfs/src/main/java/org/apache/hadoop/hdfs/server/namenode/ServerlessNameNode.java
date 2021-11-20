@@ -3194,6 +3194,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   // TODO: Figure out what to do about leader NN semantics for serverless.
+  // TODO: One possible solution is to have a table in NDB where the leader writes that it is leader.
+  //       Other NNs check if it is still alive, and if not, then they act as leader by replacing the value.
+  //       This could be done atomically using a transaction.
   public boolean isLeader() {
     if (activeNameNodes != null) {
       if (activeNameNodes.getActiveNodes().size() <= 1)

@@ -1,11 +1,13 @@
 package org.apache.hadoop.hdfs.serverless.zookeeper;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.util.Time;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
@@ -19,15 +21,24 @@ public class ZKMonitor implements Runnable {
 
     private Set<String> groupMembers;
 
+    private final int deploymentNumber;
+
+    /**
+     * Indicates whether this instance of ZKMonitor is monitoring permanent or guest group membership.
+     */
+    private final boolean permanentMonitor;
+
     /**
      * Control printing between the threads.
      */
     private static Lock printLock = new ReentrantLock();
 
-    public ZKMonitor(ZooKeeper zooKeeper, String groupName) {
+    public ZKMonitor(ZooKeeper zooKeeper, String groupName, int deploymentNumber, boolean permanentMonitor) {
         this.zooKeeper = zooKeeper;
         this.groupName = groupName;
         this.groupMembers = new HashSet<>();
+        this.deploymentNumber = deploymentNumber;
+        this.permanentMonitor = permanentMonitor;
     }
 
     public static void main(String[] args) throws Exception {
@@ -38,13 +49,19 @@ public class ZKMonitor implements Runnable {
             }
         });
         connectedSignal.await();
-        Thread t1 = new Thread(new ZKMonitor(zk, "namenode0/permanent"));
-        Thread t2 = new Thread(new ZKMonitor(zk, "namenode1/permanent"));
-        Thread t3 = new Thread(new ZKMonitor(zk, "namenode2/permanent"));
+        Thread t1 = new Thread(new ZKMonitor(zk, "namenode0/permanent",
+                0, true));
+        Thread t2 = new Thread(new ZKMonitor(zk, "namenode1/permanent",
+                1, true));
+        Thread t3 = new Thread(new ZKMonitor(zk, "namenode2/permanent",
+                2, true));
 
-        Thread t1g = new Thread(new ZKMonitor(zk, "namenode0/guest"));
-        Thread t2g = new Thread(new ZKMonitor(zk, "namenode1/guest"));
-        Thread t3g = new Thread(new ZKMonitor(zk, "namenode2/guest"));
+        Thread t1g = new Thread(new ZKMonitor(zk, "namenode0/guest",
+                0, false));
+        Thread t2g = new Thread(new ZKMonitor(zk, "namenode1/guest",
+                1, false));
+        Thread t3g = new Thread(new ZKMonitor(zk, "namenode2/guest",
+                2, false));
 
         t1.start();
         t2.start();
@@ -123,16 +140,29 @@ public class ZKMonitor implements Runnable {
         }
         Collections.sort(children);
 
+        long utcNow = Time.getUtcTime();
+
         printLock.lock();
         try {
-            System.out.println("========================================");
-            System.out.println("=-------------- UPDATES --------------=");
+            System.out.println("\n==================================================");
+            System.out.println("UTC Time: " + utcNow);
+
+            if (permanentMonitor)
+                System.out.println("=--------- " + groupName + " P-UPDATES ---------=");
+            else
+                System.out.println("=--------- " + groupName + " G-UPDATES ---------=");
+
             for (String update : updates) {
                 System.out.println(update);
             }
-            System.out.println("=---------- CURRENT MEMBERS ----------=");
+
+            if (permanentMonitor)
+                System.out.println("=-------- CURRENT DEPLOYMENT #" + deploymentNumber + " P-MEMBERS --------=");
+            else
+                System.out.println("=-------- CURRENT DEPLOYMENT #" + deploymentNumber +  " G-MEMBERS --------=");
+
             System.out.println(path + ": " + StringUtils.join(children, ", "));
-            System.out.println("========================================");
+            System.out.println("==================================================\n");
         } finally {
             printLock.unlock();
         }
