@@ -87,11 +87,8 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
@@ -176,6 +173,14 @@ public class DistributedFileSystem extends FileSystem {
    */
   public List<OperationPerformed> getOperationsPerformed() {
     return this.dfs.getOperationsPerformed();
+  }
+
+  public void addOperationPerformed(OperationPerformed operationPerformed) {
+    this.dfs.addOperationPerformed(operationPerformed);
+  }
+
+  public void addOperationPerformeds(Collection<OperationPerformed> operationPerformeds) {
+    this.dfs.addOperationPerformeds(operationPerformeds);
   }
 
   // Added for debugging serverless NN.

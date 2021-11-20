@@ -210,6 +210,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         return new ArrayList<>(operationsPerformed.values());
     }
 
+    public void addOperationPerformed(OperationPerformed operationPerformed) {
+        operationsPerformed.put(operationPerformed.getRequestId(), operationPerformed);
+    }
+
+    public void addOperationPerformeds(Collection<OperationPerformed> operationPerformeds) {
+        for (OperationPerformed op : operationPerformeds)
+            operationsPerformed.put(op.getRequestId(), op);
+    }
+
     /**
      * Return the list of the operations we've performed. This is just used for debugging purposes.
      */
