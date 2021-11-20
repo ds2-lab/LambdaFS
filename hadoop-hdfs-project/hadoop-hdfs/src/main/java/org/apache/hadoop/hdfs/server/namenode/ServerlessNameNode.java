@@ -2266,8 +2266,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
     // writeMetadataToIntermediateStorage();
 
-    this.zooKeeperClient = new SyncZKClient(
-            conf.getStrings(SERVERLESS_ZOOKEEPER_HOSTNAMES, SERVERLESS_ZOOKEEPER_HOSTNAMES_DEFAULT));
+    this.zooKeeperClient = new SyncZKClient(conf);
     this.zooKeeperClient.connect();
     this.zooKeeperClient.createAndJoinGroup(this.functionName, String.valueOf(this.nameNodeID), namesystem);
 

@@ -6,11 +6,14 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.watch.PersistentWatcher;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 /**
  * Encapsulates ZooKeeper/Apache Curator Framework functionality for the NameNode.
@@ -52,17 +55,35 @@ public class SyncZKClient implements ZKClient {
     private final ConcurrentHashMap<String, PersistentWatcher> watchers;
 
     /**
-     * Constructor.
-     * @param hosts Hostnames of the ZooKeeper servers.
+     * How long for ZooKeeper to consider a NameNode to have disconnected (in milliseconds).
+     *
+     * This should be LESS than the transaction acknowledgement phase timeout so that NNs have enough time
+     * to detect ZooKeeper membership changes.
      */
-    public SyncZKClient(String[] hosts) {
-        if (hosts == null)
-            throw new IllegalArgumentException("The 'hosts' array argument must be non-null.");
+    private final int sessionTimeoutMilliseconds;
+
+    /**
+     * How long for a connection attempt to the ZooKeeper ensemble to timeout (in milliseconds).
+     */
+    private final int connectionTimeoutMilliseconds;
+
+    /**
+     * Constructor.
+     * @param conf HopsFS Configuration used to configure the ZooKeeper client.
+     */
+    public SyncZKClient(Configuration conf) {
+        if (conf == null)
+            throw new IllegalArgumentException("The 'conf' array argument must be non-null.");
+
+        this.hosts = conf.getStrings(SERVERLESS_ZOOKEEPER_HOSTNAMES, SERVERLESS_ZOOKEEPER_HOSTNAMES_DEFAULT);
+        this.connectionTimeoutMilliseconds = conf.getInt(SERVERLESS_ZOOKEEPER_CONNECT_TIMEOUT,
+                SERVERLESS_ZOOKEEPER_SESSION_TIMEOUT_DEFAULT);
+        this.sessionTimeoutMilliseconds = conf.getInt(SERVERLESS_ZOOKEEPER_SESSION_TIMEOUT,
+                SERVERLESS_ZOOKEEPER_SESSION_TIMEOUT_DEFAULT);
 
         if (hosts.length == 0)
-            throw new IllegalArgumentException("The 'hosts' array argument must have length greater than zero.");
-
-        this.hosts = hosts;
+            throw new IllegalArgumentException("The ZooKeeper 'hosts' configuration parameter must specify at least " +
+                    "one ZK server! (Currently, it is empty.)");
 
         StringBuilder connectionStringBuilder = new StringBuilder();
         for (int i = 0; i < this.hosts.length; i++) {
@@ -94,9 +115,10 @@ public class SyncZKClient implements ZKClient {
         // retry will wait 1 second - the second will wait up to 2 seconds - the
         // third will wait up to 4 seconds.
         // TODO: Make these configurable?
-        ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 5);
+        ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 8);
 
-        return CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
+        return CuratorFrameworkFactory.newClient(connectionString, sessionTimeoutMilliseconds,
+                connectionTimeoutMilliseconds, retryPolicy);
     }
 
     @Override

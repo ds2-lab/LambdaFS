@@ -149,6 +149,27 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   };
 
   /**
+   * How long for a connection attempt to the ZooKeeper ensemble to timeout (in milliseconds).
+   *
+   * ZooKeeper's default is 15,000 milliseconds (so, 15 seconds).
+   */
+  public static final String SERVERLESS_ZOOKEEPER_CONNECT_TIMEOUT = "serverless.zookeeper.connectiontimeout";
+  public static final int SERVERLESS_ZOOKEEPER_CONNECT_TIMEOUT_DEFAULT = 15000;
+
+  /**
+   * How long for ZooKeeper to consider a NameNode to have disconnected (in milliseconds).
+   *
+   * ZooKeeper's default is 60,000 milliseconds (so, 60 seconds), which is too long for our use-case.
+   * Transactions will generally time out before then (based on the current configuration at the time of
+   * writing this comment).
+   *
+   * This should be LESS than the transaction acknowledgement phase timeout so that NNs have enough time
+   * to detect ZooKeeper membership changes.
+   */
+  public static final String SERVERLESS_ZOOKEEPER_SESSION_TIMEOUT = "serverless.zookeeper.sessiontimeout";
+  public static final int SERVERLESS_ZOOKEEPER_SESSION_TIMEOUT_DEFAULT = 7500;
+
+  /**
    * How long the Leader NN should wait for ACKs before aborting the transaction. As of right now, the
    * Leader NN needs to abort after a little while, or all reads and writes on data modified by the transaction
    * will be blocked (since the transaction locks the rows in intermediate storage).
@@ -156,7 +177,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * This is in milliseconds.
    */
   public static final String SERVERLESS_TRANSACTION_ACK_TIMEOUT = "serverless.tx.ack.timeout";
-  public static final int SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT = 10000;
+  public static final int SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT = 15000;
 
   // END OF SERVERLESS
 
