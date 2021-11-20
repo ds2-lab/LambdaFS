@@ -273,14 +273,14 @@ public class SyncZKClient implements ZKClient {
         String path = getPath(groupName, null, true);
         PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, false);
         persistentWatcher.getListenable().addListener(watcher);
-        LOG.debug("Successfully added listener to PersistentWatcher on path '" + path + "'");
+        // LOG.debug("Successfully added listener to PersistentWatcher on path '" + path + "'");
     }
 
     private void addGuestListener(String groupName, Watcher watcher) {
         String path = getPath(groupName, null, false);
         PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, false);
         persistentWatcher.getListenable().addListener(watcher);
-        LOG.debug("Successfully added 'guest' listener to PersistentWatcher on path '" + path + "'");
+        // LOG.debug("Successfully added 'guest' listener to PersistentWatcher on path '" + path + "'");
     }
 
     @Override
