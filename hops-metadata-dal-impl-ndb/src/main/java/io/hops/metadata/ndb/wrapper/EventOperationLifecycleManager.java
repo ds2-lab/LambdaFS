@@ -107,7 +107,7 @@ public class EventOperationLifecycleManager {
      * @return An existing HopsEventOperation if possible, otherwise a new HopsEventOperation. In either case, the
      * HopsEventOperation is wrapping the given EventOperation object.
      */
-    public synchronized HopsEventOperation getInstance(EventOperation eventOperation) {
+    public synchronized HopsEventOperation getExistingInstance(EventOperation eventOperation) {
         return eventOperationHashMap1.get(eventOperation);
     }
 

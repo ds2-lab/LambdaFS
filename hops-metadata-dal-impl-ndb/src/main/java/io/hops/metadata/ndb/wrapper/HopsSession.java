@@ -115,7 +115,7 @@ public class HopsSession {
     }
 
     HopsEventOperation hopsEventOperation =
-            EventOperationLifecycleManager.getInstance().getInstance(eventOperation);
+            EventOperationLifecycleManager.getInstance().getExistingInstance(eventOperation);
 
     // Since it was returned by nextEvent(), we can call true on this.
     // TODO: Should we set the flag to false once we're done processing this?
