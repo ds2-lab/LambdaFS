@@ -173,6 +173,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
           stat.setTimes(acquireLockTime, inMemoryProcessingTime, commitTime);
         }
 
+        requestHandlerLOG.debug("TransactionStat: " + stat.toString());
+
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("TX committed. Time " + commitTime + " ms");
         }

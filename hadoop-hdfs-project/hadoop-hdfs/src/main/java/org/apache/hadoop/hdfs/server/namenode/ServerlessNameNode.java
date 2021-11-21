@@ -201,6 +201,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
+   * The singleton ServerlessNameNode instance associated with this container. There can only be one!
+   */
+  private static ServerlessNameNode instance;
+
+  /**
    * Used to listen for events from NDB.
    */
   private EventManager ndbEventManager;
@@ -539,6 +544,55 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     };
 
     return (INode) getINodeRequestHandler.handle();
+  }
+
+  /**
+   * Returns the singleton ServerlessNameNode instance.
+   *
+   * @param commandLineArguments The command-line arguments given to the NameNode during initialization.
+   * @param functionName The name of this particular OpenWhisk action.
+   * @param isCold Indicates whether this is a cold start.
+   */
+  public static synchronized ServerlessNameNode getOrCreateNameNodeInstance(String[] commandLineArguments,
+                                                                            String functionName,
+                                                                            boolean isCold)
+          throws Exception {
+    if (instance != null) {
+      LOG.debug("Using existing NameNode instance with ID = " + instance.getId());
+      return instance;
+    }
+
+    if (!isCold)
+      LOG.warn("Container is warm, but there is no existing ServerlessNameNode instance.");
+
+    instance = ServerlessNameNode.startServerlessNameNode(commandLineArguments, functionName);
+    instance.populateOperationsMap();
+
+    // Next, the NameNode needs to exit safe mode (if it is in safe mode).
+    if (instance.isInSafeMode()) {
+      LOG.debug("NameNode is in SafeMode. Leaving SafeMode now...");
+      instance.getNamesystem().leaveSafeMode();
+    }
+
+    return instance;
+  }
+
+  /**
+   * Attempt to get the singleton ServerlessNameNode instance. This function will throw an exception if the
+   * instance does not exist. This is useful for trying to get the instance when you expect/need it to exist.
+   * This should be used when the caller feels that the ServerlessNameNode instance SHOULD exist, and that it would
+   * be an error if it did not exist when this function is called.
+   * @param exceptOnFailure If true, throw an exception if the NameNode does not exist.
+   * @return The ServerlessNameNode instance, if it exists.
+   * @throws IllegalStateException Thrown if the ServerlessNameNode instance does not exist and `exceptOnFailure`
+   * is true.
+   */
+  public static synchronized ServerlessNameNode tryGetNameNodeInstance(boolean exceptOnFailure)
+          throws IllegalStateException {
+    if (instance != null)
+      return instance;
+
+    throw new IllegalStateException("ServerlessNameNode instance does not exist!");
   }
 
   private boolean checkPathLength(String src) {
@@ -3235,6 +3289,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
+   * Return the ID of the request currently being processed. This will be null if there is no request
+   * currently being processed.
+   */
+  public String getRequestCurrentlyProcessing() {
+    return workerThread.getRequestCurrentlyProcessing();
+  }
+
+  /**
    * IMPORTANT: We no longer use the activeNameNodes parameter!
    *
    * We retrieve the global/singleton NameNode instance from the OpenWhiskHandler. We then retrieve
@@ -3249,7 +3311,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return True if the NameNode is alive in any deployment.
    */
   public static boolean isNameNodeAlive(long namenodeId, Collection<ActiveNode> activeNamenodes) {
-    ServerlessNameNode instance = OpenWhiskHandler.instance;
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
 
     LOG.debug("Checking if NameNode " + namenodeId + " is alive...");
 

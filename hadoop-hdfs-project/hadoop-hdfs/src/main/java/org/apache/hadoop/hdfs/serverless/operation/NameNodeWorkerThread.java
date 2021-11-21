@@ -40,7 +40,7 @@ public class NameNodeWorkerThread extends Thread {
     private final BlockingQueue<FileSystemTask<Serializable>> workQueue;
 
     /**
-     * All tasks that are currently being executed. This is probably just going to be one at a time.
+     * All tasks that are currently being executed. For now, we only ever execute one task at a time.
      */
     private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
 
@@ -48,6 +48,13 @@ public class NameNodeWorkerThread extends Thread {
      * All tasks that have been executed by this worker thread.
      */
     private final ConcurrentHashMap<String, FileSystemTask<Serializable>> completedTasks;
+
+    /**
+     * The ID of the request currently being processed by the worker thread.
+     *
+     * This assumes the worker thread only executes one task at a time.
+     */
+    private volatile String requestCurrentlyProcessing;
 
     /**
      * How often the worker thread should attempt to purge old records.
@@ -136,6 +143,14 @@ public class NameNodeWorkerThread extends Thread {
                 SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT);
         this.activeNameNodeRefreshIntervalMilliseconds = conf.getInt(SERVERLESS_ACTIVE_NODE_REFRESH,
                 SERVERLESS_ACTIVE_NODE_REFRESH_DEFAULT);
+    }
+
+    /**
+     * Return the ID of the request currently being processed. This will be null if there is no request
+     * currently being processed.
+     */
+    public String getRequestCurrentlyProcessing() {
+        return requestCurrentlyProcessing;
     }
 
     /**
@@ -257,6 +272,7 @@ public class NameNodeWorkerThread extends Thread {
                 LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
 
                 FileSystemTask<Serializable> prev = currentlyExecutingTasks.putIfAbsent(task.getTaskId(), task);
+                requestCurrentlyProcessing = task.getTaskId();
                 if (prev != null)
                     LOG.error("Tried to enqueue task " + task.getTaskId() + " into CurrentlyExecutingTasks despite " +
                             "there already being a task with the same ID present.");
@@ -284,6 +300,7 @@ public class NameNodeWorkerThread extends Thread {
                 }
 
                 currentlyExecutingTasks.remove(task.getTaskId());
+                requestCurrentlyProcessing = null;
 
                 task.postResult(workerResult);
 

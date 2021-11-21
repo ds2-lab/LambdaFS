@@ -39,58 +39,9 @@ public class OpenWhiskHandler {
     public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class.getName());
 
     /**
-     * The singleton ServerlessNameNode instance associated with this container. There can only be one!
-     */
-    public static ServerlessNameNode instance;
-
-    /**
      * Used internally to determine whether this instance is warm or cold.
      */
     private static boolean isCold = true;
-
-    /**
-     * Returns the singleton ServerlessNameNode instance.
-     *
-     * @param commandLineArguments The command-line arguments given to the NameNode during initialization.
-     * @param functionName The name of this particular OpenWhisk action.
-     */
-    public static synchronized ServerlessNameNode getOrCreateNameNodeInstance(String[] commandLineArguments, String functionName)
-            throws Exception {
-        if (instance != null) {
-            LOG.debug("Using existing NameNode instance with ID = " + instance.getId());
-            return instance;
-        }
-
-        if (!isCold)
-            LOG.warn("Container is warm, but there is no existing ServerlessNameNode instance.");
-
-        instance = ServerlessNameNode.startServerlessNameNode(commandLineArguments, functionName);
-        instance.populateOperationsMap();
-
-        // Next, the NameNode needs to exit safe mode (if it is in safe mode).
-        if (instance.isInSafeMode()) {
-            LOG.debug("NameNode is in SafeMode. Leaving SafeMode now...");
-            instance.getNamesystem().leaveSafeMode();
-        }
-
-        return instance;
-    }
-
-    /**
-     * Attempt to get the singleton ServerlessNameNode instance. This function will throw an exception if the
-     * instance does not exist. This is useful for trying to get the instance when you expect/need it to exist.
-     * This should be used when the caller feels that the ServerlessNameNode instance SHOULD exist, and that it would
-     * be an error if it did not exist when this function is called.
-     * @return The ServerlessNameNode instance, if it exists.
-     * @throws IllegalStateException Thrown if the ServerlessNameNode instance does not exist.
-     */
-    public static synchronized ServerlessNameNode tryGetNameNodeInstance() throws IllegalStateException {
-        if (instance != null) {
-            return instance;
-        }
-
-        throw new IllegalStateException("ServerlessNameNode instance does not exist!");
-    }
 
     /**
      * OpenWhisk handler.
@@ -260,7 +211,8 @@ public class OpenWhiskHandler {
         // If this container was cold prior to this invocation, then we'll actually be creating the instance now.
         ServerlessNameNode serverlessNameNode;
         try {
-            serverlessNameNode = getOrCreateNameNodeInstance(commandLineArguments, functionName);
+            serverlessNameNode = ServerlessNameNode.getOrCreateNameNodeInstance(commandLineArguments,
+                    functionName, isCold);
         }
         catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName()

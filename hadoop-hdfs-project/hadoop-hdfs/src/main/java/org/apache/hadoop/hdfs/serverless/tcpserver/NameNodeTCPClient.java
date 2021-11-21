@@ -358,7 +358,7 @@ public class NameNodeTCPClient {
             // the future will resolve, and we'll be able to return a result to the client!
             LOG.debug("[TCP] Waiting for task " + requestId + " (operation = " + op + ") to be executed now...");
             Serializable fileSystemOperationResult = newTask.get(
-                    OpenWhiskHandler.tryGetNameNodeInstance().getWorkerThreadTimeoutMs(), TimeUnit.MILLISECONDS);
+                    ServerlessNameNode.tryGetNameNodeInstance(true).getWorkerThreadTimeoutMs(), TimeUnit.MILLISECONDS);
 
             LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
             if (fileSystemOperationResult instanceof NameNodeResult) {

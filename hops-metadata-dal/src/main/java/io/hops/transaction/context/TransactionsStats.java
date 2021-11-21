@@ -140,7 +140,7 @@ public class TransactionsStats {
   private boolean detailedStats;
 
   private TransactionsStats() {
-    this.enabled = false;
+    this.enabled = true;
     this.transactionStats = new LinkedList<>();
     this.resolvingCacheStats = new LinkedList<>();
   }
