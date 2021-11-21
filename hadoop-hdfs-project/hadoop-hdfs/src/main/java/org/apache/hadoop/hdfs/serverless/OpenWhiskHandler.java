@@ -22,6 +22,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.FORCE_REDO;
@@ -43,6 +44,8 @@ public class OpenWhiskHandler {
      */
     private static boolean isCold = true;
 
+    public static AtomicInteger activeRequestCounter = new AtomicInteger(0);
+
     /**
      * OpenWhisk handler.
      */
@@ -51,7 +54,9 @@ public class OpenWhiskHandler {
         String functionName = platformSpecificInitialization();
 
         LOG.info("============================================================");
-        LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " has received an HTTP invocation.");
+        LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " received HTTP request.");
+        int activeRequests = activeRequestCounter.incrementAndGet();
+        LOG.info("Active HTTP requests: " + activeRequests);
         LOG.info("============================================================\n");
 
         performStaticInitialization();
@@ -163,6 +168,7 @@ public class OpenWhiskHandler {
 
         LOG.debug("Returning back to client. Time elapsed: " + timeElapsed + " milliseconds.");
         LOG.debug("ServerlessNameNode is exiting now...");
+        activeRequestCounter.decrementAndGet();
         return createJsonResponse(result);
     }
 
