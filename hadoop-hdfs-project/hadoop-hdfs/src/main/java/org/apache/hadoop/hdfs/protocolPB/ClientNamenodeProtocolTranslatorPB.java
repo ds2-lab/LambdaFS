@@ -33,6 +33,7 @@ import java.util.EnumSet;
 
 import com.google.common.collect.Lists;
 import io.hops.metadata.hdfs.entity.MetaStatus;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.crypto.CipherSuite;
@@ -1097,6 +1098,16 @@ public class ClientNamenodeProtocolTranslatorPB
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }
+  }
+
+  @Override
+  public void ping(int targetDeployment) throws IOException {
+    throw new NotImplementedException("Not implemented!");
+  }
+
+  @Override
+  public void prewarm(int numPingsPerDeployment) throws IOException {
+    throw new NotImplementedException("Not implemented!");
   }
 
   @Override
