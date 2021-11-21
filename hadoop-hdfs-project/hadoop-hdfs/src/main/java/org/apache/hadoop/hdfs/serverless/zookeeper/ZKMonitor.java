@@ -151,8 +151,7 @@ public class ZKMonitor implements Runnable {
 
         printLock.lock();
         try {
-            LOG.debug("\n==================================================");
-            LOG.debug("UTC Time: " + utcNow);
+            LOG.debug("==================================================");
 
             if (permanentMonitor)
                 LOG.debug("=--------- " + groupName + " P-UPDATES ---------=");
@@ -169,7 +168,8 @@ public class ZKMonitor implements Runnable {
                 LOG.debug("=-------- CURRENT DEPLOYMENT #" + deploymentNumber +  " G-MEMBERS --------=");
 
             LOG.debug(path + ": " + StringUtils.join(children, ", "));
-            LOG.debug("==================================================\n");
+            LOG.debug("==================================================");
+            LOG.debug("");
         } finally {
             printLock.unlock();
         }
