@@ -28,6 +28,8 @@ public class ServerlessNameNodeKeys {
     public static final String REASON_CONNECTION_LOST = "CONNECTION_LOST";
     public static final String OPENWHISK_ACTIVATION_ID = "OPENWHISK_ACTIVATION_ID";
 
+    public static final String STATISTICS_PACKAGE = "STATISTICS_PACKAGE";
+
     /**
      * Used to indicate to the NN that it should re-attempt this operation, even if
      * it was already completed, as the TCP connection was dropped before the result

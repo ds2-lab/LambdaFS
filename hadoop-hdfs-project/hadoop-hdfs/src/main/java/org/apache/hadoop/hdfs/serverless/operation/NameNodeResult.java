@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless.operation;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
@@ -217,6 +218,25 @@ public class NameNodeResult implements Serializable {
         LOG.debug("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n");
     }
 
+    public String serializeAndEncode(Object object) {
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+            ObjectOutputStream objectOutputStream;
+            objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+            objectOutputStream.writeObject(object);
+            objectOutputStream.flush();
+
+            byte[] objectBytes = byteArrayOutputStream.toByteArray();
+            String base64Object = Base64.encodeBase64String(objectBytes);
+
+            return base64Object;
+        } catch (Exception ex) {
+            LOG.error("Exception encountered whilst serializing result of file system operation: ", ex);
+            addException(ex);
+        }
+
+        return null;
+    }
+
     /**
      * Convert this object to a JsonObject so that it can be returned directly to the invoker.
      *
@@ -242,21 +262,11 @@ public class NameNodeResult implements Serializable {
                 LOG.debug("Returning result of type " + result.getClass().getSimpleName()
                         + " to client. Result value: " + result.toString());
 
-            try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-                ObjectOutputStream objectOutputStream;
-                objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-                objectOutputStream.writeObject(result);
-                objectOutputStream.flush();
+            String resultSerializedAndEncoded = serializeAndEncode(result);
 
-                byte[] objectBytes = byteArrayOutputStream.toByteArray();
-                String base64Object = Base64.encodeBase64String(objectBytes);
-
-                json.addProperty(ServerlessNameNodeKeys.RESULT, base64Object);
-                json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, false);
-            } catch (Exception ex) {
-                LOG.error("Exception encountered whilst serializing result of file system operation: ", ex);
-                addException(ex);
-            }
+            if (resultSerializedAndEncoded != null)
+                json.addProperty(ServerlessNameNodeKeys.RESULT, resultSerializedAndEncoded);
+            json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, false);
         }
 
         if (exceptions.size() > 0) {
@@ -298,6 +308,14 @@ public class NameNodeResult implements Serializable {
         json.addProperty(ServerlessNameNodeKeys.CANCELLED, false);
         json.addProperty(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
 
+        TransactionsStats.ServerlessStatisticsPackage statisticsPackage
+                = TransactionsStats.getInstance().exportForServerless(requestId);
+        if (statisticsPackage != null) {
+            String statisticsPackageSerializedAndEncoded = serializeAndEncode(statisticsPackage);
+
+            if (statisticsPackageSerializedAndEncoded != null)
+                json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
+        }
         return json;
     }
 

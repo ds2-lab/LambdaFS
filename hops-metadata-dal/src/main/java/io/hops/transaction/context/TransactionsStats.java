@@ -21,10 +21,8 @@ import io.hops.transaction.handler.RequestHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -33,11 +31,76 @@ import static io.hops.transaction.context.EntityContextStat.HitMissCounter;
 import static io.hops.transaction.context.EntityContextStat.StatsAggregator;
 
 public class TransactionsStats {
-
-  private static Log log = LogFactory.getLog(TransactionsStats.class);
+  private static final Log log = LogFactory.getLog(TransactionsStats.class);
   private static TransactionsStats instance = null;
 
-  public static class TransactionStat {
+  /**
+   * Export the stats that we encountered while processing the current request.
+   * This function packages up the current statistics and then clears everything locally.
+   *
+   * @param requestId The unique ID of the associated request.
+   */
+  public ServerlessStatisticsPackage exportForServerless(String requestId) {
+    synchronized (transactionStats) {
+      List<EntityContextStat.StatsAggregator> statsAggregators =
+              new ArrayList<StatsAggregator>(transactionStats.size());
+      for (TransactionStat stat : transactionStats) {
+        EntityContextStat.StatsAggregator txAggStat = new EntityContextStat.StatsAggregator();
+
+        for (EntityContextStat contextStat : stat.stats)
+          txAggStat.update(contextStat.getStatsAggregator());
+
+        statsAggregators.add(txAggStat);
+      }
+
+      ServerlessStatisticsPackage statisticsPackage = new
+              ServerlessStatisticsPackage(requestId, transactionStats, resolvingCacheStats, statsAggregators);
+      transactionStats.clear();
+      resolvingCacheStats.clear();
+
+      return statisticsPackage;
+    }
+  }
+
+  /**
+   * Encapsulates a package of transaction statistics for a particular
+   * request/invocation of a serverless name node.
+   */
+  public static class ServerlessStatisticsPackage implements Serializable {
+    private static final long serialVersionUID = 705940487995065547L;
+    private final List<TransactionStat> transactionStats;
+    private final List<ResolvingCacheStat> resolvingCacheStats;
+    private final List<EntityContextStat.StatsAggregator> statsAggregators;
+    private final String requestId;
+
+    public ServerlessStatisticsPackage(String requestId, List<TransactionStat> transactionStats,
+                                       List<ResolvingCacheStat> resolvingCacheStats,
+                                       List<EntityContextStat.StatsAggregator> statsAggregators) {
+      this.requestId = requestId;
+      this.transactionStats = transactionStats;
+      this.resolvingCacheStats = resolvingCacheStats;
+      this.statsAggregators = statsAggregators;
+    }
+
+    public String getRequestId() {
+      return requestId;
+    }
+
+    public List<StatsAggregator> getStatsAggregators() {
+      return statsAggregators;
+    }
+
+    public List<ResolvingCacheStat> getResolvingCacheStats() {
+      return resolvingCacheStats;
+    }
+
+    public List<TransactionStat> getTransactionStats() {
+      return transactionStats;
+    }
+  }
+
+  public static class TransactionStat implements Serializable {
+    private static final long serialVersionUID = -4618265598070114444L;
     private RequestHandler.OperationType name;
     private Collection<EntityContextStat> stats;
     private Exception ignoredException;
@@ -58,7 +121,6 @@ public class TransactionsStats {
       this.processingTime = processing;
       this.commitTime = commit;
     }
-
 
     static String getHeader(){
       String header = "Tx,";
@@ -104,7 +166,9 @@ public class TransactionsStats {
   }
 
 
-  public static class ResolvingCacheStat {
+  public static class ResolvingCacheStat implements Serializable {
+    private static final long serialVersionUID = -7183415931601175290L;
+
     public static enum Op{
       GET,
       SET
@@ -140,7 +204,7 @@ public class TransactionsStats {
   private boolean detailedStats;
 
   private TransactionsStats() {
-    this.enabled = true;
+    this.enabled = false;
     this.transactionStats = new LinkedList<>();
     this.resolvingCacheStats = new LinkedList<>();
   }
@@ -158,32 +222,29 @@ public class TransactionsStats {
       throws IOException {
     if (enableOrDisable) {
       this.enabled = true;
-      this.statsDir = new File(statsDir);
-      this.WRITER_ROUND = writerRound;
-      if (!this.statsDir.exists()) {
-        this.statsDir.mkdirs();
-      }
+//      this.statsDir = new File(statsDir);
+//      this.WRITER_ROUND = writerRound;
+//      if (!this.statsDir.exists()) {
+//        this.statsDir.mkdirs();
+//      }
       BaseEntityContext.enableStats();
 
-      this.writerThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-          while (enabled){
-            try {
-              Thread.sleep(WRITER_ROUND*1000L);
-            } catch (InterruptedException e) {
-              log.warn(e);
-              Thread.currentThread().interrupt();
-            }
-            try {
-              dump();
-            } catch (IOException e) {
-             log.warn(e);
-            }
-          }
-        }
-      });
-      this.writerThread.start();
+//      this.writerThread = new Thread(() -> {
+//        while (enabled){
+//          try {
+//            Thread.sleep(WRITER_ROUND*1000L);
+//          } catch (InterruptedException e) {
+//            log.warn(e);
+//            Thread.currentThread().interrupt();
+//          }
+//          try {
+//            dump();
+//          } catch (IOException e) {
+//           log.warn(e);
+//          }
+//        }
+//      });
+//      this.writerThread.start();
       this.detailedStats = detailed;
     } else {
       this.enabled = false;
@@ -238,16 +299,16 @@ public class TransactionsStats {
   public void close() throws IOException {
     if(enabled) {
       enabled = false;
-      writerThread.interrupt();
-      if(statsLogWriter != null) {
-        statsLogWriter.close();
-      }
-      if(csvFileWriter != null) {
-        csvFileWriter.close();
-      }
-      if(memcacheCSVFileWriter != null){
-        memcacheCSVFileWriter.close();
-      }
+//      writerThread.interrupt();
+//      if(statsLogWriter != null) {
+//        statsLogWriter.close();
+//      }
+//      if(csvFileWriter != null) {
+//        csvFileWriter.close();
+//      }
+//      if(memcacheCSVFileWriter != null){
+//        memcacheCSVFileWriter.close();
+//      }
     }
   }
 
