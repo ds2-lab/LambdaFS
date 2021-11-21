@@ -520,7 +520,7 @@ public class HopsEventManager implements EventManager {
         // Try to drop the event. If something goes wrong, we'll throw an exception.
         boolean dropped;
         try {
-            dropped = obtainSession().dropEventOperation(hopsEventOperation);
+            dropped = obtainSession().dropEventOperation(hopsEventOperation, eventName);
         } catch (ClusterJException e) {
             throw HopsExceptionHelper.wrap(e);
         }
@@ -1033,7 +1033,7 @@ public class HopsEventManager implements EventManager {
      * @return the number of events that were processed.
      */
     private int processEvents() {
-        HopsEventOperation nextEventOp = session.nextEvent(null);
+        HopsEventOperation nextEventOp = session.nextEvent();
         int numEventsProcessed = 0;
 
         while (nextEventOp != null) {
@@ -1052,7 +1052,7 @@ public class HopsEventManager implements EventManager {
             }
 
             // TODO: Should we call .setCanCallNextEvent(false) on the event we just processed to mark it as such?
-            nextEventOp = session.nextEvent(null);
+            nextEventOp = session.nextEvent();
             numEventsProcessed++;
         }
 

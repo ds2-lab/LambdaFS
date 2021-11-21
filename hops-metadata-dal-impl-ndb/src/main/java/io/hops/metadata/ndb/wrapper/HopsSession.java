@@ -29,7 +29,6 @@ import com.mysql.clusterj.core.store.EventOperation;
 import com.mysql.clusterj.query.QueryBuilder;
 import io.hops.events.HopsEventOperation;
 import io.hops.exception.StorageException;
-import io.hops.metadata.ndb.EventOperationLifecycleManager;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -81,15 +80,20 @@ public class HopsSession {
    * Drop the given event operation from the server.
    *
    * @param eventOp The event operation to be dropped.
+   * @param eventName The name of the event for which the subscription is being dropped.
    * @return True if the operation was dropped, otherwise false.
    */
-  public boolean dropEventOperation(HopsEventOperation eventOp) {
+  public boolean dropEventOperation(HopsEventOperation eventOp, String eventName) {
     if (!(eventOp instanceof HopsEventOperationImpl))
       throw new IllegalArgumentException("The given event operation is not of a valid type: " +
               (eventOp != null ? eventOp.getClass().getSimpleName() : "null"));
 
     HopsEventOperationImpl eventOperationImpl = (HopsEventOperationImpl)eventOp;
-    return session.dropEventOperation(eventOperationImpl.getClusterJEventOperation());
+    EventOperation clusterJEventOperation = eventOperationImpl.getClusterJEventOperation();
+
+    EventOperationLifecycleManager.getInstance().deleteInstance(clusterJEventOperation, eventName);
+
+    return session.dropEventOperation(clusterJEventOperation);
   }
 
   /**
@@ -99,13 +103,10 @@ public class HopsSession {
    *  (1) execute() has not yet been called on the event operation, and
    *  (2) pollEvents() has not yet been called and indicated that at least one event has been received.
    *
-   * @param eventName The name of the event we're checking on. It is acceptable for null to be passed if the name is
-   *                  not available. The name is just passed to the HopsEventOperation constructor, and that object
-   *                  only uses the name for debugging purposes.
    * @return EventOperation associated with the next event that was received.
    *         This will return null if there are no other events to receive.
    */
-  public HopsEventOperation nextEvent(String eventName) {
+  public HopsEventOperation nextEvent() {
     EventOperation eventOperation = session.nextEvent();
 
     if (eventOperation == null) {
@@ -114,7 +115,7 @@ public class HopsSession {
     }
 
     HopsEventOperation hopsEventOperation =
-            EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
+            EventOperationLifecycleManager.getInstance().getInstance(eventOperation);
 
     // Since it was returned by nextEvent(), we can call true on this.
     // TODO: Should we set the flag to false once we're done processing this?
@@ -194,14 +195,15 @@ public class HopsSession {
   public HopsEventOperation createEventOperation(String eventName) throws StorageException {
     LOG.debug("Creating subscription on event '" + eventName + "' now...");
 
-    EventOperation eventOperation;
-    try {
-      eventOperation = session.createEventOperation(eventName);
-    } catch (ClusterJException e) {
-      throw HopsExceptionHelper.wrap(e);
-    }
+//    EventOperation eventOperation;
+//    try {
+//      eventOperation = session.createEventOperation(eventName);
+//    } catch (ClusterJException e) {
+//      throw HopsExceptionHelper.wrap(e);
+//    }
 
-    return EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
+    return EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, session);
+    // return EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
   }
 
   public <T> HopsQuery<T> createQuery(HopsQueryDomainType<T> queryDefinition)
