@@ -171,9 +171,6 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         commitTime = (System.currentTimeMillis() - oldTime);
         if(stat != null){
           stat.setTimes(acquireLockTime, inMemoryProcessingTime, commitTime);
-          requestHandlerLOG.debug("TransactionStat: " + stat.toString());
-        } else {
-          requestHandlerLOG.debug("TransactionStat is null.");
         }
 
         if(requestHandlerLOG.isTraceEnabled()) {

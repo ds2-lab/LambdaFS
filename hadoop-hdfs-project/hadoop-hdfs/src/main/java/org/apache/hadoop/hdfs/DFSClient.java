@@ -7,13 +7,8 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 import com.google.gson.JsonObject;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+
+import java.io.*;
 import java.net.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -23,6 +18,7 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -33,6 +29,8 @@ import io.hops.metadata.hdfs.entity.MetaStatus;
 
 import javax.net.SocketFactory;
 
+import io.hops.transaction.context.EntityContextStat;
+import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -207,6 +205,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   /* The service used for delegation tokens */
   private Text dtService;
 
+  private final File statisticsDirectory = getStatisticsDirectory();
+
   final UserGroupInformation ugi;
   volatile boolean clientRunning = true;
   volatile long lastLeaseRenewal;
@@ -267,6 +267,138 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public DFSClient(URI hdfsUri, Configuration conf) throws IOException, URISyntaxException {
     // TODO: Fix this. Ordinarily it passes the HDFS URI here. Not sure if this will cause issues or not.
     this(new URI(conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT)), conf, null);
+  }
+
+  /**
+   * Clear the collection of statistics packages.
+   */
+  public void clearStatisticsPackages() {
+    LOG.debug("Clearing statistics packages.");
+    this.serverlessInvoker.getStatisticsPackages().clear();
+  }
+
+  /**
+   * Merge the provided map of statistics packages with our own.
+   *
+   * @param keepLocal If true, the local keys will be preserved. If false, the keys in the 'packages' parameter
+   *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
+   *                  requestId values, which are supposed to be unique.)
+   */
+  public void mergeStatisticsPackages(HashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages,
+                                      boolean keepLocal) {
+    HashMap<String, TransactionsStats.ServerlessStatisticsPackage> local =
+            this.serverlessInvoker.getStatisticsPackages();
+
+    HashMap<String, TransactionsStats.ServerlessStatisticsPackage> merged =
+            new HashMap<String, TransactionsStats.ServerlessStatisticsPackage>();
+
+    if (keepLocal) {
+      merged.putAll(packages);
+      merged.putAll(local);
+    } else {
+      merged.putAll(local);
+      merged.putAll(packages);
+    }
+
+    this.serverlessInvoker.setStatisticsPackages(merged);
+  }
+
+  /**
+   * Return the statistics packages from the invoker.
+   */
+  public HashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
+    return this.serverlessInvoker.getStatisticsPackages();
+  }
+
+  /**
+   * Write the statistics packages to a file.
+   * @param clearAfterWrite If true, clear the statistics packages after writing them.
+   */
+  public void dumpStatisticsPackages(boolean clearAfterWrite)
+          throws IOException {
+    HashMap<String, TransactionsStats.ServerlessStatisticsPackage> statisticsPackages =
+            this.serverlessInvoker.getStatisticsPackages();
+
+    for (Map.Entry<String, TransactionsStats.ServerlessStatisticsPackage> entry : statisticsPackages.entrySet()) {
+      String requestId = entry.getKey();
+      TransactionsStats.ServerlessStatisticsPackage statisticsPackage = entry.getValue();
+
+      List<TransactionsStats.TransactionStat> transactionStats = statisticsPackage.getTransactionStats();
+      List<TransactionsStats.ResolvingCacheStat> resolvingCacheStats = statisticsPackage.getResolvingCacheStats();
+
+      if (!statisticsDirectory.exists())
+        statisticsDirectory.mkdirs();
+
+      File csvFile = new File(getCSVFile() + requestId + ".csv");
+      File detailedFile = new File(getStatsFile() + requestId + ".log");
+      File resolvingCacheFile = new File(getResolvingCacheCSVFile() + requestId + ".csv");
+      BufferedWriter csvWriter = new BufferedWriter(new FileWriter(csvFile, true));
+      BufferedWriter detailedWriter = new BufferedWriter(new FileWriter(detailedFile, true));
+      BufferedWriter resolvingCacheWriter = new BufferedWriter(new FileWriter(resolvingCacheFile, true));
+
+      // Write CSV statistics.
+      boolean fileExists = csvFile.exists();
+      if(!fileExists) {
+        csvWriter.write(TransactionsStats.TransactionStat.getHeader());
+        csvWriter.newLine();
+      }
+      for (TransactionsStats.TransactionStat stat : transactionStats) {
+        csvWriter.write(stat.toString());
+        csvWriter.newLine();
+      }
+
+      // Write the detailed statistics.
+      for (TransactionsStats.TransactionStat stat : transactionStats) {
+        detailedWriter.write("Transaction: " + stat.getName().toString());
+        detailedWriter.newLine();
+
+        if (stat.getIgnoredException() != null) {
+          detailedWriter.write(stat.getIgnoredException().toString());
+          detailedWriter.newLine();
+          detailedWriter.newLine();
+        }
+
+        EntityContextStat.StatsAggregator txAggStat =
+                new EntityContextStat.StatsAggregator();
+        for (EntityContextStat contextStat : stat.getStats()) {
+          detailedWriter.write(contextStat.toString());
+        }
+
+        detailedWriter.write(txAggStat.toCSFString("Tx."));
+        detailedWriter.newLine();
+      }
+
+      // Write the resolving cache statistics.
+      fileExists = resolvingCacheFile.exists();
+      if(!fileExists) {
+        resolvingCacheWriter.write(TransactionsStats.ResolvingCacheStat.getHeader());
+        resolvingCacheWriter.newLine();
+      }
+      for(TransactionsStats.ResolvingCacheStat stat : resolvingCacheStats){
+        resolvingCacheWriter.write(stat.toString());
+        resolvingCacheWriter.newLine();
+      }
+    }
+
+    if (clearAfterWrite)
+      clearStatisticsPackages();
+  }
+
+  private File getStatisticsDirectory() {
+    String folder = new Timestamp(System.currentTimeMillis()).toString().replace(':', '-');
+    return new File("./statistics/", folder + "/");
+  }
+
+  private File getStatsFile() {
+    return new File(statisticsDirectory, "hops-stats");
+  }
+
+  private File getCSVFile() {
+    return new File(statisticsDirectory, "hops-stats");
+  }
+
+  private File getResolvingCacheCSVFile() {
+    return new File(statisticsDirectory, "hops-resolving-cache-stats");
   }
 
   /**

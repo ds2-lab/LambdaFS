@@ -19,6 +19,8 @@ import io.hops.StorageConnector;
 import io.hops.log.NDCWrapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import java.io.Serializable;
 import java.util.Random;
 
 import java.io.IOException;
@@ -28,7 +30,7 @@ import java.util.List;
 public abstract class RequestHandler {
   private long waitTime;
 
-  public interface OperationType {
+  public interface OperationType extends Serializable {
     /**
      * Returns true if the instance on which this function is called is a write operation that requires the use
      * of the serverless consistency protocol. Otherwise, returns false.

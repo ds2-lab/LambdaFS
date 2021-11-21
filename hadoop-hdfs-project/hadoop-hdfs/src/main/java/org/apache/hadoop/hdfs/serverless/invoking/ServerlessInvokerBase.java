@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -37,6 +38,11 @@ public abstract class ServerlessInvokerBase<T> {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
 
     private final Random random = new Random();
+
+    /**
+     * Store the statistics packages from serverless name nodes in this HashMap.
+     */
+    protected HashMap<String, TransactionsStats.ServerlessStatisticsPackage> statisticsPackages;
 
     /**
      * The maximum amount of time to wait before issuing another HTTP request after the previous request failed.
@@ -173,8 +179,9 @@ public abstract class ServerlessInvokerBase<T> {
     /**
      * Default constructor.
      */
-    protected ServerlessInvokerBase() throws NoSuchAlgorithmException, KeyManagementException {
+    protected ServerlessInvokerBase() {
         instantiateTrustManager();
+        statisticsPackages = new HashMap<>();
     }
 
     /**
@@ -260,7 +267,7 @@ public abstract class ServerlessInvokerBase<T> {
      * @param response The response from the NameNode.
      * @return The result contained within the JsonObject returned by the NameNode.
      */
-    public static Object extractResultFromJsonResponse(JsonObject response, FunctionMetadataMap cache) {
+    public Object extractResultFromJsonResponse(JsonObject response) {
         String requestId;
         if (response.has(ServerlessNameNodeKeys.REQUEST_ID))
             requestId = response.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
@@ -304,6 +311,22 @@ public abstract class ServerlessInvokerBase<T> {
             else {
                 LOG.debug("The Serverless NameNode did not encounter any exceptions while executing task " +
                         requestId);
+            }
+        }
+
+        if (response.has(ServerlessNameNodeKeys.STATISTICS_PACKAGE)) {
+            String statisticsPackageEncoded =
+                    response.getAsJsonPrimitive(ServerlessNameNodeKeys.STATISTICS_PACKAGE).getAsString();
+
+            try {
+                TransactionsStats.ServerlessStatisticsPackage statisticsPackage =
+                        (TransactionsStats.ServerlessStatisticsPackage)
+                                InvokerUtilities.base64StringToObject(statisticsPackageEncoded);
+
+
+            } catch (Exception ex) {
+                LOG.error("Error encountered while extracting result from NameNode response:", ex);
+                return null;
             }
         }
 
@@ -462,5 +485,13 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArgumentsJson.addProperty(
                 ServerlessNameNodeKeys.CLIENT_INTERNAL_IP, InvokerUtilities.getInternalIpAddress());
         nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.TCP_ENABLED, tcpEnabled);
+    }
+
+    public HashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
+        return statisticsPackages;
+    }
+
+    public void setStatisticsPackages(HashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages) {
+        this.statisticsPackages = packages;
     }
 }

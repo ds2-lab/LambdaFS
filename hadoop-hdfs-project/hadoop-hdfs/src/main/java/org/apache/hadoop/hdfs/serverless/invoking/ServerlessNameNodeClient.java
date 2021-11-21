@@ -31,7 +31,6 @@ import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.util.Time;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -39,10 +38,8 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static com.google.common.hash.Hashing.consistentHash;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT;
-import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase.extractResultFromJsonResponse;
 
 /**
  * This serves as an adapter between the DFSClient interface and the serverless NameNode API.
@@ -501,7 +498,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getBlockLocations to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result =  serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             locatedBlocks = (LocatedBlocks)result;
 
@@ -539,7 +536,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getServerDefaults to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             serverDefaults = (FsServerDefaults)result;
 
@@ -598,7 +595,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // Extract the result from the Json response.
         // If there's an exception, then it will be logged by this function.
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             stat = (HdfsFileStatus)result;
 
@@ -646,7 +643,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // Extract the result from the Json response.
         // If there's an exception, then it will be logged by this function.
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             stat = (LastBlockWithStatus)result;
 
@@ -773,7 +770,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation addBlock to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
 
         if (result != null) {
             LocatedBlock locatedBlock = (LocatedBlock) result;
@@ -814,7 +811,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation complete to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (boolean)result;
 
@@ -917,7 +914,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation truncate to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (boolean)result;
 
@@ -943,7 +940,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation delete to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (boolean)result;
 
@@ -970,7 +967,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation mkdirs to NameNode.");
         }
 
-        Object res = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object res = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (res != null)
             return (boolean)res;
 
@@ -997,7 +994,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (DirectoryListing)result;
 
@@ -1043,7 +1040,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (long[])result;
 
@@ -1068,7 +1065,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (DatanodeInfo[])result;
 
@@ -1128,7 +1125,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getFileInfo to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (HdfsFileStatus)result;
 
@@ -1153,7 +1150,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation isFileClosed to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (boolean)result;
 
@@ -1178,7 +1175,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation isFileClosed to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (HdfsFileStatus)result;
 
@@ -1234,7 +1231,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation complete to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (LocatedBlock)result;
 
@@ -1358,7 +1355,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation complete to NameNode.");
         }
 
-        Object result = extractResultFromJsonResponse(responseJson, serverlessInvoker.cache);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
             return (SortedActiveNodeList)result;
 

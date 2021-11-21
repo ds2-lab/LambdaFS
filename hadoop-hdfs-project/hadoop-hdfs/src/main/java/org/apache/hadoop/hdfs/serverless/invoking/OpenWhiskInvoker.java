@@ -37,8 +37,6 @@ import java.util.*;
 import static com.google.common.hash.Hashing.consistentHash;
 
 /**
- * Concrete implementation of the {@link ServerlessInvoker} interface for the OpenWhisk serverless platform.
- *
  * The serverless platform being used is specified in the configuration files for Serverless HopsFS. Currently, it
  * defaults to OpenWhisk. In order to obtain an invoker, you simply utilize the {@link ServerlessInvokerBase} class,
  * passing whatever platform is specified in the configuration. The factory will provide a concrete implementation

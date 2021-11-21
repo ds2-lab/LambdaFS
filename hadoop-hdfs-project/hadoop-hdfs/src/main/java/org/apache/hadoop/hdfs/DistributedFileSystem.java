@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
+import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -520,6 +521,30 @@ public class DistributedFileSystem extends FileSystem {
     LOG.debug("CREATE operation finished in " + duration + " milliseconds.");
 
     return dataOutputStream;
+  }
+
+  public HashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
+    return this.dfs.getStatisticsPackages();
+  }
+
+  /**
+   * Merge the provided map of statistics packages with our own.
+   *
+   * @param keepLocal If true, the local keys will be preserved. If false, the keys in the 'packages' parameter
+   *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
+   *                  requestId values, which are supposed to be unique.)
+   */
+  public void mergeStatisticsPackages(HashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages,
+                                      boolean keepLocal) {
+    this.dfs.mergeStatisticsPackages(packages, keepLocal);
+  }
+
+  /**
+   * Write the statistics packages to a file.
+   * @param clearAfterWrite If true, clear the statistics packages after writing them.
+   */
+  public void dumpStatisticsPackages(boolean clearAfterWrite) throws IOException {
+    this.dfs.dumpStatisticsPackages(clearAfterWrite);
   }
 
   /**

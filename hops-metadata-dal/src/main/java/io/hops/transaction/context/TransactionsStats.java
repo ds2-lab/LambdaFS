@@ -42,19 +42,20 @@ public class TransactionsStats {
    */
   public ServerlessStatisticsPackage exportForServerless(String requestId) {
     synchronized (transactionStats) {
-      List<EntityContextStat.StatsAggregator> statsAggregators =
-              new ArrayList<StatsAggregator>(transactionStats.size());
-      for (TransactionStat stat : transactionStats) {
-        EntityContextStat.StatsAggregator txAggStat = new EntityContextStat.StatsAggregator();
-
-        for (EntityContextStat contextStat : stat.stats)
-          txAggStat.update(contextStat.getStatsAggregator());
-
-        statsAggregators.add(txAggStat);
-      }
+//      List<EntityContextStat.StatsAggregator> statsAggregators =
+//              new ArrayList<StatsAggregator>(transactionStats.size());
+//      for (TransactionStat stat : transactionStats) {
+//        EntityContextStat.StatsAggregator txAggStat = new EntityContextStat.StatsAggregator();
+//
+//        for (EntityContextStat contextStat : stat.stats)
+//          txAggStat.update(contextStat.getStatsAggregator());
+//
+//        statsAggregators.add(txAggStat);
+//      }
 
       ServerlessStatisticsPackage statisticsPackage = new
-              ServerlessStatisticsPackage(requestId, transactionStats, resolvingCacheStats, statsAggregators);
+              ServerlessStatisticsPackage(requestId, transactionStats, resolvingCacheStats);
+              //ServerlessStatisticsPackage(requestId, transactionStats, resolvingCacheStats, statsAggregators);
       transactionStats.clear();
       resolvingCacheStats.clear();
 
@@ -70,25 +71,25 @@ public class TransactionsStats {
     private static final long serialVersionUID = 705940487995065547L;
     private final List<TransactionStat> transactionStats;
     private final List<ResolvingCacheStat> resolvingCacheStats;
-    private final List<EntityContextStat.StatsAggregator> statsAggregators;
+    // private final List<EntityContextStat.StatsAggregator> statsAggregators;
     private final String requestId;
 
     public ServerlessStatisticsPackage(String requestId, List<TransactionStat> transactionStats,
-                                       List<ResolvingCacheStat> resolvingCacheStats,
-                                       List<EntityContextStat.StatsAggregator> statsAggregators) {
+                                       List<ResolvingCacheStat> resolvingCacheStats/*,
+                                       List<EntityContextStat.StatsAggregator> statsAggregators*/) {
       this.requestId = requestId;
       this.transactionStats = transactionStats;
       this.resolvingCacheStats = resolvingCacheStats;
-      this.statsAggregators = statsAggregators;
+      // this.statsAggregators = statsAggregators;
     }
 
     public String getRequestId() {
       return requestId;
     }
 
-    public List<StatsAggregator> getStatsAggregators() {
-      return statsAggregators;
-    }
+//    public List<StatsAggregator> getStatsAggregators() {
+//      return statsAggregators;
+//    }
 
     public List<ResolvingCacheStat> getResolvingCacheStats() {
       return resolvingCacheStats;
@@ -116,13 +117,25 @@ public class TransactionsStats {
       this.ignoredException = ignoredException;
     }
 
+    public Collection<EntityContextStat> getStats() {
+      return stats;
+    }
+
+    public RequestHandler.OperationType getName() {
+      return name;
+    }
+
+    public Exception getIgnoredException() {
+      return ignoredException;
+    }
+
     public void setTimes(long acquire, long processing, long commit){
       this.acquireTime = acquire;
       this.processingTime = processing;
       this.commitTime = commit;
     }
 
-    static String getHeader(){
+    public static String getHeader(){
       String header = "Tx,";
       for(FinderType.Annotation annotation : FinderType.Annotation.values()){
         String ann = annotation.toString();
@@ -139,7 +152,7 @@ public class TransactionsStats {
       String tx = name.toString() + ",";
       StatsAggregator txStatsAggregator = new StatsAggregator();
 
-      for(EntityContextStat contextStat : stats){
+      for ( EntityContextStat contextStat : stats) {
         txStatsAggregator.update(contextStat.getStatsAggregator());
       }
 
@@ -183,7 +196,7 @@ public class TransactionsStats {
       this.roundTrips = roundTrips;
     }
 
-    static String getHeader(){
+    public static String getHeader(){
       return "Operation, Elapsed, RoundTrips";
     }
     @Override

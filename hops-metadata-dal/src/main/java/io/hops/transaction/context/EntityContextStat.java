@@ -23,15 +23,16 @@ import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Map;
 
-public class EntityContextStat {
+public class EntityContextStat implements Serializable {
 
   static final int CONTEXT_INDENTATION = 2;
   static final int OPERATION_INDENTATION = 5;
   static final int CONTEXT_STAT_INDENTATION = 3;
   static final int NUMBER_WIDTH = 4;
   static final String NEW_LINE = "\n";
+  private static final long serialVersionUID = -4573678240537944155L;
 
-  static class StatsAggregator implements Serializable {
+  public static class StatsAggregator implements Serializable {
     private static final long serialVersionUID = 3079449096166940885L;
     HitMissCounter hitMissCounter = new HitMissCounter();
     int newRows = 0;
@@ -124,7 +125,7 @@ public class EntityContextStat {
       return sb.toString();
     }
 
-    String toCSFString(String prefix) {
+    public String toCSFString(String prefix) {
       StringBuilder sb = new StringBuilder();
       sb.append(getCSF(prefix + "  " + getRowStats()));
       String hitMisses = getHitsMisses();
@@ -144,7 +145,8 @@ public class EntityContextStat {
     }
   }
 
-  static class HitMissCounter {
+  static class HitMissCounter implements Serializable {
+    private static final long serialVersionUID = 213928456881260812L;
     int hits;
     int hitsRowsCount;
     int misses;

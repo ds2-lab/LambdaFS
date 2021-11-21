@@ -1,9 +1,13 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.google.gson.JsonObject;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
+import org.apache.hadoop.hdfs.serverless.operation.NullResult;
 
 import java.io.Serializable;
 import java.util.concurrent.*;
@@ -12,8 +16,6 @@ public class RedirectedRequestFuture implements Future<Serializable> {
     private static final Log LOG = LogFactory.getLog(RedirectedRequestFuture.class);
 
     private enum State {WAITING, DONE, CANCELLED, ERROR}
-
-    private volatile State state = State.WAITING;
 
     /**
      * The unique ID identifying this future.
@@ -50,12 +52,12 @@ public class RedirectedRequestFuture implements Future<Serializable> {
 
     @Override
     public synchronized boolean isCancelled() {
-        return state == State.CANCELLED;
+        throw new NotImplementedException("Not implemented.");
     }
 
     @Override
     public synchronized boolean isDone() {
-        return state == State.DONE || state == State.CANCELLED;
+        throw new NotImplementedException("Not implemented.");
     }
 
     @Override
@@ -95,7 +97,24 @@ public class RedirectedRequestFuture implements Future<Serializable> {
     }
 
     private Serializable extractResult(JsonObject responseJson) {
-        return (Serializable)ServerlessInvokerBase.extractResultFromJsonResponse(responseJson, null);
+        if (responseJson.has(ServerlessNameNodeKeys.RESULT)) {
+            String resultBase64 = responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.RESULT).getAsString();
+
+            try {
+                Serializable result = InvokerUtilities.base64StringToObject(resultBase64);
+
+                if (result == null || (result instanceof NullResult)) {
+                    return null;
+                }
+
+                LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result);
+                return result;
+            } catch (Exception ex) {
+                LOG.error("Error encountered while extracting result from NameNode response:", ex);
+                return null;
+            }
+        }
+        return null;
     }
 
     public long getCreatedAt() { return createdAt; }

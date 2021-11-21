@@ -172,7 +172,7 @@ class BPServiceActor implements Runnable {
 
         LOG.info("responseJson = " + responseJson.toString());
 
-        Object result = ServerlessInvokerBase.extractResultFromJsonResponse(responseJson, null);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
         if (result != null)
           nsInfo = (NamespaceInfo)result;
 

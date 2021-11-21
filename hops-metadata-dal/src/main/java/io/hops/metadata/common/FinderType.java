@@ -15,7 +15,9 @@
  */
 package io.hops.metadata.common;
 
-public interface FinderType<T> {
+import java.io.Serializable;
+
+public interface FinderType<T> extends Serializable {
   public static enum Annotation {
     PrimaryKey,
     PrunedIndexScan,
