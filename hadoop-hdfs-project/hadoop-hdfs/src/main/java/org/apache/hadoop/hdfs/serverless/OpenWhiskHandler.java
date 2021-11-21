@@ -47,6 +47,7 @@ public class OpenWhiskHandler {
      * OpenWhisk handler.
      */
     public static JsonObject main(JsonObject args) {
+        long startTime = System.nanoTime();
         String functionName = platformSpecificInitialization();
 
         LOG.info("============================================================");
@@ -157,6 +158,10 @@ public class OpenWhiskHandler {
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
 
+        long endTime = System.nanoTime();
+        double timeElapsed = (endTime - startTime) / 1000000.0;
+
+        LOG.debug("Returning back to client. Time elapsed: " + timeElapsed + " milliseconds.");
         LOG.debug("ServerlessNameNode is exiting now...");
         return createJsonResponse(result);
     }
