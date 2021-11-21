@@ -4,6 +4,7 @@ import com.mysql.clusterj.TableEvent;
 import com.mysql.clusterj.core.store.EventOperation;
 import com.mysql.clusterj.core.store.RecordAttr;
 import io.hops.events.HopsEventOperation;
+import io.hops.events.HopsEventState;
 import io.hops.metadata.ndb.NdbBoolean;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -214,6 +215,11 @@ public class HopsEventOperationImpl implements HopsEventOperation {
 
         // If at least one of these was created, then we'll return true.
         //return (preCreated || postCreated);
+    }
+
+    @Override
+    public HopsEventState getState() {
+        return HopsEventState.convert(clusterJEventOperation.getState());
     }
 
     /**

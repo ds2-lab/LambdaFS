@@ -14,6 +14,17 @@ public interface HopsEventOperation {
     void addRecordAttribute(String columnName);
 
     /**
+     * Get the state of the event operation.
+     *      CREATED = 0,
+     *      EXECUTING = 1,
+     *      DROPPED = 2,
+     *      ERROR = 3
+     *
+     * @return Integer representing the state.
+     */
+    HopsEventState getState();
+
+    /**
      * Get the boolean pre-value of a record attribute (i.e., value associated with an event).
      *
      * @param columnName The name of the column whose value is desired.

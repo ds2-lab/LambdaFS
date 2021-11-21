@@ -507,7 +507,7 @@ public class HopsEventManager implements EventManager {
         int currentNumberOfListeners = (listeners == null ? 0 : listeners.size());
         if (currentNumberOfListeners > 0) {
             LOG.debug("There are still " + currentNumberOfListeners + " event listener(s) for event " +
-                    eventName + ". Will not drop the subscription. (Only removed the event listener.)");
+                    eventName + ". Will not drop the subscription.");
             return;
         } else {
             LOG.debug("There are no more event listeners associated with the event. Dropping subscription.");
@@ -666,7 +666,7 @@ public class HopsEventManager implements EventManager {
 
         // Start at 0. This way, creating the event will add a permit. If 'alsoCreateSubscription' is true,
         // then we decrement this by 1 so that the Semaphore will block until both the event is created and the
-        // subscription is created. If eventListener is non-null, then we decrement it again so it blocks until
+        // subscription is created. If eventListener is non-null, then we decrement it again, so it blocks until
         // the listener is added too.
         int startingPermits = 0;
 
@@ -830,24 +830,33 @@ public class HopsEventManager implements EventManager {
             throw new IllegalStateException("Failed to register event subscription with NDB for event '" +
                     eventName + "'");
 
-        notifier.release(1);
-
         if (eventOperation != null) {
             // Add record attributes for each of the specified columns. We use these to get MySQL table column values.
             String[] eventColumns = eventRegistrationTask.getEventColumns();
             for (String columnName : eventColumns)
                 eventOperation.addRecordAttribute(columnName);
 
-            // If there's an event listener, we'll add it. Then release the semaphore again.
+            // If we have a listener to add, we add it before executing.
             if (eventListener != null) {
                 addListener(eventName, eventListener);
                 LOG.debug("Executing event operation for event '" + eventName + "'");
-                eventOperation.execute(); // If we have a listener to add, we add it before executing.
+                eventOperation.execute();
+
+                // In theory, we could put this next line before .execute(), since this call to .release() actually
+                // corresponds to the creation of the listener. The final call to .release() is what corresponds
+                // to calling .execute() on the event operation.
                 notifier.release(1);
             } else {
                 LOG.debug("No event listener to add. Executing event operation for event '" + eventName + "'");
-                eventOperation.execute(); // No listener, so just execute. No need to decrement again.
+                eventOperation.execute();
             }
+
+            if (eventOperation.getState() != HopsEventState.EXECUTING)
+                throw new IllegalStateException("The event subscription for event " + eventName +
+                        " has not entered the EXECUTING state. It is in state " + eventOperation.getState());
+
+            // We call the final release here as we need to call .execute() on the event operation first.
+            notifier.release(1);
         }
     }
 

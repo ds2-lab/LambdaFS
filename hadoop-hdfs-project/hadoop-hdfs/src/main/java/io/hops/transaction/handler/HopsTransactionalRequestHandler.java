@@ -663,7 +663,7 @@ public abstract class HopsTransactionalRequestHandler
   }
 
   /**
-   * Unregister ourselves as an event listener for ACK table events, then unregister the event operation itself.
+   * Unregister ourselves as an event listener for ACK table events.
    */
   private void unsubscribeFromAckEvents()
           throws StorageException {
