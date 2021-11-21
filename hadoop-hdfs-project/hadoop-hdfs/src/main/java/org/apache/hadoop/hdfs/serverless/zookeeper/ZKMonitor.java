@@ -1,6 +1,8 @@
 package org.apache.hadoop.hdfs.serverless.zookeeper;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.util.Time;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -15,6 +17,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ZKMonitor implements Runnable {
+    public static final Log LOG = LogFactory.getLog(ZKMonitor.class);
     private ZooKeeper zooKeeper;
     private Semaphore semaphore = new Semaphore(1);
     private String groupName;
@@ -144,25 +147,25 @@ public class ZKMonitor implements Runnable {
 
         printLock.lock();
         try {
-            System.out.println("\n==================================================");
-            System.out.println("UTC Time: " + utcNow);
+            LOG.debug("\n==================================================");
+            LOG.debug("UTC Time: " + utcNow);
 
             if (permanentMonitor)
-                System.out.println("=--------- " + groupName + " P-UPDATES ---------=");
+                LOG.debug("=--------- " + groupName + " P-UPDATES ---------=");
             else
-                System.out.println("=--------- " + groupName + " G-UPDATES ---------=");
+                LOG.debug("=--------- " + groupName + " G-UPDATES ---------=");
 
             for (String update : updates) {
-                System.out.println(update);
+                LOG.debug(update);
             }
 
             if (permanentMonitor)
-                System.out.println("=-------- CURRENT DEPLOYMENT #" + deploymentNumber + " P-MEMBERS --------=");
+                LOG.debug("=-------- CURRENT DEPLOYMENT #" + deploymentNumber + " P-MEMBERS --------=");
             else
-                System.out.println("=-------- CURRENT DEPLOYMENT #" + deploymentNumber +  " G-MEMBERS --------=");
+                LOG.debug("=-------- CURRENT DEPLOYMENT #" + deploymentNumber +  " G-MEMBERS --------=");
 
-            System.out.println(path + ": " + StringUtils.join(children, ", "));
-            System.out.println("==================================================\n");
+            LOG.debug(path + ": " + StringUtils.join(children, ", "));
+            LOG.debug("==================================================\n");
         } finally {
             printLock.unlock();
         }
