@@ -487,9 +487,10 @@ public class DistributedFileSystem extends FileSystem {
       final Progressable progress, final InetSocketAddress[] favoredNodes,
       final EncodingPolicy policy)
           throws IOException {
+    long createStart = System.nanoTime();
     statistics.incrementWriteOps(1);
     Path absF = fixRelativePart(f);
-    return new FileSystemLinkResolver<HdfsDataOutputStream>() {
+    HdfsDataOutputStream dataOutputStream = new FileSystemLinkResolver<HdfsDataOutputStream>() {
       @Override
       public HdfsDataOutputStream doCall(final Path p)
           throws IOException, UnresolvedLinkException {
@@ -513,6 +514,12 @@ public class DistributedFileSystem extends FileSystem {
             + f + " -> " + p);
       }
     }.resolve(this, absF);
+    long createEnd = System.nanoTime();
+    double duration = (createEnd - createStart) / 1000000.0;
+
+    LOG.debug("CREATE operation finished in " + duration + " milliseconds.");
+
+    return dataOutputStream;
   }
 
   /**
