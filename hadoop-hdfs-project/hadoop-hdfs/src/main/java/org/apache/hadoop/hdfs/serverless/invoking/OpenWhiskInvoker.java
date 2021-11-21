@@ -253,14 +253,20 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         long backoffInterval = exponentialBackoff.getBackOffInMillis();
 
         do {
+            long currentTime = System.nanoTime();
+            double timeElapsed = (currentTime - invokeStart) / 1000000.0;
             LOG.info("Invoking NameNode " + targetDeployment + " (op=" + operationName + "), attempt "
-                    + (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries + ".");
+                    + (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries +
+                    ". Time elapsed: " + timeElapsed + " milliseconds.");
 
             CloseableHttpResponse httpResponse = null;
             JsonObject processedResponse;
             try {
                 httpResponse = httpClient.execute(request);
-                LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName + ").");
+                currentTime = System.nanoTime();
+                timeElapsed = (currentTime - invokeStart) / 1000000.0;
+                LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName +
+                        "). Time elapsed: " + timeElapsed + " milliseconds.");
 
                 int responseCode = httpResponse.getStatusLine().getStatusCode();
 
