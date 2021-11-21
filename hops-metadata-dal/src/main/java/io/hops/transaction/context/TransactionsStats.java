@@ -219,36 +219,15 @@ public class TransactionsStats {
   }
 
 
-  public void setConfiguration(boolean enableOrDisable, String statsDir, int
-      writerRound, boolean detailed)
+  public void setConfiguration(boolean enableOrDisable, String statsDir, int writerRound, boolean detailed)
       throws IOException {
     if (enableOrDisable) {
+      LOG.debug("Transaction Statistics is ENABLED. Detailed statistics: " + detailed);
       this.enabled = true;
-//      this.statsDir = new File(statsDir);
-//      this.WRITER_ROUND = writerRound;
-//      if (!this.statsDir.exists()) {
-//        this.statsDir.mkdirs();
-//      }
       BaseEntityContext.enableStats();
-
-//      this.writerThread = new Thread(() -> {
-//        while (enabled){
-//          try {
-//            Thread.sleep(WRITER_ROUND*1000L);
-//          } catch (InterruptedException e) {
-//            log.warn(e);
-//            Thread.currentThread().interrupt();
-//          }
-//          try {
-//            dump();
-//          } catch (IOException e) {
-//           log.warn(e);
-//          }
-//        }
-//      });
-//      this.writerThread.start();
       this.detailedStats = detailed;
     } else {
+      LOG.debug("Transaction Statistics is DISABLED.");
       this.enabled = false;
       BaseEntityContext.disableStats();
     }
