@@ -22,7 +22,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -31,19 +30,19 @@ import static io.hops.transaction.context.EntityContextStat.HitMissCounter;
 import static io.hops.transaction.context.EntityContextStat.StatsAggregator;
 
 public class TransactionsStats {
-  private static final Log log = LogFactory.getLog(TransactionsStats.class);
+  private static final Log LOG = LogFactory.getLog(TransactionsStats.class);
   private static TransactionsStats instance = null;
 
   /**
    * Clear the current statistics in preparation for handling a new request.
    */
   public void clearForServerless() throws IOException {
+    LOG.debug("Clearing TransactionsStats now.");
     clear();
   }
 
   /**
    * Export the stats that we encountered while processing the current request.
-   * This function packages up the current statistics and then clears everything locally.
    *
    * @param requestId The unique ID of the associated request.
    */
@@ -62,9 +61,6 @@ public class TransactionsStats {
 
       ServerlessStatisticsPackage statisticsPackage = new
               ServerlessStatisticsPackage(requestId, transactionStats, resolvingCacheStats);
-              //ServerlessStatisticsPackage(requestId, transactionStats, resolvingCacheStats, statsAggregators);
-      transactionStats.clear();
-      resolvingCacheStats.clear();
 
       return statisticsPackage;
     }

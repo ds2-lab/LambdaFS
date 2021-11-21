@@ -169,9 +169,10 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         EntityManager.commit(transactionLocks);
         committed = true;
         commitTime = (System.currentTimeMillis() - oldTime);
-        if(stat != null){
+        if(stat != null)
           stat.setTimes(acquireLockTime, inMemoryProcessingTime, commitTime);
-        }
+        else
+          requestHandlerLOG.warn("Transaction statistics are NOT being collected...");
 
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("TX committed. Time " + commitTime + " ms");

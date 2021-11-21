@@ -320,6 +320,7 @@ public class NameNodeResult implements Serializable {
     }
 
     public void commitStatisticsPackages() {
+        LOG.debug("Committing statistics packages for request " + requestId + " now...");
         TransactionsStats.ServerlessStatisticsPackage statisticsPackage
                 = TransactionsStats.getInstance().exportForServerless(requestId);
         if (statisticsPackage != null) {
