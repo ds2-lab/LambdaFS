@@ -315,10 +315,16 @@ public class NameNodeResult implements Serializable {
 
         if (statisticsPackageSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
+        else
+            LOG.warn("There are no Transaction Statistics to return to the client...");
 
         return json;
     }
 
+    /**
+     * Serialize and encode the current statistics contained in the {@link TransactionsStats} instance to this
+     * instance of NameNodeResult.
+     */
     public void commitStatisticsPackages() {
         LOG.debug("Committing statistics packages for request " + requestId + " now...");
         TransactionsStats.ServerlessStatisticsPackage statisticsPackage
@@ -403,6 +409,7 @@ public class NameNodeResult implements Serializable {
      * - hasResult: Will not be overwritten automatically, but will be set to true/false depending on
      *              whether this instance has a result field after the merge.
      * - result: Will be overwritten or not depending on the value of the `keepOld` parameter.
+     * - transactionStatistics: Will be overwritten by the incoming NameNodeResult's transaction statistics.
      *
      * @param other The other instance to merge into this one.
      * @param keepOld If True, then existing values of this instance will NOT be overwritten with new values from the
@@ -428,6 +435,7 @@ public class NameNodeResult implements Serializable {
             this.result = other.result;
 
         this.hasResult = this.result != null;
+        this.statisticsPackageSerializedAndEncoded = other.statisticsPackageSerializedAndEncoded;
     }
 
     /**
