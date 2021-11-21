@@ -35,6 +35,13 @@ public class TransactionsStats {
   private static TransactionsStats instance = null;
 
   /**
+   * Clear the current statistics in preparation for handling a new request.
+   */
+  public void clearForServerless() throws IOException {
+    clear();
+  }
+
+  /**
    * Export the stats that we encountered while processing the current request.
    * This function packages up the current statistics and then clears everything locally.
    *

@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.operation;
 
 import io.hops.exception.StorageException;
+import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
@@ -243,8 +244,8 @@ public class NameNodeWorkerThread extends Thread {
         lastPurgePass = Time.getUtcTime();
 
         FileSystemTask<Serializable> task = null;
-        try {
-            while(true) {
+        while(true) {
+            try {
                 task = workQueue.poll(5000, TimeUnit.MILLISECONDS);
 
                 if (task == null) {
@@ -270,7 +271,7 @@ public class NameNodeWorkerThread extends Thread {
                 }
 
                 LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
-
+                TransactionsStats.getInstance().clearForServerless();
                 FileSystemTask<Serializable> prev = currentlyExecutingTasks.putIfAbsent(task.getTaskId(), task);
                 requestCurrentlyProcessing = task.getTaskId();
                 if (prev != null)
@@ -288,6 +289,8 @@ public class NameNodeWorkerThread extends Thread {
                     else
                         workerResult.addResult(result, true);
 
+                    // Commit the statistics to this result.
+                    workerResult.commitStatisticsPackages();
                     success = true;
                 } catch (Exception ex) {
                     LOG.error("Worker thread encountered exception while executing file system operation " +
@@ -322,9 +325,9 @@ public class NameNodeWorkerThread extends Thread {
 
                 doRoutineActivities();
             }
-        }
-        catch (InterruptedException ex) {
-            LOG.error("Serverless NameNode Worker Thread was interrupted while running:", ex);
+            catch (InterruptedException | IOException ex) {
+                LOG.error("Serverless NameNode Worker Thread was interrupted while running:", ex);
+            }
         }
     }
 

@@ -45,6 +45,11 @@ public class NameNodeResult implements Serializable {
     private Serializable result;
 
     /**
+     * These are committed to the result object right after its associated operation has been completed.
+     */
+    private String statisticsPackageSerializedAndEncoded;
+
+    /**
      * We may be returning a mapping of a file or directory to a particular serverless function.
      */
     private ServerlessFunctionMapping serverlessFunctionMapping;
@@ -308,15 +313,20 @@ public class NameNodeResult implements Serializable {
         json.addProperty(ServerlessNameNodeKeys.CANCELLED, false);
         json.addProperty(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
 
+        if (statisticsPackageSerializedAndEncoded != null)
+            json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
+
+        return json;
+    }
+
+    public void commitStatisticsPackages() {
         TransactionsStats.ServerlessStatisticsPackage statisticsPackage
                 = TransactionsStats.getInstance().exportForServerless(requestId);
         if (statisticsPackage != null) {
             String statisticsPackageSerializedAndEncoded = serializeAndEncode(statisticsPackage);
 
-            if (statisticsPackageSerializedAndEncoded != null)
-                json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
+            this.statisticsPackageSerializedAndEncoded = statisticsPackageSerializedAndEncoded;
         }
-        return json;
     }
 
     /**
