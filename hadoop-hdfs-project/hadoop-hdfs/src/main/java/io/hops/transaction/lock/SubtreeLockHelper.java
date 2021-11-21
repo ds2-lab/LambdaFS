@@ -22,9 +22,12 @@ import java.util.Collection;
 
 public final class SubtreeLockHelper {
 
+  /**
+   * IMPORTANT: We no longer use the activeNameNodes parameter!
+   */
   public static boolean isSTOLocked(boolean subtreeLocked, long nameNodeId,
                                     Collection<ActiveNode> activeNamenodes) {
     return subtreeLocked &&
-        ServerlessNameNode.isNameNodeAlive(activeNamenodes, nameNodeId);
+        ServerlessNameNode.isNameNodeAlive(nameNodeId);
   }
 }

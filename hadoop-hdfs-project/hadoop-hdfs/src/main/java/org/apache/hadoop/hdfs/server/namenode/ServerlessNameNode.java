@@ -2278,6 +2278,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // we join our deployment's ZooKeeper group.
     refreshActiveNameNodesList();
 
+    assert(this.activeNameNodes != null);
+    assert(this.activeNameNodes.getActiveNodes() != null);
+
     Instant metadataInitEnd = Instant.now();
     Duration metadataInitDuration = Duration.between(metadataInitStart, metadataInitEnd);
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
@@ -3238,12 +3241,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * We first check if the specified NN is contained within our local list of active NameNodes.
    * If it is not contained within that list, then we check the other deployments.
    *
-   * @param activeNamenodes IGNORED.
    * @param namenodeId The ID of the NameNode whose existence we're interested in.
    *
    * @return True if the NameNode is alive in any deployment.
    */
-  public static boolean isNameNodeAlive(Collection<ActiveNode> activeNamenodes, long namenodeId) {
+  public static boolean isNameNodeAlive(long namenodeId) {
     ServerlessNameNode instance = OpenWhiskHandler.instance;
     assert(instance != null);
 
