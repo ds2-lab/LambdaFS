@@ -3247,19 +3247,24 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   public static boolean isNameNodeAlive(long namenodeId, Collection<ActiveNode> activeNamenodes) {
     ServerlessNameNode instance = OpenWhiskHandler.instance;
-    assert(instance != null);
 
     LOG.debug("Checking if NameNode " + namenodeId + " is alive...");
 
     Collection<ActiveNode> activeNodes;
-    SortedActiveNodeList activeNodeList = instance.getActiveNameNodes();
-    if (activeNodeList == null)
-      activeNodes = activeNamenodes;
-    else {
-      activeNodes = activeNodeList.getActiveNodes();
 
-      if (activeNodes == null)
+    // The instance can be null when we're first starting up.
+    if (instance != null) {
+      SortedActiveNodeList activeNodeList = instance.getActiveNameNodes();
+      if (activeNodeList == null)
         activeNodes = activeNamenodes;
+      else {
+        activeNodes = activeNodeList.getActiveNodes();
+
+        if (activeNodes == null)
+          activeNodes = activeNamenodes;
+      }
+    } else {
+      activeNodes = activeNamenodes;
     }
 
     // First check local cache. This contains the NNs currently alive within our deployment.
