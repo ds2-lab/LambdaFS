@@ -2204,6 +2204,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       if (LOG.isDebugEnabled()) {
         LOG.debug("Connecting to datanode " + dnAddr);
       }
+      long connectStart = System.nanoTime();
       NetUtils.connect(sock, NetUtils.createSocketAddr(dnAddr), timeout);
       sock.setSoTimeout(timeout);
 
@@ -2212,6 +2213,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       IOStreamPair ret = saslClient.newSocketSend(sock, unbufOut, unbufIn, this,
               lb.getBlockToken(), dn);
       success = true;
+      long connectEnd = System.nanoTime();
+      long connectDuration = connectEnd - connectStart;
+      LOG.debug("Connected to DataNode " + dnAddr + " in " + (connectDuration / 1000000) + " milliseconds.");
+      OperationPerformed connectToDnOpPerf = new OperationPerformed("ConnectToDataNode",
+              UUID.randomUUID().toString(), connectStart, connectEnd, 999, true, true, 0);
+      addOperationPerformed(connectToDnOpPerf);
       return ret;
     } finally {
       if (!success) {
