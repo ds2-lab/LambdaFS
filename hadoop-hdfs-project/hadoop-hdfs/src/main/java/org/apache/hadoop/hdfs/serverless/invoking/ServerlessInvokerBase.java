@@ -322,8 +322,7 @@ public abstract class ServerlessInvokerBase<T> {
                 TransactionsStats.ServerlessStatisticsPackage statisticsPackage =
                         (TransactionsStats.ServerlessStatisticsPackage)
                                 InvokerUtilities.base64StringToObject(statisticsPackageEncoded);
-
-
+                this.statisticsPackages.put(requestId, statisticsPackage);
             } catch (Exception ex) {
                 LOG.error("Error encountered while extracting result from NameNode response:", ex);
                 return null;
