@@ -817,7 +817,7 @@ public abstract class HopsTransactionalRequestHandler
     }
 
     // Sleep for a moment...
-    Thread.sleep(100);
+    // Thread.sleep(100);
 
     requestHandlerLOG.debug("Acquiring " + semaphores.size() + " semaphore(s) now.");
 
