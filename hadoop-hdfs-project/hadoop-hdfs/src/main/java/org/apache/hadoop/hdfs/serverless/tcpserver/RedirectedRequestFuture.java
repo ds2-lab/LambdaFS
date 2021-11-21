@@ -101,7 +101,7 @@ public class RedirectedRequestFuture implements Future<Serializable> {
             String resultBase64 = responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.RESULT).getAsString();
 
             try {
-                Serializable result = InvokerUtilities.base64StringToObject(resultBase64);
+                Serializable result = (Serializable) InvokerUtilities.base64StringToObject(resultBase64);
 
                 if (result == null || (result instanceof NullResult)) {
                     return null;

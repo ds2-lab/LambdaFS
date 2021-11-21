@@ -48,12 +48,12 @@ public class InvokerUtilities {
      * @param base64Encoded The object to decode and deserialize.
      * @return The decoded and deserialized object.
      */
-    public static Serializable base64StringToObject(String base64Encoded) throws IOException, ClassNotFoundException {
+    public static Object base64StringToObject(String base64Encoded) throws IOException, ClassNotFoundException {
         byte[] resultSerialized = org.apache.commons.codec.binary.Base64.decodeBase64(base64Encoded);
 
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
         ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-        return (Serializable) objectInputStream.readObject();
+        return objectInputStream.readObject();
     }
 
     /**
