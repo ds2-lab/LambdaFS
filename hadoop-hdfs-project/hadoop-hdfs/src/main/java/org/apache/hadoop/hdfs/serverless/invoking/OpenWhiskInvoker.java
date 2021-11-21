@@ -171,6 +171,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                                                      JsonObject fileSystemOperationArguments,
                                                      String requestId, int targetDeployment)
             throws IOException, IllegalStateException {
+        long invokeStart = System.nanoTime();
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
                     "You must configure it by calling .setConfiguration(...) before using it.");
@@ -303,6 +304,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                     httpResponse.close();
             }
 
+            long invokeEnd = System.nanoTime();
+            double duration = (invokeEnd - invokeStart) / 1000000.0;
+            LOG.debug("Returning result to client after " + duration + " milliseconds.");
             return processedResponse;
         } while (backoffInterval != -1);
 
