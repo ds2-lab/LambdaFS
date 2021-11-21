@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.util.Time;
+import org.apache.log4j.PropertyConfigurator;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -45,6 +46,9 @@ public class ZKMonitor implements Runnable {
     }
 
     public static void main(String[] args) throws Exception {
+        String log4jconfigPath = "/home/ubuntu/slf4j/zkmonitor-cfg/zkmonitor-log4j.properties";
+        PropertyConfigurator.configure(log4jconfigPath);
+
         final CountDownLatch connectedSignal = new CountDownLatch(1);
         ZooKeeper zk = new ZooKeeper("localhost", 100, event -> {
             if (event.getState() == Watcher.Event.KeeperState.SyncConnected) {
