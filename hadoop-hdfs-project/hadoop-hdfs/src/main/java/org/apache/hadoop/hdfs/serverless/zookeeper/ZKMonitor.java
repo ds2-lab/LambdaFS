@@ -56,20 +56,20 @@ public class ZKMonitor implements Runnable {
         Thread t3 = new Thread(new ZKMonitor(zk, "namenode2/permanent",
                 2, true));
 
-        Thread t1g = new Thread(new ZKMonitor(zk, "namenode0/guest",
-                0, false));
-        Thread t2g = new Thread(new ZKMonitor(zk, "namenode1/guest",
-                1, false));
-        Thread t3g = new Thread(new ZKMonitor(zk, "namenode2/guest",
-                2, false));
+//        Thread t1g = new Thread(new ZKMonitor(zk, "namenode0/guest",
+//                0, false));
+//        Thread t2g = new Thread(new ZKMonitor(zk, "namenode1/guest",
+//                1, false));
+//        Thread t3g = new Thread(new ZKMonitor(zk, "namenode2/guest",
+//                2, false));
 
         t1.start();
         t2.start();
         t3.start();
 
-        t1g.start();
-        t2g.start();
-        t3g.start();
+//        t1g.start();
+//        t2g.start();
+//        t3g.start();
     }
 
     public void listForever()
