@@ -324,9 +324,8 @@ public class NameNodeResult implements Serializable {
         TransactionsStats.ServerlessStatisticsPackage statisticsPackage
                 = TransactionsStats.getInstance().exportForServerless(requestId);
         if (statisticsPackage != null) {
-            String statisticsPackageSerializedAndEncoded = serializeAndEncode(statisticsPackage);
-
-            this.statisticsPackageSerializedAndEncoded = statisticsPackageSerializedAndEncoded;
+            LOG.debug("Statistics package was NOT null. Serializing and encoding it now.");
+            this.statisticsPackageSerializedAndEncoded = serializeAndEncode(statisticsPackage);
         }
     }
 

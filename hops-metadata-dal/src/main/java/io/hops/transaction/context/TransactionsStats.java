@@ -47,23 +47,9 @@ public class TransactionsStats {
    * @param requestId The unique ID of the associated request.
    */
   public ServerlessStatisticsPackage exportForServerless(String requestId) {
-    synchronized (transactionStats) {
-//      List<EntityContextStat.StatsAggregator> statsAggregators =
-//              new ArrayList<StatsAggregator>(transactionStats.size());
-//      for (TransactionStat stat : transactionStats) {
-//        EntityContextStat.StatsAggregator txAggStat = new EntityContextStat.StatsAggregator();
-//
-//        for (EntityContextStat contextStat : stat.stats)
-//          txAggStat.update(contextStat.getStatsAggregator());
-//
-//        statsAggregators.add(txAggStat);
-//      }
-
-      ServerlessStatisticsPackage statisticsPackage = new
-              ServerlessStatisticsPackage(requestId, transactionStats, resolvingCacheStats);
-
-      return statisticsPackage;
-    }
+    LOG.debug("Exporting " + transactionStats.size() + " transaction statistics and " +
+            resolvingCacheStats.size() + " resolving cache statistics for request " + requestId + " now.");
+    return new ServerlessStatisticsPackage(requestId, transactionStats, resolvingCacheStats);
   }
 
   /**

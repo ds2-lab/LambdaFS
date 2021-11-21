@@ -257,10 +257,11 @@ public class NameNodeWorkerThread extends Thread {
                                 + task.getOperationName() + ").");
 
                 // This will ultimately be returned to the main thread to be merged with their NameNodeResult instance.
-                // The requestId and requestMethod fields won't be used during the merge, so we just use dummy values
-                // for them.
+                // The requestId and requestMethod fields won't be used during the merge, so the values we use here
+                // for the task/request ID and the operation name won't necessarily persist back to the client. (In
+                // general, they should be the same as whatever the main thread has, so they WILL persist.)
                 NameNodeResult workerResult = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
-                        "Unknown Request ID", "Unknown Request Method", this.nameNodeId);
+                        task.getTaskId(), task.getOperationName(), this.nameNodeId);
 
                 // Check if this is a duplicate task.
                 if (isTaskDuplicate(task)) {
