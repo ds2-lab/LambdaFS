@@ -20,6 +20,7 @@ package org.apache.hadoop.hdfs.server.namenode;
 import io.hops.common.INodeUtil;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
+import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.LeaseDataAccess;
 import io.hops.metadata.hdfs.dal.LeasePathDataAccess;
@@ -150,9 +151,13 @@ public class LeaseManager {
    * This method iterates through all the leases and counts the number of blocks
    * which are not COMPLETE. The FSNamesystem read lock MUST be held before
    * calling this method.
-   * @return
+   *
+   * @param activeNodeList The active nodes computed right when ZooKeeper first connects to the ensemble
+   *                       as the Serverless NameNode is starting up.
+   *
+   * @return The number of blocks under construction (?)
    */
-  synchronized long getNumUnderConstructionBlocks() throws IOException {
+  synchronized long getNumUnderConstructionBlocks(SortedActiveNodeList activeNodeList) throws IOException {
     
     final AtomicLong numUCBlocks = new AtomicLong(0);
     for (final Lease lease : getSortedLeases()) {
@@ -176,7 +181,7 @@ public class LeaseManager {
           INodeLock il = lf.getINodeLock(INodeLockType.READ, INodeResolveType.PATH_AND_IMMEDIATE_CHILDREN,
               leasePaths.toArray(new String[leasePaths.size()]))
               .setNameNodeID(fsnamesystem.getNameNode().getId())
-              .setActiveNameNodes(fsnamesystem.getNameNode().getActiveNameNodes().getActiveNodes());
+              .setActiveNameNodes(activeNodeList.getActiveNodes());
           locks.add(il).add(lf.getLeaseLockAllPaths(LockType.READ, holder,
                   fsnamesystem.getLeaseCreationLockRows()))
               .add(lf.getLeasePathLock(LockType.READ)).add(lf.getBlockLock())

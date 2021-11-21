@@ -2288,7 +2288,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             DurationFormatUtils.formatDurationHMS(metadataInitDuration.toMillis()));
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
 
-    startCommonServices(conf);
+    startCommonServices(conf, this.activeNameNodes);
     Instant commonServiceEnd = Instant.now();
     Duration startCommonServiceDuration = Duration.between(metadataInitEnd, commonServiceEnd);
 
@@ -2341,8 +2341,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    * Start the services common to active and standby states
+   *
+   * @param activeNodeList The active nodes computed right when ZooKeeper first connects to the ensemble
+   *                       as the Serverless NameNode is starting up.
    */
-  private void startCommonServices(Configuration conf) throws IOException {
+  private void startCommonServices(Configuration conf, SortedActiveNodeList activeNodeList) throws IOException {
     LOG.debug("=-=-=-=-=-=-=-==-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
     LOG.debug("Starting common NameNode services now...");
     LOG.debug("=-=-=-=-=-=-=-==-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
@@ -2351,7 +2354,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     startMDCleanerService();
 
-    namesystem.startCommonServices(conf);
+    namesystem.startCommonServices(conf, activeNodeList);
     registerNNSMXBean();
 
     LOG.debug("NOT starting the RPC server.");
@@ -3273,6 +3276,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         LOG.debug("NameNode " + namenodeId + " IS alive, according to our local records.");
         return true;
       }
+    }
+
+    // During start-up, the instance will be null. This happens if the NN starts up, checks ZK, and finds that
+    // no other NameNodes are alive. In this case, it considers itself to be the leader and does some book-keeping.
+    if (instance == null) {
+      LOG.warn("The NameNode instance is null, so we cannot query ZooKeeper for all active NNs right now.");
+      LOG.warn("In theory, we passed in state directly from ZooKeeper " +
+              "(that we grabbed during initialization), so this should be okay...");
+      return false;
     }
 
     // If not in cache, then check ZooKeeper. We'll check for the existence of a persistent ZNode

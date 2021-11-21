@@ -32,6 +32,7 @@ import io.hops.events.HopsEventListener;
 import io.hops.events.HopsEventOperation;
 import io.hops.exception.*;
 import io.hops.leader_election.node.ActiveNode;
+import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.HdfsVariables;
 import io.hops.metadata.common.entity.Variable;
@@ -96,6 +97,7 @@ import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMetho
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.zookeeper.Invalidatable;
 import org.apache.hadoop.hdfs.util.EnumCounters;
 import org.apache.hadoop.io.EnumSetWritable;
@@ -685,10 +687,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * Start services common
    *      configuration
    *
-   * @param conf
+   * @param conf The NameNode's configuration.
+   * @param activeNodeList The active nodes computed right when ZooKeeper first connects to the ensemble
+   *                       as the Serverless NameNode is starting up.
    * @throws IOException
    */
-  void startCommonServices(Configuration conf) throws IOException {
+  void startCommonServices(Configuration conf, SortedActiveNodeList activeNodes) throws IOException {
     this.registerMBean(); // register the MBean for the FSNamesystemState
     IDsMonitor.getInstance().start();
     RootINodeCache.start();
@@ -704,7 +708,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       StartupProgress prog = ServerlessNameNode.getStartupProgress();
       prog.beginPhase(Phase.SAFEMODE);
       prog.setTotal(Phase.SAFEMODE, STEP_AWAITING_REPORTED_BLOCKS,
-          getCompleteBlocksTotal());
+          getCompleteBlocksTotal(activeNodes));
       setBlockTotal();
     }
     shouldPopulateReplicationQueue = true;
@@ -5689,11 +5693,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * Get the total number of COMPLETE blocks in the system.
    * For safe mode only complete blocks are counted.
+   *
+   * @param activeNodeList The active nodes computed right when ZooKeeper first connects to the ensemble
+   *                       as the Serverless NameNode is starting up.
    */
-  private long getCompleteBlocksTotal() throws IOException {
+  private long getCompleteBlocksTotal(SortedActiveNodeList activeNodeList) throws IOException {
 
     // Calculate number of blocks under construction
-    long numUCBlocks = leaseManager.getNumUnderConstructionBlocks();
+    long numUCBlocks = leaseManager.getNumUnderConstructionBlocks(activeNodeList);
     return getBlocksTotal() - numUCBlocks;
   }
 
