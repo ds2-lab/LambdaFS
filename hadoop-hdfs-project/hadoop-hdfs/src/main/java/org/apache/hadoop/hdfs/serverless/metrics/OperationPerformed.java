@@ -93,8 +93,9 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 //                .withLocale( Locale.US )
 //                .withZone( ZoneId.of("UTC"));
 
+        // We divide duration by 10^6 bc right now it is in nanoseconds, and we want milliseconds.
         return String.format(format, operationName, requestId, Instant.ofEpochMilli(startTime).toString(),
-                Instant.ofEpochMilli(endTime).toString(), duration, deployment, nameNodeId,
+                Instant.ofEpochMilli(endTime).toString(), (duration / 1000000.0), deployment, nameNodeId,
                 (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
 
 //            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
