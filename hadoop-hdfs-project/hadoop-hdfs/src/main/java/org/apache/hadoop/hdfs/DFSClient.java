@@ -319,12 +319,17 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     HashMap<String, TransactionsStats.ServerlessStatisticsPackage> statisticsPackages =
             this.serverlessInvoker.getStatisticsPackages();
 
+    LOG.debug("Writing " + statisticsPackages.size() + " statistics packages to files now...");
+
     for (Map.Entry<String, TransactionsStats.ServerlessStatisticsPackage> entry : statisticsPackages.entrySet()) {
       String requestId = entry.getKey();
       TransactionsStats.ServerlessStatisticsPackage statisticsPackage = entry.getValue();
 
       List<TransactionsStats.TransactionStat> transactionStats = statisticsPackage.getTransactionStats();
       List<TransactionsStats.ResolvingCacheStat> resolvingCacheStats = statisticsPackage.getResolvingCacheStats();
+
+      LOG.debug("Statistics package for request " + requestId + " has " + transactionStats.size() +
+              " transaction stats and " + resolvingCacheStats.size() + " resolving cache stats.");
 
       if (!statisticsDirectory.exists())
         statisticsDirectory.mkdirs();
@@ -378,6 +383,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
         resolvingCacheWriter.write(stat.toString());
         resolvingCacheWriter.newLine();
       }
+
+      csvWriter.close();
+      detailedWriter.close();
+      resolvingCacheWriter.close();
     }
 
     if (clearAfterWrite)

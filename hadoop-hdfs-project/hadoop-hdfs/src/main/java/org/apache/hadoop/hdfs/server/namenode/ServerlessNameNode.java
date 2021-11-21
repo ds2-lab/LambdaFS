@@ -1491,8 +1491,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     namesystem.setOwner(src, username, groupname);
   }
 
-
-
   private boolean mkdirs(JsonObject fsArgs) throws IOException, ClassNotFoundException {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String maskedBase64 = fsArgs.getAsJsonPrimitive("masked").getAsString();
