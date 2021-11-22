@@ -13,12 +13,13 @@ import java.util.UUID;
  * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
  * to the session that created it. This means that the {@link HopsEventManager} needs to create the subscriptions
  * itself using its own, private {@link HopsSession} instance.
- *
- * So when clients call {@link HopsEventManager#requestCreateSubscription(String)}, they're actually enqueuing an instance
- * of this class in an internal BlockingQueue of the Event Manager.
  */
 public final class SubscriptionTask implements Serializable {
     private static final long serialVersionUID = -6723933725262412978L;
+
+    public String[] getEventColumns() {
+        return eventColumns;
+    }
 
     public enum SubscriptionOperation {
         /**
@@ -55,13 +56,33 @@ public final class SubscriptionTask implements Serializable {
      */
     private final SubscriptionOperation subscriptionOperation;
 
-    public SubscriptionTask(String eventName, HopsEventListener eventListener,
+    private final String[] eventColumns;
+
+    /**
+     * How many times we've tried and failed to create this event subscription.
+     */
+    private int failedAttempts;
+
+    public SubscriptionTask(String eventName, HopsEventListener eventListener, String[] eventColumns,
                             SubscriptionOperation subscriptionOperation) {
         this.eventName = eventName;
         this.eventListener = eventListener;
         this.subscriptionOperation = subscriptionOperation;
 
         this.requestId = UUID.randomUUID().toString();
+        this.eventColumns = eventColumns;
+        this.failedAttempts = 0;
+    }
+
+    public int getNumFailedAttempts() {
+        return failedAttempts;
+    }
+
+    /**
+     * Set the internal flag to indicate that this request has been resubmitted.
+     */
+    public void incrementFailedAttempts() {
+        this.failedAttempts++;
     }
 
     @Override

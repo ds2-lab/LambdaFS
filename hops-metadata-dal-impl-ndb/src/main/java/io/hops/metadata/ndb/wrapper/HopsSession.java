@@ -195,15 +195,7 @@ public class HopsSession {
   public HopsEventOperation createEventOperation(String eventName) throws StorageException {
     LOG.debug("Creating subscription on event '" + eventName + "' now...");
 
-//    EventOperation eventOperation;
-//    try {
-//      eventOperation = session.createEventOperation(eventName);
-//    } catch (ClusterJException e) {
-//      throw HopsExceptionHelper.wrap(e);
-//    }
-
     return EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, session);
-    // return EventOperationLifecycleManager.getInstance().getOrCreateInstance(eventName, eventOperation);
   }
 
   public <T> HopsQuery<T> createQuery(HopsQueryDomainType<T> queryDefinition)
