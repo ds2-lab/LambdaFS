@@ -108,6 +108,7 @@ import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.protocol.HdfsBlocksMetadata;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
@@ -2396,7 +2397,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       long connectDuration = connectEnd - connectStart;
       LOG.debug("Connected to DataNode " + dnAddr + " in " + (connectDuration / 1000000) + " milliseconds.");
       OperationPerformed connectToDnOpPerf = new OperationPerformed("ConnectToDataNode",
-              UUID.randomUUID().toString(), connectStart, connectEnd, 999, true, true, 0);
+              UUID.randomUUID().toString(), connectStart, connectEnd, 999, true,
+              true, 0, 0, 0);
       addOperationPerformed(connectToDnOpPerf);
       return ret;
     } finally {

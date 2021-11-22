@@ -49,9 +49,19 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     private long nameNodeId;
 
+    /**
+     * Number of INode cache hits that the NameNode encountered while processing the associated request.
+     */
+    private int metadataCacheHits;
+
+    /**
+     * Number of INode cache hits that the NameNode encountered while processing the associated request.
+     */
+    private int metadataCacheMisses;
+
     public OperationPerformed(String operationName, String requestId, long startTime, long endTime,
                               int deployment, boolean issuedViaHttp, boolean issuedViaTcp,
-                              long nameNodeId) {
+                              long nameNodeId, int metadataCacheHits, int metadataCacheMisses) {
         this.operationName = operationName;
         this.requestId = requestId;
         this.startTime = startTime / 1000000;
@@ -96,7 +106,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         // We divide duration by 10^6 bc right now it is in nanoseconds, and we want milliseconds.
         return String.format(format, operationName, requestId, Instant.ofEpochMilli(startTime).toString(),
                 Instant.ofEpochMilli(endTime).toString(), (duration / 1000000.0), deployment, nameNodeId,
-                (issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
+                metadataCacheHits, metadataCacheMisses);
+                //(issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
 
 //            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
 //                    (issuedViaHttp ? "HTTP" : "-") + " \t" + (issuedViaTcp ? "TCP" : "-");
@@ -113,5 +124,21 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     public String getRequestId() {
         return requestId;
+    }
+
+    public int getMetadataCacheMisses() {
+        return metadataCacheMisses;
+    }
+
+    public void setMetadataCacheMisses(int metadataCacheMisses) {
+        this.metadataCacheMisses = metadataCacheMisses;
+    }
+
+    public int getMetadataCacheHits() {
+        return metadataCacheHits;
+    }
+
+    public void setMetadataCacheHits(int metadataCacheHits) {
+        this.metadataCacheHits = metadataCacheHits;
     }
 }

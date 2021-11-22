@@ -192,9 +192,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER))
             deployment = response.get(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
 
+        int cacheHits = response.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
+        int cacheMisses = response.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
+
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId, startTime, System.nanoTime(),
-                deployment, true, true, nameNodeId);
+                deployment, true, true, nameNodeId, cacheHits, cacheMisses);
         operationsPerformed.put(requestId, operationPerformed);
 
         return response;
@@ -273,7 +276,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId, System.nanoTime(), 999,
-                targetDeployment, true, true, 0);
+                targetDeployment, true, true, 0, -1, -1);
         operationsPerformed.put(requestId, operationPerformed);
 
         // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
@@ -449,6 +452,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 if (responseJson.has(ServerlessNameNodeKeys.NAME_NODE_ID))
                     operationPerformed.setNameNodeId(responseJson.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong());
+
+                int cacheHits = responseJson.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
+                int cacheMisses = responseJson.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
+
+                operationPerformed.setMetadataCacheHits(cacheHits);
+                operationPerformed.setMetadataCacheMisses(cacheMisses);
 
                 return responseJson;
             } catch (ExecutionException | InterruptedException ex) {
@@ -1299,7 +1308,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 OperationPerformed operationPerformed
                         = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
-                        deploymentNumber, true, true, -1);
+                        deploymentNumber, true, true, -1, 0, 0);
                 operationsPerformed.put(requestId, operationPerformed);
 
                 // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
@@ -1323,7 +1332,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         OperationPerformed operationPerformed
                 = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
-                targetDeployment, true, true, -1);
+                targetDeployment, true, true, -1, 0, 0);
         operationsPerformed.put(requestId, operationPerformed);
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
