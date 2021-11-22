@@ -58,6 +58,26 @@ public class LRUMetadataCache<T> {
     private final HashMap<String, T> cache;
 
     /**
+     * Number of cache hits across the entire lifetime of this LRUMetadataCache instance (across ALL requests).
+     */
+    private int numHits;
+
+    /**
+     * Number of cache misses across the entire lifetime of this LRUMetadataCache instance (across ALL requests).
+     */
+    private int numMisses;
+
+    /**
+     * Number of cache hits for the request currently being processed by the NameNode.
+     */
+    private int numHitsCurrentRequest;
+
+    /**
+     * Number of cache misses for the request currently being processed by the NameNode.
+     */
+    private int numMissesCurrentRequest;
+
+    /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
      */
     public LRUMetadataCache() {
@@ -84,10 +104,13 @@ public class LRUMetadataCache<T> {
     public T getByPath(String key) {
         _mutex.lock();
         try {
-            if (invalidatedKeys.contains(key))
+            if (invalidatedKeys.contains(key)) {
+                cacheMiss();
                 return null;
+            }
 
             T returnValue = cache.get(key);
+            cacheHit();
 
             LOG.debug("Retrieved value " + returnValue.toString() + " from cache using key " + key + ".");
 
@@ -332,5 +355,49 @@ public class LRUMetadataCache<T> {
         } finally {
             _mutex.unlock();
         }
+    }
+
+    /**
+     * Increment the CACHE HIT counters.
+     */
+    private void cacheHit() {
+        numHits++;
+        numHitsCurrentRequest;
+    }
+
+    /**
+     * Increment the CACHE MISS counters.
+     */
+    private void cacheMiss() {
+        numMisses++;
+        numMissesCurrentRequest++;
+    }
+
+    /**
+     * Get the number of cache hits across all processed requests.
+     */
+    public int getNumHits() { return numHits; }
+
+    /**
+     * Get the number of cache misses across all processed requests.
+     */
+    public int getNumMisses() { return numMisses; }
+
+    /**
+     * Get the number of cache hits that have occurred since the NameNode started processing the current request.
+     */
+    public int getNumHitsCurrentRequest() { return numHitsCurrentRequest; }
+
+    /**
+     * Get the number of cache misses that have occurred since the NameNode started processing the current request.
+     */
+    public int getNumMissesCurrentRequest() { return numMissesCurrentRequest; }
+
+    /**
+     * Reset the request-level CACHE HIT and CACHE MISS counters.
+     */
+    public void clearCurrentRequestStatistics() {
+        numHitsCurrentRequest = 0;
+        numMissesCurrentRequest = 0;
     }
 }
