@@ -333,6 +333,16 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     BufferedWriter detailedWriter = new BufferedWriter(new FileWriter(detailedFile, true));
     BufferedWriter resolvingCacheWriter = new BufferedWriter(new FileWriter(resolvingCacheFile, true));
 
+    if(!csvFile.exists()) {
+      csvWriter.write(TransactionsStats.TransactionStat.getHeader());
+      csvWriter.newLine();
+    }
+
+    if(!resolvingCacheFile.exists()) {
+      resolvingCacheWriter.write(TransactionsStats.ResolvingCacheStat.getHeader());
+      resolvingCacheWriter.newLine();
+    }
+
     for (Map.Entry<String, TransactionsStats.ServerlessStatisticsPackage> entry : statisticsPackages.entrySet()) {
       String requestId = entry.getKey();
       TransactionsStats.ServerlessStatisticsPackage statisticsPackage = entry.getValue();
@@ -403,9 +413,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       if(!fileExists) {
         requestResolvingCacheWriter.write(TransactionsStats.ResolvingCacheStat.getHeader());
         requestResolvingCacheWriter.newLine();
-
-        resolvingCacheWriter.write(TransactionsStats.ResolvingCacheStat.getHeader());
-        resolvingCacheWriter.newLine();
       }
       for(TransactionsStats.ResolvingCacheStat stat : resolvingCacheStats){
         requestResolvingCacheWriter.write(stat.toString());
