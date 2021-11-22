@@ -321,6 +321,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     LOG.debug("Writing " + statisticsPackages.size() + " statistics packages to files now...");
 
+    if (!statisticsDirectory.exists())
+      statisticsDirectory.mkdirs();
+
     // These are for the entire operation. We aggregate everything together in one file,
     // and then we write individual files for each individual request.
     File csvFile = new File(getCSVFile() + ".csv");
@@ -339,9 +342,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
       LOG.debug("Statistics package for request " + requestId + " has " + transactionStats.size() +
               " transaction stats and " + resolvingCacheStats.size() + " resolving cache stats.");
-
-      if (!statisticsDirectory.exists())
-        statisticsDirectory.mkdirs();
 
       // These files and buffered writers are per-request. We also have one single file for the entire operation.
       File requestCSVFile = new File(getCSVFile() + "-" + requestId + ".csv");
