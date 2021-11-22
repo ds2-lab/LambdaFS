@@ -321,6 +321,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     LOG.debug("Writing " + statisticsPackages.size() + " statistics packages to files now...");
 
+    // These are for the entire operation. We aggregate everything together in one file,
+    // and then we write individual files for each individual request.
+    File csvFile = new File(getCSVFile() + ".csv");
+    File detailedFile = new File(getStatsFile() + ".log");
+    File resolvingCacheFile = new File(getResolvingCacheCSVFile() + ".csv");
+    BufferedWriter csvWriter = new BufferedWriter(new FileWriter(csvFile, true));
+    BufferedWriter detailedWriter = new BufferedWriter(new FileWriter(detailedFile, true));
+    BufferedWriter resolvingCacheWriter = new BufferedWriter(new FileWriter(resolvingCacheFile, true));
+
     for (Map.Entry<String, TransactionsStats.ServerlessStatisticsPackage> entry : statisticsPackages.entrySet()) {
       String requestId = entry.getKey();
       TransactionsStats.ServerlessStatisticsPackage statisticsPackage = entry.getValue();
@@ -334,30 +343,41 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       if (!statisticsDirectory.exists())
         statisticsDirectory.mkdirs();
 
-      File csvFile = new File(getCSVFile() + requestId + ".csv");
-      File detailedFile = new File(getStatsFile() + requestId + ".log");
-      File resolvingCacheFile = new File(getResolvingCacheCSVFile() + requestId + ".csv");
-      BufferedWriter csvWriter = new BufferedWriter(new FileWriter(csvFile, true));
-      BufferedWriter detailedWriter = new BufferedWriter(new FileWriter(detailedFile, true));
-      BufferedWriter resolvingCacheWriter = new BufferedWriter(new FileWriter(resolvingCacheFile, true));
+      // These files and buffered writers are per-request. We also have one single file for the entire operation.
+      File requestCSVFile = new File(getCSVFile() + "-" + requestId + ".csv");
+      File requestDetailedFile = new File(getStatsFile() + "-" + requestId + ".log");
+      File requestResolvingCacheFile = new File(getResolvingCacheCSVFile() + "-" + requestId + ".csv");
+      BufferedWriter requestCSVWriter = new BufferedWriter(new FileWriter(requestCSVFile, true));
+      BufferedWriter requestDetailedWriter = new BufferedWriter(new FileWriter(requestDetailedFile, true));
+      BufferedWriter requestResolvingCacheWriter = new BufferedWriter(new FileWriter(requestResolvingCacheFile, true));
 
       // Write CSV statistics.
-      boolean fileExists = csvFile.exists();
+      boolean fileExists = requestCSVFile.exists();
       if(!fileExists) {
-        csvWriter.write(TransactionsStats.TransactionStat.getHeader());
-        csvWriter.newLine();
+        requestCSVWriter.write(TransactionsStats.TransactionStat.getHeader());
+        requestCSVWriter.newLine();
       }
       for (TransactionsStats.TransactionStat stat : transactionStats) {
+        requestCSVWriter.write(stat.toString());
+        requestCSVWriter.newLine();
+
         csvWriter.write(stat.toString());
         csvWriter.newLine();
       }
 
       // Write the detailed statistics.
       for (TransactionsStats.TransactionStat stat : transactionStats) {
+        requestDetailedWriter.write("Transaction: " + stat.getName().toString());
+        requestDetailedWriter.newLine();
+
         detailedWriter.write("Transaction: " + stat.getName().toString());
         detailedWriter.newLine();
 
         if (stat.getIgnoredException() != null) {
+          requestDetailedWriter.write(stat.getIgnoredException().toString());
+          requestDetailedWriter.newLine();
+          requestDetailedWriter.newLine();
+
           detailedWriter.write(stat.getIgnoredException().toString());
           detailedWriter.newLine();
           detailedWriter.newLine();
@@ -366,28 +386,45 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
         EntityContextStat.StatsAggregator txAggStat =
                 new EntityContextStat.StatsAggregator();
         for (EntityContextStat contextStat : stat.getStats()) {
+          requestDetailedWriter.write(contextStat.toString());
+
           detailedWriter.write(contextStat.toString());
         }
+
+        requestDetailedWriter.write(txAggStat.toCSFString("Tx."));
+        requestDetailedWriter.newLine();
 
         detailedWriter.write(txAggStat.toCSFString("Tx."));
         detailedWriter.newLine();
       }
 
       // Write the resolving cache statistics.
-      fileExists = resolvingCacheFile.exists();
+      fileExists = requestResolvingCacheFile.exists();
       if(!fileExists) {
+        requestResolvingCacheWriter.write(TransactionsStats.ResolvingCacheStat.getHeader());
+        requestResolvingCacheWriter.newLine();
+
         resolvingCacheWriter.write(TransactionsStats.ResolvingCacheStat.getHeader());
         resolvingCacheWriter.newLine();
       }
       for(TransactionsStats.ResolvingCacheStat stat : resolvingCacheStats){
+        requestResolvingCacheWriter.write(stat.toString());
+        requestResolvingCacheWriter.newLine();
+
         resolvingCacheWriter.write(stat.toString());
         resolvingCacheWriter.newLine();
       }
 
-      csvWriter.close();
-      detailedWriter.close();
-      resolvingCacheWriter.close();
-    }
+      // Per-request writers get closed in the for-loop.
+      requestCSVWriter.close();
+      requestDetailedWriter.close();
+      requestResolvingCacheWriter.close();
+    } // For loop over the HashMap of requestID --> statistics package.
+
+    // Operation-level writers get closed AFTER the for-loop.
+    csvWriter.close();
+    detailedWriter.close();
+    resolvingCacheWriter.close();
 
     if (clearAfterWrite)
       clearStatisticsPackages();
