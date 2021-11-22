@@ -404,8 +404,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       }
 
       // Write the resolving cache statistics.
-      fileExists = requestResolvingCacheFile.exists();
-      if(!fileExists) {
+      if(!requestResolvingCacheFile.exists()) {
         requestResolvingCacheWriter.write(TransactionsStats.ResolvingCacheStat.getHeader());
         requestResolvingCacheWriter.newLine();
       }
