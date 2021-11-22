@@ -273,6 +273,9 @@ public class NameNodeWorkerThread extends Thread {
 
                 LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
                 TransactionsStats.getInstance().clearForServerless();
+
+                // Reset the per-request CACHE HIT and CACHE MISS counters now that we're executing a new request.
+                serverlessNameNodeInstance.getNamesystem().getMetadataCache().clearCurrentRequestStatistics();
                 FileSystemTask<Serializable> prev = currentlyExecutingTasks.putIfAbsent(task.getTaskId(), task);
                 requestCurrentlyProcessing = task.getTaskId();
                 if (prev != null)

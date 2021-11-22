@@ -4,8 +4,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -249,11 +251,16 @@ public class NameNodeResult implements Serializable {
      * is added to the payload indicating that this response is for a duplicate request and should not be
      * returned as the true result of the associated file system operation.
      *
+     * @param metadataCache The metadata cache used by this NameNode. We use this to get the cache HITS and cache
+     *                      MISSES encountered while executing the current request.
+     *
+     *                      We do NOT clear the counters on the metadataCache object after extracting them.
+     *                      This is done by the NameNodeWorkerThread when it first starts executing a request.
      * @param operation If non-null, will be included as a top-level entry in the result under the key "op".
      *                  This is used by TCP connections in particular, as TCP messages generally contain an "op"
      *                  field to designate the request as one containing a result or one used for registration.
      */
-    public JsonObject toJson(String operation) {
+    public JsonObject toJson(String operation, LRUMetadataCache<INode> metadataCache) {
         JsonObject json = new JsonObject();
 
         // If the result is a duplicate request, then don't bother sending an actual result field.
@@ -312,6 +319,8 @@ public class NameNodeResult implements Serializable {
         json.addProperty(ServerlessNameNodeKeys.REQUEST_METHOD, requestMethod);
         json.addProperty(ServerlessNameNodeKeys.CANCELLED, false);
         json.addProperty(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
+        json.addProperty(ServerlessNameNodeKeys.CACHE_HITS, metadataCache.getNumHitsCurrentRequest());
+        json.addProperty(ServerlessNameNodeKeys.CACHE_MISSES, metadataCache.getNumMissesCurrentRequest());
 
         if (statisticsPackageSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);

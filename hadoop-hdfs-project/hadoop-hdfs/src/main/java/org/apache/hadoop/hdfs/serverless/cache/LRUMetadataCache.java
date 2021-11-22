@@ -60,22 +60,22 @@ public class LRUMetadataCache<T> {
     /**
      * Number of cache hits across the entire lifetime of this LRUMetadataCache instance (across ALL requests).
      */
-    private int numHits;
+    private volatile int numHits;
 
     /**
      * Number of cache misses across the entire lifetime of this LRUMetadataCache instance (across ALL requests).
      */
-    private int numMisses;
+    private volatile int numMisses;
 
     /**
      * Number of cache hits for the request currently being processed by the NameNode.
      */
-    private int numHitsCurrentRequest;
+    private volatile int numHitsCurrentRequest;
 
     /**
      * Number of cache misses for the request currently being processed by the NameNode.
      */
-    private int numMissesCurrentRequest;
+    private volatile int numMissesCurrentRequest;
 
     /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
@@ -362,7 +362,7 @@ public class LRUMetadataCache<T> {
      */
     private void cacheHit() {
         numHits++;
-        numHitsCurrentRequest;
+        numHitsCurrentRequest++;
     }
 
     /**
