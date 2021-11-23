@@ -164,15 +164,6 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     @Override
     public String toString() {
         String formatString = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-5s %-5s";
-        return this.format(formatString);
-    }
-
-    /**
-     * Return the contents of this string formatted uses the giving format string.
-     *
-     * The order is the order they appear in the header (see {@link OperationPerformed#getHeader()}).
-     */
-    public String format(String formatString) {
         return String.format(formatString, operationName, requestId,
                 Instant.ofEpochMilli(invokedAtTime).toString(),             // Client invokes NN.
                 Instant.ofEpochMilli(serverlessFnStartTime).toString(),     // NN begins executing.
@@ -260,7 +251,15 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      */
     public void write(BufferedWriter writer) throws IOException {
         String formatString = "%-16s,%-38s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-8s,%-3s,%-22s,%-5s,%-5s";
-        writer.write(this.format(formatString));
+        writer.write(String.format(formatString, operationName, requestId,
+                invokedAtTime,             // Client invokes NN.
+                serverlessFnStartTime,     // NN begins executing.
+                requestEnqueuedAtTime,     // NN enqueues req. in work queue.
+                resultBeganExecutingTime,  // NN dequeues req. from work queue, begins executing it.
+                serverlessFnEndTime,       // NN returns result to client.
+                resultReceivedTime,        // Client receives result from NN.
+                serverlessFunctionDuration, deployment, nameNodeId,
+                metadataCacheHits, metadataCacheMisses));
         writer.newLine();
     }
 }
