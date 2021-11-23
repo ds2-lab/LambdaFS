@@ -236,7 +236,8 @@ public class NameNodeTCPClient {
                 }
 
                 String jsonString = new Gson().toJson(tcpResult.toJson(
-                        ServerlessClientServerUtilities.OPERATION_RESULT));
+                        ServerlessClientServerUtilities.OPERATION_RESULT,
+                        serverlessNameNode.getNamesystem().getMetadataCache()));
 
                 LOG.debug("[TCP Client] Sending the following JSON string to client at " + tcpClient.getRemoteAddressTCP()
                     + ": " + jsonString);
