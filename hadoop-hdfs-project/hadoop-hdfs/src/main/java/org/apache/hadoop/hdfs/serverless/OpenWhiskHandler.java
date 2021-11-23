@@ -386,7 +386,10 @@ public class OpenWhiskHandler {
      * @return JsonObject to return as result of this OpenWhisk activation (i.e., serverless function execution).
      */
     private static JsonObject createJsonResponse(NameNodeResult result) {
-        JsonObject resultJson = result.toJson(null);
+        JsonObject resultJson = result.toJson(null, ServerlessNameNode.
+                tryGetNameNodeInstance(true).
+                getNamesystem().
+                getMetadataCache());
 
         JsonObject response = new JsonObject();
         JsonObject headers = new JsonObject();
