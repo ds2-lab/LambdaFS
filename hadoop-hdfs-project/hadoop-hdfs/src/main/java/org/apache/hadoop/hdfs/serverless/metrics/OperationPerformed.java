@@ -105,6 +105,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                               int metadataCacheMisses, int metadataCacheHits) {
         this.operationName = operationName;
         this.requestId = requestId;
+        this.invokedAtTime = invokedAtTime;
         this.requestEnqueuedAtTime = enqueuedTime;
         this.resultBeganExecutingTime = dequeuedTime;
         this.serverlessFnStartTime = serverlessFnStartTime;
