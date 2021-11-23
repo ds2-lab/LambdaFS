@@ -107,6 +107,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.requestId = requestId;
         this.invokedAtTime = invokedAtTime;
         this.requestEnqueuedAtTime = enqueuedTime;
+        this.resultReceivedTime = resultReceivedTime;
         this.resultBeganExecutingTime = dequeuedTime;
         this.serverlessFnStartTime = serverlessFnStartTime;
         this.serverlessFnEndTime = serverlessFnEndTime;
