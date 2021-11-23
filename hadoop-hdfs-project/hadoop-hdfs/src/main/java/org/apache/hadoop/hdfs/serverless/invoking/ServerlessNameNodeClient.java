@@ -199,9 +199,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         long fnStartTime = response.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
         long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
 
+        long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
+        long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
+
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
-                startTime, Time.getUtcTime(), fnStartTime, fnEndTime,
+                startTime, Time.getUtcTime(), enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                 deployment, true, true, nameNodeId,
                 cacheMisses, cacheHits);
         operationsPerformed.put(requestId, operationPerformed);
@@ -282,7 +285,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
-                opStart, -1L, -1L, -1L,
+                opStart, -1L, -1L, -1L, -1L, -1L,
                 targetDeployment, true, true, 0,
                 -1, -1);
         operationsPerformed.put(requestId, operationPerformed);
@@ -472,6 +475,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 operationPerformed.setServerlessFnStartTime(fnStartTime);
                 operationPerformed.setServerlessFnEndTime(fnEndTime);
+
+                long enqueuedAt = responseJson.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
+                long dequeuedAt = responseJson.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
+
+                operationPerformed.setRequestEnqueuedAtTime(enqueuedAt);
+                operationPerformed.setResultBeganExecutingTime(dequeuedAt);
 
                 return responseJson;
             } catch (ExecutionException | InterruptedException ex) {
@@ -1324,6 +1333,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         = new OperationPerformed("ping", requestId,
                         Time.getUtcTime(), Time.getUtcTime(),
                         Time.getUtcTime(), Time.getUtcTime(),
+                        Time.getUtcTime(), Time.getUtcTime(),
                         deploymentNumber, true, true, -1, 0, 0);
                 operationsPerformed.put(requestId, operationPerformed);
 
@@ -1348,7 +1358,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         OperationPerformed operationPerformed
                 = new OperationPerformed("ping", requestId,
-                Time.getUtcTime(), -1L, -1L, -1L,
+                Time.getUtcTime(), -1L, -1L,
+                -1L, -1L, -1L,
                 targetDeployment, true, true,
                 -1, 0, 0);
         operationsPerformed.put(requestId, operationPerformed);

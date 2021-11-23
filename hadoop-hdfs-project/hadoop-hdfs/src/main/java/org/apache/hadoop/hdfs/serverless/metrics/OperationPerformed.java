@@ -98,12 +98,15 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     public OperationPerformed(String operationName, String requestId,
                               long invokedAtTime, long resultReceivedTime,
+                              long enqueuedTime, long dequeuedTime,
                               long serverlessFnStartTime, long serverlessFnEndTime,
                               int deployment, boolean issuedViaHttp,
                               boolean issuedViaTcp, long nameNodeId,
                               int metadataCacheMisses, int metadataCacheHits) {
         this.operationName = operationName;
         this.requestId = requestId;
+        this.requestEnqueuedAtTime = enqueuedTime;
+        this.resultBeganExecutingTime = dequeuedTime;
         this.serverlessFnStartTime = serverlessFnStartTime;
         this.serverlessFnEndTime = serverlessFnEndTime;
         this.serverlessFunctionDuration = serverlessFnEndTime - serverlessFnStartTime;
