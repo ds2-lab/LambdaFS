@@ -10,6 +10,7 @@ import org.apache.hadoop.hdfs.serverless.operation.DuplicateRequest;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
+import org.apache.hadoop.util.Time;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
@@ -169,6 +170,7 @@ public class OpenWhiskHandler {
         LOG.debug("Returning back to client. Time elapsed: " + timeElapsed + " milliseconds.");
         LOG.debug("ServerlessNameNode is exiting now...");
         activeRequestCounter.decrementAndGet();
+        result.setFnEndTime(Time.getUtcTime());
         return createJsonResponse(result);
     }
 
@@ -215,7 +217,7 @@ public class OpenWhiskHandler {
         NameNodeResult result = new NameNodeResult(ServerlessNameNode.getFunctionNumberFromFunctionName(functionName),
                 requestId, "HTTP", -1);
 
-        Instant creationStart = Instant.now();
+        long creationStart = Time.getUtcTime();
         LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
 
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
@@ -232,12 +234,12 @@ public class OpenWhiskHandler {
             return result;
         }
 
-        Instant creationEnd = Instant.now();
-        Duration creationDuration = Duration.between(creationStart, creationEnd);
+        long creationEnd = Time.getUtcTime();
+        long creationDuration = creationEnd - creationStart;
         LOG.debug("Obtained NameNode instance with ID=" + serverlessNameNode.getId());
         result.setNameNodeId(serverlessNameNode.getId());
         LOG.debug("Getting/creating NN instance took: "
-                + DurationFormatUtils.formatDurationHMS(creationDuration.toMillis()));
+                + DurationFormatUtils.formatDurationHMS(creationDuration));
 
         // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
         // from intermediate storage.
@@ -276,6 +278,9 @@ public class OpenWhiskHandler {
                     + requestId + " for operation " + op + ":", ex);
             result.addException(ex);
         }
+
+        result.setFnStartTime(creationStart);
+        result.setEnqueuedTime(Time.getUtcTime());
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {

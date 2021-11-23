@@ -90,6 +90,28 @@ public class NameNodeResult implements Serializable {
     private final String requestMethod;
 
     /**
+     * Time at which the serverless function received the request associated with this result.
+     */
+    private long fnStartTime;
+
+    /**
+     * Time at which the serverless function returned to the client for the request
+     * associated with this result.
+     */
+    private long fnEndTime;
+
+    /**
+     * Time at which this request was enqueued in the NameNode's work queue.
+     */
+    private long enqueuedTime;
+
+    /**
+     * Time at which the NameNode dequeued this request from the work queue and began
+     * executing it.
+     */
+    private long dequeuedTime;
+
+    /**
      * The UTC timestamp at which this result was (theoretically) delivered back to the client.
      *
      * A value of -1 indicates that this result has not yet been delivered. A non-negative value
@@ -321,6 +343,10 @@ public class NameNodeResult implements Serializable {
         json.addProperty(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
         json.addProperty(ServerlessNameNodeKeys.CACHE_HITS, metadataCache.getNumCacheHitsCurrentRequest());
         json.addProperty(ServerlessNameNodeKeys.CACHE_MISSES, metadataCache.getNumCacheMissesCurrentRequest());
+        json.addProperty(ServerlessNameNodeKeys.FN_START_TIME, fnStartTime);
+        json.addProperty(ServerlessNameNodeKeys.FN_END_TIME, fnEndTime);
+        json.addProperty(ServerlessNameNodeKeys.ENQUEUED_TIME, enqueuedTime);
+        json.addProperty(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
 
         if (statisticsPackageSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
@@ -410,6 +436,9 @@ public class NameNodeResult implements Serializable {
      * - requestMethod: The value for this instance will ALWAYS persist.
      * - timeDeliveredBackToClient: The value for this instance will ALWAYS persist.
      * - serverlessFunctionMapping: The value for this instance will ALWAYS persist.
+     * - enqueuedTime: This is set by the main thread, so it should not be overwritten.
+     * - fnStartTime: This is set by the main thread, so it should not be overwritten.
+     * - fnEndTime: This is set by the main thread, so it should not be overwritten.
      *
      * FIELDS THAT WILL BE UPDATED/CHANGED:
      * - additionalFields: Will be merged together. Values will be overwritten or not depending on the value
@@ -419,6 +448,7 @@ public class NameNodeResult implements Serializable {
      *              whether this instance has a result field after the merge.
      * - result: Will be overwritten or not depending on the value of the `keepOld` parameter.
      * - transactionStatistics: Will be overwritten by the incoming NameNodeResult's transaction statistics.
+     * - dequeuedTime: Overwritten by the incoming result. The worker thread updates this value, not the main thread.
      *
      * @param other The other instance to merge into this one.
      * @param keepOld If True, then existing values of this instance will NOT be overwritten with new values from the
@@ -445,6 +475,39 @@ public class NameNodeResult implements Serializable {
 
         this.hasResult = this.result != null;
         this.statisticsPackageSerializedAndEncoded = other.statisticsPackageSerializedAndEncoded;
+        this.dequeuedTime = other.dequeuedTime;
+    }
+
+    public long getFnStartTime() {
+        return fnStartTime;
+    }
+
+    public void setFnStartTime(long fnStartTime) {
+        this.fnStartTime = fnStartTime;
+    }
+
+    public long getFnEndTime() {
+        return fnEndTime;
+    }
+
+    public void setFnEndTime(long fnEndTime) {
+        this.fnEndTime = fnEndTime;
+    }
+
+    public long getEnqueuedTime() {
+        return enqueuedTime;
+    }
+
+    public void setEnqueuedTime(long enqueuedTime) {
+        this.enqueuedTime = enqueuedTime;
+    }
+
+    public long getDequeuedTime() {
+        return dequeuedTime;
+    }
+
+    public void setDequeuedTime(long dequeuedTime) {
+        this.dequeuedTime = dequeuedTime;
     }
 
     /**

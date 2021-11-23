@@ -33,6 +33,12 @@ public class ServerlessNameNodeKeys {
     public static final String CACHE_HITS = "CACHE_HITS";
     public static final String CACHE_MISSES = "CACHE_MISSES";
 
+    public static final String FN_START_TIME = "FN_START_TIME";
+    public static final String FN_END_TIME = "FN_END_TIME";
+
+    public static final String ENQUEUED_TIME = "ENQUEUED_TIME";
+    public static final String DEQUEUED_TIME = "DEQUEUED_TIME";
+
     /**
      * Used to indicate to the NN that it should re-attempt this operation, even if
      * it was already completed, as the TCP connection was dropped before the result

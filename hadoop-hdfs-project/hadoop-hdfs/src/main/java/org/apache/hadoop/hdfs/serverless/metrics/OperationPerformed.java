@@ -1,11 +1,10 @@
 package org.apache.hadoop.hdfs.serverless.metrics;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.Serializable;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
-import java.util.Locale;
 
 // "Op Name", "Start Time", "End Time", "Duration (ms)", "Deployment", "HTTP", "TCP"
 public class OperationPerformed implements Serializable, Comparable<OperationPerformed> {
@@ -15,7 +14,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     public static Comparator<OperationPerformed> BY_START_TIME = new Comparator<OperationPerformed>() {
         @Override
         public int compare(OperationPerformed o1, OperationPerformed o2) {
-            return (int)(o1.startTime - o2.startTime);
+            return (int)(o1.serverlessFnStartTime - o2.serverlessFnStartTime);
         }
     };
 
@@ -25,7 +24,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     public static Comparator<OperationPerformed> BY_END_TIME = new Comparator<OperationPerformed>() {
         @Override
         public int compare(OperationPerformed o1, OperationPerformed o2) {
-            return (int)(o1.endTime - o2.endTime);
+            return (int)(o1.serverlessFnEndTime - o2.serverlessFnEndTime);
         }
     };
 
@@ -45,11 +44,49 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     private final String requestId;
 
-    private final long startTime;
+    /**
+     * The time at which the client issued the invocation for the serverless function.
+     */
+    private long invokedAtTime;
 
-    private long endTime;
+    /**
+     * The time at which the serverless function began executing.
+     */
+    private long serverlessFnStartTime;
 
-    private long duration;
+    /**
+     * The time at which the serverless function finished executing.
+     */
+    private long serverlessFnEndTime;
+
+    /**
+     * Duration starting with the client invoking the NameNode and ending with
+     * the client receiving a result from the NameNode. Includes OpenWhisk overhead
+     * and whatever else.
+     */
+    private long endToEndDuration;
+
+    /**
+     * The time at which the client received the HTTP response from the
+     * serverless function.
+     */
+    private long resultReceivedTime;
+
+    /**
+     * Time at which the function was enqueued in the NameNode's work queue.
+     */
+    private long requestEnqueuedAtTime;
+
+    /**
+     * Time at which the function began executing on the NameNode.
+     */
+    private long resultBeganExecutingTime;
+
+    /**
+     * The duration of the serverless function itself, not including
+     * invocation overhead.
+     */
+    private long serverlessFunctionDuration;
 
     private final int deployment;
 
@@ -59,14 +96,18 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     private long nameNodeId;
 
-    public OperationPerformed(String operationName, String requestId, long startTime, long endTime,
-                              int deployment, boolean issuedViaHttp, boolean issuedViaTcp,
-                              long nameNodeId, int metadataCacheMisses, int metadataCacheHits) {
+    public OperationPerformed(String operationName, String requestId,
+                              long invokedAtTime, long resultReceivedTime,
+                              long serverlessFnStartTime, long serverlessFnEndTime,
+                              int deployment, boolean issuedViaHttp,
+                              boolean issuedViaTcp, long nameNodeId,
+                              int metadataCacheMisses, int metadataCacheHits) {
         this.operationName = operationName;
         this.requestId = requestId;
-        this.startTime = startTime / 1000000;
-        this.endTime = endTime / 1000000;
-        this.duration = endTime - startTime;
+        this.serverlessFnStartTime = serverlessFnStartTime;
+        this.serverlessFnEndTime = serverlessFnEndTime;
+        this.serverlessFunctionDuration = serverlessFnEndTime - serverlessFnStartTime;
+        this.endToEndDuration = invokedAtTime - resultReceivedTime;
         this.deployment = deployment;
         this.issuedViaHttp = issuedViaHttp;
         this.issuedViaTcp = issuedViaTcp;
@@ -80,39 +121,48 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     }
 
     /**
-     * Modify the endTime of this OperationPerformed instance.
+     * Modify the timestamp at which the serverless function finished executing.
      * This also recomputes this instance's `duration` field.
      *
-     * @param endTime The end time in nanoSeconds.
+     * @param serverlessFnEndTime The end time in milliseconds.
      */
-    public void setEndTime(long endTime) {
-        this.endTime = endTime / 1000000;
-        this.duration = this.endTime - startTime;
+    public void setServerlessFnEndTime(long serverlessFnEndTime) {
+        this.serverlessFnEndTime = serverlessFnEndTime;
+        this.serverlessFunctionDuration = this.serverlessFnEndTime - serverlessFnStartTime;
+    }
+
+    /**
+     * Modify the timestamp at which the serverless function started executing.
+     * This also recomputes this instance's `duration` field.
+     *
+     * @param serverlessFnStartTime The end time in milliseconds.
+     */
+    public void setServerlessFnStartTime(long serverlessFnStartTime) {
+        this.serverlessFnStartTime = serverlessFnStartTime;
+        this.serverlessFunctionDuration = this.serverlessFnEndTime - this.serverlessFnStartTime;
     }
 
     public Object[] getAsArray() {
         return new Object[] {
-                this.operationName, this.startTime, this.endTime, this.duration, this.deployment,
+                this.operationName, this.serverlessFnStartTime, this.serverlessFnEndTime, this.serverlessFunctionDuration, this.deployment,
                 this.issuedViaHttp, this.issuedViaTcp
         };
     }
 
     @Override
     public String toString() {
-        String format = "%-16s %-38s %-26s %-26s %-8s %-3s %-22s %-5s %-5s";
-
-//        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd hh:mm:ss:SSS")
-//                .withLocale( Locale.US )
-//                .withZone( ZoneId.of("UTC"));
+        String format = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-5s %-5s";
 
         // We divide duration by 10^6 bc right now it is in nanoseconds, and we want milliseconds.
-        return String.format(format, operationName, requestId, Instant.ofEpochMilli(startTime).toString(),
-                Instant.ofEpochMilli(endTime).toString(), (duration / 1000000.0), deployment, nameNodeId,
+        return String.format(format, operationName, requestId,
+                Instant.ofEpochMilli(invokedAtTime).toString(),
+                Instant.ofEpochMilli(serverlessFnStartTime).toString(),
+                Instant.ofEpochMilli(requestEnqueuedAtTime).toString(),
+                Instant.ofEpochMilli(resultBeganExecutingTime).toString(),
+                Instant.ofEpochMilli(serverlessFnEndTime).toString(),
+                Instant.ofEpochMilli(resultReceivedTime).toString(),
+                serverlessFunctionDuration, deployment, nameNodeId,
                 metadataCacheHits, metadataCacheMisses);
-                //(issuedViaHttp ? "HTTP" : "-"), (issuedViaTcp ? "TCP" : "-"));
-
-//            return operationName + " \t" + Instant.ofEpochMilli(timeIssued).toString() + " \t" +
-//                    (issuedViaHttp ? "HTTP" : "-") + " \t" + (issuedViaTcp ? "TCP" : "-");
     }
 
     /**
@@ -121,7 +171,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      */
     @Override
     public int compareTo(OperationPerformed op) {
-        return Long.compare(endTime, op.endTime);
+        return Long.compare(serverlessFnEndTime, op.serverlessFnEndTime);
     }
 
     public String getRequestId() {
@@ -142,5 +192,55 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     public void setMetadataCacheHits(int metadataCacheHits) {
         this.metadataCacheHits = metadataCacheHits;
+    }
+
+    public long getResultReceivedTime() {
+        return resultReceivedTime;
+    }
+
+    /**
+     * Update the timestamp at which a result was received.
+     * Also updates the 'endToEndDuration' field.
+     */
+    public void setResultReceivedTime(long resultReceivedTime) {
+        this.resultReceivedTime = resultReceivedTime;
+        this.endToEndDuration = this.resultReceivedTime - this.invokedAtTime;
+    }
+
+    public long getInvokedAtTime() {
+        return invokedAtTime;
+    }
+
+    /**
+     * Update the timestamp at which the client invoked the NameNode.
+     * Also updates the 'endToEndDuration' field.
+     */
+    public void setInvokedAtTime(long invokedAtTime) {
+        this.invokedAtTime = invokedAtTime;
+        this.endToEndDuration = this.resultReceivedTime - this.invokedAtTime;
+    }
+
+    public long getRequestEnqueuedAtTime() {
+        return requestEnqueuedAtTime;
+    }
+
+    public void setRequestEnqueuedAtTime(long requestEnqueuedAtTime) {
+        this.requestEnqueuedAtTime = requestEnqueuedAtTime;
+    }
+
+    public long getResultBeganExecutingTime() {
+        return resultBeganExecutingTime;
+    }
+
+    public void setResultBeganExecutingTime(long resultBeganExecutingTime) {
+        this.resultBeganExecutingTime = resultBeganExecutingTime;
+    }
+
+    /**
+     * Write this instance to a file in CSV format (using tabs to separate).
+     */
+    public void write(BufferedWriter writer) throws IOException {
+        writer.write(this.toString());
+        writer.newLine();
     }
 }

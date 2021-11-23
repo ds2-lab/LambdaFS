@@ -31,6 +31,7 @@ import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.util.Time;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -172,7 +173,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
 
-        long startTime = System.nanoTime();
+        long startTime = Time.getUtcTime();
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
@@ -195,9 +196,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         int cacheHits = response.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
         int cacheMisses = response.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
 
+        long fnStartTime = response.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
+        long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
+
         OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, requestId, startTime, System.nanoTime(),
-                deployment, true, true, nameNodeId, cacheMisses, cacheHits);
+                = new OperationPerformed(operationName, requestId,
+                startTime, Time.getUtcTime(), fnStartTime, fnEndTime,
+                deployment, true, true, nameNodeId,
+                cacheMisses, cacheHits);
         operationsPerformed.put(requestId, operationPerformed);
 
         return response;
@@ -269,14 +275,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                                       int targetDeployment)
             throws InterruptedException, ExecutionException, IOException {
 
-        long opStart = System.nanoTime();
+        long opStart = Time.getUtcTime();
         String requestId = UUID.randomUUID().toString();
         LOG.debug("Issuing concurrent HTTP/TCP request for operation '" + operationName + "' now. Request ID = "
             + requestId);
 
         OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, requestId, System.nanoTime(), 999,
-                targetDeployment, true, true, 0, -1, -1);
+                = new OperationPerformed(operationName, requestId,
+                opStart, -1L, -1L, -1L,
+                targetDeployment, true, true, 0,
+                -1, -1);
         operationsPerformed.put(requestId, operationPerformed);
 
         // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
@@ -442,13 +450,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     tcpServer.deactivateFuture(requestId);
 
                 executorService.shutdown();
-                long opEnd = System.nanoTime();
+                long opEnd = Time.getUtcTime();
                 long opDuration = opEnd - opStart;
-                long durationMilliseconds = TimeUnit.NANOSECONDS.toMillis(opDuration);
+                long durationMilliseconds = opEnd - opStart;
                 LOG.debug("Successfully obtained response from HTTP/TCP request for operation " +
                         operationName + " in " + durationMilliseconds + " milliseconds.");
 
-                operationPerformed.setEndTime(System.nanoTime());
+                operationPerformed.setResultReceivedTime(opEnd);
 
                 if (responseJson.has(ServerlessNameNodeKeys.NAME_NODE_ID))
                     operationPerformed.setNameNodeId(responseJson.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong());
@@ -458,6 +466,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 operationPerformed.setMetadataCacheHits(cacheHits);
                 operationPerformed.setMetadataCacheMisses(cacheMisses);
+
+                long fnStartTime = responseJson.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
+                long fnEndTime = responseJson.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
+
+                operationPerformed.setServerlessFnStartTime(fnStartTime);
+                operationPerformed.setServerlessFnEndTime(fnEndTime);
 
                 return responseJson;
             } catch (ExecutionException | InterruptedException ex) {
@@ -1307,7 +1321,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 String requestId = UUID.randomUUID().toString();
 
                 OperationPerformed operationPerformed
-                        = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
+                        = new OperationPerformed("ping", requestId,
+                        Time.getUtcTime(), Time.getUtcTime(),
+                        Time.getUtcTime(), Time.getUtcTime(),
                         deploymentNumber, true, true, -1, 0, 0);
                 operationsPerformed.put(requestId, operationPerformed);
 
@@ -1321,7 +1337,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         requestId,
                         deploymentNumber);
 
-                operationPerformed.setEndTime(System.nanoTime());
+                operationPerformed.setServerlessFnEndTime(System.nanoTime());
             }
         }
     }
@@ -1331,8 +1347,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String requestId = UUID.randomUUID().toString();
 
         OperationPerformed operationPerformed
-                = new OperationPerformed("ping", requestId, System.nanoTime(), 999,
-                targetDeployment, true, true, -1, 0, 0);
+                = new OperationPerformed("ping", requestId,
+                Time.getUtcTime(), -1L, -1L, -1L,
+                targetDeployment, true, true,
+                -1, 0, 0);
         operationsPerformed.put(requestId, operationPerformed);
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
@@ -1345,7 +1363,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 requestId,
                 targetDeployment);
 
-        operationPerformed.setEndTime(System.nanoTime());
+        operationPerformed.setServerlessFnEndTime(System.nanoTime());
     }
 
     @Override

@@ -262,6 +262,7 @@ public class NameNodeWorkerThread extends Thread {
                 // general, they should be the same as whatever the main thread has, so they WILL persist.)
                 NameNodeResult workerResult = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
                         task.getTaskId(), task.getOperationName(), this.nameNodeId);
+                workerResult.setDequeuedTime(Time.getUtcTime());
 
                 // Check if this is a duplicate task.
                 if (isTaskDuplicate(task)) {
