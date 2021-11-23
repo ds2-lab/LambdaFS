@@ -95,8 +95,8 @@ public class LRUMetadataCache<T> {
         this.invalidatedKeys = new HashSet<>();
         this.idToNameMapping = new HashMap<>(capacity, loadFactor);
         this.cache = new HashMap<>(capacity, loadFactor);
-        this.enabled = false; //conf.getBoolean(DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED,
-                //DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT);
+        this.enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED,
+                DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT);
     }
 
     /**
