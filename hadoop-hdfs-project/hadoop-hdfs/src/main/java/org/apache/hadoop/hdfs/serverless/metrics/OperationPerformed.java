@@ -158,12 +158,12 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
         // We divide duration by 10^6 bc right now it is in nanoseconds, and we want milliseconds.
         return String.format(format, operationName, requestId,
-                Instant.ofEpochMilli(invokedAtTime).toString(),
-                Instant.ofEpochMilli(serverlessFnStartTime).toString(),
-                Instant.ofEpochMilli(requestEnqueuedAtTime).toString(),
-                Instant.ofEpochMilli(resultBeganExecutingTime).toString(),
-                Instant.ofEpochMilli(serverlessFnEndTime).toString(),
-                Instant.ofEpochMilli(resultReceivedTime).toString(),
+                Instant.ofEpochMilli(invokedAtTime).toString(),             // Client invokes NN.
+                Instant.ofEpochMilli(serverlessFnStartTime).toString(),     // NN begins executing.
+                Instant.ofEpochMilli(requestEnqueuedAtTime).toString(),     // NN enqueues req. in work queue.
+                Instant.ofEpochMilli(resultBeganExecutingTime).toString(),  // NN dequeues req. from work queue, begins executing it.
+                Instant.ofEpochMilli(serverlessFnEndTime).toString(),       // NN returns result to client.
+                Instant.ofEpochMilli(resultReceivedTime).toString(),        // Client receives result from NN.
                 serverlessFunctionDuration, deployment, nameNodeId,
                 metadataCacheHits, metadataCacheMisses);
     }
