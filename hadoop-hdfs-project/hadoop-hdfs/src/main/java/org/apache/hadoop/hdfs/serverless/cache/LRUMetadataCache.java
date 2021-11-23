@@ -1,5 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.cache;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,20 +79,24 @@ public class LRUMetadataCache<T> {
      */
     private int numCacheMissesCurrentRequest;
 
+    private final boolean enabled;
+
     /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
      */
-    public LRUMetadataCache() {
-        this(DEFAULT_MAX_ENTRIES, DEFAULT_LOAD_FACTOR);
+    public LRUMetadataCache(Configuration conf) {
+        this(conf, DEFAULT_MAX_ENTRIES, DEFAULT_LOAD_FACTOR);
     }
 
     /**
      * Create an LRU Metadata Cache using a specified maximum capacity and load factor.
      */
-    public LRUMetadataCache(int capacity, float loadFactor) {
+    public LRUMetadataCache(Configuration conf, int capacity, float loadFactor) {
         this.invalidatedKeys = new HashSet<>();
         this.idToNameMapping = new HashMap<>(capacity, loadFactor);
         this.cache = new HashMap<>(capacity, loadFactor);
+        this.enabled = false; //conf.getBoolean(DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED,
+                //DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT);
     }
 
     /**
@@ -128,6 +134,9 @@ public class LRUMetadataCache<T> {
     public T getByPath(String key) {
         _mutex.lock();
         try {
+            if (!enabled)
+                return null;
+
             if (invalidatedKeys.contains(key)){
                 cacheMiss();
                 return null;
@@ -160,10 +169,17 @@ public class LRUMetadataCache<T> {
     public T getByINodeId(long iNodeId) {
         _mutex.lock();
         try {
+            if (!enabled) {
+                cacheMiss();
+                return null;
+            }
+
             if (idToNameMapping.containsKey(iNodeId)) {
                 String key = idToNameMapping.get(iNodeId);
                 return getByPath(key);
             }
+
+            cacheMiss();
             return null;
         } finally {
              _mutex.unlock();

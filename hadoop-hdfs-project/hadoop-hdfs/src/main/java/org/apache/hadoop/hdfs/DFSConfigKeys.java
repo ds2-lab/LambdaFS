@@ -114,6 +114,9 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_HTTP_TIMEOUT = "serverless.http.timeout";
   public static final int SERVERLESS_HTTP_TIMEOUT_DEFAULT = 20;
 
+  public static final String SERVERLESS_METADATA_CACHE_ENABLED = "serverless.metadatacache.enabled";
+  public static final boolean SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT = true;
+
   /**
    * How often, in seconds, the list of active name nodes should be updated.
    */

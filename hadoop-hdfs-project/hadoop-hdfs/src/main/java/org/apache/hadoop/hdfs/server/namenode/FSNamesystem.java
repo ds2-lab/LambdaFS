@@ -481,7 +481,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           conf.getLong(DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_KEY,
               DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_DEFAULT);
 
-      this.metadataCache = new LRUMetadataCache<>();
+      this.metadataCache = new LRUMetadataCache<>(conf);
 
       this.blockManager = new BlockManager(this, conf);
       this.erasureCodingEnabled =
