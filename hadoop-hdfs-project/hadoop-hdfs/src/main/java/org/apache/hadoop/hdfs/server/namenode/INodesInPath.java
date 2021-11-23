@@ -150,7 +150,7 @@ public class INodesInPath {
                               final boolean resolveLink, final LRUMetadataCache<INode> metadataCache)
           throws UnresolvedLinkException, StorageException, TransactionContextException {
     if (metadataCache == null)
-      LOG.warn("Metadata cache instance is null during INode path resolution.");
+      throw new IllegalArgumentException("Metadata cache should not be null during INode path resolution.");
 
     Preconditions.checkArgument(startingDir.compareTo(components[0]) == 0);
 
@@ -188,34 +188,26 @@ public class INodesInPath {
 
       final String fullPathToCurrentComponent = constructPath(components, 0, count + 2);
 
-      // Check the metadata cache for this particular INode.
-      if (metadataCache != null && metadataCache.containsKey(fullPathToCurrentComponent)) {
-        LOG.debug("INode " + childNameAsString + " is already cached locally under key '"
-                        + fullPathToCurrentComponent + "'. Using cached INode.");
-        curNode = (INode) metadataCache.getByPath(fullPathToCurrentComponent);
+      // If this returns null, then we just don't have the value cached.
+      curNode = metadataCache.getByPath(fullPathToCurrentComponent);
 
-        if (curNode != null)
-          LOG.debug("Current INode (id=" + curNode.getId() + "): " + curNode.toString());
+      if (curNode != null) {
+        LOG.debug("INode " + childNameAsString + " is already cached locally under key '" + fullPathToCurrentComponent + "'. Using cached INode.");
       } else {
-        // If the cache is null, we'll print a different message than if the cache is not null.
-        if (metadataCache != null) {
-          LOG.debug("INode " + childNameAsString + " is not in cache under key '"
-                  + fullPathToCurrentComponent + "'. Retrieving from intermediate storage instead.");
-          LOG.debug("Valid keys in metadata cache (" + metadataCache.size(false) + "): "
-                  + metadataCache.getPathKeys(false));
-        } else {
-          LOG.debug("We do not have access to the metadata cache for some reason.");
-          LOG.debug("Retrieving INode " + childNameAsString + " from intermediate storage instead.");
-        }
-        // normal case, and also for resolving file/dir under snapshot root
-        curNode = dir.getChildINode(childName);
-
-        if (curNode != null)
-          LOG.debug("Current INode (id=" + curNode.getId() + "): " + curNode.toString());
+        LOG.debug("INode " + childNameAsString + " is NOT cached locally.");
+        LOG.debug("Valid keys in metadata cache (" + metadataCache.size(false) + "): "
+                + metadataCache.getPathKeys(false));
       }
+
+      // normal case, and also for resolving file/dir under snapshot root
+      curNode = dir.getChildINode(childName);
+
+      if (curNode != null)
+        LOG.debug("Current INode (id=" + curNode.getId() + "): " + curNode.toString());
 
       count++;
     }
+
     return new INodesInPath(inodes, components);
   }
 

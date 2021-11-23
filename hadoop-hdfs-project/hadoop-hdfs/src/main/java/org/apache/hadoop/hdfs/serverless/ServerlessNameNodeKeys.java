@@ -30,6 +30,9 @@ public class ServerlessNameNodeKeys {
 
     public static final String STATISTICS_PACKAGE = "STATISTICS_PACKAGE";
 
+    public static final String CACHE_HITS = "CACHE_HITS";
+    public static final String CACHE_MISSES = "CACHE_MISSES";
+
     /**
      * Used to indicate to the NN that it should re-attempt this operation, even if
      * it was already completed, as the TCP connection was dropped before the result

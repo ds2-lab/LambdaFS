@@ -58,6 +58,26 @@ public class LRUMetadataCache<T> {
     private final HashMap<String, T> cache;
 
     /**
+     * Cache hits experienced across all requests processed by the NameNode.
+     */
+    private int numCacheHits;
+
+    /**
+     * Cache misses experienced across all requests processed by the NameNode.
+     */
+    private int numCacheMisses;
+
+    /**
+     * Cache hits experienced while processing the CURRENT request.
+     */
+    private int numCacheHitsCurrentRequest;
+
+    /**
+     * Cache misses experienced while processing the CURRENT request.
+     */
+    private int numCacheMissesCurrentRequest;
+
+    /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
      */
     public LRUMetadataCache() {
@@ -74,6 +94,30 @@ public class LRUMetadataCache<T> {
     }
 
     /**
+     * Update counters that track the number of cache hits there have been.
+     */
+    private void cacheHit() {
+        this.numCacheHits++;
+        this.numCacheHitsCurrentRequest++;
+    }
+
+    /**
+     * Update counters that track the number of cache misses there have been.
+     */
+    private void cacheMiss() {
+        this.numCacheMisses++;
+        this.numCacheMissesCurrentRequest++;
+    }
+
+    /**
+     * Reset the current-request counters for cache hits/misses.
+     */
+    public void clearCurrentRequestCacheCounters() {
+        this.numCacheHitsCurrentRequest = 0;
+        this.numCacheMissesCurrentRequest = 0;
+    }
+
+    /**
      * Return the metadata object associated with the given key, or null if:
      *  (1) No entry exists for the given key, or
      *  (2) The given key has been invalidated.
@@ -84,12 +128,20 @@ public class LRUMetadataCache<T> {
     public T getByPath(String key) {
         _mutex.lock();
         try {
-            if (invalidatedKeys.contains(key))
+            if (invalidatedKeys.contains(key)){
+                cacheMiss();
                 return null;
+            }
 
             T returnValue = cache.get(key);
 
-            LOG.debug("Retrieved value " + returnValue.toString() + " from cache using key " + key + ".");
+            if (returnValue == null) {
+                cacheMiss();
+            }
+            else {
+                LOG.debug("Retrieved value " + returnValue + " from cache using key " + key + ".");
+                cacheHit();
+            }
 
             return returnValue;
         } finally {
@@ -332,5 +384,21 @@ public class LRUMetadataCache<T> {
         } finally {
             _mutex.unlock();
         }
+    }
+
+    public int getNumCacheMissesCurrentRequest() {
+        return numCacheMissesCurrentRequest;
+    }
+
+    public int getNumCacheHitsCurrentRequest() {
+        return numCacheHitsCurrentRequest;
+    }
+
+    public int getNumCacheMisses() {
+        return numCacheMisses;
+    }
+
+    public int getNumCacheHits() {
+        return numCacheHits;
     }
 }

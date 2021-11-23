@@ -266,12 +266,12 @@ public class NameNodeWorkerThread extends Thread {
                 // Check if this is a duplicate task.
                 if (isTaskDuplicate(task)) {
                     handleDuplicateTask(task, workerResult);
-
                     doRoutineActivities();
                     continue;
                 }
 
                 LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
+                serverlessNameNodeInstance.getNamesystem().getMetadataCache().clearCurrentRequestCacheCounters();
                 TransactionsStats.getInstance().clearForServerless();
                 FileSystemTask<Serializable> prev = currentlyExecutingTasks.putIfAbsent(task.getTaskId(), task);
                 requestCurrentlyProcessing = task.getTaskId();
