@@ -345,7 +345,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         LOG.debug("HTTP Response from OpenWhisk function:\n" + httpResponse);
         LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
-        LOG.debug("HTTP Response Entity Content: " + json);
+        // LOG.debug("HTTP Response Entity Content: " + json);
 
         JsonObject jsonObjectResponse = null;
         JsonPrimitive jsonPrimitiveResponse = null;
