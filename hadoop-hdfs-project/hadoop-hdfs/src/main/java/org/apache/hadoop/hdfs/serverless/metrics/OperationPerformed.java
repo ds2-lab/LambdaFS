@@ -152,12 +152,28 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         };
     }
 
+    /**
+     * Return the header for the CSV file.
+     */
+    public static String getHeader() {
+        return "operation_name,request_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,serverless_fn_end_time,"
+                + "began_executing_time,serverless_fn_end_time,result_received_time,serverless_fn_duration,deployment_number,"
+                + "name_node_id,metadata_cache_hits,metadata_cache_misses";
+    }
+
     @Override
     public String toString() {
-        String format = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-5s %-5s";
+        String formatString = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-5s %-5s";
+        return this.format(formatString);
+    }
 
-        // We divide duration by 10^6 bc right now it is in nanoseconds, and we want milliseconds.
-        return String.format(format, operationName, requestId,
+    /**
+     * Return the contents of this string formatted uses the giving format string.
+     *
+     * The order is the order they appear in the header (see {@link OperationPerformed#getHeader()}).
+     */
+    public String format(String formatString) {
+        return String.format(formatString, operationName, requestId,
                 Instant.ofEpochMilli(invokedAtTime).toString(),             // Client invokes NN.
                 Instant.ofEpochMilli(serverlessFnStartTime).toString(),     // NN begins executing.
                 Instant.ofEpochMilli(requestEnqueuedAtTime).toString(),     // NN enqueues req. in work queue.
@@ -243,7 +259,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * Write this instance to a file in CSV format (using tabs to separate).
      */
     public void write(BufferedWriter writer) throws IOException {
-        writer.write(this.toString());
+        String formatString = "%-16s,%-38s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-8s,%-3s,%-22s,%-5s,%-5s";
+        writer.write(this.format(formatString));
         writer.newLine();
     }
 }
