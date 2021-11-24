@@ -1,4 +1,4 @@
-package io.hops;
+package io.hops.metrics;
 
 import java.io.Serializable;
 import java.util.concurrent.ConcurrentHashMap;

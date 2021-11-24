@@ -1,4 +1,4 @@
-package org.apache.hadoop.hdfs.serverless.metrics;
+package io.hops.metrics;
 
 import java.io.BufferedWriter;
 import java.io.IOException;

@@ -21,14 +21,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.Serializable;
-import java.util.Random;
+import java.util.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public abstract class RequestHandler {
   private long waitTime;
+
+  private static final TimeZone UTC_ZONE = TimeZone.getTimeZone("UTC");
 
   public interface OperationType extends Serializable {
     /**
@@ -99,6 +99,14 @@ public abstract class RequestHandler {
   public RequestHandler setParams(Object... params) {
     this.params = params;
     return this;
+  }
+
+  /**
+   * Get the current UTC time in milliseconds.
+   * @return the current UTC time in milliseconds.
+   */
+  protected static long getUtcTime() {
+    return Calendar.getInstance(UTC_ZONE).getTimeInMillis();
   }
 
   public Object[] getParams() {

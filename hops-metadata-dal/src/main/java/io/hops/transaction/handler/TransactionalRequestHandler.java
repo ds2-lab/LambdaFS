@@ -18,6 +18,8 @@ package io.hops.transaction.handler;
 import io.hops.exception.*;
 import io.hops.log.NDCWrapper;
 import io.hops.metadata.hdfs.entity.INode;
+import io.hops.metrics.TransactionAttempt;
+import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.TransactionInfo;
 import io.hops.transaction.context.EntityContext;
@@ -66,7 +68,13 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
     Object txRetValue = null;
     List<Throwable> exceptions = new ArrayList<>();
 
+    // Record timings of the various stages in the event.
+    TransactionEvent transactionEvent = new TransactionEvent();
+    transactionEvent.setTransactionStartTime(getUtcTime());
+
     while (tryCount <= RETRY_COUNT) {
+      TransactionAttempt transactionAttempt = new TransactionAttempt(tryCount);
+      transactionEvent.addAttempt(transactionAttempt);
       long expWaitTime = exponentialBackoff();
       long txStartTime = System.currentTimeMillis();
       long oldTime = System.currentTimeMillis();
@@ -97,6 +105,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         setNDC(info);
         setupTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
+        transactionAttempt.setAcquireLocksStart(getUtcTime());
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("Pre-transaction phase finished. Time " + setupTime + " ms");
         }
@@ -114,6 +123,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         locksAcquirer.acquire();
 
         acquireLockTime = (System.currentTimeMillis() - oldTime);
+        transactionAttempt.setAcquireLocksEnd(getUtcTime());
+        transactionAttempt.setProcessingStart(getUtcTime());
         oldTime = System.currentTimeMillis();
         if(requestHandlerLOG.isTraceEnabled()){
           requestHandlerLOG.debug("All Locks Acquired. Time " + acquireLockTime + " ms");
@@ -133,6 +144,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
           }
         }
         inMemoryProcessingTime = (System.currentTimeMillis() - oldTime);
+        transactionAttempt.setProcessingEnd(getUtcTime());
+        transactionAttempt.setConsistencyProtocolStart(getUtcTime());
         oldTime = System.currentTimeMillis();
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("In Memory Processing Finished. Time " + inMemoryProcessingTime + " ms");
@@ -145,12 +158,16 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         boolean canProceed = consistencyProtocol(txStartTime);
 
         consistencyProtocolTime = (System.currentTimeMillis() - oldTime);
+        transactionAttempt.setConsistencyProtocolEnd(getUtcTime());
+        transactionAttempt.setConsistencyProtocolSucceeded(canProceed);
+        transactionAttempt.setCommitStart(getUtcTime());
         oldTime = System.currentTimeMillis();
 
         if (canProceed) {
           if (printSuccessMessage)
             requestHandlerLOG.debug("Consistency protocol for TX " + operationId + " succeeded after " + consistencyProtocolTime + " ms");
         } else {
+          transactionAttempt.setCommitEnd(getUtcTime());
           throw new IOException("Consistency protocol for TX " + operationId + " FAILED after " +
                   consistencyProtocolTime + " ms.");
         }
@@ -169,6 +186,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         EntityManager.commit(transactionLocks);
         committed = true;
         commitTime = (System.currentTimeMillis() - oldTime);
+        transactionAttempt.setCommitEnd(getUtcTime());
         if(stat != null)
           stat.setTimes(acquireLockTime, inMemoryProcessingTime, commitTime);
         else
@@ -234,7 +252,11 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         //make sure that the context has been removed
         EntityManager.removeContext(); 
       }
-      if(success){
+
+      transactionEvent.setTransactionEndTime(getUtcTime());
+      transactionEvent.setSuccess(success);
+
+      if(success) {
         // If the code is about to return but the exception was caught
         if (ignoredException != null) {
           throw ignoredException;
