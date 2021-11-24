@@ -27,6 +27,7 @@ import io.hops.metadata.hdfs.entity.MetaStatus;
 
 import javax.net.SocketFactory;
 
+import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.EntityContextStat;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.logging.Log;
@@ -302,10 +303,43 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   }
 
   /**
+   * Merge the provided map of transaction events with our own.
+   *
+   * @param keepLocal If true, the local keys will be preserved. If false, the keys in the 'packages' parameter
+   *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
+   *                  requestId values, which are supposed to be unique.)
+   */
+  public void mergeTransactionEvents(HashMap<String, List<TransactionEvent>> events,
+                                      boolean keepLocal) {
+    HashMap<String, List<TransactionEvent>> local =
+            this.serverlessInvoker.getTransactionEvents();
+
+    HashMap<String, List<TransactionEvent>> merged =
+            new HashMap<>();
+
+    if (keepLocal) {
+      merged.putAll(events);
+      merged.putAll(local);
+    } else {
+      merged.putAll(local);
+      merged.putAll(events);
+    }
+
+    this.serverlessInvoker.setTransactionEvents(merged);
+  }
+
+  /**
    * Return the statistics packages from the invoker.
    */
   public HashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
     return this.serverlessInvoker.getStatisticsPackages();
+  }
+
+  /**
+   * Return the transaction events from the invoker.
+   */
+  public HashMap<String, List<TransactionEvent>> getTransactionEvents() {
+    return this.serverlessInvoker.getTransactionEvents();
   }
 
   /**

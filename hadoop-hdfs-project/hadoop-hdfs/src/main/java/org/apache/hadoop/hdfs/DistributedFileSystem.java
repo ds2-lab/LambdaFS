@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
+import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -526,6 +527,10 @@ public class DistributedFileSystem extends FileSystem {
     return this.dfs.getStatisticsPackages();
   }
 
+  public HashMap<String, List<TransactionEvent>> getTransactionEvents() {
+    return this.dfs.getTransactionEvents();
+  }
+
   /**
    * Merge the provided map of statistics packages with our own.
    *
@@ -536,6 +541,18 @@ public class DistributedFileSystem extends FileSystem {
   public void mergeStatisticsPackages(HashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages,
                                       boolean keepLocal) {
     this.dfs.mergeStatisticsPackages(packages, keepLocal);
+  }
+
+  /**
+   * Merge the provided map of transaction events with our own.
+   *
+   * @param keepLocal If true, the local keys will be preserved. If false, the keys in the 'packages' parameter
+   *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
+   *                  requestId values, which are supposed to be unique.)
+   */
+  public void mergeTransactionEvents(HashMap<String, List<TransactionEvent>> events,
+                                     boolean keepLocal) {
+    this.dfs.mergeTransactionEvents(events, keepLocal);
   }
 
   /**

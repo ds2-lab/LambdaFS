@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -41,8 +42,17 @@ public abstract class ServerlessInvokerBase<T> {
 
     /**
      * Store the statistics packages from serverless name nodes in this HashMap.
+     *
+     * Map from request ID to statistics packages.
      */
     protected HashMap<String, TransactionsStats.ServerlessStatisticsPackage> statisticsPackages;
+
+    /**
+     * Store the transaction events from serverless name nodes in this HashMap.
+     *
+     * Map from request ID to statistics packages.
+     */
+    protected HashMap<String, List<TransactionEvent>> transactionEvents;
 
     /**
      * The maximum amount of time to wait before issuing another HTTP request after the previous request failed.
@@ -182,6 +192,7 @@ public abstract class ServerlessInvokerBase<T> {
     protected ServerlessInvokerBase() {
         instantiateTrustManager();
         statisticsPackages = new HashMap<>();
+        transactionEvents = new HashMap<>();
     }
 
     /**
@@ -309,8 +320,7 @@ public abstract class ServerlessInvokerBase<T> {
                 LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
             }
             else {
-                LOG.debug("The Serverless NameNode did not encounter any exceptions while executing task " +
-                        requestId);
+                LOG.debug("The Serverless NameNode did not encounter any exceptions while executing task " + requestId);
             }
         }
 
@@ -324,7 +334,21 @@ public abstract class ServerlessInvokerBase<T> {
                                 InvokerUtilities.base64StringToObject(statisticsPackageEncoded);
                 this.statisticsPackages.put(requestId, statisticsPackage);
             } catch (Exception ex) {
-                LOG.error("Error encountered while extracting result from NameNode response:", ex);
+                LOG.error("Error encountered while extracting statistics packages from NameNode response:", ex);
+                return null;
+            }
+        }
+
+        if (response.has(ServerlessNameNodeKeys.TRANSACTION_EVENTS)) {
+            String transactionEventsEncoded =
+                    response.getAsJsonPrimitive(ServerlessNameNodeKeys.TRANSACTION_EVENTS).getAsString();
+
+            try {
+                List<TransactionEvent> txEvents =
+                        (List<TransactionEvent>) InvokerUtilities.base64StringToObject(transactionEventsEncoded);
+                this.transactionEvents.put(requestId, txEvents);
+            } catch (Exception ex) {
+                LOG.error("Error encountered while extracting transaction events from NameNode response:", ex);
                 return null;
             }
         }
@@ -492,5 +516,13 @@ public abstract class ServerlessInvokerBase<T> {
 
     public void setStatisticsPackages(HashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages) {
         this.statisticsPackages = packages;
+    }
+
+    public HashMap<String, List<TransactionEvent>> getTransactionEvents() {
+        return transactionEvents;
+    }
+
+    public void setTransactionEvents(HashMap<String, List<TransactionEvent>> transactionEvents) {
+        this.transactionEvents = transactionEvents;
     }
 }
