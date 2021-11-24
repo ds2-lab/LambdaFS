@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless.operation;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.server.namenode.INode;
@@ -20,6 +21,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -50,6 +52,11 @@ public class NameNodeResult implements Serializable {
      * These are committed to the result object right after its associated operation has been completed.
      */
     private String statisticsPackageSerializedAndEncoded;
+
+    /**
+     * Transaction events that have been serialized and encoded.
+     */
+    private String txEventsSerializedAndEncoded;
 
     /**
      * We may be returning a mapping of a file or directory to a particular serverless function.
@@ -351,6 +358,11 @@ public class NameNodeResult implements Serializable {
         if (statisticsPackageSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
         else
+            LOG.warn("There are no Statistics Packages to return to the client...");
+
+        if (txEventsSerializedAndEncoded != null)
+            json.addProperty(ServerlessNameNodeKeys.TRANSACTION_EVENTS, txEventsSerializedAndEncoded);
+        else
             LOG.warn("There are no Transaction Statistics to return to the client...");
 
         return json;
@@ -367,6 +379,14 @@ public class NameNodeResult implements Serializable {
         if (statisticsPackage != null) {
             LOG.debug("Statistics package was NOT null. Serializing and encoding it now.");
             this.statisticsPackageSerializedAndEncoded = serializeAndEncode(statisticsPackage);
+        }
+    }
+
+    public void commitTransactionEvents(List<TransactionEvent> transactionEvents) {
+        LOG.debug("Committing transaction events for request " + requestId + " now...");
+        if (transactionEvents != null) {
+            LOG.debug("Statistics package was NOT null. Serializing and encoding it now.");
+            this.txEventsSerializedAndEncoded = serializeAndEncode(transactionEvents);
         }
     }
 
@@ -447,8 +467,9 @@ public class NameNodeResult implements Serializable {
      * - hasResult: Will not be overwritten automatically, but will be set to true/false depending on
      *              whether this instance has a result field after the merge.
      * - result: Will be overwritten or not depending on the value of the `keepOld` parameter.
-     * - transactionStatistics: Will be overwritten by the incoming NameNodeResult's transaction statistics.
+     * - statisticsPackageSerializedAndEncoded: Will be overwritten by the incoming NameNodeResult's transaction statistics.
      * - dequeuedTime: Overwritten by the incoming result. The worker thread updates this value, not the main thread.
+     * - txEventsSerializedAndEncoded
      *
      * @param other The other instance to merge into this one.
      * @param keepOld If True, then existing values of this instance will NOT be overwritten with new values from the
@@ -475,6 +496,7 @@ public class NameNodeResult implements Serializable {
 
         this.hasResult = this.result != null;
         this.statisticsPackageSerializedAndEncoded = other.statisticsPackageSerializedAndEncoded;
+        this.txEventsSerializedAndEncoded = other.txEventsSerializedAndEncoded;
         this.dequeuedTime = other.dequeuedTime;
     }
 

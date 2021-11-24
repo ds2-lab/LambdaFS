@@ -33,6 +33,7 @@ import io.hops.metadata.hdfs.dal.*;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.metadata.hdfs.entity.DatanodeStorage;
 import io.hops.metadata.hdfs.entity.StorageReport;
+import io.hops.metrics.TransactionEvent;
 import io.hops.security.HopsUGException;
 import io.hops.security.UsersGroups;
 import io.hops.transaction.handler.HDFSOperationType;
@@ -115,6 +116,7 @@ import java.security.PrivilegedExceptionAction;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -401,6 +403,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private AtomicBoolean started = new AtomicBoolean(false);
 
   /**
+   * Used to record transaction events that have occurred while processing the current request.
+   * Cleared after each request is processed by the NameNodeWorkerThread.
+   */
+  private final List<TransactionEvent> transactionEvents = new ArrayList<>();
+
+  /**
    * Identifies the NameNode. This is used in place of the leader election ID since leader election is not used
    * by serverless name nodes.
    *
@@ -465,6 +473,21 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   public NameNodeTCPClient getNameNodeTcpClient() {
     return nameNodeTCPClient;
+  }
+
+  public synchronized void addTransactionEvent(TransactionEvent event) {
+    transactionEvents.add(event);
+  }
+
+  /**
+   * Return a COPY of the transactionEvents list.
+   */
+  public List<TransactionEvent> getTransactionEvents() {
+    return new ArrayList<>(transactionEvents);
+  }
+
+  public synchronized void clearTransactionEvents() {
+    this.transactionEvents.clear();
   }
 
   /**

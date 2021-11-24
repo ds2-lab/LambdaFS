@@ -47,6 +47,11 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
    */
   protected final long operationId;
 
+  /**
+   * Used for event-style data collection of transaction timings.
+   */
+  protected TransactionEvent transactionEvent;
+
   protected boolean printSuccessMessage = false;
 
   /**
@@ -60,6 +65,13 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
    */
   protected abstract boolean consistencyProtocol(long txStartTime) throws IOException;
 
+  /**
+   * Should be overridden by a class in the main codebase. This function should be used
+   * to save the {@link TransactionEvent} (and the contained {@link TransactionAttempt} instances
+   * within) in order for them to be analyzed/plotted.
+   */
+  public abstract void commitEvents();
+
   @Override
   protected Object execute(Object info) throws IOException {
     boolean committed = false;
@@ -69,7 +81,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
     List<Throwable> exceptions = new ArrayList<>();
 
     // Record timings of the various stages in the event.
-    TransactionEvent transactionEvent = new TransactionEvent();
+    transactionEvent = new TransactionEvent();
     transactionEvent.setTransactionStartTime(getUtcTime());
 
     while (tryCount <= RETRY_COUNT) {

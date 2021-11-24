@@ -28,6 +28,11 @@ public class TransactionEvent implements Serializable {
      */
     private boolean success;
 
+    /**
+     * Associated requestId.
+     */
+    private String requestId;
+
     public TransactionEvent() {
         this.attempts = new ArrayList<>();
     }
@@ -64,5 +69,13 @@ public class TransactionEvent implements Serializable {
 
     public void setSuccess(boolean success) {
         this.success = success;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
     }
 }

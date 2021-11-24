@@ -29,6 +29,7 @@ public class ServerlessNameNodeKeys {
     public static final String OPENWHISK_ACTIVATION_ID = "OPENWHISK_ACTIVATION_ID";
 
     public static final String STATISTICS_PACKAGE = "STATISTICS_PACKAGE";
+    public static final String TRANSACTION_EVENTS = "TRANSACTION_EVENTS";
 
     public static final String CACHE_HITS = "CACHE_HITS";
     public static final String CACHE_MISSES = "CACHE_MISSES";

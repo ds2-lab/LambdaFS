@@ -18,11 +18,17 @@ package io.hops.transaction.handler;
 import io.hops.transaction.TransactionInfo;
 import io.hops.transaction.lock.LeaderElectionTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
+import org.apache.commons.lang3.NotImplementedException;
 
 import java.io.IOException;
 
 public abstract class LeaderTransactionalRequestHandler
     extends TransactionalRequestHandler {
+
+  @Override
+  public void commitEvents() {
+    throw new NotImplementedException("Not implemented/supported!");
+  }
 
   public LeaderTransactionalRequestHandler(LeaderOperationType opType) {
     super(opType);

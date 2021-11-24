@@ -119,6 +119,12 @@ public abstract class HopsTransactionalRequestHandler
     return new HdfsTransactionalLockAcquirer();
   }
 
+  @Override
+  public void commitEvents() {
+    String requestId = serverlessNameNodeInstance.getRequestCurrentlyProcessing();
+    this.transactionEvent.setRequestId(requestId);
+  }
+
 //  @Override
 //  protected void checkAndHandleNewConcurrentWrites(long txStartTime) throws StorageException {
 //    requestHandlerLOG.debug("Checking for concurrent write operations that began after this local one.");
