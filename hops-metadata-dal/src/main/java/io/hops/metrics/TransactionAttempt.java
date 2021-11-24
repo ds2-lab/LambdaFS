@@ -1,5 +1,7 @@
 package io.hops.metrics;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.Serializable;
 
 /**
@@ -137,8 +139,24 @@ public class TransactionAttempt implements Serializable {
         this.consistencyProtocolSucceeded = consistencyProtocolSucceeded;
     }
 
-//    @Override
-//    public String toString() {
-//        return "TransactionAttempt(acquireLocksStart=" + acquireLocksStart + ","
-//    }
+    /**
+     * Write in CSV format.
+     */
+    public void write(BufferedWriter writer) throws IOException {
+        writer.write(acquireLocksStart + "," + acquireLocksEnd + "," + processingStart + "," + processingEnd +
+                "," + consistencyProtocolStart + "," + consistencyProtocolEnd + "," + commitStart + "," + commitEnd);
+        writer.newLine();
+    }
+
+    @Override
+    public String toString() {
+        return "TransactionAttempt(acquireLocksStart=" + acquireLocksStart +
+                ",acquireLocksEnd=" + acquireLocksEnd +
+                ",processingStart=" + processingStart +
+                ",processingEnd=" + processingEnd +
+                ",consistencyProtocolStart=" + consistencyProtocolStart +
+                ",consistencyProtocolEnd=" + consistencyProtocolEnd +
+                ",commitStart=" + commitStart +
+                ",commitEnd=" + commitEnd + ")";
+    }
 }
