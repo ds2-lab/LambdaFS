@@ -33,8 +33,14 @@ public class TransactionEvent implements Serializable {
      */
     private String requestId;
 
-    public TransactionEvent() {
+    /**
+     * The 'operationId' instance field of the associated transaction.
+     */
+    private final long transactionId;
+
+    public TransactionEvent(long transactionId) {
         this.attempts = new ArrayList<>();
+        this.transactionId = transactionId;
     }
 
     public void addAttempt(TransactionAttempt attempt) {
@@ -77,5 +83,34 @@ public class TransactionEvent implements Serializable {
 
     public void setRequestId(String requestId) {
         this.requestId = requestId;
+    }
+
+    public long getTransactionId() {
+        return transactionId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof TransactionEvent))
+            return false;
+
+        TransactionEvent other = (TransactionEvent)o;
+
+        return this.requestId != null &&
+                other.requestId != null &&
+                this.requestId.equals(other.requestId) &&
+                this.transactionId == other.transactionId;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+
+        result = prime * result +
+                ((requestId == null) ? 0 : requestId.hashCode());
+        result = prime * result + Long.hashCode(transactionId);
+
+        return result;
     }
 }

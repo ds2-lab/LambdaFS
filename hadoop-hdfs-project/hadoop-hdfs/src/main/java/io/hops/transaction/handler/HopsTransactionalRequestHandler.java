@@ -123,6 +123,7 @@ public abstract class HopsTransactionalRequestHandler
   public void commitEvents() {
     String requestId = serverlessNameNodeInstance.getRequestCurrentlyProcessing();
     this.transactionEvent.setRequestId(requestId);
+    serverlessNameNodeInstance.addTransactionEvent(this.transactionEvent);
   }
 
 //  @Override

@@ -81,7 +81,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
     List<Throwable> exceptions = new ArrayList<>();
 
     // Record timings of the various stages in the event.
-    transactionEvent = new TransactionEvent();
+    transactionEvent = new TransactionEvent(operationId);
     transactionEvent.setTransactionStartTime(getUtcTime());
 
     while (tryCount <= RETRY_COUNT) {
@@ -225,7 +225,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         if (info != null && info instanceof TransactionInfo) {
           ((TransactionInfo) info).performPostTransactionAction();
         }
-      } catch (Throwable t) {
+      }
+      catch (Throwable t) {
         boolean suppressException = suppressFailureMsg(t, tryCount);
         if (!suppressException ) {
           String opName = !NDCWrapper.NDCEnabled() ? opType + " " : "";
@@ -242,6 +243,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
                   "CommitTime: " + commitTime + "ms. Locks: "+inodeLocks+". " + t, t);
         }
         if (!(t instanceof TransientStorageException) ||  tryCount > RETRY_COUNT) {
+          commitEvents();
           for(Throwable oldExceptions : exceptions) {
             requestHandlerLOG.warn("Exception caught during previous retry: "+oldExceptions, oldExceptions);
           }
@@ -250,7 +252,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
           if(suppressException)
             exceptions.add(t);
         }
-      } finally {
+      }
+      finally {
         removeNDC();
         if (!committed && locksAcquirer!=null) {
           try {
@@ -262,11 +265,14 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
           }
         }
         //make sure that the context has been removed
-        EntityManager.removeContext(); 
+        EntityManager.removeContext();
+        commitEvents();
       }
 
       transactionEvent.setTransactionEndTime(getUtcTime());
       transactionEvent.setSuccess(success);
+
+      commitEvents();
 
       if(success) {
         // If the code is about to return but the exception was caught

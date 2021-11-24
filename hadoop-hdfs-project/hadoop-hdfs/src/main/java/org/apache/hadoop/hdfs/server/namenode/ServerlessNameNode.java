@@ -406,7 +406,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Used to record transaction events that have occurred while processing the current request.
    * Cleared after each request is processed by the NameNodeWorkerThread.
    */
-  private final List<TransactionEvent> transactionEvents = new ArrayList<>();
+  private final Set<TransactionEvent> transactionEvents = new HashSet<>();
 
   /**
    * Identifies the NameNode. This is used in place of the leader election ID since leader election is not used
