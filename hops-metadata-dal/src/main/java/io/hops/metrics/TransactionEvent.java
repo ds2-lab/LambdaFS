@@ -1,5 +1,7 @@
 package io.hops.metrics;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -112,5 +114,15 @@ public class TransactionEvent implements Serializable {
         result = prime * result + Long.hashCode(transactionId);
 
         return result;
+    }
+
+    public static String getHeader() {
+        return "requestId," + TransactionAttempt.getHeader() + ",transactionStart,transactionEnd,transactionId,success";
+    }
+
+    public void write(BufferedWriter writer) throws IOException {
+        for (TransactionAttempt attempt : attempts) {
+            attempt.write(writer);
+        }
     }
 }

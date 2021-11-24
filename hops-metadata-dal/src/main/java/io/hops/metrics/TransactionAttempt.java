@@ -148,6 +148,10 @@ public class TransactionAttempt implements Serializable {
         writer.newLine();
     }
 
+    public static String getHeader() {
+        return "acquireLocksStart,acquireLocksEnd,processingStart,processingEnd,consistencyProtocolStart,consistencyProtocolEnd,commitStart,commitEnd";
+    }
+
     @Override
     public String toString() {
         return "TransactionAttempt(acquireLocksStart=" + acquireLocksStart +
