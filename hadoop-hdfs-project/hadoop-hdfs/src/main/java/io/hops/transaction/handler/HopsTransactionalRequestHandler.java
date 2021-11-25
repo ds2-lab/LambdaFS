@@ -23,6 +23,7 @@ import io.hops.metadata.hdfs.dal.InvalidationDataAccess;
 import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
 import io.hops.metadata.hdfs.entity.Invalidation;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
+import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.TransactionInfo;
 import io.hops.transaction.context.EntityContext;
@@ -121,9 +122,24 @@ public abstract class HopsTransactionalRequestHandler
 
   @Override
   public void commitEvents() {
-    String requestId = serverlessNameNodeInstance.getRequestCurrentlyProcessing();
-    this.transactionEvent.setRequestId(requestId);
-    serverlessNameNodeInstance.addTransactionEvent(this.transactionEvent);
+    if (serverlessNameNodeInstance == null) {
+      requestHandlerLOG.warn("Serverless NameNode instance is null. Cannot commit events directly.");
+      requestHandlerLOG.warn("Committing events to temporary, static variable.");
+
+      ThreadLocal<Set<TransactionEvent>> tempEventsThreadLocal = OpenWhiskHandler.temporaryEventSet;
+      Set<TransactionEvent> tempEvents = tempEventsThreadLocal.get();
+
+      if (tempEvents == null) {
+        tempEvents = new HashSet<>();
+        tempEventsThreadLocal.set(tempEvents);
+      }
+
+      tempEvents.add(this.transactionEvent);
+    } else {
+      String requestId = serverlessNameNodeInstance.getRequestCurrentlyProcessing();
+      this.transactionEvent.setRequestId(requestId);
+      serverlessNameNodeInstance.addTransactionEvent(this.transactionEvent);
+    }
   }
 
 //  @Override

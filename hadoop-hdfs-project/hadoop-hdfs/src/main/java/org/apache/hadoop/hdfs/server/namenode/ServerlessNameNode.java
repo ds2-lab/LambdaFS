@@ -479,6 +479,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     transactionEvents.add(event);
   }
 
+  public synchronized void addTransactionEvents(Collection<TransactionEvent> event) {
+    transactionEvents.addAll(event);
+  }
+
   /**
    * Return a COPY of the transactionEvents list.
    */

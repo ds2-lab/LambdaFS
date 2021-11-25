@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mysql.clusterj.ClusterJHelper;
+import io.hops.metrics.TransactionEvent;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
@@ -22,6 +23,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -39,6 +42,13 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.FORCE_RED
  */
 public class OpenWhiskHandler {
     public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class.getName());
+
+    /**
+     * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
+     * it is finished being created, so we store the TransactionEvent instances from those transactions here.
+     * Once the NameNode is created, we add these events to the NameNode instance.
+     */
+    public static ThreadLocal<Set<TransactionEvent>> temporaryEventSet = new ThreadLocal<>();
 
     /**
      * Used internally to determine whether this instance is warm or cold.
@@ -240,6 +250,16 @@ public class OpenWhiskHandler {
         result.setNameNodeId(serverlessNameNode.getId());
         LOG.debug("Getting/creating NN instance took: "
                 + DurationFormatUtils.formatDurationHMS(creationDuration));
+
+        // Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
+        // it is finished being created, so we store the TransactionEvent instances from those transactions in the
+        // temporaryEventsSet variable. So, we just check here if it is not null. If not, then we add the events
+        // to the NameNode (that was presumably just created). Then we clear the list.
+        Set<TransactionEvent> tempEvents = temporaryEventSet.get();
+        if (tempEvents != null) {
+            serverlessNameNode.addTransactionEvents(tempEvents);
+            tempEvents.clear();
+        }
 
         // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
         // from intermediate storage.
