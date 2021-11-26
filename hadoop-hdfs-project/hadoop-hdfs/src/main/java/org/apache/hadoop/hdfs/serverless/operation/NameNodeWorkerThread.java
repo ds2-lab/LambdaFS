@@ -273,6 +273,7 @@ public class NameNodeWorkerThread extends Thread {
 
                 LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
                 serverlessNameNodeInstance.getNamesystem().getMetadataCache().clearCurrentRequestCacheCounters();
+                serverlessNameNodeInstance.clearTransactionEvents();
                 TransactionsStats.getInstance().clearForServerless();
                 FileSystemTask<Serializable> prev = currentlyExecutingTasks.putIfAbsent(task.getTaskId(), task);
                 requestCurrentlyProcessing = task.getTaskId();
@@ -293,6 +294,7 @@ public class NameNodeWorkerThread extends Thread {
 
                     // Commit the statistics to this result.
                     workerResult.commitStatisticsPackages();
+                    workerResult.commitTransactionEvents(serverlessNameNodeInstance.getTransactionEvents());
                     success = true;
                 } catch (Exception ex) {
                     LOG.error("Worker thread encountered exception while executing file system operation " +
