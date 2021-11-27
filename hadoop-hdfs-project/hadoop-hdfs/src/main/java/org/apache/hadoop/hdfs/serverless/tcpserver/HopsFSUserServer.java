@@ -9,7 +9,9 @@ import com.google.gson.JsonParser;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -41,14 +43,7 @@ public class HopsFSUserServer {
     /**
      * The port on which the server is listening.
      */
-    private final int tcpPort;
-
-    /**
-     * The base name of the NameNode deployments. This is used to query our active connections.
-     * We can provide the function number of a name node, which will be appended to this base name in order to
-     * query our connections.
-     */
-    private final String baseFunctionName;
+    private int tcpPort;
 
     /**
      * Cache mapping of serverless function names to the connections to that particular serverless function.
@@ -108,9 +103,14 @@ public class HopsFSUserServer {
     private final int totalNumberOfDeployments;
 
     /**
+     * We need a reference to this so that we can tell it what TCP port we ultimated bound to.
+     */
+    private final ServerlessNameNodeClient client;
+
+    /**
      * Constructor.
      */
-    public HopsFSUserServer(Configuration conf) {
+    public HopsFSUserServer(Configuration conf, ServerlessNameNodeClient client) {
         server = new Server(16384, 16384) {
           /**
            * By providing our own connection implementation, we can store per-connection state
@@ -146,6 +146,7 @@ public class HopsFSUserServer {
         this.futureToNameNodeMapping = new ConcurrentHashMap<>();
         this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
         this.activeConnectionsPerDeployment = new ConcurrentHashMap<>();
+        this.client = client;
 
         // Populate the active connections mapping with default, empty hash maps for each deployment.
         for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {
@@ -157,9 +158,6 @@ public class HopsFSUserServer {
 
         // The format of the endpoint is something like https://domain:443/api/v1/web/whisk.system/default/<base_name>
         String[] endpointSplit = functionEndpoint.split("/");
-
-        // TODO: Change this hard-coded solution.
-        this.baseFunctionName = "/whisk.system/" + endpointSplit[endpointSplit.length - 1];
     }
 
     /**
@@ -186,13 +184,32 @@ public class HopsFSUserServer {
         // Bind to the specified TCP port so the server listens on that port.
         LOG.debug("[TCP SERVER] HopsFS Client TCP Server binding to port " + tcpPort + " now...");
 
-        try {
-            server.bind(tcpPort);
+        int maxPort = 1000;
+        int currentPort = tcpPort;
+        boolean success = false;
+        while (currentPort < maxPort && !success) {
+            try {
+                server.bind(currentPort);
+
+                if (tcpPort != currentPort) {
+                    LOG.warn("[TCP Server] Configuration specified port " + tcpPort +
+                            ", but we were unable to bind to that port. Instead, we are bound to port " + currentPort +
+                            ".");
+                    this.tcpPort = currentPort;
+                }
+
+                success = true;
+            } catch (BindException ex) {
+                LOG.error("[TCP Server] Failed to bind to port " + currentPort +
+                        ". Do you already have a server running on that port?");
+                currentPort++;
+            }
         }
-        catch (BindException ex) {
-            throw new IOException("[TCP SERVER] TCP Server encountered BindException while attempting to bind to port "
-                    + tcpPort + ". Do you already have a serving running on that port?");
-        }
+
+        if (!success)
+            throw new IOException("Failed to start TCP server. Could not successfully bind to any ports.");
+
+        client.setTcpServerPort(tcpPort);
     }
 
     /**

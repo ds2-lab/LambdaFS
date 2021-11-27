@@ -128,6 +128,12 @@ public abstract class ServerlessInvokerBase<T> {
     protected boolean tcpEnabled;
 
     /**
+     * The TCP port that we ultimately bound to. See the comment in 'ServerlessNameNodeClient' for its
+     * 'tcpServerPort' instance field for explanation as to why this field exists.
+     */
+    protected int tcpPort;
+
+    /**
      * The timeout, in milliseconds, for an HTTP request to a NameNode. This specifically
      * is the timeout for a connection to be established with the server. Timed-out requests
      * will be retried according to the maxHttpRetries instance variable.
@@ -184,6 +190,14 @@ public abstract class ServerlessInvokerBase<T> {
         } catch (GeneralSecurityException e) {
             LOG.error(e);
         }
+    }
+
+    public int getTcpPort() {
+        return tcpPort;
+    }
+
+    public void setTcpPort(int tcpPort) {
+        this.tcpPort = tcpPort;
     }
 
     /**
@@ -504,6 +518,8 @@ public abstract class ServerlessInvokerBase<T> {
 
         nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.DEBUG_NDB, debugEnabledNdb);
         nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.DEBUG_STRING_NDB, debugStringNdb);
+
+        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.TCP_PORT, tcpPort);
 
         nameNodeArgumentsJson.addProperty(
                 ServerlessNameNodeKeys.CLIENT_INTERNAL_IP, InvokerUtilities.getInternalIpAddress());

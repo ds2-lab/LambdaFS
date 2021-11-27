@@ -145,6 +145,10 @@ public class OpenWhiskHandler {
         // The arguments to the file system operation.
         JsonObject fsArgs = userArguments.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
 
+        int tcpPort = -1;
+        if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT))
+            tcpPort = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_PORT).getAsInt();
+
         // Flag that indicates whether this action was invoked by a client or a DataNode.
         boolean isClientInvoker = userArguments.getAsJsonPrimitive(
                 ServerlessNameNodeKeys.IS_CLIENT_INVOKER).getAsBoolean();
@@ -169,7 +173,7 @@ public class OpenWhiskHandler {
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
-                requestId, clientName, isClientInvoker, tcpEnabled);
+                requestId, clientName, isClientInvoker, tcpEnabled, tcpPort);
 
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
@@ -219,11 +223,15 @@ public class OpenWhiskHandler {
      *                  requests from being processed.
      * @param clientName The name of the client who invoked this OpenWhisk action. Comes from the DFSClient class.
      * @param isClientInvoker Flag which indicates whether this activation was invoked by a client or a DataNode.
+     * @param tcpPort The TCP port that the client who invoked us is using for their TCP server.
+     *                If the client is using multiple HopsFS client threads at the same time, then there will
+     *                presumably be multiple TCP servers, each listening on a different TCP port.
      * @return Result of executing NameNode code/operation/function execution.
      */
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                      String functionName, String clientIPAddress, String requestId,
-                                     String clientName, boolean isClientInvoker, boolean tcpEnabled) {
+                                     String clientName, boolean isClientInvoker, boolean tcpEnabled,
+                                     int tcpPort) {
         NameNodeResult result = new NameNodeResult(ServerlessNameNode.getFunctionNumberFromFunctionName(functionName),
                 requestId, "HTTP", -1);
 
@@ -347,7 +355,7 @@ public class OpenWhiskHandler {
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker && tcpEnabled) {
             ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
-                    clientName, clientIPAddress, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+                    clientName, clientIPAddress, tcpPort);
 
             try {
                 serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);

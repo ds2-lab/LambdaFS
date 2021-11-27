@@ -86,6 +86,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private final boolean tcpEnabled;
 
     /**
+     * The server port defaults to whatever is specified in the configuration. But if multiple threads are used,
+     * then conflicts will arise. So, the threads will try using different ports until one works (incrementing
+     * the one specified in configuration until one works). We communicate this port to NameNodes in the invocation
+     * payload so that they know how to connect to us.
+     */
+    private int tcpServerPort;
+
+    /**
      * For debugging, keep track of the operations we've performed.
      */
     private HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
@@ -109,7 +117,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         this.dfsClient = dfsClient;
 
-        this.tcpServer = new HopsFSUserServer(conf);
+        this.tcpServer = new HopsFSUserServer(conf, this);
         this.tcpServer.startServer();
     }
 
@@ -1667,5 +1675,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     @Override
     public long getEpochMS() throws IOException {
         return 0;
+    }
+
+    public int getTcpServerPort() {
+        return tcpServerPort;
+    }
+
+    /**
+     * IMPORTANT: This function also calls setTcpServerPort() on the ServerlessInvoker instance.
+     */
+    public void setTcpServerPort(int tcpServerPort) {
+        this.tcpServerPort = tcpServerPort;
+
+        this.serverlessInvoker.setTcpPort(tcpServerPort);
     }
 }

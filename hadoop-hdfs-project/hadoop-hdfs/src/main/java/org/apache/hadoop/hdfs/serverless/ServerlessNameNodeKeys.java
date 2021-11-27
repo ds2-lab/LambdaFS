@@ -50,6 +50,7 @@ public class ServerlessNameNodeKeys {
     public static final String COMMAND_LINE_ARGS = "command-line-arguments";
     public static final String DEBUG_NDB = "debugNdb";
     public static final String DEBUG_STRING_NDB = "debugStringNdb";
+    public static final String TCP_PORT = "TCP_PORT";
     public static final String CLIENT_INTERNAL_IP = "clientInternalIp";
     public static final String TCP_ENABLED = "tcpEnabled";
 
