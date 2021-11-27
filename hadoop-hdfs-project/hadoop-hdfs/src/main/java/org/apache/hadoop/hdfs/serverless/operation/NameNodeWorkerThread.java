@@ -107,14 +107,19 @@ public class NameNodeWorkerThread extends Thread {
     private final HashMap<String, Long> purgeRecords;
 
     /**
-     * The name of the serverless function in which this thread is executing.
+     * Time in milliseconds that we poll for tasks before giving up and performing routine activities.
      */
-    private final String functionName;
+    private final long pollTimeMilliseconds = 5000;
 
     /**
      * The ID of the NameNode that this thread is running in.
      */
     private final long nameNodeId;
+
+    /**
+     * Timestamp of the last time we performed the "routine activities". This is in milliseconds.
+     */
+    private long lastRoutineActivitiesTime;
 
     /**
      * The last time that the worker thread attempted to purge old results.
@@ -232,6 +237,8 @@ public class NameNodeWorkerThread extends Thread {
         // We use a persistent watcher to automatically get notified of changes in group membership.
         // tryUpdateActiveNameNodeList();
         tryUpdateFromIntermediateStorage();
+
+        this.lastRoutineActivitiesTime = Time.getUtcTime();
     }
 
     @Override
@@ -246,7 +253,7 @@ public class NameNodeWorkerThread extends Thread {
         FileSystemTask<Serializable> task = null;
         while(true) {
             try {
-                task = workQueue.poll(5000, TimeUnit.MILLISECONDS);
+                task = workQueue.poll(pollTimeMilliseconds, TimeUnit.MILLISECONDS);
 
                 if (task == null) {
                     doRoutineActivities();
@@ -327,7 +334,12 @@ public class NameNodeWorkerThread extends Thread {
                 previousResultCache.put(task.getTaskId(), previousResult);
                 previousResultPriorityQueue.add(previousResult);
 
-                doRoutineActivities();
+                long millisecondsSinceLastRoutineActivities = Time.getUtcTime() - lastRoutineActivitiesTime;
+                if (millisecondsSinceLastRoutineActivities >= pollTimeMilliseconds) {
+                    LOG.debug("Have not performed routine activities in " + millisecondsSinceLastRoutineActivities +
+                            " milliseconds. Performing now. Size of task queue: " + workQueue.size() + ".");
+                    doRoutineActivities();
+                }
             }
             catch (InterruptedException | IOException ex) {
                 LOG.error("Serverless NameNode Worker Thread was interrupted while running:", ex);
