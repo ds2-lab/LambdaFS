@@ -126,6 +126,7 @@ public class TransactionEvent implements Serializable {
             writer.write(requestId + ",");
             attempt.write(writer);
             writer.write("," + transactionStartTime + "," + transactionEndTime + "," + transactionId + "," + success);
+            writer.newLine();
         }
     }
 }
