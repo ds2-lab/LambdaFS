@@ -136,9 +136,10 @@ public abstract class HopsTransactionalRequestHandler
 
       tempEvents.add(this.transactionEvent);
     } else {
-      requestHandlerLOG.debug("Committing transaction event for transaction " + operationId + " now.");
       String requestId = serverlessNameNodeInstance.getRequestCurrentlyProcessing();
       this.transactionEvent.setRequestId(requestId);
+      requestHandlerLOG.debug("Committing transaction event for transaction " + operationId +
+              " now. Associated request ID: " + requestId);
       serverlessNameNodeInstance.addTransactionEvent(this.transactionEvent);
     }
   }
