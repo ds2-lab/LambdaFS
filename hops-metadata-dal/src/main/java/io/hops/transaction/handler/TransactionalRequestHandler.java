@@ -87,6 +87,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
     while (tryCount <= RETRY_COUNT) {
       TransactionAttempt transactionAttempt = new TransactionAttempt(tryCount);
       transactionEvent.addAttempt(transactionAttempt);
+
       long expWaitTime = exponentialBackoff();
       long txStartTime = System.currentTimeMillis();
       long oldTime = System.currentTimeMillis();
@@ -227,6 +228,12 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         }
       }
       catch (Throwable t) {
+        // If the commit start time is set, then we've entered the commit phase.
+        // Since we encountered an exception, we should end the commit phase here.
+        if (transactionAttempt.getCommitStart() > 0) {
+          transactionAttempt.setCommitEnd(getUtcTime());
+        }
+
         boolean suppressException = suppressFailureMsg(t, tryCount);
         if (!suppressException ) {
           String opName = !NDCWrapper.NDCEnabled() ? opType + " " : "";

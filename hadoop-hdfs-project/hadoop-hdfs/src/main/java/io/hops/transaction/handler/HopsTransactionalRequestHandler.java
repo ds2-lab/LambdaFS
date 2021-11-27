@@ -336,6 +336,8 @@ public abstract class HopsTransactionalRequestHandler
       throw new IllegalStateException(
               "Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
 
+    transactionEvent.setRequestId(serverlessNameNodeInstance.getRequestCurrentlyProcessing());
+
     // NOTE: The local deployment will NOT always be involved now that the subtree protocol uses this same code.
     //       Before the subtree protocol used this code, the only NNs that could modify an INode were those from
     //       the mapped deployment. As a result, the Leader NN's deployment would always be involved. But now that the
