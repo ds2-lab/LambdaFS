@@ -184,11 +184,12 @@ public class HopsFSUserServer {
         // Bind to the specified TCP port so the server listens on that port.
         LOG.debug("[TCP SERVER] HopsFS Client TCP Server binding to port " + tcpPort + " now...");
 
-        int maxPort = 1000;
+        int maxPort = tcpPort + 1000;
         int currentPort = tcpPort;
         boolean success = false;
         while (currentPort < maxPort && !success) {
             try {
+                LOG.debug("[TCP Server] Trying to bind to port " + currentPort + ".");
                 server.bind(currentPort);
 
                 if (tcpPort != currentPort) {
