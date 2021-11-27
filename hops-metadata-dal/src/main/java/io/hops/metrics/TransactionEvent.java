@@ -117,7 +117,8 @@ public class TransactionEvent implements Serializable {
     }
 
     public static String getHeader() {
-        return "requestId," + TransactionAttempt.getHeader() + ",transactionStart,transactionEnd,transactionId,success";
+        // return "requestId," + TransactionAttempt.getHeader() + ",transactionStart,transactionEnd,transactionId,success";
+        return TransactionAttempt.getHeader();
     }
 
     public void write(BufferedWriter writer) throws IOException {
