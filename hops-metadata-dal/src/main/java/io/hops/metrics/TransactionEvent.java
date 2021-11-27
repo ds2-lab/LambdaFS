@@ -118,12 +118,14 @@ public class TransactionEvent implements Serializable {
 
     public static String getHeader() {
         // return "requestId," + TransactionAttempt.getHeader() + ",transactionStart,transactionEnd,transactionId,success";
-        return TransactionAttempt.getHeader();
+        return "requestId," + TransactionAttempt.getHeader() + ",transactionStart,transactionEnd,transactionId,success";
     }
 
     public void write(BufferedWriter writer) throws IOException {
         for (TransactionAttempt attempt : attempts) {
+            writer.write(requestId + ",");
             attempt.write(writer);
+            writer.write("," + transactionStartTime + "," + transactionEndTime + "," + transactionId + "," + success);
         }
     }
 }
