@@ -383,9 +383,8 @@ public class NameNodeResult implements Serializable {
     }
 
     public void commitTransactionEvents(List<TransactionEvent> transactionEvents) {
-        LOG.debug("Committing transaction events for request " + requestId + " now...");
         if (transactionEvents != null) {
-            LOG.debug("Statistics package was NOT null. Serializing and encoding it now.");
+            LOG.debug("Serializing and encoding transaction events for request " + requestId + " now...");
             this.txEventsSerializedAndEncoded = serializeAndEncode(transactionEvents);
         }
     }

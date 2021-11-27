@@ -38,7 +38,6 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.zookeeper.GuestWatcherOption;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
@@ -122,7 +121,13 @@ public abstract class HopsTransactionalRequestHandler
 
   @Override
   public void commitEvents() {
-    if (serverlessNameNodeInstance == null) {
+    // If the local `serverlessNameNodeInstance` variable is null, then we try to grab the static instance
+    // from the ServerlessNameNode class directly. It is possible that both will be null, however.
+    ServerlessNameNode instance = (serverlessNameNodeInstance == null) ?
+            ServerlessNameNode.tryGetNameNodeInstance(false) :
+            serverlessNameNodeInstance;
+
+    if (instance == null) {
       requestHandlerLOG.warn("Serverless NameNode instance is null. Cannot commit events directly.");
       requestHandlerLOG.warn("Committing events to temporary, static variable.");
 
@@ -136,11 +141,11 @@ public abstract class HopsTransactionalRequestHandler
 
       tempEvents.add(this.transactionEvent);
     } else {
-      String requestId = serverlessNameNodeInstance.getRequestCurrentlyProcessing();
+      String requestId = instance.getRequestCurrentlyProcessing();
       this.transactionEvent.setRequestId(requestId);
       requestHandlerLOG.debug("Committing transaction event for transaction " + operationId +
               " now. Associated request ID: " + requestId);
-      serverlessNameNodeInstance.addTransactionEvent(this.transactionEvent);
+      instance.addTransactionEvent(this.transactionEvent);
     }
   }
 

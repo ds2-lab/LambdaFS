@@ -619,7 +619,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (instance != null)
       return instance;
 
-    throw new IllegalStateException("ServerlessNameNode instance does not exist!");
+    if (exceptOnFailure)
+      throw new IllegalStateException("ServerlessNameNode instance does not exist!");
+    else
+      return null;
   }
 
   private boolean checkPathLength(String src) {
