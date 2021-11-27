@@ -130,14 +130,12 @@ public class NameNodeWorkerThread extends Thread {
             Configuration conf,
             BlockingQueue<FileSystemTask<Serializable>> workQueue,
             ServerlessNameNode serverlessNameNodeInstance,
-            String functionName,
             long nameNodeId) {
         this.serverlessNameNodeInstance = serverlessNameNodeInstance;
         this.workQueue = workQueue;
         this.previousResultPriorityQueue = new PriorityQueue<PreviousResult>();
         this.previousResultCache = new HashMap<String, PreviousResult>();
         this.purgeRecords = new HashMap<String, Long>();
-        this.functionName = functionName;
         this.nameNodeId = nameNodeId;
 
         this.currentlyExecutingTasks = new ConcurrentHashMap<>();

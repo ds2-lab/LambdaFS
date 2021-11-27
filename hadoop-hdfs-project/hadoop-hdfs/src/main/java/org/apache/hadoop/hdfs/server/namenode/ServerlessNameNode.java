@@ -2216,8 +2216,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("Assigned new NN instance ID " + nameNodeID);
 
     // Create the thread and tell it to run!
-    workerThread = new NameNodeWorkerThread(conf, nameNodeWorkQueue, this,
-            functionName, this.nameNodeID);
+    workerThread = new NameNodeWorkerThread(conf, nameNodeWorkQueue, this, this.nameNodeID);
 
     LOG.debug("Started the NameNode worker thread.");
 
