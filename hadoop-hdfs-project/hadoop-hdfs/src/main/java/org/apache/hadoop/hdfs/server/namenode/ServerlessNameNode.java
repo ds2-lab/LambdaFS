@@ -233,7 +233,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * Note that BlockingQueue is thread safe.
    */
-  public BlockingQueue<FileSystemTask<Serializable>> nameNodeWorkQueue;
+  private BlockingQueue<FileSystemTask<Serializable>> nameNodeWorkQueue;
 
   /**
    * Added by Ben; mostly used for debugging (i.e., making sure the NameNode code that
