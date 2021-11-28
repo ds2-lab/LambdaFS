@@ -247,7 +247,15 @@ public class HopsFSUserServer {
                         LOG.debug("===== Message Contents =====");
                         for (String key : body.keySet()) {
                             try {
-                                LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
+                                // Don't print results, statistics packages, or transaction events as they're too long.
+                                if (key.equals(ServerlessNameNodeKeys.RESULT))
+                                    LOG.debug("     " + key + ": <RESULT>");
+                                else if (key.equals(ServerlessNameNodeKeys.STATISTICS_PACKAGE))
+                                    LOG.debug("     " + key + ": <STATISTICS PACKAGE>");
+                                else if (key.equals(ServerlessNameNodeKeys.TRANSACTION_EVENTS))
+                                    LOG.debug("     " + key + ": " + "<TRANSACTION EVENTS>");
+                                else
+                                    LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
                             } catch (ClassCastException ex) {
                                 LOG.debug("     " + key + ": " + body.getAsJsonArray(key).toString());
                             }
