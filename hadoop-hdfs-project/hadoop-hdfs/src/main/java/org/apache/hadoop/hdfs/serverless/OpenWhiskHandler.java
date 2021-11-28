@@ -294,8 +294,8 @@ public class OpenWhiskHandler {
         // After this, we will simply wait for the result to be completed before returning it to the user.
         Future<Serializable> newTask = null;
         try {
-            newTask = FileSystemTaskUtils.createAndEnqueueFileSystemTask(requestId, op, fsArgs,
-                    serverlessNameNode.getFunctionUriBase(), result, serverlessNameNode);
+            newTask = FileSystemTaskUtils.createAndEnqueueFileSystemTask(requestId, op, fsArgs, result,
+                    serverlessNameNode, redoEvenIfDuplicate);
 
             // We wait for the task to finish executing in a separate try-catch block so that, if there is
             // an exception, then we can log a specific message indicating where the exception occurred. If we

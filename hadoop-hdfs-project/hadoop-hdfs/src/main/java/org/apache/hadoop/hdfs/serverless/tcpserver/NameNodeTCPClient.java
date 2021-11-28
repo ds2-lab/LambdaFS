@@ -339,8 +339,8 @@ public class NameNodeTCPClient {
         // result to be computed before returning it to the user.
         Future<Serializable> newTask = null;
         try {
-            newTask = FileSystemTaskUtils.createAndEnqueueFileSystemTask(requestId, op, fsArgs, functionUriBase,
-                    tcpResult, serverlessNameNode);
+            newTask = FileSystemTaskUtils.createAndEnqueueFileSystemTask(requestId, op, fsArgs, tcpResult,
+                    serverlessNameNode, false);
         } catch (Exception ex) {
             LOG.error("Error encountered while creating file system task "
                     + requestId + " for operation '" + op + "':", ex);

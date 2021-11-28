@@ -270,13 +270,17 @@ public class NameNodeWorkerThread extends Thread {
                 workerResult.setDequeuedTime(Time.getUtcTime());
 
                 // Check if this is a duplicate task.
-                if (isTaskDuplicate(task)) {
+                if (isTaskDuplicate(task) && !task.getForceRedo()) {
                     handleDuplicateTask(task, workerResult);
                     doRoutineActivities();
                     continue;
                 }
 
-                LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
+                if (task.getForceRedo())
+                    LOG.debug("Task " + task.getTaskId() + " is being resubmitted (force_redo is TRUE).");
+                else
+                    LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
+
                 serverlessNameNodeInstance.getNamesystem().getMetadataCache().clearCurrentRequestCacheCounters();
                 serverlessNameNodeInstance.clearTransactionEvents();
                 TransactionsStats.getInstance().clearForServerless();
