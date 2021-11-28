@@ -16,6 +16,7 @@ import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
+import org.apache.hadoop.util.Time;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -332,6 +333,8 @@ public class NameNodeTCPClient {
         NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP",
                 serverlessNameNode.getId());
 
+        tcpResult.setFnStartTime(Time.getUtcTime());
+
         // Create a new task. After this, we assign it to the worker thread and wait for the
         // result to be computed before returning it to the user.
         Future<Serializable> newTask = null;
@@ -340,7 +343,7 @@ public class NameNodeTCPClient {
                     tcpResult, serverlessNameNode);
         } catch (Exception ex) {
             LOG.error("Error encountered while creating file system task "
-                    + requestId + " for operation " + op + ":", ex);
+                    + requestId + " for operation '" + op + "':", ex);
            tcpResult.addException(ex);
             // We don't want to continue as we already encountered a critical error, so just return.
            return tcpResult;
@@ -348,8 +351,13 @@ public class NameNodeTCPClient {
 
         // If we failed to create a new task for the desired file system operation, then we'll just throw
         // another exception indicating that we have nothing to execute, seeing as the task doesn't exist.
-        if (newTask == null)
-            throw new IllegalStateException("[TCP] Failed to create task for operation " + op);
+        if (newTask == null) {
+            LOG.error("[TCP] Failed to create task for operation '" + op + "'");
+            tcpResult.addException(new IllegalStateException("[TCP] Failed to create task for operation " + op));
+            return tcpResult;
+        }
+
+        tcpResult.setEnqueuedTime(Time.getUtcTime());
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
