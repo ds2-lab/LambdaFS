@@ -167,7 +167,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     public static String getHeader() {
         return "operation_name,request_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
                 "serverless_fn_end_time,result_received_time,serverless_fn_duration,deployment_number," +
-                "name_node_id,metadata_cache_hits,metadata_cache_misses";
+                "name_node_id,request_type,metadata_cache_hits,metadata_cache_misses";
     }
 
     @Override
