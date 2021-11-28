@@ -2430,7 +2430,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       OperationPerformed connectToDnOpPerf = new OperationPerformed("ConnectToDataNode",
               UUID.randomUUID().toString(), connectStart, connectEnd, connectStart, connectEnd,
               connectStart, connectEnd, 999, true, true,
-              0, 0, 0);
+              "TCP", 0, 0, 0);
       addOperationPerformed(connectToDnOpPerf);
       return ret;
     } finally {

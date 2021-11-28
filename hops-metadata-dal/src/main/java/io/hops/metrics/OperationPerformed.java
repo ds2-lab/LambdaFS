@@ -96,13 +96,19 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     private long nameNodeId;
 
+    /**
+     * Indicates whether the result was ultimately received via HTTP or TCP.
+     */
+    private String resultReceivedVia;
+
     public OperationPerformed(String operationName, String requestId,
                               long invokedAtTime, long resultReceivedTime,
                               long enqueuedTime, long dequeuedTime,
                               long serverlessFnStartTime, long serverlessFnEndTime,
                               int deployment, boolean issuedViaHttp,
-                              boolean issuedViaTcp, long nameNodeId,
-                              int metadataCacheMisses, int metadataCacheHits) {
+                              boolean issuedViaTcp, String resultReceivedVia,
+                              long nameNodeId, int metadataCacheMisses,
+                              int metadataCacheHits) {
         this.operationName = operationName;
         this.requestId = requestId;
         this.invokedAtTime = invokedAtTime;
@@ -119,6 +125,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.nameNodeId = nameNodeId;
         this.metadataCacheHits = metadataCacheHits;
         this.metadataCacheMisses = metadataCacheMisses;
+        this.resultReceivedVia = resultReceivedVia;
     }
 
     public void setNameNodeId(long nameNodeId) {
@@ -165,7 +172,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     @Override
     public String toString() {
-        String formatString = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-5s %-5s";
+        String formatString = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-6s %-5s %-5s";
         return String.format(formatString, operationName, requestId,
                 Instant.ofEpochMilli(invokedAtTime).toString(),             // Client invokes NN.
                 Instant.ofEpochMilli(serverlessFnStartTime).toString(),     // NN begins executing.
@@ -174,7 +181,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 Instant.ofEpochMilli(serverlessFnEndTime).toString(),       // NN returns result to client.
                 Instant.ofEpochMilli(resultReceivedTime).toString(),        // Client receives result from NN.
                 serverlessFunctionDuration, deployment, nameNodeId,
-                metadataCacheHits, metadataCacheMisses);
+                resultReceivedVia, metadataCacheHits, metadataCacheMisses);
     }
 
     /**
@@ -252,7 +259,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * Write this instance to a file in CSV format (using tabs to separate).
      */
     public void write(BufferedWriter writer) throws IOException {
-        String formatString = "%-16s,%-38s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-8s,%-3s,%-22s,%-5s,%-5s";
+        String formatString = "%-16s,%-38s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-8s,%-3s,%-22s,%-6s,%-5s,%-5s";
         writer.write(String.format(formatString, operationName, requestId,
                 invokedAtTime,             // Client invokes NN.
                 serverlessFnStartTime,     // NN begins executing.
@@ -261,7 +268,15 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 serverlessFnEndTime,       // NN returns result to client.
                 resultReceivedTime,        // Client receives result from NN.
                 serverlessFunctionDuration, deployment, nameNodeId,
-                metadataCacheHits, metadataCacheMisses));
+                resultReceivedVia, metadataCacheHits, metadataCacheMisses));
         writer.newLine();
+    }
+
+    public String getResultReceivedVia() {
+        return resultReceivedVia;
+    }
+
+    public void setResultReceivedVia(String resultReceivedVia) {
+        this.resultReceivedVia = resultReceivedVia;
     }
 }

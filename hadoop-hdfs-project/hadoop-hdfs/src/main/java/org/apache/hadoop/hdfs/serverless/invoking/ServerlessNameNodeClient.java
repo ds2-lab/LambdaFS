@@ -213,8 +213,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
                 startTime, Time.getUtcTime(), enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
-                deployment, true, true, nameNodeId,
-                cacheMisses, cacheHits);
+                deployment, true, true,
+                response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(), nameNodeId, cacheMisses, cacheHits);
         operationsPerformed.put(requestId, operationPerformed);
 
         return response;
@@ -294,7 +294,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
                 opStart, -1L, -1L, -1L, -1L, -1L,
-                targetDeployment, true, true, 0,
+                targetDeployment, true, true, "N/A", 0,
                 -1, -1);
         operationsPerformed.put(requestId, operationPerformed);
 
@@ -489,6 +489,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 operationPerformed.setRequestEnqueuedAtTime(enqueuedAt);
                 operationPerformed.setResultBeganExecutingTime(dequeuedAt);
+
+                operationPerformed.setResultReceivedVia(
+                        responseJson.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString());
 
                 return responseJson;
             } catch (ExecutionException | InterruptedException ex) {
@@ -1342,7 +1345,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         Time.getUtcTime(), Time.getUtcTime(),
                         Time.getUtcTime(), Time.getUtcTime(),
                         Time.getUtcTime(), Time.getUtcTime(),
-                        deploymentNumber, true, true, -1, 0, 0);
+                        deploymentNumber, true, true, "N/A",
+                        -1, 0, 0);
                 operationsPerformed.put(requestId, operationPerformed);
 
                 // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
@@ -1368,7 +1372,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 = new OperationPerformed("ping", requestId,
                 Time.getUtcTime(), -1L, -1L,
                 -1L, -1L, -1L,
-                targetDeployment, true, true,
+                targetDeployment, true, true, "N/A",
                 -1, 0, 0);
         operationsPerformed.put(requestId, operationPerformed);
 
