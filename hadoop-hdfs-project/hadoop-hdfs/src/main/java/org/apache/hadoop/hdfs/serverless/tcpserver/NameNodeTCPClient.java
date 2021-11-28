@@ -388,6 +388,7 @@ public class NameNodeTCPClient {
             // We don't have to return here as the next instruction is to return.
         }
 
+        tcpResult.setFnEndTime(Time.getUtcTime());
         return tcpResult;
     }
 
