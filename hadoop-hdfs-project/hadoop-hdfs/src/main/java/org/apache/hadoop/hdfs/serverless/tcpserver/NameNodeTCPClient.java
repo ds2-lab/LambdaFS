@@ -227,7 +227,8 @@ public class NameNodeTCPClient {
                 NameNodeResult tcpResult;
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
-                    LOG.debug("[TCP Client] Received work assignment from " + connection.getRemoteAddressTCP());
+                    LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " +
+                            connection.getRemoteAddressTCP());
                     JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
                     tcpResult = handleWorkAssignment(jsonObject);
                 }
