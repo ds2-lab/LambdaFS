@@ -224,11 +224,10 @@ public class NameNodeTCPClient {
              * @param object The object that the client sent to us.
              */
             public void received(Connection connection, Object object) {
-                LOG.debug("[TCP Client] Received message from connection " + connection.toString());
-
                 NameNodeResult tcpResult;
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
+                    LOG.debug("[TCP Client] Received work assignment from " + connection.getRemoteAddressTCP());
                     JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
                     tcpResult = handleWorkAssignment(jsonObject);
                 }

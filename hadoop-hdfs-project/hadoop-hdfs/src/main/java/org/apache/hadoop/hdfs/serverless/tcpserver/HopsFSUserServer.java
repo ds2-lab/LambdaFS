@@ -358,10 +358,11 @@ public class HopsFSUserServer {
                 NameNodeConnection connection = (NameNodeConnection)conn;
 
                 if (connection.name != -1) {
-                    LOG.debug("[TCP SERVER] Connection to NN " + connection.name + " lost.");
+                    int mappedDeploymentNumber = nameNodeIdToDeploymentMapping.get(connection.name);
+                    LOG.debug("[TCP SERVER] Connection to NN " + connection.name + " from deployment #" +
+                                    mappedDeploymentNumber + " lost.");
                     allActiveConnections.remove(connection.name);
 
-                    int mappedDeploymentNumber = nameNodeIdToDeploymentMapping.get(connection.name);
                     ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                             activeConnectionsPerDeployment.get(mappedDeploymentNumber);
                     deploymentConnections.remove(connection.name);
