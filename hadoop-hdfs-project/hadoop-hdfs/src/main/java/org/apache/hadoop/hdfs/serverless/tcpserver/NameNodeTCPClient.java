@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -182,8 +183,8 @@ public class NameNodeTCPClient {
             return false;
         }
 
-        LOG.debug("Establishing connection with new Serverless HopsFS client " + newClient + " now...");
-
+        LOG.debug("Adding new TCP Client: " + newClient + ". Existing number of clients: " +
+                tcpClients.size() + ". Existing clients: " + StringUtils.join(tcpClients.keys(), ", ") + ".");
 
         // We pass the writeBuffer and objectBuffer arguments to the Client constructor.
         // Objects are serialized to the write buffer where the bytes are queued until they can
