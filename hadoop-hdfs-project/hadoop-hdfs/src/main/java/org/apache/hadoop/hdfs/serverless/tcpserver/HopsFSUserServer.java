@@ -110,10 +110,15 @@ public class HopsFSUserServer {
     private final ServerlessNameNodeClient client;
 
     /**
+     * Sizes to use for TCP server buffers.
+     */
+    private static final int bufferSizes = 512000;
+
+    /**
      * Constructor.
      */
     public HopsFSUserServer(Configuration conf, ServerlessNameNodeClient client) {
-        server = new Server(64000, 64000) {
+        server = new Server(bufferSizes, bufferSizes) {
           /**
            * By providing our own connection implementation, we can store per-connection state
            * without a connection ID to perform state look-up.
