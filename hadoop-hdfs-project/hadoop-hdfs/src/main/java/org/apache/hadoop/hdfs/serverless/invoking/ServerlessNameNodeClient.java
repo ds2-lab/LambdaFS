@@ -250,6 +250,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         opEnd, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime, targetDeployment, true,
                         true, "HTTP", nameNodeId, cacheHits, cacheMisses);
                 operationsPerformed.put(requestId, operationPerformed);
+
+                return response;
             }
         }
 
