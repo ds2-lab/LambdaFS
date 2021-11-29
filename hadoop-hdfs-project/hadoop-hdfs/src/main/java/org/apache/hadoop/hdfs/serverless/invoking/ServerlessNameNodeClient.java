@@ -31,6 +31,7 @@ import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.hadoop.util.Time;
 
 import java.io.FileNotFoundException;
@@ -41,6 +42,7 @@ import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT;
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 
 /**
  * This serves as an adapter between the DFSClient interface and the serverless NameNode API.
@@ -126,6 +128,135 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     /**
+     * Issue a TCP request to the NameNode, instructing it to perform a certain operation.
+     * This function will only issue a TCP request. If the TCP connection is lost mid-operation, then
+     * the request is re-submitted via HTTP.
+     *
+     * @param operationName The name of the FS operation that the NameNode should perform.
+     * @param opArguments The arguments to be passed to the specified file system operation.
+     * @param targetDeployment The deployment number of the serverless NameNode deployment associated with the
+     *                             target file or directory.
+     * @return The response from the NameNode.
+     */
+    private JsonObject issueTCPRequest(String operationName,
+                                       ArgumentContainer opArguments,
+                                       int targetDeployment)
+            throws InterruptedException, ExecutionException, IOException {
+        long opStart = Time.getUtcTime();
+        String requestId = UUID.randomUUID().toString();
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
+        payload.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
+        payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
+
+        ExponentialBackOff exponentialBackOff = new ExponentialBackOff.Builder()
+                .setMaximumRetries(5)
+                .setInitialIntervalMillis(1000)
+                .setMaximumIntervalMillis(5000)
+                .setRandomizationFactor(0.50)
+                .setMultiplier(2.0)
+                .build();
+        long backoffInterval = exponentialBackOff.getBackOffInMillis();
+        while (backoffInterval >= 0) {
+            JsonObject response;
+
+            try {
+                LOG.debug("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
+                        requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" +
+                        exponentialBackOff.getMaximumRetries() + ". Time elapsed so far: " +
+                        (Time.getUtcTime() - opStart) + " ms.");
+                response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload,
+                        serverlessInvoker.httpTimeoutMilliseconds);
+
+                // After receiving a response, we need to check if it is a cancellation message or not.
+                // Cancellation messages are posted by the TCP server if the TCP connection is terminated unexpectedly.
+                // If we receive a cancellation message, then we need to fall back to HTTP. To do this, we'll just
+                // throw an IOException here. It will be caught by the 'catch' clause, which will transparently
+                // fall back to HTTP.
+                if (response.has(CANCELLED) && response.get(CANCELLED).getAsBoolean()) {
+                    // We add this argument so that the NameNode knows it must redo the operation,
+                    // even though it has potentially seen it before.
+                    opArguments.addPrimitive(FORCE_REDO, true);
+
+                    // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
+                    throw new IOException("The TCP future for request " + requestId + " (operation = " + operationName +
+                            ") has been cancelled. Reason: " + response.get(REASON).getAsString() + ".");
+                }
+
+                long opEnd = Time.getUtcTime();
+
+                // Collect and save/record metrics.
+                long nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
+                int cacheHits = response.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
+                int cacheMisses = response.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
+                long fnStartTime = response.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
+                long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
+                long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
+                long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
+                OperationPerformed operationPerformed = new OperationPerformed(operationName, requestId, opStart,
+                        opEnd, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime, targetDeployment, false,
+                        true, "TCP", nameNodeId, cacheHits, cacheMisses);
+                operationsPerformed.put(requestId, operationPerformed);
+
+                return response;
+            } catch (TimeoutException ex) {
+                LOG.error("Encountered timeout exception while waiting for TCP response:", ex);
+                LOG.error("Sleeping for " + backoffInterval + " seconds before retrying...");
+                try {
+                    Thread.sleep(backoffInterval);
+                } catch (InterruptedException e) {
+                    LOG.error("Encountered exception while sleeping during exponential backoff:", e);
+                }
+
+                backoffInterval = exponentialBackOff.getBackOffInMillis();
+            } catch (IOException ex) {
+                // There are two reasons an IOException may occur for which we can handle things "cleanly".
+                //
+                // The first is when we go to issue the TCP request and find that there are actually no available
+                // connections. This can occur if the TCP connection(s) were closed in between when we checked if
+                // any existed and when we went to actually issue the TCP request.
+                //
+                // The second is when the TCP connection is closed AFTER we have issued the request, but before we
+                // receive a response from the NameNode for the request.
+                //
+                // In either scenario, we simply fall back to HTTP.
+                LOG.error("Encountered IOException while trying to issue TCP request for operation " +
+                        operationName + ":", ex);
+                LOG.error("Falling back to HTTP instead. Time elapsed: " + (Time.getUtcTime() - opStart) + ".");
+
+                // Issue the HTTP request. This function will handle retries and timeouts.
+                response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                        operationName,
+                        dfsClient.serverlessEndpoint,
+                        null, // We do not have any additional/non-default arguments to pass to the NN.
+                        opArguments,
+                        requestId,
+                        targetDeployment);
+
+                long opEnd = Time.getUtcTime();
+                LOG.debug("Received result from NameNode after falling back to HTTP for operation " +
+                        operationName + ". Time elapsed: " + (opEnd - opStart) + ".");
+
+                // Collect and save/record metrics.
+                long nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
+                int cacheHits = response.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
+                int cacheMisses = response.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
+                long fnStartTime = response.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
+                long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
+                long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
+                long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
+                OperationPerformed operationPerformed = new OperationPerformed(operationName, requestId, opStart,
+                        opEnd, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime, targetDeployment, true,
+                        true, "HTTP", nameNodeId, cacheHits, cacheMisses);
+                operationsPerformed.put(requestId, operationPerformed);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Perform an HTTP invocation of a serverless name node function concurrently with a TCP request to the same
      * Serverless NameNode, if a connection to that NameNode already exists. If no such connection exists, then only
      * the HTTP request will be issued.
@@ -145,11 +276,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             ArgumentContainer opArguments) throws IOException, InterruptedException, ExecutionException {
         // Check if there's a source directory parameter, as this is the file or directory that could
         // potentially be mapped to a serverless function.
-        Object sourceObject = opArguments.get(ServerlessNameNodeKeys.SRC);
+        Object srcArgument = opArguments.get(ServerlessNameNodeKeys.SRC);
 
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
-        if (tcpEnabled && sourceObject instanceof String) {
-            String sourceFileOrDirectory = (String)sourceObject;
+        if (tcpEnabled && srcArgument instanceof String) {
+            String sourceFileOrDirectory = (String)srcArgument;
 
             // Next, let's see if we have an entry in our cache for this file/directory.
             int mappedFunctionNumber = serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
@@ -157,12 +288,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
             // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
             if (mappedFunctionNumber != -1 && tcpServer.connectionExists(mappedFunctionNumber)) {
-                return issueConcurrentTcpHttpRequests(
-                        operationName,
-                        serverlessEndpoint,
-                        nameNodeArguments,
-                        opArguments,
-                        mappedFunctionNumber);
+                return issueTCPRequest(operationName, opArguments, mappedFunctionNumber);
+
+                /*return issueConcurrentTcpHttpRequests(
+                        operationName, serverlessEndpoint, nameNodeArguments, opArguments, mappedFunctionNumber);*/
             } else {
                 LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " +
                         mappedFunctionNumber + ". TCP connection exists: " +
@@ -254,15 +383,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         }
 
         System.out.println("====================== Operations Performed ======================");
-//        TextTable textTable = new TextTable(columnNames, data);
-//        textTable.setAddRowNumbering(true);
-//        textTable.setSort(1);
-//        textTable.printTable();
-
-
         System.out.println("Number performed: " + operationsPerformed.size());
-//        String format = "%-32s %-24s %-4s %-3s";
-//        LOG.debug(String.format(format, "Operation Name", "Timestamp", "HTTP", "TCP"));
         for (OperationPerformed operationPerformed : opsPerformedList)
             System.out.println(operationPerformed.toString());
         System.out.println("==================================================================");
@@ -312,7 +433,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
 
             // We're effectively wrapping a Future in a Future here...
-            return tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload);
+            return tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload, -1);
         });
 
         LOG.debug("Successfully submitted TCP request. Submitting HTTP request now...");
@@ -399,8 +520,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         LOG.debug("Seeing as the TCP request has been cancelled, we must resubmit via HTTP.");
 
                         // The 'FORCE_REDO' key would only ever be present with a 'true' value.
-                        if (!(opArguments.has(ServerlessNameNodeKeys.FORCE_REDO)))
-                            opArguments.addPrimitive(ServerlessNameNodeKeys.FORCE_REDO, true);
+                        if (!(opArguments.has(FORCE_REDO)))
+                            opArguments.addPrimitive(FORCE_REDO, true);
 
                         // Resubmit the HTTP request.
                         completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
@@ -414,8 +535,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     }
                     continue;
                 }
-                else if (responseJson.has(ServerlessNameNodeKeys.CANCELLED) &&
-                        responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.CANCELLED).getAsBoolean()) {
+                else if (responseJson.has(CANCELLED) &&
+                        responseJson.getAsJsonPrimitive(CANCELLED).getAsBoolean()) {
                     LOG.debug("The TCP future for request " + requestId + " has been cancelled. Reason: " +
                             responseJson.get(ServerlessNameNodeKeys.REASON).getAsString());
 
@@ -431,8 +552,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         LOG.debug("Resubmitting request " + requestId + "(op=" + operationName + ") via HTTP now...");
 
                         // The 'FORCE_REDO' key would only ever be present with a 'true' value.
-                        if (!(opArguments.has(ServerlessNameNodeKeys.FORCE_REDO)))
-                            opArguments.addPrimitive(ServerlessNameNodeKeys.FORCE_REDO, true);
+                        if (!(opArguments.has(FORCE_REDO)))
+                            opArguments.addPrimitive(FORCE_REDO, true);
 
                         // Resubmit the HTTP request.
                         completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(

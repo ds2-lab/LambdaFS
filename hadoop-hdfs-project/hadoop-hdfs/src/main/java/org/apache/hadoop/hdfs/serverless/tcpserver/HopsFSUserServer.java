@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_RESULT;
@@ -709,20 +711,25 @@ public class HopsFSUserServer {
      * @param deploymentNumber The NameNode to issue a request to.
      * @param bypassCheck Do not check if the connection exists.
      * @param payload The payload to send to the NameNode in the TCP request.
+     * @param timeout If positive, then wait for future to resolve with a timeout.
+     *                If zero, then this will return immediately if the future is not available.
+     *                If negative, then block indefinitely, waiting for the future to resolve.
      * @return The response from the NameNode, or null if the request failed for some reason.
      */
-    public JsonObject issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, JsonObject payload)
-            throws ExecutionException, InterruptedException {
+    public JsonObject issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, JsonObject payload, int timeout)
+            throws ExecutionException, InterruptedException, TimeoutException, IOException {
         RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck, payload);
 
-        if (requestResponseFuture == null) {
-            LOG.error("Issuing TCP request returned null instead of future. Must have been no connections.");
-            return null;
-        }
+        if (requestResponseFuture == null)
+            throw new IOException("Issuing TCP request returned null instead of future. Must have been no connections.");
 
         LOG.debug("[TCP SERVER] Waiting for result from future for request " + requestResponseFuture.getRequestId()
                 + ", associated serverless function NameNode " + deploymentNumber);
-        return requestResponseFuture.get();
+
+        if (timeout >= 0)
+            return requestResponseFuture.get(timeout, TimeUnit.MILLISECONDS);
+        else
+            return requestResponseFuture.get();
     }
 
     /**
