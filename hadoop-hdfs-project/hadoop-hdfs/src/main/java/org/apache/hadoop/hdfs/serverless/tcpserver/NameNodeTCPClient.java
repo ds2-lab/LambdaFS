@@ -199,6 +199,14 @@ public class NameNodeTCPClient {
         // sent or received.
         Client tcpClient = new Client(writeBufferSize, objectBufferSize);
 
+        // Add an entry to the TCP Clients map now so that we do not try to connect again while we're
+        // in the process of connecting.
+        Client existingClient = tcpClients.putIfAbsent(newClient, tcpClient);
+        if (existingClient != null) {
+            LOG.warn("Actually, NameNodeTCPClient already has a connection to client " + newClient);
+            return false;
+        }
+
         // Start the client in its own thread.
         // new Thread(tcpClient).start();
         tcpClient.start();
@@ -312,10 +320,11 @@ public class NameNodeTCPClient {
             // Now that we've registered the classes to be transferred, we can register with the server.
             registerWithClient(tcpClient);
 
-            tcpClients.put(newClient, tcpClient);
-
             return true;
         } else {
+            // Remove the entry that we added from the TCP client mapping. The connection establishment failed,
+            // so we need to remove the record so that we may try again in the future.
+            tcpClients.remove(newClient);
             throw new IOException("Failed to connect to client at " + newClient.getClientIp() + ":" +
                     newClient.getClientPort());
         }
