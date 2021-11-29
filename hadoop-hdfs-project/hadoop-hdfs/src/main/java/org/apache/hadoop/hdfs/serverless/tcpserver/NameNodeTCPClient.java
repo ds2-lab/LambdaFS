@@ -251,8 +251,7 @@ public class NameNodeTCPClient {
                         ServerlessClientServerUtilities.OPERATION_RESULT,
                         serverlessNameNode.getNamesystem().getMetadataCache()));
 
-                // LOG.debug("[TCP Client] Sending the following JSON string to client at " + tcpClient.getRemoteAddressTCP()
-                //    + ": " + jsonString);
+                LOG.debug("[TCP Client] Sending result to client at " + tcpClient.getRemoteAddressTCP() + " now...");
                 int bytesSent = tcpClient.sendTCP(jsonString);
 
                 LOG.debug("[TCP Client] Sent " + bytesSent + " bytes to HopsFS client at " + tcpClient.getRemoteAddressTCP());
