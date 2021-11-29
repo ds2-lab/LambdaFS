@@ -10,6 +10,7 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.DuplicateRequest;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
 import org.apache.hadoop.util.Time;
 import org.apache.log4j.Level;
@@ -357,13 +358,14 @@ public class OpenWhiskHandler {
             ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
                     clientName, clientIPAddress, tcpPort);
 
+            final NameNodeTCPClient tcpClient = serverlessNameNode.getNameNodeTcpClient();
             // Do this in a separate thread so that we can return the result back to the user immediately.
             new Thread(() -> {
                 try {
                     LOG.debug("Attempting to connect to client " + serverlessHopsFSClient + " in separate thread.");
-                    serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
+                    tcpClient.addClient(serverlessHopsFSClient);
                 } catch (IOException ex) {
-                    result.addException(ex);
+                    LOG.error("Encountered exception while connecting to client " + serverlessHopsFSClient + ":", ex);
                 }
             }).start();
         } else if (!tcpEnabled) // Just so we can print a debug message indicating that we're not doing TCP.
