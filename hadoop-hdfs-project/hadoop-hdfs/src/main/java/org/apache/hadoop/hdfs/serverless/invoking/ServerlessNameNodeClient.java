@@ -356,6 +356,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         return new ArrayList<>(operationsPerformed.values());
     }
 
+    /**
+     * Clear the collection of operations performed.
+     */
+    public void clearOperationsPerformed() {
+        this.operationsPerformed.clear();
+    }
+
     public void addOperationPerformed(OperationPerformed operationPerformed) {
         operationsPerformed.put(operationPerformed.getRequestId(), operationPerformed);
     }

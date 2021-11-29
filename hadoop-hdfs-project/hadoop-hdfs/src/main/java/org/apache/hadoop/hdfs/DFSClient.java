@@ -272,8 +272,24 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * Clear the collection of statistics packages.
    */
   public void clearStatisticsPackages() {
-    LOG.debug("Clearing statistics packages.");
     this.serverlessInvoker.getStatisticsPackages().clear();
+  }
+
+  /**
+   * Clear the mapping of transaction events.
+   */
+  public void clearTransactionStatistics() {
+    this.serverlessInvoker.getTransactionEvents().clear();
+  }
+
+  /**
+   * Clear the operations performed.
+   */
+  public void clearOperationsPerformed() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient) namenode;
+      client.clearOperationsPerformed();
+    }
   }
 
   /**

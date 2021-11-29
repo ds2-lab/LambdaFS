@@ -1182,6 +1182,30 @@ public class DistributedFileSystem extends FileSystem {
     return dfs.primitiveMkdir(getPathName(f), absolutePermission);
   }
 
+  /**
+   * Optionally clear transaction statistics, operations performed, and statistics packages.
+   *
+   * @param clearStatisticsPackages If true, then clear the statistics packages.
+   * @param clearOperationsPerformed If true, then clear the 'operations performed' records.
+   * @param clearTransactionStatistics If true, then clear the transaction statistics/events records.
+   */
+  public void clearStatistics(boolean clearTransactionStatistics, boolean clearOperationsPerformed,
+                              boolean clearStatisticsPackages) {
+    if (clearTransactionStatistics) {
+      LOG.debug("Clearing transaction statistics now...");
+      this.dfs.clearTransactionStatistics();
+    }
+
+    if (clearOperationsPerformed) {
+      LOG.debug("Clearing 'operations performed' records now...");
+      this.dfs.clearOperationsPerformed();
+    }
+
+    if (clearStatisticsPackages) {
+      LOG.debug("Clearing statistics packages now...");
+      this.dfs.clearStatisticsPackages();
+    }
+  }
 
   @Override
   public void close() throws IOException {
