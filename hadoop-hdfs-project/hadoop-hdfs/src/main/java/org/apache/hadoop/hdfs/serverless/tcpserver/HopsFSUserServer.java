@@ -15,6 +15,7 @@ import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 
 import java.io.IOException;
 import java.net.BindException;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -387,7 +388,11 @@ public class HopsFSUserServer {
                         }
                     }
                 } else {
-                    LOG.warn("[TCP SERVER] Lost connection to unregistered NameNode.");
+                    InetSocketAddress address = conn.getRemoteAddressTCP();
+                    if (address == null)
+                        LOG.warn("[TCP SERVER] Lost connection to unregistered NameNode.");
+                    else
+                        LOG.warn("[TCP SERVER] Lost connection to unregistered NameNode at " + address);
                 }
             }
         });
