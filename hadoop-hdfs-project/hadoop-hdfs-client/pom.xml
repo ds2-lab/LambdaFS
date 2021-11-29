@@ -54,6 +54,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <groupId>io.hops</groupId>
       <artifactId>hadoop-auth</artifactId>
       <scope>compile</scope>
+      <version>3.2.0.3-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>javax.ws.rs</groupId>
