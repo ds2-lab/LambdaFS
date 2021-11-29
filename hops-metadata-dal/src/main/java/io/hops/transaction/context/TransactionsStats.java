@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -48,8 +49,10 @@ public class TransactionsStats {
    */
   public ServerlessStatisticsPackage exportForServerless(String requestId) {
     LOG.debug("Exporting " + transactionStats.size() + " transaction statistics and " +
-            resolvingCacheStats.size() + " resolving cache statistics for request " + requestId + " now.");
-    return new ServerlessStatisticsPackage(requestId, transactionStats, resolvingCacheStats);
+            0 + " resolving cache statistics for request " + requestId + " now.");
+            // resolvingCacheStats.size() + " resolving cache statistics for request " + requestId + " now.");
+    // FOR NOW, WE ARE NEVER EXPORTING RESOLVING CACHE STATISTICS.
+    return new ServerlessStatisticsPackage(requestId, transactionStats, new ArrayList<>());
   }
 
   /**
