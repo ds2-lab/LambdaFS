@@ -168,6 +168,9 @@ public class NameNodeTCPClient {
 
     /**
      * Register a new Serverless HopsFS client with the NameNode and establish a TCP connection with the new client.
+     *
+     * This function is thread safe.
+     *
      * @param newClient The new Serverless HopsFS client.
      * @return true if the connection was established successfully,
      * false if a connection with that client already exists.

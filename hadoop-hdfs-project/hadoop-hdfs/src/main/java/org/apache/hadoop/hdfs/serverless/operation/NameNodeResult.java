@@ -231,11 +231,12 @@ public class NameNodeResult implements Serializable {
 
             int counter = 1;
             for (Throwable ex : exceptions) {
+                builder.append("Exception #");
                 builder.append(counter);
                 builder.append(": ");
                 builder.append(ex.getClass().getSimpleName());
                 builder.append(": ");
-                builder.append(ex.getCause());
+                builder.append(ex.getMessage());
                 builder.append("\n");
                 counter++;
             }

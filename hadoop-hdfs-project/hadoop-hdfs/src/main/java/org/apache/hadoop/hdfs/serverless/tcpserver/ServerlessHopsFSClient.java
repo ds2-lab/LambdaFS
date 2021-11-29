@@ -121,8 +121,8 @@ public class ServerlessHopsFSClient implements Serializable {
         final int prime = 31;
         int result = 1;
 
-        result = prime * result + ((clientId != null) ? 0 : clientId.hashCode());
-        result = prime * result + ((clientIp != null) ? 0 : clientIp.hashCode());
+        result = prime * result + ((clientId != null) ? clientId.hashCode() : 0);
+        result = prime * result + ((clientIp != null) ? clientIp.hashCode() : 0);
         result = prime * result + clientPort;
 
         return result;
@@ -130,6 +130,6 @@ public class ServerlessHopsFSClient implements Serializable {
 
     @Override
     public String toString() {
-        return "ServerlessHopsFSClient[ID: " + clientId + ", IP: " + clientIp + ", Port: " + clientPort + "]";
+        return "ServerlessHopsFSClient(ID: " + clientId + ", IP: " + clientIp + ", Port: " + clientPort + ")";
     }
 }

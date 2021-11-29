@@ -357,11 +357,15 @@ public class OpenWhiskHandler {
             ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
                     clientName, clientIPAddress, tcpPort);
 
-            try {
-                serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
-            } catch (IOException ex) {
-                result.addException(ex);
-            }
+            // Do this in a separate thread so that we can return the result back to the user immediately.
+            new Thread(() -> {
+                try {
+                    LOG.debug("Attempting to connect to client " + serverlessHopsFSClient + " in separate thread.");
+                    serverlessNameNode.getNameNodeTcpClient().addClient(serverlessHopsFSClient);
+                } catch (IOException ex) {
+                    result.addException(ex);
+                }
+            }).start();
         } else if (!tcpEnabled) // Just so we can print a debug message indicating that we're not doing TCP.
             LOG.debug("TCP is DISABLED. Will not try to connect to the client.");
 
