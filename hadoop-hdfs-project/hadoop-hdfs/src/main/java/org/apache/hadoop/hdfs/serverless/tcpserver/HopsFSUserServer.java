@@ -567,7 +567,7 @@ public class HopsFSUserServer {
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
         if (deploymentConnections == null)
-            throw new IllegalStateException("Deployment connections is null for deployment " + deploymentNumber);
+            throw new IllegalStateException("Mapping of NameNode IDs to associated TCP connections is null for deployment " + deploymentNumber);
 
         return deploymentConnections.size() > 0;
     }

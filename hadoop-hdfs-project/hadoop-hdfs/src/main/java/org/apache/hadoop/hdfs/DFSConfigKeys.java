@@ -84,7 +84,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * Serverless HopsFS cluster.
    */
   public static final String SERVERLESS_MAX_DEPLOYMENTS = "serverless.deployments.max";
-  public static final int SERVERLESS_MAX_DEPLOYMENTS_DEFAULT = 1;
+  public static final int SERVERLESS_MAX_DEPLOYMENTS_DEFAULT = 3;
 
   public static final String SERVERLESS_METADATA_CACHE_REDIS_ENDPOINT = "serverless.redis.endpoint";
   public static final String SERVERLESS_METADATA_CACHE_REDIS_ENDPOINT_DEFAULT = "127.0.0.1";
