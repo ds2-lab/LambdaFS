@@ -162,8 +162,7 @@ public class HopsFSUserServer {
             activeConnectionsPerDeployment.put(deployNum, new ConcurrentHashMap<>());
         }
 
-        String functionEndpoint = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT,
-                DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
+        String functionEndpoint = "https://openwhisk.serverless-mds-cluster-243065a7719552ad2f4388dc81e46642-0000.us-east.containers.appdomain.cloud:443/api/v1/web/whisk.system/default/namenode"; // conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT, DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
 
         // The format of the endpoint is something like https://domain:443/api/v1/web/whisk.system/default/<base_name>
         String[] endpointSplit = functionEndpoint.split("/");
