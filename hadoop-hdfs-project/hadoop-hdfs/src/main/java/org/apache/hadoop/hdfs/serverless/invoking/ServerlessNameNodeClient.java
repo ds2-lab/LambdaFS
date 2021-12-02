@@ -223,7 +223,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // In either scenario, we simply fall back to HTTP.
                 LOG.error("Encountered IOException while trying to issue TCP request for operation " +
                         operationName + ":", ex);
-                LOG.error("Falling back to HTTP instead. Time elapsed: " + (Time.getUtcTime() - opStart) + ".");
+                LOG.error("Falling back to HTTP instead. Time elapsed: " + (Time.getUtcTime() - opStart) + " ms.");
 
                 // Issue the HTTP request. This function will handle retries and timeouts.
                 response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
