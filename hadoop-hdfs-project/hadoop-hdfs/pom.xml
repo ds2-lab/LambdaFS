@@ -239,7 +239,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>com.logicalclocks</groupId>
       <artifactId>service-discovery-client</artifactId>
-      <version>0.5-SNAPSHOT</version>
+      <version>0.4-SNAPSHOT</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.zookeeper/zookeeper -->
     <dependency>
