@@ -541,7 +541,7 @@ public abstract class HopsTransactionalRequestHandler
               " failed follower NameNode(s), we have all required ACKs.");
     } else if (removeMe.size() > 0) {
       requestHandlerLOG.debug("After removal of " + removeMe.size() +
-              "failed follower NameNode(s), we are still waiting on " + waitingForAcks.size() +
+              " failed follower NameNode(s), we are still waiting on " + waitingForAcks.size() +
               " more ACK(s) from " + waitingForAcks + ".");
     } else if (waitingForAcks.size() > 0) {
       requestHandlerLOG.debug("No NNs removed from waiting-on ACK list. Still waiting on " + waitingForAcks.size() +

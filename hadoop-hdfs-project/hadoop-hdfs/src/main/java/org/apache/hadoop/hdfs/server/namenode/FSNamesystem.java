@@ -5334,7 +5334,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       if (!rightNow && (curTime - lastStatusReport < 20 * 1000)) {
         return;
       }
-      ServerlessNameNode.stateChangeLog.error(msg + " \n" + getTurnOffTip());
+      ServerlessNameNode.stateChangeLog.debug(msg + " \n" + getTurnOffTip());
       lastStatusReport = curTime;
     }
 

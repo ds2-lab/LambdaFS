@@ -228,6 +228,12 @@ public class DFSOutputStream extends FSOutputSummer
           stat = dfsClient.namenode.create(src, masked, dfsClient.clientName,
                   new EnumSetWritable<CreateFlag>(flag), createParent, replication,
                   blockSize, SUPPORTED_CRYPTO_VERSIONS, policy);
+
+          if (stat == null) {
+            LOG.error("Received null in response to create operation...");
+            throw new RetryStartFileException();
+          }
+
           break;
         } catch (RemoteException re) {
           IOException e = re.unwrapRemoteException(
