@@ -60,19 +60,19 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>json</artifactId>
       <version>20140107</version>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client-bom -->
-    <dependency>
-      <groupId>org.asynchttpclient</groupId>
-      <artifactId>async-http-client-bom</artifactId>
-      <version>2.12.3</version>
-      <type>pom</type>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client -->
-    <dependency>
-      <groupId>org.asynchttpclient</groupId>
-      <artifactId>async-http-client</artifactId>
-      <version>2.12.3</version>
-    </dependency>
+<!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client-bom &ndash;&gt;-->
+<!--    <dependency>-->
+<!--      <groupId>org.asynchttpclient</groupId>-->
+<!--      <artifactId>async-http-client-bom</artifactId>-->
+<!--      <version>2.12.3</version>-->
+<!--      <type>pom</type>-->
+<!--    </dependency>-->
+<!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client &ndash;&gt;-->
+<!--    <dependency>-->
+<!--      <groupId>org.asynchttpclient</groupId>-->
+<!--      <artifactId>async-http-client</artifactId>-->
+<!--      <version>2.12.3</version>-->
+<!--    </dependency>-->
     <!-- https://mvnrepository.com/artifact/org.apache.curator/curator-framework -->
     <dependency>
       <groupId>org.apache.curator</groupId>
