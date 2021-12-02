@@ -108,17 +108,21 @@ public class HopsFSUserServer {
     /**
      * We need a reference to this so that we can tell it what TCP port we ultimated bound to.
      */
-    private final ServerlessNameNodeClient client;
+    // private final ServerlessNameNodeClient client;
 
     /**
      * Sizes to use for TCP server buffers.
      */
     private static final int bufferSizes = (int)8e6;
 
+    private static HopsFSUserServer instance;
+
     /**
      * Constructor.
      */
-    public HopsFSUserServer(Configuration conf, ServerlessNameNodeClient client) {
+    private HopsFSUserServer(Configuration conf, ServerlessNameNodeClient client) {
+        LOG.debug("Creating new HopsFSUserServer instance!");
+
         server = new Server(bufferSizes, bufferSizes) {
           /**
            * By providing our own connection implementation, we can store per-connection state
@@ -133,10 +137,8 @@ public class HopsFSUserServer {
 
         //Log.set(Log.LEVEL_TRACE);
 
-        enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
-                DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
-        totalNumberOfDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
-                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        enabled = true; // conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED, DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+        totalNumberOfDeployments = 3; // conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS, DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
         LOG.info("TCP server " + (enabled ? "ENABLED." : "DISABLED."));
 
@@ -145,8 +147,7 @@ public class HopsFSUserServer {
 
         addListenersToServer();
 
-        this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
-                DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+        this.tcpPort = 6000; // conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT, DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
         this.allActiveConnections = new ConcurrentHashMap<>();
         this.submittedFutures = new ConcurrentHashMap<>();
         this.activeFutures = new ConcurrentHashMap<>();
@@ -154,7 +155,7 @@ public class HopsFSUserServer {
         this.futureToNameNodeMapping = new ConcurrentHashMap<>();
         this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
         this.activeConnectionsPerDeployment = new ConcurrentHashMap<>();
-        this.client = client;
+        // this.client = client;
 
         // Populate the active connections mapping with default, empty hash maps for each deployment.
         for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {
@@ -166,6 +167,13 @@ public class HopsFSUserServer {
 
         // The format of the endpoint is something like https://domain:443/api/v1/web/whisk.system/default/<base_name>
         String[] endpointSplit = functionEndpoint.split("/");
+    }
+
+    public static synchronized HopsFSUserServer getInstance() {
+        if (instance == null)
+            instance = new HopsFSUserServer(null, null);
+
+        return instance;
     }
 
     /**
@@ -218,7 +226,7 @@ public class HopsFSUserServer {
         if (!success)
             throw new IOException("Failed to start TCP server. Could not successfully bind to any ports.");
 
-        client.setTcpServerPort(tcpPort);
+        // client.setTcpServerPort(tcpPort);
     }
 
     /**

@@ -119,7 +119,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         this.dfsClient = dfsClient;
 
-        this.tcpServer = new HopsFSUserServer(conf, this);
+        this.tcpServer = HopsFSUserServer.getInstance(); // new HopsFSUserServer(conf, this);
         this.tcpServer.startServer();
     }
 
