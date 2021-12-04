@@ -7,6 +7,7 @@ import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
@@ -32,6 +33,15 @@ import java.util.*;
  * keeps the code cleaner/simpler. When writing code to invoke NameNodes, we don't have to consider which serverless
  * platform is being used. Instead, we just refer to this class, and we use the {@link ServerlessInvokerFactory} class
  * to obtain a concrete subclass in which the function logic is implemented.
+ *
+ * Traditionally, a client would call {@link org.apache.hadoop.hdfs.DistributedFileSystem#create(Path)} (for example)
+ * when they want to create a file. Under the covers, this call would propagate to the
+ * {@link org.apache.hadoop.hdfs.DFSClient} class. Then an RPC call would occur between the DFSClient and a remote
+ * NameNode. Now, instead of using RPC, we use an HTTP request. The recipient of the HTTP request is the OpenWhisk
+ * API Gateway, which will route our request to a NameNode container. As such, we must include in the HTTP request
+ * the name of the function we want the NameNode to execute along with the function's arguments. We also pass
+ * various configuration parameters, debug information, etc. in the HTTP payload. The NameNode will execute the
+ * function for us, then return a result via HTTP.
  *
  * @param <T> The type of object returned by invoking serverless functions, usually a JsonObject.
  */

@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 import com.google.gson.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.NullResult;
 import org.apache.hadoop.util.BackOff;
@@ -41,6 +42,15 @@ import static com.google.common.hash.Hashing.consistentHash;
  * defaults to OpenWhisk. In order to obtain an invoker, you simply utilize the {@link ServerlessInvokerBase} class,
  * passing whatever platform is specified in the configuration. The factory will provide a concrete implementation
  * for the platform being used.
+ *
+ * Traditionally, a client would call {@link org.apache.hadoop.hdfs.DistributedFileSystem#create(Path)} (for example)
+ * when they want to create a file. Under the covers, this call would propagate to the
+ * {@link org.apache.hadoop.hdfs.DFSClient} class. Then an RPC call would occur between the DFSClient and a remote
+ * NameNode. Now, instead of using RPC, we use an HTTP request. The recipient of the HTTP request is the OpenWhisk
+ * API Gateway, which will route our request to a NameNode container. As such, we must include in the HTTP request
+ * the name of the function we want the NameNode to execute along with the function's arguments. We also pass
+ * various configuration parameters, debug information, etc. in the HTTP payload. The NameNode will execute the
+ * function for us, then return a result via HTTP.
  */
 public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     private static final Log LOG = LogFactory.getLog(OpenWhiskInvoker.class);
