@@ -359,8 +359,8 @@ public class HopsFSUserServer {
 
                 if (connection.name != -1) {
                     int mappedDeploymentNumber = nameNodeIdToDeploymentMapping.get(connection.name);
-                    LOG.debug("[TCP SERVER " + tcpPort + "] Connection to NN " + connection.name + " from deployment #" +
-                                    mappedDeploymentNumber + " lost.");
+                    LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to NN " + connection.name +
+                            " from deployment #" + mappedDeploymentNumber);
                     allActiveConnections.remove(connection.name);
 
                     ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =

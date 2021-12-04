@@ -69,17 +69,6 @@ public class ServerlessHopsFSClient implements Serializable {
     private int messagesSent;
 
     /**
-     * Default constructor.
-     */
-    public ServerlessHopsFSClient() {
-        LOG.warn("Default constructor used to create ServerlessHopsFSClient instance...");
-
-        clientId = UUID.randomUUID().toString();
-        clientIp = "127.0.0.1";
-        clientPort = 80;
-    }
-
-    /**
      * Non-default constructor.
      * @param id Unique identifier of this particular client.
      * @param ip External IPv4 address of this client.
