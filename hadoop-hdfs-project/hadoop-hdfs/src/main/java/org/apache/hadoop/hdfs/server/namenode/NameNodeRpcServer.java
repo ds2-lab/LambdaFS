@@ -110,7 +110,7 @@ import static org.apache.hadoop.util.Time.now;
  * This class is responsible for handling all of the RPC calls to the NameNode.
  * It is created, started, and stopped by {@link ServerlessNameNode}.
  */
-class NameNodeRpcServer implements NamenodeProtocols {
+public class NameNodeRpcServer implements NamenodeProtocols {
   
   private static final Logger LOG = ServerlessNameNode.LOG;
   private static final Logger stateChangeLog = ServerlessNameNode.stateChangeLog;

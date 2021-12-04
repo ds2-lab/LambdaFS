@@ -43,6 +43,15 @@ import java.util.*;
  * various configuration parameters, debug information, etc. in the HTTP payload. The NameNode will execute the
  * function for us, then return a result via HTTP.
  *
+ * The DFSClient class used to maintain an RPC interface to a remote NameNode of type
+ * {@link org.apache.hadoop.hdfs.protocol.ClientProtocol}. I believe this was essentially just a reference to the
+ * {@link org.apache.hadoop.hdfs.server.namenode.NameNodeRpcServer} instance running on the remote NameNode. To replace
+ * this, I created a new class {@link ServerlessNameNodeClient} which implements the ClientProtocol interface. The
+ * DFSClient class now calls methods on the ServerlessNameNodeClient object. Instead of being RPC methods, the
+ * ServerlessNameNodeClient transparently issues HTTP/TCP requests to invoke NameNode functions. The
+ * ServerlessNameNodeClient class interacts with a concrete child class of this ServerlessInvokerBase class to
+ * invoke NameNode functions (e.g., the {@link OpenWhiskInvoker} class).
+ *
  * @param <T> The type of object returned by invoking serverless functions, usually a JsonObject.
  */
 public abstract class ServerlessInvokerBase<T> {
