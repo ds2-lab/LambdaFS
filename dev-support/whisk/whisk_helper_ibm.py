@@ -46,6 +46,8 @@ if __name__ == "__main__":
         action = "store_true",
         help = "Create new functions (rather than update existing functions. Only one of `create` and `update` should be true.")
 
+    parser.add_argument("--memory", type = int, default = 256, help = "Memory limit in MB for the function. Default: 256MB")
+
     parser.add_argument("--update",
         action = "store_true",
         help = "Update existing functions (rather than create new functions. Only one of `create` and `update` should be true.")
@@ -67,6 +69,7 @@ if __name__ == "__main__":
     main_class = arguments.main_class
     jar_path = arguments.jar_path
     concurrency = arguments.concurrency
+    memory = arguments.memory
 
     # Only one of `do_create` and `do_update` should be true.
     if (do_create and do_update):
@@ -86,11 +89,11 @@ if __name__ == "__main__":
         if do_create:
             logger.debug("Creating function with name \"%s\"" % function_name)
             #command = "wsk -i action create /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
-            command = "wsk -i action create /whisk.system/%s %s --main %s --web true --concurrency %d --kind namenode:1" % (function_name, jar_path, main_class, concurrency)
+            command = "wsk -i action create /whisk.system/%s %s --main %s --web true --concurrency %d --kind namenode:1 --memory %d" % (function_name, jar_path, main_class, concurrency, memory)
         else:
             logger.debug("Updating function with name \"%s\"" % function_name)
             #command = "wsk -i action update /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
-            command = "wsk -i action update /whisk.system/%s %s --main %s --web true --concurrency %d --kind namenode:1" % (function_name, jar_path, main_class, concurrency)
+            command = "wsk -i action update /whisk.system/%s %s --main %s --web true --concurrency %d --kind namenode:1 --memory %d" % (function_name, jar_path, main_class, concurrency, memory)
 
         split_command = command.split(" ")
 
