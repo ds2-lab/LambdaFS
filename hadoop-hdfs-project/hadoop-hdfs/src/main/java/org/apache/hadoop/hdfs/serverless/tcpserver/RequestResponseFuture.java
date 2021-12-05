@@ -62,7 +62,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
      *
      * @throws InterruptedException
      */
-    public synchronized void cancel(String reason, boolean shouldRetry) throws InterruptedException {
+    public void cancel(String reason, boolean shouldRetry) throws InterruptedException {
         state = State.CANCELLED;
         JsonObject cancellationMessage = new JsonObject();
         cancellationMessage.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
@@ -128,7 +128,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
     /**
      * Post a result to this future so that it may be consumed by whoever is waiting on it.
      */
-    public synchronized void postResult(JsonObject result) {
+    public void postResult(JsonObject result) {
         LOG.debug("Posting result for TCP future " + requestId + " now...");
         try {
             resultQueue.put(result);

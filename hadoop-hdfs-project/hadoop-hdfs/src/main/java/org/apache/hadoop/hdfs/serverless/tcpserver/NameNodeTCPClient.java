@@ -5,6 +5,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.util.TcpIdleSender;
+import com.esotericsoftware.minlog.Log;
 import com.github.benmanes.caffeine.cache.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -150,6 +151,8 @@ public class NameNodeTCPClient {
         this.deploymentNumber = deploymentNumber;
         this.actionMemory = actionMemory;
         this.functionUriBase = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT, DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
+
+        Log.set(Log.LEVEL_DEBUG);
 
         this.maximumConnections = calculateMaxNumberTcpConnections();
 
@@ -325,7 +328,7 @@ public class NameNodeTCPClient {
 
             public void disconnected (Connection connection) {
                 LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
-                        " at " + newClient.getClientIp());
+                        " at " + newClient.getClientIp() + ":" + newClient.getClientPort() + ".");
                 tcpClients.invalidate(newClient);
             }
         });
