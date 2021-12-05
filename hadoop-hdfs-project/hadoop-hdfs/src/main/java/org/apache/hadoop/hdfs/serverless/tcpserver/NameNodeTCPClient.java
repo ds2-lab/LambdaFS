@@ -82,13 +82,13 @@ public class NameNodeTCPClient {
      * The size, in bytes, used for the write buffer of new TCP connections. Objects are serialized to
      * the write buffer where the bytes are queued until they can be written to the TCP socket.
      */
-    private static final int defaultWriteBufferSizeBytes = (int)4e6;
+    private static final int defaultWriteBufferSizeBytes = (int)8e6;
 
     /**
      * The size, in bytes, used for the object buffer of new TCP connections. Object buffers are used
      * to hold the bytes for a single object graph until it can be sent over the network or deserialized.
      */
-    private static final int defaultObjectBufferSizeBytes = (int)4e6;
+    private static final int defaultObjectBufferSizeBytes = (int)8e6;
 
     /**
      * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
@@ -293,7 +293,7 @@ public class NameNodeTCPClient {
                 if (object instanceof String) {
                     LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " +
                                     connection.getRemoteAddressTCP() + ". current heap size: " +
-                                    (Runtime.getRuntime().totalMemory() / 1000000.0) +  "MB, free space in heap: " +
+                                    (Runtime.getRuntime().totalMemory() / 1000000.0) +  " MB, free space in heap: " +
                                     (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
                     JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
                     tcpResult = handleWorkAssignment(jsonObject);
@@ -386,7 +386,7 @@ public class NameNodeTCPClient {
             registerWithClient(tcpClient);
 
             LOG.debug("[TCP Client] Successfully added new TCP client. Current heap size: " +
-                    (Runtime.getRuntime().totalMemory() / 1000000.0) +  "MB, free space in heap: " +
+                    (Runtime.getRuntime().totalMemory() / 1000000.0) +  " MB, free space in heap: " +
                     (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
 
             return true;
