@@ -133,13 +133,19 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * How often the worker thread should iterate over its cache to see if any results should be purged.
    */
   public static final String SERVERLESS_PURGE_INTERVAL_MILLISECONDS = "serverless.task.purgeinterval";
-  public static final int SERVERLESS_PURGE_INTERVAL_MILLISECONDS_DEFAULT = 300000; // 300 seconds, or 5 minutes.
+  public static final int SERVERLESS_PURGE_INTERVAL_MILLISECONDS_DEFAULT = 60000; // 60 seconds.
 
   /**
    * How long the worker thread should cache previously-computed results before purging them.
    */
   public static final String SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS =  "serverless.task.cacheinterval";
-  public static final int SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT = 180000; // 180 seconds, or 3 minutes.
+  public static final int SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT = 30000; // 30 seconds.
+
+  /**
+   * Maximum of the previous results cache.
+   */
+  public static final String SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE = "serverless.task.maxcachesize";
+  public static final int SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE_DEFAULT = 10;
 
   /**
    * Comma-delimited list of hostnames of ZooKeeper servers.

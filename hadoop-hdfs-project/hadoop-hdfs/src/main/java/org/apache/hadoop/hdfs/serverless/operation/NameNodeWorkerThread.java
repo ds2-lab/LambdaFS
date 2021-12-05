@@ -1,5 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.operation;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.hops.exception.StorageException;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.conf.Configuration;
@@ -12,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 import java.util.concurrent.BlockingQueue;
@@ -68,6 +71,11 @@ public class NameNodeWorkerThread extends Thread {
     private final long resultRetainIntervalMilliseconds;
 
     /**
+     * Maximum size of the previous results cache.
+     */
+    private final int previousResultCacheMaxSize;
+
+    /**
      * How often, in seconds, the active name nodes list should be refreshed.
      */
     private final int activeNameNodeRefreshIntervalMilliseconds;
@@ -87,7 +95,7 @@ public class NameNodeWorkerThread extends Thread {
      * This particular variable is used to order the previous results so that the worker thread can
      * quickly determine which results should be removed from memory.
      */
-    private final PriorityQueue<PreviousResult> previousResultPriorityQueue;
+    // private final PriorityQueue<PreviousResult> previousResultPriorityQueue;
 
     /**
      * Cache of previously-computed results. These results are kept in-memory for a configurable period of time
@@ -98,7 +106,7 @@ public class NameNodeWorkerThread extends Thread {
      *
      * This particular variable is used to quickly retrieve a previous result by requestId/taskId.
      */
-    private final HashMap<String, PreviousResult> previousResultCache;
+    private final Cache<String, PreviousResult> previousResultCache;
 
     /**
      * Mapping from taskId/requestId to the time at which the task was removed from the cache.
@@ -132,21 +140,28 @@ public class NameNodeWorkerThread extends Thread {
             ServerlessNameNode serverlessNameNodeInstance,
             long nameNodeId) {
         this.serverlessNameNodeInstance = serverlessNameNodeInstance;
+        this.purgeIntervalMilliseconds = conf.getInt(SERVERLESS_PURGE_INTERVAL_MILLISECONDS,
+                SERVERLESS_PURGE_INTERVAL_MILLISECONDS_DEFAULT);
+        this.resultRetainIntervalMilliseconds = conf.getInt(SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS,
+                SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT);
+        this.previousResultCacheMaxSize = conf.getInt(SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE,
+                SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE_DEFAULT);
+        this.activeNameNodeRefreshIntervalMilliseconds = conf.getInt(SERVERLESS_ACTIVE_NODE_REFRESH,
+                SERVERLESS_ACTIVE_NODE_REFRESH_DEFAULT);
+
         this.workQueue = workQueue;
-        this.previousResultPriorityQueue = new PriorityQueue<PreviousResult>();
-        this.previousResultCache = new HashMap<String, PreviousResult>();
+        // this.previousResultPriorityQueue = new PriorityQueue<PreviousResult>();
+        this.previousResultCache = Caffeine.newBuilder()
+                .maximumSize(previousResultCacheMaxSize)
+                .initialCapacity((int)(previousResultCacheMaxSize * 0.5))
+                .expireAfterWrite(Duration.ofMillis(resultRetainIntervalMilliseconds))
+                .expireAfterAccess(Duration.ofMillis(resultRetainIntervalMilliseconds))
+                .build();
         this.purgeRecords = new HashMap<String, Long>();
         this.nameNodeId = nameNodeId;
 
         this.currentlyExecutingTasks = new ConcurrentHashMap<>();
         this.completedTasks = new ConcurrentHashMap<>();
-
-        this.purgeIntervalMilliseconds = conf.getInt(SERVERLESS_PURGE_INTERVAL_MILLISECONDS,
-                SERVERLESS_PURGE_INTERVAL_MILLISECONDS_DEFAULT);
-        this.resultRetainIntervalMilliseconds = conf.getInt(SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS,
-                SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT);
-        this.activeNameNodeRefreshIntervalMilliseconds = conf.getInt(SERVERLESS_ACTIVE_NODE_REFRESH,
-                SERVERLESS_ACTIVE_NODE_REFRESH_DEFAULT);
     }
 
     /**
@@ -165,17 +180,17 @@ public class NameNodeWorkerThread extends Thread {
      * @return The number of records that were purged, if a purge was performed. If no purge was performed, then
      * -1 is returned.
      */
-    private int tryPurge() {
-        long now = Time.getUtcTime();
-
-        if (now - lastPurgePass > purgeIntervalMilliseconds) {
-            int numPurged = doPurge();
-            lastPurgePass = Time.getUtcTime();
-            return numPurged;
-        }
-
-        return -1;
-    }
+//    private int tryPurge() {
+//        long now = Time.getUtcTime();
+//
+//        if (now - lastPurgePass > purgeIntervalMilliseconds) {
+//            int numPurged = doPurge();
+//            lastPurgePass = Time.getUtcTime();
+//            return numPurged;
+//        }
+//
+//        return -1;
+//    }
 
     /**
      * Check if it is time to attempt to update the active NameNode list.
@@ -229,7 +244,7 @@ public class NameNodeWorkerThread extends Thread {
      */
     private void doRoutineActivities() {
         // Check if we need to purge any results before continuing to the next loop.
-        tryPurge();
+        // tryPurge();
 
         // COMMENTED OUT:
         // We use a persistent watcher to automatically get notified of changes in group membership.
@@ -287,8 +302,7 @@ public class NameNodeWorkerThread extends Thread {
                 FileSystemTask<Serializable> prev = currentlyExecutingTasks.putIfAbsent(task.getTaskId(), task);
                 requestCurrentlyProcessing = task.getTaskId();
                 if (prev != null)
-                    LOG.error("Tried to enqueue task " + task.getTaskId() + " into CurrentlyExecutingTasks despite " +
-                            "there already being a task with the same ID present.");
+                    LOG.error("Tried to enqueue task " + task.getTaskId() + " into CurrentlyExecutingTasks despite...");
 
                 Serializable result = null;
                 boolean success = false;
@@ -324,9 +338,9 @@ public class NameNodeWorkerThread extends Thread {
                 // If there was an error, then may be automatically re-submitted by the client.
                 if (success) {
                     prev = completedTasks.putIfAbsent(task.getTaskId(), task);
-                    if (prev != null)
-                        LOG.error("Enqueued task " + task.getTaskId() + " into CompletedTasks despite there " +
-                                "already being a task with the same ID present.");
+                    if (prev != null && !task.getForceRedo())
+                        LOG.error("Enqueued task " + task.getTaskId() + " into CompletedTasks even though (a) there " +
+                                "is already a task with the same ID present, and (b) we did not redo this task...");
                 }
 
                 // Cache the result for a bit.
@@ -334,7 +348,7 @@ public class NameNodeWorkerThread extends Thread {
                                 + ") for " + resultRetainIntervalMilliseconds + " milliseconds.");
                 PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
                 previousResultCache.put(task.getTaskId(), previousResult);
-                previousResultPriorityQueue.add(previousResult);
+                // previousResultPriorityQueue.add(previousResult);
 
                 long millisecondsSinceLastRoutineActivities = Time.getUtcTime() - lastRoutineActivitiesTime;
                 if (millisecondsSinceLastRoutineActivities >= pollTimeMilliseconds) {
@@ -349,43 +363,43 @@ public class NameNodeWorkerThread extends Thread {
         }
     }
 
-    /**
-     * Iterate over the priority queue, purging previous results until the first result that
-     * is not ready for purging is encountered.
-     *
-     * This function does NOT update the 'lastPurgePass' variable.
-     *
-     * @return The number of previous results that were removed from the cache.
-     */
-    public int doPurge() {
-//        LOG.debug("Purging previously-calculated results from the cache now. Size of cache pre-purge is: " +
-//                previousResultCache.size());
-        long now = Time.getUtcTime();
-        int numPurged = 0;
-
-        while (previousResultPriorityQueue.size() > 0) {
-            PreviousResult result = previousResultPriorityQueue.peek();
-
-            // Has it been long enough that we should remove this result?
-            if (now - result.timestamp > resultRetainIntervalMilliseconds) {
-                previousResultPriorityQueue.poll();             // Remove it from the priority queue.
-                previousResultCache.remove(result.requestId);   // Remove it from the cache itself.
-                purgeRecords.put(result.requestId, now);        // Make note of when we purged it.
-                // LOG.debug("Purging previous result for task " + result.requestId + " from result cache.");
-                numPurged++;
-                continue;
-            }
-
-            // Since the structure is a priority queue (implemented with a min-heap), older results (with smaller
-            // timestamps) will appear first. If we encounter a result that is not ready to be removed, then
-            // everything after it in the priority queue will also not be ready to be removed, so we should return;
-            break;
-        }
-
-//        LOG.debug("Removed " + numPurged + (numPurged == 1 ? " entry " : " entries ") +
-//                "from the cache. Size of cache is now " + previousResultCache.size());
-        return numPurged;
-    }
+//    /**
+//     * Iterate over the priority queue, purging previous results until the first result that
+//     * is not ready for purging is encountered.
+//     *
+//     * This function does NOT update the 'lastPurgePass' variable.
+//     *
+//     * @return The number of previous results that were removed from the cache.
+//     */
+//    public int doPurge() {
+////        LOG.debug("Purging previously-calculated results from the cache now. Size of cache pre-purge is: " +
+////                previousResultCache.size());
+//        long now = Time.getUtcTime();
+//        int numPurged = 0;
+//
+//        while (previousResultPriorityQueue.size() > 0) {
+//            PreviousResult result = previousResultPriorityQueue.peek();
+//
+//            // Has it been long enough that we should remove this result?
+//            if (now - result.timestamp > resultRetainIntervalMilliseconds) {
+//                previousResultPriorityQueue.poll();             // Remove it from the priority queue.
+//                previousResultCache.remove(result.requestId);   // Remove it from the cache itself.
+//                purgeRecords.put(result.requestId, now);        // Make note of when we purged it.
+//                // LOG.debug("Purging previous result for task " + result.requestId + " from result cache.");
+//                numPurged++;
+//                continue;
+//            }
+//
+//            // Since the structure is a priority queue (implemented with a min-heap), older results (with smaller
+//            // timestamps) will appear first. If we encounter a result that is not ready to be removed, then
+//            // everything after it in the priority queue will also not be ready to be removed, so we should return;
+//            break;
+//        }
+//
+////        LOG.debug("Removed " + numPurged + (numPurged == 1 ? " entry " : " entries ") +
+////                "from the cache. Size of cache is now " + previousResultCache.size());
+//        return numPurged;
+//    }
 
     /**
      * Handler for when the worker thread encounters a duplicate task.
@@ -400,10 +414,11 @@ public class NameNodeWorkerThread extends Thread {
             LOG.warn("Client did not receive the original transmission of the result for "
                     + task.getTaskId() + ". Checking to see if result is cached...");
 
-            if (previousResultCache.containsKey(task.getTaskId())) {
+            PreviousResult previousResult = previousResultCache.getIfPresent(task.getTaskId());
+            if (previousResult != null) {
                 LOG.debug("Result for task " + task.getTaskId()
                         + " is still cached. Returning it to the client now.");
-                task.postResult(previousResultCache.get(task.getTaskId()).value);
+                task.postResult(previousResult.value);
             } else {
                 LOG.warn("Result for task " + task.getTaskId() + " is no longer in the cache.");
                 double timeSinceRemovalSeconds =

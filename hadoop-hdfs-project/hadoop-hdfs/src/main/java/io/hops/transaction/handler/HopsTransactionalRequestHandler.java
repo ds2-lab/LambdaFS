@@ -145,6 +145,7 @@ public abstract class HopsTransactionalRequestHandler
       this.transactionEvent.setRequestId(requestId);
       requestHandlerLOG.debug("Committing transaction event for transaction " + operationId +
               " now. Associated request ID: " + requestId);
+      // This adds to a set, so multiple adds won't mess anything up.
       instance.addTransactionEvent(this.transactionEvent);
     }
   }
