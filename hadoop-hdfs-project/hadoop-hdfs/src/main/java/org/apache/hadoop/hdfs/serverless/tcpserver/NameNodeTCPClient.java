@@ -4,10 +4,14 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -58,7 +62,7 @@ public class NameNodeTCPClient {
      * ServerlessHopsFSClient represents a particular client of HopsFS that the NameNode is talking to. We map
      * each of these "HopsFS client" representations to the TCP Client associated with them.
      */
-    private final ConcurrentHashMap<ServerlessHopsFSClient, Client> tcpClients;
+    private final Cache<ServerlessHopsFSClient, Client> tcpClients;
 
     /**
      * The deployment number of the local serverless name node instance.
@@ -79,18 +83,22 @@ public class NameNodeTCPClient {
      * The size, in bytes, used for the write buffer of new TCP connections. Objects are serialized to
      * the write buffer where the bytes are queued until they can be written to the TCP socket.
      */
-    private static final int defaultWriteBufferSizeBytes = (int)8e6;
+    private static final int defaultWriteBufferSizeBytes = (int)4e6;
 
     /**
      * The size, in bytes, used for the object buffer of new TCP connections. Object buffers are used
      * to hold the bytes for a single object graph until it can be sent over the network or deserialized.
      */
-    private static final int defaultObjectBufferSizeBytes = (int)8e6;
+    private static final int defaultObjectBufferSizeBytes = (int)4e6;
 
     /**
      * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
+     *
+     * If we find that we're trying to write data that is larger than the buffer(s), then we change the
+     * size of the buffers for future TCP connections to hopefully avoid the problem. This variable sets a hard limit
+     * on the maximum size of a buffer.
      */
-    private static final int maxBufferSize = (int)16e6;
+    private static final int maxBufferSize = (int)8e6;
 
     /**
      * Used to redirect write operations to authorized deployments.
@@ -112,20 +120,43 @@ public class NameNodeTCPClient {
     private int objectBufferSize;
 
     /**
+     * The amount of RAM (in megabytes) that this function has been allocated. Used when determining the number of active
+     * TCP connections that this NameNode can have at once, as each TCP connection has two relatively-large buffers. If
+     * the NN creates too many TCP connections at once, then it might crash due to OOM errors.
+     */
+    private final int actionMemory;
+
+    /**
+     * Maximum number of TCP connections we're allowed to maintain at any given time due to memory constraints.
+     */
+    private final int maximumConnections;
+
+    /**
      * Constructor.
      *
      * @param conf Configuration passed to the serverless NameNode.
      * @param nameNodeId The unique ID of the local serverless name node instance.
      * @param deploymentNumber The deployment number of the local serverless name node instance.
      * @param serverlessNameNode The ServerlessNameNode instance.
+     * @param actionMemory The amount of RAM (in megabytes) that this function has been allocated. Used when
+     *                     determining the number of active TCP connections that this NameNode can have at once, as
+     *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
+     *                     connections at once, then it might crash due to OOM errors.
      */
     public NameNodeTCPClient(Configuration conf, ServerlessNameNode serverlessNameNode,
-                             long nameNodeId, int deploymentNumber) {
+                             long nameNodeId, int deploymentNumber, int actionMemory) {
         this.serverlessNameNode = serverlessNameNode;
         this.nameNodeId = nameNodeId;
         this.deploymentNumber = deploymentNumber;
-        this.tcpClients = new ConcurrentHashMap<>();
+        this.actionMemory = actionMemory;
         this.functionUriBase = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT, DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
+
+        this.maximumConnections = calculateMaxNumberTcpConnections();
+
+        this.tcpClients = Caffeine.newBuilder()
+                .maximumSize(maximumConnections)
+                .initialCapacity(maximumConnections)
+                .build();
 
         this.writeBufferSize = defaultWriteBufferSizeBytes;
         this.objectBufferSize = defaultObjectBufferSizeBytes;
@@ -133,6 +164,29 @@ public class NameNodeTCPClient {
         LOG.debug("Created NameNodeTCPClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
                 ", functionUriBase=" + functionUriBase + ", writeBufferSize=" + writeBufferSize +
                 " bytes, objectBufferSize=" + objectBufferSize + " bytes).");
+    }
+
+    /**
+     * Calculate the maximum number of TCP connections that can be maintained at once based on memory constraints.
+     *
+     * The factors that go into this are the write buffer size, object buffer size, and the amount of memory allocated
+     * to the NameNode serverless function. We also need to leave enough RAM for the metadata cache and regular NN
+     * operation.
+     *
+     * I created a function to calculate this rather than in-lining it in the constructor just to keep it contained,
+     * as I expect to modify it several times as we fine-tune the formula for determining the number of connections.
+     *
+     * @return The maximum number of concurrent TCP connections permitted at any given time.
+     */
+    private int calculateMaxNumberTcpConnections() {
+        int combinedBufferSize = maxBufferSize << 2;
+
+        // For now, we reserve 65% of the function's RAM for TCP connection buffers.
+        double memoryReservedForTCPConnectionBuffers = 0.50;
+        int memoryAvailableForConnections = (int) Math.floor(memoryReservedForTCPConnectionBuffers * actionMemory);
+
+        int maximumConnections = Math.floorDiv(memoryAvailableForConnections, combinedBufferSize);
+        return maximumConnections;
     }
 
     /**
@@ -144,7 +198,7 @@ public class NameNodeTCPClient {
     public synchronized void checkThatClientsAreAllConnected() {
         ArrayList<ServerlessHopsFSClient> toRemove = new ArrayList<>();
 
-        for (Map.Entry<ServerlessHopsFSClient, Client> entry : tcpClients.entrySet()) {
+        for (Map.Entry<ServerlessHopsFSClient, Client> entry : tcpClients.asMap().entrySet()) {
             ServerlessHopsFSClient serverlessHopsFSClient = entry.getKey();
             Client tcpClient = entry.getValue();
 
@@ -161,7 +215,7 @@ public class NameNodeTCPClient {
             LOG.warn("Found " + toRemove.size() + "ServerlessHopsFSClient instance(s) that were disconnected.");
 
             for (ServerlessHopsFSClient hopsFSClient : toRemove)
-                tcpClients.remove(hopsFSClient);
+                tcpClients.asMap().remove(hopsFSClient);
         } else {
             LOG.debug("Found 0 disconnected ServerlessHopsFSClients.");
         }
@@ -178,13 +232,13 @@ public class NameNodeTCPClient {
      * @throws IOException If the connection to the new client times out.
      */
     public boolean addClient(ServerlessHopsFSClient newClient) throws IOException {
-        if (tcpClients.containsKey(newClient)) {
+        if (tcpClients.asMap().containsKey(newClient)) {
             LOG.warn("NameNodeTCPClient already has a connection to client " + newClient);
             return false;
         }
 
         LOG.debug("Adding new TCP Client: " + newClient + ". Existing number of clients: " +
-                tcpClients.size() + ". Existing clients: " + StringUtils.join(tcpClients.keys(), ", ") + ".");
+                tcpClients.estimatedSize() + ". Existing clients: " + StringUtils.join(tcpClients.asMap().keySet(), ", ") + ".");
 
         // We pass the writeBuffer and objectBuffer arguments to the Client constructor.
         // Objects are serialized to the write buffer where the bytes are queued until they can
@@ -201,7 +255,7 @@ public class NameNodeTCPClient {
 
         // Add an entry to the TCP Clients map now so that we do not try to connect again while we're
         // in the process of connecting.
-        Client existingClient = tcpClients.putIfAbsent(newClient, tcpClient);
+        Client existingClient = tcpClients.asMap().putIfAbsent(newClient, tcpClient);
         if (existingClient != null) {
             LOG.warn("Actually, NameNodeTCPClient already has a connection to client " + newClient);
             return false;
@@ -281,7 +335,7 @@ public class NameNodeTCPClient {
             public void disconnected (Connection connection) {
                 LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
                         " at " + newClient.getClientIp());
-                tcpClients.remove(newClient);
+                tcpClients.invalidate(newClient);
             }
         });
 
@@ -323,7 +377,7 @@ public class NameNodeTCPClient {
         } else {
             // Remove the entry that we added from the TCP client mapping. The connection establishment failed,
             // so we need to remove the record so that we may try again in the future.
-            tcpClients.remove(newClient);
+            tcpClients.invalidate(newClient);
             throw new IOException("Failed to connect to client at " + newClient.getClientIp() + ":" +
                     newClient.getClientPort());
         }
@@ -427,7 +481,7 @@ public class NameNodeTCPClient {
      * @return true if unregistered successfully, false if the client was already not registered with the NameNode.
      */
     public boolean removeClient(ServerlessHopsFSClient client) {
-        Client tcpClient = tcpClients.getOrDefault(client, null);
+        Client tcpClient = tcpClients.getIfPresent(client);
 
         if (tcpClient == null) {
             LOG.warn("No TCP client associated with HopsFS client " + client.toString());
@@ -437,7 +491,7 @@ public class NameNodeTCPClient {
         // Stop the TCP client. This function calls the close() method.
         tcpClient.stop();
 
-        tcpClients.remove(client);
+        tcpClients.invalidate(client);
 
         return true;
     }
@@ -446,6 +500,6 @@ public class NameNodeTCPClient {
      * @return The number of active TCP clients connected to the NameNode.
      */
     public int numClients() {
-        return tcpClients.size();
+        return (int)tcpClients.estimatedSize();
     }
 }

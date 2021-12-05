@@ -76,6 +76,8 @@ public class OpenWhiskHandler {
         // The arguments passed by the user are included under the 'value' key.
         JsonObject userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
 
+        int actionMemory = args.get(ServerlessNameNodeKeys.ACTION_MEMORY).getAsInt();
+
         String clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
 
         boolean tcpEnabled = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_ENABLED).getAsBoolean();
@@ -159,6 +161,7 @@ public class OpenWhiskHandler {
         LOG.info("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
         LOG.debug("Top-level OpenWhisk arguments: " + args);
         LOG.debug("User-passed OpenWhisk arguments: " + userArguments);
+        LOG.debug("Action memory: " + actionMemory + "MB");
         LOG.info("Serverless function name: " + functionName);
         LOG.info("Invoked by: " + invokerIdentity);
         LOG.info("Client's name: " + clientName);
@@ -174,7 +177,7 @@ public class OpenWhiskHandler {
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
-                requestId, clientName, isClientInvoker, tcpEnabled, tcpPort);
+                requestId, clientName, isClientInvoker, tcpEnabled, tcpPort, actionMemory);
 
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
@@ -227,12 +230,18 @@ public class OpenWhiskHandler {
      * @param tcpPort The TCP port that the client who invoked us is using for their TCP server.
      *                If the client is using multiple HopsFS client threads at the same time, then there will
      *                presumably be multiple TCP servers, each listening on a different TCP port.
+     * @param actionMemory The amount of RAM (in megabytes) that this function has been allocated. Used when
+     *                     determining the number of active TCP connections that this NameNode can have at once, as
+     *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
+     *                     connections at once, then it might crash due to OOM errors.
+     * @param tcpEnabled Flag indicating whether the TCP invocation pathway is enabled. If false, then we do not
+     *                   bother trying to establish TCP connections.
      * @return Result of executing NameNode code/operation/function execution.
      */
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                      String functionName, String clientIPAddress, String requestId,
                                      String clientName, boolean isClientInvoker, boolean tcpEnabled,
-                                     int tcpPort) {
+                                     int tcpPort, int actionMemory) {
         NameNodeResult result = new NameNodeResult(ServerlessNameNode.getFunctionNumberFromFunctionName(functionName),
                 requestId, "HTTP", -1);
 
@@ -243,8 +252,8 @@ public class OpenWhiskHandler {
         // If this container was cold prior to this invocation, then we'll actually be creating the instance now.
         ServerlessNameNode serverlessNameNode;
         try {
-            serverlessNameNode = ServerlessNameNode.getOrCreateNameNodeInstance(commandLineArguments,
-                    functionName, isCold);
+            serverlessNameNode = ServerlessNameNode.getOrCreateNameNodeInstance(commandLineArguments, functionName,
+                    actionMemory, isCold);
         }
         catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName()

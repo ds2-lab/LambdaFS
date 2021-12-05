@@ -439,6 +439,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private final int deploymentNumber;
 
   /**
+   * The amount of RAM (in megabytes) that this function has been allocated. Used when determining the number of active
+   * TCP connections that this NameNode can have at once, as each TCP connection has two relatively-large buffers. If
+   * the NN creates too many TCP connections at once, then it might crash due to OOM errors.
+   */
+  private final int actionMemory;
+
+  /**
    * Used to communicate with Serverless HopsFS clients via TCP.
    */
   private NameNodeTCPClient nameNodeTCPClient;
@@ -578,10 +585,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * @param commandLineArguments The command-line arguments given to the NameNode during initialization.
    * @param functionName The name of this particular OpenWhisk action.
+   * @param actionMemory The amount of RAM (in megabytes) that this function has been allocated. Used when
+   *                     determining the number of active TCP connections that this NameNode can have at once, as
+   *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
+   *                     connections at once, then it might crash due to OOM errors.
    * @param isCold Indicates whether this is a cold start.
    */
   public static synchronized ServerlessNameNode getOrCreateNameNodeInstance(String[] commandLineArguments,
-                                                                            String functionName,
+                                                                            String functionName, int actionMemory,
                                                                             boolean isCold)
           throws Exception {
     if (instance != null) {
@@ -592,7 +603,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (!isCold)
       LOG.warn("Container is warm, but there is no existing ServerlessNameNode instance.");
 
-    instance = ServerlessNameNode.startServerlessNameNode(commandLineArguments, functionName);
+    instance = ServerlessNameNode.startServerlessNameNode(commandLineArguments, functionName, actionMemory);
     instance.populateOperationsMap();
 
     // Next, the NameNode needs to exit safe mode (if it is in safe mode).
@@ -824,9 +835,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Used as the entry-point into the Serverless NameNode when executing a serverless function.
    *
    * @param commandLineArgs Command-line arguments formatted as if the NameNode was being executed from the commandline.
+   * @param actionMemory The amount of RAM (in megabytes) that this function has been allocated. Used when
+   *                     determining the number of active TCP connections that this NameNode can have at once, as
+   *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
+   *                     connections at once, then it might crash due to OOM errors.
+   * @param functionName The name of this serverless function.
    * @throws Exception
    */
-  public static ServerlessNameNode startServerlessNameNode(String[] commandLineArgs, String functionName)
+  public static ServerlessNameNode startServerlessNameNode(String[] commandLineArgs, String functionName, int actionMemory)
           throws Exception {
     if (DFSUtil.parseHelpArgument(commandLineArgs, ServerlessNameNode.USAGE, System.out, true)) {
       System.exit(0);
@@ -836,7 +852,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     try {
       StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
-      ServerlessNameNode nameNode = createNameNode(commandLineArgs, null, functionName);
+      ServerlessNameNode nameNode = createNameNode(commandLineArgs, null, functionName, actionMemory);
 
       if (nameNode == null) {
         LOG.info("ERROR: NameNode is null. Failed to create and/or initialize the Serverless NameNode.");
@@ -2232,7 +2248,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     this.serverlessInvoker.setConfiguration(conf, "NN" + deploymentNumber + "-" + getId());
     this.serverlessInvoker.setIsClientInvoker(false); // We are not a client.
 
-    this.nameNodeTCPClient = new NameNodeTCPClient(conf,this, nameNodeID, deploymentNumber);
+    this.nameNodeTCPClient = new NameNodeTCPClient(conf,this, nameNodeID, deploymentNumber, actionMemory);
 
     Instant serverlessInitDone = Instant.now();
     Duration serverlessInitDuration = Duration.between(nameNodeInitStart, serverlessInitDone);
@@ -2599,13 +2615,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *     confirguration
    * @throws IOException
    */
-  public ServerlessNameNode(Configuration conf, String functionName) throws Exception {
-    this(conf, NamenodeRole.NAMENODE, functionName);
+  public ServerlessNameNode(Configuration conf, String functionName, int actionMemory) throws Exception {
+    this(conf, NamenodeRole.NAMENODE, functionName, actionMemory);
   }
 
-  protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName) throws Exception {
+  protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName, int actionMemory) throws Exception {
     this.functionName = functionName;
     this.deploymentNumber = getFunctionNumberFromFunctionName(functionName);
+    this.actionMemory = actionMemory;
 
     if (this.deploymentNumber < 0)
       throw new IOException("Failed to extract valid deployment number from function name '" +
@@ -3012,8 +3029,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         conf.get(DFS_NAMENODE_STARTUP_KEY, StartupOption.REGULAR.toString()));
   }
 
-
-  public static ServerlessNameNode createNameNode(String argv[], Configuration conf, String functionName)
+  /**
+   * Create the ServerlessNameNode instance.
+   * @param actionMemory The amount of RAM (in megabytes) that this function has been allocated. Used when
+   *                     determining the number of active TCP connections that this NameNode can have at once, as
+   *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
+   *                     connections at once, then it might crash due to OOM errors.
+   * @throws Exception
+   */
+  public static ServerlessNameNode createNameNode(String argv[], Configuration conf, String functionName, int actionMemory)
           throws Exception {
     LOG.info("createNameNode " + Arrays.asList(argv));
     if (conf == null) {
@@ -3078,7 +3102,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
       default: {
         DefaultMetricsSystem.initialize("NameNode");
-        return new ServerlessNameNode(conf, functionName);
+        // Make sure the NameNode does not already exist.
+        assert(ServerlessNameNode.tryGetNameNodeInstance(false) == null);
+        return new ServerlessNameNode(conf, functionName, actionMemory);
       }
     }
   }
