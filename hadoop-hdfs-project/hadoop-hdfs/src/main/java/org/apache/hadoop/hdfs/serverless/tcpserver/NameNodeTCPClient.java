@@ -4,9 +4,7 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -22,6 +20,7 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
 import org.apache.hadoop.util.Time;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -156,6 +155,14 @@ public class NameNodeTCPClient {
         this.tcpClients = Caffeine.newBuilder()
                 .maximumSize(maximumConnections)
                 .initialCapacity(maximumConnections)
+                // Close TCP clients when they are removed.
+                .evictionListener((RemovalListener<ServerlessHopsFSClient, Client>) (serverlessHopsFSClient, client, removalCause) -> {
+                    if (client == null)
+                        return;
+
+                    if (client.isConnected())
+                        client.close();
+                })
                 .build();
 
         this.writeBufferSize = defaultWriteBufferSizeBytes;
