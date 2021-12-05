@@ -245,7 +245,10 @@ public class NameNodeTCPClient {
         }
 
         LOG.debug("Adding new TCP Client: " + newClient + ". Existing number of clients: " +
-                tcpClients.estimatedSize() + ". Existing clients: " + StringUtils.join(tcpClients.asMap().keySet(), ", ") + ".");
+                tcpClients.estimatedSize() +
+                ". Existing clients: " + StringUtils.join(tcpClients.asMap().keySet(), ", ") +
+                ", current heap size: " + (Runtime.getRuntime().totalMemory() / 1000000.0) +
+                " MB, free space in heap: " + (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
 
         // We pass the writeBuffer and objectBuffer arguments to the Client constructor.
         // Objects are serialized to the write buffer where the bytes are queued until they can
@@ -289,7 +292,9 @@ public class NameNodeTCPClient {
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
                     LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " +
-                            connection.getRemoteAddressTCP());
+                                    connection.getRemoteAddressTCP() + ". current heap size: " +
+                                    (Runtime.getRuntime().totalMemory() / 1000000.0) +  "MB, free space in heap: " +
+                                    (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
                     JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
                     tcpResult = handleWorkAssignment(jsonObject);
                 }
