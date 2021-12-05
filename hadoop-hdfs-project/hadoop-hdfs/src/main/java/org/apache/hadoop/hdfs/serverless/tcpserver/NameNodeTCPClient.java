@@ -152,7 +152,7 @@ public class NameNodeTCPClient {
         this.actionMemory = actionMemory;
         this.functionUriBase = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT, DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
 
-        Log.set(Log.LEVEL_DEBUG);
+        Log.set(Log.LEVEL_TRACE);
 
         this.maximumConnections = calculateMaxNumberTcpConnections();
 
