@@ -90,7 +90,7 @@ public class NameNodeTCPClient {
     /**
      * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
      */
-    private static final int maxBufferSize = (int)32e6;
+    private static final int maxBufferSize = (int)16e6;
 
     /**
      * Used to redirect write operations to authorized deployments.
