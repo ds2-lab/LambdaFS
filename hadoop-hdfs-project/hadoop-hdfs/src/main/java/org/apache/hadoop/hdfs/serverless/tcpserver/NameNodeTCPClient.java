@@ -4,6 +4,7 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
+import com.esotericsoftware.kryonet.util.TcpIdleSender;
 import com.github.benmanes.caffeine.cache.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -262,6 +263,7 @@ public class NameNodeTCPClient {
         // In short, the object buffers should be sized at least as large as the largest object that will be
         // sent or received.
         Client tcpClient = new Client(writeBufferSize, objectBufferSize);
+        tcpClient.setIdleThreshold(0.25f);
 
         // Add an entry to the TCP Clients map now so that we do not try to connect again while we're
         // in the process of connecting.
@@ -307,7 +309,7 @@ public class NameNodeTCPClient {
                     // Create and log the exception to be returned to the client,
                     // so they know they sent the wrong thing.
                     IllegalArgumentException ex = new IllegalArgumentException(
-                            "[TCP Client] Received object of unexpected type from client " + tcpClient
+                            "[TCP Client] Received object of unexpected type from client " + connection
                                     + ". Object type: " + object.getClass().getSimpleName() + ".");
                     tcpResult = new NameNodeResult(deploymentNumber, "N/A", "TCP",
                             serverlessNameNode.getId());
@@ -318,30 +320,7 @@ public class NameNodeTCPClient {
                         ServerlessClientServerUtilities.OPERATION_RESULT,
                         serverlessNameNode.getNamesystem().getMetadataCache()));
 
-                LOG.debug("[TCP Client] Sending result to client at " + tcpClient.getRemoteAddressTCP() + " now...");
-                int bytesSent = tcpClient.sendTCP(jsonString);
-
-                LOG.debug("[TCP Client] Sent " + bytesSent + " bytes to HopsFS client at " + tcpClient.getRemoteAddressTCP());
-
-                // Increase the buffer size for future TCP connections to hopefully avoid buffer overflows.
-                if (bytesSent > objectBufferSize) {
-                    LOG.warn("[TCP Client] Sent object of size " + bytesSent
-                            + " bytes when object buffer is only of size " + objectBufferSize + " bytes.");
-
-                    // Do not go above the max buffer size.
-                    int oldBufferSize = objectBufferSize;
-                    objectBufferSize = Math.min(objectBufferSize * 2, maxBufferSize);
-
-                    // If we were able to increase the buffer size, then print a message indicating that
-                    // we did so. If we were already at the max, then we'll print a warning, but currently
-                    // we don't do anything about it, so future TCP sends of the same object size will fail.
-                    if (oldBufferSize < objectBufferSize)
-                        LOG.debug("[TCP Client] Increasing buffer size of future TCP connections to " +
-                                objectBufferSize + " bytes.");
-                    else
-                        // TODO: What should we do if this occurs?
-                        LOG.warn("[TCP Client] Already at the maximum buffer size for TCP connections...");
-                }
+                trySendTcp(connection, jsonString, false);
             }
 
             public void disconnected (Connection connection) {
@@ -396,6 +375,108 @@ public class NameNodeTCPClient {
             tcpClients.invalidate(newClient);
             throw new IOException("Failed to connect to client at " + newClient.getClientIp() + ":" +
                     newClient.getClientPort());
+        }
+    }
+
+    /**
+     * Try to send an object over a connection via TCP. This will fail of the TCP buffer is 90% full or more.
+     * If this fails, then it enqueues the object to be sent when the buffer is not as full.
+     *
+     * @param connection The connection over which we're sending an object.
+     * @param payload The object to send.
+     * @param enqueuedResult Indicates whether we're trying to send a previously-enqueued result (i.e., a result
+     *                       that we tried to send but couldn't because the buffer was full). This is just for
+     *                       debugging purposes.
+     */
+    private void trySendTcp(Connection connection, Object payload, boolean enqueuedResult) {
+        if (enqueuedResult)
+            LOG.warn("[TCP Client] Trying to send previously-enqueued result to client at " +
+                    connection.getRemoteAddressTCP() + " now.");
+        else
+            LOG.debug("[TCP Client] Trying to send new result to client at " + connection.getRemoteAddressTCP() + " now.");
+
+        double currentCapacity = ((double) connection.getTcpWriteBufferSize()) / ((double) writeBufferSize);
+        if (currentCapacity >= 0.9) {
+            LOG.warn("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
+                    " is at " + (currentCapacity * 100) + "% capacity! Enqueuing payload to send later...");
+            connection.addListener(new TcpIdleSender() {
+                boolean _started = false;
+                Object enqueuedObject = payload;
+
+                @Override
+                protected Object next() {
+                    LOG.debug("[TCP Client] Write buffer for connection " +  connection.getRemoteAddressTCP() +
+                            " has reached 'idle' capacity. Sending buffered object now.");
+                    Object toReturn = enqueuedObject;
+
+                    // Set this to null before we return so that we cannot get stuck in a loop of returning this
+                    // object from this listener. This is just a safeguard; that loop scenario should never occur.
+                    enqueuedObject = null;
+                    return toReturn;
+                }
+
+                @Override
+                public void idle(Connection connection) {
+                    if (!_started) {    // This part is just from the original idle() method that I'm overloading.
+                                        // I'm really not sure what it does or why it exists, as the start()
+                                        // function doesn't actually do anything...
+                        _started = true;
+                        start();
+                    }
+                    // So, first we remove this listener from the connection so that it never activates again.
+                    connection.removeListener(this);
+
+                    // Next, retrieve the enqueued object to send to the client.
+                    Object object = next();
+
+                    // If the enqueued object is NOT null, then we will try to send it. This is sort of a recursive
+                    // call, since this listener was created within the trySendTcp() function. But we've already
+                    // removed this listener from the connection, so we'll effectively go away once this idle()
+                    // function exits. We just don't want to send the object without making sure the buffer is
+                    // still clear. So, we try again. If it fails again, then at least this object gets enqueued,
+                    // so it should eventually make it to the client.
+                    if (object != null) {
+                        trySendTcp(connection, object, true);
+                    }
+                }
+            });
+        }
+        else {
+            LOG.debug("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
+                    " is at " + (currentCapacity * 100) + "% capacity! Sending payload immediately.");
+            sendTcp(connection, payload);
+        }
+    }
+
+    /**
+     * Send an object over a connection via TCP.
+     * @param connection The connection over which we're sending an object.
+     * @param payload The object to send.
+     */
+    private void sendTcp(Connection connection, Object payload) {
+        int bytesSent = connection.sendTCP(payload);
+
+        LOG.debug("[TCP Client] Sent " + bytesSent + " bytes to HopsFS client at " +
+                connection.getRemoteAddressTCP());
+
+        // Increase the buffer size for future TCP connections to hopefully avoid buffer overflows.
+        if (bytesSent > objectBufferSize) {
+            LOG.warn("[TCP Client] Sent object of size " + bytesSent
+                    + " bytes when object buffer is only of size " + objectBufferSize + " bytes.");
+
+            // Do not go above the max buffer size.
+            int oldBufferSize = objectBufferSize;
+            objectBufferSize = Math.min(objectBufferSize * 2, maxBufferSize);
+
+            // If we were able to increase the buffer size, then print a message indicating that
+            // we did so. If we were already at the max, then we'll print a warning, but currently
+            // we don't do anything about it, so future TCP sends of the same object size will fail.
+            if (oldBufferSize < objectBufferSize)
+                LOG.debug("[TCP Client] Increasing buffer size of future TCP connections to " +
+                        objectBufferSize + " bytes.");
+            else
+                // TODO: What should we do if this occurs?
+                LOG.warn("[TCP Client] Already at the maximum buffer size for TCP connections...");
         }
     }
 
