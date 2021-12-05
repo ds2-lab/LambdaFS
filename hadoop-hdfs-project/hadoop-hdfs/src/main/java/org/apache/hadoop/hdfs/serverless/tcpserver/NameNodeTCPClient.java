@@ -385,6 +385,10 @@ public class NameNodeTCPClient {
             // Now that we've registered the classes to be transferred, we can register with the server.
             registerWithClient(tcpClient);
 
+            LOG.debug("[TCP Client] Successfully added new TCP client. Current heap size: " +
+                    (Runtime.getRuntime().totalMemory() / 1000000.0) +  "MB, free space in heap: " +
+                    (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
+
             return true;
         } else {
             // Remove the entry that we added from the TCP client mapping. The connection establishment failed,
