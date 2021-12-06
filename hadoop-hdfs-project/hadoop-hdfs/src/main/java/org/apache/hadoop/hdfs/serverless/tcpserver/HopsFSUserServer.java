@@ -349,8 +349,9 @@ public class HopsFSUserServer {
                     }
                 }
                 else if (object instanceof FrameworkMessage.KeepAlive) {
-                    // The server periodically sends KeepAlive objects to prevent the client from disconnecting
-                    // due to timeouts. Just ignore these (i.e., do nothing).
+                    // The server periodically sends KeepAlive objects to prevent the client from disconnecting due to timeouts.
+                    if (Log.TRACE) // This will print a LOT of messages.
+                        Log.trace("Received KeepAlive from NameNode " + connection.name);
                 }
                 else {
                     LOG.warn("[TCP SERVER " + tcpPort + "] Received object of unexpected type from remote client " + connection +
@@ -507,10 +508,10 @@ public class HopsFSUserServer {
      * @return True if a connection was removed, otherwise false.
      */
     private boolean deleteConnection(long nameNodeId, boolean deleteIfActive, boolean errorIfActive) {
-        NameNodeConnection conn = allActiveConnections.getOrDefault(nameNodeId, null);
+        NameNodeConnection connection = allActiveConnections.getOrDefault(nameNodeId, null);
 
-        if (conn != null) {
-            if (conn.isConnected()) {
+        if (connection != null) {
+            if (connection.isConnected()) {
 
                 if (errorIfActive) {
                     throw new IllegalStateException("[TCP SERVER " + tcpPort + "] Connection to NN " + nameNodeId
@@ -518,7 +519,7 @@ public class HopsFSUserServer {
                 }
 
                 if (deleteIfActive) {
-                    conn.close();
+                    connection.close();
                     allActiveConnections.remove(nameNodeId);
 
                     // Remove from the mapping for the NN's specific deployment.
@@ -531,12 +532,12 @@ public class HopsFSUserServer {
                     // Remove the list of futures associated with this connection.
                     // TODO: Should we resubmit these via HTTP? Or just drop them, effectively?
                     //       Currently, we're just dropping them.
-                    List<RequestResponseFuture> incompleteFutures = submittedFutures.get(conn.name);
+                    List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
                     if (incompleteFutures.size() > 0) {
                         LOG.warn("Connection to NameNode " + nameNodeId + " has " + incompleteFutures.size() +
                                 " incomplete futures associated with it, yet we're deleting the connection...");
                     }
-                    submittedFutures.remove(conn.name);
+                    submittedFutures.remove(connection.name);
 
                     LOG.debug("[TCP SERVER " + tcpPort + "] Closed and removed connection to NN " + nameNodeId);
                     return true;
@@ -656,12 +657,12 @@ public class HopsFSUserServer {
             completedFutures.put(requestId, future);
 
             if (futureToNameNodeMapping.containsKey(requestId)) {
-                NameNodeConnection conn = futureToNameNodeMapping.get(requestId);
+                NameNodeConnection connection = futureToNameNodeMapping.get(requestId);
 
                 // Remove this future from the submitted futures list associated with the connection,
                 // if it exists.
-                if (conn != null && submittedFutures.containsKey(conn.name)) {
-                    List<RequestResponseFuture> futures = submittedFutures.get(conn.name);
+                if (connection != null && submittedFutures.containsKey(connection.name)) {
+                    List<RequestResponseFuture> futures = submittedFutures.get(connection.name);
                     futures.remove(future);
                 }
             }
