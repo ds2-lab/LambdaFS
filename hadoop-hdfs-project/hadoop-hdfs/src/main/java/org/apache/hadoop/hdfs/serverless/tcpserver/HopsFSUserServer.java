@@ -174,7 +174,7 @@ public class HopsFSUserServer {
      * Stop the TCP server.
      */
     public void stop() {
-        LOG.debug("HopsFSUserServer stopping now...");
+        LOG.debug("HopsFSUserServer " + tcpPort + " stopping now...");
         this.server.stop();
     }
 
@@ -235,6 +235,7 @@ public class HopsFSUserServer {
             public void connected(Connection conn) {
                 LOG.debug("[TCP SERVER " + tcpPort + "] Connection established with remote NameNode at "
                         + conn.getRemoteAddressTCP());
+                conn.setKeepAliveTCP(6000);
             }
 
             /**
@@ -709,7 +710,7 @@ public class HopsFSUserServer {
         if (bytesSent == 0)
             LOG.error("Transmission of TCP request " + requestId + " sent 0 bytes.");
         else
-            LOG.debug("Sent " + bytesSent + " bytes to NameNode " + tcpConnection.name + " from deployment #" +
+            LOG.debug("[TCP SERVER " + tcpPort + "] Sent " + bytesSent + " bytes to NameNode " + tcpConnection.name + " from deployment #" +
                     deploymentNumber + ".");
 
         // Make note of this future as being incomplete.

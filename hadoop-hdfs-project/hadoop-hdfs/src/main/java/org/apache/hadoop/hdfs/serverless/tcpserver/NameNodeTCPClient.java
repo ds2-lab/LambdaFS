@@ -369,6 +369,8 @@ public class NameNodeTCPClient {
             LOG.debug("Successfully established connection with client " + newClient.getClientId()
                     + " in " + connectMilliseconds + " milliseconds!");
 
+            tcpClient.setKeepAliveTCP(6000);
+
             // Now that we've registered the classes to be transferred, we can register with the server.
             registerWithClient(tcpClient);
 
