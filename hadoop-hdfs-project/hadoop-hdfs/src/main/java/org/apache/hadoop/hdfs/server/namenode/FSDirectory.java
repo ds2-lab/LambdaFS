@@ -1621,7 +1621,6 @@ public class FSDirectory implements Closeable {
 
   /**
    * Get {@link INode} associated with the file / directory.
-   * @throws SnapshotAccessControlException if path is in RO snapshot
    */
   public INode getINode4Write(String src) throws UnresolvedLinkException, StorageException, TransactionContextException {
     return getINodesInPath4Write(src, true).getLastINode();

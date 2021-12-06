@@ -356,7 +356,7 @@ public class OpenWhiskHandler {
 
 //        try {
 //            // Check if a function mapping should be created and returned to the client.
-//            tryCreateFunctionMapping(result, fsArgs, serverlessNameNode);
+//            tryCreateDeploymentMapping(result, fsArgs, serverlessNameNode);
 //        } catch (IOException ex) {
 //            LOG.error("Encountered IOException while trying to create function mapping:", ex);
 //            result.addException(ex);
