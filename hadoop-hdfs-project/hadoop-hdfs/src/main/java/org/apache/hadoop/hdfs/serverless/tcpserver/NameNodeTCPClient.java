@@ -164,6 +164,8 @@ public class NameNodeTCPClient {
                     if (client == null)
                         return;
 
+                    LOG.warn("EVICTING CONNECTION: " + serverlessHopsFSClient);
+
                     if (client.isConnected())
                         client.close();
                 })
