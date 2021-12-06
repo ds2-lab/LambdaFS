@@ -176,7 +176,8 @@ public class NameNodeTCPClient {
 
         LOG.debug("Created NameNodeTCPClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
                 ", functionUriBase=" + functionUriBase + ", writeBufferSize=" + writeBufferSize +
-                " bytes, objectBufferSize=" + objectBufferSize + " bytes).");
+                " bytes, objectBufferSize=" + objectBufferSize + " bytes, maximumConnections=" + maximumConnections +
+                ").");
     }
 
     /**
