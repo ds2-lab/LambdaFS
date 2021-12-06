@@ -98,6 +98,11 @@ public class HopsFSUserServer {
     private final ConcurrentHashMap<String, NameNodeConnection> futureToNameNodeMapping;
 
     /**
+     * Implements all the Listener methods that we need. See the comment on the ServerListener class for more info.
+     */
+    private final ServerListener serverListener;
+
+    /**
      * Indicates whether the TCP server should ultimately be started and enabled.
      */
     private final boolean enabled;
@@ -133,6 +138,8 @@ public class HopsFSUserServer {
           }
         };
 
+        serverListener = new ServerListener();
+
         Log.set(Log.LEVEL_TRACE);
 
         enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
@@ -145,7 +152,7 @@ public class HopsFSUserServer {
         // First, register the JsonObject class with the Kryo serializer.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(server.getKryo());
 
-        addListenersToServer();
+        server.addListener(serverListener);
 
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
@@ -175,6 +182,7 @@ public class HopsFSUserServer {
      */
     public void stop() {
         LOG.debug("HopsFSUserServer " + tcpPort + " stopping now...");
+        this.server.removeListener(serverListener);
         this.server.stop();
     }
 
@@ -221,193 +229,6 @@ public class HopsFSUserServer {
             throw new IOException("Failed to start TCP server. Could not successfully bind to any ports.");
 
         client.setTcpServerPort(tcpPort);
-    }
-
-    /**
-     * Add the various Listeners/network handlers to the TCP server.
-     */
-    private void addListenersToServer() {
-        // We need to add some listeners to the server. This is how we add functionality.
-        server.addListener(new Listener() {
-            /**
-             * Listener handles connection establishment with remote NameNodes.
-             */
-            public void connected(Connection conn) {
-                LOG.debug("[TCP SERVER " + tcpPort + "] Connection established with remote NameNode at "
-                        + conn.getRemoteAddressTCP());
-                conn.setKeepAliveTCP(6000);
-            }
-
-            /**
-             * This listener handles receiving TCP messages from the name nodes.
-             * @param conn The connection to the name node.
-             * @param object The object that was sent by the name node to the client (us).
-             */
-            public void received(Connection conn, Object object) {
-                NameNodeConnection connection = (NameNodeConnection)conn;
-
-                // If we received a JsonObject, then add it to the queue for processing.
-                if (object instanceof String) {
-                    JsonObject body = new JsonParser().parse((String)object).getAsJsonObject();
-                            //JsonParser.parseString((String)object).getAsJsonObject();
-
-                    LOG.debug("[TCP SERVER " + tcpPort + "] Received message from NameNode at " + connection.toString() + " at " +
-                            connection.getRemoteAddressTCP() + ".");
-
-//                    try {
-//                        LOG.debug("===== Message Contents =====");
-//                        LOG.debug("     Operation" + ": " + body.getAsJsonPrimitive(OPERATION).toString());
-//                        LOG.debug("     RequestID" + ": " + body.getAsJsonPrimitive(REQUEST_ID).toString());
-//                        LOG.debug("     NameNodeID" + ": " + body.getAsJsonPrimitive(NAME_NODE_ID).toString());
-//                        LOG.debug("     Deployment#" + ": " + body.getAsJsonPrimitive(DEPLOYMENT_NUMBER).toString());
-////                        for (String key : body.keySet()) {
-////                            try {
-////                                // Don't print results, statistics packages, or transaction events as they're too long.
-////                                if (key.equals(ServerlessNameNodeKeys.RESULT))
-////                                    LOG.debug("     " + key + ": <RESULT>");
-////                                else if (key.equals(ServerlessNameNodeKeys.STATISTICS_PACKAGE))
-////                                    LOG.debug("     " + key + ": <STATISTICS PACKAGE>");
-////                                else if (key.equals(ServerlessNameNodeKeys.TRANSACTION_EVENTS))
-////                                    LOG.debug("     " + key + ": " + "<TRANSACTION EVENTS>");
-////                                else
-////                                    LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
-////                            } catch (ClassCastException ex) {
-////                                LOG.debug("     " + key + ": " + body.getAsJsonArray(key).toString());
-////                            }
-////                        }
-//                        LOG.debug("============================");
-//                    } catch (Exception ex) {
-//                        LOG.error("Unexpected error encountered while iterating over keys of message:", ex);
-//                        LOG.debug("Printing message in its entirety.");
-//                        LOG.debug(body.toString());
-//                    }
-
-                    int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
-                    long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
-                    String operation = body.getAsJsonPrimitive("op").getAsString();
-
-                    String requestId = null;
-
-                    // There won't be a requestId during registration attempts, just when results are being returned.
-                    if (body.has("requestId"))
-                        requestId = body.getAsJsonPrimitive("requestId").getAsString();
-
-                    LOG.debug("[TCP SERVER " + tcpPort + "] NN ID: " + nameNodeId + ", Deployment #: " + deploymentNumber +
-                            ", RequestID: " + requestId + ", Operation: " + operation);
-
-                    // There are currently two different operations that a NameNode may perform.
-                    // The first is registration. This operation results in the connection to the NameNode
-                    // being cached locally by the client. The second operation is that of returning a result
-                    // of a file system operation back to the user.
-                    switch (operation) {
-                        // The NameNode is registering with the client (i.e., connecting for the first time,
-                        // or at least they are connecting after having previously lost connection).
-                        case OPERATION_REGISTER:
-//                            LOG.debug("[TCP SERVER " + tcpPort + "] Received registration operation from NameNode " +
-//                                    nameNodeId + ", Deployment #" + deploymentNumber);
-                            registerNameNode(connection, deploymentNumber, nameNodeId);
-                            break;
-                        // The NameNode is returning a result (of a file system operation) to the client.
-                        case OPERATION_RESULT:
-//                            LOG.debug("[TCP SERVER " + tcpPort + "] Received result from NameNode " + nameNodeId +
-//                                    ", Deployment #" + deploymentNumber);
-
-                            // If there is no request ID, then we have no idea which operation this result is
-                            // associated with, and thus we cannot do anything with it.
-                            if (requestId == null) {
-                                LOG.warn("[TCP SERVER " + tcpPort + "] TCP Server received response containing result of FS " +
-                                        "operation, but response did not contain a request ID.");
-                                break;
-                            }
-
-                            RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
-
-                            // If there is no future associated with this operation, then we have no means to return
-                            // the result back to the client who issued the file system operation.
-                            if (future == null) {
-                                LOG.warn("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
-                                        ", but there is no associated future registered with the server.");
-                                break;
-                            }
-
-                            boolean success = future.postResultImmediate(body);
-
-                            if (!success)
-                                throw new IllegalStateException("Failed to post result to future " + future.getRequestId());
-
-                            // Update state pertaining to futures.
-                            activeFutures.remove(requestId);
-                            completedFutures.put(requestId, future);
-
-                            List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
-                            incompleteFutures.remove(future);
-
-                            break;
-                        default:
-                            LOG.warn("[TCP SERVER " + tcpPort + "] Unknown operation received from NameNode " + nameNodeId +
-                                    ", Deployment #" + deploymentNumber + ": '" + operation + "'");
-                    }
-                }
-                else if (object instanceof FrameworkMessage.KeepAlive) {
-                    // The server periodically sends KeepAlive objects to prevent the client from disconnecting due to timeouts.
-                    if (Log.TRACE) // This will print a LOT of messages.
-                        Log.trace("Received KeepAlive from NameNode " + connection.name);
-                }
-                else {
-                    LOG.warn("[TCP SERVER " + tcpPort + "] Received object of unexpected type from remote client " + connection +
-                            " at " + connection.getRemoteAddressTCP() + ". Object type: " +
-                            object.getClass().getSimpleName() + ".");
-                }
-            }
-
-            /**
-             * Handle the disconnection of a NameNode from the client.
-             *
-             * Remove the associated connection from the active connections cache.
-             */
-            public void disconnected(Connection conn) {
-                NameNodeConnection connection = (NameNodeConnection)conn;
-
-                if (connection.name != -1) {
-                    int mappedDeploymentNumber = nameNodeIdToDeploymentMapping.get(connection.name);
-                    LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to NN " + connection.name +
-                            " from deployment #" + mappedDeploymentNumber);
-                    allActiveConnections.remove(connection.name);
-
-                    ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
-                            activeConnectionsPerDeployment.get(mappedDeploymentNumber);
-                    deploymentConnections.remove(connection.name);
-
-                    List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
-
-                    if (incompleteFutures == null) {
-                        LOG.debug("[TCP SERVER " + tcpPort + "] There were no futures associated with now-closed connection " + connection.name);
-                        return;
-                    }
-
-                    LOG.warn("[TCP SERVER " + tcpPort + "] There were " + incompleteFutures.size()
-                            + " incomplete future(s) associated with now-terminated connection " + connection.name);
-
-                    // Cancel each of the futures.
-                    for (RequestResponseFuture future : incompleteFutures) {
-                        LOG.debug("    [TCP SERVER " + tcpPort + "] Cancelling future " + future.getRequestId() + " for operation " +
-                                future.getOperationName());
-                        try {
-                            future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
-                        } catch (InterruptedException ex) {
-                            LOG.error("Error encountered while cancelling future " + future.getRequestId()
-                                    + " for operation " + future.getOperationName() + ":", ex);
-                        }
-                    }
-                } else {
-                    InetSocketAddress address = conn.getRemoteAddressTCP();
-                    if (address == null)
-                        LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to unregistered NameNode.");
-                    else
-                        LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to unregistered NameNode at " + address);
-                }
-            }
-        });
     }
 
     /**
@@ -787,6 +608,192 @@ public class HopsFSUserServer {
         @Override
         public String toString() {
             return this.name != -1 ? String.valueOf(this.name) : super.toString();
+        }
+    }
+
+    /**
+     * Implements the various listener methods we need for the server. We create a class so that we can explicitly
+     * instantiate it and then remove it when stopping the server so that we do not see any trailing "connection lost"
+     * messages.
+     */
+    private class ServerListener extends Listener {
+        /**
+         * Listener handles connection establishment with remote NameNodes.
+         */
+        public void connected(Connection conn) {
+            LOG.debug("[TCP SERVER " + tcpPort + "] Connection established with remote NameNode at "
+                    + conn.getRemoteAddressTCP());
+            conn.setKeepAliveTCP(6000);
+        }
+
+        /**
+         * This listener handles receiving TCP messages from the name nodes.
+         * @param conn The connection to the name node.
+         * @param object The object that was sent by the name node to the client (us).
+         */
+        public void received(Connection conn, Object object) {
+            NameNodeConnection connection = (NameNodeConnection)conn;
+
+            // If we received a JsonObject, then add it to the queue for processing.
+            if (object instanceof String) {
+                JsonObject body = new JsonParser().parse((String)object).getAsJsonObject();
+                //JsonParser.parseString((String)object).getAsJsonObject();
+
+                LOG.debug("[TCP SERVER " + tcpPort + "] Received message from NameNode at " + connection.toString() + " at " +
+                        connection.getRemoteAddressTCP() + ".");
+
+//                    try {
+//                        LOG.debug("===== Message Contents =====");
+//                        LOG.debug("     Operation" + ": " + body.getAsJsonPrimitive(OPERATION).toString());
+//                        LOG.debug("     RequestID" + ": " + body.getAsJsonPrimitive(REQUEST_ID).toString());
+//                        LOG.debug("     NameNodeID" + ": " + body.getAsJsonPrimitive(NAME_NODE_ID).toString());
+//                        LOG.debug("     Deployment#" + ": " + body.getAsJsonPrimitive(DEPLOYMENT_NUMBER).toString());
+////                        for (String key : body.keySet()) {
+////                            try {
+////                                // Don't print results, statistics packages, or transaction events as they're too long.
+////                                if (key.equals(ServerlessNameNodeKeys.RESULT))
+////                                    LOG.debug("     " + key + ": <RESULT>");
+////                                else if (key.equals(ServerlessNameNodeKeys.STATISTICS_PACKAGE))
+////                                    LOG.debug("     " + key + ": <STATISTICS PACKAGE>");
+////                                else if (key.equals(ServerlessNameNodeKeys.TRANSACTION_EVENTS))
+////                                    LOG.debug("     " + key + ": " + "<TRANSACTION EVENTS>");
+////                                else
+////                                    LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
+////                            } catch (ClassCastException ex) {
+////                                LOG.debug("     " + key + ": " + body.getAsJsonArray(key).toString());
+////                            }
+////                        }
+//                        LOG.debug("============================");
+//                    } catch (Exception ex) {
+//                        LOG.error("Unexpected error encountered while iterating over keys of message:", ex);
+//                        LOG.debug("Printing message in its entirety.");
+//                        LOG.debug(body.toString());
+//                    }
+
+                int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
+                long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
+                String operation = body.getAsJsonPrimitive("op").getAsString();
+
+                String requestId = null;
+
+                // There won't be a requestId during registration attempts, just when results are being returned.
+                if (body.has("requestId"))
+                    requestId = body.getAsJsonPrimitive("requestId").getAsString();
+
+                LOG.debug("[TCP SERVER " + tcpPort + "] NN ID: " + nameNodeId + ", Deployment #: " + deploymentNumber +
+                        ", RequestID: " + requestId + ", Operation: " + operation);
+
+                // There are currently two different operations that a NameNode may perform.
+                // The first is registration. This operation results in the connection to the NameNode
+                // being cached locally by the client. The second operation is that of returning a result
+                // of a file system operation back to the user.
+                switch (operation) {
+                    // The NameNode is registering with the client (i.e., connecting for the first time,
+                    // or at least they are connecting after having previously lost connection).
+                    case OPERATION_REGISTER:
+//                            LOG.debug("[TCP SERVER " + tcpPort + "] Received registration operation from NameNode " +
+//                                    nameNodeId + ", Deployment #" + deploymentNumber);
+                        registerNameNode(connection, deploymentNumber, nameNodeId);
+                        break;
+                    // The NameNode is returning a result (of a file system operation) to the client.
+                    case OPERATION_RESULT:
+//                            LOG.debug("[TCP SERVER " + tcpPort + "] Received result from NameNode " + nameNodeId +
+//                                    ", Deployment #" + deploymentNumber);
+
+                        // If there is no request ID, then we have no idea which operation this result is
+                        // associated with, and thus we cannot do anything with it.
+                        if (requestId == null) {
+                            LOG.warn("[TCP SERVER " + tcpPort + "] TCP Server received response containing result of FS " +
+                                    "operation, but response did not contain a request ID.");
+                            break;
+                        }
+
+                        RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
+
+                        // If there is no future associated with this operation, then we have no means to return
+                        // the result back to the client who issued the file system operation.
+                        if (future == null) {
+                            LOG.warn("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
+                                    ", but there is no associated future registered with the server.");
+                            break;
+                        }
+
+                        boolean success = future.postResultImmediate(body);
+
+                        if (!success)
+                            throw new IllegalStateException("Failed to post result to future " + future.getRequestId());
+
+                        // Update state pertaining to futures.
+                        activeFutures.remove(requestId);
+                        completedFutures.put(requestId, future);
+
+                        List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
+                        incompleteFutures.remove(future);
+
+                        break;
+                    default:
+                        LOG.warn("[TCP SERVER " + tcpPort + "] Unknown operation received from NameNode " + nameNodeId +
+                                ", Deployment #" + deploymentNumber + ": '" + operation + "'");
+                }
+            }
+            else if (object instanceof FrameworkMessage.KeepAlive) {
+                // The server periodically sends KeepAlive objects to prevent the client from disconnecting due to timeouts.
+                if (Log.TRACE) // This will print a LOT of messages.
+                    Log.trace("Received KeepAlive from NameNode " + connection.name);
+            }
+            else {
+                LOG.warn("[TCP SERVER " + tcpPort + "] Received object of unexpected type from remote client " + connection +
+                        " at " + connection.getRemoteAddressTCP() + ". Object type: " +
+                        object.getClass().getSimpleName() + ".");
+            }
+        }
+
+        /**
+         * Handle the disconnection of a NameNode from the client.
+         *
+         * Remove the associated connection from the active connections cache.
+         */
+        public void disconnected(Connection conn) {
+            NameNodeConnection connection = (NameNodeConnection)conn;
+
+            if (connection.name != -1) {
+                int mappedDeploymentNumber = nameNodeIdToDeploymentMapping.get(connection.name);
+                LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to NN " + connection.name +
+                        " from deployment #" + mappedDeploymentNumber);
+                allActiveConnections.remove(connection.name);
+
+                ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
+                        activeConnectionsPerDeployment.get(mappedDeploymentNumber);
+                deploymentConnections.remove(connection.name);
+
+                List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
+
+                if (incompleteFutures == null) {
+                    LOG.debug("[TCP SERVER " + tcpPort + "] There were no futures associated with now-closed connection " + connection.name);
+                    return;
+                }
+
+                LOG.warn("[TCP SERVER " + tcpPort + "] There were " + incompleteFutures.size()
+                        + " incomplete future(s) associated with now-terminated connection " + connection.name);
+
+                // Cancel each of the futures.
+                for (RequestResponseFuture future : incompleteFutures) {
+                    LOG.debug("    [TCP SERVER " + tcpPort + "] Cancelling future " + future.getRequestId() + " for operation " +
+                            future.getOperationName());
+                    try {
+                        future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
+                    } catch (InterruptedException ex) {
+                        LOG.error("Error encountered while cancelling future " + future.getRequestId()
+                                + " for operation " + future.getOperationName() + ":", ex);
+                    }
+                }
+            } else {
+                InetSocketAddress address = conn.getRemoteAddressTCP();
+                if (address == null)
+                    LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to unregistered NameNode.");
+                else
+                    LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to unregistered NameNode at " + address);
+            }
         }
     }
 }
