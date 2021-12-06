@@ -181,8 +181,7 @@ public class NameNodeTCPClient {
 
         LOG.debug("Created NameNodeTCPClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
                 ", functionUriBase=" + functionUriBase + ", writeBufferSize=" + writeBufferSize +
-                " bytes, objectBufferSize=" + objectBufferSize + " bytes, maximumConnections=" + maximumConnections +
-                ").");
+                " bytes, objectBufferSize=" + objectBufferSize + " bytes, maximumConnections=" + maximumConnections + ").");
     }
 
     /**
@@ -201,7 +200,10 @@ public class NameNodeTCPClient {
         int combinedBufferSize = maxBufferSize * 2;
 
         // For now, we reserve 65% of the function's RAM for TCP connection buffers.
-        int memoryAvailableForConnections = (int) Math.floor(memoryFractionReservedForTcpBuffers * actionMemory);
+        // We multiply by 1e6 to convert to bytes, as the actionMemory variable is in MB.
+        int memoryAvailableForConnections = (int) Math.floor(memoryFractionReservedForTcpBuffers * actionMemory * 1000000);
+
+        LOG.debug("There is " + memoryAvailableForConnections + " MB available for TCP connections.");
 
         return Math.floorDiv(memoryAvailableForConnections, combinedBufferSize);
     }
