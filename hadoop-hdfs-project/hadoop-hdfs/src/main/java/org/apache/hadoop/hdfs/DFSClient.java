@@ -946,8 +946,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * Close connections the Namenode.
    */
   void closeConnectionsToNamenodes() {
-    LOG.warn("There are no long-running Name Node connections to close because this version of HopsFS uses " +
-            "serverless Name Nodes!");
+//    LOG.warn("There are no long-running Name Node connections to close because this version of HopsFS uses " +
+//            "serverless Name Nodes!");
     /*if(leaderNN == namenode){
       //close only one
       stopProxy(namenode);

@@ -624,6 +624,7 @@ public class HopsFSUserServer {
             LOG.debug("[TCP SERVER " + tcpPort + "] Connection established with remote NameNode at "
                     + conn.getRemoteAddressTCP());
             conn.setKeepAliveTCP(6000);
+            conn.setTimeout(12000);
         }
 
         /**
