@@ -327,9 +327,9 @@ public abstract class ServerlessInvokerBase<T> {
             cache.addEntry(src, function, false);
 
             LOG.debug("Added entry to function-mapping cache. File/directory \"" + src + "\" --> " + function);
-        } else {
+        } /*else {
             LOG.warn("No INode function mapping information contained within response from serverless name node...");
-        }
+        }*/
 
         // Print any exceptions that were encountered first.
         if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {

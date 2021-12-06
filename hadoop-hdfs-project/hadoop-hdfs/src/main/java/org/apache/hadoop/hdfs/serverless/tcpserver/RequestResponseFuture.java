@@ -129,10 +129,10 @@ public class RequestResponseFuture implements Future<JsonObject> {
      * Post a result to this future so that it may be consumed by whoever is waiting on it.
      */
     public void postResult(JsonObject result) {
-        LOG.debug("Posting result for TCP future " + requestId + " now...");
+//        LOG.debug("Posting result for TCP future " + requestId + " now...");
         try {
             resultQueue.put(result);
-            LOG.debug("Posted result for TCP future " + requestId + ".");
+//            LOG.debug("Posted result for TCP future " + requestId + ".");
             this.state = State.DONE;
         }
         catch (Exception ex) {

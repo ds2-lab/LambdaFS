@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_RESULT;
 
@@ -252,29 +253,33 @@ public class HopsFSUserServer {
                     LOG.debug("[TCP SERVER " + tcpPort + "] Received message from NameNode at " + connection.toString() + " at " +
                             connection.getRemoteAddressTCP() + ".");
 
-                    try {
-                        LOG.debug("===== Message Contents =====");
-                        for (String key : body.keySet()) {
-                            try {
-                                // Don't print results, statistics packages, or transaction events as they're too long.
-                                if (key.equals(ServerlessNameNodeKeys.RESULT))
-                                    LOG.debug("     " + key + ": <RESULT>");
-                                else if (key.equals(ServerlessNameNodeKeys.STATISTICS_PACKAGE))
-                                    LOG.debug("     " + key + ": <STATISTICS PACKAGE>");
-                                else if (key.equals(ServerlessNameNodeKeys.TRANSACTION_EVENTS))
-                                    LOG.debug("     " + key + ": " + "<TRANSACTION EVENTS>");
-                                else
-                                    LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
-                            } catch (ClassCastException ex) {
-                                LOG.debug("     " + key + ": " + body.getAsJsonArray(key).toString());
-                            }
-                        }
-                        LOG.debug("============================");
-                    } catch (Exception ex) {
-                        LOG.error("Unexpected error encountered while iterating over keys of message:", ex);
-                        LOG.debug("Printing message in its entirety.");
-                        LOG.debug(body.toString());
-                    }
+//                    try {
+//                        LOG.debug("===== Message Contents =====");
+//                        LOG.debug("     Operation" + ": " + body.getAsJsonPrimitive(OPERATION).toString());
+//                        LOG.debug("     RequestID" + ": " + body.getAsJsonPrimitive(REQUEST_ID).toString());
+//                        LOG.debug("     NameNodeID" + ": " + body.getAsJsonPrimitive(NAME_NODE_ID).toString());
+//                        LOG.debug("     Deployment#" + ": " + body.getAsJsonPrimitive(DEPLOYMENT_NUMBER).toString());
+////                        for (String key : body.keySet()) {
+////                            try {
+////                                // Don't print results, statistics packages, or transaction events as they're too long.
+////                                if (key.equals(ServerlessNameNodeKeys.RESULT))
+////                                    LOG.debug("     " + key + ": <RESULT>");
+////                                else if (key.equals(ServerlessNameNodeKeys.STATISTICS_PACKAGE))
+////                                    LOG.debug("     " + key + ": <STATISTICS PACKAGE>");
+////                                else if (key.equals(ServerlessNameNodeKeys.TRANSACTION_EVENTS))
+////                                    LOG.debug("     " + key + ": " + "<TRANSACTION EVENTS>");
+////                                else
+////                                    LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
+////                            } catch (ClassCastException ex) {
+////                                LOG.debug("     " + key + ": " + body.getAsJsonArray(key).toString());
+////                            }
+////                        }
+//                        LOG.debug("============================");
+//                    } catch (Exception ex) {
+//                        LOG.error("Unexpected error encountered while iterating over keys of message:", ex);
+//                        LOG.debug("Printing message in its entirety.");
+//                        LOG.debug(body.toString());
+//                    }
 
                     int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
                     long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
@@ -297,14 +302,14 @@ public class HopsFSUserServer {
                         // The NameNode is registering with the client (i.e., connecting for the first time,
                         // or at least they are connecting after having previously lost connection).
                         case OPERATION_REGISTER:
-                            LOG.debug("[TCP SERVER " + tcpPort + "] Received registration operation from NameNode " +
-                                    nameNodeId + ", Deployment #" + deploymentNumber);
+//                            LOG.debug("[TCP SERVER " + tcpPort + "] Received registration operation from NameNode " +
+//                                    nameNodeId + ", Deployment #" + deploymentNumber);
                             registerNameNode(connection, deploymentNumber, nameNodeId);
                             break;
                         // The NameNode is returning a result (of a file system operation) to the client.
                         case OPERATION_RESULT:
-                            LOG.debug("[TCP SERVER " + tcpPort + "] Received result from NameNode " + nameNodeId +
-                                    ", Deployment #" + deploymentNumber);
+//                            LOG.debug("[TCP SERVER " + tcpPort + "] Received result from NameNode " + nameNodeId +
+//                                    ", Deployment #" + deploymentNumber);
 
                             // If there is no request ID, then we have no idea which operation this result is
                             // associated with, and thus we cannot do anything with it.
