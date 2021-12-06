@@ -514,7 +514,7 @@ public class HopsFSUserServer {
 
                 if (errorIfActive) {
                     throw new IllegalStateException("[TCP SERVER " + tcpPort + "] Connection to NN " + nameNodeId
-                            + " was found to be active.");
+                            + " was found to be active when trying to delete it.");
                 }
 
                 if (deleteIfActive) {
@@ -697,9 +697,20 @@ public class HopsFSUserServer {
         // Send the TCP request to the NameNode.
         NameNodeConnection tcpConnection = getConnection(deploymentNumber);
 
+        // Make sure the connection variable is non-null.
         if (tcpConnection == null) {
             LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue TCP request to NameNode deployment " + deploymentNumber +
                     ", but connection no longer exists...");
+            return null;
+        }
+
+        // Make sure the connection is active.
+        if (!tcpConnection.isConnected()) {
+            LOG.warn("[TCP SERVER " + tcpPort + "] Selected TCP connection to NameNode " + tcpConnection.name +
+                    " is NOT connected...");
+
+            // Delete the connection. If it is active, then we throw an error, as we expect it to not be active.
+            deleteConnection(tcpConnection.name, false, true);
             return null;
         }
 
