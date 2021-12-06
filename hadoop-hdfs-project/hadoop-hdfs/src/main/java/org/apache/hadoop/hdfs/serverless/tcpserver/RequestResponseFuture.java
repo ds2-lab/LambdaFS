@@ -71,7 +71,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
         cancellationMessage.addProperty(ServerlessNameNodeKeys.REASON, reason);
         cancellationMessage.addProperty(ServerlessNameNodeKeys.SHOULD_RETRY, shouldRetry);
 
-        LOG.debug("About to cancel future " + requestId + " now...");
+        LOG.debug("About to cancel future " + requestId + " now. Size of result queue: " + resultQueue.size());
         resultQueue.put(cancellationMessage);
         LOG.debug("Cancelled future " + requestId + " for operation " + operationName + ". Reason: " + reason);
     }

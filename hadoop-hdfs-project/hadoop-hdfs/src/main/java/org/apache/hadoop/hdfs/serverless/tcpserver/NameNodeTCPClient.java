@@ -66,6 +66,11 @@ public class NameNodeTCPClient {
     private final Cache<ServerlessHopsFSClient, Client> tcpClients;
 
     /**
+     * The fraction of main memory reserved for TCP connection buffers.
+     */
+    private static final float memoryFractionReservedForTcpBuffers = 0.50f;
+
+    /**
      * The deployment number of the local serverless name node instance.
      */
     private final int deploymentNumber;
@@ -154,6 +159,9 @@ public class NameNodeTCPClient {
 
         Log.set(Log.LEVEL_TRACE);
 
+        this.writeBufferSize = defaultWriteBufferSizeBytes;
+        this.objectBufferSize = defaultObjectBufferSizeBytes;
+
         this.maximumConnections = calculateMaxNumberTcpConnections();
 
         this.tcpClients = Caffeine.newBuilder()
@@ -170,9 +178,6 @@ public class NameNodeTCPClient {
                         client.close();
                 })
                 .build();
-
-        this.writeBufferSize = defaultWriteBufferSizeBytes;
-        this.objectBufferSize = defaultObjectBufferSizeBytes;
 
         LOG.debug("Created NameNodeTCPClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
                 ", functionUriBase=" + functionUriBase + ", writeBufferSize=" + writeBufferSize +
@@ -193,14 +198,12 @@ public class NameNodeTCPClient {
      * @return The maximum number of concurrent TCP connections permitted at any given time.
      */
     private int calculateMaxNumberTcpConnections() {
-        int combinedBufferSize = maxBufferSize << 2;
+        int combinedBufferSize = maxBufferSize * 2;
 
         // For now, we reserve 65% of the function's RAM for TCP connection buffers.
-        double memoryReservedForTCPConnectionBuffers = 0.50;
-        int memoryAvailableForConnections = (int) Math.floor(memoryReservedForTCPConnectionBuffers * actionMemory);
+        int memoryAvailableForConnections = (int) Math.floor(memoryFractionReservedForTcpBuffers * actionMemory);
 
-        int maximumConnections = Math.floorDiv(memoryAvailableForConnections, combinedBufferSize);
-        return maximumConnections;
+        return Math.floorDiv(memoryAvailableForConnections, combinedBufferSize);
     }
 
     /**
