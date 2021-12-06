@@ -25,6 +25,10 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
         return forceRedo;
     }
 
+    public String getRequestMethod() {
+        return requestMethod;
+    }
+
     private enum State {WAITING, DONE, CANCELLED, ERROR}
 
     private volatile State state = State.WAITING;
@@ -50,6 +54,11 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
     private final long createdAt;
 
     /**
+     * Indicates whether this task was submitted via HTTP or TCP.
+     */
+    private final String requestMethod;
+
+    /**
      * This is used to receive the result of the future from the worker thread.
      */
     private final BlockingQueue<T> resultQueue = new ArrayBlockingQueue<>(1);
@@ -72,12 +81,15 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
      * @param forceRedo If True, the NN should complete this operation again, even if it was already completed
      *                  once before. Presumably the TCP connection that was going to return the result back to
      *                  the client was dropped before the client received the result.
+     * @param requestMethod Indicates whether this task was submitted via HTTP or TCP.
      */
-    public FileSystemTask(String taskId, String operationName, JsonObject operationArguments, boolean forceRedo) {
+    public FileSystemTask(String taskId, String operationName, JsonObject operationArguments, boolean forceRedo,
+                          String requestMethod) {
         this.taskId = taskId;
         this.operationName = operationName;
         this.operationArguments = operationArguments;
         this.forceRedo = forceRedo;
+        this.requestMethod = requestMethod;
 
         this.createdAt = System.nanoTime();
     }
@@ -90,9 +102,10 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
      * @param operationName The name of the file system operation being performed. This generally refers explicitly
      *                      to the function name of the operation.
      * @param operationArguments The arguments for the file system operation.
+     * @param requestMethod Indicates whether this task was submitted via HTTP or TCP.
      */
-    public FileSystemTask(String taskId, String operationName, JsonObject operationArguments) {
-        this(taskId, operationName, operationArguments, false);
+    public FileSystemTask(String taskId, String operationName, JsonObject operationArguments, String requestMethod) {
+        this(taskId, operationName, operationArguments, false, requestMethod);
     }
 
     @Override

@@ -313,7 +313,7 @@ public abstract class ServerlessInvokerBase<T> {
             requestId = "N/A";
 
         // First, let's check and see if there's any information about file/directory-to-function mappings.
-        if (response.has(ServerlessNameNodeKeys.FUNCTION_MAPPING) && cache != null) {
+        if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_MAPPING) && cache != null) {
             LOG.debug("JSON response from serverless name node contains function mapping information.");
             JsonObject functionMapping = response.getAsJsonObject("FUNCTION_MAPPING");
 

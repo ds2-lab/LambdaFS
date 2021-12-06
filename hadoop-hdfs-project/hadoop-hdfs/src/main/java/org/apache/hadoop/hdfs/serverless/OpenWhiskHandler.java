@@ -305,7 +305,7 @@ public class OpenWhiskHandler {
         Future<Serializable> newTask = null;
         try {
             newTask = FileSystemTaskUtils.createAndEnqueueFileSystemTask(requestId, op, fsArgs, result,
-                    serverlessNameNode, redoEvenIfDuplicate);
+                    serverlessNameNode, redoEvenIfDuplicate, "HTTP");
 
             // We wait for the task to finish executing in a separate try-catch block so that, if there is
             // an exception, then we can log a specific message indicating where the exception occurred. If we
@@ -354,13 +354,13 @@ public class OpenWhiskHandler {
             result.addException(ex);
         }
 
-        try {
-            // Check if a function mapping should be created and returned to the client.
-            tryCreateFunctionMapping(result, fsArgs, serverlessNameNode);
-        } catch (IOException ex) {
-            LOG.error("Encountered IOException while trying to create function mapping:", ex);
-            result.addException(ex);
-        }
+//        try {
+//            // Check if a function mapping should be created and returned to the client.
+//            tryCreateFunctionMapping(result, fsArgs, serverlessNameNode);
+//        } catch (IOException ex) {
+//            LOG.error("Encountered IOException while trying to create function mapping:", ex);
+//            result.addException(ex);
+//        }
 
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker && tcpEnabled) {
@@ -392,9 +392,9 @@ public class OpenWhiskHandler {
      * @param fsArgs The file system operation arguments passed in by the client (i.e., the individual who invoked us).
      * @param serverlessNameNode The current serverless name node instance, as we need this to determine the mapping.
      */
-    public static void tryCreateFunctionMapping(NameNodeResult result,
-                                                JsonObject fsArgs,
-                                                ServerlessNameNode serverlessNameNode)
+    public static void tryCreateDeploymentMapping(NameNodeResult result,
+                                                  JsonObject fsArgs,
+                                                  ServerlessNameNode serverlessNameNode)
             throws IOException {
         // After performing the desired FS operation, we check if there is a particular file or directory
         // identified by the `src` parameter. This is the file/directory that should be hashed to a particular

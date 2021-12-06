@@ -2,21 +2,18 @@ package org.apache.hadoop.hdfs.serverless.operation;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.hops.exception.StorageException;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
+import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.PriorityQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -327,6 +324,19 @@ public class NameNodeWorkerThread extends Thread {
                     LOG.error("Worker thread encountered throwable while executing file system operation " +
                             task.getOperationName() + " for task " + task.getTaskId() + ".", t);
                     workerResult.addThrowable(t);
+                }
+
+                // If this task was submitted via HTTP, then attempt to create a deployment mapping.
+                if (task.getRequestMethod().equalsIgnoreCase("HTTP")) {
+                    try {
+                        LOG.debug("Trying to create function mapping for request " + task.getTaskId() + " now...");
+                        // Check if a function mapping should be created and returned to the client.
+                        OpenWhiskHandler.tryCreateDeploymentMapping(workerResult, task.getOperationArguments(), serverlessNameNodeInstance);
+                    } catch (IOException ex) {
+                        LOG.error("Encountered IOException while trying to create function mapping for task " +
+                                task.getTaskId() + ":", ex);
+                        workerResult.addException(ex);
+                    }
                 }
 
                 currentlyExecutingTasks.remove(task.getTaskId());

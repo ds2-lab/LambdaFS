@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
+
 /**
  * This encapsulates all the information that may be returned to the user after the NameNode executes.
  *
@@ -257,15 +259,13 @@ public class NameNodeResult implements Serializable {
 
     public String serializeAndEncode(Object object) {
         try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-            ObjectOutputStream objectOutputStream;
-            objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
             objectOutputStream.writeObject(object);
             objectOutputStream.flush();
 
             byte[] objectBytes = byteArrayOutputStream.toByteArray();
-            String base64Object = Base64.encodeBase64String(objectBytes);
 
-            return base64Object;
+            return Base64.encodeBase64String(objectBytes);
         } catch (Exception ex) {
             LOG.error("Exception encountered whilst serializing result of file system operation: ", ex);
             addException(ex);
@@ -324,11 +324,11 @@ public class NameNodeResult implements Serializable {
         if (serverlessFunctionMapping != null) {
             // Embed all the information about the serverless function mapping in the Json response.
             JsonObject functionMapping = new JsonObject();
-            functionMapping.addProperty("fileOrDirectory", serverlessFunctionMapping.fileOrDirectory);
-            functionMapping.addProperty("parentId", serverlessFunctionMapping.parentId);
-            functionMapping.addProperty("function", serverlessFunctionMapping.mappedFunctionNumber);
+            functionMapping.addProperty(FILE_OR_DIR, serverlessFunctionMapping.fileOrDirectory);
+            functionMapping.addProperty(PARENT_ID, serverlessFunctionMapping.parentId);
+            functionMapping.addProperty(FUNCTION, serverlessFunctionMapping.mappedFunctionNumber);
 
-            json.add("FUNCTION_MAPPING", functionMapping);
+            json.add(DEPLOYMENT_MAPPING, functionMapping);
         }
 
         if (additionalFields.size() > 0) {
@@ -470,6 +470,7 @@ public class NameNodeResult implements Serializable {
      * - statisticsPackageSerializedAndEncoded: Will be overwritten by the incoming NameNodeResult's transaction statistics.
      * - dequeuedTime: Overwritten by the incoming result. The worker thread updates this value, not the main thread.
      * - txEventsSerializedAndEncoded
+     * - serverlessFunctionMapping: this is created by the NameNodeWorkerThread right before it posts the result back to the HTTP/TCP thread.
      *
      * @param other The other instance to merge into this one.
      * @param keepOld If True, then existing values of this instance will NOT be overwritten with new values from the
@@ -498,6 +499,7 @@ public class NameNodeResult implements Serializable {
         this.statisticsPackageSerializedAndEncoded = other.statisticsPackageSerializedAndEncoded;
         this.txEventsSerializedAndEncoded = other.txEventsSerializedAndEncoded;
         this.dequeuedTime = other.dequeuedTime;
+        this.serverlessFunctionMapping = other.serverlessFunctionMapping;
     }
 
     public long getFnStartTime() {

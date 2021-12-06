@@ -514,7 +514,7 @@ public class NameNodeTCPClient {
         Future<Serializable> newTask = null;
         try {
             newTask = FileSystemTaskUtils.createAndEnqueueFileSystemTask(requestId, op, fsArgs, tcpResult,
-                    serverlessNameNode, false);
+                    serverlessNameNode, false, "TCP");
         } catch (Exception ex) {
             LOG.error("Error encountered while creating file system task "
                     + requestId + " for operation '" + op + "':", ex);

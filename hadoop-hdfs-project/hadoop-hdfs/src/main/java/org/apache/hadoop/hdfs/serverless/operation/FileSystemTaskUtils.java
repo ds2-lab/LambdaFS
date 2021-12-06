@@ -33,15 +33,14 @@ public class FileSystemTaskUtils {
      * @param requestId The ID of the task/request.
      * @param op The name of the operation we're performing.
      * @param fsArgs The file system arguments supplied by the client.
-     * @param functionUriBase The endpoint we issue HTTP requests to in order to invoke NameNodes.
      * @param tcpResult The result that will eventually be returned to the client.
      * @param serverlessNameNode The ServerlessNameNode instance running in this container.
-     *
+     * @param requestMethod Indicates whether this task was submitted via HTTP or TCP.
      * @return A FileSystemTask for the given request, or null if something went wrong while creating the task.
      */
     public static Future<Serializable> createAndEnqueueFileSystemTask(
             String requestId, String op, JsonObject fsArgs, NameNodeResult tcpResult,
-            ServerlessNameNode serverlessNameNode, boolean forceRedo) {
+            ServerlessNameNode serverlessNameNode, boolean forceRedo, String requestMethod) {
 
         // Some operations do not have a 'src' argument as they're not operating on a particular file or directory.
         // In that case, any NameNode is obviously authorized to perform the action.
@@ -73,7 +72,7 @@ public class FileSystemTaskUtils {
 //            }
 //        }
 
-        FileSystemTask<Serializable> newTask = new FileSystemTask<>(requestId, op, fsArgs, forceRedo);
+        FileSystemTask<Serializable> newTask = new FileSystemTask<>(requestId, op, fsArgs, forceRedo, requestMethod);
 
         // We wait for the task to finish executing in a separate try-catch block so that, if there is
         // an exception, then we can log a specific message indicating where the exception occurred. If we
