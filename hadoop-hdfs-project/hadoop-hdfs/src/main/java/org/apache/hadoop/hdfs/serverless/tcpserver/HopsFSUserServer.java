@@ -133,7 +133,7 @@ public class HopsFSUserServer {
           }
         };
 
-        Log.set(Log.LEVEL_DEBUG);
+        Log.set(Log.LEVEL_TRACE);
 
         enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
