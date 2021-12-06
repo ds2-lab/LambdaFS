@@ -127,6 +127,30 @@ public class RequestResponseFuture implements Future<JsonObject> {
 
     /**
      * Post a result to this future so that it may be consumed by whoever is waiting on it.
+     *
+     * @return True if we were able to insert the result into the queue, otherwise false.
+     */
+    public boolean postResultImmediate(JsonObject result) {
+        try {
+            boolean success = resultQueue.offer(result);
+
+            if (success)
+                this.state = State.DONE;
+            else
+                LOG.error("Could not post result for future " + getRequestId() + " as result queue is full.");
+
+            return success;
+        }
+        catch (Exception ex) {
+            LOG.error("Exception encountered while attempting to post result to TCP future: ", ex);
+            this.state = State.ERROR;
+        }
+
+        return false;
+    }
+
+    /**
+     * Post a result to this future so that it may be consumed by whoever is waiting on it.
      */
     public void postResult(JsonObject result) {
 //        LOG.debug("Posting result for TCP future " + requestId + " now...");

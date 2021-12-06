@@ -329,7 +329,10 @@ public class HopsFSUserServer {
                                 break;
                             }
 
-                            future.postResult(body);
+                            boolean success = future.postResultImmediate(body);
+
+                            if (!success)
+                                throw new IllegalStateException("Failed to post result to future " + future.getRequestId());
 
                             // Update state pertaining to futures.
                             activeFutures.remove(requestId);
@@ -706,7 +709,8 @@ public class HopsFSUserServer {
         if (bytesSent == 0)
             LOG.error("Transmission of TCP request " + requestId + " sent 0 bytes.");
         else
-            LOG.debug("Sent " + bytesSent + " bytes to NameNode" + deploymentNumber + ".");
+            LOG.debug("Sent " + bytesSent + " bytes to NameNode " + tcpConnection.name + " from deployment #" +
+                    deploymentNumber + ".");
 
         // Make note of this future as being incomplete.
         List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(

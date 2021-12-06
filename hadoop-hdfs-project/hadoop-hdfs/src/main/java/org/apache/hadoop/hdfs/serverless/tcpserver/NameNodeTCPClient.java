@@ -56,7 +56,7 @@ public class NameNodeTCPClient {
      * This is the maximum amount of time a call to connect() will block. Calls to connect() occur when
      * establishing a connection to a new client.
      */
-    private static final int CONNECTION_TIMEOUT = 5000;
+    private static final int CONNECTION_TIMEOUT = 8000;
 
     /**
      * Mapping from instances of ServerlessHopsFSClient to their associated TCP client object. Recall that each
@@ -284,13 +284,6 @@ public class NameNodeTCPClient {
             return false;
         }
 
-        // Start the client in its own thread.
-        // new Thread(tcpClient).start();
-        tcpClient.start();
-
-        // We need to register whatever classes will be serialized BEFORE any network activity is performed.
-        ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
-
         tcpClient.addListener(new Listener() {
             /**
              * This listener is responsible for handling messages received from HopsFS clients. These messages will
@@ -346,7 +339,11 @@ public class NameNodeTCPClient {
         Thread connectThread
                 = new Thread("Thread-ConnectTo" + newClient.getClientIp() + ":" + newClient.getClientPort()) {
             public void run() {
+                tcpClient.start();
                 try {
+                    // We need to register whatever classes will be serialized BEFORE any network activity is performed.
+                    ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
+
                     // The call to connect() may produce an IOException if it times out.
                     tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
                 } catch (IOException ex) {
