@@ -328,9 +328,11 @@ public class NameNodeTCPClient {
             }
 
             public void disconnected (Connection connection) {
-                LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
-                        " at " + newClient.getClientIp() + ":" + newClient.getClientPort() + ".");
                 tcpClients.invalidate(newClient);
+
+                LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
+                        " at " + newClient.getClientIp() + ":" + newClient.getClientPort() +
+                        ". Number of active TCP connections: " + tcpClients.estimatedSize());
             }
         });
 
