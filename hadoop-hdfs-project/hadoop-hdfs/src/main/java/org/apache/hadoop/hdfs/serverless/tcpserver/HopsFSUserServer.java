@@ -120,7 +120,7 @@ public class HopsFSUserServer {
     /**
      * Sizes to use for TCP server buffers.
      */
-    private static final int bufferSizes = (int)64e6;
+    private static final int bufferSizes = (int)12e6;
 
     /**
      * Constructor.
