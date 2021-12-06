@@ -305,9 +305,9 @@ implements ByteBufferReadable, CanSetDropBehind, CanSetReadahead,
 
   private long fetchLocatedBlocksAndGetLastBlockLength() throws IOException {
     final LocatedBlocks newInfo = dfsClient.getLocatedBlocks(src, 0);
-    if (DFSClient.LOG.isDebugEnabled()) {
-      DFSClient.LOG.debug("newInfo = " + newInfo);
-    }
+//    if (DFSClient.LOG.isDebugEnabled()) {
+//      DFSClient.LOG.debug("newInfo = " + newInfo);
+//    }
     if (newInfo == null) {
       throw new IOException("Cannot open filename " + src);
     }
