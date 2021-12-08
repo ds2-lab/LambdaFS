@@ -317,7 +317,12 @@ public abstract class ServerlessInvokerBase<T> {
      * @param response The response from the NameNode.
      * @return The result contained within the JsonObject returned by the NameNode.
      */
-    public Object extractResultFromJsonResponse(JsonObject response) {
+    public Object extractResultFromJsonResponse(JsonObject resp) {
+        JsonObject response = resp;
+        // Sometimes(?) the actual result is included in the "body" key.
+        if (response.has("body"))
+            response = resp.get("body").getAsJsonObject();
+
         String requestId;
         if (response.has(ServerlessNameNodeKeys.REQUEST_ID))
             requestId = response.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
