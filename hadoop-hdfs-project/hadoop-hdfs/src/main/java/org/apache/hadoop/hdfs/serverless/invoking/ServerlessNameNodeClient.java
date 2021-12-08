@@ -333,6 +333,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 requestId,
                 mappedFunctionNumber);
 
+        LOG.debug("Response: " + response.toString());
+
         long nameNodeId = -1;
         if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
             nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
