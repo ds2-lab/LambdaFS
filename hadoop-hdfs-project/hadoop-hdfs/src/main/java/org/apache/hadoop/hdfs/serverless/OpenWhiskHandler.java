@@ -73,6 +73,8 @@ public class OpenWhiskHandler {
 
         performStaticInitialization();
 
+        LOG.debug("User-arguments: " + args.toString());
+
         // The arguments passed by the user are included under the 'value' key.
         JsonObject userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
 
