@@ -502,8 +502,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public DFSClient(URI nameNodeUri, Configuration conf,
                    FileSystem.Statistics stats)
           throws IOException {
-    // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true"; //
-    serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+
+
+    boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
+
+    if (localMode)
+      serverlessEndpoint = "http://localhost:8080/run";
+    else
+      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
     LOG.info("Serverless endpoint: " + serverlessEndpoint);
@@ -646,7 +653,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
                     DFSConfigKeys.DEFAULT_DFS_CLIENT_XCEIVER_FACTORY_CLASS));
     this.dtpReplaceDatanodeOnFailure = ReplaceDatanodeOnFailure.get(conf);
 
-    serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+    boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
+
+    if (localMode)
+      serverlessEndpoint = "http://localhost:8080/run";
+    else
+      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
     LOG.info("Serverless endpoint: " + serverlessEndpoint);

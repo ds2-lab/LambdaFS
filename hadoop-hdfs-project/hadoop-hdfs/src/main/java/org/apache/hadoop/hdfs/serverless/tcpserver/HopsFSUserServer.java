@@ -169,12 +169,6 @@ public class HopsFSUserServer {
         for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {
             activeConnectionsPerDeployment.put(deployNum, new ConcurrentHashMap<>());
         }
-
-        String functionEndpoint = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT,
-                DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
-
-        // The format of the endpoint is something like https://domain:443/api/v1/web/whisk.system/default/<base_name>
-        String[] endpointSplit = functionEndpoint.split("/");
     }
 
     /**

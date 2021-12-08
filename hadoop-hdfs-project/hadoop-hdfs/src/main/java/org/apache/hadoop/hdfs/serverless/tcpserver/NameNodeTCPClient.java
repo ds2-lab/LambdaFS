@@ -107,11 +107,6 @@ public class NameNodeTCPClient {
     private static final int maxBufferSize = (int)8e6;
 
     /**
-     * Used to redirect write operations to authorized deployments.
-     */
-    private final String functionUriBase;
-
-    /**
      * The current size, in bytes, being used for TCP write buffers. If we notice a buffer overflow,
      * then we increase the size of this buffer for future TCP connections in the hopes that we'll
      * avoid a buffer overflow.
@@ -155,7 +150,6 @@ public class NameNodeTCPClient {
         this.nameNodeId = nameNodeId;
         this.deploymentNumber = deploymentNumber;
         this.actionMemory = actionMemory;
-        this.functionUriBase = conf.get(DFSConfigKeys.SERVERLESS_ENDPOINT, DFSConfigKeys.SERVERLESS_ENDPOINT_DEFAULT);
 
         Log.set(Log.LEVEL_TRACE);
 
@@ -180,8 +174,8 @@ public class NameNodeTCPClient {
                 .build();
 
         LOG.debug("Created NameNodeTCPClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
-                ", functionUriBase=" + functionUriBase + ", writeBufferSize=" + writeBufferSize +
-                " bytes, objectBufferSize=" + objectBufferSize + " bytes, maximumConnections=" + maximumConnections + ").");
+                ", writeBufferSize=" + writeBufferSize + " bytes, objectBufferSize=" + objectBufferSize +
+                " bytes, maximumConnections=" + maximumConnections + ").");
     }
 
     /**
