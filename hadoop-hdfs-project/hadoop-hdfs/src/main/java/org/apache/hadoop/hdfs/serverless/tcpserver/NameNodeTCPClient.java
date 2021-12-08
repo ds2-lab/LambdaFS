@@ -68,7 +68,7 @@ public class NameNodeTCPClient {
     /**
      * The fraction of main memory reserved for TCP connection buffers.
      */
-    private static final float memoryFractionReservedForTcpBuffers = 0.50f;
+    private static final float memoryFractionReservedForTcpBuffers = 0.15f;
 
     /**
      * The deployment number of the local serverless name node instance.
