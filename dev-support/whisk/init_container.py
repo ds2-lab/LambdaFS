@@ -16,7 +16,7 @@ if __name__ == "__main__":
     jar_path = args.jar_path
 
     with open(jar_path, 'rb') as jar_file:
-        base64_encoded_jar_file = base64.b64encode(jar_file.read())
+        base64_encoded_jar_file = base64.b64encode(jar_file.read()).decode('utf-8')
         r = requests.post("127.0.0.1:%d/init" % port, json = {
             "value": {
                 "main": main,
