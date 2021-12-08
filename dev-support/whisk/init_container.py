@@ -2,12 +2,13 @@ import argparse
 import base64
 import requests
 
+# NOT USED/FINISHED.
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-p", "--port", type = int, default = 50010)
     parser.add_argument("--host", type = str, default = "127.0.0.1")
-    parser.add_argument("-m", "--main", type = str, default = "org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode")
+    parser.add_argument("-m", "--main", type = str, default = "org.apache.hadoop.hdfs.serverless.OpenWhiskHandler")
     parser.add_argument("-j", "--jar-path", dest = "jar_path", type = str, default = "/home/ubuntu/repos/hops/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar")
 
     args = parser.parse_args()

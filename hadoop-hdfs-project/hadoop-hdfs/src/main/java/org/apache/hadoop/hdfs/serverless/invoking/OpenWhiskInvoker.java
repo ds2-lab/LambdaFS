@@ -5,8 +5,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
-import org.apache.hadoop.hdfs.serverless.operation.NullResult;
-import org.apache.hadoop.util.BackOff;
 import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
@@ -14,15 +12,11 @@ import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.params.ConnPerRoute;
-import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.params.BasicHttpParams;
 import org.apache.http.util.EntityUtils;
 
 import java.net.SocketTimeoutException;
@@ -157,7 +151,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         // If we have a cache entry for this function, then we'll invoke that specific function.
         // Otherwise, we'll just select a function at random.
         if (targetDeployment < 0) {
-            targetDeployment = ThreadLocalRandom.current().nextInt(0, numUniqueFunctions);
+            targetDeployment = ThreadLocalRandom.current().nextInt(0, numDeployments);
             LOG.debug("Randomly selected serverless function " + targetDeployment);
         }
 

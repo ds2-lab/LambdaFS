@@ -80,7 +80,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * Number of unique deployments.
      */
-    private final int totalNumberOfDeployments;
+    private final int numDeployments;
 
     /**
      * Flag that dictates whether TCP requests can be used to perform FS operations.
@@ -96,6 +96,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private int tcpServerPort;
 
     /**
+     * Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
+     */
+    private final boolean localMode;
+
+    /**
      * For debugging, keep track of the operations we've performed.
      */
     private HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
@@ -105,8 +110,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
         tcpEnabled = conf.getBoolean(SERVERLESS_TCP_REQUESTS_ENABLED, SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
-        totalNumberOfDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
-                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
+
+        if (localMode)
+            numDeployments = 1;
+        else
+            numDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS, DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
         LOG.info("Serverless endpoint: " + serverlessEndpointBase);
         LOG.info("Serverless platform: " + serverlessPlatformName);
@@ -1465,7 +1474,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     @Override
     public void prewarm(int numPingsPerDeployment) throws IOException {
-        for (int deploymentNumber = 0; deploymentNumber < totalNumberOfDeployments; deploymentNumber++) {
+        for (int deploymentNumber = 0; deploymentNumber < numDeployments; deploymentNumber++) {
             LOG.debug("Invoking deployment " + deploymentNumber + " a total of " + numPingsPerDeployment + "x.");
             for (int i = 0; i < numPingsPerDeployment; i++) {
                 String requestId = UUID.randomUUID().toString();

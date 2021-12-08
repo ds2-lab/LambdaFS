@@ -25,6 +25,9 @@ import java.security.*;
 import java.security.cert.X509Certificate;
 import java.util.*;
 
+import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_LOCAL_MODE;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_LOCAL_MODE_DEFAULT;
+
 /**
  * Base class of serverless invokers. Defines some concrete state (i.e., instance variables) used by
  * all serverless invokers.
@@ -100,7 +103,7 @@ public abstract class ServerlessInvokerBase<T> {
     /**
      * The number of uniquely-deployed serverless functions available for use.
      */
-    protected int numUniqueFunctions;
+    protected int numDeployments;
 
     /**
      * Indicates whether this Invoker instance is used by a client/user. When false, indicates that this
@@ -123,6 +126,11 @@ public abstract class ServerlessInvokerBase<T> {
      * This name will be set automatically if a client/user is invoking. Otherwise, we default to DataNode.
      */
     protected String clientName = "DataNode";
+
+    /**
+     * Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
+     */
+    private boolean localMode;
 
     /**
      * If true, then we'll pass an argument to the NNs indicating that they should print their
@@ -234,14 +242,18 @@ public abstract class ServerlessInvokerBase<T> {
     public void setConfiguration(Configuration conf, String invokerIdentity) {
         LOG.debug("Configuring ServerlessInvokerBase now...");
         cache = new FunctionMetadataMap(conf);
-        numUniqueFunctions = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
-                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         maxHttpRetries = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX,
                 DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT);
         tcpEnabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
         httpTimeoutMilliseconds = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT,
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
+
+        if (localMode)
+            numDeployments = 1;
+        else
+            numDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS, DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
         this.invokerIdentity = invokerIdentity;
 
@@ -521,6 +533,12 @@ public abstract class ServerlessInvokerBase<T> {
      *  - Command-line arguments for the NN (if none are provided already)
      *  - Request ID
      *  - Internal IP address of the node on which the client is running.
+     *  - Flag indicating whether NDB debug logging should be enabled.
+     *  - The NDB debug string that controls the format/content of the NDB debug logging.
+     *  - Flag indicating whether TCP is enabled.
+     *  - The TCP port that our TCP server is listening on.
+     *  - Our internal IP address.
+     *  - Flag indicating whether the NameNode is running in local mode.
      *
      * @param nameNodeArgumentsJson The arguments to be passed to the ServerlessNameNode itself.
      * @param requestId The request ID to use for this request. This will be added to the arguments.
@@ -543,6 +561,7 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArgumentsJson.addProperty(
                 ServerlessNameNodeKeys.CLIENT_INTERNAL_IP, InvokerUtilities.getInternalIpAddress());
         nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.TCP_ENABLED, tcpEnabled);
+        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.LOCAL_MODE, localMode);
     }
 
     public HashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
