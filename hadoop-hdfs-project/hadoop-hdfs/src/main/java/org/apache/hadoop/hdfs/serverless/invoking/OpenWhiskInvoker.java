@@ -292,7 +292,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         LOG.debug(protocolVersion + " - " + responseCode);
         LOG.debug(reasonPhrase);
         LOG.debug("---------------------------");
-        LOG.debug(contentType.getName() + ": " + contentType.getValue());
+        if (contentType != null)
+            LOG.debug(contentType.getName() + ": " + contentType.getValue());
         LOG.debug("Content-length: " + contentLength);
         LOG.debug("===========================");
 
