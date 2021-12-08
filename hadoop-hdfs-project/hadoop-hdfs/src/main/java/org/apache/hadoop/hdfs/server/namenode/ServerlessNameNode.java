@@ -3211,7 +3211,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     try {
       StringUtils.startupShutdownMessage(ServerlessNameNode.class, argv, LOG);
-      ServerlessNameNode namenode = createNameNode(argv, null, "LocalVMNameNode0", (int) Runtime.getRuntime().maxMemory());
+      ServerlessNameNode namenode = createNameNode(argv, null, "LocalVMNameNode0", (int) Runtime.getRuntime().maxMemory(), false);
       if (namenode != null) {
         namenode.join();
       }
