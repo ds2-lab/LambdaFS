@@ -335,6 +335,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         LOG.debug("Response: " + response.toString());
 
+        if (response.has("body"))
+            response = response.get("body").getAsJsonObject();
+
         long nameNodeId = -1;
         if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
             nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
