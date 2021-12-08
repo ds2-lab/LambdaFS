@@ -189,8 +189,8 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT = 20000;
 
   /**
-   * Local mode is used for debugging. In local mode, one NameNode from each deployment is deployed in
-   * a LOCAL Docker container. This is done so that we can readily profile their memory and whatnot.
+   * Local mode is used for debugging. In local mode, one NameNode will be deployed locally
+   * so that we can profile its memory.
    */
   public static final String SERVERLESS_LOCAL_MODE = "serverless.localmode.enabled";
   public static final boolean SERVERLESS_LOCAL_MODE_DEFAULT = false;
@@ -199,8 +199,8 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * When using local mode, the NameNode container for the first NameNode deployment (i.e., namenode0) will
    * listen on this port. The containers for subsequent deployments will listen on this port +1, +2, etc.
    */
-  public static final String SERVERLESS_LOCAL_MODE_STARTING_PORT = "serverless.localmode.startingport";
-  public static final int SERVERLESS_LOCAL_MODE_STARTING_PORT_DEFAULT = 8000;
+//  public static final String SERVERLESS_LOCAL_MODE_STARTING_PORT = "serverless.localmode.startingport";
+//  public static final int SERVERLESS_LOCAL_MODE_STARTING_PORT_DEFAULT = 8000;
 
   // END OF SERVERLESS
 
