@@ -71,19 +71,29 @@ public class OpenWhiskHandler {
         LOG.info("Active HTTP requests: " + activeRequests);
         LOG.info("============================================================\n");
 
+        boolean localMode = false;
+        int actionMemory = -1;
+        JsonObject userArguments;
+        if (args.has("LOCAL_MODE")) {
+            LOG.debug("LOCAL MODE IS ENABLED.");
+            localMode = true;
+
+            // In this case, the top-level arguments are in-fact the user arguments.
+            userArguments = args;
+
+            // In this case, we retrieve the action memory from an environment variable.
+            actionMemory = Integer.parseInt(System.getenv("__ACTION_MEMORY"));
+        } else {
+            // The arguments passed by the user are included under the 'value' key.
+            actionMemory = args.get(ServerlessNameNodeKeys.ACTION_MEMORY).getAsInt();
+            userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
+        }
+
         performStaticInitialization();
-
-        LOG.debug("User-arguments: " + args.toString());
-
-        // The arguments passed by the user are included under the 'value' key.
-        JsonObject userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
-
-        int actionMemory = args.get(ServerlessNameNodeKeys.ACTION_MEMORY).getAsInt();
 
         String clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
 
         boolean tcpEnabled = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_ENABLED).getAsBoolean();
-        boolean localMode = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.LOCAL_MODE).getAsBoolean();
 
         Instant start = Instant.now();
 
