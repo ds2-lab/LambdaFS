@@ -206,6 +206,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                         // We don't sleep in this case, as there wasn't a time-out exception or anything.
                         continue;
+                    } else {
+                      LOG.warn("Apparently we are not actually waiting on a result for request " + requestId +
+                              "... Not resubmitting.");
                     }
                 }
 
