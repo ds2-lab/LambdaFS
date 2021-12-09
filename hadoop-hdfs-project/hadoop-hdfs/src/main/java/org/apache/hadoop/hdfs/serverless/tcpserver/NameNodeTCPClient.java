@@ -133,6 +133,16 @@ public class NameNodeTCPClient {
     private final int maximumConnections;
 
     /**
+     * When a client detects that it has disconnected from a remote client, it places itself in this queue so
+     * that it may be terminated. This allows its resources to be reclaimed.
+     *
+     * Based on how KryoNet works, I do not think I can have clients close themselves; I'm afraid the program would
+     * deadlock. That is, the disconnected() event handler is called by the update thread. Thus, I can't put a call
+     * to client.stop() in the disconnected() event handler, as the update() thread would probably deadlock...
+     */
+    private BlockingQueue<Client> disconnectedClients;
+
+    /**
      * Constructor.
      *
      * @param conf Configuration passed to the serverless NameNode.
@@ -164,23 +174,29 @@ public class NameNodeTCPClient {
                 // Close TCP clients when they are removed.
                 .evictionListener((RemovalListener<ServerlessHopsFSClient, Client>) (serverlessHopsFSClient, client, removalCause) -> {
                     if (client == null)
+                    if (client == null)
                         return;
 
                     LOG.warn("EVICTING CONNECTION: " + serverlessHopsFSClient);
 
                     // TODO: Per the documentation for RemovalListener, we should not make blocking calls here...
                     if (client.isConnected())
-                        client.close();
-
-                    // Stop the client thread.
-                    client.getUpdateThread().interrupt();
-
+                        client.stop();
                 })
                 .build();
+
+        this.disconnectedClients = new ArrayBlockingQueue<>(maximumConnections);
 
         LOG.debug("Created NameNodeTCPClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
                 ", writeBufferSize=" + writeBufferSize + " bytes, objectBufferSize=" + objectBufferSize +
                 " bytes, maximumConnections=" + maximumConnections + ").");
+    }
+
+    /**
+     * Return the queue of disconnected clients.
+     */
+    public BlockingQueue<Client> getDisconnectedClients() {
+        return disconnectedClients;
     }
 
     /**
@@ -328,12 +344,19 @@ public class NameNodeTCPClient {
 
             public void disconnected (Connection connection) {
                 tcpClients.invalidate(newClient);           // Remove the client from the cache.
-                tcpClient.close();                          // Close the client.
-                tcpClient.getUpdateThread().interrupt();    // Stop the client's update thread.
 
                 LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
                         " at " + newClient.getClientIp() + ":" + newClient.getClientPort() +
                         ". Number of active TCP connections: " + tcpClients.estimatedSize());
+
+                // When we detect that we have disconnected, we add ourselves to the queue of disconnected clients.
+                // The worker thread will periodically go through and call .stop() on the contents of this queue so
+                // that the resources may be reclaimed. See the comment on the 'disconnectedClients' variable as to
+                // why we can't just call tcpClient.stop() here. Note that the queue has a bounded size, so this
+                // call may block. Normally, we would NOT want to block in these event handlers, but since the client
+                // disconnected, we don't care about it. Its update thread can block for all we care; we're just
+                // going to dispose of it anyway.
+                disconnectedClients.add(tcpClient);
             }
         });
 

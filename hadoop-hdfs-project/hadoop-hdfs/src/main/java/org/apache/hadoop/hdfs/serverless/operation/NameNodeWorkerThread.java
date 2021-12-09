@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.operation;
 
+import com.esotericsoftware.kryonet.Client;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.hops.transaction.context.TransactionsStats;
@@ -248,6 +249,26 @@ public class NameNodeWorkerThread extends Thread {
         // We use a persistent watcher to automatically get notified of changes in group membership.
         // tryUpdateActiveNameNodeList();
         tryUpdateFromIntermediateStorage();
+
+        BlockingQueue<Client> disconnectedClients =
+                serverlessNameNodeInstance.getNameNodeTcpClient().getDisconnectedClients();
+
+        int numClientsStopped = 0;
+        while (disconnectedClients.size() > 0) {
+            Client disconnectedClient = disconnectedClients.poll();
+
+            if (disconnectedClient == null) {
+                LOG.warn("Retrieved null from disconnected clients queue, despite the size being greater than 0...");
+                break;
+            }
+
+            // This should essentially reclaim the resources.
+            disconnectedClient.stop();
+            numClientsStopped++;
+        }
+
+        if (numClientsStopped > 0)
+            LOG.debug("Stopped " + numClientsStopped + " TCP client(s).");
 
         this.lastRoutineActivitiesTime = Time.getUtcTime();
     }
