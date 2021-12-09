@@ -168,8 +168,13 @@ public class NameNodeTCPClient {
 
                     LOG.warn("EVICTING CONNECTION: " + serverlessHopsFSClient);
 
+                    // TODO: Per the documentation for RemovalListener, we should not make blocking calls here...
                     if (client.isConnected())
                         client.close();
+
+                    // Stop the client thread.
+                    client.getUpdateThread().interrupt();
+
                 })
                 .build();
 
