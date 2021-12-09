@@ -193,6 +193,22 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                             ") has been cancelled. Reason: " + response.get(REASON).getAsString() + ".");
                 }
 
+                if (response.has(DUPLICATE_REQUEST) && response.get(DUPLICATE_REQUEST).getAsBoolean()) {
+                    LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " +
+                            requestId + "...");
+
+                    if (tcpServer.isFutureActive(requestId)) {
+                        LOG.error("Request " + requestId +
+                                " is still active, yet we received a 'DUPLICATE REQUEST' notification for it.");
+                        LOG.warn("Resubmitting request " + requestId + " with FORCE_REDO...");
+
+                        payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
+
+                        // We don't sleep in this case, as there wasn't a time-out exception or anything.
+                        continue;
+                    }
+                }
+
                 long opEnd = Time.getUtcTime();
 
                 // Collect and save/record metrics.
@@ -210,7 +226,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 return response;
             } catch (TimeoutException ex) {
-                LOG.error("Encountered timeout exception while waiting for TCP response:", ex);
+                LOG.error("Timed out while waiting for TCP response for request " + requestId + ".");
                 LOG.error("Sleeping for " + backoffInterval + " seconds before retrying...");
                 try {
                     Thread.sleep(backoffInterval);

@@ -399,6 +399,16 @@ public class HopsFSUserServer {
     }
 
     /**
+     * Return true if the request identified by the given requestId is still active (i.e., we're still waiting on
+     * the result for that future.)
+     * @param requestId The ID of the task/request.
+     * @return True if we're still waiting for the result for the specified task/request.
+     */
+    public boolean isFutureActive(String requestId) {
+        return activeFutures.containsKey(requestId);
+    }
+
+    /**
      * Checks if there is an active connection established to the NameNode with the given ID.
      *
      * @param nameNodeId The ID of the NN for which we're querying the existence of a connection.
@@ -698,7 +708,7 @@ public class HopsFSUserServer {
                         // If there is no request ID, then we have no idea which operation this result is
                         // associated with, and thus we cannot do anything with it.
                         if (requestId == null) {
-                            LOG.warn("[TCP SERVER " + tcpPort + "] TCP Server received response containing result of FS " +
+                            LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response containing result of FS " +
                                     "operation, but response did not contain a request ID.");
                             break;
                         }
@@ -708,7 +718,7 @@ public class HopsFSUserServer {
                         // If there is no future associated with this operation, then we have no means to return
                         // the result back to the client who issued the file system operation.
                         if (future == null) {
-                            LOG.warn("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
+                            LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
                                     ", but there is no associated future registered with the server.");
                             break;
                         }
@@ -724,6 +734,8 @@ public class HopsFSUserServer {
 
                         List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
                         incompleteFutures.remove(future);
+
+                        LOG.debug("[TCP SERVER " + tcpPort + "] Successfully obtained result for request " + requestId + "!");
 
                         break;
                     default:
