@@ -106,6 +106,76 @@ CREATE TABLE `invalidations_deployment2` (
     KEY no_leader (`inode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
+CREATE TABLE `invalidations_deployment3` (
+    `inode_id` BIGINT NOT NULL,        -- The INode's ID.
+    `parent_id` BIGINT NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `leader_id` BIGINT NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
+    `tx_start` BIGINT NOT NULL,     -- The time at which the associated transaction began.
+    `op_id` BIGINT NOT NULL,        -- Unique identifier of the associated write operation/transaction.
+    PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `invalidations_deployment4` (
+    `inode_id` BIGINT NOT NULL,        -- The INode's ID.
+    `parent_id` BIGINT NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `leader_id` BIGINT NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
+    `tx_start` BIGINT NOT NULL,     -- The time at which the associated transaction began.
+    `op_id` BIGINT NOT NULL,        -- Unique identifier of the associated write operation/transaction.
+    PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `invalidations_deployment5` (
+    `inode_id` BIGINT NOT NULL,        -- The INode's ID.
+    `parent_id` BIGINT NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `leader_id` BIGINT NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
+    `tx_start` BIGINT NOT NULL,     -- The time at which the associated transaction began.
+    `op_id` BIGINT NOT NULL,        -- Unique identifier of the associated write operation/transaction.
+    PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `invalidations_deployment6` (
+    `inode_id` BIGINT NOT NULL,        -- The INode's ID.
+    `parent_id` BIGINT NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `leader_id` BIGINT NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
+    `tx_start` BIGINT NOT NULL,     -- The time at which the associated transaction began.
+    `op_id` BIGINT NOT NULL,        -- Unique identifier of the associated write operation/transaction.
+    PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `invalidations_deployment7` (
+    `inode_id` BIGINT NOT NULL,        -- The INode's ID.
+    `parent_id` BIGINT NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `leader_id` BIGINT NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
+    `tx_start` BIGINT NOT NULL,     -- The time at which the associated transaction began.
+    `op_id` BIGINT NOT NULL,        -- Unique identifier of the associated write operation/transaction.
+    PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `invalidations_deployment8` (
+    `inode_id` BIGINT NOT NULL,        -- The INode's ID.
+    `parent_id` BIGINT NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `leader_id` BIGINT NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
+    `tx_start` BIGINT NOT NULL,     -- The time at which the associated transaction began.
+    `op_id` BIGINT NOT NULL,        -- Unique identifier of the associated write operation/transaction.
+    PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `invalidations_deployment9` (
+    `inode_id` BIGINT NOT NULL,        -- The INode's ID.
+    `parent_id` BIGINT NOT NULL,       -- The INode ID of the parent of the INode being invalidated.
+    `leader_id` BIGINT NOT NULL,    -- The NameNodeID of the NN who issued the invalidation.
+    `tx_start` BIGINT NOT NULL,     -- The time at which the associated transaction began.
+    `op_id` BIGINT NOT NULL,        -- Unique identifier of the associated write operation/transaction.
+    PRIMARY KEY(`inode_id`, `leader_id`, `op_id`),
+    KEY no_leader (`inode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
 ----------------------------------
 -- Write Acknowledgement Tables --
 ----------------------------------
@@ -131,6 +201,86 @@ CREATE TABLE `write_acks_deployment1` (
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `write_acks_deployment2` (
+    `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
+    `deployment_number` INT NOT NULL,             -- The name of the serverless function in which the NN is running.
+    `acknowledged` TINYINT  NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
+    `op_id` BIGINT NOT NULL,                      -- Unique identifier of the write operation.
+    `timestamp` BIGINT NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` BIGINT NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
+    PRIMARY KEY (`namenode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `write_acks_deployment3` (
+    `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
+    `deployment_number` INT NOT NULL,             -- The name of the serverless function in which the NN is running.
+    `acknowledged` TINYINT  NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
+    `op_id` BIGINT NOT NULL,                      -- Unique identifier of the write operation.
+    `timestamp` BIGINT NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` BIGINT NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
+    PRIMARY KEY (`namenode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `write_acks_deployment4` (
+    `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
+    `deployment_number` INT NOT NULL,             -- The name of the serverless function in which the NN is running.
+    `acknowledged` TINYINT  NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
+    `op_id` BIGINT NOT NULL,                      -- Unique identifier of the write operation.
+    `timestamp` BIGINT NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` BIGINT NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
+    PRIMARY KEY (`namenode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `write_acks_deployment5` (
+    `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
+    `deployment_number` INT NOT NULL,             -- The name of the serverless function in which the NN is running.
+    `acknowledged` TINYINT  NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
+    `op_id` BIGINT NOT NULL,                      -- Unique identifier of the write operation.
+    `timestamp` BIGINT NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` BIGINT NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
+    PRIMARY KEY (`namenode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `write_acks_deployment6` (
+    `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
+    `deployment_number` INT NOT NULL,             -- The name of the serverless function in which the NN is running.
+    `acknowledged` TINYINT  NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
+    `op_id` BIGINT NOT NULL,                      -- Unique identifier of the write operation.
+    `timestamp` BIGINT NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` BIGINT NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
+    PRIMARY KEY (`namenode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `write_acks_deployment7` (
+    `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
+    `deployment_number` INT NOT NULL,             -- The name of the serverless function in which the NN is running.
+    `acknowledged` TINYINT  NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
+    `op_id` BIGINT NOT NULL,                      -- Unique identifier of the write operation.
+    `timestamp` BIGINT NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` BIGINT NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
+    PRIMARY KEY (`namenode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `write_acks_deployment8` (
+    `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
+    `deployment_number` INT NOT NULL,             -- The name of the serverless function in which the NN is running.
+    `acknowledged` TINYINT  NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
+    `op_id` BIGINT NOT NULL,                      -- Unique identifier of the write operation.
+    `timestamp` BIGINT NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` BIGINT NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
+    PRIMARY KEY (`namenode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `write_acks_deployment9` (
+    `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
+    `deployment_number` INT NOT NULL,             -- The name of the serverless function in which the NN is running.
+    `acknowledged` TINYINT  NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
+    `op_id` BIGINT NOT NULL,                      -- Unique identifier of the write operation.
+    `timestamp` BIGINT NOT NULL,                  -- The time at which this write operation began.
+    `leader_id` BIGINT NOT NULL,                  -- The ID of the leader NN (the one who added the entry to NDB).
+    PRIMARY KEY (`namenode_id`, `op_id`)
+) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+
+CREATE TABLE `write_acks_deployment10` (
     `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
     `deployment_number` INT NOT NULL,             -- The name of the serverless function in which the NN is running.
     `acknowledged` TINYINT  NOT NULL DEFAULT '0',   -- Flag indicating whether or not the write has been ACK'd.
