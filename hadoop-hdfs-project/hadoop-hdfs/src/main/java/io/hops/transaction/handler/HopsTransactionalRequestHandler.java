@@ -820,6 +820,20 @@ public abstract class HopsTransactionalRequestHandler
         return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME1;
       case 2:
         return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME2;
+      case 3:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME3;
+      case 4:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME4;
+      case 5:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME5;
+      case 6:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME6;
+      case 7:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME7;
+      case 8:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME8;
+      case 9:
+        return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME9;
       default:
         throw new StorageException("Unsupported deployment number: " + deploymentNumber);
     }
