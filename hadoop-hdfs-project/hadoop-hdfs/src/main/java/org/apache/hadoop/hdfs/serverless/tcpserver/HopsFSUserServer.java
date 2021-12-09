@@ -140,7 +140,12 @@ public class HopsFSUserServer {
 
         serverListener = new ServerListener();
 
-        Log.set(Log.LEVEL_TRACE);
+        if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
+                DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT)) {
+            LOG.debug("TCP Debug logging is ENABLED.");
+            Log.set(Log.LEVEL_TRACE);
+        }
+        LOG.debug("TCP Debug logging is DISABLED.");
 
         enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);

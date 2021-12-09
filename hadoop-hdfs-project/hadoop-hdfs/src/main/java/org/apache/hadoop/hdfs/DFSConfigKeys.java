@@ -106,6 +106,9 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_HTTP_RETRY_MAX = "serverless.http.maxretries";
   public static final int SERVERLESS_HTTP_RETRY_MAX_DEFAULT = 3;
 
+  public static final String SERVERLESS_TCP_DEBUG_LOGGING = "serverless.tcp.debuglogenabled";
+  public static final boolean SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT = false;
+
   /**
    * Time, in seconds, for an HTTP request to a NameNode to timeout. Timed-out
    * requests will be retried according to the SERVERLESS_HTTP_RETRY_MAX

@@ -161,7 +161,12 @@ public class NameNodeTCPClient {
         this.deploymentNumber = deploymentNumber;
         this.actionMemory = actionMemory;
 
-        Log.set(Log.LEVEL_TRACE);
+        if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
+                DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT)) {
+            LOG.debug("TCP Debug logging is ENABLED.");
+            Log.set(Log.LEVEL_TRACE);
+        }
+        LOG.debug("TCP Debug logging is DISABLED.");
 
         this.writeBufferSize = defaultWriteBufferSizeBytes;
         this.objectBufferSize = defaultObjectBufferSizeBytes;
