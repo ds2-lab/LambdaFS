@@ -21,6 +21,13 @@ public class TablesDef {
     String TABLE_NAME0 = "invalidations_deployment0"; // Table used for deployment0.
     String TABLE_NAME1 = "invalidations_deployment1"; // Table used for deployment1.
     String TABLE_NAME2 = "invalidations_deployment2"; // Table used for deployment2.
+    String TABLE_NAME3 = "invalidations_deployment3"; // Table used for deployment2.
+    String TABLE_NAME4 = "invalidations_deployment4"; // Table used for deployment2.
+    String TABLE_NAME5 = "invalidations_deployment5"; // Table used for deployment2.
+    String TABLE_NAME6 = "invalidations_deployment6"; // Table used for deployment2.
+    String TABLE_NAME7 = "invalidations_deployment7"; // Table used for deployment2.
+    String TABLE_NAME8 = "invalidations_deployment8"; // Table used for deployment2.
+    String TABLE_NAME9 = "invalidations_deployment9"; // Table used for deployment2.
     String INODE_ID = "inode_id";
     String PARENT_ID = "parent_id";
     String LEADER_ID = "leader_id";
@@ -32,6 +39,13 @@ public class TablesDef {
     String TABLE_NAME0 = "write_acks_deployment0";  // Table used for deployment0.
     String TABLE_NAME1 = "write_acks_deployment1";  // Table used for deployment1.
     String TABLE_NAME2 = "write_acks_deployment2";  // Table used for deployment2.
+    String TABLE_NAME3 = "write_acks_deployment3";  // Table used for deployment2.
+    String TABLE_NAME4 = "write_acks_deployment4";  // Table used for deployment2.
+    String TABLE_NAME5 = "write_acks_deployment5";  // Table used for deployment2.
+    String TABLE_NAME6 = "write_acks_deployment6";  // Table used for deployment2.
+    String TABLE_NAME7 = "write_acks_deployment7";  // Table used for deployment2.
+    String TABLE_NAME8 = "write_acks_deployment8";  // Table used for deployment2.
+    String TABLE_NAME9 = "write_acks_deployment9";  // Table used for deployment2.
     String NAME_NODE_ID = "namenode_id";
     String DEPLOYMENT_NUMBER = "deployment_number";
     String ACKNOWLEDGED = "acknowledged";

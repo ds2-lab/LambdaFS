@@ -6,10 +6,7 @@ import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.NdbBoolean;
-import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDTO;
-import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDeployment0;
-import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDeployment1;
-import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDeployment2;
+import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.*;
 import io.hops.metadata.ndb.wrapper.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -28,7 +25,15 @@ public class WriteAcknowledgementClusterJ
     private static final List<Class<? extends WriteAcknowledgementDTO>> targetDeployments = Arrays.asList(
             WriteAcknowledgementDeployment0.class,
             WriteAcknowledgementDeployment1.class,
-            WriteAcknowledgementDeployment2.class
+            WriteAcknowledgementDeployment2.class,
+            WriteAcknowledgementDeployment3.class,
+            WriteAcknowledgementDeployment4.class,
+            WriteAcknowledgementDeployment5.class,
+            WriteAcknowledgementDeployment6.class,
+            WriteAcknowledgementDeployment7.class,
+            WriteAcknowledgementDeployment8.class,
+            WriteAcknowledgementDeployment9.class
+
     );
 
     /**

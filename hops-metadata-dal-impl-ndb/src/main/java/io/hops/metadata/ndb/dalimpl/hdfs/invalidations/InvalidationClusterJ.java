@@ -8,10 +8,7 @@ import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.NdbBoolean;
 import io.hops.metadata.ndb.dalimpl.hdfs.acknowledgements.dtos.WriteAcknowledgementDTO;
-import io.hops.metadata.ndb.dalimpl.hdfs.invalidations.dtos.InvalidationDTO;
-import io.hops.metadata.ndb.dalimpl.hdfs.invalidations.dtos.InvalidationDeployment0;
-import io.hops.metadata.ndb.dalimpl.hdfs.invalidations.dtos.InvalidationDeployment1;
-import io.hops.metadata.ndb.dalimpl.hdfs.invalidations.dtos.InvalidationDeployment2;
+import io.hops.metadata.ndb.dalimpl.hdfs.invalidations.dtos.*;
 import io.hops.metadata.ndb.wrapper.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -33,7 +30,14 @@ public class InvalidationClusterJ implements
     private static final List<Class<? extends InvalidationDTO>> targetDeployments = Arrays.asList(
             InvalidationDeployment0.class,
             InvalidationDeployment1.class,
-            InvalidationDeployment2.class
+            InvalidationDeployment2.class,
+            InvalidationDeployment3.class,
+            InvalidationDeployment4.class,
+            InvalidationDeployment5.class,
+            InvalidationDeployment6.class,
+            InvalidationDeployment7.class,
+            InvalidationDeployment8.class,
+            InvalidationDeployment9.class
     );
 
     /**

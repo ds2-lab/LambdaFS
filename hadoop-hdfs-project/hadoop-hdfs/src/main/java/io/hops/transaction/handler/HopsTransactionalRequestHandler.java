@@ -239,7 +239,7 @@ public abstract class HopsTransactionalRequestHandler
         exception[0] = e;
         canProceed[0] = false;
       }
-    });
+    }, "ThreadTx" + operationId); // Name the thread with the transaction's ID. This is NOT the requestID.
 
     protocolRunner.start();
 
