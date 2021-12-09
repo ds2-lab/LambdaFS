@@ -251,6 +251,12 @@ public class NameNodeWorkerThread extends Thread {
         // tryUpdateActiveNameNodeList();
         tryUpdateFromIntermediateStorage();
 
+        // processDisconnectedTcpClients();
+
+        this.lastRoutineActivitiesTime = Time.getUtcTime();
+    }
+
+    private void processDisconnectedTcpClients() {
         BlockingQueue<Client> disconnectedClients =
                 serverlessNameNodeInstance.getNameNodeTcpClient().getDisconnectedClients();
 
@@ -270,8 +276,6 @@ public class NameNodeWorkerThread extends Thread {
 
         if (numClientsStopped > 0)
             LOG.debug("Stopped " + numClientsStopped + " TCP client(s).");
-
-        this.lastRoutineActivitiesTime = Time.getUtcTime();
     }
 
     @Override

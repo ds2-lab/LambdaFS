@@ -89,13 +89,13 @@ public class NameNodeTCPClient {
      * The size, in bytes, used for the write buffer of new TCP connections. Objects are serialized to
      * the write buffer where the bytes are queued until they can be written to the TCP socket.
      */
-    private static final int defaultWriteBufferSizeBytes = (int)8e6;
+    private static final int defaultWriteBufferSizeBytes = (int)7.5e6;
 
     /**
      * The size, in bytes, used for the object buffer of new TCP connections. Object buffers are used
      * to hold the bytes for a single object graph until it can be sent over the network or deserialized.
      */
-    private static final int defaultObjectBufferSizeBytes = (int)8e6;
+    private static final int defaultObjectBufferSizeBytes = (int)7.5e6;
 
     /**
      * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
@@ -104,7 +104,7 @@ public class NameNodeTCPClient {
      * size of the buffers for future TCP connections to hopefully avoid the problem. This variable sets a hard limit
      * on the maximum size of a buffer.
      */
-    private static final int maxBufferSize = (int)8e6;
+    private static final int maxBufferSize = (int)7.5e6;
 
     /**
      * The current size, in bytes, being used for TCP write buffers. If we notice a buffer overflow,
@@ -360,7 +360,9 @@ public class NameNodeTCPClient {
                 // call may block. Normally, we would NOT want to block in these event handlers, but since the client
                 // disconnected, we don't care about it. Its update thread can block for all we care; we're just
                 // going to dispose of it anyway.
-                disconnectedClients.add(tcpClient);
+                // disconnectedClients.add(tcpClient);
+
+                tcpClient.stop();
             }
         });
 
