@@ -2341,13 +2341,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // but the name system doesn't get loaded until a little later.
     eventManagerThread = new Thread(ndbEventManager);
 
-    // TODO: This is probably just going to double-print errors. We should actually do something here,
-    //       like restart the event manager thread or something. Same goes for the worker thread.
-    Thread.UncaughtExceptionHandler uncaughtExceptionHandler = (t, e) -> {
-      LOG.error("Event Manager encountered an exception:", e);
-    };
-    eventManagerThread.setUncaughtExceptionHandler(uncaughtExceptionHandler);
-
     LOG.debug("Started the NDB EventManager thread.");
 
     pauseMonitor = new JvmPauseMonitor();

@@ -980,27 +980,32 @@ public class HopsEventManager implements EventManager {
 
         // Loop forever, listening for events.
         while (true) {
-            // As far as I can tell, this is NOT busy-waiting. This ultimately calls select(), or whatever
-            // the equivalent is for the given operating system. And Linux, Windows, etc. suspend the
-            // process if there are no file descriptors available, so this is not a busy wait.
-            //
-            // We check for a short amount of time. If no events are found, then we check and see if we have any
-            // requests to create new event subscriptions. If we do, then we'll handle those for a bit before
-            // checking for more events.
-            boolean events = session.pollForEvents(POLL_TIME_MILLISECONDS);
+            try {
+                // As far as I can tell, this is NOT busy-waiting. This ultimately calls select(), or whatever
+                // the equivalent is for the given operating system. And Linux, Windows, etc. suspend the
+                // process if there are no file descriptors available, so this is not a busy wait.
+                //
+                // We check for a short amount of time. If no events are found, then we check and see if we have any
+                // requests to create new event subscriptions. If we do, then we'll handle those for a bit before
+                // checking for more events.
+                boolean events = session.pollForEvents(POLL_TIME_MILLISECONDS);
 
-            // Just continue if we didn't find any events.
-            if (events) {
-                LOG.debug("Received at least one event!");
-                int numEventsProcessed = processEvents();
-                LOG.debug("Processed " + numEventsProcessed + " event(s).");
+                // Just continue if we didn't find any events.
+                if (events) {
+                    LOG.debug("Received at least one event!");
+                    int numEventsProcessed = processEvents();
+                    LOG.debug("Processed " + numEventsProcessed + " event(s).");
+                }
+
+                processEventRegistrationRequests();     // Process requests to create/register new events.
+                processEventUnregistrationRequests();   // Process requests to drop/unregister events.
+
+                processFailedEventCreationRequests();    // Process requests to create subscriptions.
+                processDropSubscriptionRequests();       // Process requests to drop subscriptions.
             }
-
-            processEventRegistrationRequests();     // Process requests to create/register new events.
-            processEventUnregistrationRequests();   // Process requests to drop/unregister events.
-
-            processFailedEventCreationRequests();    // Process requests to create subscriptions.
-            processDropSubscriptionRequests();       // Process requests to drop subscriptions.
+            catch (Exception ex) {
+                LOG.error("EventManager encountered an exception:", ex);
+            }
         }
     }
 
