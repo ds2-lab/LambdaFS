@@ -327,7 +327,9 @@ public class NameNodeTCPClient {
             }
 
             public void disconnected (Connection connection) {
-                tcpClients.invalidate(newClient);
+                tcpClients.invalidate(newClient);           // Remove the client from the cache.
+                tcpClient.close();                          // Close the client.
+                tcpClient.getUpdateThread().interrupt();    // Stop the client's update thread.
 
                 LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
                         " at " + newClient.getClientIp() + ":" + newClient.getClientPort() +
