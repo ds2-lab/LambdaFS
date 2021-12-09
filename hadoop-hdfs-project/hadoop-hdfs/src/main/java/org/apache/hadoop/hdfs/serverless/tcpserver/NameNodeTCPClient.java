@@ -179,7 +179,6 @@ public class NameNodeTCPClient {
                 // Close TCP clients when they are removed.
                 .evictionListener((RemovalListener<ServerlessHopsFSClient, Client>) (serverlessHopsFSClient, client, removalCause) -> {
                     if (client == null)
-                    if (client == null)
                         return;
 
                     LOG.warn("EVICTING CONNECTION: " + serverlessHopsFSClient);
