@@ -105,7 +105,9 @@ class HeartbeatManager implements DatanodeStatistics {
   }
 
   void activate(Configuration conf) {
-    heartbeatThread.start();
+    LOG.warn("NOT activating the Heartbeat Monitor as this is not yet supported in Serverless HopsFS.");
+
+    // heartbeatThread.start();
   }
 
   void close() {

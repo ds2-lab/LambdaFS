@@ -83,9 +83,10 @@ public class JvmPauseMonitor extends AbstractService {
 
   @Override
   protected void serviceStart() throws Exception {
-    monitorThread = new Daemon(new Monitor());
-    monitorThread.start();
-    super.serviceStart();
+    LOG.warn("NOT starting the JvmPauseMonitor as this is not supported for Serverless HopsFS.");
+//    monitorThread = new Daemon(new Monitor());
+//    monitorThread.start();
+//    super.serviceStart();
   }
 
   @Override

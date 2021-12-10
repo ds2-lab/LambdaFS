@@ -761,9 +761,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       leaseManager.startMonitor();
       startSecretManagerIfNecessary();
 
+      LOG.warn("NOT starting ResourceMonitor thread.");
       //ResourceMonitor required only at ActiveNN. See HDFS-2914
-      this.nnrmthread = new Daemon(new NameNodeResourceMonitor());
-      nnrmthread.start();
+      // this.nnrmthread = new Daemon(new NameNodeResourceMonitor());
+      // nnrmthread.start();
 
       if(isRetryCacheEnabled) {
         this.retryCacheCleanerThread = new Daemon(new RetryCacheCleaner());
@@ -4611,8 +4612,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   
   /**
    * Periodically calls hasAvailableResources of NameNodeResourceChecker, and
-   * if
-   * there are found to be insufficient resources available, causes the NN to
+   * if there are found to be insufficient resources available, causes the NN to
    * enter safe mode. If resources are later found to have returned to
    * acceptable levels, this daemon will cause the NN to exit safe mode.
    */

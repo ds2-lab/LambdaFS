@@ -34,7 +34,6 @@ import java.util.Collection;
  * Cleans metadata left behind by the failed namenodes
  */
 public class MDCleaner {
-
   public static final Log LOG = LogFactory.getLog(MDCleaner.class);
 
 
@@ -61,7 +60,7 @@ public class MDCleaner {
         try {
           if (leaderElection != null && leaderElection.isRunning() && leaderElection.isLeader()) {
             if(LOG.isTraceEnabled()) {
-              LOG.trace("Cleaning dead locks. I am th leader ");
+              LOG.trace("Cleaning dead locks. I am the leader ");
             }
             clearLocks();
           }
@@ -164,14 +163,16 @@ public class MDCleaner {
 
   void startMDCleanerMonitor(FSNamesystem namesystem, LeaderElection leaderElection,
                              long failedSTOCleanDelay, long slowSTOCleanDelay) {
+    LOG.warn("NOT starting the MDCleaner as this is not yet supported for Serverless HopsFS.");
+
     this.leaderElection = leaderElection;
     this.failedSTOCleanDelay = failedSTOCleanDelay;
     this.slowSTOCleanDelay = slowSTOCleanDelay;
     this.namesystem = namesystem;
-    run = true;
-
-    mdCleaner = new Daemon(new Monitor());
-    mdCleaner.start();
+//    run = true;
+//
+//    mdCleaner = new Daemon(new Monitor());
+//    mdCleaner.start();
   }
 
   void stopMDCleanerMonitor() {

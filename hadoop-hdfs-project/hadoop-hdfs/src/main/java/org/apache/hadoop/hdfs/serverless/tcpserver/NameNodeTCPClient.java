@@ -351,7 +351,7 @@ public class NameNodeTCPClient {
 
                 LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
                         " at " + newClient.getClientIp() + ":" + newClient.getClientPort() +
-                        ". Number of active TCP connections: " + tcpClients.estimatedSize());
+                        ". Active TCP connections: " + tcpClients.estimatedSize() + "/" + maximumConnections);
 
                 // When we detect that we have disconnected, we add ourselves to the queue of disconnected clients.
                 // The worker thread will periodically go through and call .stop() on the contents of this queue so
