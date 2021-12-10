@@ -16,8 +16,9 @@ For compiling the Hops Hadoop Distribution you will need the following software.
 - cmake for compiling the native code 
 - [Google Protocol Buffer](https://github.com/google/protobuf) Version [2.5](https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz)
 - [MySQL Cluster NDB](https://dev.mysql.com/downloads/cluster/) native client library 
-- OpenWhisk Kubernetes cluster.
-- Docker.
+- Kubernetes
+- Helm
+- Docker
 
 We combine Apache and GPL licensed code, from Hops and MySQL Cluster, respectively, by providing a DAL API (similar to JDBC). We dynamically link our DAL implementation for MySQL Cluster with the Hops code. Both binaries are distributed separately.
 
