@@ -93,6 +93,12 @@ You can modify the deployment by changing the configuration parameters in the `o
 helm upgrade owdev -f values.yaml .
 ```
 
+# Building the NameNode Docker Image
+
+We provide a separate repository containing a pre-configured OpenWhisk Docker image. This repository is available [here](https://github.com/Scusemua/openwhisk-runtime-java/tree/serverless-namenode).
+
+Simply clone the repository. From the top-level directory, execute `./gradlew core:java8:distDocker` to build the image. 
+
 # Export Control
 
 This distribution includes cryptographic software. The country in which you currently reside may have restrictions on the import, possession, use, and/or re-export to another country, of encryption software. BEFORE using any encryption software, please check your country's laws, regulations and policies concerning the import, possession, or use, and re-export of encryption software, to see if this is permitted. See <http://www.wassenaar.org/> for more information. 
