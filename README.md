@@ -87,7 +87,7 @@ helm install owdev -f values.yaml .
 
 This will install the OpenWhisk deployment on your Kubernetes cluster. Once everything is up-and-running, set the `apiHostName` property according to the Helm output. (When you execute the above command, Helm will tell you what to set the `apiHostName` property to.)
 
-You can modify the deployment by changing the configuration parameters in the `openwhisk-deploy-kube/helm/openwhisk\values.yaml` file. After modifying the values, execute the following command (from the `openwhisk-deploy-kube/helm/openwhisk` directory):
+You can modify the deployment by changing the configuration parameters in the `openwhisk-deploy-kube/helm/openwhisk/values.yaml` file. After modifying the values, execute the following command (from the `openwhisk-deploy-kube/helm/openwhisk` directory):
 
 ```
 helm upgrade owdev -f values.yaml .
