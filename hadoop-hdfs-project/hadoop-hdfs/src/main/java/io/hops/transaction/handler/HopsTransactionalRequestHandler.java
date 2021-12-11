@@ -297,11 +297,15 @@ public abstract class HopsTransactionalRequestHandler
     // - Follower NameNode: NameNode instance from the same deployment as the Leader NameNode.
     //
     // The updated consistency protocol for Serverless NameNodes is as follows:
-    // (1) The Leader NN adds N-1 un-ACK'd records to the "ACKs" table of the Leader's deployment, where N is the
-    //     number of nodes in the Leader's deployment. (N-1 as it does not need to add a record for itself.)
-    // (2) The Leader NN begins listening for changes in group membership from ZooKeeper.
+    // (1) The Leader NN begins listening for changes in group membership from ZooKeeper.
     //     The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly. We
     //     need to subscribe first to ensure we receive notifications from follower NNs ACK'ing the entries.
+    //     IMPORTANT: Another reason we must subscribe BEFORE adding the ACKs is that, if we add our ACKs first, then
+    //     another NN could issue an INV that causes one of our followers to check for ACKs. They see the ACKs we just
+    //     added and ACK them, but we haven't subscribed yet! So, we miss the notification, and our protocol fails as
+    //     a result. Thus, we must subscribe BEFORE adding any ACKs to intermediate storage.
+    // (2) The Leader NN adds N-1 un-ACK'd records to the "ACKs" table of the Leader's deployment, where N is the
+    //     number of nodes in the Leader's deployment. (N-1 as it does not need to add a record for itself.)
     // (3) The leader issues one INV per modified INode to the target deployment's INV table.
     // (4) Follower NNs will ACK their entry in the ACKs table upon receiving the INV from intermediate storage (NDB).
     //     The follower will also invalidate its cache at this point, thereby readying itself for the upcoming write.
@@ -379,19 +383,31 @@ public abstract class HopsTransactionalRequestHandler
     // ======================================
     // === EXECUTING CONSISTENCY PROTOCOL ===
     // ======================================
+
+    // OPTIMIZATION: Pre-calculate the number of write ACK records that we'll be adding to intermediate storage.
+    // If this value is zero, we do not need to subscribe to ACK events.
     //
-    //
-    // =============== STEP 1 ===============
+    // As an optimization, we first calculate how many ACKs we're going to need. If we find that this value is 0,
+    // then we do not bother subscribing to ACK events. But if there is at least one ACK, then we subscribe first
+    // before adding the ACKs to NDB. We need to be listening for ACK events before the events are added so that
+    // we do not miss any notifications.
     int totalNumberOfACKsRequired;
     try {
       // Pass the set of additional deployments we needed to join, as we also need ACKs from those deployments.
-      totalNumberOfACKsRequired = addAckTableRecords(txStartTime);
+      totalNumberOfACKsRequired = computeAckRecords(txStartTime);
     } catch (Exception ex) {
-      requestHandlerLOG.error("Exception encountered on Step 3 of consistency protocol (adding ACKs to table):", ex);
+      requestHandlerLOG.error("Exception encountered while computing/creating ACK records in-memory:", ex);
       return false;
     }
 
+    // =============== STEP 1 ===============
+    //
     // We only need to perform these steps of the protocol if the total number of ACKs required is at least one.
+    // As an optimization, we split Step 1 into two parts. In the first part, we simply create the ACK records
+    // in-memory. Sometimes we won't create any. In that case, we can essentially skip the entire protocol. If we
+    // create at least one ACK record in-memory however, then we must first subscribe to ACK events BEFORE adding
+    // the newly-created ACK records to intermediate storage. Once we've subscribed to ACK events, we'll write the
+    // ACK records to NDB. Doing things in this order eliminates the chance that we miss a notification.
     if (totalNumberOfACKsRequired > 0) {
       // Now that we've added ACKs based on the current membership of the group, we'll join the deployment as a guest
       // and begin monitoring for membership changes. Since we already added ACKs for every active instance, we aren't
@@ -399,23 +415,47 @@ public abstract class HopsTransactionalRequestHandler
       // for their membership and when we begin listening for changes, though. (We do the same for our own deployment.)
       joinOtherDeploymentsAsGuest();
 
-      // =============== STEP 2 ===============
       try {
+        // Since there's at least 1 ACK record, we subscribe to ACK events. We have not written any ACKs to NDB yet.
         subscribeToAckEvents();
       } catch (InterruptedException e) {
         requestHandlerLOG.error("Encountered error while waiting on event manager to create event subscription:", e);
 
+        // COMMENTED OUT: Previously, we did things in a different order. But this allowed for a race condition that
+        // caused us to miss notifications that our invalidations had been ACK'd. We have since changed the order. As
+        // a result, we have not written any ACKs to intermediate storage by this point in the protocol, so there is
+        // no need to delete them if we encounter an error.
+        //
         // Try to remove the ACK entries that we added earlier before we abort the protocol.
-        try {
-          requestHandlerLOG.debug("Removing the write ACKs we added earlier before terminating the transaction.");
-          deleteWriteAcknowledgements();
-        } catch (StorageException ex) {
-          requestHandlerLOG.error("Encountered storage exception when removing ACK events we added earlier: ", ex);
-        }
+        //try {
+        //  requestHandlerLOG.debug("Removing the write ACKs we added earlier before terminating the transaction.");
+        //  deleteWriteAcknowledgements();
+        //} catch (StorageException ex) {
+        //  requestHandlerLOG.error("Encountered storage exception when removing ACK events we added earlier: ", ex);
+        //}
 
         return false;
       }
-//    requestHandlerLOG.debug("Skipping Step 2 - Subscribe to ACK Events");
+
+      // =============== STEP 2 ===============
+      //
+      // Now that we've subscribed to ACK events, we can add our ACKs to the table.
+      requestHandlerLOG.debug("=-----=-----= Step 2 - Writing ACK Records to Intermediate Storage =-----=-----=");
+      WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
+              (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
+
+      for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
+        int deploymentNumber = entry.getKey();
+        List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
+
+        if (writeAcknowledgements.size() > 0) {
+          requestHandlerLOG.debug("Adding " + writeAcknowledgements.size()
+                  + " ACK entries for deployment #" + deploymentNumber + ".");
+          writeAcknowledgementDataAccess.addWriteAcknowledgements(writeAcknowledgements, deploymentNumber);
+        } else {
+          requestHandlerLOG.debug("0 ACKs required from deployment #" + deploymentNumber + "...");
+        }
+      }
 
       // =============== STEP 3 ===============
       issueInitialInvalidations(invalidatedINodes, txStartTime);
@@ -449,8 +489,10 @@ public abstract class HopsTransactionalRequestHandler
         // Throw an exception so that it gets caught and reported as an exception, rather than just returning false.
         throw new IOException("Exception encountered while waiting for ACKs (" + ex.getMessage() + "): ", ex);
       }
-    } else {
+    }
+    else {
       requestHandlerLOG.debug("We do not require any ACKs, so we can skip the rest of the consistency protocol.");
+      needToUnsubscribe = false;
     }
 
     // Clean up ACKs, event operation, etc.
@@ -840,13 +882,13 @@ public abstract class HopsTransactionalRequestHandler
   }
 
   /**
-   * Perform Step (2) of the consistency protocol:
+   * Perform Step (1) of the consistency protocol:
    *    The Leader NN begins listening for changes in group membership from ZooKeeper.
    *    The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly.
    */
   private void subscribeToAckEvents()
           throws StorageException, InterruptedException {
-    requestHandlerLOG.debug("=-----=-----= Step 2 - Subscribing to ACK Events =-----=-----=");
+    requestHandlerLOG.debug("=-----=-----= Step 1 - Subscribing to ACK Events =-----=-----=");
 
     // Each time we request that the event manager create an event subscription for us, it returns a semaphore
     // we can use to block until the event operation is created. We want to do this here, as we do not want
@@ -877,22 +919,25 @@ public abstract class HopsTransactionalRequestHandler
 
   /**
    * Perform Step (1) of the consistency protocol:
-   *    Add N-1 un-ACK'd records to the "ACKs" table, where N is the number of nodes in the Leader's deployment.
-   *    We subscribe AFTER adding these entries just to avoid receiving events for inserting the new ACK entries, as
-   *    we'd waste time processing those events (albeit a small amount of time).
+   *    Create the ACK instances that we will add to NDB. We do NOT add them in this function; we merely compute
+   *    them (i.e., create the objects). In some cases, we will find that we don't create any, in which case we
+   *    skip subscribing to the ACK events table. If we create at least one ACK object in this method however, we
+   *    will first subscribe to ACK events, then we will add the ACKs to intermediate storage.
    *
    * @param txStartTime The UTC timestamp at which this write operation began.
    *
    * @return The number of ACK records that we added to intermediate storage.
    */
-  private int addAckTableRecords(long txStartTime)
+  private int computeAckRecords(long txStartTime)
           throws Exception {
-    requestHandlerLOG.debug("=-----=-----= Step 1 - Adding ACK Records =-----=-----=");
+    requestHandlerLOG.debug("=-----=-----= Step 0 - Pre-Compute ACK Records In-Memory =-----=-----=");
     ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
     assert(zkClient != null);
 
-    WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
-            (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
+    // Sum the number of ACKs required per deployment. We use this value when creating the
+    // CountDownLatch that blocks us from continuing with the protocol until all ACKs are received.
+    int totalNumberOfACKsRequired = 0;
+
     writeAcknowledgementsMap = new HashMap<>();
 
     // If there are no active instances in the deployments that are theoretically involved, then we just remove
@@ -944,6 +989,7 @@ public abstract class HopsTransactionalRequestHandler
       }
 
       writeAcknowledgementsMap.put(deploymentNumber, writeAcknowledgements);
+      totalNumberOfACKsRequired += writeAcknowledgements.size();
     }
 
     for (Integer deploymentToRemove : toRemove) {
@@ -951,25 +997,6 @@ public abstract class HopsTransactionalRequestHandler
               " from list of involved deployments as deployment #" + deploymentToRemove +
               " contains zero active instances.");
       involvedDeployments.remove(deploymentToRemove);
-    }
-
-    // Sum the number of ACKs required per deployment. We use this value when creating the
-    // CountDownLatch that blocks us from continuing with the protocol until all ACKs are received.
-    int totalNumberOfACKsRequired = 0;
-
-    for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
-      int deploymentNumber = entry.getKey();
-      List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
-
-      if (writeAcknowledgements.size() > 0) {
-        requestHandlerLOG.debug("Adding " + writeAcknowledgements.size()
-                + " ACK entries for deployment #" + deploymentNumber + ".");
-        writeAcknowledgementDataAccess.addWriteAcknowledgements(writeAcknowledgements, deploymentNumber);
-      } else {
-       requestHandlerLOG.debug("0 ACKs required from deployment #" + deploymentNumber + "...");
-      }
-
-      totalNumberOfACKsRequired += writeAcknowledgements.size();
     }
 
     requestHandlerLOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
@@ -984,7 +1011,7 @@ public abstract class HopsTransactionalRequestHandler
   }
 
   /**
-   * Perform Step (1) of the consistency protocol:
+   * Perform Step (3) of the consistency protocol:
    *    The leader sets the INV flag of the target INode to 1 (i.e., true), thereby triggering a round of
    *    INVs from intermediate storage (NDB).
    *
