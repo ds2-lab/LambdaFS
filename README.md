@@ -48,6 +48,8 @@ OpenJDK Runtime Environment (build 1.8.0_292-8u292-b10-0ubuntu1~18.04-b10)
 OpenJDK 64-Bit Server VM (build 25.292-b10, mixed mode)
 ```
 
+Now you need to set your `JAVA_HOME` environment variable. You can do this for your current session via `export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/` (though you should verify this is the directory that Java has been installed to). To make this permanent, add that command to the bottom of your `~/.bashrc` file.
+
 #### Install Maven
 
 ```
