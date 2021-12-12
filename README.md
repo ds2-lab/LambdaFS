@@ -84,11 +84,15 @@ Bats is used when building `hadoop-common-project`, more specifically the `hadoo
 
 The following libraries are all optional. We installed them when developing Serverless HopsFS.
 
-Snappy Compression: `sudo apt-get install snappy libsnappy-dev`
-Bzip2: `sudo apt-get install bzip2 libbz2-dev`
-Jansson (C library for JSON): `sudo apt-get install libjansson-dev`
-Linux FUSE: `sudo apt-get install fuse libfuse-dev`
-ZStandard compression: `sudo apt-get install zstd`
+- **Snappy Compression**: `sudo apt-get install snappy libsnappy-dev`
+
+- **Bzip2**: `sudo apt-get install bzip2 libbz2-dev`
+
+- **Jansson** (C library for JSON): `sudo apt-get install libjansson-dev`
+
+- **Linux FUSE**: `sudo apt-get install fuse libfuse-dev`
+
+- **ZStandard compression**: `sudo apt-get install zstd`
 
 ### Installing and Building the Serverless HopsFS Source Code
 
@@ -132,8 +136,10 @@ git checkout master
 ```
 ##### Building a Distribution
 ```sh
-mvn package generate-sources -Pdist,native -DskipTests -Dtar
+mvn package generate-sources -Pdist,native -DskipTests -Dtar -Dmaven.test.skip=true
 ```
+
+If you get `maven-enforcer-plugin` errors about dependency convergence and whatnot, you _may_ be able to get it to work by adding the `-Denforcer.fail=false` flag to the build command. Obviously this can cause issues if there are really some critical errors, but sometimes the dependency convergence issues can be ignored.
 
 #### Connecting the Driver to the Database
 There are two way to configure the NDB data access layer driver 
@@ -148,6 +154,12 @@ Add `dfs.storage.driver.configfile` parameter to hdfs-site.xml to read the confi
       <value>hops-ndb-config.properties</value>
 </property>  
 ```
+
+### Common Errors/Issues During Building
+
+- If at some point, you get an error that the `.pom` or `.jar` for `hadoop-maven-plugins` could not be found, go to the `/hadoop-maven-plugins` directory and execute `mvn clean install` to ensure that it gets built and is available in your local maven repository. 
+
+- If you get dependency convergence errors from `maven-enforcer-plugin` about the `hops-metadata-dal` and `hops-metadata-dal-impl-ndb` projects, then you may be able to resolve them by building these two projects individually/one-at-a-time. Start with `hops-metadata-dal` and build it with `mvn clean install` (go to the root directory for that module and execute that command). Then do the same for `hops-metadata-dal-impl-ndb`. 
 
 # Setting Up an OpenWhisk Kubernetes Deployment (via Helm)
 
