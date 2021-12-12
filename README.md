@@ -138,7 +138,7 @@ git checkout master
 ```
 ##### Building a Distribution
 
-First, enter the `hadoop-build-tools` directory and execute `mvn install`. Then go back to the root project directory.
+First, enter the `hadoop-build-tools` directory and execute `mvn install`. Do the same for the `hadoop-assemblies` and `hadoop-maven-plugins` projects/modules/directories. Then go back to the root project directory.
 
 Do this AFTER manually/explicitly building `hops-metadata-dal` and `hops-metadata-dal-impl-ndb` first.
 
