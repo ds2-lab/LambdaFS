@@ -4,12 +4,9 @@
 
 We have modified HopsFS to work with serverless functions. Currently we support the [OpenWhisk](https://openwhisk.apache.org/) serverless platform. Serverless functions enable better scalability and cost-effectiveness as well as ease-of-use.
 
-# Online Documentation
-You can find the latest HopsFS documentation, including a programming guide, on the project [web page](http://www.hops.io). This README file only contains basic setup and compilation instructions.
-
 # How to Build
 
-#### Software Required
+### Software Required
 For compiling the Hops Hadoop Distribution you will need the following software.
 - Java 1.7 or higher
 - Maven
@@ -24,7 +21,87 @@ We combine Apache and GPL licensed code, from Hops and MySQL Cluster, respective
 
 Perform the following steps in the following order to compile the Hops Hadoop Distribution.
 
+### Preparing Your VM Image
+
+The following steps can be performed to create a virtual machine capable of building and driving Serverless HopsFS. These steps have been tested using a fresh virtual machine on both Google Cloud Platform (GCP) and IBM Cloud Platform (IBM Cloud). On GCP, the virtual machine was running Ubuntu 18.04.5 LTS (Bionic Beaver). On IBM Cloud, the virtual machine was running Ubuntu 18.04.6 LTS (Bionic Beaver).
+
+#### Install JDK 1.8
+
+Execute the following commands to install JDK 8. These are the commands we executed when developing Serverless HopsFS.
+
+```
+sudo apt-get purge openjdk*
+sudo apt-get install software-properties-common
+sudo add-apt-repository ppa:webupd8team/java
+sudo apt-get update 
+sudo apt install openjdk-8-jre-headless
+sudo apt-get install openjdk-8-jdk
+```
+
+See [this](https://askubuntu.com/questions/790671/oracle-java8-installer-no-installation-candidate) AskUbuntu thread for details on why these commands are used.
+
+The exact versions of the JRE and JDK that we used are:
+```
+$ java -version
+openjdk version "1.8.0_292"
+OpenJDK Runtime Environment (build 1.8.0_292-8u292-b10-0ubuntu1~18.04-b10)
+OpenJDK 64-Bit Server VM (build 25.292-b10, mixed mode)
+```
+
+Now you need to set your `JAVA_HOME` environment variable. You can do this for your current session via `export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/` (though you should verify this is the directory that Java has been installed to). To make this permanent, add that command to the bottom of your `~/.bashrc` file.
+
+#### Install Maven
+
+```
+sudo apt-get -y install maven
+```
+
+#### Install other required libraries
+
+```
+sudo apt-get -y install build-essential autoconf automake libtool cmake zlib1g-dev pkg-config libssl-dev libsasl2-dev
+```
+
+#### Install Protocol Buffers 2.5.0
+
+```
+cd /usr/local/src/
+sudo wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
+sudo tar xvf protobuf-2.5.0.tar.gz
+cd protobuf-2.5.0
+sudo ./autogen.sh
+sudo ./configure --prefix=/usr
+sudo make
+sudo make install
+protoc --version
+```
+
+See [this](https://stackoverflow.com/questions/29797763/how-do-i-install-protobuf-2-5-on-arch-linux-for-compiling-hadoop-2-6-0-using-mav) StackOverflow post for details on why these commands are used. 
+
+#### Install Bats 
+
+Bats is used when building `hadoop-common-project`, more specifically the `hadoop-common` module. It can be installed with `sudo apt-get install bats`.
+
+#### Additional Optional Libraries
+
+The following libraries are all optional. We installed them when developing Serverless HopsFS.
+
+- **Snappy Compression**: `sudo apt-get install snappy libsnappy-dev`
+
+- **Bzip2**: `sudo apt-get install bzip2 libbz2-dev`
+
+- **Jansson** (C library for JSON): `sudo apt-get install libjansson-dev`
+
+- **Linux FUSE**: `sudo apt-get install fuse libfuse-dev`
+
+- **ZStandard compression**: `sudo apt-get install zstd`
+
+### Installing and Building the Serverless HopsFS Source Code
+
 #### Database Abstraction Layer
+
+**TODO: The hops-metadata-dal and hops-metadata-dal-impl-ndb layers are included in this base project. They should not be retrieved separately. (The custom libndbclient.so file can/should be retrieved separately, however.)**
+
 ```sh
 git clone https://github.com/hopshadoop/hops-metadata-dal
 ```
@@ -36,6 +113,9 @@ mvn clean install -DskipTests
 ```
 
 #### Database Abstraction Layer Implementation
+
+**TODO: The hops-metadata-dal and hops-metadata-dal-impl-ndb layers are included in this base project. They should not be retrieved separately. (The custom libndbclient.so file can/should be retrieved separately, however.)**
+
 ```sh
 git clone https://github.com/hopshadoop/hops-metadata-dal-impl-ndb
 git checkout master
@@ -57,9 +137,14 @@ git clone https://github.com/hopshadoop/hops
 git checkout master
 ```
 ##### Building a Distribution
+
+Do this AFTER manually/explicitly building `hops-metadata-dal` and `hops-metadata-dal-impl-ndb` first.
+
 ```sh
-mvn package generate-sources -Pdist,native -DskipTests -Dtar
+mvn package generate-sources -Pdist,native -DskipTests -Dtar -Dmaven.test.skip=true
 ```
+
+If you get `maven-enforcer-plugin` errors about dependency convergence and whatnot, you _may_ be able to get it to work by adding the `-Denforcer.fail=false` flag to the build command. Obviously this can cause issues if there are really some critical errors, but sometimes the dependency convergence issues can be ignored.
 
 #### Connecting the Driver to the Database
 There are two way to configure the NDB data access layer driver 
@@ -74,6 +159,12 @@ Add `dfs.storage.driver.configfile` parameter to hdfs-site.xml to read the confi
       <value>hops-ndb-config.properties</value>
 </property>  
 ```
+
+### Common Errors/Issues During Building
+
+- If at some point, you get an error that the `.pom` or `.jar` for `hadoop-maven-plugins` could not be found, go to the `/hadoop-maven-plugins` directory and execute `mvn clean install` to ensure that it gets built and is available in your local maven repository. 
+
+- If you get dependency convergence errors from `maven-enforcer-plugin` about the `hops-metadata-dal` and `hops-metadata-dal-impl-ndb` projects, then you may be able to resolve them by building these two projects individually/one-at-a-time. Start with `hops-metadata-dal` and build it with `mvn clean install` (go to the root directory for that module and execute that command). Then do the same for `hops-metadata-dal-impl-ndb`. 
 
 # Setting Up an OpenWhisk Kubernetes Deployment (via Helm)
 
