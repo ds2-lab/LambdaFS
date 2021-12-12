@@ -137,6 +137,9 @@ git clone https://github.com/hopshadoop/hops
 git checkout master
 ```
 ##### Building a Distribution
+
+Do this AFTER manually/explicitly building `hops-metadata-dal` and `hops-metadata-dal-impl-ndb` first.
+
 ```sh
 mvn package generate-sources -Pdist,native -DskipTests -Dtar -Dmaven.test.skip=true
 ```
