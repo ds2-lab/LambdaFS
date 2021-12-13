@@ -20,7 +20,7 @@ CREATE TABLE `serverless_namenodes` (
     PRIMARY KEY (`namenode_id`, `function_name`), -- Eventually, `replica_id` may be a part of the PK.
     UNIQUE KEY `namenode_idx` (`namenode_id`),
     KEY `function_namex` (`function_name`)
-) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+) ENGINE=NDBCLUSTER DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 CREATE TABLE `datanodes` (
     `datanode_uuid` varchar(36) NOT NULL,
