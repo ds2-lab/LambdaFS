@@ -162,6 +162,26 @@ Add `dfs.storage.driver.configfile` parameter to hdfs-site.xml to read the confi
 </property>  
 ```
 
+#### Setting up the MySQL Cluster NDB Database Tables
+
+There are several pre-written `.sql` files and associated scripts in the `hops-metadata-dal-impl-ndb` project. These files automate the process of creating the necessary database tables. Simply navigate to the `/hops-metadata-dal-impl-ndb/schema/` directory and execute the `create-tables.sh` script. This script takes several arguments. The first is the hostname (IP address) of the MySQL server. We recommend running this script from the VM hosting the MySQL instance, in which case the first parameter will be `localhost`. The second parameter is the port, which is `3306` by default for MySQL. The third and forth parameters are the username and password of a MySQL user with which the MySQL commands will be executed.
+
+You can create a root user for use with the NameNodes and this creation process as follows. First, connect to your MySQL server `mysql -u root`. This assumes you are connecting from the VM hosting the server and you installed MySQL cluster using the `--initialize-insecure` flag as described [here (step 3)](https://dev.mysql.com/doc/mysql-cluster-excerpt/5.7/en/mysql-cluster-install-linux-binary.html). 
+
+```
+CREATE USER user@'%' IDENTIFIED BY '<password>';
+GRANT ALL PRIVILEGES ON *.* TO 'user'@'%';
+FLUSH PRIVILEGES;
+```
+
+Note that this is highly insecure, and it is recommended that you replace the '%' with a specific IP address (such as the IP of the VM hosting the MySQL server) to prevent random users from accessing your new root user.
+
+Once this user is created, you can pass the username "user" and whatever password you used to the `create-tables.sh` script. 
+
+Finally, the last parameter to the script is the database. You can create a new database by connecting to the MySQL server and executing `CREATE DATABASE <database_name>`. Make sure you update the HopsFS configuration files (i.e., `ndb-config.properties`) to reflect the new user and database. 
+
+Thus, to run the script, you would execute: `./create-tables.sh localhost 3306 <username> <password> <database_name>`. After this, you should also create the additional tables required by Serverless HopsFS. These are written out in the `serverless.sql` file. Simply execute the following command to do this: `mysql --host=localhost --port=3306 -u <username> -p<password> <database_name> < serverless.sql`. Notice how there is no space between the `-p` (password) flag and the password itself.
+
 ### Common Errors/Issues During Building
 
 - If at some point, you get an error that the `.pom` or `.jar` for `hadoop-maven-plugins` could not be found, go to the `/hadoop-maven-plugins` directory and execute `mvn clean install` to ensure that it gets built and is available in your local maven repository. 
