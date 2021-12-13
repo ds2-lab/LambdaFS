@@ -15,6 +15,7 @@ For compiling the Hops Hadoop Distribution you will need the following software.
 - [MySQL Cluster NDB](https://dev.mysql.com/downloads/cluster/) native client library 
 - Kubernetes
 - Helm
+- Redis
 - Docker
 
 We combine Apache and GPL licensed code, from Hops and MySQL Cluster, respectively, by providing a DAL API (similar to JDBC). We dynamically link our DAL implementation for MySQL Cluster with the Hops code. Both binaries are distributed separately.
@@ -95,6 +96,10 @@ The following libraries are all optional. We installed them when developing Serv
 - **Linux FUSE**: `sudo apt-get install fuse libfuse-dev`
 
 - **ZStandard compression**: `sudo apt-get install zstd`
+
+#### Installing Redis
+
+Clients of Serverless HopsFS use a local Redis instance to cache file-to-NameNode mapping information. You can install Redis via `apt install redis-server`. Once installed, you can optionally configure Redis to start on boot for that VM (if you intend to use that VM as a Serverless HopsFS client going forward). This can be done via `sudo systemctl enable redis`. If you receive an error "Failed to enable unit: Refusing to operate on linked unit file redis.service", then you can try the following command instead: `sudo systemctl enable /lib/systemd/system/redis-server.service`. 
 
 ### Installing and Building the Serverless HopsFS Source Code
 
