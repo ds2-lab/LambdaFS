@@ -162,7 +162,9 @@ Add `dfs.storage.driver.configfile` parameter to hdfs-site.xml to read the confi
 </property>  
 ```
 
-#### Setting up the MySQL Cluster NDB Database Tables
+#### Setting up MySQL Cluster NDB
+
+We recommend following the official documented (located [here](https://dev.mysql.com/doc/mysql-cluster-excerpt/5.7/en/mysql-cluster-install-linux-binary.html)) to install and create your MySQL NDB cluster. Once your cluster is up and running, you can move onto creating the necessary database tables to run Serverless HopsFS. We used the "Generic Linux" version of MySQL Cluster v8.0.26.
 
 There are several pre-written `.sql` files and associated scripts in the `hops-metadata-dal-impl-ndb` project. These files automate the process of creating the necessary database tables. Simply navigate to the `/hops-metadata-dal-impl-ndb/schema/` directory and execute the `create-tables.sh` script. This script takes several arguments. The first is the hostname (IP address) of the MySQL server. We recommend running this script from the VM hosting the MySQL instance, in which case the first parameter will be `localhost`. The second parameter is the port, which is `3306` by default for MySQL. The third and forth parameters are the username and password of a MySQL user with which the MySQL commands will be executed.
 
