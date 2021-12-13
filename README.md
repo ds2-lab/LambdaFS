@@ -174,7 +174,7 @@ GRANT ALL PRIVILEGES ON *.* TO 'user'@'%';
 FLUSH PRIVILEGES;
 ```
 
-Note that this is highly insecure, and it is recommended that you replace the '%' with a specific IP address (such as the IP of the VM hosting the MySQL server) to prevent random users from accessing your new root user.
+Note that this is highly insecure, and it is recommended that you replace the '%' with a specific IP address (such as the IP of the VM hosting the MySQL server) to prevent unauthorized users from trying to login using your newly-created root user.
 
 Once this user is created, you can pass the username "user" and whatever password you used to the `create-tables.sh` script. 
 
