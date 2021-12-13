@@ -178,7 +178,7 @@ Note that this is highly insecure, and it is recommended that you replace the '%
 
 Once this user is created, you can pass the username "user" and whatever password you used to the `create-tables.sh` script. 
 
-Finally, the last parameter to the script is the database. You can create a new database by connecting to the MySQL server and executing `CREATE DATABASE <database_name>`. Make sure you update the HopsFS configuration files (i.e., `ndb-config.properties`) to reflect the new user and database. 
+Finally, the last parameter to the script is the database. You can create a new database by connecting to the MySQL server and executing `CREATE DATABASE <database_name>`. Make sure you update the HopsFS configuration files (i.e., the `hops-ndb-config.properties` described in the previous section) to reflect the new user and database. 
 
 Thus, to run the script, you would execute: `./create-tables.sh localhost 3306 <username> <password> <database_name>`. After this, you should also create the additional tables required by Serverless HopsFS. These are written out in the `serverless.sql` file. Simply execute the following command to do this: `mysql --host=localhost --port=3306 -u <username> -p<password> <database_name> < serverless.sql`. Notice how there is no space between the `-p` (password) flag and the password itself.
 
