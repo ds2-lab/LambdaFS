@@ -18,8 +18,36 @@
 
 <configuration>
     <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>/volumes/disk1/hadoop/data/</value>
+    </property>
+    <property>
+        <name>serverless.http.timeout</name> <!-- Timeout is in seconds here. -->
+        <value>20</value>
+    </property>
+    <property>
+        <name>serverless.task.timeoutmillis</name>
+        <value>60000</value>
+    </property>
+    <property>
+        <name>serverless.tcp.enabled</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>dfs.transaction.stats.enabled</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>dfs.transaction.stats.detailed.enabled</name>
+        <value>false</value>
+    </property>
+    <property>
         <name>serverless.http.maxretries</name>
-        <value>3</value>
+        <value>5</value>
+    </property>
+    <property>
+        <name>dfs.support.append</name>
+        <value>true</value>
     </property>
     <property>
         <name>storage.ndb.debug.enabled</name>
@@ -28,7 +56,11 @@
     <!-- Enable POSIX ACLs. They are disabled by default. -->
     <property>
         <name>dfs.namenode.acls.enabled</name>
-        <value>true</value>
+        <value>false</value>
+    </property>
+    <property>
+        <name>serverless.localmode.enabled</name>
+        <value>false</value>
     </property>
     <property>
         <name>dfs.heartbeat.interval</name>
@@ -40,15 +72,21 @@
     </property>
     <property>
         <name>serverless.deployments.baseline</name>
-        <value>3</value>
+        <value>5</value>
     </property>
     <property>
         <name>serverless.deployments.max</name>
-        <value>3</value>
+        <value>5</value>
+    </property>
+    <property>
+        <name>serverless.tcp.debuglogenabled</name>
+        <value>false</value>
     </property>
     <property>
         <name>serverless.endpoint</name>
-        <value>https://openwhisk.serverless-mds-cluster-243065a7719552ad2f4388dc81e46642-0000.us-east.containers.appdomain.cloud:443/api/v1/web/whisk.system/default/namenode</value>
+        <value>https://34.75.77.177:444/api/v1/web/whisk.system/default/namenode</value>
+        <!-- This is the IBM Cloud endpoint. -->
+        <!--  <value>https://openwhisk.serverless-mds-cluster-243065a7719552ad2f4388dc81e46642-0000.us-east.containers.appdomain.cloud:443/api/v1/web/whisk.system/default/namenode</value>-->
     </property>
     <property>
         <name>serverless.platform</name>

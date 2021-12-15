@@ -18,7 +18,15 @@
 
 <configuration>
     <property>
-        <name>fs.default.name</name>
-        <value>hdfs://169.59.167.185:9000</value>
+        <name>fs.default.name</name >
+        <value></value> <!-- Put the IP address of the root HDFS FS here! -->
+    </property>
+    <property>
+        <name>hadoop.security.authentication</name>
+        <value>simple</value>
+    </property>
+    <property>
+        <name>hadoop.security.authorization</name>
+        <value>false</value>
     </property>
 </configuration>
