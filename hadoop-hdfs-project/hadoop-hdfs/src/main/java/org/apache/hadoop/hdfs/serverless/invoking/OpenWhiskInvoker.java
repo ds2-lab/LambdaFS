@@ -7,6 +7,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
@@ -187,8 +188,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         // Prepare the HTTP POST request.
         StringEntity parameters = new StringEntity(requestArguments.toString());
         request.setEntity(parameters);
-        request.setHeader("Content-type", "application/json");
-        request.setHeader("Authorization", "Basic Basic 789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP");
+        request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+        request.setHeader(HttpHeaders.AUTHORIZATION, "Basic 789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP");
 
         //LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
         //LOG.debug("Request URI/URL: " + request.getURI().toURL());

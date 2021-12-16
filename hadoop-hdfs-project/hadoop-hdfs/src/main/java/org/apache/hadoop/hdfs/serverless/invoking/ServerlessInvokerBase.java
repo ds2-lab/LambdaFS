@@ -314,7 +314,7 @@ public abstract class ServerlessInvokerBase<T> {
 
     /**
      * Extract the result of a file system operation from the {@link JsonObject} returned by the NameNode.
-     * @param response The response from the NameNode.
+     * @param resp The response from the NameNode.
      * @return The result contained within the JsonObject returned by the NameNode.
      */
     public Object extractResultFromJsonResponse(JsonObject resp) {
