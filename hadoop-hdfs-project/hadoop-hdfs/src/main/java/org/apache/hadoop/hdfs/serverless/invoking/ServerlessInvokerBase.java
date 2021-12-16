@@ -12,7 +12,13 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.hadoop.hdfs.serverless.operation.NullResult;
+import org.apache.http.config.Registry;
+import org.apache.http.config.RegistryBuilder;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.ssl.SSLContexts;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -60,7 +66,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_LOCAL_MODE_DEFAULT
 public abstract class ServerlessInvokerBase<T> {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
 
-    private final Random random = new Random();
+    protected Registry<ConnectionSocketFactory> registry;
 
     /**
      * Store the statistics packages from serverless name nodes in this HashMap.
@@ -211,9 +217,15 @@ public abstract class ServerlessInvokerBase<T> {
         };
 
         try {
-            SSLContext sc = SSLContext.getInstance("SSL");
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+            SSLContext sc = SSLContexts.custom().loadTrustMaterial(new TrustSelfSignedStrategy()).build();
+            SSLConnectionSocketFactory socketFactory
+                    = new SSLConnectionSocketFactory(sc);
+            this.registry =
+                    RegistryBuilder.<ConnectionSocketFactory>create()
+                            .register("https", socketFactory)
+                            .build();
+            //sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            //HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
         } catch (GeneralSecurityException e) {
             LOG.error(e);
         }
