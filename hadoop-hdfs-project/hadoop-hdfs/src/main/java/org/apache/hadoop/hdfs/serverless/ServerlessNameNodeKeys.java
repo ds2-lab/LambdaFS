@@ -28,6 +28,7 @@ public class ServerlessNameNodeKeys {
     public static final String SHOULD_RETRY = "shouldRetry";
     public static final String REASON_CONNECTION_LOST = "CONNECTION_LOST";
     public static final String OPENWHISK_ACTIVATION_ID = "OPENWHISK_ACTIVATION_ID";
+    public static final String OPENWHISK = "openwhisk";
 
     public static final String STATISTICS_PACKAGE = "STATISTICS_PACKAGE";
     public static final String TRANSACTION_EVENTS = "TRANSACTION_EVENTS";

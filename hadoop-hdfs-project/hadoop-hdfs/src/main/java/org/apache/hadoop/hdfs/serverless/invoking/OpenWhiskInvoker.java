@@ -3,7 +3,9 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 import com.google.gson.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.http.Header;
@@ -56,11 +58,24 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     private final String blockingParameter = "?blocking=true";
 
     /**
+     * OpenWhisk uses an authorization string when issuing HTTP requests (and also when using the CLI).
+     */
+    private String authorizationString;
+
+    /**
      * Because invokers are generally created via the {@link ServerlessInvokerFactory} class, this constructor
      * will not be used directly.
      */
     protected OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
         super();
+    }
+
+    @Override
+    public void setConfiguration(Configuration conf, String invokerIdentity) {
+        super.setConfiguration(conf, invokerIdentity);
+
+        authorizationString = conf.get(DFSConfigKeys.SERVERLESS_OPENWHISK_AUTH,
+                DFSConfigKeys.SERVERLESS_OPENWHISK_AUTH_DEFAULT);
     }
 
     /**
@@ -189,7 +204,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         StringEntity parameters = new StringEntity(requestArguments.toString());
         request.setEntity(parameters);
         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
-        request.setHeader(HttpHeaders.AUTHORIZATION, "Basic 789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP");
+        request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
         //LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
         //LOG.debug("Request URI/URL: " + request.getURI().toURL());

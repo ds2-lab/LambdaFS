@@ -199,6 +199,15 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final boolean SERVERLESS_LOCAL_MODE_DEFAULT = false;
 
   /**
+   * OpenWhisk uses an authorization string for HTTP requests. We need this string if we're using the OpenWhisk platform.
+   */
+  public static final String SERVERLESS_OPENWHISK_AUTH = "serverless.openwhisk.auth";
+  /**
+   * This is the default system auth string provided by OpenWhisk.
+   */
+  public static final String SERVERLESS_OPENWHISK_AUTH_DEFAULT = "789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP";
+
+  /**
    * When using local mode, the NameNode container for the first NameNode deployment (i.e., namenode0) will
    * listen on this port. The containers for subsequent deployments will listen on this port +1, +2, etc.
    */
