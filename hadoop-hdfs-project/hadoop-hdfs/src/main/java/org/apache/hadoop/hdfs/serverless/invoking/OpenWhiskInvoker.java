@@ -15,6 +15,9 @@ import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.config.Registry;
+import org.apache.http.config.RegistryBuilder;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustStrategy;
@@ -404,10 +407,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         // This allows us to issue multiple HTTP requests at once, which may or may not be desirable/useful...
         // Like, I'm not sure if that's something we'll do within the same process/thread.
-        // PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager(this.registry);
-        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
-        connectionManager.setMaxTotal(25);
-        connectionManager.setDefaultMaxPerRoute(25);
 
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager() {
@@ -432,6 +431,15 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         SSLContext sslContext = org.apache.http.ssl.SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
         sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
         SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext, new NoopHostnameVerifier());
+
+        Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder
+                .<ConnectionSocketFactory>create().register("https", csf)
+                .build();
+
+        // Need to pass registry to this type of connection manager, as custom SSLContext is ignored.
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
+        connectionManager.setMaxTotal(25);
+        connectionManager.setDefaultMaxPerRoute(25);
 
         return HttpClients
             .custom()
