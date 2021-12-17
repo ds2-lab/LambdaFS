@@ -16,6 +16,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -392,7 +393,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager() {
                     public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return null;
+                        //return null;
+                        return new X509Certificate[0];
                     }
                     public void checkClientTrusted(X509Certificate[] certs, String authType) {  }
 
@@ -405,6 +407,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         LOG.debug("Setting HTTP connection timeout to " + httpTimeoutMilliseconds + " milliseconds.");
         LOG.debug("Setting HTTP socket timeout to " + httpTimeoutMilliseconds + " milliseconds.");
+
+        SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(sc,
+                NoopHostnameVerifier.INSTANCE);
 
         RequestConfig requestConfig = RequestConfig
                 .custom()
@@ -422,6 +427,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         return HttpClients
             .custom()
             .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+            .setSSLSocketFactory(socketFactory)
             .setSSLContext(sc)
             .setDefaultRequestConfig(requestConfig)
             .setConnectionManager(connectionManager)
