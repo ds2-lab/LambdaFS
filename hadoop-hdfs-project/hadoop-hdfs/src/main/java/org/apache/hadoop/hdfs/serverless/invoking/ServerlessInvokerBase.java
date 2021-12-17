@@ -198,7 +198,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Per the Java documentation, TrustManagers are responsible for managing the trust material that is used when
      * making trust decisions, and for deciding whether credentials presented by a peer should be accepted.
      */
-    private void instantiateTrustManager() {
+    private void instantiateTrustManagerOriginal() {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager() {
@@ -215,18 +215,57 @@ public abstract class ServerlessInvokerBase<T> {
         };
 
         try {
-            SSLContext sc = SSLContexts.custom().loadTrustMaterial(new TrustSelfSignedStrategy()).build();
-            SSLConnectionSocketFactory socketFactory
-                    = new SSLConnectionSocketFactory(sc);
-            this.registry =
-                    RegistryBuilder.<ConnectionSocketFactory>create()
-                            .register("https", socketFactory)
-                            .build();
-            //sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            //HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+            SSLContext sc = SSLContext.getInstance("SSL");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
         } catch (GeneralSecurityException e) {
             LOG.error(e);
         }
+    }
+
+    /**
+     * Create a TrustManager that does not validate certificate chains.
+     *
+     * This is necessary because otherwise, we may encounter SSL certificate errors when invoking serverless functions.
+     * I do not know all the details behind this, but this resolves the errors.
+     *
+     * In the future, we may want to add certificate support for increased security, with a fall-back to this being an
+     * option if the users do not want to configure SSL certificates.
+     *
+     * Per the Java documentation, TrustManagers are responsible for managing the trust material that is used when
+     * making trust decisions, and for deciding whether credentials presented by a peer should be accepted.
+     */
+    private void instantiateTrustManager() {
+        instantiateTrustManagerOriginal();
+
+//        // Create a trust manager that does not validate certificate chains
+//        TrustManager[] trustAllCerts = new TrustManager[] {
+//                new X509TrustManager() {
+//                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+//                        return new X509Certificate[0];
+//                    }
+//                    public void checkClientTrusted(
+//                            java.security.cert.X509Certificate[] certs, String authType) {
+//                    }
+//                    public void checkServerTrusted(
+//                            java.security.cert.X509Certificate[] certs, String authType) {
+//                    }
+//                }
+//        };
+//
+//        try {
+//            SSLContext sc = SSLContexts.custom().loadTrustMaterial(new TrustSelfSignedStrategy()).build();
+//            SSLConnectionSocketFactory socketFactory
+//                    = new SSLConnectionSocketFactory(sc);
+//            this.registry =
+//                    RegistryBuilder.<ConnectionSocketFactory>create()
+//                            .register("https", socketFactory)
+//                            .build();
+//            //sc.init(null, trustAllCerts, new java.security.SecureRandom());
+//            //HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+//        } catch (GeneralSecurityException e) {
+//            LOG.error(e);
+//        }
     }
 
     public int getTcpPort() {
