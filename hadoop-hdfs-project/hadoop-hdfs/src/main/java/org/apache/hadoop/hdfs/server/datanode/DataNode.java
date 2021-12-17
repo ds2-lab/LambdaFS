@@ -305,7 +305,7 @@ public class DataNode extends ReconfigurableBase
    * Syntax:
    *  Major.Minor.Build.Revision
    */
-  private static String versionNumber = "0.1.6.0";
+  private static String versionNumber = "0.1.7.0";
   
   private static final String DATANODE_HTRACE_PREFIX = "datanode.htrace.";
   /**
