@@ -421,8 +421,12 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 }
         };
 
-        TrustStrategy acceptingTrustStrategy = (x509Certificates, s) -> true;
+        TrustStrategy acceptingTrustStrategy = (x509Certificates, s) -> {
+          LOG.debug("Checking if certificates " + x509Certificates + " are trusted. String s: " + s + ".");
+          return true;
+        };
         SSLContext sslContext = org.apache.http.ssl.SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
+        sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
         SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext, new NoopHostnameVerifier());
 
         return HttpClients
