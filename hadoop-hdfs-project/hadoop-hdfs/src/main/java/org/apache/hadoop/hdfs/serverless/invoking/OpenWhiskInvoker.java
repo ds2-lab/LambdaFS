@@ -389,19 +389,19 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         // The solution here is provided by:
         // https://gist.github.com/mingliangguo/c86e05a0f8a9019b281a63d151965ac7
 
-//        TrustManager[] trustAllCerts = new TrustManager[] {
-//                new X509TrustManager() {
-//                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-//                        return null;
-//                    }
-//                    public void checkClientTrusted(X509Certificate[] certs, String authType) {  }
-//
-//                    public void checkServerTrusted(X509Certificate[] certs, String authType) {  }
-//                }
-//        };
-//
-//        SSLContext sc = SSLContext.getInstance("SSL");
-//        sc.init(null, trustAllCerts, new SecureRandom());
+        TrustManager[] trustAllCerts = new TrustManager[] {
+                new X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+                    public void checkClientTrusted(X509Certificate[] certs, String authType) {  }
+
+                    public void checkServerTrusted(X509Certificate[] certs, String authType) {  }
+                }
+        };
+
+        SSLContext sc = SSLContext.getInstance("SSL");
+        sc.init(null, trustAllCerts, new SecureRandom());
 
         LOG.debug("Setting HTTP connection timeout to " + httpTimeoutMilliseconds + " milliseconds.");
         LOG.debug("Setting HTTP socket timeout to " + httpTimeoutMilliseconds + " milliseconds.");
@@ -414,14 +414,15 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         // This allows us to issue multiple HTTP requests at once, which may or may not be desirable/useful...
         // Like, I'm not sure if that's something we'll do within the same process/thread.
-        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager(this.registry);
+        // PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager(this.registry);
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
         connectionManager.setMaxTotal(25);
         connectionManager.setDefaultMaxPerRoute(25);
 
         return HttpClients
             .custom()
             .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
-            // .setSSLContext(sc)
+            .setSSLContext(sc)
             .setDefaultRequestConfig(requestConfig)
             .setConnectionManager(connectionManager)
             .build();
