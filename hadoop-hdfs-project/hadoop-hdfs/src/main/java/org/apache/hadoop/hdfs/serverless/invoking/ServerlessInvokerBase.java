@@ -315,7 +315,7 @@ public abstract class ServerlessInvokerBase<T> {
 
         try {
             httpClient = getHttpClient();
-        } catch (NoSuchAlgorithmException | KeyManagementException | CertificateException e) {
+        } catch (NoSuchAlgorithmException | KeyManagementException | CertificateException | KeyStoreException e) {
             e.printStackTrace();
             return;
         }
