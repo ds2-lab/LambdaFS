@@ -17,6 +17,7 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -387,38 +388,13 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * Return an HTTP client configured appropriately for the OpenWhisk serverless platform.
      */
     @Override
-    public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException, CertificateException {
+    public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException {
         // We create the client in this way in order to avoid SSL certificate validation/verification errors.
         // The solution here is provided by:
         // https://gist.github.com/mingliangguo/c86e05a0f8a9019b281a63d151965ac7
 
-        String certB64 = "789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP";
-        byte[] encodedCert = Base64.getDecoder().decode(certB64);
-        ByteArrayInputStream inputStream  =  new ByteArrayInputStream(encodedCert);
-
-        CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
-        X509Certificate cert = (X509Certificate)certFactory.generateCertificate(inputStream);
-
-        TrustManager[] trustAllCerts = new TrustManager[] {
-                new X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        //return null;
-                        return new X509Certificate[] {cert};
-                    }
-                    public void checkClientTrusted(X509Certificate[] certs, String authType) {  }
-
-                    public void checkServerTrusted(X509Certificate[] certs, String authType) {  }
-                }
-        };
-
-        SSLContext sc = SSLContext.getInstance("SSL");
-        sc.init(null, trustAllCerts, new SecureRandom());
-
         LOG.debug("Setting HTTP connection timeout to " + httpTimeoutMilliseconds + " milliseconds.");
         LOG.debug("Setting HTTP socket timeout to " + httpTimeoutMilliseconds + " milliseconds.");
-
-        SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(sc,
-                NoopHostnameVerifier.INSTANCE);
 
         RequestConfig requestConfig = RequestConfig
                 .custom()
@@ -433,11 +409,27 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         connectionManager.setMaxTotal(25);
         connectionManager.setDefaultMaxPerRoute(25);
 
+        TrustManager[] trustAllCerts = new TrustManager[] {
+                new X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        //return null;
+                        return new X509Certificate[0];
+                    }
+                    public void checkClientTrusted(X509Certificate[] certs, String authType) {  }
+
+                    public void checkServerTrusted(X509Certificate[] certs, String authType) {  }
+                }
+        };
+
+        TrustStrategy acceptingTrustStrategy = (x509Certificates, s) -> true;
+        SSLContext sslContext = org.apache.http.ssl.SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
+        SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext, new NoopHostnameVerifier());
+
         return HttpClients
             .custom()
             .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
-            .setSSLSocketFactory(socketFactory)
-            .setSSLContext(sc)
+            .setSSLSocketFactory(csf)
+            .setSSLContext(sslContext)
             .setDefaultRequestConfig(requestConfig)
             .setConnectionManager(connectionManager)
             .build();

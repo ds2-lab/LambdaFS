@@ -280,7 +280,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Default constructor.
      */
     protected ServerlessInvokerBase() {
-        instantiateTrustManager();
+        // instantiateTrustManager();
         statisticsPackages = new HashMap<>();
         transactionEvents = new HashMap<>();
     }
@@ -359,7 +359,7 @@ public abstract class ServerlessInvokerBase<T> {
             throws IOException, IllegalStateException;
     
     public abstract CloseableHttpClient getHttpClient()
-            throws NoSuchAlgorithmException, KeyManagementException, CertificateException;
+            throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException;
 
     /**
      * Extract the result of a file system operation from the {@link JsonObject} returned by the NameNode.
