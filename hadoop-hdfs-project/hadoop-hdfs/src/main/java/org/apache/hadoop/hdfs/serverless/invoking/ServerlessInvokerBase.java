@@ -359,7 +359,7 @@ public abstract class ServerlessInvokerBase<T> {
             throws IOException, IllegalStateException;
     
     public abstract CloseableHttpClient getHttpClient()
-            throws NoSuchAlgorithmException, KeyManagementException;
+            throws NoSuchAlgorithmException, KeyManagementException, CertificateException;
 
     /**
      * Extract the result of a file system operation from the {@link JsonObject} returned by the NameNode.

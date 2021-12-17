@@ -24,6 +24,8 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
 
 import java.net.SocketTimeoutException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -385,16 +387,23 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * Return an HTTP client configured appropriately for the OpenWhisk serverless platform.
      */
     @Override
-    public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException {
+    public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException, CertificateException {
         // We create the client in this way in order to avoid SSL certificate validation/verification errors.
         // The solution here is provided by:
         // https://gist.github.com/mingliangguo/c86e05a0f8a9019b281a63d151965ac7
+
+        String certB64 = "789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP";
+        byte[] encodedCert = Base64.getDecoder().decode(certB64);
+        ByteArrayInputStream inputStream  =  new ByteArrayInputStream(encodedCert);
+
+        CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+        X509Certificate cert = (X509Certificate)certFactory.generateCertificate(inputStream);
 
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager() {
                     public java.security.cert.X509Certificate[] getAcceptedIssuers() {
                         //return null;
-                        return new X509Certificate[0];
+                        return new X509Certificate[] {cert};
                     }
                     public void checkClientTrusted(X509Certificate[] certs, String authType) {  }
 
