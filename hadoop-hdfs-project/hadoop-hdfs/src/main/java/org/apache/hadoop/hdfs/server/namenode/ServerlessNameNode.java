@@ -815,9 +815,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return this.operations.get(op).apply(fsArgs);
   }
 
-  public synchronized void refreshActiveNameNodesList() throws Exception {
-    if (activeNameNodes == null)
-      activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.numDeployments);
+  public void refreshActiveNameNodesList() throws Exception {
+    synchronized (this) {
+      if (activeNameNodes == null)
+        activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.numDeployments);
+    }
 
     activeNameNodes.refreshFromZooKeeper(this.zooKeeperClient);
   }
