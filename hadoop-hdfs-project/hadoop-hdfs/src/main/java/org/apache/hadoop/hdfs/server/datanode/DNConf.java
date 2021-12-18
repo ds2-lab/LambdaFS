@@ -119,7 +119,7 @@ public class DNConf {
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
     if (localMode)
-      serverlessEndpoint = ServerlessNameNodeKeys.LOCAL_MODE_ENDPOINT_HTTPS;
+      serverlessEndpoint = ServerlessNameNodeKeys.LOCAL_MODE_ENDPOINT_HTTP;
     else
       serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 
