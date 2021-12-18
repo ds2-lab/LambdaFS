@@ -63,4 +63,6 @@ public class ServerlessNameNodeKeys {
     public static final String PARENT_ID = "parentId";
     public static final String FUNCTION = "function";
 
+    public static final String LOCAL_MODE_ENDPOINT = "http://localhost:8080/run";
+    public static final String LOCAL_MODE_ENDPOINT_HTTPS = "https://localhost:8080/run";
 }

@@ -59,6 +59,7 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import org.apache.hadoop.hdfs.protocol.datatransfer.TrustedChannelResolver;
 import org.apache.hadoop.hdfs.protocol.datatransfer.sasl.DataTransferSaslUtil;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.security.SaslPropertiesResolver;
 
 /**
@@ -118,7 +119,7 @@ public class DNConf {
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
     if (localMode)
-      serverlessEndpoint = "http://localhost:8080/run";
+      serverlessEndpoint = ServerlessNameNodeKeys.LOCAL_MODE_ENDPOINT_HTTPS;
     else
       serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 

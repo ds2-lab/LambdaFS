@@ -81,9 +81,6 @@ public class ClusterjConnector implements StorageConnector<DBSession> {
     LOG.info("Database name: " + conf.get(Constants.PROPERTY_CLUSTER_DATABASE));
     LOG.info("Max Transactions: " + conf.get(Constants.PROPERTY_CLUSTER_MAX_TRANSACTIONS));
 
-    LOG.info("Database username: " + conf.get(Constants.PROPERTY_JDBC_USERNAME));
-    LOG.debug("Database password: " + conf.get(Constants.PROPERTY_JDBC_USERNAME));
-
     int initialPoolSize = Integer.parseInt((String) conf.get("io.hops.session.pool.size"));
     int reuseCount = Integer.parseInt((String) conf.get("io.hops.session.reuse.count"));
     dbSessionProvider = new DBSessionProvider(conf, reuseCount, initialPoolSize);

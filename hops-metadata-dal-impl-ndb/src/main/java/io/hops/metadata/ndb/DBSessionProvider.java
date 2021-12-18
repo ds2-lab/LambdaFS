@@ -71,8 +71,6 @@ public class DBSessionProvider implements Runnable {
     LOG.info("Database connect string: " + conf.get(Constants.PROPERTY_CLUSTER_CONNECTSTRING));
     LOG.info("Database name: " + conf.get(Constants.PROPERTY_CLUSTER_DATABASE));
     LOG.info("Max Transactions: " + conf.get(Constants.PROPERTY_CLUSTER_MAX_TRANSACTIONS));
-    LOG.info("Database username: " + conf.get(Constants.PROPERTY_JDBC_USERNAME));
-    LOG.debug("Database password: " + conf.get(Constants.PROPERTY_JDBC_USERNAME));
 
     try {
 

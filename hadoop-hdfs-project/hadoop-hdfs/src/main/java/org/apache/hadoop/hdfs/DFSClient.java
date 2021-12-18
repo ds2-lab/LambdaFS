@@ -107,6 +107,7 @@ import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.protocol.HdfsBlocksMetadata;
+import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
@@ -507,7 +508,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
     if (localMode)
-      serverlessEndpoint = "http://localhost:8080/run";
+      serverlessEndpoint = ServerlessNameNodeKeys.LOCAL_MODE_ENDPOINT_HTTPS;
     else
       serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 
@@ -656,7 +657,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
     if (localMode)
-      serverlessEndpoint = "http://localhost:8080/run";
+      serverlessEndpoint = ServerlessNameNodeKeys.LOCAL_MODE_ENDPOINT_HTTPS;
     else
       serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
