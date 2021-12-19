@@ -18,6 +18,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustStrategy;
@@ -435,7 +436,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder
                 .<ConnectionSocketFactory>create()
                 .register("https", csf)
-                .register("http", csf)
+                .register("http", PlainConnectionSocketFactory.getSocketFactory())
                 .build();
 
         // Need to pass registry to this type of connection manager, as custom SSLContext is ignored.
