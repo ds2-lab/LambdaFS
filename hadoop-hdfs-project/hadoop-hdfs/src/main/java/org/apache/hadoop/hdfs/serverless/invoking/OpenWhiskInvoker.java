@@ -433,7 +433,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext, new NoopHostnameVerifier());
 
         Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder
-                .<ConnectionSocketFactory>create().register("https", csf)
+                .<ConnectionSocketFactory>create()
+                .register("https", csf)
+                .register("http", csf)
                 .build();
 
         // Need to pass registry to this type of connection manager, as custom SSLContext is ignored.
