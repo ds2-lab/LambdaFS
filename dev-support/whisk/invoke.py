@@ -109,8 +109,10 @@ def init(args):
         contents = None
         binary = False
 
+    endpoint = containerRoute(args, 'init'),
+    print("Sending `init` request to " + endpoint)
     r = requests.post(
-        containerRoute(args, 'init'),
+        endpoint,
         json = {
             "value": {
                 "code": contents,
