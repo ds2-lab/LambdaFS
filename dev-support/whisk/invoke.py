@@ -112,7 +112,7 @@ def init(args):
     endpoint = containerRoute(args, 'init'),
     print("Sending `init` request to " + str(endpoint))
     r = requests.post(
-        endpoint,
+        containerRoute(args, 'init'),
         json = {
             "value": {
                 "code": contents,
