@@ -83,6 +83,8 @@ public abstract class ServerlessInvokerBase<T> {
     /**
      * Flag indicating whether we are running in 'local mode', which is only relevant on the client-side.
      * If true, then there's only one NameNode running within a Docker container on the same VM as the HopsFS client.
+     *
+     * This is only used for debugging/profiling/testing.
      */
     protected boolean localMode;
 
@@ -136,11 +138,6 @@ public abstract class ServerlessInvokerBase<T> {
      * This name will be set automatically if a client/user is invoking. Otherwise, we default to DataNode.
      */
     protected String clientName = "DataNode";
-
-    /**
-     * Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
-     */
-    private boolean localMode;
 
     /**
      * If true, then we'll pass an argument to the NNs indicating that they should print their
