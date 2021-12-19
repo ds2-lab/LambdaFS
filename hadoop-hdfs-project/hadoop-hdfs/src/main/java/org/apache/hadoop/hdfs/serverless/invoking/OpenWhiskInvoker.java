@@ -185,9 +185,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         builder.append(blockingParameter);
         String functionUri = builder.toString();
 
-       // LOG.info(String.format("Preparing to invoke OpenWhisk serverless function with URI \"%s\" \nfor FS operation \"%s\" now...",
-       //         functionUri, operationName));
-
         HttpPost request = new HttpPost(functionUri);
 
         // This is the top-level JSON object passed along with the HTTP POST request.
@@ -213,8 +210,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
         request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
-        //LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
-        //LOG.debug("Request URI/URL: " + request.getURI().toURL());
+        LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
+        LOG.debug("Request URI/URL: " + request.getURI().toURL());
 
         ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(maxHttpRetries)
