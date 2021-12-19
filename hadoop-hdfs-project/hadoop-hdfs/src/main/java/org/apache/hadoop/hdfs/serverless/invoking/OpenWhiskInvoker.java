@@ -153,36 +153,39 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);
 
-        if (targetDeployment == -1) {
-            // Attempt to get the serverless function associated with the particular file/directory, if one exists.
-            if (fileSystemOperationArguments != null && fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
-                String sourceFileOrDirectory =
-                        fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
-                targetDeployment = cache.getFunction(sourceFileOrDirectory);
+        if (!this.localMode) {
+            if (targetDeployment == -1) {
+                // Attempt to get the serverless function associated with the particular file/directory, if one exists.
+                if (fileSystemOperationArguments != null && fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
+                    String sourceFileOrDirectory =
+                            fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
+                    targetDeployment = cache.getFunction(sourceFileOrDirectory);
 //                targetDeployment = consistentHash(sourceFileOrDirectory.hashCode(), numUniqueFunctions);
 //
 //                LOG.debug("Hashed target path " + sourceFileOrDirectory
 //                        + " to deployment " + targetDeployment + ".");
+                } else {
+                    LOG.debug("No `src` property found in file system arguments... " +
+                            "skipping the checking of INode cache...");
+                }
             } else {
-                LOG.debug("No `src` property found in file system arguments... " +
-                        "skipping the checking of INode cache...");
+                LOG.debug("Explicitly targeting deployment #" + targetDeployment + ".");
             }
-        } else {
-            LOG.debug("Explicitly targeting deployment #" + targetDeployment + ".");
+
+            // If we have a cache entry for this function, then we'll invoke that specific function.
+            // Otherwise, we'll just select a function at random.
+            if (targetDeployment < 0) {
+                targetDeployment = ThreadLocalRandom.current().nextInt(0, numDeployments);
+                LOG.debug("Randomly selected serverless function " + targetDeployment);
+            }
+
+            builder.append(targetDeployment);
+
+            // Add the blocking parameter to the end of the URI so the function blocks until it completes
+            // and the full result can be returned to the user.
+            builder.append(blockingParameter);
         }
 
-        // If we have a cache entry for this function, then we'll invoke that specific function.
-        // Otherwise, we'll just select a function at random.
-        if (targetDeployment < 0) {
-            targetDeployment = ThreadLocalRandom.current().nextInt(0, numDeployments);
-            LOG.debug("Randomly selected serverless function " + targetDeployment);
-        }
-
-        builder.append(targetDeployment);
-
-        // Add the blocking parameter to the end of the URI so the function blocks until it completes
-        // and the full result can be returned to the user.
-        builder.append(blockingParameter);
         String functionUri = builder.toString();
 
         HttpPost request = new HttpPost(functionUri);

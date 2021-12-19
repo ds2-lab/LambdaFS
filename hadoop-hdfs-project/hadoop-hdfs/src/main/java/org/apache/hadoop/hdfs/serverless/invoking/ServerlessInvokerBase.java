@@ -81,6 +81,12 @@ public abstract class ServerlessInvokerBase<T> {
     protected HashMap<String, List<TransactionEvent>> transactionEvents;
 
     /**
+     * Flag indicating whether we are running in 'local mode', which is only relevant on the client-side.
+     * If true, then there's only one NameNode running within a Docker container on the same VM as the HopsFS client.
+     */
+    protected boolean localMode;
+
+    /**
      * The maximum amount of time to wait before issuing another HTTP request after the previous request failed.
      *
      * TODO: Make this configurable.
@@ -291,7 +297,7 @@ public abstract class ServerlessInvokerBase<T> {
     public void setConfiguration(Configuration conf, String invokerIdentity) {
         LOG.debug("Configuring ServerlessInvokerBase now...");
         cache = new FunctionMetadataMap(conf);
-        localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
+        this.localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         maxHttpRetries = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX,
                 DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT);
         tcpEnabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
@@ -299,7 +305,7 @@ public abstract class ServerlessInvokerBase<T> {
         httpTimeoutMilliseconds = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT,
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
 
-        if (localMode)
+        if (this.localMode)
             numDeployments = 1;
         else
             numDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS, DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
