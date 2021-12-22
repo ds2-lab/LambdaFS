@@ -72,9 +72,9 @@ CREATE TABLE `intermediate_block_reports` (
     FOREIGN KEY (`datanode_uuid`) REFERENCES `datanodes` (`datanode_uuid`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
----------------------------------
------- Invalidation Tables ------
----------------------------------
+-- ---------------------------------
+-- ------ Invalidation Tables ------
+-- ---------------------------------
 
 CREATE TABLE `invalidations_deployment0` (
     `inode_id` BIGINT NOT NULL,        -- The INode's ID.
@@ -176,9 +176,9 @@ CREATE TABLE `invalidations_deployment9` (
     KEY no_leader (`inode_id`, `op_id`)
 ) ENGINE=NDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
-----------------------------------
--- Write Acknowledgement Tables --
-----------------------------------
+-- ----------------------------------
+-- -- Write Acknowledgement Tables --
+-- ----------------------------------
 
 CREATE TABLE `write_acks_deployment0` (
     `namenode_id` BIGINT NOT NULL,                -- The ID of the target/follower/recipient NameNode object.
