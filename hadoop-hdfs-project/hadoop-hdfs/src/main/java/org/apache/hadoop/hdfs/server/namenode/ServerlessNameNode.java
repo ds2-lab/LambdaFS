@@ -2392,11 +2392,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             DurationFormatUtils.formatDurationHMS(startCommonServiceDuration.toMillis()));
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
 
-    if(isLeader()){ //if the newly started namenode is the leader then it means
+    if(isLeader()) { //if the newly started namenode is the leader then it means
       //that is cluster was restarted and we can reset the number of default
       // concurrent block reports
       HdfsVariables.setMaxConcurrentBrs(maxConcurrentBRs, null);
       createLeaseLocks(conf);
+
+      Instant createLeaseLocksEnd = Instant.now();
+      Duration createLeaseLocksDuration = Duration.between(commonServiceEnd, createLeaseLocksEnd);
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
+      LOG.debug("Created lease locks in " +
+              DurationFormatUtils.formatDurationHMS(startCommonServiceDuration.toMillis()));
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
     }
 
     // in case of cluster upgrade the retry cache epoch is set to 0
