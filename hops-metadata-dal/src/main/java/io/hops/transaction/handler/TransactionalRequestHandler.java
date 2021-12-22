@@ -202,8 +202,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         transactionAttempt.setCommitEnd(getUtcTime());
         if(stat != null)
           stat.setTimes(acquireLockTime, inMemoryProcessingTime, commitTime);
-        else
-          requestHandlerLOG.debug("Transaction statistics are NOT being collected...");
+//        else
+//          requestHandlerLOG.debug("Transaction statistics are NOT being collected...");
 
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("TX committed. Time " + commitTime + " ms");
