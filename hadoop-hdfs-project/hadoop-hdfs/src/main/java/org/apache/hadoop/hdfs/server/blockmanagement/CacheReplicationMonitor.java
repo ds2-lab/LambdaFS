@@ -192,8 +192,7 @@ public class CacheReplicationMonitor extends Thread implements Closeable {
         } finally {
           lock.unlock();
         }
-        LOG.debug("Scanned " + scannedDirectives + " directive(s) and " + scannedBlocks + " block(s) in " + (curTimeMs
-            - startTimeMs) + " " + "millisecond(s).");
+        // LOG.debug("Scanned " + scannedDirectives + " directive(s) and " + scannedBlocks + " block(s) in " + (curTimeMs - startTimeMs) + " " + "millisecond(s).");
       }
     } catch (InterruptedException e) {
       LOG.info("Shutting down CacheReplicationMonitor.");

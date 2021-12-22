@@ -1631,7 +1631,7 @@ public class BlockManager {
       srcNode = chooseSourceDatanode(storedBlock, containingNodes, liveReplicaNodes,
           numReplicas, priority1);
       if (srcNode == null) { // block can not be replicated from any storage
-        LOG.debug("Block " + storedBlock + " cannot be repl from any storage");
+        // LOG.debug("Block " + storedBlock + " cannot be repl from any storage");
         return scheduledWork;
       }
 
