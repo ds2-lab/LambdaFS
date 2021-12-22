@@ -203,13 +203,7 @@ public class OpenWhiskHandler {
         LOG.debug("ServerlessNameNode is exiting now...");
         activeRequestCounter.decrementAndGet();
         result.setFnEndTime(Time.getUtcTime());
-        JsonObject resultJson = createJsonResponse(result);
-
-        LOG.debug("Contents of result to be returned to the client: ");
-        for (String key : resultJson.keySet())
-            LOG.debug(key + ": " + resultJson.get(key).toString());
-
-        return resultJson;
+        return createJsonResponse(result);
     }
 
     /**
@@ -499,6 +493,11 @@ public class OpenWhiskHandler {
 
         response.add("headers", headers);
         response.add("body", resultJson);
+
+        LOG.debug("Contents of result to be returned to the client: ");
+        for (String key : resultJson.keySet())
+            LOG.debug(key + ": " + resultJson.get(key).toString());
+
         return response;
     }
 

@@ -412,21 +412,21 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager() {
                     public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        LOG.debug("getAcceptedIssuers() called!");
+                        //LOG.debug("getAcceptedIssuers() called!");
                         return new X509Certificate[0];
                     }
                     public void checkClientTrusted(X509Certificate[] certs, String authType) {
-                        LOG.debug("checkClientTrusted() called!");
+                        //LOG.debug("checkClientTrusted() called!");
                     }
 
                     public void checkServerTrusted(X509Certificate[] certs, String authType) {
-                        LOG.debug("checkServerTrusted() called!");
+                        //LOG.debug("checkServerTrusted() called!");
                     }
                 }
         };
 
         TrustStrategy acceptingTrustStrategy = (x509Certificates, s) -> {
-          LOG.debug("Checking if certificates " + x509Certificates + " are trusted. String s: " + s + ".");
+          //LOG.debug("Checking if certificates " + x509Certificates + " are trusted. String s: " + s + ".");
           return true;
         };
         SSLContext sslContext = org.apache.http.ssl.SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
