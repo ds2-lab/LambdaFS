@@ -1,0 +1,5 @@
+----------------
+ndbd_default.txt
+----------------
+
+Defines the [ndbd default] section of the config.ini file.

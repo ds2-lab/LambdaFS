@@ -261,8 +261,10 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
                 processedResponse = processHttpResponse(httpResponse);
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
-                LOG.debug("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke NameNode " +
-                        functionUri + " timed out.");
+                currentTime = System.nanoTime();
+                timeElapsed = (currentTime - invokeStart) / 1000000.0;
+                LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke NameNode via URL '" +
+                        functionUri + "' timed out. Time elapsed: " + timeElapsed + " ms.");
                 LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();

@@ -1,0 +1,7 @@
+[ndbd default]
+# Options affecting ndbd processes on all data nodes:
+NoOfReplicas=1
+MaxNoOfExecutionThreads=22
+DataMemory=98M    # How much memory to allocate for data storage
+MaxNoOfOrderedIndexes=2048
+MaxNoOfAttributes=3000
