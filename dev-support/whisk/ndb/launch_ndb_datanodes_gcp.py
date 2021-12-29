@@ -42,9 +42,10 @@ def write_ndbd_section(file: io.IOBase, hostname: str, nodeid: int, data_dir = "
             Tells the DataNode where to persist its data on disk.
     """
     file.write("[ndbd]\n")
-    file.write("HostName=%s" % hostname)
-    file.write("NodeId=%d" % nodeid)
-    file.write("DataDir=%s" % data_dir)
+    file.write("HostName=%s\n" % hostname)
+    file.write("NodeId=%d\n" % nodeid)
+    file.write("DataDir=%s\n" % data_dir)
+    file.write("\n")
     file.write("\n")
 
 def write_ndb_mgmd_section(file: io.IOBase, hostname: str, nodeid: int):
@@ -66,8 +67,10 @@ def write_ndb_mgmd_section(file: io.IOBase, hostname: str, nodeid: int):
             Tells the DataNode where to persist its data on disk.
     """
     file.write("[ndb_mgmd]\n")
-    file.write("HostName=%s" % hostname)
-    file.write("NodeId=%d" % nodeid)
+    file.write("HostName=%s\n" % hostname)
+    file.write("NodeId=%d\n" % nodeid)
+    file.write("DataDir=/var/lib/mysql-cluster\n")
+    file.write("\n")
     file.write("\n")
 
 def write_mysqld_section(file: io.IOBase, hostname: str):
@@ -84,6 +87,7 @@ def write_mysqld_section(file: io.IOBase, hostname: str):
     """
     file.write("[mysqld]\n")
     file.write("HostName=%s" % hostname)
+    file.write("\n")
     file.write("\n")
 
 if __name__ == "__main__":
@@ -162,7 +166,7 @@ if __name__ == "__main__":
     print("Created %d virtual machines. Next, creating config.ini file at path '%s'." % (num_vms, config_file_location))
 
     ndbd_default_file = open("./ndbd_default.txt", 'r')
-    ndb_config_file = open(config_file_location)
+    ndb_config_file = open(config_file_location, "w")
     ndb_config_file.write("# Python-generated configuration file.\n")
 
     # Add the [ndbd default] section to the top of the config.ini file.
@@ -173,15 +177,15 @@ if __name__ == "__main__":
     write_ndb_mgmd_section(ndb_config_file, manager_internal_ip, current_nodeid)
     current_nodeid += 1
 
-    # Add the [mysqld] section for the HopsFS client to the config.ini file.
-    write_mysqld_section(ndb_config_file, hopsfs_client_ip)
-
     for i in range(num_vms):
         hostname = hostnames[i]
         write_ndbd_section(ndb_config_file, hostname, current_nodeid, data_dir = data_directory)
         current_nodeid += 1
 
-    print("Finished adding [ndbd] sections to config.ini file. Adding %d [api] section(s) next." % number_api_nodes)
+    # Add the [mysqld] section for the HopsFS client to the config.ini file.
+    write_mysqld_section(ndb_config_file, hopsfs_client_ip)
+
+    print("Finished adding [ndbd] sections to config.ini file. Adding 1 [mysqld] and %d [api] sections next." % number_api_nodes)
 
     for _ in range(number_api_nodes):
         ndb_config_file.write("[api]\n")
