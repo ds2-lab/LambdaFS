@@ -137,7 +137,7 @@ if __name__ == "__main__":
 
     print("Executing command:\n" + str(command))
 
-    response = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout.read().decode()
+    response = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout.read().decode().split()
     response_columns = response[0:7]
     response_values = response[7:]
     hostnames = []
@@ -147,8 +147,6 @@ if __name__ == "__main__":
         hostnames.append(response_values[private_ip_col_index])
 
     print("Hostnames: " + str(hostnames))
-
-    exit(0)
 
     print("Created %d virtual machines. Next, creating config.ini file at path '%s'." % (num_vms, config_file_location))
 
@@ -168,7 +166,8 @@ if __name__ == "__main__":
     write_mysqld_section(ndb_config_file, hopsfs_client_ip)
 
     for i in range(num_vms):
-        write_ndbd_section(ndb_config_file, None, current_nodeid, data_dir = data_directory)
+        hostname = hostnames[i]
+        write_ndbd_section(ndb_config_file, hostname, current_nodeid, data_dir = data_directory)
         current_nodeid += 1
 
     print("Finished adding [ndbd] sections to config.ini file. Adding %d [api] section(s) next." % number_api_nodes)
