@@ -17,6 +17,11 @@ import os
 import random
 import datetime
 import subprocess
+from termcolor import colored
+
+if os.name == 'nt':
+    import colorama
+    colorama.init()
 
 def write_ndbd_section(file: io.IOBase, hostname: str, nodeid: int, data_dir = "/usr/local/mysql/data"):
     """
@@ -117,8 +122,8 @@ if __name__ == "__main__":
     if (num_vms >= 253):
         raise ValueError("Too many DataNodes requested (%d). An NDB cluster can only support a total of 255 nodes, and two of these nodes are reserved for the Manager Node and the HopsFS Client Node." % num_vms)
 
-    print("\nCreating %d virtual machines:\n\tIMAGE NAME: '%s'\n\tMACHINE TYPE: %s\n\tDATA DIRECTORY: \"%s\"" % (num_vms, image, machine_type, data_directory))
-    print("There will be %d [api] nodes defined in the config.ini file.\n" % number_api_nodes)
+    print("\nCreating " + colored(num_vms, 'green') + " virtual machines:\n\tIMAGE NAME: " + colored("'" + image + "'", 'green') + "\n\tMACHINE TYPE: " + colored("'" + machine_type + "'", 'green') + "\n\tDATA DIRECTORY: " + colored("'" + data_directory + "'", 'green'))
+    print("There will be " + colored(number_api_nodes, 'green') + " [api] nodes defined in the config.ini file.\n")
 
     instance_names = []
     command = "gcloud beta compute instances create "
@@ -131,7 +136,7 @@ if __name__ == "__main__":
 
     command += command_end
 
-    print("Executing command:\n" + str(command))
+    print("Executing command:\n" + colored(command, 'red'))
 
     response = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout.read().decode().split()
     response_columns = response[0:7]
@@ -141,16 +146,16 @@ if __name__ == "__main__":
     for i in range(num_vms):
         private_ip_col_index = (6 * i) + 3
         hostnames.append(response_values[private_ip_col_index])
-
+    
     print("Hostnames: " + str(hostnames))
 
     # Write all of the hostnames to a file so we can PSSH to start all the DataNodes.
-    with open("./hostnames.txt", "r") as hostnames_file:
+    with open("./hostnames.txt", "w") as hostnames_file:
         for hostname in hostnames:
             hostnames_file.write("ben@" + hostname + "\n")
 
     # Also just write out all the hostnames to a file without the username first, in case we need it for some reason.
-    with open("./hostnames_no_user.txt", "r") as hostnames_file:
+    with open("./hostnames_no_user.txt", "w") as hostnames_file:
         for hostname in hostnames:
             hostnames_file.write(hostname + "\n")
 
@@ -180,5 +185,5 @@ if __name__ == "__main__":
 
     for _ in range(number_api_nodes):
         ndb_config_file.write("[api]\n")
-    
+
     ndb_config_file.close()
