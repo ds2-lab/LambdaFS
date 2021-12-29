@@ -17,6 +17,7 @@ import os
 import googleapiclient.discovery
 import random
 import datetime
+import subprocess
 import numpy as np
 
 def write_ndbd_section(file: io.IOBase, hostname: str, nodeid: int, data_dir = "/usr/local/mysql/data"):
@@ -82,55 +83,12 @@ def write_mysqld_section(file: io.IOBase, hostname: str):
     file.write("HostName=%s" % hostname)
     file.write("\n")
 
-def wait_for_operation(compute, project, zone, operation):
-    """
-    Wait for a given GCP operation to complete.
-
-    Source: https://github.com/GoogleCloudPlatform/python-docs-samples/blob/d8d4951911029b4776bd8d34ad5a8832fe21787b/compute/api/create_instance.py#L128
-    """
-    print('Waiting for operation to finish...')
-    while True:
-        result = compute.zoneOperations().get(
-            project=project,
-            zone=zone,
-            operation=operation).execute()
-
-        if result['status'] == 'DONE':
-            print("done.")
-            if 'error' in result:
-                raise Exception(result['error'])
-            return result
-
-        time.sleep(1)
-
-def create_instance(compute, project_id: str, zone: str, instance_name: str, machine_image: str):
-    """
-    Create a new Compute Engine virtual machine.
-
-    Arguments:
-    ----------
-        compute: The GCP API object for Compute Engine.
-
-        project_id (str): Your Google Cloud project ID.
-
-        zone (str): Compute Engine zone to deploy to.
-
-        instance_name (str): Name to use for the instance that we're creating.
-
-        machine_image (str): Name of the machine image to use for the instance.
-    
-    Returns:
-    --------
-        An operation as returned by the GCP API.
-    """
-    pass 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-n", "--num-vms", type = int, dest = "num_vms", default = 1, help = "Number of VMs to create.")
     parser.add_argument("-i", "--image", type = str, default = "ndb-datanode", help = "Machine image to use for the DataNode VMs")
-    parser.add_argument("-t", "--instance-type", type = str, dest = "instance_type", default = "e2-standard-16", help = "Google Compute Engine instance type to use.")
+    parser.add_argument("-t", "--machine-type", type = str, dest = "machine_type", default = "e2-standard-16", help = "Google Compute Engine machine type to use.")
     parser.add_argument("-o", "--output", type = str, default = "/var/lib/mysql-cluster/config.ini", help = "Filepath for the config.ini file that gets generated after creating the VMs.")
     parser.add_argument("-mii", "--manager-internal-ip", type = str, dest = "manager_internal_ip", default = "10.150.0.18", help = "Internal IP address of the MySQL Cluster NDB Manager Node.")
     parser.add_argument("-c", "--client-ip", type = str, dest = "hopsfs_client_ip", default = "10.150.0.17", help = "Internal IP of the HopsFS client node.")
@@ -144,7 +102,7 @@ if __name__ == "__main__":
 
     num_vms = args.num_vms
     image = args.image
-    instance_type = args.instance_type
+    machine_type = args.machine_type
     config_file_location = args.output
     manager_internal_ip = args.manager_internal_ip
     hopsfs_client_ip = args.hopsfs_client_ip
@@ -163,13 +121,34 @@ if __name__ == "__main__":
 
     compute = googleapiclient.discovery.build('compute', 'v1')
 
-    print("Creating %d virtual machines:\n\tIMAGE NAME: '%s'\n\tINSTANCE TYPE: %s\n\tDATA DIRECTORY: \"%s\"" % (num_vms, image, instance_type, data_directory))
+    print("Creating %d virtual machines:\n\tIMAGE NAME: '%s'\n\tMACHINE TYPE: %s\n\tDATA DIRECTORY: \"%s\"" % (num_vms, image, machine_type, data_directory))
     print("There will be %d [api] nodes defined in the config.ini file." % number_api_nodes)
 
-    operations = []
+    instance_names = []
+    command = "gcloud beta compute instances create "
     for i in range(num_vms):
-        operation = create_instance(compute, project_id, zone, "ndb-datanode-%d" % i, image)
-        operations.append(operation)
+        instance_name = "ndb-datanode-%d" % i
+        instance_names.append(instance_name)
+        command += instance_name + " "
+    
+    command_end = "--project=%s --zone=%s --machine-type=e2-standard-16 --network-interface=network-tier=PREMIUM,subnet=default --maintenance-policy=MIGRATE --service-account=858581583747-compute@developer.gserviceaccount.com --scopes=https://www.googleapis.com/auth/cloud-platform --min-cpu-platform=Automatic --tags=http-server,https-server --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring --reservation-affinity=any --source-machine-image=%s" % (project_id, zone, image)
+
+    command += command_end
+
+    print("Executing command:\n" + str(command))
+
+    response = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout.read().decode()
+    response_columns = response[0:7]
+    response_values = response[7:]
+    hostnames = []
+
+    for i in range(num_vms):
+        private_ip_col_index = (6 * i) + 3
+        hostnames.append(response_values[private_ip_col_index])
+
+    print("Hostnames: " + str(hostnames))
+
+    exit(0)
 
     print("Created %d virtual machines. Next, creating config.ini file at path '%s'." % (num_vms, config_file_location))
 
