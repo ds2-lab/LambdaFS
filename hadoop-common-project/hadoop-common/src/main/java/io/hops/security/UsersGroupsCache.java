@@ -469,7 +469,7 @@ class UsersGroupsCache {
             UsersGroupsCache.UsersOperationsType.GET_GROUP) {
       @Override
       public Object performTask() throws IOException {
-        LOG.debug("Get GroupName: " + groupName + " GroupID: " + groupId + " from DB.");
+        //LOG.debug("Get GroupName: " + groupName + " GroupID: " + groupId + " from DB.");
         boolean fail = false;
         boolean localTx = !connector.isTransactionActive();
         if (localTx) {
