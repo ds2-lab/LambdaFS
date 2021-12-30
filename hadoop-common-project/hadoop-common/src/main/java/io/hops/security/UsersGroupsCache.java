@@ -135,8 +135,8 @@ class UsersGroupsCache {
           = new RemovalListener<Integer, String>() {
     @Override
     public void onRemoval(RemovalNotification<Integer, String> rn) {
-      LOG.debug("User removal notification for " + rn.toString()
-              + "(" + rn.getCause() + ")");
+      //LOG.debug("User removal notification for " + rn.toString()
+      //        + "(" + rn.getCause() + ")");
     }
   };
 
@@ -157,14 +157,14 @@ class UsersGroupsCache {
           = new RemovalListener<String, Integer>() {
     @Override
     public void onRemoval(RemovalNotification<String, Integer> rn) {
-      LOG.debug("User removal notification for " + rn.toString() + "(" + rn.getCause() + ")");
+      //LOG.debug("User removal notification for " + rn.toString() + "(" + rn.getCause() + ")");
     }
   };
 
   private CacheLoader<Integer, String> idToGroupLoader = new CacheLoader<Integer, String>() {
     @Override
     public String load(Integer groupId) throws Exception {
-      LOG.debug("Get group from DB by id: " + groupId);
+      //LOG.debug("Get group from DB by id: " + groupId);
       Group group = getGroupFromDB(null, groupId);
       if (group != null) {
         groupToIdCache.put(group.getName(), groupId);
@@ -179,7 +179,7 @@ class UsersGroupsCache {
           = new RemovalListener<Integer, String>() {
     @Override
     public void onRemoval(RemovalNotification<Integer, String> rn) {
-      LOG.debug("Group removal notification for " + rn.toString() + "(" + rn.getCause() + ")");
+      //LOG.debug("Group removal notification for " + rn.toString() + "(" + rn.getCause() + ")");
     }
   };
 
@@ -201,7 +201,7 @@ class UsersGroupsCache {
           = new RemovalListener<String, Integer>() {
     @Override
     public void onRemoval(RemovalNotification<String, Integer> rn) {
-      LOG.debug("Group removal notification for " + rn.toString() + "(" + rn.getCause() + ")");
+      //LOG.debug("Group removal notification for " + rn.toString() + "(" + rn.getCause() + ")");
     }
   };
 
@@ -368,7 +368,7 @@ class UsersGroupsCache {
     return (User) new LightWeightRequestHandler(UsersGroupsCache.UsersOperationsType.GET_USER) {
       @Override
       public Object performTask() throws IOException {
-        LOG.debug("Get User: " + userName + " from DB.");
+        //LOG.debug("Get User: " + userName + " from DB.");
         boolean fail = false;
         boolean localTx = !connector.isTransactionActive();
         if (localTx) {
