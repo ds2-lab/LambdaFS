@@ -379,7 +379,7 @@ public class NameNodeTCPClient {
                     // The call to connect() may produce an IOException if it times out.
                     tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
                 } catch (IOException ex) {
-                    LOG.error("IOException encountered while trying to connect to HopsFS Client via TCP:", ex);
+                    LOG.warn("IOException encountered while trying to connect to HopsFS Client via TCP:", ex);
                 }
             }
         };
@@ -387,7 +387,7 @@ public class NameNodeTCPClient {
         try {
             connectThread.join();
         } catch (InterruptedException ex) {
-            LOG.error("InterruptedException encountered while trying to connect to HopsFS Client via TCP:", ex);
+            LOG.warn("InterruptedException encountered while trying to connect to HopsFS Client via TCP:", ex);
         }
         Instant connectEnd = Instant.now();
 
