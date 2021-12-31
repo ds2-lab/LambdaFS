@@ -120,7 +120,7 @@ class UsersGroupsCache {
   private CacheLoader<Integer, String> idToUserLoader = new CacheLoader<Integer, String>() {
     @Override
     public String load(Integer userId) throws Exception {
-      LOG.debug("Get user from DB by ID. UserID: " + userId);
+      // LOG.debug("Get user from DB by ID. UserID: " + userId);
       User user = getUserFromDB(null, userId);
       if (user != null) {
         userToIdCache.put(user.getName(), userId);
@@ -143,7 +143,7 @@ class UsersGroupsCache {
   private CacheLoader<String, Integer> userToIdLoader = new CacheLoader<String, Integer>() {
     @Override
     public Integer load(String userName) throws Exception {
-      LOG.debug("Get user from DB by name: " + userName);
+      // LOG.debug("Get user from DB by name: " + userName);
       User user = getUserFromDB(userName, null);
       if (user != null) {
         idToUserCache.put(user.getId(), userName);
