@@ -7,6 +7,7 @@ import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -403,7 +404,8 @@ public class HopsFSUserServer {
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
         if (deploymentConnections == null)
-            throw new IllegalStateException("Mapping of NameNode IDs to associated TCP connections is null for deployment " + deploymentNumber);
+            throw new IllegalStateException("Mapping of NameNode IDs to associated TCP connections is null for deployment " +
+                    deploymentNumber + ". Valid deployments: " + StringUtils.join(",", activeConnectionsPerDeployment.keySet()) + ".");
 
         return deploymentConnections.size() > 0;
     }
