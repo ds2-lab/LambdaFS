@@ -126,6 +126,40 @@ public class HopsFSUserServer {
      * Constructor.
      */
     public HopsFSUserServer(Configuration conf, ServerlessNameNodeClient client) {
+        this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
+                DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+        // Set up state.
+        this.allActiveConnections = new ConcurrentHashMap<>();
+        this.submittedFutures = new ConcurrentHashMap<>();
+        this.activeFutures = new ConcurrentHashMap<>();
+        this.completedFutures = new ConcurrentHashMap<>();
+        this.futureToNameNodeMapping = new ConcurrentHashMap<>();
+        this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
+        this.activeConnectionsPerDeployment = new ConcurrentHashMap<>();
+        this.client = client;
+
+        // Read some options from config file.
+        enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
+                DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+        totalNumberOfDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
+                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+
+        // Determine if TCP debug logging should be enabled.
+        if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
+                DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT)) {
+            LOG.debug("TCP Debug logging is ENABLED.");
+            Log.set(Log.LEVEL_TRACE);
+        }
+        LOG.debug("TCP Debug logging is DISABLED.");
+
+        LOG.info("TCP server " + (enabled ? "ENABLED." : "DISABLED."));
+
+        // Populate the active connections mapping with default, empty hash maps for each deployment.
+        for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {
+            activeConnectionsPerDeployment.put(deployNum, new ConcurrentHashMap<>());
+        }
+
+        // Create the TCP server.
         server = new Server(bufferSizes, bufferSizes) {
           /**
            * By providing our own connection implementation, we can store per-connection state
@@ -138,42 +172,13 @@ public class HopsFSUserServer {
           }
         };
 
+        // Create a listener object, which handles all listening events.
         serverListener = new ServerListener();
-
-        if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
-                DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT)) {
-            LOG.debug("TCP Debug logging is ENABLED.");
-            Log.set(Log.LEVEL_TRACE);
-        }
-        LOG.debug("TCP Debug logging is DISABLED.");
-
-        enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
-                DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
-        totalNumberOfDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
-                DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
-
-        LOG.info("TCP server " + (enabled ? "ENABLED." : "DISABLED."));
 
         // First, register the JsonObject class with the Kryo serializer.
         ServerlessClientServerUtilities.registerClassesToBeTransferred(server.getKryo());
 
         server.addListener(serverListener);
-
-        this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
-                DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
-        this.allActiveConnections = new ConcurrentHashMap<>();
-        this.submittedFutures = new ConcurrentHashMap<>();
-        this.activeFutures = new ConcurrentHashMap<>();
-        this.completedFutures = new ConcurrentHashMap<>();
-        this.futureToNameNodeMapping = new ConcurrentHashMap<>();
-        this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
-        this.activeConnectionsPerDeployment = new ConcurrentHashMap<>();
-        this.client = client;
-
-        // Populate the active connections mapping with default, empty hash maps for each deployment.
-        for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {
-            activeConnectionsPerDeployment.put(deployNum, new ConcurrentHashMap<>());
-        }
     }
 
     /**
@@ -218,8 +223,8 @@ public class HopsFSUserServer {
 
                 success = true;
             } catch (BindException ex) {
-                LOG.error("[TCP SERVER " + tcpPort + "] Failed to bind to port " + currentPort +
-                        ". Do you already have a server running on that port?");
+//                LOG.error("[TCP SERVER " + tcpPort + "] Failed to bind to port " + currentPort +
+//                        ". Do you already have a server running on that port?");
                 currentPort++;
             }
         }
