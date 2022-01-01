@@ -244,7 +244,7 @@ public class NameNodeWorkerThread extends Thread {
     private void doRoutineActivities() {
         // Check if we need to purge any results before continuing to the next loop.
         // tryPurge();
-        System.gc();
+        // System.gc();
 
         // COMMENTED OUT:
         // We use a persistent watcher to automatically get notified of changes in group membership.
