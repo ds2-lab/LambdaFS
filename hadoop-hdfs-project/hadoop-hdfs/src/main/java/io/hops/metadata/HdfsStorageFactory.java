@@ -48,6 +48,8 @@ import io.hops.security.UsersGroups;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.context.*;
 import io.hops.transaction.lock.LockFactory;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -75,7 +77,7 @@ import org.apache.hadoop.hdfs.server.namenode.CachePool;
 import org.apache.hadoop.hdfs.server.namenode.DirectoryWithQuotaFeature;
 
 public class HdfsStorageFactory {
-
+  private static final Log LOG = LogFactory.getLog(HdfsStorageFactory.class);
   private static boolean isDALInitialized = false;
   private static DalStorageFactory dStorageFactory;
   private static Map<Class, EntityDataAccess> dataAccessAdaptors =
@@ -138,6 +140,9 @@ public class HdfsStorageFactory {
       throws IOException {
     String configFile = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE,
         DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE_DEFAULT);
+
+    LOG.info("Attempting to load metadata cluster configuration file from path '" + configFile + "'");
+
     Properties clusterConf = new Properties();
     InputStream inStream =
         StorageConnector.class.getClassLoader().getResourceAsStream(configFile);
@@ -145,9 +150,6 @@ public class HdfsStorageFactory {
     if (inStream == null) {
       // This will throw a FileNotFoundException if it cannot find the file.
       inStream = new BufferedInputStream(new FileInputStream(configFile));
-
-//      if (inStream == null)
-//        throw new FileNotFoundException("Unable to load database configuration file");
     }
 
     clusterConf.load(inStream);

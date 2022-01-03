@@ -101,6 +101,7 @@ public class RMStorageFactory {
     String configFile =
         conf.get(YarnAPIStorageFactory.DFS_STORAGE_DRIVER_CONFIG_FILE,
             YarnAPIStorageFactory.DFS_STORAGE_DRIVER_CONFIG_FILE_DEFAULT);
+    LOG.info("Attempting to load metadata cluster configuration file from path '" + configFile + "'");
     Properties clusterConf = new Properties();
     InputStream inStream = StorageConnector.class.getClassLoader().
         getResourceAsStream(configFile);
