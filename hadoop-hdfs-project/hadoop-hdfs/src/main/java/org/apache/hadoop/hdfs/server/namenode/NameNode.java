@@ -157,6 +157,11 @@ import org.apache.htrace.core.Tracer;
 @InterfaceAudience.Private
 public class NameNode implements NameNodeStatusMXBean {
 
+  /**
+   * Used for debugging purposes.
+   */
+  private static final String versionString = "1.0.0.0";
+
   static {
     HdfsConfiguration.init();
   }
@@ -1239,6 +1244,10 @@ public class NameNode implements NameNodeStatusMXBean {
     if (DFSUtil.parseHelpArgument(argv, NameNode.USAGE, System.out, true)) {
       System.exit(0);
     }
+
+    LOG.info("The NameNode application v" + versionString + " has started running.");
+    LOG.debug("The NameNode application v" + versionString + " has started running.");
+    System.out.println("The NameNode application v" + versionString + " has started running.");
 
     try {
       StringUtils.startupShutdownMessage(NameNode.class, argv, LOG);
