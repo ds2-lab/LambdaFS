@@ -142,6 +142,7 @@ public class HdfsStorageFactory {
         DFSConfigKeys.DFS_STORAGE_DRIVER_CONFIG_FILE_DEFAULT);
 
     LOG.info("Attempting to load metadata cluster configuration file from path '" + configFile + "'");
+    System.out.println("Attempting to load metadata cluster configuration file from path '" + configFile + "'");
 
     Properties clusterConf = new Properties();
     InputStream inStream =
