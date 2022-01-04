@@ -222,8 +222,8 @@ public class TransactionAttempt implements Serializable {
      * Write in CSV format. This does NOT write a new line.
      */
     public void write(BufferedWriter writer) throws IOException {
-        writer.write(acquireLocksStart + "," + acquireLocksEnd + "," + processingStart + "," + processingEnd +
-                "," + consistencyProtocolStart + "," + consistencyProtocolEnd + "," + commitStart + "," + commitEnd +
+        writer.write(acquireLocksStart + "," + acquireLocksEnd + "," + processingStart + "," + processingEnd + "," +
+                consistencyProtocolStart + "," + consistencyProtocolEnd + "," + commitStart + "," + commitEnd + "," +
                 (acquireLocksEnd - acquireLocksStart) + "," + (processingEnd - processingStart) + "," +
                 (consistencyProtocolEnd - consistencyProtocolStart) + "," + (commitEnd - commitStart) + "," +
                 consistencyPreprocessingStart + "," + consistencyPreprocessingEnd + "," + (consistencyPreprocessingEnd - consistencyPreprocessingStart) + "," +
