@@ -60,10 +60,11 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
    * to NDB.
    *
    * @param txStartTime The time at which the transaction began. Used to order operations.
+   * @param attempt TransactionAttempt object, used to record metrics about the consistency protocol.
    *
    * @return True if the transaction can safely proceed, otherwise false.
    */
-  protected abstract boolean consistencyProtocol(long txStartTime) throws IOException;
+  protected abstract boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException;
 
   /**
    * Should be overridden by a class in the main codebase. This function should be used
@@ -168,7 +169,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
             .collectStats(opType,
             ignoredException);
 
-        boolean canProceed = consistencyProtocol(txStartTime);
+        boolean canProceed = consistencyProtocol(txStartTime, transactionAttempt);
 
         consistencyProtocolTime = (System.currentTimeMillis() - oldTime);
         transactionAttempt.setConsistencyProtocolEnd(getUtcTime());

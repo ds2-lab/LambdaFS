@@ -23,6 +23,7 @@ import io.hops.metadata.hdfs.dal.InvalidationDataAccess;
 import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
 import io.hops.metadata.hdfs.entity.Invalidation;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
+import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.TransactionInfo;
@@ -227,13 +228,13 @@ public abstract class HopsTransactionalRequestHandler
   }
 
   @Override
-  protected final boolean consistencyProtocol(long txStartTime) throws IOException {
+  protected final boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException {
     EntityContext<?> inodeContext= EntityManager.getEntityContext(INode.class);
     final boolean[] canProceed = new boolean[1];
     final Throwable[] exception = new Throwable[1];
     Thread protocolRunner = new Thread(() -> {
       try {
-        canProceed[0] = doConsistencyProtocol(inodeContext, txStartTime);
+        canProceed[0] = doConsistencyProtocol(inodeContext, txStartTime, attempt);
       } catch (IOException e) {
         exception[0] = e;
         canProceed[0] = false;
@@ -274,19 +275,20 @@ public abstract class HopsTransactionalRequestHandler
   /**
    * This function should be overridden in order to provide a consistency protocol whenever necessary.
    *
-   * We put this in a separate function from {@link HopsTransactionalRequestHandler#consistencyProtocol(long)} as
-   * we want it to run it its own thread. If we do not put it in its own thread, then none of the ACK entries
-   * or INV entries will actually be added to intermediate storage. The NDB Session object used by the thread
-   * performing the transaction is, of course, in an NDB transaction. So, none of the updates would get
-   * applied until the tx is committed. This includes ACKs and INVs. Using a separate thread (and therefore a
-   * unique, separate Session instance) circumvents this issue.
+   * We put this in a separate function from
+   * {@link HopsTransactionalRequestHandler#consistencyProtocol(long, TransactionAttempt)} as we want it to run it its
+   * own thread. If we do not put it in its own thread, then none of the ACK entries or INV entries will actually be
+   * added to intermediate storage. The NDB Session object used by the thread performing the transaction is, of course,
+   * in an NDB transaction. So, none of the updates would get applied until the tx is committed. This includes ACKs and
+   * INVs. Using a separate thread (and therefore a unique, separate Session instance) circumvents this issue.
    *
    * @param entityContext Must be an INodeContext object. Used to determine which INodes are being written to.
    * @param txStartTime The time at which the transaction began. Used to order operations.
+   * @param attempt Used to record metrics about the consistency protocol.
    *
    * @return True if the transaction can safely proceed, otherwise false.
    */
-  public boolean doConsistencyProtocol(EntityContext<?> entityContext, long txStartTime) throws IOException {
+  public boolean doConsistencyProtocol(EntityContext<?> entityContext, long txStartTime, TransactionAttempt attempt) throws IOException {
     //// // // // // // // // // // ////
     // CURRENT CONSISTENCY PROTOCOL   //
     //// // // // // // // // // // ////
@@ -317,6 +319,7 @@ public abstract class HopsTransactionalRequestHandler
     //     ACK any new write operations that may be waiting.
     //
     //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
+    long startTime = System.currentTimeMillis();
 
     if (!(entityContext instanceof INodeContext))
       throw new IllegalArgumentException("Consistency protocol requires an instance of INodeContext. " +
@@ -379,6 +382,9 @@ public abstract class HopsTransactionalRequestHandler
     // Technically this isn't true yet, but we'll need to unsubscribe after the call to `subscribeToAckEvents()`.
     boolean needToUnsubscribe = true;
 
+    long preprocessingEndTime = System.currentTimeMillis();
+    attempt.setConsistencyPreprocessingTimes(startTime, preprocessingEndTime);
+
     // ======================================
     // === EXECUTING CONSISTENCY PROTOCOL ===
     // ======================================
@@ -399,6 +405,9 @@ public abstract class HopsTransactionalRequestHandler
       return false;
     }
 
+    long computeAckRecordsEndTime = System.currentTimeMillis();
+    attempt.setConsistencyComputeAckRecordTimes(preprocessingEndTime, computeAckRecordsEndTime);
+
     // =============== STEP 1 ===============
     //
     // We only need to perform these steps of the protocol if the total number of ACKs required is at least one.
@@ -414,9 +423,15 @@ public abstract class HopsTransactionalRequestHandler
       // for their membership and when we begin listening for changes, though. (We do the same for our own deployment.)
       joinOtherDeploymentsAsGuest();
 
+      long joinDeploymentsEndTime = System.currentTimeMillis();
+      attempt.setConsistencyJoinDeploymentsTimes(computeAckRecordsEndTime, joinDeploymentsEndTime);
+
       try {
         // Since there's at least 1 ACK record, we subscribe to ACK events. We have not written any ACKs to NDB yet.
         subscribeToAckEvents();
+
+        long subscribeToEventsEndTime = System.currentTimeMillis();
+        attempt.setConsistencySubscribeToAckEventsTimes(joinDeploymentsEndTime, subscribeToEventsEndTime);
       } catch (InterruptedException e) {
         requestHandlerLOG.error("Encountered error while waiting on event manager to create event subscription:", e);
 
@@ -435,6 +450,8 @@ public abstract class HopsTransactionalRequestHandler
 
         return false;
       }
+
+      long writeAcksToStorageStartTime = System.currentTimeMillis();
 
       // =============== STEP 2 ===============
       //
@@ -456,19 +473,21 @@ public abstract class HopsTransactionalRequestHandler
         }
       }
 
+      long writeAcksToStorageEndTime = System.currentTimeMillis();
+      attempt.setConsistencyWriteAcksToStorageTimes(writeAcksToStorageStartTime, writeAcksToStorageEndTime);
+
       // =============== STEP 3 ===============
       issueInitialInvalidations(invalidatedINodes, txStartTime);
 
-      // If it turns out there are no other active NNs in our deployment, then we can just unsubscribe right away.
-      if (totalNumberOfACKsRequired == 0) {
-        requestHandlerLOG.debug("We do not require any ACKs. Unsubscribing from ACK table events now.");
-        unsubscribeFromAckEvents();
-        needToUnsubscribe = false;
-      }
+      long issueInvalidationsEndTime = System.currentTimeMillis();
+      attempt.setConsistencyIssueInvalidationsTimes(writeAcksToStorageEndTime, issueInvalidationsEndTime);
 
       try {
         // STEP 4 & 5
         waitForAcks();
+
+        long waitForAcksEndTime = System.currentTimeMillis();
+        attempt.setConsistencyWaitForAcksTimes(issueInvalidationsEndTime, waitForAcksEndTime);
       } catch (Exception ex) {
         requestHandlerLOG.error("Exception encountered on Step 4 and 5 of consistency protocol (waiting for ACKs).");
         requestHandlerLOG.error("We're still waiting on " + waitingForAcks.size() +
@@ -494,6 +513,8 @@ public abstract class HopsTransactionalRequestHandler
       needToUnsubscribe = false;
     }
 
+    long cleanUpStartTime = System.currentTimeMillis();
+
     // Clean up ACKs, event operation, etc.
     try {
       cleanUpAfterConsistencyProtocol(needToUnsubscribe);
@@ -501,6 +522,9 @@ public abstract class HopsTransactionalRequestHandler
       // We should still be able to continue, despite failing to clean up after ourselves...
       requestHandlerLOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
     }
+
+    long cleanUpEndTime = System.currentTimeMillis();
+    attempt.setConsistencyCleanUpTimes(cleanUpStartTime, cleanUpEndTime);
 
     // Steps 6 and 7 happen automatically. We can return from this function to perform the writes.
     return true;

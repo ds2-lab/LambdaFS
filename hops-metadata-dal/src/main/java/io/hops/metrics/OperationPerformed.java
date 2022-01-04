@@ -45,6 +45,29 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     private final String requestId;
 
     /**
+     * The duration of the serverless function itself, not including
+     * invocation overhead.
+     */
+    private long serverlessFunctionDuration;
+
+    private final int deployment;
+
+    private final boolean issuedViaTcp;
+
+    private final boolean issuedViaHttp;
+
+    private long nameNodeId;
+
+    /**
+     * Indicates whether the result was ultimately received via HTTP or TCP.
+     */
+    private String resultReceivedVia;
+
+    /////////////////////////////
+    // TIMING/DURATION METRICS //
+    /////////////////////////////
+
+    /**
      * The time at which the client issued the invocation for the serverless function.
      */
     private long invokedAtTime;
@@ -81,25 +104,6 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * Time at which the function began executing on the NameNode.
      */
     private long resultBeganExecutingTime;
-
-    /**
-     * The duration of the serverless function itself, not including
-     * invocation overhead.
-     */
-    private long serverlessFunctionDuration;
-
-    private final int deployment;
-
-    private final boolean issuedViaTcp;
-
-    private final boolean issuedViaHttp;
-
-    private long nameNodeId;
-
-    /**
-     * Indicates whether the result was ultimately received via HTTP or TCP.
-     */
-    private String resultReceivedVia;
 
     public OperationPerformed(String operationName, String requestId,
                               long invokedAtTime, long resultReceivedTime,
