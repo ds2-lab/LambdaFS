@@ -226,6 +226,7 @@ public class TransactionAttempt implements Serializable {
                 "," + consistencyProtocolStart + "," + consistencyProtocolEnd + "," + commitStart + "," + commitEnd +
                 (acquireLocksEnd - acquireLocksStart) + "," + (processingEnd - processingStart) + "," +
                 (consistencyProtocolEnd - consistencyProtocolStart) + "," + (commitEnd - commitStart) + "," +
+                consistencyPreprocessingStart + "," + consistencyPreprocessingEnd + "," + (consistencyPreprocessingEnd - consistencyPreprocessingStart) + "," +
                 consistencyComputeAckRecordsStart + "," + consistencyComputeAckRecordsEnd + "," + (consistencyComputeAckRecordsEnd - consistencyComputeAckRecordsStart) + "," +
                 consistencyJoinDeploymentsStart + "," + consistencyJoinDeploymentsEnd + "," + (consistencyJoinDeploymentsEnd - consistencyJoinDeploymentsStart) + "," +
                 consistencySubscribeAckEventsStart + "," + consistencySubscribeAckEventsEnd + "," + (consistencySubscribeAckEventsEnd - consistencySubscribeAckEventsStart) + "," +
@@ -238,8 +239,7 @@ public class TransactionAttempt implements Serializable {
 
     public static String getHeader() {
         return "acquire_locks_start,acquire_locks_end,processing_start,processing_end,consistency_protocol_start," +
-                "consistency_protocol_end,commit_start,commit_end,lock_duration,processing_duration,consistency_duration," +
-                "commit_duration," +
+                "consistency_protocol_end,commit_start,commit_end,lock_duration,processing_duration,consistency_duration,commit_duration," +
                 "consistency_preprocessing_start,consistency_preprocessing_end,consistency_preprocessing_duration," +
                 "consistency_compute_ack_records_start,consistency_compute_ack_records_end,consistency_compute_ack_records_start_duration," +
                 "consistency_join_deployments_start,consistency_join_deployments_end,consistency_join_deployments_duration," +
