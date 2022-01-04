@@ -242,6 +242,13 @@ public class NameNodeWorkerThread extends Thread {
      * the active name node list for the NameNode, and purging entries from the cache of previous results.
      */
     private void doRoutineActivities() {
+//        long millisecondsSinceLastRoutineActivities = Time.getUtcTime() - lastRoutineActivitiesTime;
+//        if (millisecondsSinceLastRoutineActivities < pollTimeMilliseconds) {
+//            LOG.debug("Have not performed routine activities in " + millisecondsSinceLastRoutineActivities +
+//                    " milliseconds. Performing now. Size of task queue: " + workQueue.size() + ".");
+//            return;
+//        }
+
         // Check if we need to purge any results before continuing to the next loop.
         // tryPurge();
         // System.gc();
@@ -249,6 +256,9 @@ public class NameNodeWorkerThread extends Thread {
         // COMMENTED OUT:
         // We use a persistent watcher to automatically get notified of changes in group membership.
         // tryUpdateActiveNameNodeList();
+
+        // This will return immediately if it has not been long enough (duration of heartbeatInterval)
+        // since the last time we successfully retrieved updates from intermediate storage.
         tryUpdateFromIntermediateStorage();
 
         // processDisconnectedTcpClients();
@@ -320,14 +330,18 @@ public class NameNodeWorkerThread extends Thread {
                 else
                     LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
 
+                // Clear and reset statistics from previously-executed tasks.
                 serverlessNameNodeInstance.getNamesystem().getMetadataCache().clearCurrentRequestCacheCounters();
                 serverlessNameNodeInstance.clearTransactionEvents();
                 TransactionsStats.getInstance().clearForServerless();
+
+                // Update the currently-executing task queue.
                 FileSystemTask<Serializable> prev = currentlyExecutingTasks.putIfAbsent(task.getTaskId(), task);
                 requestCurrentlyProcessing = task.getTaskId();
                 if (prev != null)
                     LOG.error("Tried to enqueue task " + task.getTaskId() + " into CurrentlyExecutingTasks despite...");
 
+                // Execute the request/operation.
                 Serializable result = null;
                 boolean success = false;
                 try {
@@ -340,6 +354,7 @@ public class NameNodeWorkerThread extends Thread {
                         workerResult.addResult(result, true);
 
                     // Commit the statistics to this result.
+                    // This stores the statistics in the result so that they will be returned to the client.
                     workerResult.commitStatisticsPackages();
                     workerResult.commitTransactionEvents(serverlessNameNodeInstance.getTransactionEvents());
                     success = true;
@@ -369,6 +384,8 @@ public class NameNodeWorkerThread extends Thread {
                 currentlyExecutingTasks.remove(task.getTaskId());
                 requestCurrentlyProcessing = null;
 
+                // Post the result to the future. This will wake up the TCP client that is waiting on us.
+                // The TCP client will then send the result back to the HopsFS client.
                 task.postResult(workerResult);
 
                 // We only add the task to the `completedTasks` mapping if we executed it successfully.
@@ -387,12 +404,7 @@ public class NameNodeWorkerThread extends Thread {
                 previousResultCache.put(task.getTaskId(), previousResult);
                 // previousResultPriorityQueue.add(previousResult);
 
-                long millisecondsSinceLastRoutineActivities = Time.getUtcTime() - lastRoutineActivitiesTime;
-                if (millisecondsSinceLastRoutineActivities >= pollTimeMilliseconds) {
-                    LOG.debug("Have not performed routine activities in " + millisecondsSinceLastRoutineActivities +
-                            " milliseconds. Performing now. Size of task queue: " + workQueue.size() + ".");
-                    doRoutineActivities();
-                }
+                doRoutineActivities();
             }
             catch (InterruptedException | IOException ex) {
                 LOG.error("Serverless NameNode Worker Thread was interrupted while running:", ex);
