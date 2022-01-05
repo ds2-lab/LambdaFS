@@ -353,6 +353,8 @@ public class NameNodeWorkerThread extends Thread {
                     else
                         workerResult.addResult(result, true);
 
+                    workerResult.setProcessingFinishedTime(Time.getUtcTime());
+
                     // Commit the statistics to this result.
                     // This stores the statistics in the result so that they will be returned to the client.
                     workerResult.commitStatisticsPackages();
