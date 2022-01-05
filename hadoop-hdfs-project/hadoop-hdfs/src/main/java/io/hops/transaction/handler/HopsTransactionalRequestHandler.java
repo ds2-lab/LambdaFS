@@ -421,7 +421,7 @@ public abstract class HopsTransactionalRequestHandler
       // and begin monitoring for membership changes. Since we already added ACKs for every active instance, we aren't
       // going to miss any. We DO need to double-check that nobody dropped between when we first queried the deployments
       // for their membership and when we begin listening for changes, though. (We do the same for our own deployment.)
-      joinOtherDeploymentsAsGuest();
+      // joinOtherDeploymentsAsGuest();
 
       long joinDeploymentsEndTime = System.currentTimeMillis();
       attempt.setConsistencyJoinDeploymentsTimes(computeAckRecordsEndTime, joinDeploymentsEndTime);
@@ -714,7 +714,7 @@ public abstract class HopsTransactionalRequestHandler
     if (needToUnsubscribe)
       unsubscribeFromAckEvents();
 
-    leaveDeployments();
+    // leaveDeployments();
 
     deleteWriteAcknowledgements();
 
