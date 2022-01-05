@@ -7,6 +7,8 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 
 /**
@@ -82,9 +84,23 @@ public class FunctionMetadataMap {
             return -1;
         }*/
 
+        // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
+        // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
+        // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
+        Path parentPath = Paths.get(file).getParent();
+        String pathToCache = null;
+
+        // If there is no parent, then we are caching metadata mapping information for the root.
+        if (parentPath == null) {
+            assert(file.equals("/") || file.isEmpty());
+            pathToCache = file;
+        } else {
+            pathToCache = parentPath.toString();
+        }
+
         try (Jedis jedis = redisPool.getResource()) {
             if (jedis.exists(file))
-                return Integer.parseInt(jedis.get(file));
+                return Integer.parseInt(jedis.get(pathToCache));
             else
                 return -1;
         }
@@ -105,8 +121,21 @@ public class FunctionMetadataMap {
             return true;
         }*/
 
+        Path parentPath = Paths.get(path).getParent();
+        String pathToCache = null;
+
+        // If there is no parent, then we are caching metadata mapping information for the root.
+        if (parentPath == null) {
+            assert(path.equals("/") || path.isEmpty());
+            pathToCache = path;
+        } else {
+            pathToCache = parentPath.toString();
+
+            LOG.debug("Parent path of '" + path + "': '" + pathToCache + "'");
+        }
+
         try (Jedis jedis = redisPool.getResource()) {
-            String resp = jedis.set(path, String.valueOf(function));
+            String resp = jedis.set(pathToCache, String.valueOf(function));
 
             LOG.debug("Response from jedis.set(): " + resp);
         }
