@@ -222,10 +222,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
                 long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
                 long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
+                long finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
                 OperationPerformed operationPerformed = new OperationPerformed(operationName, requestId, opStart,
                         opEnd, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime, targetDeployment, false,
                         true, "TCP", nameNodeId, cacheHits, cacheMisses);
                 operationsPerformed.put(requestId, operationPerformed);
+                operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
 
                 return response;
             } catch (TimeoutException ex) {
@@ -274,9 +276,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
                 long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
                 long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
+                long finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
                 OperationPerformed operationPerformed = new OperationPerformed(operationName, requestId, opStart,
                         opEnd, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime, targetDeployment, true,
                         true, "HTTP", nameNodeId, cacheHits, cacheMisses);
+                operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
                 operationsPerformed.put(requestId, operationPerformed);
 
                 return response;
@@ -373,12 +377,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
         long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
+        long finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
 
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
                 startTime, Time.getUtcTime(), enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                 deployment, true, true,
                 response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(), nameNodeId, cacheMisses, cacheHits);
+        operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
         operationsPerformed.put(requestId, operationPerformed);
 
         return response;
@@ -451,8 +457,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         long opStart = Time.getUtcTime();
         String requestId = UUID.randomUUID().toString();
-        LOG.debug("Issuing concurrent HTTP/TCP request for operation '" + operationName + "' now. Request ID = "
-            + requestId);
+        LOG.debug("Issuing concurrent HTTP/TCP request for operation '" + operationName + "' now. Request ID = " + requestId);
 
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
@@ -649,6 +654,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 long enqueuedAt = responseJson.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
                 long dequeuedAt = responseJson.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
+
+                long finishedProcessingAt = responseJson.get(PROCESSING_FINISHED_TIME).getAsLong();
+                operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
 
                 operationPerformed.setRequestEnqueuedAtTime(enqueuedAt);
                 operationPerformed.setResultBeganExecutingTime(dequeuedAt);
