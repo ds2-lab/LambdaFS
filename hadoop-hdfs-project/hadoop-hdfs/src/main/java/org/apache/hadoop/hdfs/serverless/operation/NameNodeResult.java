@@ -121,6 +121,12 @@ public class NameNodeResult implements Serializable {
     private long dequeuedTime;
 
     /**
+     * Time at which the execution/in-memory processing of the operation finishes. The remaining time would be any
+     * post-processing, packaging the result up for the client, and transporting it back to the client.
+     */
+    private long processingFinishedTime;
+
+    /**
      * The UTC timestamp at which this result was (theoretically) delivered back to the client.
      *
      * A value of -1 indicates that this result has not yet been delivered. A non-negative value
@@ -355,6 +361,8 @@ public class NameNodeResult implements Serializable {
         json.addProperty(ServerlessNameNodeKeys.FN_END_TIME, fnEndTime);
         json.addProperty(ServerlessNameNodeKeys.ENQUEUED_TIME, enqueuedTime);
         json.addProperty(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
+        json.addProperty(ServerlessNameNodeKeys.PROCESSING_FINISHED_TIME, processingFinishedTime);
+        json.addProperty(ServerlessNameNodeKeys.POSTPROCESSING_FINISHED_TIME, System.currentTimeMillis());
 
         if (statisticsPackageSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
@@ -469,6 +477,7 @@ public class NameNodeResult implements Serializable {
      * - result: Will be overwritten or not depending on the value of the `keepOld` parameter.
      * - statisticsPackageSerializedAndEncoded: Will be overwritten by the incoming NameNodeResult's transaction statistics.
      * - dequeuedTime: Overwritten by the incoming result. The worker thread updates this value, not the main thread.
+     * - processingFinishedTime: Overwritten by incoming result.
      * - txEventsSerializedAndEncoded
      * - serverlessFunctionMapping: this is created by the NameNodeWorkerThread right before it posts the result back to the HTTP/TCP thread.
      *
@@ -499,6 +508,7 @@ public class NameNodeResult implements Serializable {
         this.statisticsPackageSerializedAndEncoded = other.statisticsPackageSerializedAndEncoded;
         this.txEventsSerializedAndEncoded = other.txEventsSerializedAndEncoded;
         this.dequeuedTime = other.dequeuedTime;
+        this.processingFinishedTime = other.processingFinishedTime;
         this.serverlessFunctionMapping = other.serverlessFunctionMapping;
     }
 
@@ -533,6 +543,10 @@ public class NameNodeResult implements Serializable {
     public void setDequeuedTime(long dequeuedTime) {
         this.dequeuedTime = dequeuedTime;
     }
+
+    public void setProcessingFinishedTime(long processingFinishedTime) { this.processingFinishedTime = processingFinishedTime; }
+
+    public long getProcessingFinishedTime() { return processingFinishedTime; }
 
     /**
      * Encapsulates the mapping of a particular file or directory to a particular serverless function.

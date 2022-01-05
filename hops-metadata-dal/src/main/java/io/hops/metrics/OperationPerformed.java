@@ -105,6 +105,17 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      */
     private long resultBeganExecutingTime;
 
+    /**
+     * Time at which in-memory processing/execution of the requested file system operation finished.
+     */
+    private long resultFinishedProcessingTime;
+
+    /**
+     * Time at which the post-processing finished. This is set within NameNodeResult when it is being packaged up
+     * to be returned to the client. Basically one of the last things that is done.
+     */
+    private long resultFinishedPostProcessingTime;
+
     public OperationPerformed(String operationName, String requestId,
                               long invokedAtTime, long resultReceivedTime,
                               long enqueuedTime, long dequeuedTime,
@@ -170,9 +181,9 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      */
     public static String getHeader() {
         return "operation_name,request_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
-                "serverless_fn_end_time,result_received_time,invocation_duration,preprocessing_duration,waiting_in_queue_duration," +
-                "execution_duration,return_to_client_duration,serverless_fn_duration,deployment_number," +
-                "name_node_id,request_type,metadata_cache_hits,metadata_cache_misses";
+                "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration,preprocessing_duration," +
+                "waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration,serverless_fn_duration," +
+                "deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses";
     }
 
     @Override
@@ -268,18 +279,22 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         // "serverless_fn_end_time,result_received_time,invocation_duration,preprocessing_duration,waiting_in_queue_duration," +
         // "execution_duration,return_to_client_duration,serverless_fn_duration,deployment_number," +
         // "name_node_id,request_type,metadata_cache_hits,metadata_cache_misses";
-        String formatString = "%-16s,%-38s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-3s,%-22s,%-6s,%-5s,%-5s";
+        String formatString = "%-16s,%-38s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-3s,%-22s,%-6s,%-5s,%-5s";
         writer.write(String.format(formatString, operationName, requestId,
                 invokedAtTime,             // Client invokes NN.
                 serverlessFnStartTime,     // NN begins executing.
                 requestEnqueuedAtTime,     // NN enqueues req. in work queue.
                 resultBeganExecutingTime,  // NN dequeues req. from work queue, begins executing it.
+                resultFinishedProcessingTime, // NN finished executing the requested operation.
+                resultFinishedPostProcessingTime, // NN is packaging up the result to send back to client. One of last things done before network transmission of result.
                 serverlessFnEndTime,       // NN returns result to client.
                 resultReceivedTime,        // Client receives result from NN.
                 serverlessFnStartTime - invokedAtTime,
                 requestEnqueuedAtTime - serverlessFnStartTime,
                 resultBeganExecutingTime - requestEnqueuedAtTime,
-                serverlessFnEndTime - resultBeganExecutingTime,
+                resultFinishedProcessingTime - resultBeganExecutingTime,
+                resultFinishedPostProcessingTime - resultFinishedProcessingTime,
+                serverlessFnEndTime - resultFinishedPostProcessingTime,
                 resultReceivedTime - serverlessFnEndTime,
                 serverlessFunctionDuration, deployment, nameNodeId,
                 resultReceivedVia, metadataCacheHits, metadataCacheMisses));
@@ -292,5 +307,21 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     public void setResultReceivedVia(String resultReceivedVia) {
         this.resultReceivedVia = resultReceivedVia;
+    }
+
+    public long getResultFinishedProcessingTime() {
+        return resultFinishedProcessingTime;
+    }
+
+    public void setResultFinishedProcessingTime(long resultFinishedProcessingTime) {
+        this.resultFinishedProcessingTime = resultFinishedProcessingTime;
+    }
+
+    public long getResultFinishedPostProcessingTime() {
+        return resultFinishedPostProcessingTime;
+    }
+
+    public void setResultFinishedPostProcessingTime(long resultFinishedPostProcessingTime) {
+        this.resultFinishedPostProcessingTime = resultFinishedPostProcessingTime;
     }
 }
