@@ -374,8 +374,12 @@ public class NameNodeWorkerThread extends Thread {
                 if (task.getRequestMethod().equalsIgnoreCase("HTTP")) {
                     try {
                         LOG.debug("Trying to create function mapping for request " + task.getTaskId() + " now...");
+                        long start = Time.getUtcTime();
                         // Check if a function mapping should be created and returned to the client.
                         OpenWhiskHandler.tryCreateDeploymentMapping(workerResult, task.getOperationArguments(), serverlessNameNodeInstance);
+                        long end = Time.getUtcTime();
+
+                        LOG.debug("Created function mapping for request " + task.getTaskId() + " in " + (end - start) + " ms.");
                     } catch (IOException ex) {
                         LOG.error("Encountered IOException while trying to create function mapping for task " +
                                 task.getTaskId() + ":", ex);
