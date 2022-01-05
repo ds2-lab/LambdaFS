@@ -136,10 +136,12 @@ public class FunctionMetadataMap {
             LOG.debug("Parent path of '" + path + "': '" + pathToCache + "'");
         }
 
+        LOG.debug("Adding cache entry with key '" + pathToCache + "' for target '" + path + "'. Value: " + function + ".");
+
         try (Jedis jedis = redisPool.getResource()) {
             String resp = jedis.set(pathToCache, String.valueOf(function));
 
-            LOG.debug("Response from jedis.set('" + pathToCache + "'): " + resp);
+            LOG.debug("Response from jedis.set('" + pathToCache + "', " + function + "): " + resp);
         }
 
         return false;
