@@ -273,10 +273,12 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         // "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration,preprocessing_duration," +
         // "waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration,serverless_fn_duration," +
         // "deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses"
-        String formatString = "%-16s,%-38s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-3s,%-22s,%-6s,%-5s,%-5s";
+        String formatString = "%-16s,%-38s," +                                  // 2
+                              "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s," +    // 7
+                              "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +           // 7
+                              "%-3s,%-22s,%-6s,%-5s,%-5s";                      // 5
         writer.write(String.format(formatString,
-                operationName,
-                requestId,
+                operationName, requestId,
                 invokedAtTime,                    // Client invokes NN.
                 serverlessFnStartTime,            // NN begins executing.
                 requestEnqueuedAtTime,            // NN enqueues req. in work queue.
@@ -290,8 +292,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 resultFinishedProcessingTime - resultBeganExecutingTime,
                 serverlessFnEndTime - resultFinishedProcessingTime,
                 resultReceivedTime - serverlessFnEndTime,
-                serverlessFunctionDuration, deployment, nameNodeId,
-                resultReceivedVia, metadataCacheHits, metadataCacheMisses));
+                serverlessFunctionDuration,
+                deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses));
         writer.newLine();
     }
 
