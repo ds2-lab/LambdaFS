@@ -863,7 +863,8 @@ public class DFSOutputStream extends FSOutputSummer
     flushInternal();             // flush all data to Datanodes
     // get last block before destroying the streamer
     ExtendedBlock lastBlock = streamer.getBlock();
-    LOG.debug("Last Block: Name: " + lastBlock.getBlockName() + ", ID: " + lastBlock.getBlockId());
+    // Need to do null-check before this print if we ever uncomment it. Last block can be null if file is empty.
+    // LOG.debug("Last Block: Name: " + lastBlock.getBlockName() + ", ID: " + lastBlock.getBlockId());
     TraceScope scope = dfsClient.getTracer().newScope("completeFile");
     try {
       completeFile(lastBlock);
