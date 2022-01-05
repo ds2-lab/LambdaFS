@@ -433,7 +433,7 @@ public class OpenWhiskHandler {
             if (inode != null) {
                 LOG.debug("Parent INode ID for '" + src + "': " + inode.getParentId());
 
-                int functionNumber = serverlessNameNode.getMappedServerlessFunction(src);
+                int functionNumber = serverlessNameNode.getMappedServerlessFunction(inode.getParentId());
 
                 LOG.debug("Consistently hashed parent INode ID " + inode.getParentId()
                         + " to serverless function " + functionNumber);

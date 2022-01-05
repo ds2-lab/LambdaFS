@@ -226,8 +226,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 OperationPerformed operationPerformed = new OperationPerformed(operationName, requestId, opStart,
                         opEnd, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime, targetDeployment, false,
                         true, "TCP", nameNodeId, cacheHits, cacheMisses);
-                operationsPerformed.put(requestId, operationPerformed);
                 operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
+                operationsPerformed.put(requestId, operationPerformed);
 
                 return response;
             } catch (TimeoutException ex) {
@@ -657,13 +657,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 long finishedProcessingAt = responseJson.get(PROCESSING_FINISHED_TIME).getAsLong();
                 operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
-
                 operationPerformed.setRequestEnqueuedAtTime(enqueuedAt);
                 operationPerformed.setResultBeganExecutingTime(dequeuedAt);
-
-                operationPerformed.setResultReceivedVia(
-                        responseJson.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString());
-
+                operationPerformed.setResultReceivedVia(responseJson.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString());
                 return responseJson;
             } catch (ExecutionException | InterruptedException ex) {
                 // Log it.

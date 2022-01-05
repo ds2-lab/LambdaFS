@@ -3181,8 +3181,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     INode inode = getINodeForCache(path);
 
     if (inode == null) {
-      LOG.warn("INode for path '" + path +
-              "' is null. If we're not creating a directory right now, then that's a problem.");
+      LOG.warn("INode for path '" + path + "' is null. If we're not creating a directory right now, then that's a problem.");
 
       // If we're creating a directory, then there's not much we can do here. So, we'll just create the directory
       // ourselves. Since we're creating an entirely new INode, there's not going to be any cache consistency issues.
