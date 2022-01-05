@@ -362,7 +362,6 @@ public class NameNodeResult implements Serializable {
         json.addProperty(ServerlessNameNodeKeys.ENQUEUED_TIME, enqueuedTime);
         json.addProperty(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
         json.addProperty(ServerlessNameNodeKeys.PROCESSING_FINISHED_TIME, processingFinishedTime);
-        json.addProperty(ServerlessNameNodeKeys.POSTPROCESSING_FINISHED_TIME, System.currentTimeMillis());
 
         if (statisticsPackageSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);

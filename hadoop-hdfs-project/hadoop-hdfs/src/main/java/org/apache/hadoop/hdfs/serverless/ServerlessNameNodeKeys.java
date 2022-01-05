@@ -43,7 +43,6 @@ public class ServerlessNameNodeKeys {
     public static final String DEQUEUED_TIME = "DEQUEUED_TIME";
 
     public static final String PROCESSING_FINISHED_TIME = "PROCESSING_FINISHED_TIME";
-    public static final String POSTPROCESSING_FINISHED_TIME = "POSTPROCESSING_FINISHED_TIME";
 
     /**
      * Used to indicate to the NN that it should re-attempt this operation, even if
