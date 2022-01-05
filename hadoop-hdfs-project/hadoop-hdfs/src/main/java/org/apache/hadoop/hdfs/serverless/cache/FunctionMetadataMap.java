@@ -98,6 +98,8 @@ public class FunctionMetadataMap {
             pathToCache = parentPath.toString();
         }
 
+        LOG.debug("Checking path '" + pathToCache + "' for target '" + file + "'");
+
         try (Jedis jedis = redisPool.getResource()) {
             if (jedis.exists(file))
                 return Integer.parseInt(jedis.get(pathToCache));
@@ -137,7 +139,7 @@ public class FunctionMetadataMap {
         try (Jedis jedis = redisPool.getResource()) {
             String resp = jedis.set(pathToCache, String.valueOf(function));
 
-            LOG.debug("Response from jedis.set(): " + resp);
+            LOG.debug("Response from jedis.set('" + pathToCache + "'): " + resp);
         }
 
         return false;
