@@ -63,8 +63,10 @@ public class FunctionMetadataMap {
      * @return `true` if the cache contains an entry for the given file or directory, otherwise `false`.
      */
     public boolean containsEntry(String path) {
+        String pathToCache = getPathToCache(path);
+
         try (Jedis jedis = redisPool.getResource()) {
-            return jedis.exists(path);
+            return jedis.exists(pathToCache);
         }
     }
 
@@ -84,19 +86,7 @@ public class FunctionMetadataMap {
             return -1;
         }*/
 
-        // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
-        // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
-        // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
-        Path parentPath = Paths.get(file).getParent();
-        String pathToCache = null;
-
-        // If there is no parent, then we are caching metadata mapping information for the root.
-        if (parentPath == null) {
-            assert(file.equals("/") || file.isEmpty());
-            pathToCache = file;
-        } else {
-            pathToCache = parentPath.toString();
-        }
+        String pathToCache = getPathToCache(file);
 
         LOG.debug("Checking path '" + pathToCache + "' for target '" + file + "'");
 
@@ -106,6 +96,34 @@ public class FunctionMetadataMap {
             else
                 return -1;
         }
+    }
+
+    /**
+     * Given the original path to a target file or directory, return the path that is used by the metadata map/cache.
+     *
+     * Essentially, this attempts to extract the parent directory's path. If it does not exist, then it makes sure
+     * that the parameterized path is the root directory, since otherwise obtaining the parent directory should be
+     * possible.
+     *
+     * @param originalPath The original path to target a file or directory.
+     * @return The path that is used by the metadata map/cache.
+     */
+    private String getPathToCache(String originalPath) {
+        // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
+        // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
+        // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
+        Path parentPath = Paths.get(originalPath).getParent();
+        String pathToCache = null;
+
+        // If there is no parent, then we are caching metadata mapping information for the root.
+        if (parentPath == null) {
+            assert(originalPath.equals("/") || originalPath.isEmpty());
+            pathToCache = originalPath;
+        } else {
+            pathToCache = parentPath.toString();
+        }
+
+        return pathToCache;
     }
 
     /**
@@ -123,18 +141,7 @@ public class FunctionMetadataMap {
             return true;
         }*/
 
-        Path parentPath = Paths.get(path).getParent();
-        String pathToCache = null;
-
-        // If there is no parent, then we are caching metadata mapping information for the root.
-        if (parentPath == null) {
-            assert(path.equals("/") || path.isEmpty());
-            pathToCache = path;
-        } else {
-            pathToCache = parentPath.toString();
-
-            LOG.debug("Parent path of '" + path + "': '" + pathToCache + "'");
-        }
+        String pathToCache = getPathToCache(path);
 
         LOG.debug("Adding cache entry with key '" + pathToCache + "' for target '" + path + "'. Value: " + function + ".");
 
