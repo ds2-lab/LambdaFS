@@ -1,6 +1,8 @@
-package io.hops.metadata.ndb.wrapper;
+package io.hops.metadata.ndb.wrapper.eventmanagerinternals;
 
 import io.hops.events.HopsEventListener;
+import io.hops.metadata.ndb.wrapper.HopsEventManager;
+import io.hops.metadata.ndb.wrapper.HopsSession;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -14,12 +16,8 @@ import java.util.UUID;
  * to the session that created it. This means that the {@link HopsEventManager} needs to create the subscriptions
  * itself using its own, private {@link HopsSession} instance.
  */
-public final class SubscriptionTask implements Serializable {
+public final class SubscriptionRequest extends EventRequestBase {
     private static final long serialVersionUID = -6723933725262412978L;
-
-    public String[] getEventColumns() {
-        return eventColumns;
-    }
 
     public enum SubscriptionOperation {
         /**
@@ -34,19 +32,6 @@ public final class SubscriptionTask implements Serializable {
     }
 
     /**
-     * Used to uniquely identify this request in case we receive multiple requests for the same event.
-     *
-     * (They probably wouldn't have the same exact event listener, but if they had NO event listener, then there
-     * would be no way to distinguish them without this field.)
-     */
-    private final String requestId;
-
-    /**
-     * The name of the event for which a subscription is being created/dropped.
-     */
-    private final String eventName;
-
-    /**
      * The event listener associated with the event subscription that is being created/dropped.
      */
     private final HopsEventListener eventListener;
@@ -56,21 +41,17 @@ public final class SubscriptionTask implements Serializable {
      */
     private final SubscriptionOperation subscriptionOperation;
 
-    private final String[] eventColumns;
-
     /**
      * How many times we've tried and failed to create this event subscription.
      */
     private int failedAttempts;
 
-    public SubscriptionTask(String eventName, HopsEventListener eventListener, String[] eventColumns,
-                            SubscriptionOperation subscriptionOperation) {
-        this.eventName = eventName;
+    public SubscriptionRequest(String eventName, HopsEventListener eventListener, String[] eventColumns,
+                               SubscriptionOperation subscriptionOperation) {
+        super(eventName, eventColumns);
+
         this.eventListener = eventListener;
         this.subscriptionOperation = subscriptionOperation;
-
-        this.requestId = UUID.randomUUID().toString();
-        this.eventColumns = eventColumns;
         this.failedAttempts = 0;
     }
 
@@ -87,10 +68,10 @@ public final class SubscriptionTask implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof SubscriptionTask))
+        if (!(o instanceof SubscriptionRequest))
             return false;
 
-        SubscriptionTask other = (SubscriptionTask)o;
+        SubscriptionRequest other = (SubscriptionRequest)o;
 
         return this.requestId.equals(other.requestId);
     }

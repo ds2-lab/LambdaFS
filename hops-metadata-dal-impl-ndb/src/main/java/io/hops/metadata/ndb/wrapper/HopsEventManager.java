@@ -1,12 +1,13 @@
 package io.hops.metadata.ndb.wrapper;
 
-import com.google.common.collect.ImmutableMap;
 import com.mysql.clusterj.*;
 import com.mysql.clusterj.core.store.Event;
 import io.hops.events.*;
 import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.ndb.ClusterjConnector;
+import io.hops.metadata.ndb.wrapper.eventmanagerinternals.EventRequest;
+import io.hops.metadata.ndb.wrapper.eventmanagerinternals.SubscriptionRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -63,78 +64,38 @@ public class HopsEventManager implements EventManager {
     private HopsSession session;
 
     /**
-     * Name of the NDB table that contains the INodes.
-     */
-    private static final String INODES_TABLE_NAME = "hdfs_inodes";
-
-    /**
      * Base name (i.e., name without the integer at the end) for the invalidations tables.
      */
     private static final String INV_TABLE_NAME_BASE = "invalidations_deployment";
 
     /**
-     * Name of table used during write operations/consistency protocol to ACK invalidations.
-     */
-    private static final String ACK_TABLE_NAME_BASE = "write_acknowledgements";
-
-    /**
      * Internal queue to keep track of requests to create/register events.
      */
-    private final BlockingQueue<EventTask> createEventQueue;
+    private final BlockingQueue<EventRequest> createEventQueue;
 
-    /**
-     * Internal queue to keep track of requests to drop/unregister events.
-     */
-    private final BlockingQueue<EventTask> dropEventQueue;
-
-    private final ConcurrentHashMap<EventTask, Semaphore> eventCreationNotifiers;
-
-    private final ConcurrentHashMap<EventTask, Semaphore> eventRemovalNotifiers;
+    private final ConcurrentHashMap<EventRequest, Semaphore> eventCreationSemaphores;
 
     /**
      * Internal queue used to keep track of requests to create event subscriptions that failed the first time.
      */
-    private final BlockingQueue<SubscriptionTask> createSubscriptionRetryQueue;
+    private final BlockingQueue<SubscriptionRequest> createSubscriptionRetryQueue;
 
     /**
      * These are used exclusively for resubmitted/failed event subscriptions.
      */
-    private final ConcurrentHashMap<SubscriptionTask, Semaphore> subscriptionCreationNotifiers;
+    private final ConcurrentHashMap<SubscriptionRequest, Semaphore> subscriptionCreationSemaphores;
 
     /**
      * Internal queue used to keep track of requests to drop event subscriptions.
      */
-    private final BlockingQueue<SubscriptionTask> dropSubscriptionRequestQueue;
+    private final BlockingQueue<SubscriptionRequest> dropSubscriptionQueue;
 
     /**
      * When somebody issues us a request to drop an event subscription, we return a semaphore that we'll
      * decrement when we drop the operation for them. So they can block to make sure the subscription gets dropped
      * before continuing, if desired.
      */
-    private final ConcurrentHashMap<SubscriptionTask, Semaphore> subscriptionDeletionNotifiers;
-
-    /**
-     * The columns of the INode NDB table, in the order that they're defined in the schema.
-     */
-    private static final String[] INODE_TABLE_COLUMNS = new String[] {
-            "partition_id", "parent_id", "name", "id", "user_id", "group_id", "modification_time",
-            "access_time", "permission", "client_name", "client_machine", "client_node", "generation_stamp",
-            "header", "symlink", "subtree_lock_owner", "size", "quota_enabled", "meta_enabled", "is_dir",
-            "under_construction", "subtree_locked", "file_stored_in_db", "logical_time", "storage_policy",
-            "children_num", "num_aces", "num_user_xattrs", "num_sys_xattrs"
-    };
-
-    /**
-     * The columns of the INode table for which we wish to see the pre-/post-values
-     * when receiving an event on the INode table.
-     *
-     * These should just be numerical (32- or 64-bit integers, ideally).
-     */
-    private static final String[] INODE_TABLE_EVENT_COLUMNS = new String[] {
-            TablesDef.INodeTableDef.PARTITION_ID,     // int(11)
-            TablesDef.INodeTableDef.PARENT_ID,        // int(11)
-            TablesDef.INodeTableDef.ID                // int(11)
-    };
+    private final ConcurrentHashMap<SubscriptionRequest, Semaphore> subscriptionDeletionSemaphores;
 
     /**
      * Columns to use for the invalidation table event.
@@ -156,61 +117,6 @@ public class HopsEventManager implements EventManager {
             TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED,       // tinyint(4)
             TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID        // bigint(20)
     };
-
-    /**
-     * Mapping of the column name to its type, so we can automatically print the values correctly.
-     */
-    private static final Map<String, Class<?>> ACK_EVENT_COLUMN_TYPES =
-            ImmutableMap.of(
-                TablesDef.WriteAcknowledgementsTableDef.NAME_NODE_ID,       long.class,
-                TablesDef.WriteAcknowledgementsTableDef.DEPLOYMENT_NUMBER,  int.class,
-                TablesDef.WriteAcknowledgementsTableDef.ACKNOWLEDGED,       boolean.class,
-                TablesDef.WriteAcknowledgementsTableDef.OPERATION_ID,       long.class);
-
-    /**
-     * Mapping of the column name to its type, so we can automatically print the values correctly.
-     */
-    private static final Map<String, Class<?>> INV_TABLE_EVENT_COLUMN_TYPES =
-            ImmutableMap.of(
-                    TablesDef.InvalidationTablesDef.INODE_ID,       long.class,
-                    TablesDef.InvalidationTablesDef.PARENT_ID,      long.class,
-                    TablesDef.InvalidationTablesDef.LEADER_ID,      long.class,
-                    TablesDef.InvalidationTablesDef.TX_START,       long.class,
-                    TablesDef.InvalidationTablesDef.OPERATION_ID,   long.class);
-
-    /**
-     * Print the pre- and post-values of the columns for a particular event.
-     * @param columnTypeMapping Mapping from column name to class (representing its type).
-     * @param eventOperation The event operation for which we are printing values.
-     */
-    private void printPrePostColumnValues(Map<String, Class<?>> columnTypeMapping, HopsEventOperation eventOperation) {
-        for (Map.Entry<String, Class<?>> entry : columnTypeMapping.entrySet()) {
-            String columnName = entry.getKey();
-            Class<?> columnType = entry.getValue();
-
-            if (long.class.equals(columnType)) {
-                long preValue = eventOperation.getLongPreValue(columnName);
-                long postValue = eventOperation.getLongPostValue(columnName);
-
-                LOG.debug("Pre-value for column " + columnName + ": " + preValue);
-                LOG.debug("Post-value for column " + columnName + ": " + postValue);
-            }
-            else if (int.class.equals(columnType)) {
-                int preValue = eventOperation.getIntPreValue(columnName);
-                int postValue = eventOperation.getIntPostValue(columnName);
-
-                LOG.debug("Pre-value for column " + columnName + ": " + preValue);
-                LOG.debug("Post-value for column " + columnName + ": " + postValue);
-            }
-            else if (boolean.class.equals(columnType)) {
-                boolean preValue = eventOperation.getBooleanPreValue(columnName);
-                boolean postValue = eventOperation.getBooleanPostValue(columnName);
-
-                LOG.debug("Pre-value for column " + columnName + ": " + preValue);
-                LOG.debug("Post-value for column " + columnName + ": " + postValue);
-            }
-        }
-    }
 
     /**
      * These are the events that all NameNodes subscribe to for ACK events. We only want to receive
@@ -289,13 +195,11 @@ public class HopsEventManager implements EventManager {
         this.eventOperationMap = new HashMap<>();
         this.eventOpToNameMapping = new HashMap<>();
         this.createSubscriptionRetryQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
-        this.dropSubscriptionRequestQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
-        this.subscriptionCreationNotifiers = new ConcurrentHashMap<>();
-        this.subscriptionDeletionNotifiers = new ConcurrentHashMap<>();
+        this.dropSubscriptionQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
+        this.subscriptionCreationSemaphores = new ConcurrentHashMap<>();
+        this.subscriptionDeletionSemaphores = new ConcurrentHashMap<>();
         this.createEventQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
-        this.dropEventQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
-        this.eventCreationNotifiers = new ConcurrentHashMap<>();
-        this.eventRemovalNotifiers = new ConcurrentHashMap<>();
+        this.eventCreationSemaphores = new ConcurrentHashMap<>();
     }
 
     ////////////////
@@ -332,18 +236,18 @@ public class HopsEventManager implements EventManager {
     public Semaphore requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException {
         LOG.debug("Issuing request to drop subscription for event " + eventName + " now...");
 
-        SubscriptionTask dropRequest = new SubscriptionTask(eventName, eventListener, new String[0],
-                SubscriptionTask.SubscriptionOperation.DROP_SUBSCRIPTION);
+        SubscriptionRequest dropRequest = new SubscriptionRequest(eventName, eventListener, new String[0],
+                SubscriptionRequest.SubscriptionOperation.DROP_SUBSCRIPTION);
 
         try {
-            dropSubscriptionRequestQueue.put(dropRequest);
+            dropSubscriptionQueue.put(dropRequest);
         } catch (InterruptedException e) {
             throw new StorageException("Failed to enqueue request to drop subscription for event " +
                     eventName + " due to interrupted exception:", e);
         }
 
         Semaphore dropNotifier = new Semaphore(0);
-        subscriptionDeletionNotifiers.put(dropRequest, dropNotifier);
+        subscriptionDeletionSemaphores.put(dropRequest, dropNotifier);
 
         return dropNotifier;
     }
@@ -375,19 +279,19 @@ public class HopsEventManager implements EventManager {
         // the listener is added too.
         int startingPermits = 0;
 
-        SubscriptionTask subscriptionTask = null;
+        SubscriptionRequest subscriptionTask = null;
         if (alsoCreateSubscription) {
             startingPermits--; // Block until subscription is created.
-            subscriptionTask = new SubscriptionTask(eventName, eventListener, eventColumns,
-                    SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
+            subscriptionTask = new SubscriptionRequest(eventName, eventListener, eventColumns,
+                    SubscriptionRequest.SubscriptionOperation.CREATE_SUBSCRIPTION);
 
             if (eventListener != null)
                 startingPermits--; // Block until listener is added too.
         }
 
         // The 'subscriptionTask' parameter will be null if `alsoCreateSubscription` is false.
-        EventTask eventRegistrationTask =
-                new EventTask(eventName, tableName, eventColumns, recreateIfExists, subscriptionTask, tableEvents);
+        EventRequest eventRegistrationTask =
+                new EventRequest(eventName, tableName, eventColumns, recreateIfExists, subscriptionTask, tableEvents);
 
         try {
             createEventQueue.put(eventRegistrationTask);
@@ -398,36 +302,10 @@ public class HopsEventManager implements EventManager {
 
         LOG.debug("Creating Semaphore with " + startingPermits + " starting permits.");
         Semaphore eventRegisteredNotifier = new Semaphore(startingPermits);
-        eventCreationNotifiers.put(eventRegistrationTask, eventRegisteredNotifier);
+        eventCreationSemaphores.put(eventRegistrationTask, eventRegisteredNotifier);
 
         return eventRegisteredNotifier;
     }
-
-//    /**
-//     * Delete the event with the given name.
-//     * @param eventName Unique identifier of the event to be deleted.
-//     * @return True if an event with the given name was deleted, otherwise false.
-//     *
-//     * @throws StorageException if something goes wrong when unregistering the event.
-//     */
-//    @Override
-//    public Semaphore requestUnregisterEvent(String eventName)
-//            throws StorageException, IllegalArgumentException, IllegalStateException {
-//        EventTask unregisterEventTask = new EventTask(eventName, null, null,
-//                false, null, null);
-//
-//        try {
-//            dropEventQueue.put(unregisterEventTask);
-//        } catch (InterruptedException e) {
-//            throw new StorageException("Failed to enqueue request to drop subscription for event " +
-//                    eventName + " due to interrupted exception:", e);
-//        }
-//
-//        Semaphore eventDroppedNotifier = new Semaphore(0);
-//        eventRemovalNotifiers.put(unregisterEventTask, eventDroppedNotifier);
-//
-//        return eventDroppedNotifier;
-//    }
 
     @Override
     public void waitUntilSetupDone() throws InterruptedException {
@@ -475,7 +353,7 @@ public class HopsEventManager implements EventManager {
                 }
 
                 processEventRegistrationRequests();     // Process requests to create/register new events.
-                processEventUnregistrationRequests();   // Process requests to drop/unregister events.
+                // processEventUnregistrationRequests();   // Process requests to drop/unregister events.
 
                 processFailedEventCreationRequests();    // Process requests to create subscriptions.
                 processDropSubscriptionRequests();       // Process requests to drop subscriptions.
@@ -512,38 +390,6 @@ public class HopsEventManager implements EventManager {
     private HopsSession obtainSession() {
         return this.session;
     }
-
-//    /**
-//     * Update the count of listeners associated with a given event (really, event operation).
-//     * @param eventName The name of the event.
-//     * @param increment Whether we're incrementing or decrementing the count.
-//     */
-//    private synchronized void updateCount(String eventName, boolean increment) {
-//        HopsEventOperation eventOperation = eventOperationMap.get(eventName);
-//
-//        if (eventOperation == null)
-//            throw new IllegalStateException("Cannot update count for event " + eventName +
-//                    ". Adding an even listener before registering the event operation is not permitted. Please " +
-//                    "register the event operation first, then add the event listener afterwards.");
-//
-//        int currentCount = numListenersMapping.getOrDefault(eventOperation, 0);
-//        int newCount;
-//        if (increment)
-//            newCount = currentCount + 1;
-//        else
-//            newCount = currentCount - 1;
-//
-//        assert(newCount >= 0);
-//
-//        if (currentCount == 1)
-//            LOG.debug("There was 1 existing event listener for event operation " + eventName + ". Now there are " +
-//                    newCount + ".");
-//        else
-//            LOG.debug("There were " + currentCount + " listeners for event op " + eventName + ". Now there are " +
-//                    newCount + ".");
-//
-//        numListenersMapping.put(eventOperation, newCount);
-//    }
 
     /**
      * Unregister an event listener.
@@ -598,7 +444,7 @@ public class HopsEventManager implements EventManager {
     /**
      * Enqueue an event subscription creation task for retry after it failed to be created the first time.
      */
-    private Semaphore resubmitSubscriptionCreationRequest(SubscriptionTask failedTask) throws StorageException {
+    private Semaphore resubmitSubscriptionCreationRequest(SubscriptionRequest failedTask) throws StorageException {
         LOG.debug("Enqueuing failed event subscription creation task for event " + failedTask.getEventName() +
                 " for retry. Number of failed attempts: " + failedTask.getNumFailedAttempts());
 
@@ -612,7 +458,7 @@ public class HopsEventManager implements EventManager {
         }
 
         Semaphore creationNotifier = new Semaphore(0);
-        subscriptionCreationNotifiers.put(failedTask, creationNotifier);
+        subscriptionCreationSemaphores.put(failedTask, creationNotifier);
 
         return creationNotifier;
     }
@@ -762,10 +608,10 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
-     * Register the event encapsulated by the given {@link EventTask} instance.
+     * Register the event encapsulated by the given {@link EventRequest} instance.
      * @param eventTask Represents the event to be created.
      */
-    private void registerEvent(EventTask eventTask) throws StorageException {
+    private void registerEvent(EventRequest eventTask) throws StorageException {
         String eventName = eventTask.getEventName();
         String tableName = eventTask.getTableName();
         String[] eventColumns =  eventTask.getEventColumns();
@@ -776,50 +622,13 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
-     * Unregister the event encapsulated by the given {@link EventTask} instance.
-     * @param eventTask Represents the event to be unregistered.
-     */
-    private void unregisterEvent(EventTask eventTask) throws StorageException {
-        String eventName = eventTask.getEventName();
-
-        LOG.debug("Unregistering event " + eventName + " with NDB now...");
-
-        // If we aren't tracking an event with the given name, then the argument is invalid.
-        if (!eventMap.containsKey(eventName))
-            throw new IllegalArgumentException("There is no event " + eventName +
-                    " currently being tracked by the EventManager.");
-
-        // Try to drop the event. If something goes wrong, we'll throw an exception.
-        boolean dropped;
-        try {
-            dropped = obtainSession().dropEvent(eventName);
-        } catch (ClusterJException e) {
-            throw HopsExceptionHelper.wrap(e);
-        }
-
-        // If we failed to drop the event (probably because NDB doesn't think it exists), then the EventManager is
-        // in an invalid state. That is, it was tracking some event called `eventName` that NDB does not know about.
-        if (!dropped) {
-            LOG.error("Failed to unregister event " + eventName +
-                    " from NDB, despite the fact that the event exists within the EventManager...");
-
-            throw new IllegalStateException("Failed to unregister event " + eventName +
-                    " from NDB, despite the fact that the event exists within the EventManager.");
-        }
-
-        // Make sure to remove the event from the eventMap now that it has been dropped by NDB.
-        LOG.debug("Successfully unregistered event " + eventName + " with NDB!");
-        eventMap.remove(eventName);
-    }
-
-    /**
      * Process any requests we've received to register events with NDB. Note that these requests may contain
      * subscription-creation requests, which will also be processed by this function.
      */
     private void processEventRegistrationRequests() {
         int requestsProcessed = 0;
         while (createEventQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
-            EventTask eventRegistrationTask = createEventQueue.poll();
+            EventRequest eventRegistrationTask = createEventQueue.poll();
             LOG.debug("Processing event creation request for event " + eventRegistrationTask.getEventName());
 
             try {
@@ -830,7 +639,7 @@ public class HopsEventManager implements EventManager {
 
             requestsProcessed++;
 
-            Semaphore eventRegisteredNotifier = eventCreationNotifiers.get(eventRegistrationTask);
+            Semaphore eventRegisteredNotifier = eventCreationSemaphores.get(eventRegistrationTask);
 
             if (eventRegisteredNotifier == null)
                 throw new IllegalStateException("We do not have an subscription creation notifier for event " +
@@ -840,35 +649,9 @@ public class HopsEventManager implements EventManager {
             // with -1 permits, so the other thread would still be blocked if it called .acquire() on the Semaphore.
             eventRegisteredNotifier.release(1);
 
-            SubscriptionTask subscriptionTask = eventRegistrationTask.getSubscriptionTask();
+            SubscriptionRequest subscriptionTask = eventRegistrationTask.getSubscriptionTask();
             if (subscriptionTask != null)
                 processCreateSubscriptionTask(subscriptionTask, eventRegisteredNotifier);
-        }
-    }
-
-    /**
-     * Process any requests we've received to unregister events with NDB.
-     */
-    private void processEventUnregistrationRequests() {
-        int requestsProcessed = 0;
-        while (dropEventQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
-            EventTask eventDropTask = dropEventQueue.poll();
-
-            try {
-                unregisterEvent(eventDropTask);
-            } catch (StorageException e) {
-                LOG.error("Failed to unregister event " + eventDropTask.getEventName() + ": ", e);
-            }
-
-            Semaphore eventDroppedNotifier = eventRemovalNotifiers.get(eventDropTask);
-
-            if (eventDroppedNotifier == null)
-                throw new IllegalStateException("We do not have an subscription creation notifier for event " +
-                        eventDropTask.getEventName() + "!");
-
-            eventDroppedNotifier.release(1);
-
-            requestsProcessed++;
         }
     }
 
@@ -880,14 +663,14 @@ public class HopsEventManager implements EventManager {
      * @param createSubscriptionRequest The task that we're processing.
      * @param notifier The Semaphore for this subscription. It's the same Semaphore used for the event itself.
      */
-    private void processCreateSubscriptionTask(SubscriptionTask createSubscriptionRequest,
+    private void processCreateSubscriptionTask(SubscriptionRequest createSubscriptionRequest,
                                                Semaphore notifier) {
         String eventName = createSubscriptionRequest.getEventName();
         LOG.debug("Processing subscription creation request for event " + eventName);
         HopsEventListener eventListener = createSubscriptionRequest.getEventListener();
 
         assert(createSubscriptionRequest.getSubscriptionOperation() ==
-                SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
+                SubscriptionRequest.SubscriptionOperation.CREATE_SUBSCRIPTION);
 
         // If we get null, then just exit.
         if (eventName == null)
@@ -977,19 +760,19 @@ public class HopsEventManager implements EventManager {
     private void processFailedEventCreationRequests() {
         int requestsProcessed = 0;
         while (createSubscriptionRetryQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
-            SubscriptionTask failedSubscriptionCreationTask = createSubscriptionRetryQueue.poll();
+            SubscriptionRequest failedSubscriptionCreationTask = createSubscriptionRetryQueue.poll();
             String eventName = failedSubscriptionCreationTask.getEventName();
 
             LOG.debug("Retrying failed event subscription creation task for event " + eventName);
 
             assert(failedSubscriptionCreationTask.getSubscriptionOperation() ==
-                    SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
+                    SubscriptionRequest.SubscriptionOperation.CREATE_SUBSCRIPTION);
 
             // If we get null, then just exit.
             if (eventName == null)
                 break;
 
-            Semaphore creationNotifier = subscriptionCreationNotifiers.get(failedSubscriptionCreationTask);
+            Semaphore creationNotifier = subscriptionCreationSemaphores.get(failedSubscriptionCreationTask);
 
             if (creationNotifier == null)
                 throw new IllegalStateException("We do not have an subscription creation notifier for event " +
@@ -1005,13 +788,13 @@ public class HopsEventManager implements EventManager {
      */
     private void processDropSubscriptionRequests() {
         int requestsProcessed = 0;
-        while (dropSubscriptionRequestQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
-            SubscriptionTask dropSubscriptionRequest = dropSubscriptionRequestQueue.poll();
+        while (dropSubscriptionQueue.size() > 0 && requestsProcessed < MAX_SUBSCRIPTION_REQUESTS) {
+            SubscriptionRequest dropSubscriptionRequest = dropSubscriptionQueue.poll();
             String eventName = dropSubscriptionRequest.getEventName();
             HopsEventListener eventListener = dropSubscriptionRequest.getEventListener();
 
             assert(dropSubscriptionRequest.getSubscriptionOperation() ==
-                    SubscriptionTask.SubscriptionOperation.DROP_SUBSCRIPTION);
+                    SubscriptionRequest.SubscriptionOperation.DROP_SUBSCRIPTION);
 
             // If we get null, then just exit.
             if (eventName == null)
@@ -1026,26 +809,13 @@ public class HopsEventManager implements EventManager {
 
             requestsProcessed++;
 
-            Semaphore droppedNotifier = subscriptionDeletionNotifiers.get(dropSubscriptionRequest);
+            Semaphore droppedNotifier = subscriptionDeletionSemaphores.get(dropSubscriptionRequest);
 
             if (droppedNotifier == null)
                 throw new IllegalStateException("We do not have an subscription dropped notifier for event " +
                         eventName + "!");
 
             droppedNotifier.release(1);
-        }
-    }
-
-    private String getTargetTableName(int deploymentNumber) throws StorageException {
-        switch (deploymentNumber) {
-            case 0:
-                return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME0;
-            case 1:
-                return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME1;
-            case 2:
-                return TablesDef.WriteAcknowledgementsTableDef.TABLE_NAME2;
-            default:
-                throw new StorageException("Unsupported deployment number: " + deploymentNumber);
         }
     }
 
@@ -1086,25 +856,6 @@ public class HopsEventManager implements EventManager {
 
         LOG.debug("Executing event operation for event " + defaultEventName + " now...");
         eventOperation.execute();
-
-        /*for (int i = 0; i < 3; i++) {
-            String targetTableName = getTargetTableName(i);
-            String eventName = HopsEvent.ACK_EVENT_NAME_BASE + i;
-            registerEvent(eventName, targetTableName, ACK_EVENT_COLUMNS, true);
-            HopsEventOperation ackOp = createAndReturnEventOperation(eventName);
-            for (String columnName : ACK_EVENT_COLUMNS) {
-                boolean success = ackOp.addRecordAttribute(columnName);
-
-                if (!success)
-                    LOG.error("Failed to create record attribute(s) for column " + columnName + ".");
-            }
-
-            addListener(eventName, (eventOperation1, eventName1) -> {
-                LOG.debug("=-=-= RECEIVED ACK EVENT =-=-=");
-                LOG.debug("EVENT NAME: " + eventName1);
-                LOG.debug("EVENT TYPE: " + eventOperation1.getEventType());
-            });
-        }*/
 
         // Signal that we're done with this. Just add a ton of permits.
         defaultSetupSemaphore.release(Integer.MAX_VALUE - 10);
