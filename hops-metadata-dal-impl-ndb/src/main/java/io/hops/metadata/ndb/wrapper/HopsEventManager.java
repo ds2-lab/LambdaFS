@@ -298,9 +298,9 @@ public class HopsEventManager implements EventManager {
         this.eventRemovalNotifiers = new ConcurrentHashMap<>();
     }
 
-    private HopsSession obtainSession() {
-        return this.session;
-    }
+    ////////////////
+    // PUBLIC API //
+    ////////////////
 
     /**
      * Register an event listener.
@@ -326,6 +326,191 @@ public class HopsEventManager implements EventManager {
         // updateCount(eventName, true);
 
         LOG.debug("Registered new event listener. Number of listeners: " + listenersMap.size() + ".");
+    }
+
+    @Override
+    public Semaphore requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException {
+        LOG.debug("Issuing request to drop subscription for event " + eventName + " now...");
+
+        SubscriptionTask dropRequest = new SubscriptionTask(eventName, eventListener, new String[0],
+                SubscriptionTask.SubscriptionOperation.DROP_SUBSCRIPTION);
+
+        try {
+            dropSubscriptionRequestQueue.put(dropRequest);
+        } catch (InterruptedException e) {
+            throw new StorageException("Failed to enqueue request to drop subscription for event " +
+                    eventName + " due to interrupted exception:", e);
+        }
+
+        Semaphore dropNotifier = new Semaphore(0);
+        subscriptionDeletionNotifiers.put(dropRequest, dropNotifier);
+
+        return dropNotifier;
+    }
+
+    @Override
+    public Integer[] getAckEventTypeIDs() {
+        return ACK_TABLE_EVENTS;
+    }
+
+    @Override
+    public String[] getAckTableEventColumns() {
+        return ACK_EVENT_COLUMNS;
+    }
+
+    @Override
+    public Semaphore requestCreateEvent(String eventName, String tableName, String[] eventColumns,
+                                        boolean recreateIfExists, boolean alsoCreateSubscription,
+                                        HopsEventListener eventListener, Integer[] tableEvents)
+            throws StorageException {
+        if (!alsoCreateSubscription && eventListener != null) {
+            LOG.error("Indicated that no subscription should be created for event " + eventName +
+                    ", but also provided an event listener...");
+            throw new IllegalStateException("Event Listener should be null when 'alsoCreateSubscription' is false.");
+        }
+
+        // Start at 0. This way, creating the event will add a permit. If 'alsoCreateSubscription' is true,
+        // then we decrement this by 1 so that the Semaphore will block until both the event is created and the
+        // subscription is created. If eventListener is non-null, then we decrement it again, so it blocks until
+        // the listener is added too.
+        int startingPermits = 0;
+
+        SubscriptionTask subscriptionTask = null;
+        if (alsoCreateSubscription) {
+            startingPermits--; // Block until subscription is created.
+            subscriptionTask = new SubscriptionTask(eventName, eventListener, eventColumns,
+                    SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
+
+            if (eventListener != null)
+                startingPermits--; // Block until listener is added too.
+        }
+
+        // The 'subscriptionTask' parameter will be null if `alsoCreateSubscription` is false.
+        EventTask eventRegistrationTask =
+                new EventTask(eventName, tableName, eventColumns, recreateIfExists, subscriptionTask, tableEvents);
+
+        try {
+            createEventQueue.put(eventRegistrationTask);
+        } catch (InterruptedException e) {
+            throw new StorageException("Failed to enqueue request to drop subscription for event " +
+                    eventName + " due to interrupted exception:", e);
+        }
+
+        LOG.debug("Creating Semaphore with " + startingPermits + " starting permits.");
+        Semaphore eventRegisteredNotifier = new Semaphore(startingPermits);
+        eventCreationNotifiers.put(eventRegistrationTask, eventRegisteredNotifier);
+
+        return eventRegisteredNotifier;
+    }
+
+//    /**
+//     * Delete the event with the given name.
+//     * @param eventName Unique identifier of the event to be deleted.
+//     * @return True if an event with the given name was deleted, otherwise false.
+//     *
+//     * @throws StorageException if something goes wrong when unregistering the event.
+//     */
+//    @Override
+//    public Semaphore requestUnregisterEvent(String eventName)
+//            throws StorageException, IllegalArgumentException, IllegalStateException {
+//        EventTask unregisterEventTask = new EventTask(eventName, null, null,
+//                false, null, null);
+//
+//        try {
+//            dropEventQueue.put(unregisterEventTask);
+//        } catch (InterruptedException e) {
+//            throw new StorageException("Failed to enqueue request to drop subscription for event " +
+//                    eventName + " due to interrupted exception:", e);
+//        }
+//
+//        Semaphore eventDroppedNotifier = new Semaphore(0);
+//        eventRemovalNotifiers.put(unregisterEventTask, eventDroppedNotifier);
+//
+//        return eventDroppedNotifier;
+//    }
+
+    @Override
+    public void waitUntilSetupDone() throws InterruptedException {
+        defaultSetupSemaphore.acquire();
+    }
+
+    @Override
+    public void run() {
+        LOG.debug("The EventManager has started running.");
+
+        // We initialize the session instance variable within the run() method so that we obtain the session
+        // in the thread that the Event Manager runs in.
+        try {
+            this.session = ClusterjConnector.getInstance().obtainSession();
+        } catch (StorageException e) {
+            LOG.error("Failed to obtain session for Event Manager:", e);
+        }
+
+        try {
+            defaultSetup();
+        } catch (StorageException e) {
+            throw new IllegalStateException("Failed to initialize the HopsEventManager.");
+        }
+
+        LOG.debug("Number of events created: " + eventMap.size());
+        LOG.debug("Number of event operations created: " + eventOperationMap.size());
+
+        // Loop forever, listening for events.
+        while (true) {
+            try {
+                // As far as I can tell, this is NOT busy-waiting. This ultimately calls select(), or whatever
+                // the equivalent is for the given operating system. And Linux, Windows, etc. suspend the
+                // process if there are no file descriptors available, so this is not a busy wait.
+                //
+                // We check for a short amount of time. If no events are found, then we check and see if we have any
+                // requests to create new event subscriptions. If we do, then we'll handle those for a bit before
+                // checking for more events.
+                boolean events = session.pollForEvents(POLL_TIME_MILLISECONDS);
+
+                // Just continue if we didn't find any events.
+                if (events) {
+                    LOG.debug("Received at least one event!");
+                    int numEventsProcessed = processEvents();
+                    LOG.debug("Processed " + numEventsProcessed + " event(s).");
+                }
+
+                processEventRegistrationRequests();     // Process requests to create/register new events.
+                processEventUnregistrationRequests();   // Process requests to drop/unregister events.
+
+                processFailedEventCreationRequests();    // Process requests to create subscriptions.
+                processDropSubscriptionRequests();       // Process requests to drop subscriptions.
+            }
+            catch (Exception ex) {
+                LOG.error("EventManager encountered an exception:", ex);
+            }
+        }
+    }
+
+    @Override
+    public void setConfigurationParameters(int deploymentNumber, String defaultEventName,
+                                           boolean defaultDeleteIfExists, HopsEventListener invalidationListener) {
+        if (deploymentNumber < 0)
+            throw new IllegalArgumentException("Deployment number must be greater than zero.");
+
+        if (defaultEventName == null)
+            defaultEventName = HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber;
+
+        if (invalidationListener == null)
+            throw new IllegalArgumentException("The invalidation event listener must be non-null.");
+
+        this.deploymentNumber = deploymentNumber;
+        this.defaultEventName = defaultEventName;
+        this.defaultDeleteIfExists = defaultDeleteIfExists;
+        this.invalidationListener = invalidationListener;
+
+        this.configurationSet = true;
+    }
+
+    /////////////////
+    // PRIVATE API //
+    /////////////////
+    private HopsSession obtainSession() {
+        return this.session;
     }
 
 //    /**
@@ -419,7 +604,7 @@ public class HopsEventManager implements EventManager {
 
         failedTask.incrementFailedAttempts();
 
-        try {
+        try {/**/
             createSubscriptionRetryQueue.put(failedTask);
         } catch (InterruptedException e) {
             throw new StorageException("Failed to enqueue request to create subscription for event " +
@@ -538,36 +723,6 @@ public class HopsEventManager implements EventManager {
         unregisterEventOperationUnsafe(eventName, hopsEventOperation);
     }
 
-    @Override
-    public Semaphore requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException {
-        LOG.debug("Issuing request to drop subscription for event " + eventName + " now...");
-
-        SubscriptionTask dropRequest = new SubscriptionTask(eventName, eventListener, new String[0],
-                SubscriptionTask.SubscriptionOperation.DROP_SUBSCRIPTION);
-
-        try {
-            dropSubscriptionRequestQueue.put(dropRequest);
-        } catch (InterruptedException e) {
-            throw new StorageException("Failed to enqueue request to drop subscription for event " +
-                    eventName + " due to interrupted exception:", e);
-        }
-
-        Semaphore dropNotifier = new Semaphore(0);
-        subscriptionDeletionNotifiers.put(dropRequest, dropNotifier);
-
-        return dropNotifier;
-    }
-
-    @Override
-    public Integer[] getAckEventTypeIDs() {
-        return ACK_TABLE_EVENTS;
-    }
-
-    @Override
-    public String[] getAckTableEventColumns() {
-        return ACK_EVENT_COLUMNS;
-    }
-
     /**
      * Register an event with intermediate storage.
      * @param eventName The name of the event.
@@ -655,82 +810,6 @@ public class HopsEventManager implements EventManager {
         // Make sure to remove the event from the eventMap now that it has been dropped by NDB.
         LOG.debug("Successfully unregistered event " + eventName + " with NDB!");
         eventMap.remove(eventName);
-    }
-
-    @Override
-    public Semaphore requestRegisterEvent(String eventName, String tableName, String[] eventColumns,
-                                          boolean recreateIfExists, boolean alsoCreateSubscription,
-                                          HopsEventListener eventListener, Integer[] tableEvents)
-            throws StorageException {
-        if (!alsoCreateSubscription && eventListener != null) {
-            LOG.error("Indicated that no subscription should be created for event " + eventName +
-                    ", but also provided an event listener...");
-            throw new IllegalStateException("Event Listener should be null when 'alsoCreateSubscription' is false.");
-        }
-
-        // Start at 0. This way, creating the event will add a permit. If 'alsoCreateSubscription' is true,
-        // then we decrement this by 1 so that the Semaphore will block until both the event is created and the
-        // subscription is created. If eventListener is non-null, then we decrement it again, so it blocks until
-        // the listener is added too.
-        int startingPermits = 0;
-
-        SubscriptionTask subscriptionTask = null;
-        if (alsoCreateSubscription) {
-            startingPermits--; // Block until subscription is created.
-            subscriptionTask = new SubscriptionTask(eventName, eventListener, eventColumns,
-                    SubscriptionTask.SubscriptionOperation.CREATE_SUBSCRIPTION);
-
-            if (eventListener != null)
-                startingPermits--; // Block until listener is added too.
-        }
-
-        // The 'subscriptionTask' parameter will be null if `alsoCreateSubscription` is false.
-        EventTask eventRegistrationTask =
-                new EventTask(eventName, tableName, eventColumns, recreateIfExists, subscriptionTask, tableEvents);
-
-        try {
-            createEventQueue.put(eventRegistrationTask);
-        } catch (InterruptedException e) {
-            throw new StorageException("Failed to enqueue request to drop subscription for event " +
-                    eventName + " due to interrupted exception:", e);
-        }
-
-        LOG.debug("Creating Semaphore with " + startingPermits + " starting permits.");
-        Semaphore eventRegisteredNotifier = new Semaphore(startingPermits);
-        eventCreationNotifiers.put(eventRegistrationTask, eventRegisteredNotifier);
-
-        return eventRegisteredNotifier;
-    }
-
-    /**
-     * Delete the event with the given name.
-     * @param eventName Unique identifier of the event to be deleted.
-     * @return True if an event with the given name was deleted, otherwise false.
-     *
-     * @throws StorageException if something goes wrong when unregistering the event.
-     */
-    @Override
-    public Semaphore requestUnregisterEvent(String eventName)
-            throws StorageException, IllegalArgumentException, IllegalStateException {
-        EventTask unregisterEventTask = new EventTask(eventName, null, null,
-                false, null, null);
-
-        try {
-            dropEventQueue.put(unregisterEventTask);
-        } catch (InterruptedException e) {
-            throw new StorageException("Failed to enqueue request to drop subscription for event " +
-                    eventName + " due to interrupted exception:", e);
-        }
-
-        Semaphore eventDroppedNotifier = new Semaphore(0);
-        eventRemovalNotifiers.put(unregisterEventTask, eventDroppedNotifier);
-
-        return eventDroppedNotifier;
-    }
-
-    @Override
-    public void waitUntilSetupDone() throws InterruptedException {
-        defaultSetupSemaphore.acquire();
     }
 
     /**
@@ -955,78 +1034,6 @@ public class HopsEventManager implements EventManager {
 
             droppedNotifier.release(1);
         }
-    }
-
-    @Override
-    public void run() {
-        LOG.debug("The EventManager has started running.");
-
-        // We initialize the session instance variable within the run() method so that we obtain the session
-        // in the thread that the Event Manager runs in.
-        try {
-            this.session = ClusterjConnector.getInstance().obtainSession();
-        } catch (StorageException e) {
-            LOG.error("Failed to obtain session for Event Manager:", e);
-        }
-
-        try {
-            defaultSetup();
-        } catch (StorageException e) {
-            throw new IllegalStateException("Failed to initialize the HopsEventManager.");
-        }
-
-        LOG.debug("Number of events created: " + eventMap.size());
-        LOG.debug("Number of event operations created: " + eventOperationMap.size());
-
-        // Loop forever, listening for events.
-        while (true) {
-            try {
-                // As far as I can tell, this is NOT busy-waiting. This ultimately calls select(), or whatever
-                // the equivalent is for the given operating system. And Linux, Windows, etc. suspend the
-                // process if there are no file descriptors available, so this is not a busy wait.
-                //
-                // We check for a short amount of time. If no events are found, then we check and see if we have any
-                // requests to create new event subscriptions. If we do, then we'll handle those for a bit before
-                // checking for more events.
-                boolean events = session.pollForEvents(POLL_TIME_MILLISECONDS);
-
-                // Just continue if we didn't find any events.
-                if (events) {
-                    LOG.debug("Received at least one event!");
-                    int numEventsProcessed = processEvents();
-                    LOG.debug("Processed " + numEventsProcessed + " event(s).");
-                }
-
-                processEventRegistrationRequests();     // Process requests to create/register new events.
-                processEventUnregistrationRequests();   // Process requests to drop/unregister events.
-
-                processFailedEventCreationRequests();    // Process requests to create subscriptions.
-                processDropSubscriptionRequests();       // Process requests to drop subscriptions.
-            }
-            catch (Exception ex) {
-                LOG.error("EventManager encountered an exception:", ex);
-            }
-        }
-    }
-
-    @Override
-    public void setConfigurationParameters(int deploymentNumber, String defaultEventName,
-                                           boolean defaultDeleteIfExists, HopsEventListener invalidationListener) {
-        if (deploymentNumber < 0)
-            throw new IllegalArgumentException("Deployment number must be greater than zero.");
-
-        if (defaultEventName == null)
-            defaultEventName = HopsEvent.INV_EVENT_NAME_BASE + deploymentNumber;
-
-        if (invalidationListener == null)
-            throw new IllegalArgumentException("The invalidation event listener must be non-null.");
-
-        this.deploymentNumber = deploymentNumber;
-        this.defaultEventName = defaultEventName;
-        this.defaultDeleteIfExists = defaultDeleteIfExists;
-        this.invalidationListener = invalidationListener;
-
-        this.configurationSet = true;
     }
 
     private String getTargetTableName(int deploymentNumber) throws StorageException {

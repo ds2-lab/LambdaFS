@@ -62,19 +62,19 @@ public interface EventManager extends Runnable {
      * @throws StorageException if something goes wrong when registering the event.
      * @return True if an event was created, otherwise false.
      */
-    public Semaphore requestRegisterEvent(String eventName, String tableName, String[] eventColumns,
-                                          boolean recreateIfExists, boolean alsoCreateSubscription,
-                                          HopsEventListener eventListener, Integer[] tableEvents)
+    public Semaphore requestCreateEvent(String eventName, String tableName, String[] eventColumns,
+                                        boolean recreateIfExists, boolean alsoCreateSubscription,
+                                        HopsEventListener eventListener, Integer[] tableEvents)
             throws StorageException;
 
-    /**
-     * Delete the event with the given name.
-     * @param eventName Unique identifier of the event to be deleted.
-     * @return True if an event with the given name was deleted, otherwise false.
-     *
-     * @throws StorageException if something goes wrong when unregistering the event.
-     */
-    public Semaphore requestUnregisterEvent(String eventName) throws StorageException;
+//    /**
+//     * Delete the event with the given name.
+//     * @param eventName Unique identifier of the event to be deleted.
+//     * @return True if an event with the given name was deleted, otherwise false.
+//     *
+//     * @throws StorageException if something goes wrong when unregistering the event.
+//     */
+//    public Semaphore requestUnregisterEvent(String eventName) throws StorageException;
 
     /**
      * The calling thread waits on an internal semaphore until the Event Manager has finished its default setup.

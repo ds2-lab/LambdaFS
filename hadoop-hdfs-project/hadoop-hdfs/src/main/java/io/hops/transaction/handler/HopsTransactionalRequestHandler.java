@@ -922,14 +922,11 @@ public abstract class HopsTransactionalRequestHandler
     for (int deploymentNumber : involvedDeployments) {
       String targetTableName = getTargetTableName(deploymentNumber);
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
-      Semaphore creationNotifier = eventManager.requestRegisterEvent(eventName, targetTableName,
+      Semaphore creationNotifier = eventManager.requestCreateEvent(eventName, targetTableName,
               eventManager.getAckTableEventColumns(), false, true,
               this, eventManager.getAckEventTypeIDs());
       semaphores.add(creationNotifier);
     }
-
-    // Sleep for a moment...
-    // Thread.sleep(100);
 
     requestHandlerLOG.debug("Acquiring " + semaphores.size() + " semaphore(s) now.");
 
