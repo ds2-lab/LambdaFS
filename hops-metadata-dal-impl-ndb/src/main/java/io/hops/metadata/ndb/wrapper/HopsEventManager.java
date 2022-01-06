@@ -7,6 +7,7 @@ import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.wrapper.eventmanagerinternals.EventRequest;
+import io.hops.metadata.ndb.wrapper.eventmanagerinternals.RequestQueue;
 import io.hops.metadata.ndb.wrapper.eventmanagerinternals.SubscriptionRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -71,14 +72,14 @@ public class HopsEventManager implements EventManager {
     /**
      * Internal queue to keep track of requests to create/register events.
      */
-    private final BlockingQueue<EventRequest> createEventQueue;
+    private final RequestQueue<EventRequest> createEventQueue;
 
     private final ConcurrentHashMap<EventRequest, Semaphore> eventCreationSemaphores;
 
     /**
      * Internal queue used to keep track of requests to create event subscriptions that failed the first time.
      */
-    private final BlockingQueue<SubscriptionRequest> createSubscriptionRetryQueue;
+    private final RequestQueue<SubscriptionRequest> createSubscriptionRetryQueue;
 
     /**
      * These are used exclusively for resubmitted/failed event subscriptions.
@@ -88,7 +89,7 @@ public class HopsEventManager implements EventManager {
     /**
      * Internal queue used to keep track of requests to drop event subscriptions.
      */
-    private final BlockingQueue<SubscriptionRequest> dropSubscriptionQueue;
+    private final RequestQueue<SubscriptionRequest> dropSubscriptionQueue;
 
     /**
      * When somebody issues us a request to drop an event subscription, we return a semaphore that we'll
@@ -194,11 +195,11 @@ public class HopsEventManager implements EventManager {
         this.eventMap = new HashMap<>();
         this.eventOperationMap = new HashMap<>();
         this.eventOpToNameMapping = new HashMap<>();
-        this.createSubscriptionRetryQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
-        this.dropSubscriptionQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
+        this.createSubscriptionRetryQueue = new RequestQueue<>(REQUEST_QUEUE_CAPACITIES);
+        this.dropSubscriptionQueue = new RequestQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.subscriptionCreationSemaphores = new ConcurrentHashMap<>();
         this.subscriptionDeletionSemaphores = new ConcurrentHashMap<>();
-        this.createEventQueue = new ArrayBlockingQueue<>(REQUEST_QUEUE_CAPACITIES);
+        this.createEventQueue = new RequestQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.eventCreationSemaphores = new ConcurrentHashMap<>();
     }
 
@@ -265,8 +266,8 @@ public class HopsEventManager implements EventManager {
     @Override
     public Semaphore requestCreateEvent(String eventName, String tableName, String[] eventColumns,
                                         boolean recreateIfExists, boolean alsoCreateSubscription,
-                                        HopsEventListener eventListener, Integer[] tableEvents)
-            throws StorageException {
+                                        HopsEventListener eventListener, Integer[] tableEvents) throws StorageException {
+        // Make sure that the parameters passed are valid.
         if (!alsoCreateSubscription && eventListener != null) {
             LOG.error("Indicated that no subscription should be created for event " + eventName +
                     ", but also provided an event listener...");
