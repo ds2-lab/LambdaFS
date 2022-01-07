@@ -4,6 +4,12 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Used to signal to Threads that an event (and optionally an event subscription) has been registered with
+ * intermediate storage. This is used during the consistency protocol, as Threads cannot proceed with the protocol
+ * until subscriptions are established. (Once subscriptions are established, the Thread carrying out the protocol
+ * can receive ACKs from other NameNodes. Failing to subscribe first could cause ACKs to be missed.)
+ */
 public class EventRequestSignaler {
     /**
      * If True, then this barrier should not allow threads to pass until both the event has been created AND
@@ -11,10 +17,25 @@ public class EventRequestSignaler {
      */
     private final boolean requireSubscription;
 
+    /**
+     * Indicates whether the event has been created.
+     */
     private volatile boolean eventCreated = false;
+
+    /**
+     * Indicates whether the event subscription has been created.
+     */
     private volatile boolean subscriptionCreated = false;
 
+    /**
+     * Used to create the condition object and also synchronize access to this object.
+     */
     private final Lock lock;
+
+    /**
+     * Threads block on this condition if they call acquire() before the event (and possibly the subscription)
+     * have been created.
+     */
     private final Condition condition;
 
     public EventRequestSignaler(boolean requireSubscription) {
@@ -54,7 +75,7 @@ public class EventRequestSignaler {
     /**
      * Wait until all criteria have been satisfied.
      */
-    public void waitForCriteria() throws InterruptedException {
+    public void acquire() throws InterruptedException {
         lock.lock();
         try {
             while (!criteriaSatisfied())

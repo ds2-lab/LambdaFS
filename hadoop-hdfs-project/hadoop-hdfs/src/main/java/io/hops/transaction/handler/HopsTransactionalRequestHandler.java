@@ -44,7 +44,6 @@ import org.apache.zookeeper.Watcher;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -931,7 +930,7 @@ public abstract class HopsTransactionalRequestHandler
     requestHandlerLOG.debug("Acquiring " + eventRequestSignalers.size() + " semaphore(s) now.");
 
     for (EventRequestSignaler eventRequestSignaler : eventRequestSignalers) {
-      eventRequestSignaler.waitForCriteria();
+      eventRequestSignaler.acquire();
     }
 
     requestHandlerLOG.debug("Successfully acquired " + eventRequestSignalers.size() + " semaphore(s).");
