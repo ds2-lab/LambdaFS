@@ -916,25 +916,25 @@ public abstract class HopsTransactionalRequestHandler
     // Each time we request that the event manager create an event subscription for us, it returns a semaphore
     // we can use to block until the event operation is created. We want to do this here, as we do not want
     // to continue until we know we'll receive the event notifications.
-    List<Semaphore> semaphores = new ArrayList<>();
+    List<EventRequestSignaler> eventRequestSignalers = new ArrayList<>();
 
     EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();
     for (int deploymentNumber : involvedDeployments) {
       String targetTableName = getTargetTableName(deploymentNumber);
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
-      Semaphore creationNotifier = eventManager.requestCreateEvent(eventName, targetTableName,
+      EventRequestSignaler eventRequestSignaler = eventManager.requestCreateEvent(eventName, targetTableName,
               eventManager.getAckTableEventColumns(), false, true,
               this, eventManager.getAckEventTypeIDs());
-      semaphores.add(creationNotifier);
+      eventRequestSignalers.add(eventRequestSignaler);
     }
 
-    requestHandlerLOG.debug("Acquiring " + semaphores.size() + " semaphore(s) now.");
+    requestHandlerLOG.debug("Acquiring " + eventRequestSignalers.size() + " semaphore(s) now.");
 
-    for (Semaphore creationNotifier : semaphores) {
-      creationNotifier.acquire();
+    for (EventRequestSignaler eventRequestSignaler : eventRequestSignalers) {
+      eventRequestSignaler.waitForCriteria();
     }
 
-    requestHandlerLOG.debug("Successfully acquired " + semaphores.size() + " semaphore(s).");
+    requestHandlerLOG.debug("Successfully acquired " + eventRequestSignalers.size() + " semaphore(s).");
   }
 
   /**
