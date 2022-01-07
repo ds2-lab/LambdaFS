@@ -7,6 +7,7 @@ import io.hops.exception.StorageException;
 import io.hops.metadata.hdfs.TablesDef;
 import io.hops.metadata.ndb.ClusterjConnector;
 import io.hops.metadata.ndb.wrapper.eventmanagerinternals.EventRequest;
+import io.hops.events.EventRequestSignaler;
 import io.hops.metadata.ndb.wrapper.eventmanagerinternals.RequestQueue;
 import io.hops.metadata.ndb.wrapper.eventmanagerinternals.SubscriptionRequest;
 import org.apache.commons.lang3.StringUtils;
@@ -14,8 +15,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
@@ -74,7 +73,7 @@ public class HopsEventManager implements EventManager {
      */
     private final RequestQueue<EventRequest> createEventQueue;
 
-    private final ConcurrentHashMap<EventRequest, Semaphore> eventCreationSemaphores;
+    private final ConcurrentHashMap<EventRequest, EventRequestSignaler> eventCreationSemaphores;
 
     /**
      * Internal queue used to keep track of requests to create event subscriptions that failed the first time.
@@ -84,19 +83,12 @@ public class HopsEventManager implements EventManager {
     /**
      * These are used exclusively for resubmitted/failed event subscriptions.
      */
-    private final ConcurrentHashMap<SubscriptionRequest, Semaphore> subscriptionCreationSemaphores;
+    private final ConcurrentHashMap<SubscriptionRequest, EventRequestSignaler> subscriptionCreationSemaphores;
 
     /**
      * Internal queue used to keep track of requests to drop event subscriptions.
      */
     private final RequestQueue<SubscriptionRequest> dropSubscriptionQueue;
-
-    /**
-     * When somebody issues us a request to drop an event subscription, we return a semaphore that we'll
-     * decrement when we drop the operation for them. So they can block to make sure the subscription gets dropped
-     * before continuing, if desired.
-     */
-    private final ConcurrentHashMap<SubscriptionRequest, Semaphore> subscriptionDeletionSemaphores;
 
     /**
      * Columns to use for the invalidation table event.
@@ -198,7 +190,6 @@ public class HopsEventManager implements EventManager {
         this.createSubscriptionRetryQueue = new RequestQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.dropSubscriptionQueue = new RequestQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.subscriptionCreationSemaphores = new ConcurrentHashMap<>();
-        this.subscriptionDeletionSemaphores = new ConcurrentHashMap<>();
         this.createEventQueue = new RequestQueue<>(REQUEST_QUEUE_CAPACITIES);
         this.eventCreationSemaphores = new ConcurrentHashMap<>();
     }
@@ -234,7 +225,8 @@ public class HopsEventManager implements EventManager {
     }
 
     @Override
-    public Semaphore requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException {
+    public void requestDropSubscription(String eventName, HopsEventListener eventListener)
+            throws StorageException {
         LOG.debug("Issuing request to drop subscription for event " + eventName + " now...");
 
         SubscriptionRequest dropRequest = new SubscriptionRequest(eventName, eventListener, new String[0],
@@ -246,11 +238,6 @@ public class HopsEventManager implements EventManager {
             throw new StorageException("Failed to enqueue request to drop subscription for event " +
                     eventName + " due to interrupted exception:", e);
         }
-
-        Semaphore dropNotifier = new Semaphore(0);
-        subscriptionDeletionSemaphores.put(dropRequest, dropNotifier);
-
-        return dropNotifier;
     }
 
     @Override
@@ -264,7 +251,7 @@ public class HopsEventManager implements EventManager {
     }
 
     @Override
-    public Semaphore requestCreateEvent(String eventName, String tableName, String[] eventColumns,
+    public EventRequestSignaler requestCreateEvent(String eventName, String tableName, String[] eventColumns,
                                         boolean recreateIfExists, boolean alsoCreateSubscription,
                                         HopsEventListener eventListener, Integer[] tableEvents) throws StorageException {
         // Make sure that the parameters passed are valid.
@@ -274,20 +261,10 @@ public class HopsEventManager implements EventManager {
             throw new IllegalStateException("Event Listener should be null when 'alsoCreateSubscription' is false.");
         }
 
-        // Start at 0. This way, creating the event will add a permit. If 'alsoCreateSubscription' is true,
-        // then we decrement this by 1 so that the Semaphore will block until both the event is created and the
-        // subscription is created. If eventListener is non-null, then we decrement it again, so it blocks until
-        // the listener is added too.
-        int startingPermits = 0;
-
         SubscriptionRequest subscriptionTask = null;
         if (alsoCreateSubscription) {
-            startingPermits--; // Block until subscription is created.
             subscriptionTask = new SubscriptionRequest(eventName, eventListener, eventColumns,
                     SubscriptionRequest.SubscriptionOperation.CREATE_SUBSCRIPTION);
-
-            if (eventListener != null)
-                startingPermits--; // Block until listener is added too.
         }
 
         // The 'subscriptionTask' parameter will be null if `alsoCreateSubscription` is false.
@@ -301,8 +278,7 @@ public class HopsEventManager implements EventManager {
                     eventName + " due to interrupted exception:", e);
         }
 
-        LOG.debug("Creating Semaphore with " + startingPermits + " starting permits.");
-        Semaphore eventRegisteredNotifier = new Semaphore(startingPermits);
+        EventRequestSignaler eventRegisteredNotifier = new EventRequestSignaler(alsoCreateSubscription);
         eventCreationSemaphores.put(eventRegistrationTask, eventRegisteredNotifier);
 
         return eventRegisteredNotifier;
@@ -422,7 +398,7 @@ public class HopsEventManager implements EventManager {
 
 
 //    @Override
-//    public Semaphore requestCreateSubscriptionWithListener(String eventName, HopsEventListener listener)
+//    public EventRequestSignaler requestCreateSubscriptionWithListener(String eventName, HopsEventListener listener)
 //            throws StorageException {
 //        LOG.debug("Issuing request to create subscription for event " + eventName + " now.");
 //
@@ -436,7 +412,7 @@ public class HopsEventManager implements EventManager {
 //                    eventName + " due to interrupted exception:", e);
 //        }
 //
-//        Semaphore creationNotifier = new Semaphore(0);
+//        EventRequestSignaler creationNotifier = new EventRequestSignaler(0);
 //        subscriptionCreationNotifiers.put(createSubscriptionRequest, creationNotifier);
 //
 //        return creationNotifier;
@@ -445,7 +421,7 @@ public class HopsEventManager implements EventManager {
     /**
      * Enqueue an event subscription creation task for retry after it failed to be created the first time.
      */
-    private Semaphore resubmitSubscriptionCreationRequest(SubscriptionRequest failedTask) throws StorageException {
+    private EventRequestSignaler resubmitSubscriptionCreationRequest(SubscriptionRequest failedTask) throws StorageException {
         LOG.debug("Enqueuing failed event subscription creation task for event " + failedTask.getEventName() +
                 " for retry. Number of failed attempts: " + failedTask.getNumFailedAttempts());
 
@@ -458,7 +434,7 @@ public class HopsEventManager implements EventManager {
                     failedTask.getEventName() + " due to interrupted exception:", e);
         }
 
-        Semaphore creationNotifier = new Semaphore(0);
+        EventRequestSignaler creationNotifier = new EventRequestSignaler(true);
         subscriptionCreationSemaphores.put(failedTask, creationNotifier);
 
         return creationNotifier;
@@ -640,15 +616,15 @@ public class HopsEventManager implements EventManager {
 
             requestsProcessed++;
 
-            Semaphore eventRegisteredNotifier = eventCreationSemaphores.get(eventRegistrationTask);
+            EventRequestSignaler eventRegisteredNotifier = eventCreationSemaphores.get(eventRegistrationTask);
 
             if (eventRegisteredNotifier == null)
                 throw new IllegalStateException("We do not have an subscription creation notifier for event " +
                         eventRegistrationTask.getEventName() + "!");
 
-            // If the EventTask has an included SubscriptionTask, then the Semaphore would've been initialized
-            // with -1 permits, so the other thread would still be blocked if it called .acquire() on the Semaphore.
-            eventRegisteredNotifier.release(1);
+            // If the EventTask has an included SubscriptionTask, then the EventRequestSignaler would've been initialized
+            // with -1 permits, so the other thread would still be blocked if it called .acquire() on the EventRequestSignaler.
+            eventRegisteredNotifier.eventCreated();
 
             SubscriptionRequest subscriptionTask = eventRegistrationTask.getSubscriptionTask();
             if (subscriptionTask != null)
@@ -659,13 +635,13 @@ public class HopsEventManager implements EventManager {
     /**
      * Process a SubscriptionTask to create a subscription for an existing event.
      *
-     * IMPORTANT: This calls release(1) on the Semaphore associated with the SubscriptionTask instance.
+     * IMPORTANT: This calls release(1) on the EventRequestSignaler associated with the SubscriptionTask instance.
      *
      * @param createSubscriptionRequest The task that we're processing.
-     * @param notifier The Semaphore for this subscription. It's the same Semaphore used for the event itself.
+     * @param notifier The EventRequestSignaler for this subscription. It's the same EventRequestSignaler used for the event itself.
      */
     private void processCreateSubscriptionTask(SubscriptionRequest createSubscriptionRequest,
-                                               Semaphore notifier) {
+                                               EventRequestSignaler notifier) {
         String eventName = createSubscriptionRequest.getEventName();
         LOG.debug("Processing subscription creation request for event " + eventName);
         HopsEventListener eventListener = createSubscriptionRequest.getEventListener();
@@ -743,7 +719,7 @@ public class HopsEventManager implements EventManager {
             return;
         }
 
-        // Make sure we're in the executing state before we call .release() on the Semaphore.
+        // Make sure we're in the executing state before we call .release() on the EventRequestSignaler.
         HopsEventState currentState = eventOperation.getState();
         if (currentState != HopsEventState.EXECUTING) {
             throw new IllegalStateException("Event subscription for event " + eventName + " is in unexpected state: " +
@@ -752,7 +728,7 @@ public class HopsEventManager implements EventManager {
 
         // We call the final release here as we need to call .execute() on the event operation first.
         // Release two, covering both cases (listener required or no listener required).
-        notifier.release(2);
+        notifier.subscriptionCreated();
     }
 
     /**
@@ -773,7 +749,7 @@ public class HopsEventManager implements EventManager {
             if (eventName == null)
                 break;
 
-            Semaphore creationNotifier = subscriptionCreationSemaphores.get(failedSubscriptionCreationTask);
+            EventRequestSignaler creationNotifier = subscriptionCreationSemaphores.get(failedSubscriptionCreationTask);
 
             if (creationNotifier == null)
                 throw new IllegalStateException("We do not have an subscription creation notifier for event " +
@@ -809,14 +785,6 @@ public class HopsEventManager implements EventManager {
             }
 
             requestsProcessed++;
-
-            Semaphore droppedNotifier = subscriptionDeletionSemaphores.get(dropSubscriptionRequest);
-
-            if (droppedNotifier == null)
-                throw new IllegalStateException("We do not have an subscription dropped notifier for event " +
-                        eventName + "!");
-
-            droppedNotifier.release(1);
         }
     }
 

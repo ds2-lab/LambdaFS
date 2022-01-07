@@ -2,8 +2,6 @@ package io.hops.events;
 
 import io.hops.exception.StorageException;
 
-import java.util.concurrent.Semaphore;
-
 /**
  * Generic interface defining the API of the EventManager.
  *
@@ -41,13 +39,6 @@ public interface EventManager extends Runnable {
     /**
      * Create and register an event with the given name.
      *
-     * IMPORTANT: The Semaphore that gets returned behaves in the following way:
-     *      - If 'alsoCreateSubscription' is false, then the Semaphore will block until the event is created.
-     *      - If 'alsoCreateSubscription' is true and eventListener is null, then the Semaphore will block until
-     *        the event is created AND the subscription is created.
-     *      - If 'alsoCreateSubscription' and 'eventListener' is non-null, then the Semaphore will block until the
-     *        event is created AND the subscription is created AND the listener is added.
-     *
      * @param eventName Unique identifier of the event to be created.
      * @param recreateIfExists If true, delete and recreate the event if it already exists.
      * @param eventColumns The columns that are being monitored for the event.
@@ -62,7 +53,7 @@ public interface EventManager extends Runnable {
      * @throws StorageException if something goes wrong when registering the event.
      * @return True if an event was created, otherwise false.
      */
-    public Semaphore requestCreateEvent(String eventName, String tableName, String[] eventColumns,
+    public EventRequestSignaler requestCreateEvent(String eventName, String tableName, String[] eventColumns,
                                         boolean recreateIfExists, boolean alsoCreateSubscription,
                                         HopsEventListener eventListener, Integer[] tableEvents)
             throws StorageException;
@@ -74,7 +65,7 @@ public interface EventManager extends Runnable {
 //     *
 //     * @throws StorageException if something goes wrong when unregistering the event.
 //     */
-//    public Semaphore requestUnregisterEvent(String eventName) throws StorageException;
+//    public EventRequestSignaler requestUnregisterEvent(String eventName) throws StorageException;
 
     /**
      * The calling thread waits on an internal semaphore until the Event Manager has finished its default setup.
@@ -114,7 +105,7 @@ public interface EventManager extends Runnable {
 //     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
 //     * this to block until we create the subscription, if desired.
 //     */
-//    public Semaphore requestCreateSubscription(String eventName) throws StorageException;
+//    public EventRequestSignaler requestCreateSubscription(String eventName) throws StorageException;
 
 //    /**
 //     * Issue a request to create an event subscription for the specified event. In addition, an event listener
@@ -125,7 +116,7 @@ public interface EventManager extends Runnable {
 //     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
 //     * this to block until we create the subscription, if desired.
 //     */
-//    public Semaphore requestCreateSubscriptionWithListener(String eventName, HopsEventListener eventListener)
+//    public EventRequestSignaler requestCreateSubscriptionWithListener(String eventName, HopsEventListener eventListener)
 //            throws StorageException;
 
 //    /**
@@ -162,11 +153,8 @@ public interface EventManager extends Runnable {
      *
      * @param eventName The unique identifier of the event whose EventOperation we wish to unregister.
      * @param eventListener the event listener to be registered.
-     *
-     * @return A semaphore with 0 permits. We'll add a permit to it when we drop the subscription. Clients can use
-     * this to block until we drop the subscription, if desired.
      */
-    public Semaphore requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException;
+    public void requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException;
 
 //    /**
 //     * This should be called once it is known that there are events to be processed.

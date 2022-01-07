@@ -1,4 +1,4 @@
-package io.hops.metadata.ndb.wrapper.eventmanagerinternals;
+package io.hops.events;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -11,8 +11,8 @@ public class EventRequestSignaler {
      */
     private final boolean requireSubscription;
 
-    private boolean eventCreated = false;
-    private boolean subscriptionCreated = false;
+    private volatile boolean eventCreated = false;
+    private volatile boolean subscriptionCreated = false;
 
     private final Lock lock;
     private final Condition condition;
@@ -27,10 +27,14 @@ public class EventRequestSignaler {
     // PUBLIC API //
     ////////////////
 
-    public boolean isRequireSubscription() { return requireSubscription; }
+    /**
+     * Returns true if the creation of a subscription on the associated event is also required for this signaler
+     * to allow threads to pass through.
+     */
+    public boolean isSubscriptionRequired() { return requireSubscription; }
 
     /**
-     * Called by the {@link io.hops.metadata.ndb.wrapper.HopsEventManager} when associated the event has been created.
+     * Called by the {@link EventManager} when associated the event has been created.
      * Checks if this barrier can begin permitting threads to continue executing.
      */
     public void eventCreated() {
@@ -39,7 +43,7 @@ public class EventRequestSignaler {
     }
 
     /**
-     * Called by the {@link io.hops.metadata.ndb.wrapper.HopsEventManager} when the associated subscription has been created.
+     * Called by the {@link EventManager} when the associated subscription has been created.
      * Checks if this barrier can begin permitting threads to continue executing.
      */
     public void subscriptionCreated() {
