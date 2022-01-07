@@ -1,6 +1,7 @@
 package io.hops.metadata.ndb.wrapper.eventmanagerinternals;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.UUID;
 
 public abstract class EventRequestBase implements Serializable {
@@ -47,4 +48,19 @@ public abstract class EventRequestBase implements Serializable {
      * Return a list of the names of the NDB table columns that are monitored by the event associated with this request.
      */
     public String[] getEventColumns() { return this.eventColumns; }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(requestId);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof EventRequestBase))
+            return false;
+
+        EventRequestBase other = (EventRequestBase)o;
+
+        return this.requestId.equals(other.requestId);
+    }
 }

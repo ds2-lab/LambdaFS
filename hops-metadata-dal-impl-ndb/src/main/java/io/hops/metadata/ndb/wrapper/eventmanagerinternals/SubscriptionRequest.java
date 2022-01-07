@@ -66,21 +66,6 @@ public final class SubscriptionRequest extends EventRequestBase {
         this.failedAttempts++;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof SubscriptionRequest))
-            return false;
-
-        SubscriptionRequest other = (SubscriptionRequest)o;
-
-        return this.requestId.equals(other.requestId);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(requestId);
-    }
-
     public SubscriptionOperation getSubscriptionOperation() {
         return subscriptionOperation;
     }

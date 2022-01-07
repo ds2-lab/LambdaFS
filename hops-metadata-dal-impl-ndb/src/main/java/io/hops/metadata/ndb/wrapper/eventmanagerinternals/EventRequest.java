@@ -51,21 +51,6 @@ public class EventRequest extends EventRequestBase{
             this.tableEvents = null;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof EventRequest))
-            return false;
-
-        EventRequest other = (EventRequest)o;
-
-        return this.requestId.equals(other.requestId);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(requestId);
-    }
-
     public String getRequestId() {
         return requestId;
     }

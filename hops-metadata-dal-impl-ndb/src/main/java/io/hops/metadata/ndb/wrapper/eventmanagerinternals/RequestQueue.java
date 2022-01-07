@@ -1,5 +1,8 @@
 package io.hops.metadata.ndb.wrapper.eventmanagerinternals;
 
+import java.sql.Array;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,9 +14,11 @@ public class RequestQueue<T extends EventRequestBase> {
     private final BlockingQueue<T> queue;
 
     /**
-     * Mapping of event name to the associated request. This maintains indexability.
+     * Mapping of event name to the associated request. This is just used to determine if the queue currently
+     * contains a request for a particular event. Since each event can have multiple subscriptions, this
+     * maps to a list of requests.
      */
-    private final ConcurrentHashMap<String, T> requestMap;
+    private final ConcurrentHashMap<String, List<T>> requestMap;
 
     private final int queueCapacity;
 
@@ -36,41 +41,31 @@ public class RequestQueue<T extends EventRequestBase> {
     /**
      * Add the given request to the queue. This also creates a mapping from the given event name to the given request.
      *
-     * If a request for this event already exists, then this does NOT add the request to the queue, nor is a mapping
-     * created (as one already exists in this case).
-     *
      * @param request The request to add to the queue.
-     * @return True if there does not already exist a request associated with this event (and thus the given request
-     * was added to the queue). Otherwise, returns false.
      */
-    public synchronized boolean put(T request) throws InterruptedException {
+    public synchronized void put(T request) throws IllegalStateException  {
         String eventName = request.getEventName();
 
-        if (this.requestMap.containsKey(eventName))
-            return false;
+        this.queue.add(request);
 
-        this.queue.put(request);
-        this.requestMap.put(eventName, request);
-
-        return true;
+        List<T> requests = requestMap.getOrDefault(eventName, new ArrayList<>());
+        requests.add(request);
+        this.requestMap.put(eventName, requests);
     }
 
     /**
      * Returns true if there is a request associated with the specified event. Otherwise, returns false.
      * @param eventName The name of the event in question.
      */
-    public synchronized boolean contains(String eventName) { return this.requestMap.containsKey(eventName); }
+    public synchronized boolean contains(String eventName) {
+        List<T> requests = this.requestMap.get(eventName);
 
-    /**
-     * Return the request associated with the given event name if one exists, otherwise null.
-     * This does NOT remove the requested element. Therefore, this function should NOT be used when actually
-     * processing requests.
-     *
-     * @param eventName The name of the event in question.
-     * @return The request associated with the given event, if one such request exists. Otherwise, null.
-     */
-    public synchronized T get(String eventName) {
-        return this.requestMap.getOrDefault(eventName, null);
+        // If this list doesn't even exist, then return false.
+        if (requests == null)
+            return false;
+
+        // If there is at least one request in this list, then return true.
+        return requests.size() > 0;
     }
 
     /**
@@ -88,7 +83,9 @@ public class RequestQueue<T extends EventRequestBase> {
             return null;
 
         String eventName = request.getEventName();  // Otherwise, we first grab the name of the associated event...
-        requestMap.remove(eventName);               // ...and then we remove the request from the map.
+
+        List<T> requests = requestMap.get(eventName);
+        requests.remove(request);                   // ...and then we remove the request from the map.
 
         assertSizeConsistency();
 

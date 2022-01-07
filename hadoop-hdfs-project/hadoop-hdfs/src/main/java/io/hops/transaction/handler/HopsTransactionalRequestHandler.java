@@ -15,6 +15,7 @@
  */
 package io.hops.transaction.handler;
 
+import com.esotericsoftware.minlog.Log;
 import io.hops.events.*;
 import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
@@ -39,6 +40,8 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.zookeeper.GuestWatcherOption;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
+import org.apache.hadoop.util.BackOff;
+import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
@@ -921,10 +924,34 @@ public abstract class HopsTransactionalRequestHandler
     for (int deploymentNumber : involvedDeployments) {
       String targetTableName = getTargetTableName(deploymentNumber);
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
-      EventRequestSignaler eventRequestSignaler = eventManager.requestCreateEvent(eventName, targetTableName,
-              eventManager.getAckTableEventColumns(), false, true,
-              this, eventManager.getAckEventTypeIDs());
-      eventRequestSignalers.add(eventRequestSignaler);
+
+      ExponentialBackOff backOff = new ExponentialBackOff.Builder()
+              .setInitialIntervalMillis(100)
+              .setMaximumIntervalMillis(5000)
+              .setMaximumRetries(99)
+              .build();
+
+      boolean success = false;
+      long sleepInterval;
+      while ((sleepInterval = backOff.getBackOffInMillis()) != 0) {
+        try {
+          EventRequestSignaler eventRequestSignaler = eventManager.requestCreateEvent(eventName, targetTableName,
+                  eventManager.getAckTableEventColumns(), false, true,this,
+                  eventManager.getAckEventTypeIDs());
+          eventRequestSignalers.add(eventRequestSignaler);
+          success = true;
+          break;
+        } catch (StorageException ex) {
+          Log.error("Encountered StorageException while requesting event/subscription creation for event '" +
+                  eventName + "': " + ex);
+          Thread.sleep(sleepInterval);
+        }
+      }
+
+      if (!success) {
+        throw new IllegalStateException("Failed to create event/subscription for event '" + eventName + "' after " +
+                backOff.getNumberOfRetries() + " attempts.");
+      }
     }
 
     requestHandlerLOG.debug("Acquiring " + eventRequestSignalers.size() + " semaphore(s) now.");

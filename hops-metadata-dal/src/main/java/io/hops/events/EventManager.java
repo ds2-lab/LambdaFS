@@ -58,15 +58,6 @@ public interface EventManager extends Runnable {
                                         HopsEventListener eventListener, Integer[] tableEvents)
             throws StorageException;
 
-//    /**
-//     * Delete the event with the given name.
-//     * @param eventName Unique identifier of the event to be deleted.
-//     * @return True if an event with the given name was deleted, otherwise false.
-//     *
-//     * @throws StorageException if something goes wrong when unregistering the event.
-//     */
-//    public EventRequestSignaler requestUnregisterEvent(String eventName) throws StorageException;
-
     /**
      * The calling thread waits on an internal semaphore until the Event Manager has finished its default setup.
      * This is used to ensure the calling thread does not add an event listener for events created during default
@@ -79,50 +70,6 @@ public interface EventManager extends Runnable {
      */
     @Override
     public void run();
-
-//    /**
-//     * Issue a request to create an event subscription for the specified event. The recipient of this
-//     * request is simply the thread running this EventManager instance.
-//     *
-//     * Creating an EventOperation amounts to creating a subscription for a particular event. That subscription is tied
-//     * to the session that created it. This means that the {@link EventManager} needs to create the subscriptions
-//     * itself using its own, private HopsSession instance.
-//     *
-//     * As a result, this method does not directly create an event operation. Instead, it enqueues a message for the
-//     * thread running the event manager. This message will direct the thread to create a subscription using its own
-//     * private session object.
-//     *
-//     * IMPORTANT: If the subscription should have an event listener associated with it, then the subscriptions
-//     *            should be created with the 'requestCreateSubscriptionWithListener()' function.
-//     *
-//     *            ALSO, this function should only be called if the associated event already exists OR if a request
-//     *            has been made to create the associated event. Because you can request a subscription on an event
-//     *            that itself has been requested (but not yet created), this function will not throw an error if you
-//     *            request an event that neither exists nor has been submitted for creation.
-//     *
-//     * @param eventName The name of the Event for which we're creating an EventOperation.
-//     *
-//     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
-//     * this to block until we create the subscription, if desired.
-//     */
-//    public EventRequestSignaler requestCreateSubscription(String eventName) throws StorageException;
-
-//    /**
-//     * Issue a request to create an event subscription for the specified event. In addition, an event listener
-//     * is registered with the given event.
-//     * @param eventName The name of the Event for which we're creating an EventOperation.
-//     * @param eventListener the event listener to be registered.
-//     *
-//     * @return A semaphore with 0 permits. We'll add a permit to it when we create the subscription. Clients can use
-//     * this to block until we create the subscription, if desired.
-//     */
-//    public EventRequestSignaler requestCreateSubscriptionWithListener(String eventName, HopsEventListener eventListener)
-//            throws StorageException;
-
-//    /**
-//     * Perform the default setup/initialization of the event and event operation.
-//     */
-//    public void defaultSetup() throws StorageException;
 
     /**
      * Set the deployment number instance variable for this class.
@@ -140,6 +87,9 @@ public interface EventManager extends Runnable {
     /**
      * Unregister and drop the EventOperation associated with the given event from NDB.
      *
+     * The EventManager will immediately remove the listener object, but will retain the subscription for a short
+     * period of time in case additional operations requiring the subscription are received.
+     *
      * IMPORTANT: This should be called AFTER removing the event listener.
      *
      * The full order would be:
@@ -155,45 +105,4 @@ public interface EventManager extends Runnable {
      * @param eventListener the event listener to be registered.
      */
     public void requestDropSubscription(String eventName, HopsEventListener eventListener) throws StorageException;
-
-//    /**
-//     * This should be called once it is known that there are events to be processed.
-//     * @return the number of events that were processed.
-//     */
-//    public int processEvents() throws StorageException;
-
-//    /**
-//     * Register an event listener with the event manager.
-//     *
-//     * IMPORTANT: This should be called AFTER registering/creating the event operation. So 'createEventOperation()'
-//     * should be called first.
-//     *
-//     * The full order would be:
-//     *      createEventOperation()
-//     *      addListener()
-//     *      removeListener()
-//     *      unregisterEventOperation()
-//     *
-//     * @param listener the event listener to be registered.
-//     * @param eventName the name of the event for which we're registering an event listener.
-//     */
-//    public void addListener(HopsEventListener listener, String eventName);
-
-//    /**
-//     * Unregister an event listener with the event manager.
-//     *
-//     * IMPORTANT: This should be called BEFORE calling `unregisterEventOperation()`.
-//     *
-//     * The full order would be:
-//     *      createEventOperation()
-//     *      addListener()
-//     *      removeListener()
-//     *      unregisterEventOperation()
-//     *
-//     * @param listener the event listener to be unregistered.
-//     * @param eventName the name of the event for which we're unregistering an event listener.
-//     *
-//     * @throws IllegalArgumentException If we do not have the provided listener registered with the specified event.
-//     */
-//    public void removeListener(HopsEventListener listener, String eventName);
 }
