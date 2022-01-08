@@ -845,7 +845,6 @@ public class HopsEventManager implements EventManager {
      * Check if there are any subscriptions that are ready to be actively, fully dropped.
      */
     private void processScheduledSubscriptionRemovals() {
-        LOG.debug("Processing scheduled event subscription removals now.");
         int numProcessed = 0;
 
         // We drop ALL that are ready, regardless of how many there are.
