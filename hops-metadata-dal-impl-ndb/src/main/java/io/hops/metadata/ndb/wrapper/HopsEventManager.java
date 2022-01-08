@@ -272,6 +272,8 @@ public class HopsEventManager implements EventManager {
         return ACK_EVENT_COLUMNS;
     }
 
+    // TODO: Could modify this to atomically check if the subscription/event already exists and, if so, then
+    //       atomically add the listener directly. This would avoid needing to wait for the event manager to do it.
     @Override
     public EventRequestSignaler requestCreateEvent(String eventName, String tableName, String[] eventColumns,
                                         boolean recreateIfExists, boolean alsoCreateSubscription,
