@@ -88,7 +88,8 @@ public class EventOperationLifecycleManager {
      * @param eventOperation The underlying ClusterJ event operation that is being dropped.
      * @param eventName The name of the event for which the subscription is being dropped.
      */
-    public synchronized void deleteInstance(EventOperation eventOperation, String eventName) {
+    public synchronized void deleteEventOperation(EventOperation eventOperation, String eventName) {
+        LOG.debug("Deleting event operation for event '" + eventName + "'");
         eventOperationHashMap1.remove(eventOperation);
         eventOperationHashMap2.remove(eventName);
     }

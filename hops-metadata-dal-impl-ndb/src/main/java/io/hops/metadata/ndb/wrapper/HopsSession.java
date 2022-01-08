@@ -91,7 +91,7 @@ public class HopsSession {
     HopsEventOperationImpl eventOperationImpl = (HopsEventOperationImpl)eventOp;
     EventOperation clusterJEventOperation = eventOperationImpl.getClusterJEventOperation();
 
-    EventOperationLifecycleManager.getInstance().deleteInstance(clusterJEventOperation, eventName);
+    EventOperationLifecycleManager.getInstance().deleteEventOperation(clusterJEventOperation, eventName);
 
     return session.dropEventOperation(clusterJEventOperation);
   }

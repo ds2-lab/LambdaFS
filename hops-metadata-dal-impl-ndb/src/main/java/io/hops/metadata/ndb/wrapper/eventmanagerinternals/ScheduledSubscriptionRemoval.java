@@ -41,6 +41,13 @@ public class ScheduledSubscriptionRemoval implements Comparable<ScheduledSubscri
     }
 
     /**
+     * Return the time, in milliseconds, until this subscription will be ready for removal.
+     *
+     * If the subscription is already removable (i.e., the interval has already elapsed), then this returns 0.
+     */
+    public long timeUntilRemoval() { return Math.max(this.dropAfterTime - System.currentTimeMillis(), 0); }
+
+    /**
      * Returns true if the required time has elapsed and the subscription can be dropped. Otherwise, returns false.
      */
     public boolean shouldDrop() {

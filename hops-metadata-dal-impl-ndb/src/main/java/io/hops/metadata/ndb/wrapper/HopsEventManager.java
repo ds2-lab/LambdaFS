@@ -273,7 +273,7 @@ public class HopsEventManager implements EventManager {
     }
 
     @Override
-    public synchronized EventRequestSignaler requestCreateEvent(String eventName, String tableName, String[] eventColumns,
+    public EventRequestSignaler requestCreateEvent(String eventName, String tableName, String[] eventColumns,
                                         boolean recreateIfExists, boolean alsoCreateSubscription,
                                         HopsEventListener eventListener, Integer[] tableEvents) throws StorageException {
         // Make sure that the parameters passed are valid.
@@ -393,6 +393,10 @@ public class HopsEventManager implements EventManager {
     /**
      * Unregister an event listener.
      *
+     * TODO: Consider calling this in {@link HopsEventManager#requestDropSubscription(String, HopsEventListener)},
+     *       as it might be more efficient to remove the listener immediately. Doing so would require additional
+     *       concurrency control, however.
+     *
      * @param listener the event listener to be unregistered.
      * @param eventName the name of the event for which we're unregistering an event listener.
      *
@@ -404,11 +408,9 @@ public class HopsEventManager implements EventManager {
             eventListeners = this.listenersMap.get(eventName);
 
             if (!eventListeners.contains(listener))
-                throw new IllegalArgumentException("The provided event listener is not registered with " +
-                        eventName + "!");
+                throw new IllegalArgumentException("The provided event listener is not registered with " + eventName + "!");
 
             eventListeners.remove(listener);
-            // updateCount(eventName, false);
         } else {
             throw new IllegalArgumentException("We have no event listeners registered for event " + eventName + "!");
         }
@@ -538,12 +540,20 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
-     * Actually unregister an event operation. This should only be used internally, for the same reasons that the
-     * createEventOperation function is only used internally.
+     * Schedule a subscription to be formally dropped. This can only occur if there are no active event listeners
+     * on the subscription. If there is at least one active listener, then we will not drop the subscription.
+     *
+     * This function WILL remove the listener of the caller. If there are no more listeners, then this function will
+     * schedule the subscription to be dropped after a fixed period of time. The subscription will eventually be dropped
+     * if there are no new, active listeners added or present when the fixed period of time elapses.
+     *
+     * This should only be used internally, for the same reasons that the createEventOperation function is only used
+     * internally.
+     *
      * @param eventName Name associated with the event operation that is being unregistered.
      * @param eventListener EventListener associated with the event we're removing.
      */
-    private void unregisterEventOperation(String eventName, HopsEventListener eventListener) throws StorageException {
+    private void scheduleSubscriptionRemoval(String eventName, HopsEventListener eventListener) throws StorageException {
         LOG.debug("Unregistering EventOperation for event " + eventName + " with NDB now...");
 
         // If we aren't tracking an event with the given name, then the argument is invalid.
@@ -555,14 +565,11 @@ public class HopsEventManager implements EventManager {
         if (eventListener != null)
             removeListener(eventName, eventListener);
 
-        HopsEventOperation hopsEventOperation = eventOperationMap.get(eventName);
-
         List<HopsEventListener> listeners = listenersMap.get(eventName);
         int currentNumberOfListeners = (listeners == null ? 0 : listeners.size());
         if (currentNumberOfListeners > 0) {
             LOG.debug("There are still " + currentNumberOfListeners + " event listener(s) for event " +
                     eventName + ". Will not drop the subscription.");
-            return;
         } else {
             LOG.debug("There are no more event listeners associated with the event. " +
                     "Scheduling the subscription for removal now.");
@@ -577,7 +584,9 @@ public class HopsEventManager implements EventManager {
     }
 
     /**
-     * Register an event with intermediate storage.
+     * Register an event with intermediate storage. This will not do anything if we already have a reference
+     * to an event with the same name AND `recreateIfExists` is false.
+     *
      * @param eventName The name of the event.
      * @param tableName The table on which the event will be registered.
      * @param eventColumns The columns of the table that will be involved with the event.
@@ -590,8 +599,14 @@ public class HopsEventManager implements EventManager {
         LOG.debug("Registering event " + eventName + " on table " + tableName + " with NDB now...");
 
         // If we're already tracking this event, and we aren't supposed to recreate it, then just return.
-        if (eventMap.containsKey(eventName) && !recreateIfExists)
-            LOG.debug("Event " + eventName + " is already being tracked by the EventManager.");
+        if (eventMap.containsKey(eventName)) {
+            if (!recreateIfExists) {
+                LOG.debug("Event '" + eventName + "' is already being tracked by the EventManager.");
+                return;
+            } else {
+                LOG.debug("Event '" + eventName + "' already exists, but we've been instructed to recreate it.");
+            }
+        }
 
         // Try to create the event. If something goes wrong, we'll throw an exception.
         Event event;
@@ -712,6 +727,8 @@ public class HopsEventManager implements EventManager {
         // If we have a listener to add, we add it before executing.
         if (eventListener != null) {
             addListener(eventName, eventListener);
+        } else {
+            LOG.warn("Creating subscription on event '" + eventName + "', but event listener is null...");
         }
 
         // If the event is in the CREATED state, then it was freshly created just now (we didn't already have an
@@ -757,13 +774,40 @@ public class HopsEventManager implements EventManager {
         // Make sure we're in the executing state before we call .release() on the EventRequestSignaler.
         HopsEventState currentState = eventOperation.getState();
         if (currentState != HopsEventState.EXECUTING) {
-            throw new IllegalStateException("Event subscription for event " + eventName + " is in unexpected state: " +
-                    currentState);
+            throw new IllegalStateException("Event subscription for event " + eventName +
+                    " is in unexpected state: " + currentState);
         }
 
         // We call the final release here as we need to call .execute() on the event operation first.
         // Release two, covering both cases (listener required or no listener required).
         signaler.subscriptionCreated();
+
+        // Attempt to cancel a scheduled subscription removal for this event, seeing as we just created a new
+        // subscription. It is the case that, if we tried to cancel the subscription while the newest event listener
+        // was active, then we'd see the event listener and abort the cancellation; however, if this newly-added
+        // listener is removed before the scheduled subscription is supposed to be removed, then we would not see
+        // the listener, and we would remove the subscription. This should not occur, as the fact that we've used the
+        // subscription again should refresh the removal, and the wait interval should begin when the last listener
+        // is removed.
+        cancelScheduledSubscriptionRemoval(eventName);
+    }
+
+    /**
+     * Attempt to cancel the scheduled removal of a particular event subscription. If there is no such scheduled
+     * removal for the indicated event, then this function does nothing.
+     *
+     * @param eventName The name of the event for which a subscription removal may be scheduled.
+     */
+    private void cancelScheduledSubscriptionRemoval(String eventName) {
+        if (scheduledSubscriptionRemovalMap.containsKey(eventName)) {
+            ScheduledSubscriptionRemoval scheduledSubscriptionRemoval = scheduledSubscriptionRemovalMap.get(eventName);
+            scheduledSubscriptionRemovals.remove(scheduledSubscriptionRemoval);
+            scheduledSubscriptionRemovalMap.remove(eventName);
+
+            LOG.debug("Cancelled scheduled subscription removal for event '" + eventName +
+                    "'. Subscription would have been dropped in approximately " +
+                    scheduledSubscriptionRemoval.timeUntilRemoval() + " ms.");
+        }
     }
 
     /**
@@ -807,10 +851,12 @@ public class HopsEventManager implements EventManager {
             // Don't remove it yet.
             ScheduledSubscriptionRemoval tmp = scheduledSubscriptionRemovals.peek();
 
+            // Check if it is time to drop this subscription yet.
             if (tmp.shouldDrop()) {
                 String eventName = tmp.getEventName();
                 List<HopsEventListener> listeners = listenersMap.get(eventName);
 
+                // Make sure nobody is using this subscription now, and nobody has issued a request for this subscription.
                 if (listeners != null && listeners.size() > 0) {
                     // In this scenario, there are now some listeners for the event we were going to drop.
                     // So, we shouldn't drop it at this point. We should just eliminate the scheduling removal.
@@ -878,7 +924,7 @@ public class HopsEventManager implements EventManager {
             }
 
             try {
-                unregisterEventOperation(eventName, eventListener);
+                scheduleSubscriptionRemoval(eventName, eventListener);
             } catch (StorageException e) {
                 LOG.error("Encountered exception while trying to create event subscription for event " +
                         eventName + ":", e);
