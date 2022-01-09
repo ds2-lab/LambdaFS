@@ -79,7 +79,7 @@ public class EventRequestSignaler {
         lock.lock();
         try {
             while (!criteriaSatisfied())
-                condition.wait();
+                condition.await();
         } finally {
             lock.unlock();
         }
