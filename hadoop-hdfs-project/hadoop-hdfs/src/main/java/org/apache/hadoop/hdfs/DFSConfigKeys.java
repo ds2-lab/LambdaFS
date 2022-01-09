@@ -145,6 +145,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT = 30000; // 30 seconds.
 
   /**
+   * The number of handler threads that retrieve tasks from the work queue and execute them.
+   */
+  public static final String SERVERLESS_NUM_HANDLER_THREADS = "serverless.task.numhandlers";
+  public static final int SERVERLESS_NUM_HANDLER_THREADS_DEFAULT = 3;
+
+  /**
    * Maximum of the previous results cache.
    */
   public static final String SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE = "serverless.task.maxcachesize";
