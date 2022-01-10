@@ -1,10 +1,8 @@
-package org.apache.hadoop.hdfs.serverless.operation;
+package org.apache.hadoop.hdfs.serverless.operation.execution;
 
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
-import org.apache.hadoop.hdfs.serverless.tcpserver.RedirectedRequestFuture;
 
 import java.io.IOException;
 import java.io.Serializable;

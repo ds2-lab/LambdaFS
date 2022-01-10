@@ -1,15 +1,12 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
-import com.esotericsoftware.kryo.util.Null;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
-import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
-import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
-import org.apache.hadoop.hdfs.serverless.operation.NullResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
+import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 
-import java.io.Serializable;
 import java.util.concurrent.*;
 
 /**

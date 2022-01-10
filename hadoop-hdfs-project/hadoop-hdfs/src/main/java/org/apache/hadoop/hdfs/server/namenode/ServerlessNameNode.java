@@ -72,15 +72,15 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
-import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
-import org.apache.hadoop.hdfs.serverless.operation.FileSystemTask;
-import org.apache.hadoop.hdfs.serverless.operation.NameNodeWorkerThread;
+import org.apache.hadoop.hdfs.serverless.operation.execution.ExecutionManager;
+import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
+import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeWorkerThread;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
@@ -116,7 +116,6 @@ import java.security.PrivilegedExceptionAction;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -213,9 +212,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private EventManager ndbEventManager;
 
   /**
-   * Worker thread that actually performs the various file system operations.
+   * Manages the execution of file system operations.
    */
-  private NameNodeWorkerThread workerThread;
+  private ExecutionManager executionManager;
 
   /**
    * Thread in which the EventManager runs.
@@ -227,13 +226,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * The units of this variable are milliseconds.
    */
   private long heartBeatInterval;
-
-  /**
-   * Worker queue for the worker thread. This is accessed both by this class and by NameNodeTCPClient objects.
-   *
-   * Note that BlockingQueue is thread safe.
-   */
-  private BlockingQueue<FileSystemTask<Serializable>> nameNodeWorkQueue;
 
   /**
    * Added by Ben; mostly used for debugging (i.e., making sure the NameNode code that
@@ -471,7 +463,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return true if the request has been received and processed already, otherwise false.
    */
   public boolean checkIfRequestProcessedAlready(String requestId) {
-    return workerThread.isTaskDuplicate(requestId);
+    return executionManager.isTaskDuplicate(requestId);
   }
 
   public int getNumDeployments() {
@@ -510,15 +502,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *  - Processing intermediate block reports from DataNodes.
    */
   public void getAndProcessUpdatesFromIntermediateStorage() throws IOException, ClassNotFoundException {
-    Instant processUpdatesStart = Instant.now();
+    // Instant processUpdatesStart = Instant.now();
 
-    long msSinceLastUpdate = Time.getUtcTime() - lastIntermediateStorageUpdate;
-    if (msSinceLastUpdate < heartBeatInterval) {
-      LOG.debug("We updated intermediate storage " + msSinceLastUpdate + " ms ago. Skipping.");
-      return;
-    }
-
-//    LOG.debug("========== Processing Updates from Intermediate Storage ==========");
+//    long msSinceLastUpdate = Time.getUtcTime() - lastIntermediateStorageUpdate;
+//    if (msSinceLastUpdate < heartBeatInterval) {
+//      LOG.debug("We updated intermediate storage " + msSinceLastUpdate + " ms ago. Skipping.");
+//      return;
+//    }
 
     registerDataNodesFromIntermediateStorage();
 
@@ -532,12 +522,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     lastIntermediateStorageUpdate = Time.getUtcTime();
 
-    Instant processUpdatesEnd = Instant.now();
-    Duration updateDuration = Duration.between(processUpdatesStart, processUpdatesEnd);
-
-//    LOG.debug("Successfully processed updates from intermediate storage. Time elapsed: " +
-//            DurationFormatUtils.formatDurationHMS(updateDuration.toMillis()));
-//    LOG.debug("==================================================================");
+    // Instant processUpdatesEnd = Instant.now();
+    // Duration updateDuration = Duration.between(processUpdatesStart, processUpdatesEnd);
   }
 
   /**
@@ -645,10 +631,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    * Enqueue the given FileSystemTask in the work queue.
+   *
    * @param task The task to be enqueued.
    */
   public void enqueueFileSystemTask(FileSystemTask<Serializable> task) throws InterruptedException {
-    this.nameNodeWorkQueue.put(task);
+    this.executionManager.putWork(task);
   }
 
   public int getTxAckTimeout() {
@@ -2228,8 +2215,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     Instant nameNodeInitStart = Instant.now();
 
-    nameNodeWorkQueue = new LinkedBlockingQueue<>();
-
     // The existing code uses longs for NameNode IDs, so I'm just using this to generate a random ID.
     // This should be sufficiently random for our purposes. I don't think we'll encounter collisions.
     // Note, Long.MAX_VALUE in binary is 0111111111111111111111111111111111111111111111111111111111111111
@@ -2239,7 +2224,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.debug("Assigned new NN instance ID " + nameNodeID);
 
     // Create the thread and tell it to run!
-    workerThread = new NameNodeWorkerThread(conf, nameNodeWorkQueue, this, this.nameNodeID);
+    executionManager = new ExecutionManager(conf, this);
 
     LOG.debug("Started the NameNode worker thread.");
 
@@ -2412,16 +2397,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       // -1 to ensure the entries in the current epoch are delete by the cleaner
       HdfsVariables.setRetryCacheCleanerEpoch(System.currentTimeMillis()/1000 - 1);
     }
-  }
-
-  /**
-   * Start the NameNodeWorkerThread if it has not already been started.
-   */
-  public synchronized void tryStartWorkerThread() {
-    if (workerThread.isAlive())
-      return;
-
-    workerThread.start();
   }
 
   /**
@@ -3351,14 +3326,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.debug(msg);
       throw new BRLoadBalancingNonLeaderException(msg);
     }
-  }
-
-  /**
-   * Return the ID of the request currently being processed. This will be null if there is no request
-   * currently being processed.
-   */
-  public String getRequestCurrentlyProcessing() {
-    return workerThread.getRequestCurrentlyProcessing();
   }
 
   /**

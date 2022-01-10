@@ -1,13 +1,9 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.esotericsoftware.kryo.Kryo;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hdfs.serverless.operation.DuplicateRequest;
-import org.apache.hadoop.hdfs.serverless.operation.NullResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
+import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 
 /**
  * Utility functions exposed by both TCP clients and servers.

@@ -7,9 +7,9 @@ import io.hops.metrics.TransactionEvent;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.operation.DuplicateRequest;
-import org.apache.hadoop.hdfs.serverless.operation.FileSystemTaskUtils;
-import org.apache.hadoop.hdfs.serverless.operation.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
+import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTaskUtils;
+import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
 import org.apache.hadoop.util.Time;
@@ -24,12 +24,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.FORCE_REDO;
 
 /**
