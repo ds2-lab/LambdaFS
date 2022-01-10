@@ -75,14 +75,14 @@ public class NameNodeWorkerThread extends Thread {
 
     @Override
     public void run() {
-        LOG.info("Serverless NameNode Worker Thread has started running.");
+        LOG.info("Serverless NameNode Worker Thread #" + workerThreadId + " has started running.");
 
         FileSystemTask<Serializable> task = null;
         while(true) {
             try {
                 task = executionManager.getWork(pollTimeMilliseconds, TimeUnit.MILLISECONDS);
 
-                LOG.debug("Worker thread: dequeued task " + task.getTaskId() + "(operation = "
+                LOG.debug("Worker thread " + workerThreadId + ": dequeued task " + task.getTaskId() + "(operation = "
                                 + task.getOperationName() + ").");
 
                 // This will ultimately be returned to the main thread to be merged with their NameNodeResult instance.
@@ -124,11 +124,11 @@ public class NameNodeWorkerThread extends Thread {
                     workerResult.commitTransactionEvents(serverlessNameNodeInstance.getTransactionEvents());
                     success = true;
                 } catch (Exception ex) {
-                    LOG.error("Worker thread encountered exception while executing file system operation " +
+                    LOG.error("Worker thread " + workerThreadId + " encountered exception while executing file system operation " +
                             task.getOperationName() + " for task " + task.getTaskId() + ".", ex);
                     workerResult.addException(ex);
                 } catch (Throwable t) {
-                    LOG.error("Worker thread encountered throwable while executing file system operation " +
+                    LOG.error("Worker thread " + workerThreadId + " encountered throwable while executing file system operation " +
                             task.getOperationName() + " for task " + task.getTaskId() + ".", t);
                     workerResult.addThrowable(t);
                 }
@@ -166,7 +166,7 @@ public class NameNodeWorkerThread extends Thread {
                 executionManager.cachePreviousResult(task.getTaskId(), previousResult);
             }
             catch (InterruptedException | IOException ex) {
-                LOG.error("Serverless NameNode Worker Thread was interrupted while running:", ex);
+                LOG.error("Serverless NameNode Worker Thread " + workerThreadId + " was interrupted while running:", ex);
             }
         }
     }

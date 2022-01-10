@@ -144,8 +144,8 @@ public abstract class HopsTransactionalRequestHandler
 
       tempEvents.add(this.transactionEvent);
     } else {
-      String requestId = instance.getRequestCurrentlyProcessing();
-      this.transactionEvent.setRequestId(requestId);
+      // String requestId = instance.getRequestCurrentlyProcessing();
+      this.transactionEvent.setRequestId("UNKNOWN");
       // requestHandlerLOG.debug("Committing transaction event for transaction " + operationId + " now. Associated request ID: " + requestId);
       // This adds to a set, so multiple adds won't mess anything up.
       instance.addTransactionEvent(this.transactionEvent);
@@ -351,7 +351,8 @@ public abstract class HopsTransactionalRequestHandler
       throw new IllegalStateException(
               "Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
 
-    transactionEvent.setRequestId(serverlessNameNodeInstance.getRequestCurrentlyProcessing());
+    // transactionEvent.setRequestId(serverlessNameNodeInstance.getRequestCurrentlyProcessing());
+    transactionEvent.setRequestId("UNKNOWN");
 
     // NOTE: The local deployment will NOT always be involved now that the subtree protocol uses this same code.
     //       Before the subtree protocol used this code, the only NNs that could modify an INode were those from
