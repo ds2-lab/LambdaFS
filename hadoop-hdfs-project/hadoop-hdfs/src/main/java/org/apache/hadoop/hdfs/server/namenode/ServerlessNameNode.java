@@ -2399,6 +2399,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
   }
 
+  public long getHeartBeatInterval() {
+    return heartBeatInterval;
+  }
+
   /**
    * Create the RPC server implementation. Used as an extension point for the
    * BackupNode.

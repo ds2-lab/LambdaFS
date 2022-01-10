@@ -153,7 +153,14 @@ public class ExecutionManager {
 
         Thread storageReportThread = new Thread(() -> {
            tryUpdateFromIntermediateStorage();
+
+            try {
+                Thread.sleep(serverlessNameNode.getHeartBeatInterval());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         });
+        storageReportThread.start();
     }
 
     /**
