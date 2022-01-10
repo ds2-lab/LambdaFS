@@ -144,6 +144,7 @@ public class ExecutionManager {
         this.nameNodeId = serverlessNameNode.getId();
 
         this.workerThreads = new ArrayList<>();
+        LOG.debug("Creating " + numWorkerThreads + " worker thread(s).");
         for (int i = 0; i < numWorkerThreads; i++) {
             NameNodeWorkerThread nameNodeWorkerThread = new NameNodeWorkerThread(serverlessNameNodeInstance,
                     this, i);
