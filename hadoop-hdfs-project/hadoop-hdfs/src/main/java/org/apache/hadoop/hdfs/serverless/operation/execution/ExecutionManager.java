@@ -228,7 +228,7 @@ public class ExecutionManager {
      * Attempt to retrieve a FileSystemTask from the Work Queue without blocking. If there is no work available,
      * then this function returns null.
      */
-    public FileSystemTask<Serializable> getWorkNoWait() {
+    public FileSystemTask<Serializable> getWork() {
         FileSystemTask<Serializable> task = this.workQueue.poll();
 
         if (task != null)

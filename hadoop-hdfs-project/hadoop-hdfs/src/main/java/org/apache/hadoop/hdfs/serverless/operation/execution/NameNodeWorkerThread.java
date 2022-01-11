@@ -80,7 +80,11 @@ public class NameNodeWorkerThread extends Thread {
         FileSystemTask<Serializable> task = null;
         while(true) {
             try {
-                task = executionManager.getWork(pollTimeMilliseconds, TimeUnit.MILLISECONDS);
+                task = executionManager.getWork();
+
+                // If nothing was found, then just return.
+                if (task == null)
+                    continue;
 
                 LOG.debug("Worker thread " + workerThreadId + ": dequeued task " + task.getTaskId() + "(operation = "
                                 + task.getOperationName() + ").");
