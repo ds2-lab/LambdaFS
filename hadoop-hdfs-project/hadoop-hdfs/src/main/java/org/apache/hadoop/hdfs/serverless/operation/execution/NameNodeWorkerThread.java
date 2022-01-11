@@ -167,6 +167,7 @@ public class NameNodeWorkerThread extends Thread {
             }
             catch (Exception ex) {
                 LOG.error("Serverless NameNode Worker Thread " + workerThreadId + " encountered exception:", ex);
+            }
         }
     }
 }
