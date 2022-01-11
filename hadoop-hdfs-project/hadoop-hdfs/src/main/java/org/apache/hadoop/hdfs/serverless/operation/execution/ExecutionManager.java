@@ -228,8 +228,8 @@ public class ExecutionManager {
      * Attempt to retrieve a FileSystemTask from the Work Queue without blocking. If there is no work available,
      * then this function returns null.
      */
-    public FileSystemTask<Serializable> getWork() {
-        FileSystemTask<Serializable> task = this.workQueue.poll();
+    public FileSystemTask<Serializable> getWork() throws InterruptedException {
+        FileSystemTask<Serializable> task = this.workQueue.take();
 
         if (task != null)
             currentlyExecutingTasks.put(task.getTaskId(), task);
