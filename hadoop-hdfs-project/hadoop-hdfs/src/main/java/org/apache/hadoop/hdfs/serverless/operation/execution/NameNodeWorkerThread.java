@@ -165,8 +165,8 @@ public class NameNodeWorkerThread extends Thread {
                 PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
                 executionManager.cachePreviousResult(task.getTaskId(), previousResult);
             }
-            catch (IOException ex) {
-                LOG.error("Serverless NameNode Worker Thread " + workerThreadId + " was interrupted while running:", ex);
+            catch (Exception ex) {
+                LOG.error("Serverless NameNode Worker Thread " + workerThreadId + " encountered exception:", ex);
             }
         }
     }
