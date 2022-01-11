@@ -82,10 +82,6 @@ public class NameNodeWorkerThread extends Thread {
             try {
                 task = executionManager.getWork();
 
-                // If nothing was found, then just return.
-                if (task == null)
-                    continue;
-
                 LOG.debug("Worker thread " + workerThreadId + ": dequeued task " + task.getTaskId() + "(operation = "
                                 + task.getOperationName() + ").");
 
@@ -169,7 +165,7 @@ public class NameNodeWorkerThread extends Thread {
                 PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
                 executionManager.cachePreviousResult(task.getTaskId(), previousResult);
             }
-            catch (InterruptedException | IOException ex) {
+            catch (IOException ex) {
                 LOG.error("Serverless NameNode Worker Thread " + workerThreadId + " was interrupted while running:", ex);
             }
         }
