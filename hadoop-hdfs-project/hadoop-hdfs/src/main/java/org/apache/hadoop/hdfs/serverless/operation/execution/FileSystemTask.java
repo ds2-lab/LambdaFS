@@ -109,6 +109,12 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
     }
 
     @Override
+    public String toString() {
+        return "FileSystemTask(taskId=" + taskId + ", op=" + operationName + ",requestMethod=" + requestMethod +
+                ",createdAt=" + createdAt + ", state=" + state.name() + ", forceRedo=" + forceRedo + ")";
+    }
+
+    @Override
     public synchronized boolean cancel(boolean mayInterruptIfRunning) {
         return false;
     }
