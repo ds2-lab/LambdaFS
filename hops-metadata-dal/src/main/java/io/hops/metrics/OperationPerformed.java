@@ -392,4 +392,19 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 INVOCATION_TIME, PREPROCESSING_TIME, WAITING_IN_QUEUE,
                 EXECUTION_TIME, POSTPROCESSING_TIME, RETURNING_TO_USER);
     }
+
+    /**
+     * Print a HashMap of either average or sum values for the following metrics:
+     *      INVOCATION TIME,
+     *      PREPROCESSING TIME,
+     *      WAITING IN QUEUE,
+     *      EXECUTION TIME,
+     *      POSTPROCESSING TIME,
+     *      RETURNING TO USER.
+     */
+    public static String getMetricsString(HashMap<String, Long> metris) {
+         return String.format("%-20s,%-20s,%-20s,%-20s,%-20s,%-20s,",
+                metris.get(INVOCATION_TIME), metris.get(PREPROCESSING_TIME), metris.get(WAITING_IN_QUEUE),
+                 metris.get(EXECUTION_TIME), metris.get(POSTPROCESSING_TIME), metris.get(RETURNING_TO_USER));
+    }
 }
