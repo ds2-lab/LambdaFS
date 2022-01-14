@@ -128,10 +128,19 @@ public class TransactionEvent implements Serializable {
     public static String WAIT_FOR_ACKS =        "WAIT_FOR_ACKS";
     public static String CLEAN_UP =             "CLEAN_UP";
 
+    /**
+     * Get the average duration of each phase of the consistency protocol.
+     */
     public static HashMap<String, Double> getAverages(Collection<TransactionEvent> collection) {
         HashMap<String, Long> sums = getSums(collection);
         HashMap<String, Double> averages = new HashMap<>();
-        double n = collection.size();
+        double n = 0.0;
+
+        // We have to calculate `n` by counting the total number of attempts of each transaction,
+        // since each individual attempt contributes to the sum.
+        for (TransactionEvent ev : collection) {
+            n += ev.getAttempts().size();
+        }
 
         for (Map.Entry<String, Long> entry : sums.entrySet()) {
             averages.put(entry.getKey(), entry.getValue() / n);
