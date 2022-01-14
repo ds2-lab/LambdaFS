@@ -402,9 +402,9 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      *      POSTPROCESSING TIME,
      *      RETURNING TO USER.
      */
-    public static String getMetricsString(HashMap<String, Long> metris) {
+    public static String getMetricsString(HashMap<String, Long> metrics) {
          return String.format("%-20s,%-20s,%-20s,%-20s,%-20s,%-20s,",
-                metris.get(INVOCATION_TIME), metris.get(PREPROCESSING_TIME), metris.get(WAITING_IN_QUEUE),
-                 metris.get(EXECUTION_TIME), metris.get(POSTPROCESSING_TIME), metris.get(RETURNING_TO_USER));
+                metrics.get(INVOCATION_TIME), metrics.get(PREPROCESSING_TIME), metrics.get(WAITING_IN_QUEUE),
+                 metrics.get(EXECUTION_TIME), metrics.get(POSTPROCESSING_TIME), metrics.get(RETURNING_TO_USER));
     }
 }
