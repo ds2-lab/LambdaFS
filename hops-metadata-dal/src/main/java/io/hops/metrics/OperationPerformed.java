@@ -388,7 +388,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     }
 
     public static String getMetricsHeader() {
-        return String.format("%-20s,%-20s,%-20s,%-20s,%-20s,%-20s,",
+        return String.format("%-20s %-20s %-20s %-20s %-20s %-20s",
                 INVOCATION_TIME, PREPROCESSING_TIME, WAITING_IN_QUEUE,
                 EXECUTION_TIME, POSTPROCESSING_TIME, RETURNING_TO_USER);
     }
@@ -403,7 +403,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      *      RETURNING TO USER.
      */
     public static String getMetricsString(HashMap<String, ?> metrics) {
-         return String.format("%-20s,%-20s,%-20s,%-20s,%-20s,%-20s,",
+         return String.format("%-20s %-20s %-20s %-20s %-20s %-20s",
                 metrics.get(INVOCATION_TIME), metrics.get(PREPROCESSING_TIME), metrics.get(WAITING_IN_QUEUE),
                  metrics.get(EXECUTION_TIME), metrics.get(POSTPROCESSING_TIME), metrics.get(RETURNING_TO_USER));
     }
