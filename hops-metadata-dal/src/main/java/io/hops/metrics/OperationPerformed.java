@@ -4,7 +4,10 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 // "Op Name", "Start Time", "End Time", "Duration (ms)", "Deployment", "HTTP", "TCP"
 public class OperationPerformed implements Serializable, Comparable<OperationPerformed> {
@@ -27,6 +30,13 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
             return (int)(o1.serverlessFnEndTime - o2.serverlessFnEndTime);
         }
     };
+
+    public static final String INVOCATION_TIME =        "INVOCATION TIME";
+    public static final String PREPROCESSING_TIME =     "PREPROCESSING TIME";
+    public static final String WAITING_IN_QUEUE =       "WAITING IN QUEUE";
+    public static final String EXECUTION_TIME =         "EXECUTION TIME";
+    public static final String POSTPROCESSING_TIME =    "POSTPROCESSING TIME";
+    public static final String RETURNING_TO_USER =      "RETURNING TO USER";
 
     /**
      * Number of INode cache hits that the NameNode encountered while processing the associated request.
@@ -311,5 +321,75 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     public void setResultFinishedProcessingTime(long resultFinishedProcessingTime) {
         this.resultFinishedProcessingTime = resultFinishedProcessingTime;
+    }
+
+    /**
+     * Print the averages of the following metrics:
+     *      INVOCATION TIME,
+     *      PREPROCESSING TIME,
+     *      WAITING IN QUEUE,
+     *      EXECUTION TIME,
+     *      POSTPROCESSING TIME,
+     *      RETURNING TO USER.
+     *
+     * @param collection Collection of {@link OperationPerformed} instances for which the average values of each of the
+     *                   above metrics should be computed.
+     */
+    public static HashMap<String, Double> printAverages(Collection<OperationPerformed> collection) {
+        HashMap<String, Long> sums = printSums(collection);
+        HashMap<String, Double> averages = new HashMap<>();
+        double n = collection.size();
+
+        for (Map.Entry<String, Long> entry : sums.entrySet()) {
+            averages.put(entry.getKey(), entry.getValue() / n);
+        }
+
+        return averages;
+    }
+
+    /**
+     * Print the sums of the following metrics:
+     *      INVOCATION TIME,
+     *      PREPROCESSING TIME,
+     *      WAITING IN QUEUE,
+     *      EXECUTION TIME,
+     *      POSTPROCESSING TIME,
+     *      RETURNING TO USER.
+     *
+     * @param collection Collection of {@link OperationPerformed} instances for which the sums of each of the above
+     *                   metrics should be computed.
+     */
+    public static HashMap<String, Long> printSums(Collection<OperationPerformed> collection) {
+        HashMap<String, Long> sums = new HashMap<>();
+        sums.put(INVOCATION_TIME, 0L);
+        sums.put(PREPROCESSING_TIME, 0L);
+        sums.put(WAITING_IN_QUEUE, 0L);
+        sums.put(EXECUTION_TIME, 0L);
+        sums.put(POSTPROCESSING_TIME, 0L);
+        sums.put(RETURNING_TO_USER, 0L);
+
+        for (OperationPerformed op : collection) {
+            long invocationTime = sums.get(INVOCATION_TIME);
+            long preprocessingTime = sums.get(PREPROCESSING_TIME);
+            long waitingInQueue = sums.get(WAITING_IN_QUEUE);
+            long executionTime = sums.get(EXECUTION_TIME);
+            long postprocessingTime = sums.get(POSTPROCESSING_TIME);
+            long returningToUser = sums.get(RETURNING_TO_USER);
+
+            sums.put(INVOCATION_TIME, invocationTime + (op.serverlessFnStartTime - op.invokedAtTime));
+            sums.put(PREPROCESSING_TIME, preprocessingTime + (op.requestEnqueuedAtTime - op.serverlessFnStartTime));
+            sums.put(WAITING_IN_QUEUE, waitingInQueue + (op.resultBeganExecutingTime - op.requestEnqueuedAtTime));
+            sums.put(EXECUTION_TIME, executionTime + (op.resultFinishedProcessingTime - op.resultBeganExecutingTime));
+            sums.put(POSTPROCESSING_TIME, postprocessingTime + (op.serverlessFnEndTime - op.resultFinishedProcessingTime));
+            sums.put(RETURNING_TO_USER, returningToUser + (op.resultReceivedTime - op.serverlessFnEndTime));
+        }
+
+        return sums;
+    }
+
+    public static String getMetricsHeader() {
+        return String.format("%-20s,%-20s,%-20s,%-20s,%-20s,%-20s,",
+                INVOCATION_TIME, PREPROCESSING_TIME, WAITING_IN_QUEUE,
+                EXECUTION_TIME, POSTPROCESSING_TIME, RETURNING_TO_USER);
     }
 }
