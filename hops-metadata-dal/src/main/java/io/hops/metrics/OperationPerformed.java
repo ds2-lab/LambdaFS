@@ -335,8 +335,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * @param collection Collection of {@link OperationPerformed} instances for which the average values of each of the
      *                   above metrics should be computed.
      */
-    public static HashMap<String, Double> printAverages(Collection<OperationPerformed> collection) {
-        HashMap<String, Long> sums = printSums(collection);
+    public static HashMap<String, Double> getAverages(Collection<OperationPerformed> collection) {
+        HashMap<String, Long> sums = getSums(collection);
         HashMap<String, Double> averages = new HashMap<>();
         double n = collection.size();
 
@@ -359,7 +359,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * @param collection Collection of {@link OperationPerformed} instances for which the sums of each of the above
      *                   metrics should be computed.
      */
-    public static HashMap<String, Long> printSums(Collection<OperationPerformed> collection) {
+    public static HashMap<String, Long> getSums(Collection<OperationPerformed> collection) {
         HashMap<String, Long> sums = new HashMap<>();
         sums.put(INVOCATION_TIME, 0L);
         sums.put(PREPROCESSING_TIME, 0L);
@@ -402,7 +402,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      *      POSTPROCESSING TIME,
      *      RETURNING TO USER.
      */
-    public static String getMetricsString(HashMap<String, Long> metrics) {
+    public static String getMetricsString(HashMap<String, ?> metrics) {
          return String.format("%-20s,%-20s,%-20s,%-20s,%-20s,%-20s,",
                 metrics.get(INVOCATION_TIME), metrics.get(PREPROCESSING_TIME), metrics.get(WAITING_IN_QUEUE),
                  metrics.get(EXECUTION_TIME), metrics.get(POSTPROCESSING_TIME), metrics.get(RETURNING_TO_USER));
