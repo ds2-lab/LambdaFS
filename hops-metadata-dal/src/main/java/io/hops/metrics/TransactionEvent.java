@@ -14,6 +14,14 @@ public class TransactionEvent implements Serializable {
     private static final long serialVersionUID = 6838852634713013849L;
     private final List<TransactionAttempt> attempts;
 
+    public static String INITIALIZATION =       "INITIALIZATION";
+    public static String CREATE_ACKS =          "CREATE ACKS";
+    public static String SUBSCRIBE_TO_ACKS =    "SUBSCRIBE_TO_ACKS";
+    public static String WRITE_ACKS_TO_NDB =    "WRITE_ACKS_NDB";
+    public static String ISSUE_INVALIDATIONS =  "ISSUE_INVALIDATIONS";
+    public static String WAIT_FOR_ACKS =        "WAIT_FOR_ACKS";
+    public static String CLEAN_UP =             "CLEAN_UP";
+
     /**
      * Time at which the transaction started.
      */
@@ -120,14 +128,6 @@ public class TransactionEvent implements Serializable {
         return "requestId," + TransactionAttempt.getHeader() + ",transactionStart,transactionEnd,transactionId,success";
     }
 
-    public static String INITIALIZATION =       "INITIALIZATION";
-    public static String CREATE_ACKS =          "CREATE ACKS";
-    public static String SUBSCRIBE_TO_ACKS =    "SUBSCRIBE_TO_ACKS";
-    public static String WRITE_ACKS_TO_NDB =    "WRITE_ACKS_NDB";
-    public static String ISSUE_INVALIDATIONS =  "ISSUE_INVALIDATIONS";
-    public static String WAIT_FOR_ACKS =        "WAIT_FOR_ACKS";
-    public static String CLEAN_UP =             "CLEAN_UP";
-
     /**
      * Get the average duration of each phase of the consistency protocol.
      */
@@ -175,7 +175,7 @@ public class TransactionEvent implements Serializable {
                 sums.put(WRITE_ACKS_TO_NDB, writeAcksToNdbTime + (attempt.getConsistencyWriteAcksToStorageEnd() - attempt.getConsistencyWriteAcksToStorageStart()));
                 sums.put(ISSUE_INVALIDATIONS, issueInvalidationsTime + (attempt.getConsistencyIssueInvalidationsEnd() - attempt.getConsistencyIssueInvalidationsStart()));
                 sums.put(WAIT_FOR_ACKS, waitForAcksTime + (attempt.getConsistencyWaitForAcksEnd() - attempt.getConsistencyWaitForAcksStart()));
-                sums.put(CLEAN_UP, cleanUpTime + (attempt.getConsistencyWaitForAcksEnd() - attempt.getConsistencyWaitForAcksStart()));
+                sums.put(CLEAN_UP, cleanUpTime + (attempt.getConsistencyCleanUpEnd() - attempt.getConsistencyCleanUpStart()));
             }
         }
 

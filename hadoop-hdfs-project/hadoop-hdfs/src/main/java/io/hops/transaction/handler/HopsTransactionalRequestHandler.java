@@ -497,6 +497,8 @@ public abstract class HopsTransactionalRequestHandler
                 " ACKs from the following NameNodes: " + waitingForAcks);
         ex.printStackTrace();
 
+        long cleanUpStartTime = System.currentTimeMillis();
+
         // Clean things up before aborting.
         // TODO: Move this to after we rollback so other reads/writes can proceed immediately without
         //       having to wait for us to clean-up.
@@ -506,6 +508,9 @@ public abstract class HopsTransactionalRequestHandler
           // We should still be able to continue, despite failing to clean up after ourselves...
           requestHandlerLOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
         }
+
+        long cleanUpEndTime = System.currentTimeMillis();
+        attempt.setConsistencyCleanUpTimes(cleanUpStartTime, cleanUpEndTime);
 
         // Throw an exception so that it gets caught and reported as an exception, rather than just returning false.
         throw new IOException("Exception encountered while waiting for ACKs (" + ex.getMessage() + "): ", ex);
@@ -737,8 +742,8 @@ public abstract class HopsTransactionalRequestHandler
    */
   private void deleteWriteAcknowledgements() throws StorageException {
     // Remove the ACK entries that we added.
-    WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
-            (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
+//    WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
+//            (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
 
     // Remove the ACKs we created for each deployment involved in this transaction.
     for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
