@@ -501,7 +501,7 @@ public abstract class HopsTransactionalRequestHandler
         // TODO: Move this to after we rollback so other reads/writes can proceed immediately without
         //       having to wait for us to clean-up.
         try {
-          cleanUpAfterConsistencyProtocol(needToUnsubscribe);
+          cleanUpAfterConsistencyProtocol(true);
         } catch (Exception e) {
           // We should still be able to continue, despite failing to clean up after ourselves...
           requestHandlerLOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
@@ -818,61 +818,61 @@ public abstract class HopsTransactionalRequestHandler
     }
   }
 
-  /**
-   * Join other deployments as a guest. This is required when modifying INodes from other deployments. Typically, we
-   * aim to avoid this. But it occurs commonly during subtree operations and when creating new directories.
-   */
-  private void joinOtherDeploymentsAsGuest() throws IOException {
-    requestHandlerLOG.debug("There are potentially " + involvedDeployments.size() + " other deployments to join: " +
-            involvedDeployments);
-
-    ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
-    long localNameNodeId = serverlessNameNodeInstance.getId();
-
-    // Join the other deployments as a guest, registering a membership-changed listener.
-    int counter = 1;
-    for (int deploymentNumber : involvedDeployments) {
-      // We do not need to join our own deployment; we're already in our own deployment.
-      if (deploymentNumber == serverlessNameNodeInstance.getDeploymentNumber())
-        continue;
-
-      requestHandlerLOG.debug("Joining deployment " + deploymentNumber + " as guest (" + counter + "/" +
-              involvedDeployments.size() + ").");
-      final String groupName = "namenode" + deploymentNumber;
-
-      // During subtree transactions, the NameNode may use a large number of threads to concurrently operate on
-      // different parts of the subtree. As a result, the NN may try to guest-join the ZooKeeper group multiple
-      // times. For now, we just append the thread ID to the NameNode's ID to use as our ZooKeeper ID for the guest
-      // group. This is a little messy, but nobody references the guest group anyway. At some point, if we never
-      // begin using it, we could just eliminate the behavior (i.e., NameNodes would not explicitly join as a guest).
-      String memberId = localNameNodeId + "-" + Thread.currentThread().getId();
-
-      Watcher membershipChangedWatcher = watchedEvent -> {
-        // This specifically monitors for NNs leaving the group, rather than joining. NNs that join will have
-        // empty caches, so we do not need to worry about them.
-        if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
-          try {
-            // We call this again in waitForAcks() as a sanity check to make sure we haven't missed anything.
-            checkAndProcessMembershipChanges(deploymentNumber, false);
-          } catch (Exception e) {
-            requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
-            e.printStackTrace();
-          }
-        }
-        // We only want to monitor the permanent sub-group for membership changes.
-      };
-
-      this.watchers.put(deploymentNumber, membershipChangedWatcher);
-
-      try {
-        // Join the group.
-        zkClient.joinGroupAsGuest("namenode" + deploymentNumber, memberId, membershipChangedWatcher,
-                GuestWatcherOption.CREATE_WATCH_ON_PERMANENT);
-      } catch (Exception e) {
-        throw new IOException("Exception encountered while guest-joining group " + groupName + ":", e);
-      }
-    }
-  }
+//  /**
+//   * Join other deployments as a guest. This is required when modifying INodes from other deployments. Typically, we
+//   * aim to avoid this. But it occurs commonly during subtree operations and when creating new directories.
+//   */
+//  private void joinOtherDeploymentsAsGuest() throws IOException {
+//    requestHandlerLOG.debug("There are potentially " + involvedDeployments.size() + " other deployments to join: " +
+//            involvedDeployments);
+//
+//    ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
+//    long localNameNodeId = serverlessNameNodeInstance.getId();
+//
+//    // Join the other deployments as a guest, registering a membership-changed listener.
+//    int counter = 1;
+//    for (int deploymentNumber : involvedDeployments) {
+//      // We do not need to join our own deployment; we're already in our own deployment.
+//      if (deploymentNumber == serverlessNameNodeInstance.getDeploymentNumber())
+//        continue;
+//
+//      requestHandlerLOG.debug("Joining deployment " + deploymentNumber + " as guest (" + counter + "/" +
+//              involvedDeployments.size() + ").");
+//      final String groupName = "namenode" + deploymentNumber;
+//
+//      // During subtree transactions, the NameNode may use a large number of threads to concurrently operate on
+//      // different parts of the subtree. As a result, the NN may try to guest-join the ZooKeeper group multiple
+//      // times. For now, we just append the thread ID to the NameNode's ID to use as our ZooKeeper ID for the guest
+//      // group. This is a little messy, but nobody references the guest group anyway. At some point, if we never
+//      // begin using it, we could just eliminate the behavior (i.e., NameNodes would not explicitly join as a guest).
+//      String memberId = localNameNodeId + "-" + Thread.currentThread().getId();
+//
+//      Watcher membershipChangedWatcher = watchedEvent -> {
+//        // This specifically monitors for NNs leaving the group, rather than joining. NNs that join will have
+//        // empty caches, so we do not need to worry about them.
+//        if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+//          try {
+//            // We call this again in waitForAcks() as a sanity check to make sure we haven't missed anything.
+//            checkAndProcessMembershipChanges(deploymentNumber, false);
+//          } catch (Exception e) {
+//            requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
+//            e.printStackTrace();
+//          }
+//        }
+//        // We only want to monitor the permanent sub-group for membership changes.
+//      };
+//
+//      this.watchers.put(deploymentNumber, membershipChangedWatcher);
+//
+//      try {
+//        // Join the group.
+//        zkClient.joinGroupAsGuest("namenode" + deploymentNumber, memberId, membershipChangedWatcher,
+//                GuestWatcherOption.CREATE_WATCH_ON_PERMANENT);
+//      } catch (Exception e) {
+//        throw new IOException("Exception encountered while guest-joining group " + groupName + ":", e);
+//      }
+//    }
+//  }
 
   /**
    * Return the table name to subscribe to for ACK events, given the deployment number.
@@ -996,27 +996,18 @@ public abstract class HopsTransactionalRequestHandler
     // receive notifications if any NameNodes leave a deployment.
     for (int deploymentNumber : involvedDeployments) {
       List<WriteAcknowledgement> writeAcknowledgements = new ArrayList<>();
-      final String groupName = "namenode" + deploymentNumber;
-      List<String> groupMemberIds = zkClient.getPermanentGroupMembers(groupName);
-      Set<Long> acksForCurrentDeployment = waitingForAcksPerDeployment.getOrDefault(deploymentNumber, null);
-
-      if (acksForCurrentDeployment == null) {
-        acksForCurrentDeployment = new HashSet<>();
-        waitingForAcksPerDeployment.put(deploymentNumber, acksForCurrentDeployment);
-      }
-
-      if (groupMemberIds.size() == 1)
-        requestHandlerLOG.debug("There is 1 active instance in deployment #" + deploymentNumber +
-                " at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
-      else
-        requestHandlerLOG.debug("There are " + groupMemberIds.size() + " active instances in deployment #" +
-            deploymentNumber + " at the start of consistency protocol: " +
-                StringUtils.join(groupMemberIds, ", "));
+      List<String> groupMemberIds = zkClient.getPermanentGroupMembers("namenode" + deploymentNumber);
 
       if (groupMemberIds.size() == 0) {
         toRemove.add(deploymentNumber);
         continue;
       }
+      else if (groupMemberIds.size() == 1)
+        requestHandlerLOG.debug("There is 1 active instance in deployment #" + deploymentNumber + " at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
+      else
+        requestHandlerLOG.debug("There are " + groupMemberIds.size() + " active instances in deployment #" + deploymentNumber + " at the start of consistency protocol: " + StringUtils.join(groupMemberIds, ", "));
+
+      Set<Long> acksForCurrentDeployment = waitingForAcksPerDeployment.computeIfAbsent(deploymentNumber, depNum -> new HashSet<Long>());
 
       // Iterate over all the current group members. For each group member, we create a WriteAcknowledgement object,
       // which we'll persist to intermediate storage. We skip ourselves, as we do not need to ACK our own write. We also
@@ -1031,21 +1022,16 @@ public abstract class HopsTransactionalRequestHandler
 
         waitingForAcks.add(memberId);
         acksForCurrentDeployment.add(memberId);
-        writeAcknowledgements.add(new WriteAcknowledgement(memberId, deploymentNumber, operationId,
-                false, txStartTime, serverlessNameNodeInstance.getId()));
+        writeAcknowledgements.add(new WriteAcknowledgement(memberId, deploymentNumber, operationId, false, txStartTime, serverlessNameNodeInstance.getId()));
       }
 
       writeAcknowledgementsMap.put(deploymentNumber, writeAcknowledgements);
       totalNumberOfACKsRequired += writeAcknowledgements.size();
     }
 
-    for (Integer deploymentToRemove : toRemove) {
-      requestHandlerLOG.debug("Removing deployment #" + deploymentToRemove +
-              " from list of involved deployments as deployment #" + deploymentToRemove +
-              " contains zero active instances.");
-      involvedDeployments.remove(deploymentToRemove);
-    }
-
+    requestHandlerLOG.debug("Removing the following deployments as they contain zero active instances: " +
+            StringUtils.join(toRemove, ", "));
+    involvedDeployments.removeAll(toRemove);
     requestHandlerLOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
 
     // Instantiate the CountDownLatch variable. The value is set to the number of ACKs that we need
