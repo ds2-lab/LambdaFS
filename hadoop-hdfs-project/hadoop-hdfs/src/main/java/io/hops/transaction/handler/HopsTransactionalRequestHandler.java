@@ -712,14 +712,22 @@ public abstract class HopsTransactionalRequestHandler
   private void cleanUpAfterConsistencyProtocol(boolean needToUnsubscribe)
           throws Exception {
     requestHandlerLOG.debug("Performing clean-up procedure for consistency protocol now.");
+    long s = System.currentTimeMillis();
     // Unsubscribe and unregister event listener if we haven't done so already. (If we were the only active NN in
     // our deployment at the beginning of the protocol, then we would have already unsubscribed by this point.)
-    if (needToUnsubscribe)
+    if (needToUnsubscribe) {
       unsubscribeFromAckEvents();
+      long t = System.currentTimeMillis();
+      requestHandlerLOG.debug("Submitted 'drop subscription' request in " + (t - s) + " ms.");
+    }
+    s = System.currentTimeMillis();
 
     // leaveDeployments();
 
     deleteWriteAcknowledgements();
+    long t = System.currentTimeMillis();
+
+    requestHandlerLOG.debug("Scheduled ACKs for deletion in " + (t - s) + " ms.");
 
     // TODO: Delete INVs as well?
   }
