@@ -3,6 +3,10 @@ package org.apache.hadoop.hdfs.serverless.operation.execution;
 import com.esotericsoftware.kryonet.Client;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.hops.exception.StorageException;
+import io.hops.metadata.HdfsStorageFactory;
+import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
+import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.util.Time;
@@ -13,12 +17,13 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
@@ -76,6 +81,24 @@ public class ExecutionManager {
      */
     private final List<NameNodeWorkerThread> workerThreads;
 
+    /**
+     * Threads executing the consistency protocol place the {@link WriteAcknowledgement} objects they created into this
+     * queue. The thread that periodically retrieves {@link io.hops.metadata.hdfs.entity.StorageReport} instances from
+     * NDB will also routinely delete from NDB all the ACKs in this queue.
+     */
+    private final BlockingQueue<WriteAcknowledgement> writeAcknowledgementsToDelete;
+
+    /**
+     * Controls access to the {@code writeAcknowledgementsToDelete} object. While {@code writeAcknowledgementsToDelete}
+     * is of type BlockingQueue and is therefore thread safe, the behavior of its drainTo() method is undefined if the
+     * collection is modified concurrently. Thus, we want to exclusively lock the queue when we're performing drainTo().
+     *
+     * To achieve this, adding elements to {@code writeAcknowledgementsToDelete} requires a read lock, which is shared.
+     * Before calling drainTo() on writeAcknowledgementsToDelete, we take an exclusive write lock to prevent other
+     * objects from being added to {@code writeAcknowledgementsToDelete} while we are draining it.
+     */
+    private final ReadWriteLock writeAcknowledgementsToDeleteLock;
+
     public ExecutionManager(Configuration conf, ServerlessNameNode serverlessNameNode) {
         int resultRetainIntervalMilliseconds = conf.getInt(SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS, SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT);
         int previousResultCacheMaxSize = conf.getInt(SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE, SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE_DEFAULT);
@@ -93,6 +116,8 @@ public class ExecutionManager {
         this.completedTasks = new ConcurrentHashMap<>();
         this.serverlessNameNodeInstance = serverlessNameNode;
         this.nameNodeId = serverlessNameNode.getId();
+        this.writeAcknowledgementsToDelete = new LinkedBlockingQueue<>();
+        this.writeAcknowledgementsToDeleteLock = new ReentrantReadWriteLock();
 
         this.workerThreads = new ArrayList<>();
         LOG.debug("Creating " + numWorkerThreads + " worker thread(s).");
@@ -103,16 +128,53 @@ public class ExecutionManager {
             nameNodeWorkerThread.start();
         }
 
-        Thread storageReportThread = new Thread(() -> {
-           tryUpdateFromIntermediateStorage();
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        executor.scheduleAtFixedRate(() -> {
+            tryUpdateFromIntermediateStorage();
 
             try {
-                Thread.sleep(serverlessNameNode.getHeartBeatInterval());
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                removeWriteAcknowledgements();
+            } catch (StorageException ex) {
+                LOG.error("StorageException encountered while trying to delete old WriteAcknowledgement instances:", ex);
             }
-        });
-        storageReportThread.start();
+        }, 0, serverlessNameNode.getHeartBeatInterval(), TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Schedule all of the {@link WriteAcknowledgement} instances in {@code acksToDelete} to be removed from
+     * intermediate storage (e.g., NDB).
+     */
+    public void enqueueAcksForDeletion(Collection<WriteAcknowledgement> acksToDelete) {
+        Lock readLock = writeAcknowledgementsToDeleteLock.readLock();
+        readLock.lock();
+        try {
+            writeAcknowledgementsToDelete.addAll(acksToDelete);
+        } finally {
+            readLock.unlock();
+        }
+    }
+
+    /**
+     * Remove all {@link WriteAcknowledgement} instances contained within the {@code writeAcknowledgementsToDelete}
+     * queue from intermediate storage (NDB).
+     *
+     * An exclusive lock is taken temporarily on the {@code writeAcknowledgementsToDelete} instance so that
+     * drainTo() may be called without risk of concurrent modification to the queue.
+     */
+    private void removeWriteAcknowledgements() throws StorageException {
+        WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
+                (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
+
+        ArrayList<WriteAcknowledgement> acksToDelete = new ArrayList<>();
+        Lock writeLock = writeAcknowledgementsToDeleteLock.writeLock();
+        writeLock.lock();
+        try {
+            writeAcknowledgementsToDelete.drainTo(acksToDelete);
+        } finally {
+            writeLock.unlock();
+        }
+
+        writeAcknowledgementDataAccess.deleteAcknowledgements(acksToDelete);
     }
 
     /**

@@ -200,9 +200,7 @@ public class WriteAcknowledgementClusterJ
     }
 
     @Override
-    public void deleteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements,
-                                       int deploymentNumber)
-            throws StorageException {
+    public void deleteAcknowledgements(Collection<WriteAcknowledgement> writeAcknowledgements) throws StorageException {
         LOG.debug("DELETE ALL " + writeAcknowledgements.toString());
         HopsSession session = connector.obtainSession();
 
@@ -211,8 +209,9 @@ public class WriteAcknowledgementClusterJ
             Object[] pk = new Object[2];
             pk[0] = writeAcknowledgement.getNameNodeId();
             pk[1] = writeAcknowledgement.getOperationId();
-            WriteAcknowledgementDTO persistable = session.newInstance(getDTOClass(deploymentNumber), pk);
-            deletions.add(persistable);
+            WriteAcknowledgementDTO dto = session.newInstance(
+                    getDTOClass(writeAcknowledgement.getDeploymentNumber()), pk);
+            deletions.add(dto);
         }
 
         session.deletePersistentAll(deletions);

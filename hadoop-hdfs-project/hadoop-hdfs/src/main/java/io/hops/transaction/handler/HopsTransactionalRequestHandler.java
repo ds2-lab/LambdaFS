@@ -732,18 +732,19 @@ public abstract class HopsTransactionalRequestHandler
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
             (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
 
-    // Remove the ACKs we created for each deployment involved in this tranaction.
+    // Remove the ACKs we created for each deployment involved in this transaction.
     for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
-      int deploymentNumber = entry.getKey();
-      List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
-
-      if (writeAcknowledgements.size() == 1)
-        requestHandlerLOG.debug("Removing 1 ACK entry for deployment #" + deploymentNumber);
-      else
-        requestHandlerLOG.debug("Removing " + writeAcknowledgements.size() +
-                " ACK entries for deployment #" + deploymentNumber);
-
-      writeAcknowledgementDataAccess.deleteAcknowledgements(writeAcknowledgements, deploymentNumber);
+//      int deploymentNumber = entry.getKey();
+//      List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
+//
+//      if (writeAcknowledgements.size() == 1)
+//        requestHandlerLOG.debug("Removing 1 ACK entry for deployment #" + deploymentNumber);
+//      else
+//        requestHandlerLOG.debug("Removing " + writeAcknowledgements.size() +
+//                " ACK entries for deployment #" + deploymentNumber);
+//
+//      writeAcknowledgementDataAccess.deleteAcknowledgements(writeAcknowledgements);
+      serverlessNameNodeInstance.enqueueAcksForDeletion(entry.getValue());
     }
   }
 
@@ -768,6 +769,7 @@ public abstract class HopsTransactionalRequestHandler
    */
   private void unsubscribeFromAckEvents()
           throws StorageException {
+    requestHandlerLOG.debug("Unsubscribing from ACK events now.");
     for (int deploymentNumber : involvedDeployments) {
       String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
       EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();

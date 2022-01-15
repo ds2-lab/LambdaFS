@@ -2810,6 +2810,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return false;
   }
 
+  /**
+   * Schedule all of the {@link WriteAcknowledgement} instances in {@code acksToDelete} to be removed from
+   * intermediate storage (e.g., NDB).
+   */
+  public void enqueueAcksForDeletion(Collection<WriteAcknowledgement> acksToDelete) {
+    this.executionManager.enqueueAcksForDeletion(acksToDelete);
+  }
+
   @VisibleForTesting
   public static boolean formatAll(Configuration conf) throws IOException {
     LOG.warn("Formatting HopsFS and HopsYarn");

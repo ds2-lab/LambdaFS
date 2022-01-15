@@ -91,9 +91,8 @@ public interface WriteAcknowledgementDataAccess<T> extends EntityDataAccess {
      * Delete a collection of WriteAcknowledgement instances from intermediate storage.
      *
      * @param writeAcknowledgements The instances to delete.
-     * @param deploymentNumber The deployment number of the NameNodes we're working with.
      */
-    void deleteAcknowledgements(Collection<T> writeAcknowledgements, int deploymentNumber) throws StorageException;
+    void deleteAcknowledgements(Collection<T> writeAcknowledgements) throws StorageException;
 
     /**
      * Store the given write acknowledgements in intermediate storage.
