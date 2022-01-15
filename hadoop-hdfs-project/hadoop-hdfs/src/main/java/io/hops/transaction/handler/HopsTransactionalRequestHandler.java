@@ -996,6 +996,10 @@ public abstract class HopsTransactionalRequestHandler
     // receive notifications if any NameNodes leave a deployment.
     for (int deploymentNumber : involvedDeployments) {
       List<WriteAcknowledgement> writeAcknowledgements = new ArrayList<>();
+
+      // TODO: Can we just use what the NameNode already has cached here?
+      // TODO: Consider timing this specific method call to see how much of the `computeAckRecords()` execution
+      //       time is spent performing this call (since it accesses the network).
       List<String> groupMemberIds = zkClient.getPermanentGroupMembers("namenode" + deploymentNumber);
 
       if (groupMemberIds.size() == 0) {
