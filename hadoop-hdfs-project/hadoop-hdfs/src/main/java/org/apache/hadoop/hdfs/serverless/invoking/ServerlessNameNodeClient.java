@@ -1511,31 +1511,54 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     @Override
     public void prewarm(int numPingsPerDeployment) throws IOException {
+        Thread[] threads = new Thread[numDeployments];
+
         for (int deploymentNumber = 0; deploymentNumber < numDeployments; deploymentNumber++) {
-            LOG.debug("Invoking deployment " + deploymentNumber + " a total of " + numPingsPerDeployment + "x.");
-            for (int i = 0; i < numPingsPerDeployment; i++) {
-                String requestId = UUID.randomUUID().toString();
+            final int depNum = deploymentNumber;
+            Thread thread = new Thread(() -> {
+                LOG.debug("Invoking deployment " + depNum + " a total of " + numPingsPerDeployment + "x.");
+                for (int i = 0; i < numPingsPerDeployment; i++) {
+                    String requestId = UUID.randomUUID().toString();
 
-                OperationPerformed operationPerformed
-                        = new OperationPerformed("ping", requestId,
-                        Time.getUtcTime(), Time.getUtcTime(),
-                        Time.getUtcTime(), Time.getUtcTime(),
-                        Time.getUtcTime(), Time.getUtcTime(),
-                        deploymentNumber, true, true, "N/A",
-                        -1, 0, 0);
-                operationsPerformed.put(requestId, operationPerformed);
+                    OperationPerformed operationPerformed
+                            = new OperationPerformed("ping", requestId,
+                            Time.getUtcTime(), Time.getUtcTime(),
+                            Time.getUtcTime(), Time.getUtcTime(),
+                            Time.getUtcTime(), Time.getUtcTime(),
+                            depNum, true, true, "N/A",
+                            -1, 0, 0);
+                    operationsPerformed.put(requestId, operationPerformed);
 
-                // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
-                // file/directory, then we'll just use an HTTP request.
-                dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                        "ping",
-                        dfsClient.serverlessEndpoint,
-                        null, // We do not have any additional/non-default arguments to pass to the NN.
-                        new ArgumentContainer(),
-                        requestId,
-                        deploymentNumber);
+                    // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
+                    // file/directory, then we'll just use an HTTP request.
+                    try {
+                        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                                "ping",
+                                dfsClient.serverlessEndpoint,
+                                null, // We do not have any additional/non-default arguments to pass to the NN.
+                                new ArgumentContainer(),
+                                requestId,
+                                depNum);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
 
-                operationPerformed.setServerlessFnEndTime(System.nanoTime());
+                    operationPerformed.setServerlessFnEndTime(System.nanoTime());
+                }
+            });
+
+            threads[deploymentNumber] = thread;
+        }
+
+        for (Thread thread : threads) {
+            thread.start();
+        }
+
+        for (Thread thread: threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
