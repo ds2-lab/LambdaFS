@@ -648,6 +648,8 @@ public abstract class HopsTransactionalRequestHandler
       }
     });
 
+    long s = System.currentTimeMillis();
+
     // This is a sanity check. For all non-local deployments, there is a small chance there was a membership changed
     // in-between us joining the group/creating ACKs and establishing listeners and all that, so this makes sure
     // our global image of deployment membership is correct. Likewise, there is a chance that membership for our local
@@ -655,10 +657,16 @@ public abstract class HopsTransactionalRequestHandler
     for (int deploymentNumber : involvedDeployments)
       checkAndProcessMembershipChanges(deploymentNumber, true);
 
+    long t = System.currentTimeMillis();
+
+    requestHandlerLOG.debug("Called `checkAndProcessMembershipChanges()` for " + involvedDeployments.size() +
+            " deployment(s) in " + (t - s) + " ms.");
+
     requestHandlerLOG.debug("Waiting for the remaining " + waitingForAcks.size() +
             " ACK(s) now. Will timeout after " + serverlessNameNodeInstance.getTxAckTimeout() + " milliseconds.");
     requestHandlerLOG.debug("Count value of CountDownLatch: " + countDownLatch.getCount());
 
+    s = System.currentTimeMillis();
     // Wait until we're done. If the latch is already at zero, then this will not block.
     boolean success;
     try {
@@ -667,6 +675,9 @@ public abstract class HopsTransactionalRequestHandler
       throw new IOException("Interrupted waiting for ACKs from other NameNodes. Waiting on a total of " +
               waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
     }
+    t = System.currentTimeMillis();
+
+    requestHandlerLOG.debug("Spent " + (t - s) + " ms waiting on ACKs.");
 
     if (!success) {
       requestHandlerLOG.warn("Timed out while waiting for ACKs from other NNs. Waiting on a total of " +
@@ -717,22 +728,22 @@ public abstract class HopsTransactionalRequestHandler
   private void cleanUpAfterConsistencyProtocol(boolean needToUnsubscribe)
           throws Exception {
     requestHandlerLOG.debug("Performing clean-up procedure for consistency protocol now.");
-    long s = System.currentTimeMillis();
+    //long s = System.currentTimeMillis();
     // Unsubscribe and unregister event listener if we haven't done so already. (If we were the only active NN in
     // our deployment at the beginning of the protocol, then we would have already unsubscribed by this point.)
     if (needToUnsubscribe) {
       unsubscribeFromAckEvents();
-      long t = System.currentTimeMillis();
-      requestHandlerLOG.debug("Submitted 'drop subscription' request in " + (t - s) + " ms.");
+      //long t = System.currentTimeMillis();
+      //requestHandlerLOG.debug("Submitted 'drop subscription' request in " + (t - s) + " ms.");
     }
-    s = System.currentTimeMillis();
+    //s = System.currentTimeMillis();
 
     // leaveDeployments();
 
     deleteWriteAcknowledgements();
-    long t = System.currentTimeMillis();
+    //long t = System.currentTimeMillis();
 
-    requestHandlerLOG.debug("Scheduled ACKs for deletion in " + (t - s) + " ms.");
+    //requestHandlerLOG.debug("Scheduled ACKs for deletion in " + (t - s) + " ms.");
 
     // TODO: Delete INVs as well?
   }
