@@ -463,6 +463,9 @@ public abstract class HopsTransactionalRequestHandler
       WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
               (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
 
+      requestHandlerLOG.debug("Beginning transaction to write ACKs and INVs in single step.");
+      EntityManager.begin();
+
       for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
         int deploymentNumber = entry.getKey();
         List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
@@ -481,6 +484,9 @@ public abstract class HopsTransactionalRequestHandler
 
       // =============== STEP 3 ===============
       issueInitialInvalidations(invalidatedINodes, txStartTime);
+
+      requestHandlerLOG.debug("Committing transaction containing ACKs and INVs now.");
+      EntityManager.commit(null);
 
       long issueInvalidationsEndTime = System.currentTimeMillis();
       attempt.setConsistencyIssueInvalidationsTimes(writeAcksToStorageEndTime, issueInvalidationsEndTime);
