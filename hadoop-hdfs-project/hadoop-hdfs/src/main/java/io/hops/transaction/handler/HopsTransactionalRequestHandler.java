@@ -32,6 +32,7 @@ import io.hops.transaction.context.EntityContext;
 import io.hops.transaction.context.INodeContext;
 import io.hops.transaction.lock.HdfsTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
+import io.hops.transaction.lock.TransactionLocks;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdfs.protocol.RecoveryInProgressException;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
@@ -465,6 +466,9 @@ public abstract class HopsTransactionalRequestHandler
 
       requestHandlerLOG.debug("Beginning transaction to write ACKs and INVs in single step.");
       EntityManager.begin();
+      TransactionLockAcquirer locksAcquirer = new HdfsTransactionalLockAcquirer();
+      acquireLock(locksAcquirer.getLocks());
+      locksAcquirer.acquire();
 
       for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
         int deploymentNumber = entry.getKey();
@@ -486,7 +490,8 @@ public abstract class HopsTransactionalRequestHandler
       issueInitialInvalidations(invalidatedINodes, txStartTime);
 
       requestHandlerLOG.debug("Committing transaction containing ACKs and INVs now.");
-      EntityManager.commit(null);
+      TransactionLocks transactionLocks = locksAcquirer.getLocks();
+      EntityManager.commit(transactionLocks);
 
       long issueInvalidationsEndTime = System.currentTimeMillis();
       attempt.setConsistencyIssueInvalidationsTimes(writeAcksToStorageEndTime, issueInvalidationsEndTime);
