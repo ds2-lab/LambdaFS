@@ -467,8 +467,6 @@ public abstract class HopsTransactionalRequestHandler
       requestHandlerLOG.debug("Beginning transaction to write ACKs and INVs in single step.");
       EntityManager.begin();
       TransactionLockAcquirer locksAcquirer = new HdfsTransactionalLockAcquirer();
-      acquireLock(locksAcquirer.getLocks());
-      locksAcquirer.acquire();
 
       for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
         int deploymentNumber = entry.getKey();
