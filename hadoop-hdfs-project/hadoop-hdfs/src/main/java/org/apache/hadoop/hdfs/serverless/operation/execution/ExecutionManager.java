@@ -130,6 +130,7 @@ public class ExecutionManager {
 
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.scheduleAtFixedRate(() -> {
+            LOG.debug("Retrieving StorageReports from intermediate storage now.");
             tryUpdateFromIntermediateStorage();
 
             try {
@@ -138,6 +139,7 @@ public class ExecutionManager {
                 LOG.error("StorageException encountered while trying to delete old WriteAcknowledgement instances:", ex);
             }
         }, 0, serverlessNameNode.getHeartBeatInterval(), TimeUnit.MILLISECONDS);
+        executor.
     }
 
     /**
