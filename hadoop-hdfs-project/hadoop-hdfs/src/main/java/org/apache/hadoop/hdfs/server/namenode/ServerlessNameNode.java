@@ -1206,7 +1206,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
 
-//    LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
+    LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
 
 //    if (LOG.isDebugEnabled()) {
 //      LOG.debug("DataNodes retrieved: ");
@@ -1301,7 +1301,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //          LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
           continue;
         } else {
-//          LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
+          LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
           namesystem.registerDatanode(datanodeRegistration);
         }
 
