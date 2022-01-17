@@ -164,7 +164,7 @@ public class CacheReplicationMonitor extends Thread implements Closeable {
             long delta = (startTimeMs + intervalMs) - curTimeMs;
             if (delta <= 0) {
               if (namesystem.isLeader()) {
-                LOG.debug("Rescanning after " + (curTimeMs - startTimeMs) + " milliseconds");
+                // LOG.debug("Rescanning after " + (curTimeMs - startTimeMs) + " milliseconds");
                 break;
               } else {
                 startTimeMs = curTimeMs;
