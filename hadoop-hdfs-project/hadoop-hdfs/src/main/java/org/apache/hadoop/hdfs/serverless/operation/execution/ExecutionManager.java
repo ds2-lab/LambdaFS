@@ -139,7 +139,6 @@ public class ExecutionManager {
                 LOG.error("StorageException encountered while trying to delete old WriteAcknowledgement instances:", ex);
             }
         }, 0, serverlessNameNode.getHeartBeatInterval(), TimeUnit.MILLISECONDS);
-        executor.
     }
 
     /**
