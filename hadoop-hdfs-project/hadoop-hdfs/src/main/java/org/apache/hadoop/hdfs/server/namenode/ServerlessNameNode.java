@@ -1208,12 +1208,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
 
-//    if (LOG.isDebugEnabled()) {
-//      LOG.debug("DataNodes retrieved: ");
-//      for (DataNodeMeta dataNodeMeta : dataNodes)
-//        LOG.debug(dataNodeMeta.toString());
-//    }
-
     NamespaceInfo nsInfo = namesystem.getNamespaceInfo();
 
     // Keep track of the DatanodeRegistration instances because we'll need these to retrieve
@@ -1261,15 +1255,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
     }
 
-//    LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
-//    LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
+    if (numReplaced > 0) {
+      LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
+    }
+
+    if (dnMap.size() > 0) {
+      LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
+    }
 
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
     //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
 
     for (DataNodeMeta dataNodeMeta : dnMap.values()) {
       String datanodeUuid = dataNodeMeta.getDatanodeUuid();
-//      LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
+      LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
 
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
@@ -1298,7 +1297,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       try {
         if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
                 datanodeRegistration.getDatanodeUuid()) != null) {
-//          LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
+          LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
           continue;
         } else {
           LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
