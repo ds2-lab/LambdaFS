@@ -100,6 +100,8 @@ public class ExecutionManager {
     private final ReadWriteLock writeAcknowledgementsToDeleteLock;
 
     public ExecutionManager(Configuration conf, ServerlessNameNode serverlessNameNode) {
+        LOG.debug("Creating ExecutionManager now.");
+
         int resultRetainIntervalMilliseconds = conf.getInt(SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS, SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT);
         int previousResultCacheMaxSize = conf.getInt(SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE, SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE_DEFAULT);
         int numWorkerThreads = conf.getInt(SERVERLESS_NUM_HANDLER_THREADS, SERVERLESS_NUM_HANDLER_THREADS_DEFAULT);

@@ -2219,11 +2219,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     LOG.debug("Assigned new NN instance ID " + nameNodeID);
 
-    // Create the thread and tell it to run!
-    executionManager = new ExecutionManager(conf, this);
-
-    LOG.debug("Started the NameNode worker thread.");
-
     this.txAckTimeout =
             conf.getInt(SERVERLESS_TRANSACTION_ACK_TIMEOUT, SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT);
 
@@ -3208,6 +3203,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       startTrashEmptier(conf);
       this.zooKeeperClient.createAndJoinGroup(this.functionName, String.valueOf(this.nameNodeID), namesystem);
       eventManagerThread.start();
+
+      // Create the thread and tell it to run!
+      executionManager = new ExecutionManager(conf, this);
     } catch (Throwable t) {
       doImmediateShutdown(t);
     }
