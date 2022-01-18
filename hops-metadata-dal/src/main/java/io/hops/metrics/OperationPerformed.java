@@ -336,12 +336,12 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      *                   above metrics should be computed.
      */
     public static HashMap<String, Double> getAverages(Collection<OperationPerformed> collection) {
-        HashMap<String, Long> sums = getSums(collection);
+        HashMap<String, Integer> counts = new HashMap<>();
+        HashMap<String, Long> sums = getSumsAndCounts(collection, counts);
         HashMap<String, Double> averages = new HashMap<>();
-        double n = collection.size();
 
         for (Map.Entry<String, Long> entry : sums.entrySet()) {
-            averages.put(entry.getKey(), entry.getValue() / n);
+            averages.put(entry.getKey(), (double)entry.getValue() / (double)counts.get(entry.getKey()));
         }
 
         return averages;
@@ -360,6 +360,17 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      *                   metrics should be computed.
      */
     public static HashMap<String, Long> getSums(Collection<OperationPerformed> collection) {
+        return getSumsAndCounts(collection, new HashMap<>()); // Don't care about the counts.
+    }
+
+    /**
+     *
+     * @param collection Collection of {@link OperationPerformed} instances for which the sums of each of the above
+     *                   metrics should be computed.
+     * @param counts     The number of values added together to compute the sum for each metric.
+     */
+    public static HashMap<String, Long> getSumsAndCounts(Collection<OperationPerformed> collection,
+                                                         HashMap<String, Integer> counts) {
         HashMap<String, Long> sums = new HashMap<>();
         sums.put(INVOCATION_TIME, 0L);
         sums.put(PREPROCESSING_TIME, 0L);
@@ -376,12 +387,30 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
             long postprocessingTime = sums.get(POSTPROCESSING_TIME);
             long returningToUser = sums.get(RETURNING_TO_USER);
 
-            sums.put(INVOCATION_TIME, invocationTime + (op.serverlessFnStartTime - op.invokedAtTime));
-            sums.put(PREPROCESSING_TIME, preprocessingTime + (op.requestEnqueuedAtTime - op.serverlessFnStartTime));
-            sums.put(WAITING_IN_QUEUE, waitingInQueue + (op.resultBeganExecutingTime - op.requestEnqueuedAtTime));
-            sums.put(EXECUTION_TIME, executionTime + (op.resultFinishedProcessingTime - op.resultBeganExecutingTime));
-            sums.put(POSTPROCESSING_TIME, postprocessingTime + (op.serverlessFnEndTime - op.resultFinishedProcessingTime));
-            sums.put(RETURNING_TO_USER, returningToUser + (op.resultReceivedTime - op.serverlessFnEndTime));
+            if (op.serverlessFnStartTime - op.invokedAtTime > 0) {
+                sums.put(INVOCATION_TIME, invocationTime + (op.serverlessFnStartTime - op.invokedAtTime));
+                counts.merge(INVOCATION_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
+            }
+            if (op.requestEnqueuedAtTime - op.serverlessFnStartTime > 0) {
+                sums.put(PREPROCESSING_TIME, preprocessingTime + (op.requestEnqueuedAtTime - op.serverlessFnStartTime));
+                counts.merge(PREPROCESSING_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
+            }
+            if (op.resultBeganExecutingTime - op.requestEnqueuedAtTime > 0) {
+                sums.put(WAITING_IN_QUEUE, waitingInQueue + (op.resultBeganExecutingTime - op.requestEnqueuedAtTime));
+                counts.merge(WAITING_IN_QUEUE, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
+            }
+            if (op.resultFinishedProcessingTime - op.resultBeganExecutingTime > 0) {
+                sums.put(EXECUTION_TIME, executionTime + (op.resultFinishedProcessingTime - op.resultBeganExecutingTime));
+                counts.merge(EXECUTION_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
+            }
+            if (op.serverlessFnEndTime - op.resultFinishedProcessingTime > 0) {
+                sums.put(POSTPROCESSING_TIME, postprocessingTime + (op.serverlessFnEndTime - op.resultFinishedProcessingTime));
+                counts.merge(POSTPROCESSING_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
+            }
+            if (op.resultReceivedTime - op.serverlessFnEndTime > 0) {
+                sums.put(RETURNING_TO_USER, returningToUser + (op.resultReceivedTime - op.serverlessFnEndTime));
+                counts.merge(RETURNING_TO_USER, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
+            }
         }
 
         return sums;
