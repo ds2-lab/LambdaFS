@@ -677,7 +677,7 @@ class DataStreamer extends Daemon {
         LOG.debug("Stuffed Inode:  Closing File. Datanode ack skipped. All the data will be stored in the database");
       } else {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Waiting for ack for: " + seqno);
+          // LOG.debug("Waiting for ack for: " + seqno);
         }
         long begin = Time.monotonicNow();
         try {

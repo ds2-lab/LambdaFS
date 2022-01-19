@@ -749,8 +749,7 @@ public class DFSOutputStream extends FSOutputSummer
    * Waits till all existing data is flushed and confirmations received from datanodes.
    */
   protected void flushInternal() throws IOException {
-    LOG.debug("flushInternal() called. Waiting until all existing data is flushed and confirmations have been " +
-            "received from datanodes.");
+    // LOG.debug("flushInternal() called. Waiting until all existing data is flushed and confirmations have been received from datanodes.");
     long toWaitFor;
     synchronized (this) {
       dfsClient.checkOpen();
@@ -763,7 +762,7 @@ public class DFSOutputStream extends FSOutputSummer
       toWaitFor = streamer.getLastQueuedSeqno();
     }
 
-    LOG.debug("Waiting for sequence number " + toWaitFor);
+    // LOG.debug("Waiting for sequence number " + toWaitFor);
     streamer.waitForAckedSeqno(toWaitFor);
   }
 
@@ -927,7 +926,7 @@ public class DFSOutputStream extends FSOutputSummer
     }
 
     try {
-      LOG.debug("Client " + dfsClient.clientName + " attempting to complete file: " + src);
+      // LOG.debug("Client " + dfsClient.clientName + " attempting to complete file: " + src);
 
       fileComplete =
               dfsClient.namenode.complete(src, dfsClient.clientName, last, fileId, data);
@@ -943,7 +942,7 @@ public class DFSOutputStream extends FSOutputSummer
       }
     }
 
-    LOG.debug("File complete = " + fileComplete);
+    // LOG.debug("File complete = " + fileComplete);
     return fileComplete;
   }
 

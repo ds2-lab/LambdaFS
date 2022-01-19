@@ -85,7 +85,7 @@ public class ArgumentContainer {
      */
     public void put(String key, Object value) {
         if (value == null) {
-            LOG.warn("Argument for key \"" + key + "\" is null!");
+            // LOG.warn("Argument for key \"" + key + "\" is null!");
             return;
         }
 
