@@ -485,7 +485,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Return a COPY of the transactionEvents list.
    */
-  public List<TransactionEvent> getTransactionEvents() {
+  public synchronized List<TransactionEvent> getTransactionEvents() {
     return new ArrayList<>(transactionEvents);
   }
 
