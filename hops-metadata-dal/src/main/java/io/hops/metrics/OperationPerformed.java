@@ -151,6 +151,10 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.nameNodeId = nameNodeId;
     }
 
+    public long getNameNodeId() { return this.nameNodeId; }
+
+    public int getDeployment() { return this.deployment; }
+
     /**
      * Modify the timestamp at which the serverless function finished executing.
      * This also recomputes this instance's `duration` field.
@@ -414,6 +418,40 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         }
 
         return sums;
+    }
+
+    /**
+     * Return a {@link HashMap} mapping each unique NameNode ID to the number of requests that particular NameNode serviced,
+     * based on the {@link OperationPerformed} instances contained within the {@code ops} parameter.
+     * @param ops Collection of {@link OperationPerformed} instances.
+     * @return {@link HashMap} that maps NameNode ID to number of requests serviced by that NameNode.
+     */
+    public static HashMap<Long, Integer> getRequestsPerNameNode(Collection<OperationPerformed> ops) {
+        HashMap<Long, Integer> requestsPerNameNode = new HashMap<>();
+
+        for (OperationPerformed op : ops)
+            requestsPerNameNode.merge(op.getNameNodeId(), 1, Integer::sum);
+
+        return requestsPerNameNode;
+    }
+
+    /**
+     * Return a {@link HashMap} mapping each deployment number to the number of requests that particular deployment serviced,
+     * based on the {@link OperationPerformed} instances contained within the {@code ops} parameter.
+     *
+     * Note that if a deployment does not appear at all as the {@code deployment} field of one of the
+     * {@link OperationPerformed} instances in the {@code ops} parameter, then it will not be contained within
+     * the {@link HashMap} returned by this function.
+     * @param ops Collection of {@link OperationPerformed} instances.
+     * @return {@link HashMap} that maps deployment numbers to the number of requests serviced by that deployment.
+     */
+    public static HashMap<Integer, Integer> getRequestsPerDeployment(Collection<OperationPerformed> ops) {
+        HashMap<Integer, Integer> requestsPerDeployment = new HashMap<>();
+
+        for (OperationPerformed op : ops)
+            requestsPerDeployment.merge(op.getDeployment(), 1, Integer::sum);
+
+        return requestsPerDeployment;
     }
 
     public static String getMetricsHeader() {
