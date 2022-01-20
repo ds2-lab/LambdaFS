@@ -7,8 +7,10 @@ import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
+import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,11 +79,6 @@ public class ExecutionManager {
     private final long nameNodeId;
 
     /**
-     * The worker/handler threads.
-     */
-    private final List<NameNodeWorkerThread> workerThreads;
-
-    /**
      * Threads executing the consistency protocol place the {@link WriteAcknowledgement} objects they created into this
      * queue. The thread that periodically retrieves {@link io.hops.metadata.hdfs.entity.StorageReport} instances from
      * NDB will also routinely delete from NDB all the ACKs in this queue.
@@ -121,15 +118,6 @@ public class ExecutionManager {
         this.writeAcknowledgementsToDelete = new LinkedBlockingQueue<>();
         this.writeAcknowledgementsToDeleteLock = new ReentrantReadWriteLock();
 
-        this.workerThreads = new ArrayList<>();
-        LOG.debug("Creating " + numWorkerThreads + " worker thread(s).");
-        for (int i = 0; i < numWorkerThreads; i++) {
-            NameNodeWorkerThread nameNodeWorkerThread = new NameNodeWorkerThread(serverlessNameNodeInstance,
-                    this, i);
-            workerThreads.add(nameNodeWorkerThread);
-            nameNodeWorkerThread.start();
-        }
-
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.scheduleAtFixedRate(() -> {
             LOG.debug("Retrieving StorageReports from intermediate storage now.");
@@ -141,6 +129,77 @@ public class ExecutionManager {
                 LOG.error("StorageException encountered while trying to delete old WriteAcknowledgement instances:", ex);
             }
         }, 0, serverlessNameNode.getHeartBeatInterval(), TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Attempt to execute the file system operation submitted with the current request.
+     */
+    public NameNodeResult tryExecuteTask(FileSystemTask<Serializable> task) {
+        boolean duplicate = isTaskDuplicate(task);
+
+        if (duplicate) {
+            NameNodeResult result = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
+                    task.getTaskId(), task.getOperationName(), this.nameNodeId);
+            // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
+            result.setDequeuedTime(Time.getUtcTime());
+            return handleDuplicateTask(task, result);
+        }
+
+        NameNodeResult workerResult = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
+                task.getTaskId(), task.getOperationName(), this.nameNodeId);
+
+        Serializable result = null;
+        boolean success = false;
+        try {
+            result = serverlessNameNodeInstance.performOperation(
+                    task.getOperationName(), task.getOperationArguments());
+
+            if (result == null)
+                workerResult.addResult(NullResult.getInstance(), true);
+            else
+                workerResult.addResult(result, true);
+
+            workerResult.setProcessingFinishedTime(Time.getUtcTime());
+
+            workerResult.commitTransactionEvents(serverlessNameNodeInstance.getTransactionEvents());
+            success = true;
+        } catch (Exception ex) {
+            LOG.error("Encountered exception while executing file system operation " + task.getOperationName() +
+                    " for task " + task.getTaskId() + ".", ex);
+            workerResult.addException(ex);
+        } catch (Throwable t) {
+            LOG.error("Encountered throwable while executing file system operation " + task.getOperationName() +
+                    " for task " + task.getTaskId() + ".", t);
+            workerResult.addThrowable(t);
+        }
+
+        // If this task was submitted via HTTP, then attempt to create a deployment mapping.
+        if (task.getRequestMethod().equalsIgnoreCase("HTTP")) {
+            try {
+                LOG.debug("Trying to create function mapping for request " + task.getTaskId() + " now...");
+                long start = Time.getUtcTime();
+                // Check if a function mapping should be created and returned to the client.
+                OpenWhiskHandler.tryCreateDeploymentMapping(workerResult, task.getOperationArguments(), serverlessNameNodeInstance);
+                long end = Time.getUtcTime();
+
+                LOG.debug("Created function mapping for request " + task.getTaskId() + " in " + (end - start) + " ms.");
+            } catch (IOException ex) {
+                LOG.error("Encountered IOException while trying to create function mapping for task " +
+                        task.getTaskId() + ":", ex);
+                workerResult.addException(ex);
+            }
+        }
+
+        // We only add the task to the `completedTasks` mapping if we executed it successfully.
+        // If there was an error, then may be automatically re-submitted by the client.
+        if (success)
+            notifyTaskCompleted(task);
+
+        // Cache the result for a bit.
+        PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
+        cachePreviousResult(task.getTaskId(), previousResult);
+
+        return workerResult;
     }
 
     /**
@@ -312,7 +371,7 @@ public class ExecutionManager {
      * @param task The task in question.
      * @param result The NameNodeResult object being used by the worker thread.
      */
-    private void handleDuplicateTask(FileSystemTask<Serializable> task, NameNodeResult result) {
+    private NameNodeResult handleDuplicateTask(FileSystemTask<Serializable> task, NameNodeResult result) {
         LOG.warn("Encountered duplicate task " + task.getTaskId() + " (operation = " + task.getOperationName() + ").");
 
         if (task.getForceRedo()) {
@@ -323,7 +382,7 @@ public class ExecutionManager {
             PreviousResult previousResult = previousResultCache.getIfPresent(task.getTaskId());
             if (previousResult != null) {
                 LOG.debug("Result for task " + task.getTaskId() + " is still cached. Returning it to the client now.");
-                task.postResult(previousResult.value);
+                return result;
             } else {
                 LOG.warn("Result for task " + task.getTaskId() + " is no longer in the cache.");
 
@@ -331,11 +390,11 @@ public class ExecutionManager {
 
                 // Simply post a DuplicateRequest message. The client-side code will know that this means
                 // that the result is no longer in the cache, and the operation must be restarted.
-                task.postResult(result);
+                return result;
             }
         } else {
             result.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
-            task.postResult(result);
+            return result;
         }
     }
 }

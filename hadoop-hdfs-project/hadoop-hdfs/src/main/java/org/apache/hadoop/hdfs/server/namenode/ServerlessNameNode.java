@@ -359,6 +359,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           StartupOption.NO_OF_CONCURRENT_BLOCK_REPORTS.getName() + " concurrentBlockReports ] | [" +
           StartupOption.FORMAT_ALL.getName() + " ]";
 
+
+
   public long getProtocolVersion(String protocol, long clientVersion)
       throws IOException {
     if (protocol.equals(ClientProtocol.class.getName())) {
@@ -465,6 +467,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   public boolean checkIfRequestProcessedAlready(String requestId) {
     return executionManager.isTaskDuplicate(requestId);
   }
+
+  public ExecutionManager getExecutionManager() { return executionManager; }
 
   public int getNumDeployments() {
     return numDeployments;
