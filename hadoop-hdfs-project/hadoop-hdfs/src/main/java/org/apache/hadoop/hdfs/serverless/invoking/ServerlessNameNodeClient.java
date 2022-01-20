@@ -457,11 +457,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println(valuesString);
 
         System.out.println("\n-- REQUESTS PER NAMENODE  ----------------------------------------------------------------------------------------------------");
-        HashMap<Long, Integer> requestsPerNameNode = OperationPerformed.getRequestsPerNameNode(opsPerformedList);
+        HashMap<Long, Integer> deploymentMapping = new HashMap<>();
+        HashMap<Long, Integer> requestsPerNameNode = OperationPerformed.getRequestsPerNameNode(opsPerformedList, deploymentMapping);
         StringBuilder formatString = new StringBuilder();
         for (Long nameNodeId : requestsPerNameNode.keySet())
-            formatString.append("%-21s ");
-        System.out.println(String.format(formatString.toString(), requestsPerNameNode.keySet().toArray()));
+            formatString.append("%-25s ");
+
+        String[] idsWithDeployment = new String[requestsPerNameNode.size()];
+        int idx = 0;
+        for (Long nameNodeId : requestsPerNameNode.keySet())
+            idsWithDeployment[idx] = nameNodeId + " (" + deploymentMapping.get(nameNodeId) + ")";
+
+        System.out.println(String.format(formatString.toString(), idsWithDeployment));
         System.out.println(String.format(formatString.toString(), requestsPerNameNode.values().toArray()));
 
         System.out.println("\n==================================================================");

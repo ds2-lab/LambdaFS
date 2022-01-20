@@ -424,13 +424,18 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * Return a {@link HashMap} mapping each unique NameNode ID to the number of requests that particular NameNode serviced,
      * based on the {@link OperationPerformed} instances contained within the {@code ops} parameter.
      * @param ops Collection of {@link OperationPerformed} instances.
+     * @param deploymentMapping Empty HashMap (or null). If HashMap, then mapping from NameNodeID to its deployment will be created.
      * @return {@link HashMap} that maps NameNode ID to number of requests serviced by that NameNode.
      */
-    public static HashMap<Long, Integer> getRequestsPerNameNode(Collection<OperationPerformed> ops) {
+    public static HashMap<Long, Integer> getRequestsPerNameNode(Collection<OperationPerformed> ops, HashMap<Long, Integer> deploymentMapping) {
         HashMap<Long, Integer> requestsPerNameNode = new HashMap<>();
 
-        for (OperationPerformed op : ops)
+        for (OperationPerformed op : ops) {
             requestsPerNameNode.merge(op.getNameNodeId(), 1, Integer::sum);
+
+            if (deploymentMapping != null)
+                deploymentMapping.computeIfAbsent(op.getNameNodeId(), nnId -> op.getDeployment());
+        }
 
         return requestsPerNameNode;
     }
