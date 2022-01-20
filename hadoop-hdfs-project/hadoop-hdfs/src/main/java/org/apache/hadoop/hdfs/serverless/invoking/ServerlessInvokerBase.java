@@ -355,9 +355,7 @@ public abstract class ServerlessInvokerBase<T> {
             cache.addEntry(src, function, false);
 
             LOG.debug("Added entry to function-mapping cache. File/directory \"" + src + "\" --> " + function);
-        } /*else {
-            LOG.warn("No INode function mapping information contained within response from serverless name node...");
-        }*/
+        }
 
         // Print any exceptions that were encountered first.
         if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {
@@ -379,6 +377,9 @@ public abstract class ServerlessInvokerBase<T> {
             }
         }
 
+        // This is just related to debugging/metrics. There are objects called "STATISTICS PACKAGES" that have
+        // certain statistics about NN execution. We're just checking if there are any included here and, if so,
+        // then we extract them.
         if (response.has(ServerlessNameNodeKeys.STATISTICS_PACKAGE)) {
             String statisticsPackageEncoded =
                     response.getAsJsonPrimitive(ServerlessNameNodeKeys.STATISTICS_PACKAGE).getAsString();
@@ -394,6 +395,7 @@ public abstract class ServerlessInvokerBase<T> {
             }
         }
 
+        // Similar to "STATISTICS PACKAGES". See comment above.
         if (response.has(ServerlessNameNodeKeys.TRANSACTION_EVENTS)) {
             String transactionEventsEncoded =
                     response.getAsJsonPrimitive(ServerlessNameNodeKeys.TRANSACTION_EVENTS).getAsString();
