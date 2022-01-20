@@ -443,6 +443,27 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println(OperationPerformed.getMetricsHeader());
         System.out.println(OperationPerformed.getMetricsString(OperationPerformed.getAverages(opsPerformedList)));
 
+        System.out.println("\n-- REQUESTS PER DEPLOYMENT ---------------------------------------------------------------------------------------------------");
+        HashMap<Integer, Integer> requestsPerDeployment = OperationPerformed.getRequestsPerDeployment(opsPerformedList);
+        StringBuilder deploymentHeader = new StringBuilder();
+        for (int i = 0; i < numDeployments; i++)
+            deploymentHeader.append(i).append('\t');
+        System.out.println(deploymentHeader);
+        StringBuilder valuesString = new StringBuilder();
+        for (int i = 0; i < numDeployments; i++) {
+            int requests = requestsPerDeployment.getOrDefault(i, 0);
+            valuesString.append(requests).append("\t");
+        }
+        System.out.println(valuesString);
+
+        System.out.println("\n-- REQUESTS PER NAMENODE  ----------------------------------------------------------------------------------------------------");
+        HashMap<Long, Integer> requestsPerNameNode = OperationPerformed.getRequestsPerNameNode(opsPerformedList);
+        StringBuilder formatString = new StringBuilder();
+        for (Long nameNodeId : requestsPerNameNode.keySet())
+            formatString.append("%-21s ");
+        System.out.println(String.format(formatString.toString(), requestsPerNameNode.keySet()));
+        System.out.println(String.format(formatString.toString(), requestsPerNameNode.values()));
+
         System.out.println("\n==================================================================");
     }
 
