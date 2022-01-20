@@ -461,8 +461,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         StringBuilder formatString = new StringBuilder();
         for (Long nameNodeId : requestsPerNameNode.keySet())
             formatString.append("%-21s ");
-        System.out.println(String.format(formatString.toString(), requestsPerNameNode.keySet()));
-        System.out.println(String.format(formatString.toString(), requestsPerNameNode.values()));
+        System.out.println(String.format(formatString.toString(), requestsPerNameNode.keySet().toArray()));
+        System.out.println(String.format(formatString.toString(), requestsPerNameNode.values().toArray()));
 
         System.out.println("\n==================================================================");
     }
