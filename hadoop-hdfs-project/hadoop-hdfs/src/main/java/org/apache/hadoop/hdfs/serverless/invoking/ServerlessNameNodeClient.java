@@ -466,7 +466,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String[] idsWithDeployment = new String[requestsPerNameNode.size()];
         int idx = 0;
         for (Long nameNodeId : requestsPerNameNode.keySet())
-            idsWithDeployment[idx] = nameNodeId + " (" + deploymentMapping.get(nameNodeId) + ")";
+            idsWithDeployment[idx++] = nameNodeId + " (" + deploymentMapping.get(nameNodeId) + ")";
 
         System.out.println(String.format(formatString.toString(), idsWithDeployment));
         System.out.println(String.format(formatString.toString(), requestsPerNameNode.values().toArray()));
