@@ -319,7 +319,10 @@ public abstract class ServerlessInvokerBase<T> {
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
             throws IOException, IllegalStateException;
-    
+
+    /**
+     * Get an HTTP client configured for the particular serverless platform.
+     */
     public abstract CloseableHttpClient getHttpClient()
             throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException;
 
