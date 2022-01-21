@@ -1210,7 +1210,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
 
-    LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
+    // LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
 
     NamespaceInfo nsInfo = namesystem.getNamespaceInfo();
 
@@ -1245,7 +1245,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         // the for-loop has a smaller creation time stamp, then we do nothing and move onto the next DN in the for-loop.
         if (creationTimeComparisonResult > 0) {
           dnMap.put(key, dataNodeMeta);
-          LOG.debug("Replacing DN " + existingDN.getDatanodeUuid() + " with DN " + dataNodeMeta.getDatanodeUuid() + " in pre-registration mapping.");
+          // LOG.debug("Replacing DN " + existingDN.getDatanodeUuid() + " with DN " + dataNodeMeta.getDatanodeUuid() + " in pre-registration mapping.");
           //LOG.debug("Creation time of existing DN (uuid=" + existingDN.getDatanodeUuid() + "): "
           //        + existingDN.getCreationTime());
           //LOG.debug("Creation time of \"new\" DN (uuid=" + dataNodeMeta.getDatanodeUuid() + "): "
@@ -1258,18 +1258,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
     }
 
-    if (numReplaced > 0) {
-      LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
-    }
+//    if (numReplaced > 0) {
+//      LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
+//    }
 
-    LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
+    // LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
 
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
     //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
 
     for (DataNodeMeta dataNodeMeta : dnMap.values()) {
       String datanodeUuid = dataNodeMeta.getDatanodeUuid();
-      LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
+      // LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
 
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
@@ -1298,17 +1298,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       try {
         if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
                 datanodeRegistration.getDatanodeUuid()) != null) {
-          LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
+          // LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
           continue;
         } else {
-          LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
+          // LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
           namesystem.registerDatanode(datanodeRegistration);
         }
 
         datanodeRegistrations.add(datanodeRegistration);
       } catch (IOException ex) {
         // Log this, so we know the source of the exception, then re-throw it so it gets caught one layer up.
-        LOG.error("Error registering datanode " + dataNodeMeta.getDatanodeUuid());
+        // LOG.error("Error registering datanode " + dataNodeMeta.getDatanodeUuid());
         throw ex;
       }
     }

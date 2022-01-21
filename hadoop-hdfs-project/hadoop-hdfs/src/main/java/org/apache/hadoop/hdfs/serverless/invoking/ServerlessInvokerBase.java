@@ -284,10 +284,6 @@ public abstract class ServerlessInvokerBase<T> {
         configured = true;
     }
 
-    public FunctionMetadataMap getFunctionMetadataMap() {
-        return cache;
-    }
-
     /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient
      * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
