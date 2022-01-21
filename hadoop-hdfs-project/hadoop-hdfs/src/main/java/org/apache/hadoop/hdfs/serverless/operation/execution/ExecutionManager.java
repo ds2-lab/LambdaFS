@@ -141,7 +141,7 @@ public class ExecutionManager {
             NameNodeResult result = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
                     task.getTaskId(), task.getOperationName(), this.nameNodeId);
             // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
-            result.setDequeuedTime(Time.getUtcTime());
+            // result.setDequeuedTime(Time.getUtcTime());
             return handleDuplicateTask(task, result);
         } else {
             currentlyExecutingTasks.put(task.getTaskId(), task);
@@ -278,7 +278,7 @@ public class ExecutionManager {
             NameNodeResult result = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
                     task.getTaskId(), task.getOperationName(), this.nameNodeId);
             // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
-            result.setDequeuedTime(Time.getUtcTime());
+            // result.setDequeuedTime(Time.getUtcTime());
             handleDuplicateTask(task, result);
         } else {
             workQueue.put(task);

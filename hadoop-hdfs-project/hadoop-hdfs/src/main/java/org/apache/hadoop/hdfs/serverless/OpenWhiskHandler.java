@@ -315,7 +315,7 @@ public class OpenWhiskHandler {
         FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, redoEvenIfDuplicate, "HTTP");
 
         result.setFnStartTime(creationStart);
-        result.setEnqueuedTime(Time.getUtcTime());
+        // result.setEnqueuedTime(Time.getUtcTime());
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
