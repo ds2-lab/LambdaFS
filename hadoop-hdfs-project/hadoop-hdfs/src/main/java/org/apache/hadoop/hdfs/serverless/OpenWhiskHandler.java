@@ -319,16 +319,16 @@ public class OpenWhiskHandler {
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
-            NameNodeResult fileSystemOperationResult = serverlessNameNode.getExecutionManager().tryExecuteTask(task);
+            serverlessNameNode.getExecutionManager().tryExecuteTask(task, result);
 
-            LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
-            if (fileSystemOperationResult != null) {
-                LOG.debug("Merging NameNodeResult instances now...");
-                result.mergeInto(fileSystemOperationResult, false);
-            } else {
-                // This will be caught immediately and added to the result returned to the client.
-                throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
-            }
+//            LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
+//            if (fileSystemOperationResult != null) {
+//                LOG.debug("Merging NameNodeResult instances now...");
+//                result.mergeInto(fileSystemOperationResult, false);
+//            } else {
+//                // This will be caught immediately and added to the result returned to the client.
+//                throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
+//            }
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);

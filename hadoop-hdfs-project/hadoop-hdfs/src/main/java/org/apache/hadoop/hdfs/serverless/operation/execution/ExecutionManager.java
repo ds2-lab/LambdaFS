@@ -134,21 +134,21 @@ public class ExecutionManager {
     /**
      * Attempt to execute the file system operation submitted with the current request.
      */
-    public NameNodeResult tryExecuteTask(FileSystemTask<Serializable> task) {
+    public void tryExecuteTask(FileSystemTask<Serializable> task, NameNodeResult workerResult) {
         boolean duplicate = isTaskDuplicate(task);
 
         if (duplicate) {
-            NameNodeResult result = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
-                    task.getTaskId(), task.getOperationName(), this.nameNodeId);
+//            NameNodeResult result = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
+//                    task.getTaskId(), task.getOperationName(), this.nameNodeId);
             // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
-            result.setDequeuedTime(Time.getUtcTime());
-            return handleDuplicateTask(task, result);
+            workerResult.setDequeuedTime(Time.getUtcTime());
+            handleDuplicateTask(task, workerResult);
         } else {
             currentlyExecutingTasks.put(task.getTaskId(), task);
         }
 
-        NameNodeResult workerResult = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
-                task.getTaskId(), task.getOperationName(), this.nameNodeId);
+//        NameNodeResult workerResult = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
+//                task.getTaskId(), task.getOperationName(), this.nameNodeId);
         workerResult.setDequeuedTime(Time.getUtcTime());
 
         Serializable result = null;
@@ -201,8 +201,6 @@ public class ExecutionManager {
         // Cache the result for a bit.
         PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
         cachePreviousResult(task.getTaskId(), previousResult);
-
-        return workerResult;
     }
 
     /**
@@ -385,7 +383,6 @@ public class ExecutionManager {
             PreviousResult previousResult = previousResultCache.getIfPresent(task.getTaskId());
             if (previousResult != null) {
                 LOG.debug("Result for task " + task.getTaskId() + " is still cached. Returning it to the client now.");
-                return result;
             } else {
                 LOG.warn("Result for task " + task.getTaskId() + " is no longer in the cache.");
 
@@ -393,8 +390,8 @@ public class ExecutionManager {
 
                 // Simply post a DuplicateRequest message. The client-side code will know that this means
                 // that the result is no longer in the cache, and the operation must be restarted.
-                return result;
             }
+            return result;
         } else {
             result.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
             return result;

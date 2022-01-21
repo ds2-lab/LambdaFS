@@ -524,6 +524,9 @@ public class NameNodeTCPClient {
         String op = args.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
         JsonObject fsArgs = args.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
 
+        NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP", serverlessNameNode.getId());
+        tcpResult.setFnStartTime(Time.getUtcTime());
+
         LOG.debug("================ TCP Message Contents ================");
         LOG.debug("Request ID: " + requestId);
         LOG.debug("Operation name: " + op);
@@ -532,25 +535,20 @@ public class NameNodeTCPClient {
             LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
         LOG.debug("======================================================\n");
 
-        NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP",
-                serverlessNameNode.getId());
-
-        tcpResult.setFnStartTime(Time.getUtcTime());
-
         // Create a new task. After this, we assign it to the worker thread and wait for the
         // result to be computed before returning it to the user.
         FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, false, "TCP");
 
-        NameNodeResult result = serverlessNameNode.getExecutionManager().tryExecuteTask(task);
+        serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult);
 
-        LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
-        if (result != null) {
-            LOG.debug("[TCP] Merging NameNodeResult instances now...");
-            tcpResult.mergeInto(result, false);
-        } else {
-            // This will be caught immediately and added to the result returned to the client.
-            throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
-        }
+//        LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
+//        if (tcpResult != null) {
+//            LOG.debug("[TCP] Merging NameNodeResult instances now...");
+//            tcpResult.mergeInto(result, false);
+//        } else {
+//            // This will be caught immediately and added to the result returned to the client.
+//            throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
+//        }
 
         tcpResult.setFnEndTime(Time.getUtcTime());
         return tcpResult;
