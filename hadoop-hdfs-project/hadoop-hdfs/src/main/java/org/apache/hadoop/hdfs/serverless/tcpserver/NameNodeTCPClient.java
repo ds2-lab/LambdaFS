@@ -525,7 +525,7 @@ public class NameNodeTCPClient {
         JsonObject fsArgs = args.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
 
         NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP", serverlessNameNode.getId());
-        tcpResult.setFnStartTime(Time.getUtcTime());
+        tcpResult.setFnStartTime(System.currentTimeMillis());
 
         LOG.debug("================ TCP Message Contents ================");
         LOG.debug("Request ID: " + requestId);
@@ -550,7 +550,7 @@ public class NameNodeTCPClient {
 //            throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
 //        }
 
-        tcpResult.setFnEndTime(Time.getUtcTime());
+        tcpResult.setFnEndTime(System.currentTimeMillis());
         return tcpResult;
     }
 

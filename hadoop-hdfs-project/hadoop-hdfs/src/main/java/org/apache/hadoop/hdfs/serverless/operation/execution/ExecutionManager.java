@@ -141,7 +141,7 @@ public class ExecutionManager {
 //            NameNodeResult result = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
 //                    task.getTaskId(), task.getOperationName(), this.nameNodeId);
             // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
-            workerResult.setDequeuedTime(Time.getUtcTime());
+            workerResult.setDequeuedTime(System.currentTimeMillis());
             handleDuplicateTask(task, workerResult);
         } else {
             currentlyExecutingTasks.put(task.getTaskId(), task);
@@ -149,20 +149,19 @@ public class ExecutionManager {
 
 //        NameNodeResult workerResult = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
 //                task.getTaskId(), task.getOperationName(), this.nameNodeId);
-        workerResult.setDequeuedTime(Time.getUtcTime());
+        workerResult.setDequeuedTime(System.currentTimeMillis());
 
         Serializable result = null;
         boolean success = false;
         try {
-            result = serverlessNameNodeInstance.performOperation(
-                    task.getOperationName(), task.getOperationArguments());
+            result = serverlessNameNodeInstance.performOperation(task.getOperationName(), task.getOperationArguments());
 
             if (result == null)
                 workerResult.addResult(NullResult.getInstance(), true);
             else
                 workerResult.addResult(result, true);
 
-            workerResult.setProcessingFinishedTime(Time.getUtcTime());
+            workerResult.setProcessingFinishedTime(System.currentTimeMillis());
 
             workerResult.commitTransactionEvents(serverlessNameNodeInstance.getTransactionEvents());
             success = true;
@@ -180,10 +179,10 @@ public class ExecutionManager {
         if (task.getRequestMethod().equalsIgnoreCase("HTTP")) {
             try {
                 LOG.debug("Trying to create function mapping for request " + task.getTaskId() + " now...");
-                long start = Time.getUtcTime();
+                long start = System.currentTimeMillis();
                 // Check if a function mapping should be created and returned to the client.
                 OpenWhiskHandler.tryCreateDeploymentMapping(workerResult, task.getOperationArguments(), serverlessNameNodeInstance);
-                long end = Time.getUtcTime();
+                long end = System.currentTimeMillis();
 
                 LOG.debug("Created function mapping for request " + task.getTaskId() + " in " + (end - start) + " ms.");
             } catch (IOException ex) {
@@ -277,7 +276,7 @@ public class ExecutionManager {
             NameNodeResult result = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
                     task.getTaskId(), task.getOperationName(), this.nameNodeId);
             // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
-            result.setDequeuedTime(Time.getUtcTime());
+            result.setDequeuedTime(System.currentTimeMillis());
             handleDuplicateTask(task, result);
         } else {
             workQueue.put(task);

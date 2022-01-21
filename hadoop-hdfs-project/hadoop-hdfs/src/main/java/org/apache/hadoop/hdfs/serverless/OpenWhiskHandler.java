@@ -201,7 +201,7 @@ public class OpenWhiskHandler {
         LOG.debug("Returning back to client. Time elapsed: " + timeElapsed + " milliseconds.");
         LOG.debug("ServerlessNameNode is exiting now...");
         activeRequestCounter.decrementAndGet();
-        result.setFnEndTime(Time.getUtcTime());
+        result.setFnEndTime(System.currentTimeMillis());
         return createJsonResponse(result);
     }
 
@@ -259,7 +259,7 @@ public class OpenWhiskHandler {
         NameNodeResult result = new NameNodeResult(ServerlessNameNode.getFunctionNumberFromFunctionName(functionName),
                 requestId, "HTTP", -1);
 
-        long creationStart = Time.getUtcTime();
+        long creationStart = System.currentTimeMillis();
         LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
 
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
@@ -276,7 +276,7 @@ public class OpenWhiskHandler {
             return result;
         }
 
-        long creationEnd = Time.getUtcTime();
+        long creationEnd = System.currentTimeMillis();
         long creationDuration = creationEnd - creationStart;
         LOG.debug("Obtained NameNode instance with ID=" + serverlessNameNode.getId());
         result.setNameNodeId(serverlessNameNode.getId());
@@ -315,7 +315,6 @@ public class OpenWhiskHandler {
         FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, redoEvenIfDuplicate, "HTTP");
 
         result.setFnStartTime(creationStart);
-        result.setEnqueuedTime(Time.getUtcTime());
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
