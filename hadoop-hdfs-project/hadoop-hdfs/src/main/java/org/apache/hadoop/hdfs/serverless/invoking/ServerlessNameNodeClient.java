@@ -1548,15 +1548,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 for (int i = 0; i < numPingsPerDeployment; i++) {
                     String requestId = UUID.randomUUID().toString();
 
-                    OperationPerformed operationPerformed
-                            = new OperationPerformed("ping", requestId,
-                            Time.getUtcTime(), Time.getUtcTime(),
-                            Time.getUtcTime(), Time.getUtcTime(),
-                            Time.getUtcTime(), Time.getUtcTime(),
-                            depNum, true, true, "N/A",
-                            -1, 0, 0);
-                    operationsPerformed.put(requestId, operationPerformed);
-
                     // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
                     // file/directory, then we'll just use an HTTP request.
                     try {
@@ -1570,8 +1561,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-
-                    operationPerformed.setServerlessFnEndTime(System.nanoTime());
                 }
             });
 
@@ -1595,14 +1584,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void ping(int targetDeployment) throws IOException {
         String requestId = UUID.randomUUID().toString();
 
-        OperationPerformed operationPerformed
-                = new OperationPerformed("ping", requestId,
-                Time.getUtcTime(), -1L, -1L,
-                -1L, -1L, -1L,
-                targetDeployment, true, true, "N/A",
-                -1, 0, 0);
-        operationsPerformed.put(requestId, operationPerformed);
-
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
         dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
@@ -1612,8 +1593,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 new ArgumentContainer(),
                 requestId,
                 targetDeployment);
-
-        operationPerformed.setServerlessFnEndTime(System.nanoTime());
     }
 
     @Override
