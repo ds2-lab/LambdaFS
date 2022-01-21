@@ -143,6 +143,8 @@ public class ExecutionManager {
             // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
             result.setDequeuedTime(Time.getUtcTime());
             return handleDuplicateTask(task, result);
+        } else {
+            currentlyExecutingTasks.put(task.getTaskId(), task);
         }
 
         NameNodeResult workerResult = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
