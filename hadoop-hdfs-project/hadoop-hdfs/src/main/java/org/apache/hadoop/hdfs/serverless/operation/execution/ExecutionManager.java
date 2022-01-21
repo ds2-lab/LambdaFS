@@ -163,9 +163,9 @@ public class ExecutionManager {
 
             workerResult.setProcessingFinishedTime(System.currentTimeMillis());
 
-            long s = System.currentTimeMillis();
-            workerResult.commitTransactionEvents(serverlessNameNodeInstance.getTransactionEvents());
-            LOG.debug("Committed TX events in " + (System.currentTimeMillis() - s) + " ms.");
+            //long s = System.currentTimeMillis();
+            //workerResult.commitTransactionEvents(serverlessNameNodeInstance.getTransactionEvents());
+            //LOG.debug("Committed TX events in " + (System.currentTimeMillis() - s) + " ms.");
             success = true;
         } catch (Exception ex) {
             LOG.error("Encountered exception while executing file system operation " + task.getOperationName() +
