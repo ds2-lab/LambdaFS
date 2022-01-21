@@ -347,7 +347,14 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         for (Map.Entry<String, Long> entry : sums.entrySet()) {
             String key = entry.getKey();
             long value = entry.getValue();
-            averages.put(key, (double)value / (double)counts.get(key));
+
+            try {
+                averages.put(key, (double)value / (double)counts.get(key));
+            } catch (NullPointerException ex) {
+                System.out.println("ERROR: NPE encountered.");
+                ex.printStackTrace();
+                System.out.println("Key: " + key);
+            }
         }
 
         return averages;
