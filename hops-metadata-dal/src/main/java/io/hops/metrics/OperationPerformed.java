@@ -404,7 +404,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 sums.put(INVOCATION_TIME, invocationTime + (op.serverlessFnStartTime - op.invokedAtTime));
                 counts.merge(INVOCATION_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
             }
-            if (op.requestEnqueuedAtTime - op.serverlessFnStartTime > 0) {
+            // Now preprocessing is just everything from when request is received to when it begins executing.
+            if (op.resultBeganExecutingTime - op.serverlessFnStartTime > 0) {
                 sums.put(PREPROCESSING_TIME, preprocessingTime + (op.requestEnqueuedAtTime - op.serverlessFnStartTime));
                 counts.merge(PREPROCESSING_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
             }
