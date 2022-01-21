@@ -432,6 +432,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         System.out.println("====================== Operations Performed ======================");
         System.out.println("Number performed: " + operationsPerformed.size());
+        System.out.println(OperationPerformed.getToStringHeader());
         for (OperationPerformed operationPerformed : opsPerformedList)
             System.out.println(operationPerformed.toString());
 

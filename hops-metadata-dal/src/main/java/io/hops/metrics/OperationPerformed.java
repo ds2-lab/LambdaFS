@@ -196,6 +196,10 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 "serverless_fn_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses";
     }
 
+    public static String getToStringHeader() {
+        return "OpName RequestID InvokedAt FnStartTime EnqueuedAt BeganExecutingAt FnEndTime ResultReceivedAt FnDuration DepNum NNID ResReceivedVia CacheHits CacheMisses";
+    }
+
     @Override
     public String toString() {
         String formatString = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-6s %-5s %-5s";
