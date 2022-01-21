@@ -336,9 +336,11 @@ public class NameNodeTCPClient {
                     tcpResult.addException(ex);
                 }
 
+                long s = System.currentTimeMillis();
                 String jsonString = new Gson().toJson(tcpResult.toJson(
                         ServerlessClientServerUtilities.OPERATION_RESULT,
                         serverlessNameNode.getNamesystem().getMetadataCache()));
+                LOG.debug("Created JSON version of NameNodeResult in " + (System.currentTimeMillis() - s) + " ms.");
 
                 trySendTcp(connection, jsonString, false);
             }
@@ -550,8 +552,6 @@ public class NameNodeTCPClient {
 //            // This will be caught immediately and added to the result returned to the client.
 //            throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
 //        }
-
-        tcpResult.setFnEndTime(System.currentTimeMillis());
         return tcpResult;
     }
 

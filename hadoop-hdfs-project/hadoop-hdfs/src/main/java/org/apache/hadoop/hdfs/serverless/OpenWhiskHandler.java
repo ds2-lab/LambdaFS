@@ -201,7 +201,6 @@ public class OpenWhiskHandler {
         LOG.debug("Returning back to client. Time elapsed: " + timeElapsed + " milliseconds.");
         LOG.debug("ServerlessNameNode is exiting now...");
         activeRequestCounter.decrementAndGet();
-        result.setFnEndTime(System.currentTimeMillis());
         return createJsonResponse(result);
     }
 
