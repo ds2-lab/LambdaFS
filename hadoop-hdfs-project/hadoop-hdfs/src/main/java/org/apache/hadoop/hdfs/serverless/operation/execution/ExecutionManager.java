@@ -163,16 +163,20 @@ public class ExecutionManager {
 
             workerResult.setProcessingFinishedTime(System.currentTimeMillis());
 
+            long s = System.currentTimeMillis();
             workerResult.commitTransactionEvents(serverlessNameNodeInstance.getTransactionEvents());
+            LOG.debug("Committed TX events in " + (System.currentTimeMillis() - s) + " ms.");
             success = true;
         } catch (Exception ex) {
             LOG.error("Encountered exception while executing file system operation " + task.getOperationName() +
                     " for task " + task.getTaskId() + ".", ex);
             workerResult.addException(ex);
+            workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         } catch (Throwable t) {
             LOG.error("Encountered throwable while executing file system operation " + task.getOperationName() +
                     " for task " + task.getTaskId() + ".", t);
             workerResult.addThrowable(t);
+            workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         }
 
         // If this task was submitted via HTTP, then attempt to create a deployment mapping.
@@ -194,8 +198,9 @@ public class ExecutionManager {
 
         // We only add the task to the `completedTasks` mapping if we executed it successfully.
         // If there was an error, then may be automatically re-submitted by the client.
-        if (success)
+        if (success) {
             notifyTaskCompleted(task);
+        }
 
         // Cache the result for a bit.
         PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
@@ -318,20 +323,20 @@ public class ExecutionManager {
         if (task == null)
             throw new IllegalArgumentException("The provided FileSystemTask object should not be null.");
 
-        // Atomically check and update this state.
-        synchronized (this) {
-            String taskId = task.getTaskId();
-            if (!currentlyExecutingTasks.containsKey(taskId))
-                throw new IllegalStateException("Task " + taskId + " is not currently executing.");
+        String taskId = task.getTaskId();
 
-            currentlyExecutingTasks.remove(taskId);
+        // Put it in 'completed tasks' first so that, if we check for duplicate while modifying all this state,
+        // we'll correctly return true. If we removed it from 'currently executing tasks' first, then there could
+        // be a race where the task has been removed from 'currently executing tasks' but not yet added to 'completed
+        // tasks' yet, which could result in false negatives when checking for duplicates.
+//        if (completedTasks.containsKey(taskId))
+//            throw new IllegalStateException("Task " + taskId + " (op=" + task.getOperationName() +
+//                    ") has just finished executing, yet it is already present in the completedTasks map...");
+        completedTasks.put(taskId, task);
 
-            if (completedTasks.containsKey(taskId))
-                throw new IllegalStateException("Task " + taskId + " (op=" + task.getOperationName() +
-                        ") has just finished executing, yet it is already present in the completedTasks map...");
-
-            completedTasks.put(taskId, task);
-        }
+//        if (!currentlyExecutingTasks.containsKey(taskId))
+//            throw new IllegalStateException("Task " + taskId + " is not currently executing.");
+        currentlyExecutingTasks.remove(taskId);
     }
 
     /**

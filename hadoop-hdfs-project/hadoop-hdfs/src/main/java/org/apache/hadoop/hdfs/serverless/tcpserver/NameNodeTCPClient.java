@@ -520,12 +520,13 @@ public class NameNodeTCPClient {
     }
 
     private NameNodeResult handleWorkAssignment(JsonObject args) {
+        long startTime = System.currentTimeMillis();
         String requestId = args.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
         String op = args.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
         JsonObject fsArgs = args.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
 
         NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP", serverlessNameNode.getId());
-        tcpResult.setFnStartTime(System.currentTimeMillis());
+        tcpResult.setFnStartTime(startTime);
 
         LOG.debug("================ TCP Message Contents ================");
         LOG.debug("Request ID: " + requestId);
