@@ -207,8 +207,8 @@ public class ExecutionManager {
         }
 
         // Cache the result for a bit.
-        PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
-        cachePreviousResult(task.getTaskId(), previousResult);
+        // PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
+        // cachePreviousResult(task.getTaskId(), previousResult);
     }
 
     /**
@@ -399,10 +399,9 @@ public class ExecutionManager {
                 // Simply post a DuplicateRequest message. The client-side code will know that this means
                 // that the result is no longer in the cache, and the operation must be restarted.
             }
-            return result;
         } else {
             result.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
-            return result;
         }
+        return result;
     }
 }
