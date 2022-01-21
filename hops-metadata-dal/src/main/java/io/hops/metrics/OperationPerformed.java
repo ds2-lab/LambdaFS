@@ -308,7 +308,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 resultReceivedTime,               // Client receives result from NN.
                 serverlessFnStartTime - invokedAtTime,                      // Invocation.
                 resultBeganExecutingTime - serverlessFnStartTime,           // Pre-processing.
-                requestEnqueuedAtTime - requestEnqueuedAtTime,              // Waiting in queue.
+                0,                                                          // Waiting in queue.
                 resultFinishedProcessingTime - resultBeganExecutingTime,    // Executing.
                 serverlessFnEndTime - resultFinishedProcessingTime,         // Post-processing.
                 resultReceivedTime - serverlessFnEndTime,                   // Returning to user.
