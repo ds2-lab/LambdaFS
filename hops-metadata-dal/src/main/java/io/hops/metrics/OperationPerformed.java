@@ -145,6 +145,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.metadataCacheHits = metadataCacheHits;
         this.metadataCacheMisses = metadataCacheMisses;
         this.resultReceivedVia = resultReceivedVia;
+
+        System.out.println("OpPerformed(resultBeganExecutingTime/dequeuedTime = " + dequeuedTime + ", serverlessFnStartTime = " + serverlessFnStartTime + ")");
     }
 
     public void setNameNodeId(long nameNodeId) {
@@ -300,12 +302,12 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 resultFinishedProcessingTime,     // NN finished executing the requested operation.
                 serverlessFnEndTime,              // NN returns result to client.
                 resultReceivedTime,               // Client receives result from NN.
-                serverlessFnStartTime - invokedAtTime,
-                requestEnqueuedAtTime - serverlessFnStartTime,
-                resultBeganExecutingTime - requestEnqueuedAtTime,
-                resultFinishedProcessingTime - resultBeganExecutingTime,
-                serverlessFnEndTime - resultFinishedProcessingTime,
-                resultReceivedTime - serverlessFnEndTime,
+                serverlessFnStartTime - invokedAtTime,                      // Invocation.
+                resultBeganExecutingTime - serverlessFnStartTime,           // Pre-processing.
+                requestEnqueuedAtTime - requestEnqueuedAtTime,              // Waiting in queue.
+                resultFinishedProcessingTime - resultBeganExecutingTime,    // Executing.
+                serverlessFnEndTime - resultFinishedProcessingTime,         // Post-processing.
+                resultReceivedTime - serverlessFnEndTime,                   // Returning to user.
                 serverlessFunctionDuration,
                 deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses));
         writer.newLine();
