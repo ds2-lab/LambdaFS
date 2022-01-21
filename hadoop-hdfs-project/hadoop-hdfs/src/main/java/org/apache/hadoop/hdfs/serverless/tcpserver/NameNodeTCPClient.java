@@ -532,15 +532,15 @@ public class NameNodeTCPClient {
         LOG.debug("Request ID: " + requestId);
         LOG.debug("Operation name: " + op);
         LOG.debug("FS operation arguments: ");
-        for (Map.Entry<String, JsonElement> entry : fsArgs.entrySet())
-            LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
+//        for (Map.Entry<String, JsonElement> entry : fsArgs.entrySet())
+//            LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
         LOG.debug("======================================================\n");
 
         // Create a new task. After this, we assign it to the worker thread and wait for the
         // result to be computed before returning it to the user.
         FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, false, "TCP");
 
-        serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult);
+        serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult, false);
 
 //        LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
 //        if (tcpResult != null) {

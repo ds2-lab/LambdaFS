@@ -318,7 +318,7 @@ public class OpenWhiskHandler {
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
-            serverlessNameNode.getExecutionManager().tryExecuteTask(task, result);
+            serverlessNameNode.getExecutionManager().tryExecuteTask(task, result, true);
 
 //            LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
 //            if (fileSystemOperationResult != null) {

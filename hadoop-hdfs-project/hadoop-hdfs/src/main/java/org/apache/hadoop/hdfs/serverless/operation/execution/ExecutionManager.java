@@ -133,8 +133,12 @@ public class ExecutionManager {
 
     /**
      * Attempt to execute the file system operation submitted with the current request.
+     *
+     * @param task The task we're executing.
+     * @param workerResult The result object to be returned to the client.
+     * @param http True if this request was issued via HTTP. If false, then request was issued via TCP.
      */
-    public void tryExecuteTask(FileSystemTask<Serializable> task, NameNodeResult workerResult) {
+    public void tryExecuteTask(FileSystemTask<Serializable> task, NameNodeResult workerResult, boolean http) {
         boolean duplicate = isTaskDuplicate(task);
 
         if (duplicate) {
@@ -180,7 +184,7 @@ public class ExecutionManager {
         }
 
         // If this task was submitted via HTTP, then attempt to create a deployment mapping.
-        if (task.getRequestMethod().equalsIgnoreCase("HTTP")) {
+        if (http) {
             try {
                 LOG.debug("Trying to create function mapping for request " + task.getTaskId() + " now...");
                 long start = System.currentTimeMillis();
