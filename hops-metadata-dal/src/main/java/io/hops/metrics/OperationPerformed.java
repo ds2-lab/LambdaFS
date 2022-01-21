@@ -345,7 +345,9 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         HashMap<String, Double> averages = new HashMap<>();
 
         for (Map.Entry<String, Long> entry : sums.entrySet()) {
-            averages.put(entry.getKey(), (double)entry.getValue() / (double)counts.getOrDefault(entry.getKey(), 1));
+            String key = entry.getKey();
+            long value = entry.getValue();
+            averages.put(key, (double)value / (double)counts.getOrDefault(key, 1));
         }
 
         return averages;
