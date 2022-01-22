@@ -45,6 +45,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_ENDPOINT_DEFAULT = "https://openwhisk.serverless-mds-cluster-243065a7719552ad2f4388dc81e46642-0000.us-east.containers.appdomain.cloud:443/api/v1/web/whisk.system/default/namenode";
 
   /**
+   * Endpoint to use when local mode is enabled.
+   */
+  public static final String SERVERLESS_ENDPOINT_LOCAL = "serverless.endpoint.local";
+  public static final String SERVERLESS_ENDPOINT_LOCAL_DEFAULT = "http://localhost:8080/run";
+
+  /**
    * Configuration property for defining the serverless platform in use.
    */
   public static final String SERVERLESS_PLATFORM = "serverless.platform";
