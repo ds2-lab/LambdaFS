@@ -336,11 +336,9 @@ public class NameNodeTCPClient {
                     tcpResult.addException(ex);
                 }
 
-                long s = System.currentTimeMillis();
                 String jsonString = new Gson().toJson(tcpResult.toJson(
                         ServerlessClientServerUtilities.OPERATION_RESULT,
                         serverlessNameNode.getNamesystem().getMetadataCache()));
-                LOG.debug("Created JSON version of NameNodeResult in " + (System.currentTimeMillis() - s) + " ms.");
 
                 trySendTcp(connection, jsonString, false);
             }
@@ -430,12 +428,6 @@ public class NameNodeTCPClient {
      *                       debugging purposes.
      */
     private void trySendTcp(Connection connection, Object payload, boolean enqueuedResult) {
-        if (enqueuedResult)
-            LOG.warn("[TCP Client] Trying to send previously-enqueued result to client at " +
-                    connection.getRemoteAddressTCP() + " now.");
-        else
-            LOG.debug("[TCP Client] Trying to send new result to client at " + connection.getRemoteAddressTCP() + " now.");
-
         double currentCapacity = ((double) connection.getTcpWriteBufferSize()) / ((double) writeBufferSize);
         if (currentCapacity >= 0.9) {
             LOG.warn("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
