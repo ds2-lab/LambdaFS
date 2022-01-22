@@ -400,7 +400,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Used to record transaction events that have occurred while processing the current request.
    * Cleared after each request is processed by the NameNodeWorkerThread.
    */
-  private final Set<TransactionEvent> transactionEvents = new HashSet<>();
+  private final ThreadLocal<Set<TransactionEvent>> transactionEvents = new ThreadLocal<>();
 
   /**
    * Identifies the NameNode. This is used in place of the leader election ID since leader election is not used
@@ -478,23 +478,51 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return nameNodeTCPClient;
   }
 
-  public synchronized void addTransactionEvent(TransactionEvent event) {
-    transactionEvents.add(event);
+  public void addTransactionEvent(TransactionEvent event) {
+    Set<TransactionEvent> localTxEvents = transactionEvents.get();
+
+    if (localTxEvents == null) {
+      localTxEvents = new HashSet<>();
+      transactionEvents.set(localTxEvents);
+    }
+
+    localTxEvents.add(event);
   }
 
-  public synchronized void addTransactionEvents(Collection<TransactionEvent> event) {
-    transactionEvents.addAll(event);
+  public void addTransactionEvents(Collection<TransactionEvent> events) {
+    Set<TransactionEvent> localTxEvents = transactionEvents.get();
+
+    if (localTxEvents == null) {
+      localTxEvents = new HashSet<>();
+      transactionEvents.set(localTxEvents);
+    }
+
+    localTxEvents.addAll(events);
   }
 
   /**
    * Return a COPY of the transactionEvents list.
    */
-  public synchronized List<TransactionEvent> getTransactionEvents() {
-    return new ArrayList<>(transactionEvents);
+  public List<TransactionEvent> getTransactionEvents() {
+    Set<TransactionEvent> localTxEvents = transactionEvents.get();
+
+    if (localTxEvents == null) {
+      localTxEvents = new HashSet<>();
+      transactionEvents.set(localTxEvents);
+    }
+
+    return new ArrayList<>(localTxEvents);
   }
 
-  public synchronized void clearTransactionEvents() {
-    this.transactionEvents.clear();
+  public void clearTransactionEvents() {
+    Set<TransactionEvent> localTxEvents = transactionEvents.get();
+
+    if (localTxEvents == null) {
+      localTxEvents = new HashSet<>();
+      transactionEvents.set(localTxEvents);
+    }
+
+    localTxEvents.clear();
   }
 
   /**
@@ -3509,69 +3537,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private void startMDCleanerService(){
     mdCleaner.startMDCleanerMonitor(namesystem, leaderElection, failedSTOCleanDelay, slowSTOCleanDelay);
-  }
-
-  private void stopMDCleanerService(){
-    mdCleaner.stopMDCleanerMonitor();
-  }
-
-  private void startLeaderElectionService() throws IOException {
-    // Initialize the leader election algorithm (only once rpc server is
-    // created and httpserver is started)
-    long leadercheckInterval =
-        conf.getInt(DFSConfigKeys.DFS_LEADER_CHECK_INTERVAL_IN_MS_KEY,
-            DFSConfigKeys.DFS_LEADER_CHECK_INTERVAL_IN_MS_DEFAULT);
-    int missedHeartBeatThreshold =
-        conf.getInt(DFSConfigKeys.DFS_LEADER_MISSED_HB_THRESHOLD_KEY,
-            DFSConfigKeys.DFS_LEADER_MISSED_HB_THRESHOLD_DEFAULT);
-    int leIncrement = conf.getInt(DFSConfigKeys.DFS_LEADER_TP_INCREMENT_KEY,
-        DFSConfigKeys.DFS_LEADER_TP_INCREMENT_DEFAULT);
-
-    String rpcAddresses = "";
-    rpcAddresses = rpcServer.getRpcAddress().getAddress().getHostAddress() + ":" +rpcServer.getRpcAddress().getPort()+",";
-    if(rpcServer.getServiceRpcAddress() != null){
-      rpcAddresses = rpcAddresses + rpcServer.getServiceRpcAddress().getAddress().getHostAddress() + ":" +
-              rpcServer.getServiceRpcAddress().getPort();
-    }
-
-    String httpAddress;
-    /*
-     * httpServer.getHttpAddress() return the bind address. If we use 0.0.0.0 to listen to all interfaces the leader
-     * election system will return 0.0.0.0 as the http address and the client will not be able to connect to the UI
-     * to mitigate this we retunr the address used by the RPC. This address will work because the http server is
-     * listening on very interfaces
-     * */
-
-    if (DFSUtil.getHttpPolicy(conf).isHttpEnabled()) {
-      if (httpServer.getHttpAddress().getAddress().getHostAddress().equals("0.0.0.0")) {
-        httpAddress = rpcServer.getRpcAddress().getAddress().getHostAddress() + ":" + httpServer.getHttpAddress()
-            .getPort();
-      } else {
-        httpAddress = httpServer.getHttpAddress().getAddress().getHostAddress() + ":" + httpServer.getHttpAddress()
-            .getPort();
-      }
-    } else {
-      if (httpServer.getHttpsAddress().getAddress().getHostAddress().equals("0.0.0.0")) {
-        httpAddress = rpcServer.getRpcAddress().getAddress().getHostAddress() + ":" + httpServer.getHttpsAddress()
-            .getPort();
-      } else {
-        httpAddress = httpServer.getHttpsAddress().getAddress().getHostAddress() + ":" + httpServer.getHttpsAddress()
-            .getPort();
-      }
-    }
-
-    leaderElection =
-        new LeaderElection(new HdfsLeDescriptorFactory(), leadercheckInterval,
-            missedHeartBeatThreshold, leIncrement, httpAddress,
-            rpcAddresses, (byte) conf.getInt(DFSConfigKeys.DFS_LOCATION_DOMAIN_ID,
-            DFSConfigKeys.DFS_LOCATION_DOMAIN_ID_DEFAULT));
-    leaderElection.start();
-
-    try {
-      leaderElection.waitActive();
-    } catch (InterruptedException e) {
-      LOG.warn("NN was interrupted");
-    }
   }
 
   private void createAndStartCRLFetcherService(Configuration conf) throws Exception {
