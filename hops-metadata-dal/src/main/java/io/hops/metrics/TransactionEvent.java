@@ -15,7 +15,7 @@ public class TransactionEvent implements Serializable {
     private final List<TransactionAttempt> attempts;
 
     public static String INITIALIZATION =       "INITIALIZATION";
-    public static String CREATE_ACKS =          "CREATE ACKS";
+    public static String CREATE_ACKS =          "CREATE_ACKS";
     public static String SUBSCRIBE_TO_ACKS =    "SUBSCRIBE_TO_ACKS";
     public static String WRITE_ACKS_TO_NDB =    "WRITE_ACKS_NDB";
     public static String ISSUE_INVALIDATIONS =  "ISSUE_INVALIDATIONS";
