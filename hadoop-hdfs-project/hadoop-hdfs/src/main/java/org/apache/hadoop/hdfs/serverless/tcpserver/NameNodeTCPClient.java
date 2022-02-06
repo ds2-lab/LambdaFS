@@ -11,6 +11,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -21,6 +22,7 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.util.Time;
+import org.apache.log4j.LogManager;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -29,6 +31,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.*;
+
+import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromString;
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.CONSISTENCY_PROTOCOL_ENABLED;
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.LOG_LEVEL;
 
 /**
  * Encapsulates a Kryonet TCP client. Used to communicate directly with Serverless HopsFS clients.
@@ -519,6 +525,19 @@ public class NameNodeTCPClient {
         String op = args.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
         JsonObject fsArgs = args.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
 
+        if (args.has(LOG_LEVEL)) {
+            String logLevel = args.get(LOG_LEVEL).getAsString();
+            LOG.debug("Setting log4j log level to: " + logLevel + ".");
+
+            LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
+        }
+
+        if (args.has(CONSISTENCY_PROTOCOL_ENABLED)) {
+            HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL = args.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
+            LOG.debug("Consistency protocol is " +
+                    (HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
+        }
+
         NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP", serverlessNameNode.getId());
         tcpResult.setFnStartTime(startTime);
 
@@ -526,8 +545,6 @@ public class NameNodeTCPClient {
         LOG.debug("Request ID: " + requestId);
         LOG.debug("Operation name: " + op);
         LOG.debug("FS operation arguments: ");
-//        for (Map.Entry<String, JsonElement> entry : fsArgs.entrySet())
-//            LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
         LOG.debug("======================================================\n");
 
         // Create a new task. After this, we assign it to the worker thread and wait for the
@@ -535,15 +552,6 @@ public class NameNodeTCPClient {
         FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, false, "TCP");
 
         serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult, false);
-
-//        LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
-//        if (tcpResult != null) {
-//            LOG.debug("[TCP] Merging NameNodeResult instances now...");
-//            tcpResult.mergeInto(result, false);
-//        } else {
-//            // This will be caught immediately and added to the result returned to the client.
-//            throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
-//        }
         return tcpResult;
     }
 
