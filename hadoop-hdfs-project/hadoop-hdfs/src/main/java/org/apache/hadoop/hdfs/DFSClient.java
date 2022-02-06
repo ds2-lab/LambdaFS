@@ -829,6 +829,26 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     return addr;
   }
 
+  public void setConsistencyProtocolEnabled(boolean enabled) {
+    if (this.namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)this.namenode;
+      client.setConsistencyProtocolEnabled(enabled);
+    } else {
+      LOG.warn("Internal NameNode API is not an instance of 'ServerlessNameNodeClient'. " +
+              "Cannot modify consistency protocol flag.");
+    }
+  }
+
+  public void setServerlessFunctionLogLevel(String logLevel) {
+    if (this.namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)this.namenode;
+      client.setServerlessFunctionLogLevel(logLevel);
+    } else {
+      LOG.warn("Internal NameNode API is not an instance of 'ServerlessNameNodeClient'. " +
+              "Cannot modify log4j log level parameter.");
+    }
+  }
+
   /**
    * Return the timeout that clients should use when writing to datanodes.
    * @param numNodes the number of nodes in the pipeline.

@@ -27,6 +27,7 @@ import java.util.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_LOCAL_MODE;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_LOCAL_MODE_DEFAULT;
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 
 /**
  * Base class of serverless invokers. Defines some concrete state (i.e., instance variables) used by
@@ -171,6 +172,16 @@ public abstract class ServerlessInvokerBase<T> {
     protected int httpTimeoutMilliseconds;
 
     /**
+     * The log level argument to be passed to serverless functions.
+     */
+    protected String serverlessFunctionLogLevel = "DEBUG";
+
+    /**
+     * Passed to serverless functions. Determines whether they execute the consistency protocol.
+     */
+    protected boolean consistencyProtocolEnabled = true;
+
+    /**
      * Return the INode-NN mapping cache entry for the given file or directory.
      *
      * This function returns -1 if no such entry exists.
@@ -284,6 +295,14 @@ public abstract class ServerlessInvokerBase<T> {
         configured = true;
     }
 
+    public void setConsistencyProtocolEnabled(boolean enabled) {
+        this.consistencyProtocolEnabled = enabled;
+    }
+
+    public void setServerlessFunctionLogLevel(String logLevel) {
+        this.serverlessFunctionLogLevel = logLevel;
+    }
+
     /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient
      * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
@@ -334,8 +353,8 @@ public abstract class ServerlessInvokerBase<T> {
             response = resp.get("body").getAsJsonObject();
 
         String requestId;
-        if (response.has(ServerlessNameNodeKeys.REQUEST_ID))
-            requestId = response.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
+        if (response.has(REQUEST_ID))
+            requestId = response.getAsJsonPrimitive(REQUEST_ID).getAsString();
         else
             requestId = "N/A";
 
@@ -532,20 +551,18 @@ public abstract class ServerlessInvokerBase<T> {
         // If there is not already a command-line-arguments entry, then we'll add one with the "-regular" flag
         // so that the name node performs standard execution. If there already is such an entry, then we do
         // not want to overwrite it.
-        if (!nameNodeArgumentsJson.has(ServerlessNameNodeKeys.COMMAND_LINE_ARGS))
-            nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.COMMAND_LINE_ARGS, "-regular");
+        if (!nameNodeArgumentsJson.has(COMMAND_LINE_ARGS));
+            nameNodeArgumentsJson.addProperty(COMMAND_LINE_ARGS, "-regular");
 
-        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
-
-        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.DEBUG_NDB, debugEnabledNdb);
-        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.DEBUG_STRING_NDB, debugStringNdb);
-
-        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.TCP_PORT, tcpPort);
-
-        nameNodeArgumentsJson.addProperty(
-                ServerlessNameNodeKeys.CLIENT_INTERNAL_IP, InvokerUtilities.getInternalIpAddress());
-        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.TCP_ENABLED, tcpEnabled);
-        nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.LOCAL_MODE, localMode);
+        nameNodeArgumentsJson.addProperty(REQUEST_ID, requestId);
+        nameNodeArgumentsJson.addProperty(DEBUG_NDB, debugEnabledNdb);
+        nameNodeArgumentsJson.addProperty(DEBUG_STRING_NDB, debugStringNdb);
+        nameNodeArgumentsJson.addProperty(TCP_PORT, tcpPort);
+        nameNodeArgumentsJson.addProperty(CLIENT_INTERNAL_IP, InvokerUtilities.getInternalIpAddress());
+        nameNodeArgumentsJson.addProperty(TCP_ENABLED, tcpEnabled);
+        nameNodeArgumentsJson.addProperty(LOCAL_MODE, localMode);
+        nameNodeArgumentsJson.addProperty(CONSISTENCY_PROTOCOL_ENABLED, consistencyProtocolEnabled);
+        nameNodeArgumentsJson.addProperty(LOG_LEVEL, serverlessFunctionLogLevel);
     }
 
     ///////////////////////

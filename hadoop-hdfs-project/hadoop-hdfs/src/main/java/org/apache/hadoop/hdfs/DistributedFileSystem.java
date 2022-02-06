@@ -72,6 +72,7 @@ import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import io.hops.metrics.OperationPerformed;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.Credentials;
@@ -238,6 +239,14 @@ public class DistributedFileSystem extends FileSystem {
                                          result);
     }
     workingDir = fixRelativePart(dir);
+  }
+
+  public void setConsistencyProtocolEnabled(boolean enabled) {
+    this.dfs.setConsistencyProtocolEnabled(enabled);
+  }
+
+  public void setServerlessFunctionLogLevel(String logLevel) {
+    this.dfs.setServerlessFunctionLogLevel(logLevel);
   }
 
   @Override

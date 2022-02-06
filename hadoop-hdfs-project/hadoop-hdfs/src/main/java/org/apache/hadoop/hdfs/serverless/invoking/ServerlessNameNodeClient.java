@@ -101,6 +101,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private final boolean localMode;
 
     /**
+     * The log level argument to be passed to serverless functions.
+     */
+    protected String serverlessFunctionLogLevel = "DEBUG";
+
+    /**
+     * Passed to serverless functions. Determines whether they execute the consistency protocol.
+     */
+    protected boolean consistencyProtocolEnabled = true;
+
+    /**
      * For debugging, keep track of the operations we've performed.
      */
     private HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
@@ -132,6 +142,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.tcpServer.startServer();
     }
 
+    public void setConsistencyProtocolEnabled(boolean enabled) {
+        this.consistencyProtocolEnabled = enabled;
+        this.serverlessInvoker.setConsistencyProtocolEnabled(enabled);
+    }
+
+    public void setServerlessFunctionLogLevel(String logLevel) {
+        this.serverlessFunctionLogLevel = logLevel;
+        this.serverlessInvoker.setServerlessFunctionLogLevel(logLevel);
+    }
+
     public void printDebugInformation() {
         this.tcpServer.printDebugInformation();
     }
@@ -157,6 +177,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         JsonObject payload = new JsonObject();
         payload.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
         payload.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
+        payload.addProperty(CONSISTENCY_PROTOCOL_ENABLED, consistencyProtocolEnabled);
+        payload.addProperty(LOG_LEVEL, serverlessFunctionLogLevel);
         payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
 
         ExponentialBackOff exponentialBackOff = new ExponentialBackOff.Builder()
