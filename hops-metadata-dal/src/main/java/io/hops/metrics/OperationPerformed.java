@@ -355,7 +355,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
             long value = entry.getValue();
 
             try {
-                averages.put(key, (double)value / (double)counts.get(key));
+                averages.put(key, (double)value / (double)counts.getOrDefault(key, 1));
             } catch (NullPointerException ex) {
                 System.out.println("ERROR: NPE encountered.");
                 ex.printStackTrace();
@@ -393,7 +393,6 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         HashMap<String, Long> sums = new HashMap<>();
         sums.put(INVOCATION_TIME, 0L);
         sums.put(PREPROCESSING_TIME, 0L);
-        // sums.put(WAITING_IN_QUEUE, 0L);
         sums.put(EXECUTION_TIME, 0L);
         sums.put(POSTPROCESSING_TIME, 0L);
         sums.put(RETURNING_TO_USER, 0L);
@@ -401,7 +400,6 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         for (OperationPerformed op : collection) {
             long invocationTime = sums.get(INVOCATION_TIME);
             long preprocessingTime = sums.get(PREPROCESSING_TIME);
-            // long waitingInQueue = sums.get(WAITING_IN_QUEUE);
             long executionTime = sums.get(EXECUTION_TIME);
             long postprocessingTime = sums.get(POSTPROCESSING_TIME);
             long returningToUser = sums.get(RETURNING_TO_USER);
@@ -415,10 +413,6 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 sums.put(PREPROCESSING_TIME, preprocessingTime + (op.resultBeganExecutingTime - op.serverlessFnStartTime));
                 counts.merge(PREPROCESSING_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
             }
-//            if (op.resultBeganExecutingTime - op.requestEnqueuedAtTime > 0) {
-//                sums.put(WAITING_IN_QUEUE, waitingInQueue + (op.resultBeganExecutingTime - op.requestEnqueuedAtTime));
-//                counts.merge(WAITING_IN_QUEUE, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
-//            }
             if (op.resultFinishedProcessingTime - op.resultBeganExecutingTime > 0) {
                 sums.put(EXECUTION_TIME, executionTime + (op.resultFinishedProcessingTime - op.resultBeganExecutingTime));
                 counts.merge(EXECUTION_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
