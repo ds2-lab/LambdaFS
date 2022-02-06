@@ -145,6 +145,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.metadataCacheHits = metadataCacheHits;
         this.metadataCacheMisses = metadataCacheMisses;
         this.resultReceivedVia = resultReceivedVia;
+
+        System.out.println("OpPerformed(resultBeganExecutingTime/dequeuedTime = " + dequeuedTime + ", serverlessFnStartTime = " + serverlessFnStartTime + ")");
     }
 
     public void setNameNodeId(long nameNodeId) {
@@ -192,6 +194,10 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration," +
                 "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration," +
                 "serverless_fn_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses";
+    }
+
+    public static String getToStringHeader() {
+        return "OpName RequestID InvokedAt FnStartTime EnqueuedAt BeganExecutingAt FnEndTime ResultReceivedAt FnDuration DepNum NNID ResReceivedVia CacheHits CacheMisses";
     }
 
     @Override
@@ -300,12 +306,12 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 resultFinishedProcessingTime,     // NN finished executing the requested operation.
                 serverlessFnEndTime,              // NN returns result to client.
                 resultReceivedTime,               // Client receives result from NN.
-                serverlessFnStartTime - invokedAtTime,
-                requestEnqueuedAtTime - serverlessFnStartTime,
-                resultBeganExecutingTime - requestEnqueuedAtTime,
-                resultFinishedProcessingTime - resultBeganExecutingTime,
-                serverlessFnEndTime - resultFinishedProcessingTime,
-                resultReceivedTime - serverlessFnEndTime,
+                serverlessFnStartTime - invokedAtTime,                      // Invocation.
+                resultBeganExecutingTime - serverlessFnStartTime,           // Pre-processing.
+                0,                                                          // Waiting in queue.
+                resultFinishedProcessingTime - resultBeganExecutingTime,    // Executing.
+                serverlessFnEndTime - resultFinishedProcessingTime,         // Post-processing.
+                resultReceivedTime - serverlessFnEndTime,                   // Returning to user.
                 serverlessFunctionDuration,
                 deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses));
         writer.newLine();
@@ -345,7 +351,16 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         HashMap<String, Double> averages = new HashMap<>();
 
         for (Map.Entry<String, Long> entry : sums.entrySet()) {
-            averages.put(entry.getKey(), (double)entry.getValue() / (double)counts.get(entry.getKey()));
+            String key = entry.getKey();
+            long value = entry.getValue();
+
+            try {
+                averages.put(key, (double)value / (double)counts.get(key));
+            } catch (NullPointerException ex) {
+                System.out.println("ERROR: NPE encountered.");
+                ex.printStackTrace();
+                System.out.println("Key: " + key);
+            }
         }
 
         return averages;
@@ -378,7 +393,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         HashMap<String, Long> sums = new HashMap<>();
         sums.put(INVOCATION_TIME, 0L);
         sums.put(PREPROCESSING_TIME, 0L);
-        sums.put(WAITING_IN_QUEUE, 0L);
+        // sums.put(WAITING_IN_QUEUE, 0L);
         sums.put(EXECUTION_TIME, 0L);
         sums.put(POSTPROCESSING_TIME, 0L);
         sums.put(RETURNING_TO_USER, 0L);
@@ -386,7 +401,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         for (OperationPerformed op : collection) {
             long invocationTime = sums.get(INVOCATION_TIME);
             long preprocessingTime = sums.get(PREPROCESSING_TIME);
-            long waitingInQueue = sums.get(WAITING_IN_QUEUE);
+            // long waitingInQueue = sums.get(WAITING_IN_QUEUE);
             long executionTime = sums.get(EXECUTION_TIME);
             long postprocessingTime = sums.get(POSTPROCESSING_TIME);
             long returningToUser = sums.get(RETURNING_TO_USER);
@@ -395,14 +410,15 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 sums.put(INVOCATION_TIME, invocationTime + (op.serverlessFnStartTime - op.invokedAtTime));
                 counts.merge(INVOCATION_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
             }
-            if (op.requestEnqueuedAtTime - op.serverlessFnStartTime > 0) {
-                sums.put(PREPROCESSING_TIME, preprocessingTime + (op.requestEnqueuedAtTime - op.serverlessFnStartTime));
+            // Now preprocessing is just everything from when request is received to when it begins executing.
+            if (op.resultBeganExecutingTime - op.serverlessFnStartTime > 0) {
+                sums.put(PREPROCESSING_TIME, preprocessingTime + (op.resultBeganExecutingTime - op.serverlessFnStartTime));
                 counts.merge(PREPROCESSING_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
             }
-            if (op.resultBeganExecutingTime - op.requestEnqueuedAtTime > 0) {
-                sums.put(WAITING_IN_QUEUE, waitingInQueue + (op.resultBeganExecutingTime - op.requestEnqueuedAtTime));
-                counts.merge(WAITING_IN_QUEUE, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
-            }
+//            if (op.resultBeganExecutingTime - op.requestEnqueuedAtTime > 0) {
+//                sums.put(WAITING_IN_QUEUE, waitingInQueue + (op.resultBeganExecutingTime - op.requestEnqueuedAtTime));
+//                counts.merge(WAITING_IN_QUEUE, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
+//            }
             if (op.resultFinishedProcessingTime - op.resultBeganExecutingTime > 0) {
                 sums.put(EXECUTION_TIME, executionTime + (op.resultFinishedProcessingTime - op.resultBeganExecutingTime));
                 counts.merge(EXECUTION_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.

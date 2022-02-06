@@ -54,6 +54,12 @@ import java.util.stream.Collectors;
 public abstract class HopsTransactionalRequestHandler
         extends TransactionalRequestHandler implements HopsEventListener {
 
+  /**
+   * Basically just exists to make debugging/performance testing easier. I use this to dynamically
+   * enable or disable the consistency protocol, which is used during write transactions.
+   */
+  public static boolean DO_CONSISTENCY_PROTOCOL = true;
+
   private final String path;
 
   /**
@@ -232,6 +238,11 @@ public abstract class HopsTransactionalRequestHandler
 
   @Override
   protected final boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException {
+    if (!DO_CONSISTENCY_PROTOCOL) {
+      requestHandlerLOG.debug("Skipping consistency protocol as 'DO_CONSISTENCY_PROTOCOL' is set to false.");
+      return true;
+    }
+
     EntityContext<?> inodeContext= EntityManager.getEntityContext(INode.class);
     final boolean[] canProceed = new boolean[1];
     final Throwable[] exception = new Throwable[1];

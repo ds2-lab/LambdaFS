@@ -223,54 +223,17 @@ public abstract class ServerlessInvokerBase<T> {
     }
 
     /**
-     * Create a TrustManager that does not validate certificate chains.
-     *
-     * This is necessary because otherwise, we may encounter SSL certificate errors when invoking serverless functions.
-     * I do not know all the details behind this, but this resolves the errors.
-     *
-     * In the future, we may want to add certificate support for increased security, with a fall-back to this being an
-     * option if the users do not want to configure SSL certificates.
-     *
-     * Per the Java documentation, TrustManagers are responsible for managing the trust material that is used when
-     * making trust decisions, and for deciding whether credentials presented by a peer should be accepted.
+     * Get the TCP port being used by this client's TCP server.
+     * @return The TCP port being used by this client's TCP server.
      */
-    private void instantiateTrustManager() {
-        instantiateTrustManagerOriginal();
-
-//        // Create a trust manager that does not validate certificate chains
-//        TrustManager[] trustAllCerts = new TrustManager[] {
-//                new X509TrustManager() {
-//                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-//                        return new X509Certificate[0];
-//                    }
-//                    public void checkClientTrusted(
-//                            java.security.cert.X509Certificate[] certs, String authType) {
-//                    }
-//                    public void checkServerTrusted(
-//                            java.security.cert.X509Certificate[] certs, String authType) {
-//                    }
-//                }
-//        };
-//
-//        try {
-//            SSLContext sc = SSLContexts.custom().loadTrustMaterial(new TrustSelfSignedStrategy()).build();
-//            SSLConnectionSocketFactory socketFactory
-//                    = new SSLConnectionSocketFactory(sc);
-//            this.registry =
-//                    RegistryBuilder.<ConnectionSocketFactory>create()
-//                            .register("https", socketFactory)
-//                            .build();
-//            //sc.init(null, trustAllCerts, new java.security.SecureRandom());
-//            //HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-//        } catch (GeneralSecurityException e) {
-//            LOG.error(e);
-//        }
-    }
-
     public int getTcpPort() {
         return tcpPort;
     }
 
+    /**
+     * Update the TCP port being used by this client's TCP server.
+     * @param tcpPort The new value for the TCP port.
+     */
     public void setTcpPort(int tcpPort) {
         this.tcpPort = tcpPort;
     }
@@ -321,10 +284,6 @@ public abstract class ServerlessInvokerBase<T> {
         configured = true;
     }
 
-    public FunctionMetadataMap getFunctionMetadataMap() {
-        return cache;
-    }
-
     /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient
      * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
@@ -356,7 +315,10 @@ public abstract class ServerlessInvokerBase<T> {
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
             throws IOException, IllegalStateException;
-    
+
+    /**
+     * Get an HTTP client configured for the particular serverless platform.
+     */
     public abstract CloseableHttpClient getHttpClient()
             throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException;
 
@@ -392,9 +354,7 @@ public abstract class ServerlessInvokerBase<T> {
             cache.addEntry(src, function, false);
 
             LOG.debug("Added entry to function-mapping cache. File/directory \"" + src + "\" --> " + function);
-        } /*else {
-            LOG.warn("No INode function mapping information contained within response from serverless name node...");
-        }*/
+        }
 
         // Print any exceptions that were encountered first.
         if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {
@@ -416,6 +376,9 @@ public abstract class ServerlessInvokerBase<T> {
             }
         }
 
+        // This is just related to debugging/metrics. There are objects called "STATISTICS PACKAGES" that have
+        // certain statistics about NN execution. We're just checking if there are any included here and, if so,
+        // then we extract them.
         if (response.has(ServerlessNameNodeKeys.STATISTICS_PACKAGE)) {
             String statisticsPackageEncoded =
                     response.getAsJsonPrimitive(ServerlessNameNodeKeys.STATISTICS_PACKAGE).getAsString();
@@ -431,6 +394,7 @@ public abstract class ServerlessInvokerBase<T> {
             }
         }
 
+        // Similar to "STATISTICS PACKAGES". See comment above.
         if (response.has(ServerlessNameNodeKeys.TRANSACTION_EVENTS)) {
             String transactionEventsEncoded =
                     response.getAsJsonPrimitive(ServerlessNameNodeKeys.TRANSACTION_EVENTS).getAsString();
@@ -530,28 +494,6 @@ public abstract class ServerlessInvokerBase<T> {
         return configured;
     }
 
-//    /**
-//     * Perform the sleep associated with exponential backoff.
-//     *
-//     * This checks the value of currentNumTries and compares it against maxHttpRetries.
-//     * If we're out of tries, then we do not bother sleeping. Instead, we just return immediately.
-//     *
-//     * @param currentNumTries How many times we've attempted a request thus far.
-//     */
-//    protected void doExponentialBackoff(int currentNumTries) {
-//        // Only bother sleeping (exponential backoff) if we're going to try at least one more time.
-//        if ((currentNumTries + 1) > maxHttpRetries)
-//            return;
-//
-//        long sleepInterval = getExponentialBackoffInterval(currentNumTries);
-//        LOG.debug("Sleeping for " + sleepInterval + " milliseconds before issuing another request...");
-//        try {
-//            Thread.sleep(sleepInterval);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//    }
-
     /**
      * Hide try-catch for Thread.sleep().
      * @param backoffInterval How long to sleep in milliseconds.
@@ -564,20 +506,9 @@ public abstract class ServerlessInvokerBase<T> {
         }
     }
 
-//    /**
-//     * Return the time to wait, in milliseconds, given the current number of attempts.
-//     * @param n The current number of attempts.
-//     * @return The time to wait, in milliseconds, before attempting another request.
-//     */
-//    private long getExponentialBackoffInterval(int n) {
-//        double interval = Math.pow(2, n);
-//        int jitter = random.nextInt( 1000);
-//        return (long)Math.min(interval + jitter, maxBackoffMilliseconds);
-//    }
-
     /**
      * There are some arguments that will be included every single time with the same values. This function
-     * adds those arguments.
+     * adds those arguments, thereby reducing the amount of boiler-plate code.
      *
      * This is implemented as a separate function to provide a centralized place to modify these
      * consistent arguments.
@@ -616,6 +547,10 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.TCP_ENABLED, tcpEnabled);
         nameNodeArgumentsJson.addProperty(ServerlessNameNodeKeys.LOCAL_MODE, localMode);
     }
+
+    ///////////////////////
+    // DEBUGGING/METRICS //
+    ///////////////////////
 
     public HashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
         return statisticsPackages;

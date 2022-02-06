@@ -234,7 +234,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Syntax:
    *  Major.Minor.Build.Revision
    */
-  public static final String versionNumber = "0.3.5.0";
+  public static final String versionNumber = "0.4.0.0";
 
   /**
    * The number of uniquely-deployed serverless name nodes associated with this particular Serverless HopsFS cluster.
@@ -359,6 +359,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           StartupOption.NO_OF_CONCURRENT_BLOCK_REPORTS.getName() + " concurrentBlockReports ] | [" +
           StartupOption.FORMAT_ALL.getName() + " ]";
 
+
+
   public long getProtocolVersion(String protocol, long clientVersion)
       throws IOException {
     if (protocol.equals(ClientProtocol.class.getName())) {
@@ -398,7 +400,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Used to record transaction events that have occurred while processing the current request.
    * Cleared after each request is processed by the NameNodeWorkerThread.
    */
-  private final Set<TransactionEvent> transactionEvents = new HashSet<>();
+  private final ThreadLocal<Set<TransactionEvent>> transactionEvents = new ThreadLocal<>();
 
   /**
    * Identifies the NameNode. This is used in place of the leader election ID since leader election is not used
@@ -466,6 +468,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return executionManager.isTaskDuplicate(requestId);
   }
 
+  public ExecutionManager getExecutionManager() { return executionManager; }
+
   public int getNumDeployments() {
     return numDeployments;
   }
@@ -474,23 +478,51 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return nameNodeTCPClient;
   }
 
-  public synchronized void addTransactionEvent(TransactionEvent event) {
-    transactionEvents.add(event);
+  public void addTransactionEvent(TransactionEvent event) {
+    Set<TransactionEvent> localTxEvents = transactionEvents.get();
+
+    if (localTxEvents == null) {
+      localTxEvents = new HashSet<>();
+      transactionEvents.set(localTxEvents);
+    }
+
+    localTxEvents.add(event);
   }
 
-  public synchronized void addTransactionEvents(Collection<TransactionEvent> event) {
-    transactionEvents.addAll(event);
+  public void addTransactionEvents(Collection<TransactionEvent> events) {
+    Set<TransactionEvent> localTxEvents = transactionEvents.get();
+
+    if (localTxEvents == null) {
+      localTxEvents = new HashSet<>();
+      transactionEvents.set(localTxEvents);
+    }
+
+    localTxEvents.addAll(events);
   }
 
   /**
    * Return a COPY of the transactionEvents list.
    */
-  public synchronized List<TransactionEvent> getTransactionEvents() {
-    return new ArrayList<>(transactionEvents);
+  public List<TransactionEvent> getTransactionEvents() {
+    Set<TransactionEvent> localTxEvents = transactionEvents.get();
+
+    if (localTxEvents == null) {
+      localTxEvents = new HashSet<>();
+      transactionEvents.set(localTxEvents);
+    }
+
+    return new ArrayList<>(localTxEvents);
   }
 
-  public synchronized void clearTransactionEvents() {
-    this.transactionEvents.clear();
+  public void clearTransactionEvents() {
+    Set<TransactionEvent> localTxEvents = transactionEvents.get();
+
+    if (localTxEvents == null) {
+      localTxEvents = new HashSet<>();
+      transactionEvents.set(localTxEvents);
+    }
+
+    localTxEvents.clear();
   }
 
   /**
@@ -1206,7 +1238,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
 
-    LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
+    // LOG.info("Retrieved list of DataNodes from intermediate storage with " + dataNodes.size() + " entries!");
 
     NamespaceInfo nsInfo = namesystem.getNamespaceInfo();
 
@@ -1241,7 +1273,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         // the for-loop has a smaller creation time stamp, then we do nothing and move onto the next DN in the for-loop.
         if (creationTimeComparisonResult > 0) {
           dnMap.put(key, dataNodeMeta);
-          LOG.debug("Replacing DN " + existingDN.getDatanodeUuid() + " with DN " + dataNodeMeta.getDatanodeUuid() + " in pre-registration mapping.");
+          // LOG.debug("Replacing DN " + existingDN.getDatanodeUuid() + " with DN " + dataNodeMeta.getDatanodeUuid() + " in pre-registration mapping.");
           //LOG.debug("Creation time of existing DN (uuid=" + existingDN.getDatanodeUuid() + "): "
           //        + existingDN.getCreationTime());
           //LOG.debug("Creation time of \"new\" DN (uuid=" + dataNodeMeta.getDatanodeUuid() + "): "
@@ -1254,18 +1286,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
     }
 
-    if (numReplaced > 0) {
-      LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
-    }
+//    if (numReplaced > 0) {
+//      LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
+//    }
 
-    LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
+    // LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
 
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
     //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
 
     for (DataNodeMeta dataNodeMeta : dnMap.values()) {
       String datanodeUuid = dataNodeMeta.getDatanodeUuid();
-      LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
+      // LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
 
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
@@ -1294,17 +1326,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       try {
         if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
                 datanodeRegistration.getDatanodeUuid()) != null) {
-          LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
+          // LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
           continue;
         } else {
-          LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
+          // LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
           namesystem.registerDatanode(datanodeRegistration);
         }
 
         datanodeRegistrations.add(datanodeRegistration);
       } catch (IOException ex) {
         // Log this, so we know the source of the exception, then re-throw it so it gets caught one layer up.
-        LOG.error("Error registering datanode " + dataNodeMeta.getDatanodeUuid());
+        // LOG.error("Error registering datanode " + dataNodeMeta.getDatanodeUuid());
         throw ex;
       }
     }
@@ -3505,69 +3537,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private void startMDCleanerService(){
     mdCleaner.startMDCleanerMonitor(namesystem, leaderElection, failedSTOCleanDelay, slowSTOCleanDelay);
-  }
-
-  private void stopMDCleanerService(){
-    mdCleaner.stopMDCleanerMonitor();
-  }
-
-  private void startLeaderElectionService() throws IOException {
-    // Initialize the leader election algorithm (only once rpc server is
-    // created and httpserver is started)
-    long leadercheckInterval =
-        conf.getInt(DFSConfigKeys.DFS_LEADER_CHECK_INTERVAL_IN_MS_KEY,
-            DFSConfigKeys.DFS_LEADER_CHECK_INTERVAL_IN_MS_DEFAULT);
-    int missedHeartBeatThreshold =
-        conf.getInt(DFSConfigKeys.DFS_LEADER_MISSED_HB_THRESHOLD_KEY,
-            DFSConfigKeys.DFS_LEADER_MISSED_HB_THRESHOLD_DEFAULT);
-    int leIncrement = conf.getInt(DFSConfigKeys.DFS_LEADER_TP_INCREMENT_KEY,
-        DFSConfigKeys.DFS_LEADER_TP_INCREMENT_DEFAULT);
-
-    String rpcAddresses = "";
-    rpcAddresses = rpcServer.getRpcAddress().getAddress().getHostAddress() + ":" +rpcServer.getRpcAddress().getPort()+",";
-    if(rpcServer.getServiceRpcAddress() != null){
-      rpcAddresses = rpcAddresses + rpcServer.getServiceRpcAddress().getAddress().getHostAddress() + ":" +
-              rpcServer.getServiceRpcAddress().getPort();
-    }
-
-    String httpAddress;
-    /*
-     * httpServer.getHttpAddress() return the bind address. If we use 0.0.0.0 to listen to all interfaces the leader
-     * election system will return 0.0.0.0 as the http address and the client will not be able to connect to the UI
-     * to mitigate this we retunr the address used by the RPC. This address will work because the http server is
-     * listening on very interfaces
-     * */
-
-    if (DFSUtil.getHttpPolicy(conf).isHttpEnabled()) {
-      if (httpServer.getHttpAddress().getAddress().getHostAddress().equals("0.0.0.0")) {
-        httpAddress = rpcServer.getRpcAddress().getAddress().getHostAddress() + ":" + httpServer.getHttpAddress()
-            .getPort();
-      } else {
-        httpAddress = httpServer.getHttpAddress().getAddress().getHostAddress() + ":" + httpServer.getHttpAddress()
-            .getPort();
-      }
-    } else {
-      if (httpServer.getHttpsAddress().getAddress().getHostAddress().equals("0.0.0.0")) {
-        httpAddress = rpcServer.getRpcAddress().getAddress().getHostAddress() + ":" + httpServer.getHttpsAddress()
-            .getPort();
-      } else {
-        httpAddress = httpServer.getHttpsAddress().getAddress().getHostAddress() + ":" + httpServer.getHttpsAddress()
-            .getPort();
-      }
-    }
-
-    leaderElection =
-        new LeaderElection(new HdfsLeDescriptorFactory(), leadercheckInterval,
-            missedHeartBeatThreshold, leIncrement, httpAddress,
-            rpcAddresses, (byte) conf.getInt(DFSConfigKeys.DFS_LOCATION_DOMAIN_ID,
-            DFSConfigKeys.DFS_LOCATION_DOMAIN_ID_DEFAULT));
-    leaderElection.start();
-
-    try {
-      leaderElection.waitActive();
-    } catch (InterruptedException e) {
-      LOG.warn("NN was interrupted");
-    }
   }
 
   private void createAndStartCRLFetcherService(Configuration conf) throws Exception {

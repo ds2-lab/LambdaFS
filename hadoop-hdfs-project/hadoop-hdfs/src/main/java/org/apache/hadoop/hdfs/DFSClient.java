@@ -508,7 +508,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
     if (localMode)
-      serverlessEndpoint = ServerlessNameNodeKeys.LOCAL_MODE_ENDPOINT;
+      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT_LOCAL, SERVERLESS_ENDPOINT_LOCAL_DEFAULT);
     else
       serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 
@@ -657,7 +657,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
     if (localMode)
-      serverlessEndpoint = ServerlessNameNodeKeys.LOCAL_MODE_ENDPOINT;
+      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT_LOCAL, SERVERLESS_ENDPOINT_LOCAL_DEFAULT);
     else
       serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
@@ -2456,11 +2456,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       long connectEnd = Time.getUtcTime();
       long connectDuration = connectEnd - connectStart;
       LOG.debug("Connected to DataNode " + dnAddr + " in " + (connectDuration / 1000000) + " milliseconds.");
-      OperationPerformed connectToDnOpPerf = new OperationPerformed("ConnectToDataNode",
-              UUID.randomUUID().toString(), connectStart, connectEnd, connectStart, connectEnd,
-              connectStart, connectEnd, 999, true, true,
-              "TCP", 0, 0, 0);
-      addOperationPerformed(connectToDnOpPerf);
+//      OperationPerformed connectToDnOpPerf = new OperationPerformed("ConnectToDataNode",
+//              UUID.randomUUID().toString(), connectStart, connectEnd, connectStart, connectEnd,
+//              connectStart, connectEnd, 999, true, true,
+//              "TCP", 0, 0, 0);
+//      addOperationPerformed(connectToDnOpPerf);
       return ret;
     } finally {
       if (!success) {

@@ -432,6 +432,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         System.out.println("====================== Operations Performed ======================");
         System.out.println("Number performed: " + operationsPerformed.size());
+        System.out.println(OperationPerformed.getToStringHeader());
         for (OperationPerformed operationPerformed : opsPerformedList)
             System.out.println(operationPerformed.toString());
 
@@ -472,241 +473,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println(String.format(formatString.toString(), requestsPerNameNode.values().toArray()));
 
         System.out.println("\n==================================================================");
-    }
-
-    /**
-     * Concurrently issue an HTTP request and a TCP request to a particular serverless NameNode.
-     * @param operationName The name of the FS operation that the NameNode should perform.
-     * @param serverlessEndpoint The (base) OpenWhisk URI of the serverless NameNode(s).
-     * @param nameNodeArguments The command-line arguments to be given to the NN, should it be created within the NN
-     *                          function container (i.e., during a cold start).
-     * @param opArguments The arguments to be passed to the specified file system operation.
-     * @param targetDeployment The deployment number of the serverless NameNode deployment associated with the
-     *                             target file or directory.
-     * @return The result of executing the desired FS operation on the NameNode.
-     */
-    private JsonObject issueConcurrentTcpHttpRequests(String operationName,
-                                                      String serverlessEndpoint,
-                                                      HashMap<String, Object> nameNodeArguments,
-                                                      ArgumentContainer opArguments,
-                                                      int targetDeployment)
-            throws InterruptedException, ExecutionException, IOException {
-
-        long opStart = Time.getUtcTime();
-        String requestId = UUID.randomUUID().toString();
-        LOG.debug("Issuing concurrent HTTP/TCP request for operation '" + operationName + "' now. Request ID = " + requestId);
-
-        OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, requestId,
-                opStart, -1L, -1L, -1L, -1L, -1L,
-                targetDeployment, true, true, "N/A", 0,
-                -1, -1);
-        operationsPerformed.put(requestId, operationPerformed);
-
-        // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
-        ExecutorService executorService = Executors.newFixedThreadPool(2);
-
-        // Create a CompletionService to listen for results from the futures we're going to create.
-        CompletionService<JsonObject> completionService = new ExecutorCompletionService<JsonObject>(executorService);
-
-        // Submit the TCP request here.
-        completionService.submit(() -> {
-            JsonObject payload = new JsonObject();
-            payload.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
-            payload.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
-            payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
-
-            // We're effectively wrapping a Future in a Future here...
-            return tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload, -1);
-        });
-
-        LOG.debug("Successfully submitted TCP request. Submitting HTTP request now...");
-
-        // Submit the HTTP request here.
-        completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                operationName,
-                dfsClient.serverlessEndpoint,
-                null, // We do not have any additional/non-default arguments to pass to the NN.
-                opArguments,
-                requestId,
-                -1));
-
-        LOG.debug("Successfully submitted HTTP request for task " + requestId + "(op=" + operationName +
-                "). Waiting for first result now...");
-
-        // We should NOT just return the first result that we get.
-        // It is not uncommon that the NameNode will receive the TCP request first and begin working on the task.
-        // Then, while the task is being executed, the NN will receive the HTTP request, notice that the associated
-        // operation is already being worked on, and return a null response to the user via HTTP. The user will often
-        // receive this HTTP response first. In this scenario, we should simply discard the HTTP response, as the
-        // TCP response will actually contain the result of the FS operation.
-
-        int numTcpReceived = 0;            // Number of TCP responses that we've received.
-        int numHttpReceived = 0;           // Number of HTTP responses that we've received.
-        int numDuplicatesReceived = 0;     // Number of duplicate responses that we've received.
-        boolean resubmitted = false;       // Indicates whether we've resubmitted the request.
-        boolean tcpCancelled = false;      // Indicates whether the TCP request has been cancelled.
-
-        while (true) {
-            LOG.debug("============ Waiting for Responses ============");
-            LOG.debug("Task ID: " + requestId);
-            LOG.debug("Operation name: " + operationName);
-            LOG.debug("Number of TCP responses received: " + numTcpReceived);
-            LOG.debug("Number of HTTP responses received: " + numHttpReceived);
-            LOG.debug("Number of \"duplicate request\" notifications received: " + numDuplicatesReceived);
-            LOG.debug("Resubmitted: " + resubmitted);
-            LOG.debug("===============================================");
-            Future<JsonObject> potentialResult = completionService.take();
-
-            // If we get null, then a likely scenario is the TCP server lost connection to NN in specified deployment
-            // between when we checked if the connection existed and when we actually tried to issue the request. In
-            // this case, we basically just treat this like HTTP-only invocation. Just continue and wait for the
-            // HTTP request to resolve.
-            if (potentialResult == null) {
-                LOG.warn("Completion service returned a null future. Likely the case that TCP request failed.");
-                continue;
-            }
-
-            try {
-                JsonObject responseJson = potentialResult.get();
-
-                // Now we should check if this response contains a result, or is simply a duplicate request
-                // notification from whichever request the NameNode received last. That is, if the NN received the
-                // HTTP request second, then this could be an HTTP response indicating that the task was already
-                // being executed. The same could be true in the case of the TCP response.
-                //
-                // If this is an actual result, then we can return it to the user. Otherwise, we must keep waiting.
-
-                if (responseJson.has(ServerlessNameNodeKeys.DUPLICATE_REQUEST) &&
-                        responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.DUPLICATE_REQUEST).getAsBoolean()) {
-                    numDuplicatesReceived++;
-                    String requestMethod =
-                            responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString();
-
-                    if (requestMethod.equals("TCP"))
-                        numTcpReceived++;
-                    else
-                        numHttpReceived++;
-
-                    if (numHttpReceived > 0 &&
-                        numTcpReceived > 0 &&
-                        resubmitted) {
-                        throw new IOException(
-                                "Task " + requestId + " for operation " + operationName + " has failed.");
-                    }
-
-                    LOG.debug("Received duplicate request acknowledgement via " + requestMethod
-                            + " for task " + requestId + ". Must continue waiting for real result.");
-
-                    // If the TCP request has already been cancelled, then we should resubmit via HTTP. It's annoying
-                    // that we have this extra network hop, but at least the operation should be able to complete.
-                    if (tcpCancelled) {
-                        LOG.debug("Seeing as the TCP request has been cancelled, we must resubmit via HTTP.");
-
-                        // The 'FORCE_REDO' key would only ever be present with a 'true' value.
-                        if (!(opArguments.has(FORCE_REDO)))
-                            opArguments.addPrimitive(FORCE_REDO, true);
-
-                        // Resubmit the HTTP request.
-                        completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                                operationName,
-                                dfsClient.serverlessEndpoint,
-                                // We do not have any additional/non-default arguments to pass to the NN.
-                                null,
-                                opArguments,
-                                requestId,
-                                -1));
-                    }
-                    continue;
-                }
-                else if (responseJson.has(CANCELLED) &&
-                        responseJson.getAsJsonPrimitive(CANCELLED).getAsBoolean()) {
-                    LOG.debug("The TCP future for request " + requestId + " has been cancelled. Reason: " +
-                            responseJson.get(ServerlessNameNodeKeys.REASON).getAsString());
-
-                    tcpCancelled = true;
-                    boolean shouldRetry = responseJson.get(ServerlessNameNodeKeys.SHOULD_RETRY).getAsBoolean();
-                    LOG.debug("Should retry: " + shouldRetry);
-
-                    if (numHttpReceived > 0) {
-                        LOG.debug("Already received HTTP " + numHttpReceived +
-                                " response(s), probably as a \"duplicate request\" notification.");
-
-
-                        LOG.debug("Resubmitting request " + requestId + "(op=" + operationName + ") via HTTP now...");
-
-                        // The 'FORCE_REDO' key would only ever be present with a 'true' value.
-                        if (!(opArguments.has(FORCE_REDO)))
-                            opArguments.addPrimitive(FORCE_REDO, true);
-
-                        // Resubmit the HTTP request.
-                        completionService.submit(() -> dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                                operationName,
-                                dfsClient.serverlessEndpoint,
-                                // We do not have any additional/non-default arguments to pass to the NN.
-                                null,
-                                opArguments,
-                                requestId,
-                                -1));
-
-                        resubmitted = true;
-                    } else {
-                        LOG.debug("Have not yet received HTTP response. Will continue waiting...");
-                    } // if (numHttpReceived > 0)
-
-                    // We haven't received an HTTP message yet, so we'll just wait and see if we get one.
-                    continue;
-                }
-
-                // Check if the future was resolved/completed by an HTTP request. If so, then the TCP server
-                // won't know that this future is done unless we inform the tcp server explicitly.
-                String requestMethod =
-                        responseJson.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString();
-                if (requestMethod.equals("HTTP"))
-                    tcpServer.deactivateFuture(requestId);
-
-                executorService.shutdown();
-                long opEnd = Time.getUtcTime();
-                long opDuration = opEnd - opStart;
-                long durationMilliseconds = opEnd - opStart;
-                LOG.debug("Successfully obtained response from HTTP/TCP request for operation " +
-                        operationName + " in " + durationMilliseconds + " milliseconds.");
-
-                operationPerformed.setResultReceivedTime(opEnd);
-
-                if (responseJson.has(ServerlessNameNodeKeys.NAME_NODE_ID))
-                    operationPerformed.setNameNodeId(responseJson.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong());
-
-                int cacheHits = responseJson.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
-                int cacheMisses = responseJson.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
-
-                operationPerformed.setMetadataCacheHits(cacheHits);
-                operationPerformed.setMetadataCacheMisses(cacheMisses);
-
-                long fnStartTime = responseJson.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
-                long fnEndTime = responseJson.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
-
-                operationPerformed.setServerlessFnStartTime(fnStartTime);
-                operationPerformed.setServerlessFnEndTime(fnEndTime);
-
-                long enqueuedAt = responseJson.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
-                long dequeuedAt = responseJson.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
-
-                long finishedProcessingAt = responseJson.get(PROCESSING_FINISHED_TIME).getAsLong();
-                operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
-                operationPerformed.setRequestEnqueuedAtTime(enqueuedAt);
-                operationPerformed.setResultBeganExecutingTime(dequeuedAt);
-                operationPerformed.setResultReceivedVia(responseJson.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString());
-                return responseJson;
-            } catch (ExecutionException | InterruptedException ex) {
-                // Log it.
-                LOG.error("Encountered " + ex.getClass().getSimpleName() + " while extracting result from Future " +
-                        "for operation " + operationName + ":", ex);
-
-                // Throw it again.
-                throw ex;
-            }
-        }
     }
 
     /**
@@ -1548,15 +1314,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 for (int i = 0; i < numPingsPerDeployment; i++) {
                     String requestId = UUID.randomUUID().toString();
 
-                    OperationPerformed operationPerformed
-                            = new OperationPerformed("ping", requestId,
-                            Time.getUtcTime(), Time.getUtcTime(),
-                            Time.getUtcTime(), Time.getUtcTime(),
-                            Time.getUtcTime(), Time.getUtcTime(),
-                            depNum, true, true, "N/A",
-                            -1, 0, 0);
-                    operationsPerformed.put(requestId, operationPerformed);
-
                     // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
                     // file/directory, then we'll just use an HTTP request.
                     try {
@@ -1570,8 +1327,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-
-                    operationPerformed.setServerlessFnEndTime(System.nanoTime());
                 }
             });
 
@@ -1595,14 +1350,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void ping(int targetDeployment) throws IOException {
         String requestId = UUID.randomUUID().toString();
 
-        OperationPerformed operationPerformed
-                = new OperationPerformed("ping", requestId,
-                Time.getUtcTime(), -1L, -1L,
-                -1L, -1L, -1L,
-                targetDeployment, true, true, "N/A",
-                -1, 0, 0);
-        operationsPerformed.put(requestId, operationPerformed);
-
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
         dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
@@ -1612,8 +1359,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 new ArgumentContainer(),
                 requestId,
                 targetDeployment);
-
-        operationPerformed.setServerlessFnEndTime(System.nanoTime());
     }
 
     @Override

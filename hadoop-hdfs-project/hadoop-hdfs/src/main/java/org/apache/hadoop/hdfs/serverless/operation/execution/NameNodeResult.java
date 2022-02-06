@@ -102,12 +102,6 @@ public class NameNodeResult implements Serializable {
     private long fnStartTime;
 
     /**
-     * Time at which the serverless function returned to the client for the request
-     * associated with this result.
-     */
-    private long fnEndTime;
-
-    /**
      * Time at which this request was enqueued in the NameNode's work queue.
      */
     private long enqueuedTime;
@@ -356,7 +350,6 @@ public class NameNodeResult implements Serializable {
         json.addProperty(ServerlessNameNodeKeys.CACHE_HITS, metadataCache.getNumCacheHitsCurrentRequest());
         json.addProperty(ServerlessNameNodeKeys.CACHE_MISSES, metadataCache.getNumCacheMissesCurrentRequest());
         json.addProperty(ServerlessNameNodeKeys.FN_START_TIME, fnStartTime);
-        json.addProperty(ServerlessNameNodeKeys.FN_END_TIME, fnEndTime);
         json.addProperty(ServerlessNameNodeKeys.ENQUEUED_TIME, enqueuedTime);
         json.addProperty(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
         json.addProperty(ServerlessNameNodeKeys.PROCESSING_FINISHED_TIME, processingFinishedTime);
@@ -371,6 +364,7 @@ public class NameNodeResult implements Serializable {
         else
             LOG.warn("There are no Transaction Statistics to return to the client...");
 
+        json.addProperty(ServerlessNameNodeKeys.FN_END_TIME, System.currentTimeMillis());
         return json;
     }
 
@@ -463,7 +457,6 @@ public class NameNodeResult implements Serializable {
      * - serverlessFunctionMapping: The value for this instance will ALWAYS persist.
      * - enqueuedTime: This is set by the main thread, so it should not be overwritten.
      * - fnStartTime: This is set by the main thread, so it should not be overwritten.
-     * - fnEndTime: This is set by the main thread, so it should not be overwritten.
      *
      * FIELDS THAT WILL BE UPDATED/CHANGED:
      * - additionalFields: Will be merged together. Values will be overwritten or not depending on the value
@@ -515,14 +508,6 @@ public class NameNodeResult implements Serializable {
 
     public void setFnStartTime(long fnStartTime) {
         this.fnStartTime = fnStartTime;
-    }
-
-    public long getFnEndTime() {
-        return fnEndTime;
-    }
-
-    public void setFnEndTime(long fnEndTime) {
-        this.fnEndTime = fnEndTime;
     }
 
     public long getEnqueuedTime() {

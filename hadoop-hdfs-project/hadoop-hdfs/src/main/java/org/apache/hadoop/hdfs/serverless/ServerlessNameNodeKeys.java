@@ -57,6 +57,8 @@ public class ServerlessNameNodeKeys {
     public static final String TCP_PORT = "TCP_PORT";
     public static final String CLIENT_INTERNAL_IP = "clientInternalIp";
     public static final String TCP_ENABLED = "tcpEnabled";
+    public static final String LOG_LEVEL = "LOG_LEVEL";
+    public static final String CONSISTENCY_PROTOCOL_ENABLED = "CONSISTENCY_PROTOCOL_ENABLED";
 
     public static final String LOCAL_MODE = "LOCAL_MODE";
     public static final String DEPLOYMENT_NUMBER = "DEPLOYMENT_NUMBER";

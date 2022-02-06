@@ -118,6 +118,7 @@ public class LRUMetadataCache<T> {
     /**
      * Reset the current-request counters for cache hits/misses.
      */
+    @Deprecated
     public void clearCurrentRequestCacheCounters() {
         this.numCacheHitsCurrentRequest = 0;
         this.numCacheMissesCurrentRequest = 0;

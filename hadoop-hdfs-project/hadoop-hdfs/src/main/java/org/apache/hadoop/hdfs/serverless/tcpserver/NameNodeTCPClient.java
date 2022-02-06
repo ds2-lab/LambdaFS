@@ -17,6 +17,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.util.Time;
@@ -427,12 +428,6 @@ public class NameNodeTCPClient {
      *                       debugging purposes.
      */
     private void trySendTcp(Connection connection, Object payload, boolean enqueuedResult) {
-        if (enqueuedResult)
-            LOG.warn("[TCP Client] Trying to send previously-enqueued result to client at " +
-                    connection.getRemoteAddressTCP() + " now.");
-        else
-            LOG.debug("[TCP Client] Trying to send new result to client at " + connection.getRemoteAddressTCP() + " now.");
-
         double currentCapacity = ((double) connection.getTcpWriteBufferSize()) / ((double) writeBufferSize);
         if (currentCapacity >= 0.9) {
             LOG.warn("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
@@ -519,77 +514,36 @@ public class NameNodeTCPClient {
     }
 
     private NameNodeResult handleWorkAssignment(JsonObject args) {
+        long startTime = System.currentTimeMillis();
         String requestId = args.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
         String op = args.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
         JsonObject fsArgs = args.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
+
+        NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP", serverlessNameNode.getId());
+        tcpResult.setFnStartTime(startTime);
 
         LOG.debug("================ TCP Message Contents ================");
         LOG.debug("Request ID: " + requestId);
         LOG.debug("Operation name: " + op);
         LOG.debug("FS operation arguments: ");
-        for (Map.Entry<String, JsonElement> entry : fsArgs.entrySet())
-            LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
+//        for (Map.Entry<String, JsonElement> entry : fsArgs.entrySet())
+//            LOG.debug("     " + entry.getKey() + ": " + entry.getValue());
         LOG.debug("======================================================\n");
-
-        NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP",
-                serverlessNameNode.getId());
-
-        tcpResult.setFnStartTime(Time.getUtcTime());
 
         // Create a new task. After this, we assign it to the worker thread and wait for the
         // result to be computed before returning it to the user.
-        Future<Serializable> newTask = null;
-        try {
-            newTask = FileSystemTaskUtils.createAndEnqueueFileSystemTask(requestId, op, fsArgs, tcpResult,
-                    serverlessNameNode, false, "TCP");
-        } catch (Exception ex) {
-            LOG.error("Error encountered while creating file system task "
-                    + requestId + " for operation '" + op + "':", ex);
-           tcpResult.addException(ex);
-            // We don't want to continue as we already encountered a critical error, so just return.
-           return tcpResult;
-        }
+        FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, false, "TCP");
 
-        // If we failed to create a new task for the desired file system operation, then we'll just throw
-        // another exception indicating that we have nothing to execute, seeing as the task doesn't exist.
-        if (newTask == null) {
-            LOG.error("[TCP] Failed to create task for operation '" + op + "'");
-            tcpResult.addException(new IllegalStateException("[TCP] Failed to create task for operation " + op));
-            return tcpResult;
-        }
+        serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult, false);
 
-        tcpResult.setEnqueuedTime(Time.getUtcTime());
-
-        // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
-        try {
-            // In the case that we do have a task to wait on, we'll wait for the configured amount of time for the
-            // worker thread to execute the task. If the task times out, then an exception will be thrown, caught,
-            // and ultimately reported to the client. Alternatively, if the task is executed successfully, then
-            // the future will resolve, and we'll be able to return a result to the client!
-            LOG.debug("[TCP] Waiting for task " + requestId + " (operation = " + op + ") to be executed now...");
-            Serializable fileSystemOperationResult = newTask.get(
-                    ServerlessNameNode.tryGetNameNodeInstance(true).getWorkerThreadTimeoutMs(), TimeUnit.MILLISECONDS);
-
-            LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
-            if (fileSystemOperationResult instanceof NameNodeResult) {
-                LOG.debug("[TCP] Merging NameNodeResult instances now...");
-                tcpResult.mergeInto((NameNodeResult)fileSystemOperationResult, false);
-            } else if (fileSystemOperationResult != null) {
-                LOG.warn("[TCP] Worker thread returned result of type: "
-                        + fileSystemOperationResult.getClass().getSimpleName());
-                tcpResult.addResult(fileSystemOperationResult, true);
-            } else {
-                // This will be caught immediately and added to the result returned to the client.
-                throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
-            }
-        } catch (ExecutionException | InterruptedException | TimeoutException ex) {
-            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
-                    + " to be executed by the worker thread: ", ex);
-            tcpResult.addException(ex);
-            // We don't have to return here as the next instruction is to return.
-        }
-
-        tcpResult.setFnEndTime(Time.getUtcTime());
+//        LOG.debug("[TCP] Adding result from operation " + op + " to response for request " + requestId);
+//        if (tcpResult != null) {
+//            LOG.debug("[TCP] Merging NameNodeResult instances now...");
+//            tcpResult.mergeInto(result, false);
+//        } else {
+//            // This will be caught immediately and added to the result returned to the client.
+//            throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
+//        }
         return tcpResult;
     }
 

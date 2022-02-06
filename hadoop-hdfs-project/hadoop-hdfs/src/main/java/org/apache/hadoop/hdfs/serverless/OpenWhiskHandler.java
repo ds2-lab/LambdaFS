@@ -4,10 +4,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mysql.clusterj.ClusterJHelper;
 import io.hops.metrics.TransactionEvent;
+import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
+import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
@@ -28,7 +30,7 @@ import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.FORCE_REDO;
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 
 /**
  * This class encapsulates the behavior and functionality of the serverless function handler for OpenWhisk.
@@ -41,6 +43,8 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.FORCE_RED
  */
 public class OpenWhiskHandler {
     public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class.getName());
+
+
 
     /**
      * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
@@ -158,6 +162,19 @@ public class OpenWhiskHandler {
 
         // The arguments to the file system operation.
         JsonObject fsArgs = userArguments.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
+        
+        if (userArguments.has(LOG_LEVEL)) {
+            String logLevel = userArguments.get(LOG_LEVEL).getAsString();
+            LOG.debug("Setting log4j log level to: " + logLevel + ".");
+
+            LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
+        }
+
+        if (userArguments.has(CONSISTENCY_PROTOCOL_ENABLED)) {
+            HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL = userArguments.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
+            LOG.debug("Consistency protocol is " +
+                    (HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
+        }
 
         int tcpPort = -1;
         if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT))
@@ -200,7 +217,6 @@ public class OpenWhiskHandler {
         LOG.debug("Returning back to client. Time elapsed: " + timeElapsed + " milliseconds.");
         LOG.debug("ServerlessNameNode is exiting now...");
         activeRequestCounter.decrementAndGet();
-        result.setFnEndTime(Time.getUtcTime());
         return createJsonResponse(result);
     }
 
@@ -258,7 +274,7 @@ public class OpenWhiskHandler {
         NameNodeResult result = new NameNodeResult(ServerlessNameNode.getFunctionNumberFromFunctionName(functionName),
                 requestId, "HTTP", -1);
 
-        long creationStart = Time.getUtcTime();
+        long creationStart = System.currentTimeMillis();
         LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
 
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
@@ -275,7 +291,7 @@ public class OpenWhiskHandler {
             return result;
         }
 
-        long creationEnd = Time.getUtcTime();
+        long creationEnd = System.currentTimeMillis();
         long creationDuration = creationEnd - creationStart;
         LOG.debug("Obtained NameNode instance with ID=" + serverlessNameNode.getId());
         result.setNameNodeId(serverlessNameNode.getId());
@@ -298,9 +314,7 @@ public class OpenWhiskHandler {
 
         // Check if we need to redo this operation. This can occur if the TCP connection that was supposed
         // to deliver the result back to the client was dropped before the client received the result.
-        boolean redoEvenIfDuplicate = false;
-        if (fsArgs.has(FORCE_REDO) && fsArgs.get(FORCE_REDO).getAsBoolean())
-            redoEvenIfDuplicate = true;
+        boolean redoEvenIfDuplicate = fsArgs.has(FORCE_REDO) && fsArgs.get(FORCE_REDO).getAsBoolean();
 
         // Check to see if this is a duplicate request, in which case we should return a message indicating as such.
         if (!redoEvenIfDuplicate && serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
@@ -313,65 +327,27 @@ public class OpenWhiskHandler {
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
-        Future<Serializable> newTask = null;
-        try {
-            newTask = FileSystemTaskUtils.createAndEnqueueFileSystemTask(requestId, op, fsArgs, result,
-                    serverlessNameNode, redoEvenIfDuplicate, "HTTP");
-
-            // We wait for the task to finish executing in a separate try-catch block so that, if there is
-            // an exception, then we can log a specific message indicating where the exception occurred. If we
-            // waited for the task in this block, we wouldn't be able to indicate in the log whether the
-            // exception occurred when creating/scheduling the task or while waiting for it to complete.
-        } catch (Exception ex) {
-            LOG.error("Error encountered while creating file system task "
-                    + requestId + " for operation " + op + ":", ex);
-            result.addException(ex);
-        }
+        FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, redoEvenIfDuplicate, "HTTP");
 
         result.setFnStartTime(creationStart);
-        result.setEnqueuedTime(Time.getUtcTime());
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
-            // If we failed to create a new task for the desired file system operation, then we'll just throw
-            // another exception indicating that we have nothing to execute, seeing as the task doesn't exist.
-            if (newTask == null) {
-                throw new IllegalStateException("Failed to create task for operation " + op);
-            }
+            serverlessNameNode.getExecutionManager().tryExecuteTask(task, result, true);
 
-            // In the case that we do have a task to wait on, we'll wait for the configured amount of time for the
-            // worker thread to execute the task. If the task times out, then an exception will be thrown, caught,
-            // and ultimately reported to the client. Alternatively, if the task is executed successfully, then
-            // the future will resolve, and we'll be able to return a result to the client!
-            LOG.debug("Waiting for task " + requestId + " (operation = " + op + ") to be executed now...");
-            Serializable fileSystemOperationResult = newTask.get(
-                    serverlessNameNode.getWorkerThreadTimeoutMs(), TimeUnit.MILLISECONDS);
-
-            LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
-            if (fileSystemOperationResult instanceof NameNodeResult) {
-                LOG.debug("Merging NameNodeResult instances now...");
-                result.mergeInto((NameNodeResult)fileSystemOperationResult, false);
-            } else if (fileSystemOperationResult != null) {
-                LOG.warn("Worker thread returned result of type: "
-                        + fileSystemOperationResult.getClass().getSimpleName());
-                result.addResult(fileSystemOperationResult, true);
-            } else {
-                // This will be caught immediately and added to the result returned to the client.
-                throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
-            }
+//            LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
+//            if (fileSystemOperationResult != null) {
+//                LOG.debug("Merging NameNodeResult instances now...");
+//                result.mergeInto(fileSystemOperationResult, false);
+//            } else {
+//                // This will be caught immediately and added to the result returned to the client.
+//                throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
+//            }
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);
             result.addException(ex);
         }
-
-//        try {
-//            // Check if a function mapping should be created and returned to the client.
-//            tryCreateDeploymentMapping(result, fsArgs, serverlessNameNode);
-//        } catch (IOException ex) {
-//            LOG.error("Encountered IOException while trying to create function mapping:", ex);
-//            result.addException(ex);
-//        }
 
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker && tcpEnabled) {
@@ -393,6 +369,26 @@ public class OpenWhiskHandler {
 
         result.logResultDebugInformation(op);
         return result;
+    }
+
+    public static org.apache.log4j.Level getLogLevelFromString(String level) {
+       if (level.equalsIgnoreCase("info"))
+           return Level.INFO;
+       else if (level.equalsIgnoreCase("debug"))
+           return Level.DEBUG;
+       else if (level.equalsIgnoreCase("warn"))
+           return Level.WARN;
+       else if (level.equalsIgnoreCase("error"))
+           return Level.ERROR;
+       else if (level.equalsIgnoreCase("trace"))
+           return Level.TRACE;
+       else if (level.equalsIgnoreCase("fatal"))
+           return Level.FATAL;
+       else if (level.equalsIgnoreCase("all"))
+           return Level.ALL;
+
+       LOG.error("Unknown log level specified: '" + level + "'. Defaulting to 'debug'.");
+       return Level.DEBUG;
     }
 
     /**
