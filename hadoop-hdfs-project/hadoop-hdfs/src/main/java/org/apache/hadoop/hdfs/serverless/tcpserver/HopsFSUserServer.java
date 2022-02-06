@@ -7,6 +7,7 @@ import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -14,6 +15,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
+import org.apache.log4j.LogManager;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -27,6 +29,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromString;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_RESULT;
@@ -690,6 +693,19 @@ public class HopsFSUserServer {
                 int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
                 long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
                 String operation = body.getAsJsonPrimitive("op").getAsString();
+
+                if (body.has(LOG_LEVEL)) {
+                    String logLevel = body.get(LOG_LEVEL).getAsString();
+                    LOG.debug("Setting log4j log level to: " + logLevel + ".");
+
+                    LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
+                }
+
+                if (body.has(CONSISTENCY_PROTOCOL_ENABLED)) {
+                    HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL = body.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
+                    LOG.debug("Consistency protocol is " +
+                            (HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
+                }
 
                 String requestId = null;
 

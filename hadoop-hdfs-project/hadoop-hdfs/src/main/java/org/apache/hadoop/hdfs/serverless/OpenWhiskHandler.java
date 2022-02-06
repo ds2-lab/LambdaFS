@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mysql.clusterj.ClusterJHelper;
 import io.hops.metrics.TransactionEvent;
+import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
@@ -29,7 +30,7 @@ import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.FORCE_REDO;
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 
 /**
  * This class encapsulates the behavior and functionality of the serverless function handler for OpenWhisk.
@@ -42,6 +43,8 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.FORCE_RED
  */
 public class OpenWhiskHandler {
     public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class.getName());
+
+
 
     /**
      * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
@@ -159,6 +162,19 @@ public class OpenWhiskHandler {
 
         // The arguments to the file system operation.
         JsonObject fsArgs = userArguments.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
+        
+        if (userArguments.has(LOG_LEVEL)) {
+            String logLevel = userArguments.get(LOG_LEVEL).getAsString();
+            LOG.debug("Setting log4j log level to: " + logLevel + ".");
+
+            LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
+        }
+
+        if (userArguments.has(CONSISTENCY_PROTOCOL_ENABLED)) {
+            HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL = userArguments.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
+            LOG.debug("Consistency protocol is " +
+                    (HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
+        }
 
         int tcpPort = -1;
         if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT))
@@ -353,6 +369,26 @@ public class OpenWhiskHandler {
 
         result.logResultDebugInformation(op);
         return result;
+    }
+
+    public static org.apache.log4j.Level getLogLevelFromString(String level) {
+       if (level.equalsIgnoreCase("info"))
+           return Level.INFO;
+       else if (level.equalsIgnoreCase("debug"))
+           return Level.DEBUG;
+       else if (level.equalsIgnoreCase("warn"))
+           return Level.WARN;
+       else if (level.equalsIgnoreCase("error"))
+           return Level.ERROR;
+       else if (level.equalsIgnoreCase("trace"))
+           return Level.TRACE;
+       else if (level.equalsIgnoreCase("fatal"))
+           return Level.FATAL;
+       else if (level.equalsIgnoreCase("all"))
+           return Level.ALL;
+
+       LOG.error("Unknown log level specified: '" + level + "'. Defaulting to 'debug'.");
+       return Level.DEBUG;
     }
 
     /**
