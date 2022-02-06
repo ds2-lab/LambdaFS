@@ -147,9 +147,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.serverlessInvoker.setConsistencyProtocolEnabled(enabled);
     }
 
+    public boolean getConsistencyProtocolEnabled() {
+        return consistencyProtocolEnabled;
+    }
+
     public void setServerlessFunctionLogLevel(String logLevel) {
         this.serverlessFunctionLogLevel = logLevel;
         this.serverlessInvoker.setServerlessFunctionLogLevel(logLevel);
+    }
+
+    public String getServerlessFunctionLogLevel() {
+        return this.serverlessFunctionLogLevel;
     }
 
     public void printDebugInformation() {

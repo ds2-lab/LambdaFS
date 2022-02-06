@@ -833,20 +833,40 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     if (this.namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)this.namenode;
       client.setConsistencyProtocolEnabled(enabled);
-    } else {
-      LOG.warn("Internal NameNode API is not an instance of 'ServerlessNameNodeClient'. " +
-              "Cannot modify consistency protocol flag.");
     }
+
+    LOG.warn("Internal NameNode API is not an instance of 'ServerlessNameNodeClient'. " +
+            "Cannot modify consistency protocol flag.");
   }
 
   public void setServerlessFunctionLogLevel(String logLevel) {
     if (this.namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)this.namenode;
       client.setServerlessFunctionLogLevel(logLevel);
-    } else {
-      LOG.warn("Internal NameNode API is not an instance of 'ServerlessNameNodeClient'. " +
-              "Cannot modify log4j log level parameter.");
     }
+
+    LOG.warn("Internal NameNode API is not an instance of 'ServerlessNameNodeClient'. " +
+            "Cannot modify log4j log level parameter.");
+  }
+
+  public boolean getConsistencyProtocolEnabled() {
+    if (this.namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)this.namenode;
+      return client.getConsistencyProtocolEnabled();
+    }
+
+    throw new IllegalStateException("Internal NameNode API is not an instance of 'ServerlessNameNodeClient'. " +
+            "Cannot return consistency protocol flag.");
+  }
+
+  public String getServerlessFunctionLogLevel() {
+    if (this.namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)this.namenode;
+      return client.getServerlessFunctionLogLevel();
+    }
+
+    throw new IllegalStateException("Internal NameNode API is not an instance of 'ServerlessNameNodeClient'. " +
+            "Cannot return log4j log level parameter.");
   }
 
   /**

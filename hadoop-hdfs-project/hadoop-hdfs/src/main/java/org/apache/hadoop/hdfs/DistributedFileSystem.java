@@ -249,6 +249,14 @@ public class DistributedFileSystem extends FileSystem {
     this.dfs.setServerlessFunctionLogLevel(logLevel);
   }
 
+  public boolean getConsistencyProtocolEnabled() {
+    return this.dfs.getConsistencyProtocolEnabled();
+  }
+
+  public String getServerlessFunctionLogLevel() {
+    return this.dfs.getServerlessFunctionLogLevel();
+  }
+
   @Override
   public Path getHomeDirectory() {
     return makeQualified(new Path(homeDirPrefix + "/"
