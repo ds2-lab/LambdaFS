@@ -120,7 +120,7 @@ public class ExecutionManager {
 
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.scheduleAtFixedRate(() -> {
-            LOG.debug("Retrieving StorageReports from intermediate storage now.");
+            // LOG.debug("Retrieving StorageReports from intermediate storage now.");
             tryUpdateFromIntermediateStorage();
 
             try {
