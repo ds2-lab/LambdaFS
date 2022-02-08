@@ -73,7 +73,17 @@ abstract class AbstractFileTree {
   private volatile IOException exception;
   private List<AclEntry> subtreeRootDefaultEntries;
   private byte inheritedStoragePolicy;
-  
+
+  /**
+   * Set of deployments who are responsible for caching at least one directory's contents within this file tree.
+   */
+  private final Set<Integer> associatedDeployments;
+
+  /**
+   * The local Serverless Name Node instance.
+   */
+  private final ServerlessNameNode instance;
+
   public static class BuildingUpFileTreeFailedException extends IOException {
     BuildingUpFileTreeFailedException(String message) {
       super(message);
@@ -87,16 +97,6 @@ abstract class AbstractFileTree {
     private List<AclEntry> inheritedDefaultsAsAccess;
     private BlockStoragePolicySuite bsps;
     private final byte inheritedStoragePolicy;
-
-    /**
-     * Set of deployments who are responsible for caching at least one directory's contents within this file tree.
-     */
-    private final Set<Integer> associatedDeployments;
-
-    /**
-     * The local Serverless Name Node instance.
-     */
-    private final ServerlessNameNode instance;
     
     private ChildCollector(ProjectedINode parent, short depth, int level, List<AclEntry> inheritedDefaultsAsAccess,
         BlockStoragePolicySuite bsps, byte inheritedStoragePolicy) {
@@ -106,8 +106,6 @@ abstract class AbstractFileTree {
       this.inheritedDefaultsAsAccess = inheritedDefaultsAsAccess;
       this.bsps = bsps;
       this.inheritedStoragePolicy = inheritedStoragePolicy;
-      this.associatedDeployments = new HashSet<>();
-      this.instance = ServerlessNameNode.tryGetNameNodeInstance(true);
 
       int parentDeployment = instance.getMappedDeploymentNumber(parent.getId());
       LOG.debug("Parent INode " + parent.toString() + " is mapped to deployment " + parentDeployment);
@@ -171,6 +169,9 @@ abstract class AbstractFileTree {
 
                 List<AclEntry> newDefaults = filterAccessEntries(acls.get(child));
                 if (child.isDirectory()) {
+                  int associatedDeployment = instance.getMappedDeploymentNumber(child.getId());
+                  associatedDeployments.add(associatedDeployment);
+
                   byte storagePolicy = inheritedStoragePolicy;
                   if (child.getStoragePolicyID() != HdfsConstantsClient.BLOCK_STORAGE_POLICY_ID_UNSPECIFIED) {
                     storagePolicy = child.getStoragePolicyID();
@@ -249,8 +250,13 @@ abstract class AbstractFileTree {
     this.ignoreEmptyDir = ignoreEmptyDir;
     this.subtreeRootDefaultEntries = subtreeRootDefaultEntries;
     this.inheritedStoragePolicy = inheritedStoragePolicy;
+
+    this.associatedDeployments = new HashSet<>();
+    this.instance = ServerlessNameNode.tryGetNameNodeInstance(true);
   }
-  
+
+  public Set<Integer> getAssociatedDeployments() { return this.associatedDeployments; }
+
   private void checkAccess(INode node, FsAction action,
       List<AclEntry> aclEntries)
       throws IOException {

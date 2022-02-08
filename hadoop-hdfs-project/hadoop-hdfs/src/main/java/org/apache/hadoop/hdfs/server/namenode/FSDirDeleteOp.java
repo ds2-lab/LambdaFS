@@ -29,6 +29,7 @@ import io.hops.transaction.lock.TransactionLockTypes.INodeLockType;
 import io.hops.transaction.lock.TransactionLockTypes.INodeResolveType;
 import io.hops.transaction.lock.TransactionLockTypes.LockType;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -173,6 +175,13 @@ class FSDirDeleteOp {
         long t = System.currentTimeMillis();
         LOG.debug("Built-up file tree for '" + srcArg + "' for DELETE operation in " + (t - s) + " ms.");
         fsn.delayAfterBbuildingTree("Built tree for " + srcArg + " for delete op");
+
+        Set<Integer> associatedDeployments = fileTree.getAssociatedDeployments();
+        int numAssociatedDeployments = associatedDeployments.size();
+
+        LOG.debug("There " + (numAssociatedDeployments == 1 ? "is 1 deployment " : "are " + associatedDeployments.size() + " deployments ") +
+                " associated with the file tree rooted at '" + srcArg + "'.");
+        LOG.debug("Associated deployments: " + StringUtils.join(", ", associatedDeployments));
 
         if (fsd.isQuotaEnabled()) {
           Iterator<Long> idIterator = fileTree.getAllINodesIds().iterator();
