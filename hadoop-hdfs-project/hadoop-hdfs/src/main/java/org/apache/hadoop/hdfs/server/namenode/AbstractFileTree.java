@@ -87,6 +87,16 @@ abstract class AbstractFileTree {
     private List<AclEntry> inheritedDefaultsAsAccess;
     private BlockStoragePolicySuite bsps;
     private final byte inheritedStoragePolicy;
+
+    /**
+     * Set of deployments who are responsible for caching at least one directory's contents within this file tree.
+     */
+    private final Set<Integer> associatedDeployments;
+
+    /**
+     * The local Serverless Name Node instance.
+     */
+    private final ServerlessNameNode instance;
     
     private ChildCollector(ProjectedINode parent, short depth, int level, List<AclEntry> inheritedDefaultsAsAccess,
         BlockStoragePolicySuite bsps, byte inheritedStoragePolicy) {
@@ -96,6 +106,12 @@ abstract class AbstractFileTree {
       this.inheritedDefaultsAsAccess = inheritedDefaultsAsAccess;
       this.bsps = bsps;
       this.inheritedStoragePolicy = inheritedStoragePolicy;
+      this.associatedDeployments = new HashSet<>();
+      this.instance = ServerlessNameNode.tryGetNameNodeInstance(true);
+
+      int parentDeployment = instance.getMappedDeploymentNumber(parent.getId());
+      LOG.debug("Parent INode " + parent.toString() + " is mapped to deployment " + parentDeployment);
+      associatedDeployments.add(parentDeployment);
     }
     
     @Override

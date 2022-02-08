@@ -10,11 +10,9 @@ import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
-import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
-import org.apache.hadoop.util.Time;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
@@ -27,7 +25,6 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
@@ -425,7 +422,7 @@ public class OpenWhiskHandler {
             if (inode != null) {
                 LOG.debug("Parent INode ID for '" + src + "': " + inode.getParentId());
 
-                int functionNumber = serverlessNameNode.getMappedServerlessFunction(inode.getParentId());
+                int functionNumber = serverlessNameNode.getMappedDeploymentNumber(inode.getParentId());
 
                 LOG.debug("Consistently hashed parent INode ID " + inode.getParentId()
                         + " to serverless function " + functionNumber);

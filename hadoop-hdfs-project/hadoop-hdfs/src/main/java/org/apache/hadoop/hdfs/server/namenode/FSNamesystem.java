@@ -97,7 +97,6 @@ import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMetho
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
-import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.zookeeper.Invalidatable;
 import org.apache.hadoop.hdfs.util.EnumCounters;
 import org.apache.hadoop.io.EnumSetWritable;
@@ -1816,7 +1815,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @return The number of the serverless function responsible for caching this INode.
    */
   public int getMappedServerlessFunction(INode inode) {
-    return serverlessNameNode.getMappedServerlessFunction(inode);
+    return serverlessNameNode.getMappedDeploymentNumber(inode);
   }
 
   /**
@@ -1825,7 +1824,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @return The number of the serverless function responsible for caching this INode.
    */
   public int getMappedServerlessFunction(long parentINodeId) {
-    return serverlessNameNode.getMappedServerlessFunction(parentINodeId);
+    return serverlessNameNode.getMappedDeploymentNumber(parentINodeId);
   }
 
   /**

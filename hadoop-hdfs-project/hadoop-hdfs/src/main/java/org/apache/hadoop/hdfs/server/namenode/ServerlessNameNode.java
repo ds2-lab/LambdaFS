@@ -23,7 +23,6 @@ import com.google.gson.JsonObject;
 import io.hops.DalDriver;
 import io.hops.events.EventManager;
 import io.hops.exception.StorageException;
-import io.hops.leaderElection.HdfsLeDescriptorFactory;
 import io.hops.leaderElection.LeaderElection;
 import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
@@ -80,7 +79,6 @@ import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.execution.ExecutionManager;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
-import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeWorkerThread;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
@@ -116,8 +114,6 @@ import java.security.PrivilegedExceptionAction;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -714,7 +710,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.warn("Failed to retrieve INode '" + src
               + "' from intermediate storage. This is a problem unless we're creating the file/directory now.");
 
-    int mappedDeployment = getMappedServerlessFunction(src);
+    int mappedDeployment = getMappedDeploymentNumber(src);
 
     // We'll go ahead and cache the INode locally if we're responsible for caching it since
     // we went to the effort of retrieving it from NDB already.
@@ -3151,7 +3147,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return True if we should cache this INode locally, otherwise returns False.
    */
   public boolean shouldCacheLocally(INode inode) {
-    return getMappedServerlessFunction(inode) == deploymentNumber;
+    return getMappedDeploymentNumber(inode) == deploymentNumber;
   }
 
   /**
@@ -3160,7 +3156,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return True if we should cache this INode locally, otherwise returns False.
    */
   public boolean shouldCacheLocally(long parentINodeId) {
-    return getMappedServerlessFunction(parentINodeId) == deploymentNumber;
+    return getMappedDeploymentNumber(parentINodeId) == deploymentNumber;
   }
 
   /**
@@ -3168,7 +3164,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param inode The INode in question.
    * @return The number of the serverless function responsible for caching this INode.
    */
-  public int getMappedServerlessFunction(INode inode) {
+  public int getMappedDeploymentNumber(INode inode) {
     return consistentHash(inode.getParentId(), numDeployments);
     //return consistentHash(inode.getFullPathName().hashCode(), numUniqueServerlessNameNodes);
   }
@@ -3178,7 +3174,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param parentINodeId The parent INode ID of the node we're inquiring about.
    * @return The number of the serverless function responsible for caching this INode.
    */
-  public int getMappedServerlessFunction(long parentINodeId) {
+  public int getMappedDeploymentNumber(long parentINodeId) {
     return consistentHash(parentINodeId, numDeployments);
   }
 
@@ -3187,7 +3183,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param path Fully-qualified path to the target file/directory.
    * @return The number of the serverless function responsible for caching this file/directory.
    */
-  public int getMappedServerlessFunction(String path) throws IOException {
+  public int getMappedDeploymentNumber(String path) throws IOException {
     INode inode = getINodeForCache(path);
 
     if (inode == null) {

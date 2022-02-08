@@ -168,7 +168,10 @@ class FSDirDeleteOp {
         List<AclEntry> nearestDefaultsForSubtree = fsn.calculateNearestDefaultAclForSubtree(pathInfo);
         AbstractFileTree.FileTree fileTree = new AbstractFileTree.FileTree(fsn, subtreeRoot, FsAction.ALL, true,
             nearestDefaultsForSubtree, subtreeRoot.getStoragePolicy());
+        long s = System.currentTimeMillis();
         fileTree.buildUp(fsd.getBlockStoragePolicySuite());
+        long t = System.currentTimeMillis();
+        LOG.debug("Built-up file tree for '" + srcArg + "' for DELETE operation in " + (t - s) + " ms.");
         fsn.delayAfterBbuildingTree("Built tree for " + srcArg + " for delete op");
 
         if (fsd.isQuotaEnabled()) {
@@ -184,6 +187,8 @@ class FSDirDeleteOp {
           }
         }
 
+        // TODO: We can update subtree protocol here to disable consistency protocol for everything in the tree.
+        //       Just need to issue invalidations.
         for (int i = fileTree.getHeight(); i > 0; i--) {
           if (!deleteTreeLevel(fsn, src, fileTree.getSubtreeRoot().getId(), fileTree, i)) {
             LOG.debug("DELETE was NOT successful. Returning false.");
@@ -211,18 +216,26 @@ class FSDirDeleteOp {
       ArrayList<Future> barrier = new ArrayList<>();
 
       List<ProjectedINode> emptyDirs = new ArrayList();
+
+      // TODO: At each level of the subtree, we could issue a single 'subtree invalidation' that invalidates
+      //       everything within that directory/level of the subtree. We would run a version of the consistency
+      //       protocol here before proceeding, and none of the smaller TXs that delete the contents of this level
+      //       of the subtree would use the consistency protocol.
       for (final ProjectedINode dir : fileTree.getDirsByLevel(level)) {
         LOG.debug("Children in directory (id=" + dir.getId() + "): " + fileTree.countChildren(dir.getId()));
         if (fileTree.countChildren(dir.getId()) <= BIGGEST_DELETABLE_DIR) {
           LOG.debug("Directory " + dir.getId() + " has less than " + BIGGEST_DELETABLE_DIR
                   + " children. Can delete it directly.");
           final String path = fileTree.createAbsolutePath(subtreeRootPath, dir);
+
+          // TODO: Or maybe at this point, we'd issue one invalidation for everything in this directory.
           Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
           barrier.add(f);
         } else {
           //delete the content of the directory one by one.
-          LOG.debug("Directory " + dir.getId()
-                  + " has too many child files. Deleting content of directory one-by-one.");
+          LOG.debug("Directory " + dir.getId() + " has too many child files. Deleting content of directory one-by-one.");
+
+          // TODO: It would definitely be more efficient to issue a single invalidation for all INodes in this directory.
           for (final ProjectedINode inode : fileTree.getChildren(dir.getId())) {
             LOG.debug("    Trying to delete child INode " + inode.getName() + " (id=" + inode.getId() + ").");
             if (!inode.isDirectory()) {
@@ -246,14 +259,10 @@ class FSDirDeleteOp {
       //delete the empty Dirs
       for (ProjectedINode dir : emptyDirs) {
         final String path = fileTree.createAbsolutePath(subtreeRootPath, dir);
+        // TODO: We can probably skip the consistency protocol here, since these should all be invalidated already.
         Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
         barrier.add(f);
       }
-
-      if (barrier.size() != 1)
-        LOG.debug("Processing the " + barrier.size() + " entries in the barrier.");
-      else
-        LOG.debug("Processing the " + barrier.size() + " entry in the barrier.");
 
       return processResponses(barrier);
   }
@@ -324,7 +333,7 @@ class FSDirDeleteOp {
           public Object performTask() throws IOException {
             final INodesInPath iip = fsd.getINodesInPath4Write(src);
             if (!deleteInternal(fsn, src, iip)) {
-              //at this point the delete op is expected to succeed. Apart from DB errors
+              // at this point the delete op is expected to succeed. Apart from DB errors
               // this can only fail if the quiesce phase in subtree operation failed to
               // quiesce the subtree. See TestSubtreeConflicts.testConcurrentSTOandInodeOps
               throw new RetriableException("Unable to Delete path: " + src + "." + " Possible subtree quiesce failure");

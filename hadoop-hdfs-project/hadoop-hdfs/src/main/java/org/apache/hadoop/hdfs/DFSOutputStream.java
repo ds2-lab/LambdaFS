@@ -252,6 +252,7 @@ public class DFSOutputStream extends FSOutputSummer
             if (retryCount > 0) {
               shouldRetry = true;
               retryCount--;
+              LOG.debug("Will retry create operation...");
             } else {
               throw new IOException("Too many retries because of encryption" + " zone operations", e);
             }

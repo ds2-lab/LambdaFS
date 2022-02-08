@@ -39,9 +39,7 @@ import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
-import org.apache.hadoop.hdfs.serverless.zookeeper.GuestWatcherOption;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
-import org.apache.hadoop.util.BackOff;
 import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.zookeeper.Watcher;
 
@@ -377,7 +375,7 @@ public abstract class HopsTransactionalRequestHandler
     involvedDeployments = new HashSet<>();
 
     for (INode invalidatedINode : invalidatedINodes) {
-      int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedServerlessFunction(invalidatedINode);
+      int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
       int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
 
       // We'll have to guest-join the other deployment if the INode is not mapped to our deployment.
@@ -1111,7 +1109,7 @@ public abstract class HopsTransactionalRequestHandler
     Map<Integer, List<Invalidation>> invalidationsMap = new HashMap<>();
 
     for (INode invalidatedINode : invalidatedINodes) {
-      int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedServerlessFunction(invalidatedINode);
+      int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
       List<Invalidation> invalidations = invalidationsMap.getOrDefault(mappedDeploymentNumber, null);
 
       if (invalidations == null) {
