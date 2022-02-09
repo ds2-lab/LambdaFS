@@ -184,8 +184,14 @@ public interface ZKClient {
      *
      * @param invalidation Encapsulates all the information needed by follower Lambdas.
      * @param groupName The deployment for which we're issuing the invalidation.
+     * @param watcher Used to set up a watch on the newly-created ZNode. It is technically possible for an event to
+     *                happen between creating the ZNode and this watch being established, so it is necessary to check
+     *                for any state changes explicitly despite creating this watch.
+     *
+     *                The watch that gets created will be recursive, with the intent of listening for
+     *                {@code NodeCreated} events.
      */
-    void putInvalidation(ZooKeeperInvalidation invalidation, String groupName) throws Exception;
+    void putInvalidation(ZooKeeperInvalidation invalidation, String groupName, Watcher watcher) throws Exception;
 
     /**
      * Remove the ZNode associated with the given invalidation.

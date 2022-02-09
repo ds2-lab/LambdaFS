@@ -25,6 +25,7 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZooKeeperInvalidation;
 import org.apache.hadoop.util.ExponentialBackOff;
+import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
@@ -742,6 +743,29 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
     }
 
+    private void handleZooKeeperEvent(String path) {
+        LOG.debug("Received ZooKeeper 'NodeCreated' event with path '" + path + "'");
+        String[] tokens = path.split("/");
+        long followerId = Long.parseLong(tokens[tokens.length - 1]);
+
+        int mappedDeployment = nameNodeIdToDeploymentNumberMapping.get(followerId);
+
+        LOG.debug("Mapped follower NN " + followerId + " to deployment " + mappedDeployment + ".");
+
+        if (!waitingForAcks.contains(followerId))
+            return;
+
+        LOG.debug("Received ACK from NameNode " + followerId + " (deployment = " +
+                mappedDeployment + ")!");
+
+        waitingForAcks.remove(followerId);
+
+        Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(mappedDeployment);
+        deploymentAcks.remove(followerId);
+
+        countDownLatch.countDown();
+    }
+
     @Override
     public void eventReceived(HopsEventOperation eventData, String eventName) {
         if (!eventName.contains(HopsEvent.ACK_EVENT_NAME_BASE)) {
@@ -1002,7 +1026,11 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         LOG.debug("Issuing invalidation " + invalidation + " for " + involvedDeployments.size() + " deployment(s).");
         for (int deployment : involvedDeployments) {
             LOG.debug("Issuing ZooKeeper invalidation for deployment " + deployment + ".");
-            serverlessNameNodeInstance.getZooKeeperClient().putInvalidation(invalidation, "namenode" + deployment);
+            serverlessNameNodeInstance.getZooKeeperClient().putInvalidation(
+                    invalidation, "namenode" + deployment, watchedEvent -> {
+                        if (watchedEvent.getType() == Watcher.Event.EventType.NodeCreated)
+                            handleZooKeeperEvent(watchedEvent.getPath());
+                    });
         }
     }
 

@@ -277,7 +277,11 @@ public class SyncZKClient implements ZKClient {
     @Override
     public void addListener(String groupName, Watcher watcher) {
         String path = getPath(groupName, null, true);
-        PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, false);
+        addListenerToPath(path, watcher, false);
+    }
+
+    private void addListenerToPath(String path, Watcher watcher, boolean recursive) {
+        PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, recursive);
         persistentWatcher.getListenable().addListener(watcher);
     }
 
@@ -301,7 +305,8 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public void putInvalidation(ZooKeeperInvalidation invalidation, String groupName) throws Exception {
+    public void putInvalidation(ZooKeeperInvalidation invalidation, String groupName, Watcher watcher)
+            throws Exception {
         String path = getPath(groupName, null, true);
         path += "/INV/" + invalidation.getOperationId();
 
@@ -309,6 +314,11 @@ public class SyncZKClient implements ZKClient {
 
         // TODO: Should this be persistent or ephemeral?
         this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
+
+        // Note. It is technically possible for an event to happen between creating the ZNode and this watch being
+        // established, so it is necessary to check for any state changes explicitly despite creating this watch
+        if (watcher != null)
+            addListenerToPath(path, watcher, true);
     }
 
     @Override
@@ -317,6 +327,7 @@ public class SyncZKClient implements ZKClient {
         this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
     }
 
+    // Listen for INVs directed at a particular deployment.
     @Override
     public void addInvalidationListener(String groupName, Watcher watcher) {
         String path = getPath(groupName, null, true);
