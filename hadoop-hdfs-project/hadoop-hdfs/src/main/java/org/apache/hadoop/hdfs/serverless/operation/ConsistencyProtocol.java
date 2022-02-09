@@ -63,7 +63,17 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * Required to determine the INodes (metadata) involves in this execution of the Consistency Protocol. We need
      * this information in order to determine which deployments will receive INVs.
      */
-    private final EntityContext<?> callingThreadINodeContext;
+    private EntityContext<?> callingThreadINodeContext;
+
+    /**
+     * Alternatively, the calling thread can pass in a set specifying the involved deployments. This is performed
+     * for subtree invalidations/instances of the consistency protocol performed for subtree operations.
+     *
+     * This is a set of IDs denoting deployments from which we require ACKs. Our own deployment will always be
+     * involved. Other deployments may be involved during subtree operations and when creating new directories,
+     * as these types of operations modify INodes from multiple deployments.
+     */
+    private Set<Integer> involvedDeployments;
 
     /**
      * Used to record metrics about the execution of the consistency protocol.
@@ -111,13 +121,6 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     private Map<Integer, List<WriteAcknowledgement>> writeAcknowledgementsMap;
 
     /**
-     * Set of IDs denoting deployments from which we require ACKs. Our own deployment will always be involved.
-     * Other deployments may be involved during subtree operations and when creating new directories, as these
-     * types of operations modify INodes from multiple deployments.
-     * */
-    private Set<Integer> involvedDeployments;
-
-    /**
      * Watchers we create to observe membership changes on other deployments.
      *
      * We remove these when we leave the deployment.
@@ -135,16 +138,21 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     private final TransactionEvent transactionEvent;
 
     /**
-     * Constructor.
+     * Constructor for non-subtree operations.
      *
      * @param callingThreadINodeContext The INode {@link EntityContext} object of the calling thread. We need this
      *                                  object in order to determine the metadata involved in this consistency
      *                                  protocol, as this determines which deployments we issue INVs to.
+     * @param transactionAttempt        Used for tracking metrics about this particular transaction attempt.
+     * @param transactionEvent          Used for tracking metrics about the overall transaction.
+     * @param transactionStartTime      The time at which the transaction started.
+     * @param useZooKeeper              If true, use ZooKeeper for ACKs and INVs. Otherwise, use the hops-metadata-dal.
      */
     public ConsistencyProtocol(EntityContext<?> callingThreadINodeContext,
                                TransactionAttempt transactionAttempt,
                                TransactionEvent transactionEvent,
-                               long transactionStartTime) {
+                               long transactionStartTime,
+                               boolean useZooKeeper) {
         this.callingThreadINodeContext = callingThreadINodeContext;
         this.transactionAttempt = transactionAttempt;
         this.transactionEvent = transactionEvent;
@@ -154,7 +162,34 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         this.operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     }
 
+    /**
+     * Constructor for subtree operations.
+     *
+     * @param involvedDeployments       Set of deployments involved in the subtree operation. This is calculated
+     *                                  when obtaining database locks while walking through the subtree at the
+     *                                  beginning of the subtree protocol.
+     * @param transactionAttempt        Used for tracking metrics about this particular transaction attempt.
+     * @param transactionEvent          Used for tracking metrics about the overall transaction.
+     * @param transactionStartTime      The time at which the transaction started.
+     * @param useZooKeeper              If true, use ZooKeeper for ACKs and INVs. Otherwise, use the hops-metadata-dal.
+     */
+    public ConsistencyProtocol(Set<Integer> involvedDeployments,
+                               TransactionAttempt transactionAttempt,
+                               TransactionEvent transactionEvent,
+                               long transactionStartTime,
+                               boolean useZooKeeper) {
+        this.involvedDeployments = involvedDeployments;
+        this.transactionAttempt = transactionAttempt;
+        this.transactionEvent = transactionEvent;
+        this.transactionStartTime = transactionStartTime;
+        this.serverlessNameNodeInstance = ServerlessNameNode.tryGetNameNodeInstance(false);
+        this.watchers = new HashMap<>();
+        this.operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+    }
+
     public boolean getCanProceed() { return this.canProceed; }
+
+    public List<Exception> getExceptions() { return this.exceptions; }
 
     @Override
     public void run() {
@@ -195,9 +230,13 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             return;
         }
 
+        // Technically this isn't true yet, but we'll need to unsubscribe after the call to `subscribeToAckEvents()`.
+        boolean needToUnsubscribe = true;
         long startTime = System.currentTimeMillis();
 
-        if (!(callingThreadINodeContext instanceof INodeContext))
+        // If 'involvedDeployments' is non-null, then we don't care what the value/type of 'callingThreadINodeContext'
+        // is, as we already have the set of involved deployments provided to us.
+        if (involvedDeployments == null && !(callingThreadINodeContext instanceof INodeContext))
             throw new IllegalArgumentException("Consistency protocol requires an instance of INodeContext. " +
                     "Instead, received " +
                     ((callingThreadINodeContext == null) ? "null." : "instance of " +
@@ -236,28 +275,30 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         //       needs to be invalidated, then it will be added when we see that a modified INode is mapped to it.
         //
         // Keep track of all deployments involved in this transaction.
-        involvedDeployments = new HashSet<>();
+        if (involvedDeployments == null) {
+            LOG.debug("Computing involved deployments as they were not provided to us directly.");
+            involvedDeployments = new HashSet<>();
 
-        for (INode invalidatedINode : invalidatedINodes) {
-            int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
-            int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
+            for (INode invalidatedINode : invalidatedINodes) {
+                int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
+                int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
 
-            // We'll have to guest-join the other deployment if the INode is not mapped to our deployment.
-            // This is common during subtree operations and when creating a new directory (as that modifies the parent
-            // INode of the new directory, which is possibly mapped to a different deployment).
-            if (mappedDeploymentNumber != localDeploymentNumber) {
-                LOG.debug("INode '" + invalidatedINode.getLocalName() +
-                        "' is mapped to a different deployment (" + mappedDeploymentNumber + ").");
-                involvedDeployments.add(mappedDeploymentNumber);
+                // We'll have to guest-join the other deployment if the INode is not mapped to our deployment.
+                // This is common during subtree operations and when creating a new directory (as that modifies the parent
+                // INode of the new directory, which is possibly mapped to a different deployment).
+                if (mappedDeploymentNumber != localDeploymentNumber) {
+                    LOG.debug("INode '" + invalidatedINode.getLocalName() +
+                            "' is mapped to a different deployment (" + mappedDeploymentNumber + ").");
+                    involvedDeployments.add(mappedDeploymentNumber);
+                }
             }
+        } else {
+            LOG.debug("Using set of involved deployments provided to us by the calling thread.");
         }
 
         LOG.debug("Leader NameNode: " + serverlessNameNodeInstance.getFunctionName() + ", ID = "
                 + serverlessNameNodeInstance.getId() + ", Follower NameNodes: "
                 + serverlessNameNodeInstance.getActiveNameNodes().getActiveNodes().toString() + ".");
-
-        // Technically this isn't true yet, but we'll need to unsubscribe after the call to `subscribeToAckEvents()`.
-        boolean needToUnsubscribe = true;
 
         long preprocessingEndTime = System.currentTimeMillis();
         transactionAttempt.setConsistencyPreprocessingTimes(startTime, preprocessingEndTime);
@@ -385,7 +426,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             transactionAttempt.setConsistencyIssueInvalidationsTimes(writeAcksToStorageEndTime, issueInvalidationsEndTime);
 
             try {
-                // STEP 4 & 5
+                // =============== STEPS 4 & 5 ===============
                 waitForAcks();
 
                 long waitForAcksEndTime = System.currentTimeMillis();
