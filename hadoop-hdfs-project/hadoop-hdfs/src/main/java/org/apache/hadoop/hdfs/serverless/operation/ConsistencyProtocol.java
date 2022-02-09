@@ -926,13 +926,26 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // CountDownLatch that blocks us from continuing with the protocol until all ACKs are received.
         int totalNumberOfACKsRequired = 0;
 
+        // If there are no active instances in the deployments that are theoretically involved, then we just remove
+        // them from the set of active deployments, as we don't need ACKs from them, nor do we need to store any INVs.
+        Set<Integer> toRemove = new HashSet<>();
+
         // Per the comment above, we do not need to create any ACK records in-memory when using ZooKeeper.
         // So, we just figure out how many ACKs we'll need for each deployment, and then we return.
         if (useZooKeeperForACKsAndINVs) {
             for (int deploymentNumber : involvedDeployments) {
                 List<String> groupMemberIds = zkClient.getPermanentGroupMembers("namenode" + deploymentNumber);
+                int numActiveInstances = groupMemberIds.size();
 
-                totalNumberOfACKsRequired += groupMemberIds.size();
+                // If there aren't any active instances in this deployment, then we do not need any ACKs from them.
+                // Even if NN instances from this deployment start running before we finish this protocol, we have
+                // taken exclusive locks in the database, so they wouldn't be able to read the data until we finish
+                // here. So, there's no synchronization/consistency issues there.
+                if (numActiveInstances == 0) {
+                    toRemove.add(deploymentNumber);
+                } else {
+                    totalNumberOfACKsRequired += groupMemberIds.size();
+                }
             }
 
             // If our (the Leader NN's) deployment is involved, then we decrement the total number of required
@@ -940,15 +953,17 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             if (involvedDeployments.contains(serverlessNameNodeInstance.getDeploymentNumber()))
                 totalNumberOfACKsRequired--;
 
+            // Any "involved deployments" with no active instances are removed.
+            LOG.debug("Removing the following deployments as they contain zero active instances: " +
+                    StringUtils.join(toRemove, ", "));
+            involvedDeployments.removeAll(toRemove);
+            LOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
+
             countDownLatch = new CountDownLatch(totalNumberOfACKsRequired);
             return totalNumberOfACKsRequired;
         }
 
         writeAcknowledgementsMap = new HashMap<>();
-
-        // If there are no active instances in the deployments that are theoretically involved, then we just remove
-        // them from the set of active deployments, as we don't need ACKs from them, nor do we need to store any INVs.
-        Set<Integer> toRemove = new HashSet<>();
 
         // For each deployment (which at least includes our own), get the current members and register a membership-
         // changed listener. This enables us to monitor for any changes in group membership; in particular, we will
