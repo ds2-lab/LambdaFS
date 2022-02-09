@@ -51,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public abstract class HopsTransactionalRequestHandler
-        extends TransactionalRequestHandler implements HopsEventListener {
+        extends TransactionalRequestHandler {
 
   /**
    * Basically just exists to make debugging/performance testing easier. I use this to dynamically
