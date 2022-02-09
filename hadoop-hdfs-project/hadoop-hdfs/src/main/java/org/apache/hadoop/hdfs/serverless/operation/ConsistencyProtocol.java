@@ -138,6 +138,11 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     private final TransactionEvent transactionEvent;
 
     /**
+     * If true, use ZooKeeper for ACKs and INVs. Otherwise, use the hops-metadata-dal.
+     */
+    private final boolean useZooKeeperForACKsAndINVs;
+
+    /**
      * Constructor for non-subtree operations.
      *
      * @param callingThreadINodeContext The INode {@link EntityContext} object of the calling thread. We need this
@@ -153,13 +158,8 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                                TransactionEvent transactionEvent,
                                long transactionStartTime,
                                boolean useZooKeeper) {
+        this(new HashSet<>(), transactionAttempt, transactionEvent, transactionStartTime, useZooKeeper);
         this.callingThreadINodeContext = callingThreadINodeContext;
-        this.transactionAttempt = transactionAttempt;
-        this.transactionEvent = transactionEvent;
-        this.transactionStartTime = transactionStartTime;
-        this.serverlessNameNodeInstance = ServerlessNameNode.tryGetNameNodeInstance(false);
-        this.watchers = new HashMap<>();
-        this.operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
     }
 
     /**
@@ -185,6 +185,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         this.serverlessNameNodeInstance = ServerlessNameNode.tryGetNameNodeInstance(false);
         this.watchers = new HashMap<>();
         this.operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+        this.useZooKeeperForACKsAndINVs = useZooKeeper;
     }
 
     public boolean getCanProceed() { return this.canProceed; }
@@ -233,14 +234,6 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // Technically this isn't true yet, but we'll need to unsubscribe after the call to `subscribeToAckEvents()`.
         boolean needToUnsubscribe = true;
         long startTime = System.currentTimeMillis();
-
-        // If 'involvedDeployments' is non-null, then we don't care what the value/type of 'callingThreadINodeContext'
-        // is, as we already have the set of involved deployments provided to us.
-        if (involvedDeployments == null && !(callingThreadINodeContext instanceof INodeContext))
-            throw new IllegalArgumentException("Consistency protocol requires an instance of INodeContext. " +
-                    "Instead, received " +
-                    ((callingThreadINodeContext == null) ? "null." : "instance of " +
-                            callingThreadINodeContext.getClass().getSimpleName() + "."));
 
         INodeContext transactionINodeContext = (INodeContext)callingThreadINodeContext;
 
@@ -315,6 +308,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // before adding the ACKs to NDB. We need to be listening for ACK events before the events are added so that
         // we do not miss any notifications.
         int totalNumberOfACKsRequired;
+
         try {
             // Pass the set of additional deployments we needed to join, as we also need ACKs from those deployments.
             totalNumberOfACKsRequired = computeAckRecords(transactionStartTime);
@@ -936,11 +930,20 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 if (memberId == serverlessNameNodeInstance.getId())
                     continue;
 
+                // Master list of all the NNs we need ACKs from.
                 waitingForAcks.add(memberId);
+
+                // We're iterating over each deployment in the outer loop.
+                // This is the list of NNs from which we need an ACK for the current deployment.
                 acksForCurrentDeployment.add(memberId);
+
+                // These are just all the WriteAcknowledgement objects that we're going to store in the database.
                 writeAcknowledgements.add(new WriteAcknowledgement(memberId, deploymentNumber, operationId, false, transactionStartTime, serverlessNameNodeInstance.getId()));
             }
 
+            // Creating the mapping from the current deployment (we're iterating over all deployments right now)
+            // to the set of write acknowledgements to be stored in intermediate storage for that specific deployment.
+            // (Each deployment has its own ACK table in NDB.)
             writeAcknowledgementsMap.put(deploymentNumber, writeAcknowledgements);
             totalNumberOfACKsRequired += writeAcknowledgements.size();
         }
