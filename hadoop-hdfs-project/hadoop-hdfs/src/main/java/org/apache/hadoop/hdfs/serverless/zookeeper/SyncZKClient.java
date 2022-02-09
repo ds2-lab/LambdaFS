@@ -132,7 +132,7 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public void createGroup(String groupName) throws Exception, KeeperException.NodeExistsException {
+    public void createGroup(String groupName) throws Exception {
         if (this.client == null)
             throw new IllegalStateException("ZooKeeper client must be instantiated before joining a group.");
 
@@ -144,17 +144,29 @@ public class SyncZKClient implements ZKClient {
         String guestPath = getPath(groupName, null, false);
         String invPath = permanentPath + "/INV";
 
-        LOG.debug("Creating ZK group with path: " + permanentPath);
-        // This will throw an exception if the group already exists!
-        this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(permanentPath);
+        try {
+            LOG.debug("Creating ZK group with path: " + permanentPath);
+            // This will throw an exception if the group already exists!
+            this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(permanentPath);
+        } catch (KeeperException.NodeExistsException ex) {
+            LOG.debug("ZooKeeper group '" + permanentPath + "' already exists.");
+        }
 
-        LOG.debug("Creating ZK group with path: " + guestPath);
-        // This will throw an exception if the group already exists!
-        this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(guestPath);
+        try {
+            LOG.debug("Creating ZK group with path: " + guestPath);
+            // This will throw an exception if the group already exists!
+            this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(guestPath);
+        } catch (KeeperException.NodeExistsException ex) {
+            LOG.debug("ZooKeeper group '" + guestPath + "' already exists.");
+        }
 
-        LOG.debug("Creating ZK group with path: " + invPath);
-        // This will throw an exception if the group already exists!
-        this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(invPath);
+        try {
+            LOG.debug("Creating ZK group with path: " + invPath);
+            // This will throw an exception if the group already exists!
+            this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(invPath);
+        } catch (KeeperException.NodeExistsException ex) {
+            LOG.debug("ZooKeeper group '" + invPath + "' already exists.");
+        }
     }
 
     @Override
@@ -266,8 +278,8 @@ public class SyncZKClient implements ZKClient {
             // This will throw an exception if the group already exists!
             createGroup(groupName);
             LOG.debug("Successfully created new ZooKeeper group '/" + groupName + "'.");
-        } catch (KeeperException.NodeExistsException ex) {
-            LOG.debug("ZooKeeper group '/" + groupName + "' already exists.");
+        } catch (Exception ex) {
+            LOG.error("Encountered error while creating groups for " + groupName + ":", ex);
         }
 
         // Pass 'true' to create a PersistentWatcher object for the parent path of the group we're joining.
