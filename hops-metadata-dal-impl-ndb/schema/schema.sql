@@ -36,7 +36,6 @@ CREATE TABLE `hdfs_block_infos` (
 ) ENGINE=ndbcluster DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs COMMENT='NDB_TABLE=READ_BACKUP=1'
 /*!50100 PARTITION BY KEY (inode_id) */$$
 
-
 delimiter $$
 
 CREATE TABLE `hdfs_block_lookup_table` (
