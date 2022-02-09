@@ -53,12 +53,6 @@ import java.util.stream.Collectors;
 public abstract class HopsTransactionalRequestHandler
         extends TransactionalRequestHandler {
 
-  /**
-   * Basically just exists to make debugging/performance testing easier. I use this to dynamically
-   * enable or disable the consistency protocol, which is used during write transactions.
-   */
-  public static boolean DO_CONSISTENCY_PROTOCOL = true;
-
   private final String path;
 
   /**

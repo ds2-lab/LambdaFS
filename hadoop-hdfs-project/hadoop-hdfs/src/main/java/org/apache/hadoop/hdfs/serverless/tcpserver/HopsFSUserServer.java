@@ -15,6 +15,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
+import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.log4j.LogManager;
 
 import java.io.IOException;
@@ -702,9 +703,9 @@ public class HopsFSUserServer {
                 }
 
                 if (body.has(CONSISTENCY_PROTOCOL_ENABLED)) {
-                    HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL = body.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
+                    ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = body.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
                     LOG.debug("Consistency protocol is " +
-                            (HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
+                            (ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
                 }
 
                 String requestId = null;
