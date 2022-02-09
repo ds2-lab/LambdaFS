@@ -18,6 +18,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
@@ -533,9 +534,9 @@ public class NameNodeTCPClient {
         }
 
         if (args.has(CONSISTENCY_PROTOCOL_ENABLED)) {
-            HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL = args.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
+            ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
             LOG.debug("Consistency protocol is " +
-                    (HopsTransactionalRequestHandler.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
+                    (ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
         }
 
         NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP", serverlessNameNode.getId());
