@@ -53,59 +53,7 @@ import java.util.stream.Collectors;
 public abstract class HopsTransactionalRequestHandler
         extends TransactionalRequestHandler {
 
-  private final String path;
-
-  /**
-   * Used to keep track of whether an ACK has been received from each follower NN during the consistency protocol.
-   */
-  private HashSet<Long> waitingForAcks = new HashSet<>();
-
-  /**
-   * Mapping from deployment number to the set of NN IDs, representing the set of ACKs we're still waiting on
-   * for that deployment.
-   */
-  private HashMap<Integer, Set<Long>> waitingForAcksPerDeployment = new HashMap<>();
-
-  /**
-   * HashMap from NameNodeID to deployment number, as we can't really recovery deployment number for a given
-   * event in the event-received handler. But we can if we note which deployment a given NN is from, because
-   * events contain NameNodeID information.
-   */
-  private HashMap<Long, Integer> nameNodeIdToDeploymentNumberMapping = new HashMap<>();
-
-  /**
-   * Used to access the serverless name node instance in the NDB event handler.
-   */
   private ServerlessNameNode serverlessNameNodeInstance;
-
-  /**
-   * We use this CountDownLatch when waiting on ACKs and watching for changes in membership. Specifically,
-   * each time we receive an ACK, the latch is decremented, and if any follower NNs leave the group during
-   * this operation, the latch is also decremented. Thus, we are eventually woken up when the CountDownLatch
-   * reaches zero.
-   */
-  private CountDownLatch countDownLatch;
-
-  /**
-   * Used to keep track of write ACKs required from each deployment. Normally, we only require ACKs from our own
-   * deployment; however, we may require ACKs from other deployments during subtree operations and when creating
-   * new directories.
-   */
-  private Map<Integer, List<WriteAcknowledgement>> writeAcknowledgementsMap;
-
-  /**
-   * Set of IDs denoting deployments from which we require ACKs. Our own deployment will always be involved.
-   * Other deployments may be involved during subtree operations and when creating new directories, as these
-   * types of operations modify INodes from multiple deployments.
-   * */
-  private Set<Integer> involvedDeployments;
-
-  /**
-   * Watchers we create to observe membership changes on other deployments.
-   *
-   * We remove these when we leave the deployment.
-   */
-  private final HashMap<Integer, Watcher> watchers;
 
   public HopsTransactionalRequestHandler(HDFSOperationType opType) {
     this(opType, null);
@@ -113,10 +61,6 @@ public abstract class HopsTransactionalRequestHandler
   
   public HopsTransactionalRequestHandler(HDFSOperationType opType, String path) {
     super(opType);
-    this.path = path;
-    this.watchers = new HashMap<>();
-
-    this.serverlessNameNodeInstance = ServerlessNameNode.tryGetNameNodeInstance(true);
   }
 
   @Override
@@ -153,59 +97,9 @@ public abstract class HopsTransactionalRequestHandler
       instance.addTransactionEvent(this.transactionEvent);
     }
   }
-
-//  @Override
-//  protected void checkAndHandleNewConcurrentWrites(long txStartTime) throws StorageException {
-//    requestHandlerLOG.debug("Checking for concurrent write operations that began after this local one.");
-//    WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
-//            (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
-//
-//    Map<Long, WriteAcknowledgement> mapping =
-//            writeAcknowledgementDataAccess.checkForPendingAcks(serverlessNameNodeInstance.getId(), txStartTime);
-//
-//    if (mapping.size() > 0) {
-//      if (mapping.size() == 1)
-//        requestHandlerLOG.debug("There is 1 pending ACK for a write operation that began after this local one.");
-//      else
-//        requestHandlerLOG.debug("There are " + mapping.size() +
-//                " pending ACKs for write operation(s) that began after this local one.");
-//
-//      // Build up a list of INodes (by their IDs) that we need to keep invalidated. They must remain invalidated
-//      // because there are future write operations that are writing to them, so we don't want to set their valid
-//      // flags to 'true' after this.
-//      //
-//      // Likewise, any INodes NOT in this list should be set to valid. Consider a scenario where we are the latest
-//      // write operation in a series of concurrent/overlapping write operations. In this scenario, the INodes that we
-//      // are modifying presumably already had their `INV` flags set to True. As I'm writing this, I'm not entirely sure
-//      // if it's possible for us to get a local copy of an INode with an `INV` bit set to true, since eventually read
-//      // operations will block and not return INodes with an `INV` column value of true. But in any case, we need to
-//      // make sure the INodes we're modifying are valid after this. We locked the rows, so nobody else can change them.
-//      // If another write comes along and invalidates them immediately, that's fine. But if we don't ensure they're all
-//      // set to valid, then reads may continue to block indefinitely.
-//      List<Long> nodesToKeepInvalidated = new ArrayList<Long>();
-//      for (Map.Entry<Long, WriteAcknowledgement> entry : mapping.entrySet()) {
-//        long operationId = entry.getKey();
-//        WriteAcknowledgement ack = entry.getValue();
-//
-//        requestHandlerLOG.debug("   Operation ID: " + operationId + ", ACK: " + ack.toString());
-//
-//        nodesToKeepInvalidated.add();
-//      }
-//    }
-//  }
   
   @Override
   protected Object execute(final Object namesystem) throws IOException {
-//    if (namesystem instanceof FSNamesystem) {
-//      FSNamesystem namesystemInst = (FSNamesystem)namesystem;
-//      List<ActiveNode> activeNodes = namesystemInst.getActiveNameNodesInDeployment();
-//      requestHandlerLOG.debug("Active nodes: " + activeNodes.toString());
-//    } else if (namesystem == null) {
-//      requestHandlerLOG.debug("Transaction namesystem object is null! Cannot determine active nodes.");
-//    } else {
-//      requestHandlerLOG.debug("Transaction namesystem object is of type " + namesystem.getClass().getSimpleName());
-//    }
-
     return super.execute(new TransactionInfo() {
       @Override
       public String getContextName(OperationType opType) {
@@ -240,8 +134,13 @@ public abstract class HopsTransactionalRequestHandler
 
     EntityContext<?> inodeContext= EntityManager.getEntityContext(INode.class);
 
+    serverlessNameNodeInstance = ServerlessNameNode.tryGetNameNodeInstance(false);
+
     ConsistencyProtocol consistencyProtocol = new ConsistencyProtocol(inodeContext, null,
-            attempt, transactionEvent, txStartTime, !serverlessNameNodeInstance.useNdbForConsistencyProtocol(),
+            attempt, transactionEvent, txStartTime,
+            // If NN instance is currently null, then we default to using ZooKeeper. If the NN instance is non-null,
+            // then we use the configured value.
+            serverlessNameNodeInstance == null || !serverlessNameNodeInstance.useNdbForConsistencyProtocol(),
             false, null);
 
     consistencyProtocol.start();
