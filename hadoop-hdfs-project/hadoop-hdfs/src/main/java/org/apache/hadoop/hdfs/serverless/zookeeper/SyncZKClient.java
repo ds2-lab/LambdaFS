@@ -309,8 +309,7 @@ public class SyncZKClient implements ZKClient {
 
     @Override
     public void removeInvalidation(long operationId, String groupName) throws Exception {
-        String path = getPath(groupName, null, true);
-        path += "/INV/" + operationId;
+        String path = getInvPath(groupName) + "/" + operationId;
 
         LOG.debug("Removing invalidation from ZooKeeper cluster under path: '" + path + "'");
         this.client.delete().forPath(path);
@@ -319,8 +318,7 @@ public class SyncZKClient implements ZKClient {
     @Override
     public void putInvalidation(ZooKeeperInvalidation invalidation, String groupName, Watcher watcher)
             throws Exception {
-        String path = getPath(groupName, null, true);
-        path += "/INV/" + invalidation.getOperationId();
+        String path = getInvPath(groupName) + "/" + invalidation.getOperationId();
 
         LOG.debug("Storing invalidation in ZooKeeper cluster under path: '" + path + "'");
 
@@ -333,6 +331,7 @@ public class SyncZKClient implements ZKClient {
             addListenerToPath(path, watcher, true);
     }
 
+    // This is called from within a Watcher, so we're given the exact path to the INV that we're acknowledging.
     @Override
     public void acknowledge(String path, long localNameNodeId) throws Exception {
         path += "/" + localNameNodeId;
@@ -342,8 +341,7 @@ public class SyncZKClient implements ZKClient {
     // Listen for INVs directed at a particular deployment.
     @Override
     public void addInvalidationListener(String groupName, Watcher watcher) {
-        String path = getPath(groupName, null, true);
-        path += "/INV";
+        String path = getInvPath(groupName);
         PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, true);
         persistentWatcher.getListenable().addListener(watcher);
     }
@@ -446,5 +444,12 @@ public class SyncZKClient implements ZKClient {
      */
     private String getPath(String groupName, String memberId, boolean permanent) {
         return "/" + groupName + (permanent ? PERMANENT_DIR : GUEST_DIR) + (memberId != null ? "/" + memberId : "");
+    }
+
+    /**
+     * Return the path to the INV ZNode directory for the given deployment.
+     */
+    private String getInvPath(String groupName) {
+        return "/" + groupName + "/INV";
     }
 }

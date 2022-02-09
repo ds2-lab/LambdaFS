@@ -213,7 +213,7 @@ public interface ZKClient {
     /**
      * Get the children of the given group. This returns PERMANENT group members.
      *
-     * @param groupName The group whose children we desire..
+     * @param groupName The group whose children we desire.
      * @return List of IDs of the members of the permanent sub-group of the specified deployment group.
      */
     public List<String> getPermanentGroupMembers(String groupName) throws Exception;
