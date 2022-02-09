@@ -188,6 +188,14 @@ public interface ZKClient {
     void putInvalidation(ZooKeeperInvalidation invalidation, String groupName) throws Exception;
 
     /**
+     * Remove the ZNode associated with the given invalidation.
+     *
+     * @param operationId The unique ID of the operation associated with the invalidation to be removed.
+     * @param groupName Essentially the deployment for which the INV was issued and for which we'll delete the INV.
+     */
+    void removeInvalidation(long operationId, String groupName) throws Exception;
+
+    /**
      * Remove a listener from the Watch for the given group. This removes the watcher from the PERMANENT sub-group.
      *
      * @param groupName The name of the group for which the listener will be removed. If we are not in this group,

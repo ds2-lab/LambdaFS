@@ -373,7 +373,8 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     canProceed = false;
                     return;
                 }
-            } else {
+            }
+            else {
                 long writeAcksToStorageStartTime = System.currentTimeMillis();
 
                 WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
@@ -685,45 +686,28 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         //long s = System.currentTimeMillis();
         // Unsubscribe and unregister event listener if we haven't done so already. (If we were the only active NN in
         // our deployment at the beginning of the protocol, then we would have already unsubscribed by this point.)
-        if (needToUnsubscribe) {
-            unsubscribeFromAckEvents();
-            //long t = System.currentTimeMillis();
-            //LOG.debug("Submitted 'drop subscription' request in " + (t - s) + " ms.");
+
+        if (!useZooKeeperForACKsAndINVs) {
+            if (needToUnsubscribe) {
+                unsubscribeFromAckEvents();
+            }
+
+            deleteWriteAcknowledgements();
         }
-        //s = System.currentTimeMillis();
-
-        // leaveDeployments();
-
-        deleteWriteAcknowledgements();
-        //long t = System.currentTimeMillis();
-
-        //LOG.debug("Scheduled ACKs for deletion in " + (t - s) + " ms.");
-
-        // TODO: Delete INVs as well?
+        else {
+            // Remove the ZNodes we created during the execution of the consistency protocol.
+            for (int deployment : involvedDeployments) {
+                serverlessNameNodeInstance.getZooKeeperClient().removeInvalidation(operationId, "namenode" + deployment);
+            }
+        }
     }
 
     /**
-     * Delete the write acknowledgement entries we created during the consistency protocol.
+     * Delete write acknowledgement entries we created during the consistency protocol.
      */
-    private void deleteWriteAcknowledgements() throws StorageException {
-        // Remove the ACK entries that we added.
-//    WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
-//            (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
-
-        // Remove the ACKs we created for each deployment involved in this transaction.
-        for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
-//      int deploymentNumber = entry.getKey();
-//      List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
-//
-//      if (writeAcknowledgements.size() == 1)
-//        LOG.debug("Removing 1 ACK entry for deployment #" + deploymentNumber);
-//      else
-//        LOG.debug("Removing " + writeAcknowledgements.size() +
-//                " ACK entries for deployment #" + deploymentNumber);
-//
-//      writeAcknowledgementDataAccess.deleteAcknowledgements(writeAcknowledgements);
+    private void deleteWriteAcknowledgements() {
+        for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet())
             serverlessNameNodeInstance.enqueueAcksForDeletion(entry.getValue());
-        }
     }
 
     /**
