@@ -292,6 +292,17 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
+    public void addInvalidation(ZooKeeperInvalidation invalidation, String groupName) throws Exception {
+        String path = getPath(groupName, null, true);
+        path += "/INV/" + invalidation.getOperationId();
+
+        LOG.debug("Issuing invalidation via ZooKeeper. Path: '" + invalidation + "'");
+
+        // TODO: Should this be persistent or ephemeral?
+        this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
+    }
+
+    @Override
     public void acknowledge(String path, long localNameNodeId) throws Exception {
         path += "/" + localNameNodeId;
         this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);

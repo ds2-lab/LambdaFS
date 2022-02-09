@@ -169,12 +169,23 @@ public interface ZKClient {
      * The callback should handle determining whether to act depending on which event fired.
      *
      * This will create and start a Persistent Watcher for the generated path if one does not already exist.
+     * Note that the Persistent Watcher created by this function WILL be recursive, unlike the one created by
+     * the {@code addListener} function.
      *
      * @param groupName The name of the group for which a listener will be added to the INV ZNode.
      *                  If we are not in this group, then this will probably fail.
      * @param watcher Watcher object to be added. Serves as the callback for the event notification.
      */
     void addInvalidationListener(String groupName, Watcher watcher);
+
+    /**
+     * Add an invalidation to the INV ZNode directory for the specified group. The group name should be
+     * "namenode[deployment_number]".
+     *
+     * @param invalidation Encapsulates all the information needed by follower Lambdas.
+     * @param groupName The deployment for which we're issuing the invalidation.
+     */
+    void addInvalidation(ZooKeeperInvalidation invalidation, String groupName) throws Exception;
 
     /**
      * Remove a listener from the Watch for the given group. This removes the watcher from the PERMANENT sub-group.

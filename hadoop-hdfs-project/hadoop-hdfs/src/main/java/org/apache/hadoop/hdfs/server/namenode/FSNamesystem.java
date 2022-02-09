@@ -783,7 +783,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         cacheManager.startMonitorThread();
       }
 
-      serverlessNameNode.getZooKeeperClient().addListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
+      // Add ZooKeeper-based invalidation listener.
+      serverlessNameNode.getZooKeeperClient().addInvalidationListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
         // If the ZNode's children changed,
         if (watchedEvent.getType() == Watcher.Event.EventType.NodeCreated) {
           String path = watchedEvent.getPath();
@@ -1004,7 +1005,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     ZooKeeperInvalidation invalidation = serverlessNameNode.getZooKeeperClient().getInvalidation(path);
 
     long localNameNodeId = serverlessNameNode.getId();
-    int localDeploymentNumber = serverlessNameNode.getDeploymentNumber();
 
     long inodeId = invalidation.getInodeId();
     long parentId = invalidation.getParentId();
