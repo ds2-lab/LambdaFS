@@ -862,62 +862,6 @@ public abstract class HopsTransactionalRequestHandler
     }
   }
 
-//  /**
-//   * Join other deployments as a guest. This is required when modifying INodes from other deployments. Typically, we
-//   * aim to avoid this. But it occurs commonly during subtree operations and when creating new directories.
-//   */
-//  private void joinOtherDeploymentsAsGuest() throws IOException {
-//    requestHandlerLOG.debug("There are potentially " + involvedDeployments.size() + " other deployments to join: " +
-//            involvedDeployments);
-//
-//    ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
-//    long localNameNodeId = serverlessNameNodeInstance.getId();
-//
-//    // Join the other deployments as a guest, registering a membership-changed listener.
-//    int counter = 1;
-//    for (int deploymentNumber : involvedDeployments) {
-//      // We do not need to join our own deployment; we're already in our own deployment.
-//      if (deploymentNumber == serverlessNameNodeInstance.getDeploymentNumber())
-//        continue;
-//
-//      requestHandlerLOG.debug("Joining deployment " + deploymentNumber + " as guest (" + counter + "/" +
-//              involvedDeployments.size() + ").");
-//      final String groupName = "namenode" + deploymentNumber;
-//
-//      // During subtree transactions, the NameNode may use a large number of threads to concurrently operate on
-//      // different parts of the subtree. As a result, the NN may try to guest-join the ZooKeeper group multiple
-//      // times. For now, we just append the thread ID to the NameNode's ID to use as our ZooKeeper ID for the guest
-//      // group. This is a little messy, but nobody references the guest group anyway. At some point, if we never
-//      // begin using it, we could just eliminate the behavior (i.e., NameNodes would not explicitly join as a guest).
-//      String memberId = localNameNodeId + "-" + Thread.currentThread().getId();
-//
-//      Watcher membershipChangedWatcher = watchedEvent -> {
-//        // This specifically monitors for NNs leaving the group, rather than joining. NNs that join will have
-//        // empty caches, so we do not need to worry about them.
-//        if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
-//          try {
-//            // We call this again in waitForAcks() as a sanity check to make sure we haven't missed anything.
-//            checkAndProcessMembershipChanges(deploymentNumber, false);
-//          } catch (Exception e) {
-//            requestHandlerLOG.error("Encountered error while reacting to ZooKeeper event.");
-//            e.printStackTrace();
-//          }
-//        }
-//        // We only want to monitor the permanent sub-group for membership changes.
-//      };
-//
-//      this.watchers.put(deploymentNumber, membershipChangedWatcher);
-//
-//      try {
-//        // Join the group.
-//        zkClient.joinGroupAsGuest("namenode" + deploymentNumber, memberId, membershipChangedWatcher,
-//                GuestWatcherOption.CREATE_WATCH_ON_PERMANENT);
-//      } catch (Exception e) {
-//        throw new IOException("Exception encountered while guest-joining group " + groupName + ":", e);
-//      }
-//    }
-//  }
-
   /**
    * Return the table name to subscribe to for ACK events, given the deployment number.
    * @param deploymentNumber Deployment number for which a subscription should be created for the associated table.
