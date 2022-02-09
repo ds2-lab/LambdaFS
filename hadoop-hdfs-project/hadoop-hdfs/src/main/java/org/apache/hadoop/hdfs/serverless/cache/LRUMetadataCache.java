@@ -43,6 +43,8 @@ public class LRUMetadataCache<T> {
 
     private final Lock _mutex = new ReentrantLock(true);
 
+    // TODO: Add org.apache.commons.collections4.trie.PatriciaTrie to store INodes to support subtree invalidations.
+
     /**
      * Keys are added to this set upon being invalidated. If a key is in this set,
      * then the data in the cache for that key is out-of-date and must be retrieved from

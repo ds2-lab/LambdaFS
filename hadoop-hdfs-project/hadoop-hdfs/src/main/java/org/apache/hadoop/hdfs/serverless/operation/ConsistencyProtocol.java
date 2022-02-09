@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
+import org.apache.hadoop.hdfs.serverless.zookeeper.ZooKeeperInvalidation;
 import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.zookeeper.Watcher;
 
@@ -142,28 +143,23 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     private final boolean useZooKeeperForACKsAndINVs;
 
     /**
+     * If true, then this is being executed as part of a subtree operation.
+     * Otherwise, this is just a normal write operation.
+     */
+    private final boolean subtreeOperation;
+
+    /**
+     * If this is a subtree operation, then the root of the subtree must be specified, as the root is used
+     * by follower NNs to invalidate all cached INodes within the subtree.
+     */
+    private final String subtreeRoot;
+
+    /**
      * Constructor for non-subtree operations.
      *
      * @param callingThreadINodeContext The INode {@link EntityContext} object of the calling thread. We need this
      *                                  object in order to determine the metadata involved in this consistency
      *                                  protocol, as this determines which deployments we issue INVs to.
-     * @param transactionAttempt        Used for tracking metrics about this particular transaction attempt.
-     * @param transactionEvent          Used for tracking metrics about the overall transaction.
-     * @param transactionStartTime      The time at which the transaction started.
-     * @param useZooKeeper              If true, use ZooKeeper for ACKs and INVs. Otherwise, use the hops-metadata-dal.
-     */
-    public ConsistencyProtocol(EntityContext<?> callingThreadINodeContext,
-                               TransactionAttempt transactionAttempt,
-                               TransactionEvent transactionEvent,
-                               long transactionStartTime,
-                               boolean useZooKeeper) {
-        this(new HashSet<>(), transactionAttempt, transactionEvent, transactionStartTime, useZooKeeper);
-        this.callingThreadINodeContext = callingThreadINodeContext;
-    }
-
-    /**
-     * Constructor for subtree operations.
-     *
      * @param involvedDeployments       Set of deployments involved in the subtree operation. This is calculated
      *                                  when obtaining database locks while walking through the subtree at the
      *                                  beginning of the subtree protocol.
@@ -172,11 +168,15 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * @param transactionStartTime      The time at which the transaction started.
      * @param useZooKeeper              If true, use ZooKeeper for ACKs and INVs. Otherwise, use the hops-metadata-dal.
      */
-    public ConsistencyProtocol(Set<Integer> involvedDeployments,
+    public ConsistencyProtocol(EntityContext<?> callingThreadINodeContext,
+                               Set<Integer> involvedDeployments,
                                TransactionAttempt transactionAttempt,
                                TransactionEvent transactionEvent,
                                long transactionStartTime,
-                               boolean useZooKeeper) {
+                               boolean useZooKeeper,
+                               boolean subtreeOperation,
+                               String subtreeRoot) {
+        this.callingThreadINodeContext = callingThreadINodeContext;
         this.involvedDeployments = involvedDeployments;
         this.transactionAttempt = transactionAttempt;
         this.transactionEvent = transactionEvent;
@@ -185,6 +185,8 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         this.watchers = new HashMap<>();
         this.operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
         this.useZooKeeperForACKsAndINVs = useZooKeeper;
+        this.subtreeOperation = subtreeOperation;
+        this.subtreeRoot = subtreeRoot;
     }
 
     public boolean getCanProceed() { return this.canProceed; }
@@ -354,79 +356,93 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 return;
             }
 
-            long writeAcksToStorageStartTime = System.currentTimeMillis();
-
             // =============== STEP 2 ===============
             //
             // Now that we've subscribed to ACK events, we can add our ACKs to the table.
             LOG.debug("=-----=-----= Step 2 - Writing ACK Records to Intermediate Storage =-----=-----=");
-            WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
-                    (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
-
-            LOG.debug("Beginning transaction to write ACKs and INVs in single step.");
-
-            try {
-                EntityManager.begin();
-            } catch (StorageException e) {
-                e.printStackTrace();
-            }
-
-            TransactionLockAcquirer locksAcquirer = new HdfsTransactionalLockAcquirer();
-
-            for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
-                int deploymentNumber = entry.getKey();
-                List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
-
-                if (writeAcknowledgements.size() > 0) {
-                    LOG.debug("Adding " + writeAcknowledgements.size()
-                            + " ACK entries for deployment #" + deploymentNumber + ".");
-                    try {
-                        writeAcknowledgementDataAccess.addWriteAcknowledgements(writeAcknowledgements, deploymentNumber);
-                    } catch (StorageException e) {
-                        LOG.error("Encountered exception while storing ACKs in intermediate storage:", e);
-                        exceptions.add(e);
-                        canProceed = false;
-                        return;
-                    }
-                } else {
-                    LOG.debug("0 ACKs required from deployment #" + deploymentNumber + "...");
+            TransactionLockAcquirer locksAcquirer = new HdfsTransactionalLockAcquirer(); // Only used with NDB.
+            if (useZooKeeperForACKsAndINVs) {
+                try {
+                    long invStartTime = System.currentTimeMillis();
+                    issueInvalidationsZooKeeper(invalidatedINodes);
+                    long invEndTime = System.currentTimeMillis();
+                    transactionAttempt.setConsistencyIssueInvalidationsTimes(invStartTime, invEndTime);
+                } catch (Exception ex) {
+                    LOG.error("Encountered exception while storing INVs in ZooKeeper:", ex);
+                    exceptions.add(ex);
+                    canProceed = false;
+                    return;
                 }
+            } else {
+                long writeAcksToStorageStartTime = System.currentTimeMillis();
+
+                WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
+                        (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
+
+                LOG.debug("Beginning transaction to write ACKs and INVs in single step.");
+
+                try {
+                    EntityManager.begin();
+                } catch (StorageException e) {
+                    e.printStackTrace();
+                }
+
+                for (Map.Entry<Integer, List<WriteAcknowledgement>> entry : writeAcknowledgementsMap.entrySet()) {
+                    int deploymentNumber = entry.getKey();
+                    List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
+
+                    if (writeAcknowledgements.size() > 0) {
+                        LOG.debug("Adding " + writeAcknowledgements.size()
+                                + " ACK entries for deployment #" + deploymentNumber + ".");
+                        try {
+                            writeAcknowledgementDataAccess.addWriteAcknowledgements(writeAcknowledgements, deploymentNumber);
+                        } catch (StorageException e) {
+                            LOG.error("Encountered exception while storing ACKs in intermediate storage:", e);
+                            exceptions.add(e);
+                            canProceed = false;
+                            return;
+                        }
+                    } else {
+                        LOG.debug("0 ACKs required from deployment #" + deploymentNumber + "...");
+                    }
+                }
+
+                long writeAcksToStorageEndTime = System.currentTimeMillis();
+                transactionAttempt.setConsistencyWriteAcksToStorageTimes(writeAcksToStorageStartTime, writeAcksToStorageEndTime);
+
+                // =============== STEP 3 ===============
+                try {
+                    issueInvalidationsNDB(invalidatedINodes, transactionStartTime);
+                } catch (StorageException e) {
+                    LOG.error("Encountered exception while issuing validations:", e);
+                    exceptions.add(e);
+                    canProceed = false;
+                    return;
+                }
+
+                LOG.debug("Committing transaction containing ACKs and INVs now.");
+                TransactionLocks transactionLocks = locksAcquirer.getLocks();
+
+                try {
+                    EntityManager.commit(transactionLocks);
+                } catch (TransactionContextException | StorageException e) {
+                    LOG.error("Encountered exception committing ACKs and INVs:", e);
+                    exceptions.add(e);
+                    canProceed = false;
+                    return;
+                }
+
+                long issueInvalidationsEndTime = System.currentTimeMillis();
+                transactionAttempt.setConsistencyIssueInvalidationsTimes(writeAcksToStorageEndTime, issueInvalidationsEndTime);
             }
 
-            long writeAcksToStorageEndTime = System.currentTimeMillis();
-            transactionAttempt.setConsistencyWriteAcksToStorageTimes(writeAcksToStorageStartTime, writeAcksToStorageEndTime);
-
-            // =============== STEP 3 ===============
-            try {
-                issueInitialInvalidations(invalidatedINodes, transactionStartTime);
-            } catch (StorageException e) {
-                LOG.error("Encountered exception while issuing validations:", e);
-                exceptions.add(e);
-                canProceed = false;
-                return;
-            }
-
-            LOG.debug("Committing transaction containing ACKs and INVs now.");
-            TransactionLocks transactionLocks = locksAcquirer.getLocks();
-
-            try {
-                EntityManager.commit(transactionLocks);
-            } catch (TransactionContextException | StorageException e) {
-                LOG.error("Encountered exception committing ACKs and INVs:", e);
-                exceptions.add(e);
-                canProceed = false;
-                return;
-            }
-
-            long issueInvalidationsEndTime = System.currentTimeMillis();
-            transactionAttempt.setConsistencyIssueInvalidationsTimes(writeAcksToStorageEndTime, issueInvalidationsEndTime);
-
+            long waitForAcksStartTime = System.currentTimeMillis();
             try {
                 // =============== STEPS 4 & 5 ===============
                 waitForAcks();
 
                 long waitForAcksEndTime = System.currentTimeMillis();
-                transactionAttempt.setConsistencyWaitForAcksTimes(issueInvalidationsEndTime, waitForAcksEndTime);
+                transactionAttempt.setConsistencyWaitForAcksTimes(waitForAcksStartTime, waitForAcksEndTime);
             } catch (Exception ex) {
                 LOG.error("Exception encountered on Step 4 and 5 of consistency protocol (waiting for ACKs).");
                 LOG.error("We're still waiting on " + waitingForAcks.size() +
@@ -991,6 +1007,21 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         return totalNumberOfACKsRequired;
     }
 
+    private void issueInvalidationsZooKeeper(Collection<INode> invalidatedINodes) throws Exception {
+        LOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations via ZooKeeper =-----=-----=");
+
+        List<Long> invalidatedINodeIDs = invalidatedINodes.stream().map(INode::getId).collect(Collectors.toList());
+
+        ZooKeeperInvalidation invalidation = new ZooKeeperInvalidation(serverlessNameNodeInstance.getId(),
+                operationId, invalidatedINodeIDs, subtreeOperation, subtreeRoot);
+
+        LOG.debug("Issuing invalidation " + invalidation + " for " + involvedDeployments.size() + " deployment(s).");
+        for (int deployment : involvedDeployments) {
+            LOG.debug("Issuing ZooKeeper invalidation for deployment " + deployment + ".");
+            serverlessNameNodeInstance.getZooKeeperClient().putInvalidation(invalidation, "namenode" + deployment);
+        }
+    }
+
     /**
      * Perform Step (3) of the consistency protocol:
      *    The leader sets the INV flag of the target INode to 1 (i.e., true), thereby triggering a round of
@@ -999,9 +1030,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * @param invalidatedINodes The INodes involved in this write operation. We must invalidate these INodes.
      * @param transactionStartTime The time at which the transaction began.
      */
-    private void issueInitialInvalidations(Collection<INode> invalidatedINodes, long transactionStartTime)
+    private void issueInvalidationsNDB(Collection<INode> invalidatedINodes, long transactionStartTime)
             throws StorageException {
-        LOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations =-----=-----=");
+        LOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations via NDB =-----=-----=");
 
         InvalidationDataAccess<Invalidation> dataAccess =
                 (InvalidationDataAccess<Invalidation>) HdfsStorageFactory.getDataAccess(InvalidationDataAccess.class);

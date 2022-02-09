@@ -1006,15 +1006,15 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
     long localNameNodeId = serverlessNameNode.getId();
 
-    long inodeId = invalidation.getInodeId();
-    long parentId = invalidation.getParentId();
+    boolean isSubtreeInvalidation = invalidation.isSubtreeInvalidation();
+    String subtreeRoot = invalidation.getSubtreeRoot();
     long leaderNameNodeId = invalidation.getLeaderNameNodeId();
     long operationId = invalidation.getOperationId();
+    List<Long> invalidatedINodes = invalidation.getInvalidatedINodes();
 
-    LOG.debug("|===-===-===-===| NN " + localNameNodeId + " Received Invalidation from ZooKeeper |===-===-===-===|");
-    String format = "%-12s %-12s %-21s %-21s";
-    LOG.debug(String.format(format, "INode ID", "Parent ID", "Leader NN ID", "TX Start Time", "Op ID"));
-    LOG.debug(String.format(format, inodeId, parentId, leaderNameNodeId, operationId));
+    LOG.debug("NN " + localNameNodeId + " Received Invalidation from ZooKeeper. Leader NN: " +
+            leaderNameNodeId + ", Op ID: " + operationId + ", Subtree Invalidation: " + isSubtreeInvalidation +
+            (isSubtreeInvalidation ? ", Subtree Root: " + subtreeRoot : ""));
 
     if (leaderNameNodeId == localNameNodeId) {
       LOG.debug("This invalidation was triggered by our own write operation. Ignoring.");
@@ -1022,8 +1022,15 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     }
 
     // TODO: Add support for subtree operations.
-    metadataCache.invalidateKey(inodeId);
     serverlessNameNode.getZooKeeperClient().acknowledge(path, localNameNodeId);
+    if (isSubtreeInvalidation) {
+      LOG.error("Subtree invalidations are not yet supported.");
+    } else {
+      for (long id : invalidatedINodes) {
+        LOG.debug("Attempting to invalidate INode " + id + " (if we have it cached).");
+        metadataCache.invalidateKey(id);
+      }
+    }
   }
 
   @Override

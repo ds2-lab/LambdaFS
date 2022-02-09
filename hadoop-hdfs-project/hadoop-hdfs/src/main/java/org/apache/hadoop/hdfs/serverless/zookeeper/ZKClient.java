@@ -185,7 +185,7 @@ public interface ZKClient {
      * @param invalidation Encapsulates all the information needed by follower Lambdas.
      * @param groupName The deployment for which we're issuing the invalidation.
      */
-    void addInvalidation(ZooKeeperInvalidation invalidation, String groupName) throws Exception;
+    void putInvalidation(ZooKeeperInvalidation invalidation, String groupName) throws Exception;
 
     /**
      * Remove a listener from the Watch for the given group. This removes the watcher from the PERMANENT sub-group.
