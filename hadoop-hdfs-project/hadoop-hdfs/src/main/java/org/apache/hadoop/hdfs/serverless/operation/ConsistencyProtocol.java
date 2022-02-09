@@ -14,7 +14,6 @@ import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.context.EntityContext;
 import io.hops.transaction.context.INodeContext;
-import io.hops.transaction.handler.RequestHandler;
 import io.hops.transaction.lock.HdfsTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
 import io.hops.transaction.lock.TransactionLocks;
@@ -320,6 +319,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         long computeAckRecordsEndTime = System.currentTimeMillis();
         transactionAttempt.setConsistencyComputeAckRecordTimes(preprocessingEndTime, computeAckRecordsEndTime);
+        LOG.debug("Created ACK records in " + (computeAckRecordsEndTime - preprocessingEndTime) + " ms.");
 
         // =============== STEP 1 ===============
         //
@@ -340,8 +340,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             transactionAttempt.setConsistencyJoinDeploymentsTimes(computeAckRecordsEndTime, joinDeploymentsEndTime);
 
             try {
-                // Since there's at least 1 ACK record, we subscribe to ACK events. We have not written any ACKs to NDB yet.
-                subscribeToAckEvents();
+                // Since there's at least 1 ACK record, we subscribe to ACK events.
+                // We have not written any ACKs to NDB yet.
+                if (!useZooKeeperForACKsAndINVs)
+                    subscribeToAckEvents(); // We only do this for NDB. Not when using ZooKeeper.
 
                 long subscribeToEventsEndTime = System.currentTimeMillis();
                 transactionAttempt.setConsistencySubscribeToAckEventsTimes(joinDeploymentsEndTime, subscribeToEventsEndTime);
@@ -818,8 +820,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      *    The Leader NN begins listening for changes in group membership from ZooKeeper.
      *    The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly.
      */
-    private void subscribeToAckEvents()
-            throws StorageException, InterruptedException {
+    private void subscribeToAckEvents() throws StorageException, InterruptedException {
         LOG.debug("=-----=-----= Step 1 - Subscribing to ACK Events =-----=-----=");
 
         // Each time we request that the event manager create an event subscription for us, it returns a semaphore
@@ -877,19 +878,45 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      *    skip subscribing to the ACK events table. If we create at least one ACK object in this method however, we
      *    will first subscribe to ACK events, then we will add the ACKs to intermediate storage.
      *
+     * IMPORTANT (ZooKeeper):
+     * The full extent of this function is only performed when using NDB as the intermediate storage medium for the
+     * consistency protocol. If we're using ZooKeeper, then all we do is determine the number of ACKs required. We
+     * do not actually compute the ACK records here, as we do things a little differently when using ZooKeeper.
+     *
+     * We do not create one ACK for each active NN instance. Instead, we issue a single invalidation by creating one
+     * ZNode directory. The data on that ZNode contains all necessary information (e.g., the INodes being invalidated).
+     * The active NNs simply create ephemeral ZNodes underneath that directory, which serve as the ACKs.
+     *
      * @param transactionStartTime The UTC timestamp at which this write operation began.
      *
      * @return The number of ACK records that we added to intermediate storage.
      */
     private int computeAckRecords(long transactionStartTime)
             throws Exception {
-        LOG.debug("=-----=-----= Step 0 - Pre-Compute ACK Records In-Memory =-----=-----=");
+        LOG.debug("=-----=-----= Step 0 - Pre-Compute NDB ACK Records In-Memory =-----=-----=");
         ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
         assert(zkClient != null);
 
         // Sum the number of ACKs required per deployment. We use this value when creating the
         // CountDownLatch that blocks us from continuing with the protocol until all ACKs are received.
         int totalNumberOfACKsRequired = 0;
+
+        // Per the comment above, we do not need to create any ACK records in-memory when using ZooKeeper.
+        // So, we just figure out how many ACKs we'll need for each deployment, and then we return.
+        if (useZooKeeperForACKsAndINVs) {
+            for (int deploymentNumber : involvedDeployments) {
+                List<String> groupMemberIds = zkClient.getPermanentGroupMembers("namenode" + deploymentNumber);
+
+                totalNumberOfACKsRequired += groupMemberIds.size();
+            }
+
+            // If our (the Leader NN's) deployment is involved, then we decrement the total number of required
+            // ACKs by one. We do this because we do not need an ACK from ourselves (and we're the leader).
+            if (involvedDeployments.contains(serverlessNameNodeInstance.getDeploymentNumber()))
+                totalNumberOfACKsRequired--;
+
+            return totalNumberOfACKsRequired;
+        }
 
         writeAcknowledgementsMap = new HashMap<>();
 
@@ -926,7 +953,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 long memberId = Long.parseLong(memberIdAsString);
                 nameNodeIdToDeploymentNumberMapping.put(memberId, deploymentNumber); // Note which deployment this NN is from.
 
-                // We do not need to add an entry for ourselves.
+                // We do not need to add an entry for ourselves. We have to check everytime rather than just once
+                // at the end (like we do when using ZooKeeper) as we do not want to waste time creating ACK
+                // record for us, seeing as we do not need an ACK from ourselves.
                 if (memberId == serverlessNameNodeInstance.getId())
                     continue;
 

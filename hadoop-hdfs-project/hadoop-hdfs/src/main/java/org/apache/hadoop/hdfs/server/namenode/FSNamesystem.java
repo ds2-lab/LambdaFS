@@ -98,6 +98,8 @@ import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 import org.apache.hadoop.hdfs.serverless.zookeeper.Invalidatable;
+import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
+import org.apache.hadoop.hdfs.serverless.zookeeper.ZooKeeperInvalidation;
 import org.apache.hadoop.hdfs.util.EnumCounters;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -126,6 +128,8 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.AsyncAppender;
 import org.apache.log4j.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
 import org.eclipse.jetty.util.ajax.JSON;
 
 import javax.management.NotCompliantMBeanException;
@@ -778,7 +782,20 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       if (cacheManager != null) {
         cacheManager.startMonitorThread();
       }
-//      blockManager.getDatanodeManager().setShouldSendCachingCommands(true);
+
+      serverlessNameNode.getZooKeeperClient().addListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
+        // If the ZNode's children changed,
+        if (watchedEvent.getType() == Watcher.Event.EventType.NodeCreated) {
+          String path = watchedEvent.getPath();
+          LOG.debug("Received `NodeCreated` event on path '" + path + "'.");
+          try {
+            invalidationReceivedFromZooKeeper(path);
+          } catch (Exception e) {
+            LOG.error("Encountered exception while handling 'NodeCreated' event on path '" + path + "':", e);
+          }
+        }
+      });
+
     } finally {
       startingActiveService = false;
       checkSafeMode();
@@ -981,6 +998,32 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
   public LRUMetadataCache<INode> getMetadataCache() {
     return metadataCache;
+  }
+
+  private void invalidationReceivedFromZooKeeper(String path) throws Exception {
+    ZooKeeperInvalidation invalidation = serverlessNameNode.getZooKeeperClient().getInvalidation(path);
+
+    long localNameNodeId = serverlessNameNode.getId();
+    int localDeploymentNumber = serverlessNameNode.getDeploymentNumber();
+
+    long inodeId = invalidation.getInodeId();
+    long parentId = invalidation.getParentId();
+    long leaderNameNodeId = invalidation.getLeaderNameNodeId();
+    long operationId = invalidation.getOperationId();
+
+    LOG.debug("|===-===-===-===| NN " + localNameNodeId + " Received Invalidation from ZooKeeper |===-===-===-===|");
+    String format = "%-12s %-12s %-21s %-21s";
+    LOG.debug(String.format(format, "INode ID", "Parent ID", "Leader NN ID", "TX Start Time", "Op ID"));
+    LOG.debug(String.format(format, inodeId, parentId, leaderNameNodeId, operationId));
+
+    if (leaderNameNodeId == localNameNodeId) {
+      LOG.debug("This invalidation was triggered by our own write operation. Ignoring.");
+      return;
+    }
+
+    // TODO: Add support for subtree operations.
+    metadataCache.invalidateKey(inodeId);
+    serverlessNameNode.getZooKeeperClient().acknowledge(path, localNameNodeId);
   }
 
   @Override

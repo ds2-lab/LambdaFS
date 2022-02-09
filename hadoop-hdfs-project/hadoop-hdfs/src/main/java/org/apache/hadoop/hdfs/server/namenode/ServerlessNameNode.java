@@ -224,6 +224,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private long heartBeatInterval;
 
   /**
+   * If true, use NDB as intermediate storage during consistency protocol (i.e., to host ACKs and INVs).
+   * Otherwise, use ZooKeeper.
+   */
+  private boolean useNdbForConsistencyProtocol;
+
+  /**
    * Added by Ben; mostly used for debugging (i.e., making sure the NameNode code that
    * is running is up-to-date with the source code base).
    *
@@ -2257,6 +2263,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     this.nameNodeTCPClient = new NameNodeTCPClient(conf,this, nameNodeID, deploymentNumber, actionMemory);
 
+    this.useNdbForConsistencyProtocol = conf.getBoolean(SERVERLESS_CONSISTENCY_USENDB, SERVERLESS_CONSISTENCY_USENDB_DEFAULT);
+
+    if (useNdbForConsistencyProtocol)
+      LOG.debug("Using MySQL Cluster NDB for the consistency protocol.");
+    else
+      LOG.debug("Using ZooKeeper for the consistency protocol.");
+
     Instant serverlessInitDone = Instant.now();
     Duration serverlessInitDuration = Duration.between(nameNodeInitStart, serverlessInitDone);
     LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
@@ -2370,7 +2383,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // If we join the ZK ensemble and then encounter a critical error, other NNs will think there
     // exists some NN that is alive when in fact no such NN exists because we crashed later on in
     // our start-up process. We'll enter the ZK ensemble when we enter the active state at the very
-    // end of the initialization process.
+    // end of the initialization process. (If we encounter an error that causes us to crash but not terminate,
+    // our ephemeral node will not be deleted...)
     this.zooKeeperClient.connect();
     // Note that, since we haven't joined a group yet, we won't be considered active. So, we won't
     // actually be included in the initialization of the active NN list. We'll be added later after
@@ -2602,6 +2616,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     } catch (Exception e) {
       LOG.error("Exception while stopping httpserver", e);
     }
+  }
+
+  public boolean useNdbForConsistencyProtocol() {
+    return useNdbForConsistencyProtocol;
   }
 
   /**

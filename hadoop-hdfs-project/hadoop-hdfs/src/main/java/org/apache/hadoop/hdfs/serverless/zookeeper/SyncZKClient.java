@@ -10,6 +10,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 
+import java.io.*;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -141,6 +142,7 @@ public class SyncZKClient implements ZKClient {
         // Permanent refers to the fact that this is the path for permanent group members.
         String permanentPath = getPath(groupName, null, true);
         String guestPath = getPath(groupName, null, false);
+        String invPath = permanentPath + "/INV";
 
         LOG.debug("Creating ZK group with path: " + permanentPath);
         // This will throw an exception if the group already exists!
@@ -149,6 +151,10 @@ public class SyncZKClient implements ZKClient {
         LOG.debug("Creating ZK group with path: " + guestPath);
         // This will throw an exception if the group already exists!
         this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(guestPath);
+
+        LOG.debug("Creating ZK group with path: " + invPath);
+        // This will throw an exception if the group already exists!
+        this.client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(invPath);
     }
 
     @Override
@@ -273,14 +279,36 @@ public class SyncZKClient implements ZKClient {
         String path = getPath(groupName, null, true);
         PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, false);
         persistentWatcher.getListenable().addListener(watcher);
-        // LOG.debug("Successfully added listener to PersistentWatcher on path '" + path + "'");
+    }
+
+    @Override
+    public ZooKeeperInvalidation getInvalidation(String path) throws Exception {
+        byte[] data = client.getData().watched().forPath(path);
+
+        ByteArrayInputStream bis = new ByteArrayInputStream(data);
+        ObjectInput in = new ObjectInputStream(bis);
+
+        return (ZooKeeperInvalidation)in.readObject();
+    }
+
+    @Override
+    public void acknowledge(String path, long localNameNodeId) throws Exception {
+        path += "/" + localNameNodeId;
+        this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
+    }
+
+    @Override
+    public void addInvalidationListener(String groupName, Watcher watcher) {
+        String path = getPath(groupName, null, true);
+        path += "/INV";
+        PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, true);
+        persistentWatcher.getListenable().addListener(watcher);
     }
 
     private void addGuestListener(String groupName, Watcher watcher) {
         String path = getPath(groupName, null, false);
         PersistentWatcher persistentWatcher = getOrCreatePersistentWatcher(path, false);
         persistentWatcher.getListenable().addListener(watcher);
-        // LOG.debug("Successfully added 'guest' listener to PersistentWatcher on path '" + path + "'");
     }
 
     @Override

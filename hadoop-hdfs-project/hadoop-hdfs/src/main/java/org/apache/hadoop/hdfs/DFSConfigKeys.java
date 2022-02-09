@@ -194,6 +194,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_ZOOKEEPER_SESSION_TIMEOUT_DEFAULT = 10000;
 
   /**
+   * Specifies whether to use ZooKeeper or NDB for storage during consistency protocol.
+   */
+  public static final String SERVERLESS_CONSISTENCY_USENDB = "serverless.consistency.usendb";
+  public static final boolean SERVERLESS_CONSISTENCY_USENDB_DEFAULT = true;
+
+  /**
    * How long the Leader NN should wait for ACKs before aborting the transaction. As of right now, the
    * Leader NN needs to abort after a little while, or all reads and writes on data modified by the transaction
    * will be blocked (since the transaction locks the rows in intermediate storage).

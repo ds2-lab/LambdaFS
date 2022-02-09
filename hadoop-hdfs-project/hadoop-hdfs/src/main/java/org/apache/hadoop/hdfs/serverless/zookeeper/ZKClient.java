@@ -151,6 +151,32 @@ public interface ZKClient {
     void addListener(String groupName, Watcher watcher);
 
     /**
+     * Retrieve the invalidation (specifically its data) at the given path.
+     * @param path Path of the ZNode, which is serving as an invalidation.
+     */
+    ZooKeeperInvalidation getInvalidation(String path) throws Exception;
+
+    /**
+     * Acknowledge the invalidation at the given path.
+     * @param path The path of the INV that we're acknowledging.
+     * @param localNameNodeId The unique ID of the local NameNode instance.
+     */
+    void acknowledge(String path, long localNameNodeId) throws Exception;
+
+    /**
+     * Add a listener to the Watch for the INV ZNode of the specified group.
+     * The listener will call the provided callback.
+     * The callback should handle determining whether to act depending on which event fired.
+     *
+     * This will create and start a Persistent Watcher for the generated path if one does not already exist.
+     *
+     * @param groupName The name of the group for which a listener will be added to the INV ZNode.
+     *                  If we are not in this group, then this will probably fail.
+     * @param watcher Watcher object to be added. Serves as the callback for the event notification.
+     */
+    void addInvalidationListener(String groupName, Watcher watcher);
+
+    /**
      * Remove a listener from the Watch for the given group. This removes the watcher from the PERMANENT sub-group.
      *
      * @param groupName The name of the group for which the listener will be removed. If we are not in this group,
