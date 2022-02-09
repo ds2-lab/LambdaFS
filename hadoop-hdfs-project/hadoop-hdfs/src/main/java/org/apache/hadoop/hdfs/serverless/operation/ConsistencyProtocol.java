@@ -940,6 +940,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             if (involvedDeployments.contains(serverlessNameNodeInstance.getDeploymentNumber()))
                 totalNumberOfACKsRequired--;
 
+            countDownLatch = new CountDownLatch(totalNumberOfACKsRequired);
             return totalNumberOfACKsRequired;
         }
 
