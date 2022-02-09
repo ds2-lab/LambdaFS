@@ -142,7 +142,7 @@ public class SyncZKClient implements ZKClient {
         // Permanent refers to the fact that this is the path for permanent group members.
         String permanentPath = getPath(groupName, null, true);
         String guestPath = getPath(groupName, null, false);
-        String invPath = permanentPath + "/INV";
+        String invPath = getInvPath(groupName);
 
         try {
             LOG.debug("Creating ZK group with path: " + permanentPath);
