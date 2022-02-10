@@ -167,9 +167,9 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    */
   public static final String SERVERLESS_ZOOKEEPER_HOSTNAMES = "serverless.zookeepers.hosts";
   public static final String[] SERVERLESS_ZOOKEEPER_HOSTNAMES_DEFAULT = {
-          "10.241.64.15:2181",  // NDB Manager (ndb_mgmd) VM.
-          "10.241.64.16:2181",  // NDB DataNode (ndbd) VM.
-          "10.241.64.14:2181"   // HopsFS Development VM.
+          "10.241.64.15:2181",    // NDB Manager (ndb_mgmd) VM.
+          "10.150.15.214:2181",   // Serverless HopsFS DataNode VM.
+          "10.241.64.14:2181"     // HopsFS Client VM.
   };
 
   /**

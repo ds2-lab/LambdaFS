@@ -221,10 +221,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // (5) The Leader listens for updates on the ACK table, waiting for all entries to be ACK'd.
         //     If there are any NN failures during this phase, the Leader will detect them via ZK. The Leader does not
         //     need ACKs from failed NNs, as they invalidate their cache upon returning.
-        // (6) Once all the "ACK" table entries added by the Leader have been ACK'd by followers, the Leader will check to
-        //     see if there are any new, concurrent write operations with a larger timestamp. If so, the Leader must
-        //     first finish its own write operation BEFORE submitting any ACKs for those new writes. Then, the leader can
-        //     ACK any new write operations that may be waiting.
+        // (6) Once all ACKs are received, the leader continues with the operation.
         //
         //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
 
