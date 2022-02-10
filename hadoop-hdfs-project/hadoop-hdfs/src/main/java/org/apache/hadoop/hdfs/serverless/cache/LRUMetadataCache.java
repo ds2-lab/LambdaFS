@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.cache;
 
+import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.slf4j.Logger;
@@ -44,6 +45,7 @@ public class LRUMetadataCache<T> {
     private final Lock _mutex = new ReentrantLock(true);
 
     // TODO: Add org.apache.commons.collections4.trie.PatriciaTrie to store INodes to support subtree invalidations.
+    private final PatriciaTrie<T> metadataTrie;
 
     /**
      * Keys are added to this set upon being invalidated. If a key is in this set,
@@ -97,6 +99,7 @@ public class LRUMetadataCache<T> {
         this.invalidatedKeys = new HashSet<>();
         this.idToNameMapping = new HashMap<>(capacity, loadFactor);
         this.cache = new HashMap<>(capacity, loadFactor);
+        this.metadataTrie = new PatriciaTrie<>();
         this.enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED,
                 DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT);
     }
@@ -120,7 +123,7 @@ public class LRUMetadataCache<T> {
     /**
      * Reset the current-request counters for cache hits/misses.
      */
-    @Deprecated
+    @Deprecated // TODO: Why deprecated?
     public void clearCurrentRequestCacheCounters() {
         this.numCacheHitsCurrentRequest = 0;
         this.numCacheMissesCurrentRequest = 0;
@@ -202,9 +205,16 @@ public class LRUMetadataCache<T> {
 
         _mutex.lock();
         try {
+            // Store the metadata in the cache directly.
             T returnValue = cache.put(key, value);
+
+            // Create a mapping between the INode ID and the path.
             idToNameMapping.put(iNodeId, key);
 
+            // Store the metadata in the Trie data structure, using the path of the metadata as the key.
+            metadataTrie.put(key, value);
+
+            // If this key was previously invalidated, then it is no longer invalid, seeing as we're caching it now.
             boolean removed = invalidatedKeys.remove(key);
 
             if (removed)
@@ -279,23 +289,8 @@ public class LRUMetadataCache<T> {
     public boolean containsKeySkipInvalidCheck(String key) {
         _mutex.lock();
         try {
+            // Directly check if the cache itself contains the key.
             return cache.containsKey(key);
-        } finally {
-            _mutex.unlock();
-        }
-    }
-
-    /**
-     * Check if there is an entry for the given key in this cache, regardless of whether not that entry is
-     * marked as invalid or not. That is, this "skips" the check of whether this key is invalid.
-     */
-    public boolean containsKeySkipInvalidCheck(long inodeId) {
-        // If the key is a long, we need to check if we've mapped this long to a String key. If so,
-        // then we can get the string version and continue as before.
-        _mutex.lock();
-        try {
-            String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
-            return keyAsStr != null && cache.containsKey(keyAsStr);
         } finally {
             _mutex.unlock();
         }
@@ -309,7 +304,11 @@ public class LRUMetadataCache<T> {
         // then we can get the string version and continue as before.
         _mutex.lock();
         try {
+            // If we don't have a mapping for this key, then this will return null, and this function will return false.
             String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
+
+            // Returns true if we are able to resolve the NameNode ID to a string-typed key, that key is not
+            // invalidated, and we're actively caching the key.
             return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
         } finally {
             _mutex.unlock();
@@ -329,7 +328,46 @@ public class LRUMetadataCache<T> {
             if (idToNameMapping.containsKey(inodeId)) {
                 String key = idToNameMapping.get(inodeId);
 
-                return invalidateKey(key, false);
+                return invalidateKeyInternal(key, false);
+            }
+
+            return false;
+        } finally {
+            _mutex.unlock();
+        }
+    }
+
+    /**
+     * Invalidate the given key. By default, this first checks to see if such an entry already exists in the cache.
+     * This check can be skipped by passing `true` for the `skipCheck` argument.
+     *
+     * This function does not check to see if the key is already in an invalidated state. If this is the case,
+     * then this function effectively does nothing.
+     *
+     * @param key The key to invalidate.
+     * @param skipCheck If true, do not bother checking to see if a cache entry exists for the key first.
+     * @return True if the key was invalidated, otherwise false. If {@code skipCheck} is true, then this
+     * function will always return true.
+     */
+    public boolean invalidateKey(String key, boolean skipCheck) {
+        return invalidateKeyInternal(key, skipCheck);
+    }
+
+    /**
+     * This actually invalidates the key.
+     * @param key The key to be invalidated.
+     * @param skipCheck If true, then we don't bother checking if we are caching the key first
+     *                  before we invalidate it. We simply invalidate the key immediately.
+     * @return True if we invalidated the key. Otherwise, returns false. If {@code skipCheck} is true, then this
+     * function will always return true.
+     */
+    private boolean invalidateKeyInternal(String key, boolean skipCheck) {
+        _mutex.lock();
+        try {
+            if (skipCheck || containsKeySkipInvalidCheck(key)) {
+                invalidatedKeys.add(key);
+                LOG.debug("Invalidated key " + key + ".");
+                return true;
             }
 
             return false;
@@ -380,26 +418,34 @@ public class LRUMetadataCache<T> {
     }
 
     /**
-     * Invalidate the given key. By default, this first checks to see if such an entry already exists in the cache.
-     * This check can be skipped by passing `true` for the `skipCheck` argument.
+     * Invalidate any keys in our cache prefixed by the {@code prefix} parameter.
      *
-     * This function does not check to see if the key is already in an invalidated state. If this is the case,
-     * then this function effectively does nothing.
+     * For example, if {@code prefix} were equal to "/home/ben/documents/", then any INodes in our cache that are
+     * stored along that path would be invalidated.
      *
-     * @param key The key to invalidate.
-     * @param skipCheck If true, do not bother checking to see if a cache entry exists for the key first.
-     * @return True if the key was invalidated, otherwise false.
+     * @param prefix Any metadata prefixed by this path will be invalidated.
+     *
+     * @return The number of cache entries that were invalidated.
      */
-    public boolean invalidateKey(String key, boolean skipCheck) {
+    public int invalidateKeysByPrefix(String prefix) {
+        LOG.debug("Invalidating all cached INodes contained within the file subtree rooted at '" + prefix + "'.");
+
         _mutex.lock();
+
         try {
-            if (skipCheck || containsKeySkipInvalidCheck(key)) {
-                invalidatedKeys.add(key);
-                LOG.debug("Invalidated key " + key + ".");
-                return true;
+            SortedMap<String, T> prefixedEntries = metadataTrie.prefixMap(prefix);
+            int numInvalidated = 0;
+
+            for (String path : prefixedEntries.keySet()) {
+                // This if-statement invalidates the key. If we were caching the key, then the call
+                // to invalidateKey() returns true, in which case we increment 'numInvalidated'.
+                if (invalidateKey(path, false))
+                    numInvalidated++;
             }
 
-            return false;
+            LOG.debug("Invalidated " + numInvalidated + "/" + prefixedEntries.size() + " of the nodes in the prefix map.");
+
+            return numInvalidated;
         } finally {
             _mutex.unlock();
         }

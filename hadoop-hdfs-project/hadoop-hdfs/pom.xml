@@ -60,7 +60,13 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>json</artifactId>
       <version>20140107</version>
     </dependency>
-<!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client-bom &ndash;&gt;-->
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-collections4 -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
+      <version>4.4</version>
+    </dependency>
+    <!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client-bom &ndash;&gt;-->
 <!--    <dependency>-->
 <!--      <groupId>org.asynchttpclient</groupId>-->
 <!--      <artifactId>async-http-client-bom</artifactId>-->

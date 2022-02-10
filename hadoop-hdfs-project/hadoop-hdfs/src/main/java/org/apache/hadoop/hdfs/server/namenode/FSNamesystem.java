@@ -1001,6 +1001,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     return metadataCache;
   }
 
+  /**
+   * This is the "ZooKeeper consistency protocol" counterpart to the {@code eventReceived} function, which handled
+   * INVs from NDB.
+   *
+   * @param path The path of the ZooKeeper ZNode that serves as the invalidation itself.
+   *             The ZNode has information about which INode(s) were invalidated and whatnot, as it contains a
+   *             serialized {@link ZooKeeperInvalidation} object contained within.
+   */
   private void invalidationReceivedFromZooKeeper(String path) throws Exception {
     ZooKeeperInvalidation invalidation = serverlessNameNode.getZooKeeperClient().getInvalidation(path);
 
@@ -1024,7 +1032,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     // TODO: Add support for subtree operations.
     serverlessNameNode.getZooKeeperClient().acknowledge(path, localNameNodeId);
     if (isSubtreeInvalidation) {
-      LOG.error("Subtree invalidations are not yet supported.");
+      metadataCache.invalidateKeysByPrefix(subtreeRoot);
     } else {
       for (long id : invalidatedINodes) {
         LOG.debug("Attempting to invalidate INode " + id + " (if we have it cached).");
