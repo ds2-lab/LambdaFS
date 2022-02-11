@@ -534,7 +534,8 @@ class FSDirRenameOp {
           boolean canProceed = ConsistencyProtocol.runConsistencyProtocolForSubtreeOperation(associatedDeployments, src);
 
           if (!canProceed) {
-            LOG.debug("Rename operation FAILED (due to failed subtree consistency protocol).");
+            LOG.debug("Rename operation for subtree rooted at " + src +
+                    " FAILED (due to failed subtree consistency protocol).");
             // renameTransactionCommitted should be false, but it is already set to false at this point.
             ServerlessNameNode.stateChangeLog.warn(
                     "DIR* FSDirectory.unprotectedRenameTo: " + "failed to rename '" + src + "' to '" + dst +
