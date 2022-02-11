@@ -20,6 +20,8 @@ package org.apache.hadoop.hdfs.server.namenode;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.hdfs.entity.*;
+import io.hops.metrics.TransactionAttempt;
+import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.INodeLock;
@@ -36,15 +38,13 @@ import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
+import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.ipc.RetriableException;
 import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.util.ChunkedArrayList;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -183,6 +183,54 @@ class FSDirDeleteOp {
                 " associated with the file tree rooted at '" + srcArg + "'.");
         LOG.debug("Associated deployments: " + StringUtils.join(", ", associatedDeployments));
 
+        // This is sort of a dummy ID.
+        long transactionId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+        long txStartTime = System.currentTimeMillis();
+        TransactionAttempt txAttempt = new TransactionAttempt(0);
+        TransactionEvent txEvent = new TransactionEvent(transactionId);
+        txEvent.setTransactionStartTime(txStartTime);
+        txEvent.addAttempt(txAttempt);
+        ConsistencyProtocol subtreeConsistencyProtocol = new ConsistencyProtocol(
+                null, associatedDeployments, txAttempt, txEvent,
+                txStartTime, true, true, src);
+        subtreeConsistencyProtocol.start();
+
+        boolean canProceed = false;
+        boolean interruptedExceptionOccurred = false;
+
+        try {
+          subtreeConsistencyProtocol.join();
+        } catch (InterruptedException ex) {
+          LOG.error("Encountered interrupted exception while joining with subtree consistency protocol:", ex);
+          interruptedExceptionOccurred = true;
+        }
+
+        long txEndTime = System.currentTimeMillis();
+        txEvent.setTransactionEndTime(txEndTime);
+        long txDurationMilliseconds = txEndTime - txStartTime;
+
+        canProceed = subtreeConsistencyProtocol.getCanProceed();
+
+        if (!canProceed || interruptedExceptionOccurred) {
+          LOG.error("Subtree Consistency Protocol failed to execute properly. Time elapsed: " +
+                  txDurationMilliseconds + " ms. Checking for exceptions...");
+
+          List<Exception> exceptions = subtreeConsistencyProtocol.getExceptions();
+
+          LOG.error("Found " + exceptions.size() + " exception(s) from Subtree Consistency Protocol.");
+
+          int counter = 1;
+          for (Exception ex : exceptions) {
+            LOG.error("Exception #" + counter++ + " from Subtree Consistency Protocol:");
+            LOG.error(ex);
+          }
+
+          LOG.debug("DELETE was NOT successful. Returning false.");
+          return false;
+        }
+
+        LOG.debug("Subtree Consistency Protocol executed successfully in " + txDurationMilliseconds + " ms.");
+
         if (fsd.isQuotaEnabled()) {
           Iterator<Long> idIterator = fileTree.getAllINodesIds().iterator();
           synchronized (idIterator) {
@@ -196,8 +244,6 @@ class FSDirDeleteOp {
           }
         }
 
-        // TODO: We can update subtree protocol here to disable consistency protocol for everything in the tree.
-        //       Just need to issue invalidations.
         for (int i = fileTree.getHeight(); i > 0; i--) {
           if (!deleteTreeLevel(fsn, src, fileTree.getSubtreeRoot().getId(), fileTree, i)) {
             LOG.debug("DELETE was NOT successful. Returning false.");
@@ -226,10 +272,6 @@ class FSDirDeleteOp {
 
       List<ProjectedINode> emptyDirs = new ArrayList();
 
-      // TODO: At each level of the subtree, we could issue a single 'subtree invalidation' that invalidates
-      //       everything within that directory/level of the subtree. We would run a version of the consistency
-      //       protocol here before proceeding, and none of the smaller TXs that delete the contents of this level
-      //       of the subtree would use the consistency protocol.
       for (final ProjectedINode dir : fileTree.getDirsByLevel(level)) {
         LOG.debug("Children in directory (id=" + dir.getId() + "): " + fileTree.countChildren(dir.getId()));
         if (fileTree.countChildren(dir.getId()) <= BIGGEST_DELETABLE_DIR) {
@@ -237,14 +279,12 @@ class FSDirDeleteOp {
                   + " children. Can delete it directly.");
           final String path = fileTree.createAbsolutePath(subtreeRootPath, dir);
 
-          // TODO: Or maybe at this point, we'd issue one invalidation for everything in this directory.
           Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
           barrier.add(f);
         } else {
           //delete the content of the directory one by one.
           LOG.debug("Directory " + dir.getId() + " has too many child files. Deleting content of directory one-by-one.");
 
-          // TODO: It would definitely be more efficient to issue a single invalidation for all INodes in this directory.
           for (final ProjectedINode inode : fileTree.getChildren(dir.getId())) {
             LOG.debug("    Trying to delete child INode " + inode.getName() + " (id=" + inode.getId() + ").");
             if (!inode.isDirectory()) {
@@ -268,7 +308,6 @@ class FSDirDeleteOp {
       //delete the empty Dirs
       for (ProjectedINode dir : emptyDirs) {
         final String path = fileTree.createAbsolutePath(subtreeRootPath, dir);
-        // TODO: We can probably skip the consistency protocol here, since these should all be invalidated already.
         Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
         barrier.add(f);
       }
@@ -308,11 +347,13 @@ class FSDirDeleteOp {
     return fsn.getFSOperationsExecutor().submit(new Callable<Boolean>() {
       @Override
       public Boolean call() throws Exception {
+        // IMPORTANT: We are passing 'true' for the 'skipConsistencyProtocol' parameter here, as this function
+        // only gets executed in subtree operations. If we've gotten this far, then the consistency protocol already
+        // executed successfully at the beginning of this subtree op, and therefore we do not need to run it again.
         HopsTransactionalRequestHandler deleteHandler = new HopsTransactionalRequestHandler(
-            HDFSOperationType.SUBTREE_DELETE) {
+            HDFSOperationType.SUBTREE_DELETE, null, true) {
           @Override
-          public void acquireLock(TransactionLocks locks)
-              throws IOException {
+          public void acquireLock(TransactionLocks locks) {
             LockFactory lf = LockFactory.getInstance();
             INodeLock il = lf.getINodeLock(INodeLockType.WRITE_ON_TARGET_AND_PARENT,
                 INodeResolveType.PATH_AND_ALL_CHILDREN_RECURSIVELY, src)

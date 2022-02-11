@@ -55,12 +55,25 @@ public abstract class HopsTransactionalRequestHandler
 
   private ServerlessNameNode serverlessNameNodeInstance;
 
+  /**
+   * When this is set to true, the consistency protocol will be skipped when this transaction request handler
+   * attempts to execute it. We use this mechanism during subtree operations, as we execute one instance of the
+   * consistency protocol at the beginning of the subtree operation. Then, all the individual transactions that
+   * occur during the remainder of the subtree operation do not have to execute the consistency protocol.
+   */
+  private final boolean skipConsistencyProtocol;
+
   public HopsTransactionalRequestHandler(HDFSOperationType opType) {
-    this(opType, null);
+    this(opType, null, false);
   }
   
   public HopsTransactionalRequestHandler(HDFSOperationType opType, String path) {
+    this(opType, path, false);
+  }
+
+  public HopsTransactionalRequestHandler(HDFSOperationType opType, String path, boolean skipConsistencyProtocol) {
     super(opType);
+    this.skipConsistencyProtocol = skipConsistencyProtocol;
   }
 
   @Override
@@ -128,7 +141,12 @@ public abstract class HopsTransactionalRequestHandler
   @Override
   protected final boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException {
     if (!ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL) {
-      requestHandlerLOG.debug("Skipping consistency protocol as 'DO_CONSISTENCY_PROTOCOL' is set to false.");
+      requestHandlerLOG.debug("Consistency protocol is DISABLED. Not executing consistency protocol.");
+      return true;
+    }
+
+    if (skipConsistencyProtocol) {
+      requestHandlerLOG.debug("Skipping consistency protocol (presumably because we're within a subtree op).");
       return true;
     }
 
