@@ -161,9 +161,15 @@ abstract class AbstractFileTree {
                     getActiveNameNodes().getActiveNodes();
                 if (SubtreeLockHelper.isSTOLocked(child.isSubtreeLocked(),
                     child.getSubtreeLockOwner(), activeNamenodes)) {
-                  exception = new RetriableException("The subtree: "+child.getName()
-                      +" is locked by Namenode: "+child.getSubtreeLockOwner()+"."+
-                          " Active Namenodes: "+activeNamenodes);
+                  ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+                  String localId = "N/A";
+                  if (instance != null) {
+                    localId = Long.toString(instance.getId());
+                  }
+
+                  exception = new RetriableException("The subtree: "+ child.getName() + " is locked by Namenode: " +
+                          child.getSubtreeLockOwner() + "." + " Active Namenodes: " + activeNamenodes +
+                          ". Local NN ID: " + localId + ".");
                   return null;
                 }
 

@@ -145,8 +145,6 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.metadataCacheHits = metadataCacheHits;
         this.metadataCacheMisses = metadataCacheMisses;
         this.resultReceivedVia = resultReceivedVia;
-
-        System.out.println("OpPerformed(resultBeganExecutingTime/dequeuedTime = " + dequeuedTime + ", serverlessFnStartTime = " + serverlessFnStartTime + ")");
     }
 
     public void setNameNodeId(long nameNodeId) {
