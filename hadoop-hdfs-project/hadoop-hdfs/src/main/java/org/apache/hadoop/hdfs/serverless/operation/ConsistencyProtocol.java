@@ -541,7 +541,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         // Clean up ACKs, event operation, etc.
         try {
-            cleanUpAfterConsistencyProtocol(needToUnsubscribe);
+            // We always clean up when not using ZooKeeper. If we're using ZooKeeper, then we only clean up
+            // if we issued invalidations, and that only happens when at least one ACK was required.
+            if (!useZooKeeperForACKsAndINVs || totalNumberOfACKsRequired > 0)
+                cleanUpAfterConsistencyProtocol(needToUnsubscribe);
         } catch (Exception e) {
             // We should still be able to continue, despite failing to clean up after ourselves...
             LOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
@@ -1078,8 +1081,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             totalNumberOfACKsRequired += writeAcknowledgements.size();
         }
 
-        LOG.debug("Removing the following deployments as they contain zero active instances: " +
-                StringUtils.join(toRemove, ", "));
+        if (toRemove.size() > 0)
+            LOG.debug("Removing the following deployments as they contain zero active instances: " +
+                    StringUtils.join(toRemove, ", "));
         involvedDeployments.removeAll(toRemove);
         LOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
 
