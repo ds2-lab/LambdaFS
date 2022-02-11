@@ -160,7 +160,7 @@ abstract class AbstractFileTree {
                 List<ActiveNode> activeNamenodes = namesystem.getNameNode().
                     getActiveNameNodes().getActiveNodes();
                 if (SubtreeLockHelper.isSTOLocked(child.isSubtreeLocked(),
-                    child.getSubtreeLockOwner(), activeNamenodes)) {
+                        child.getSubtreeLockOwner(), activeNamenodes)) {
                   ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
                   String localId = "N/A";
                   if (instance != null) {

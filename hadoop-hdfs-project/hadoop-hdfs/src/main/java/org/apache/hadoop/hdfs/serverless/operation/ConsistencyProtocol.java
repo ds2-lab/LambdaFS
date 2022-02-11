@@ -297,16 +297,23 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         boolean needToUnsubscribe = true;
         long startTime = System.currentTimeMillis();
 
-        INodeContext transactionINodeContext = (INodeContext)callingThreadINodeContext;
+        // This block of code is only relevant/executed when we're running the consistency protocol for non-subtree
+        // operations. When we are running a subtree operation, the 'callingThreadINodeContext' variable will be null.
+        // We don't care about the set of invalidated INodes during a subtree operation, also. We just don't factor
+        // that into things. I think it's the case that there will always be at least one invalidated INode anyway
+        // in that of the subtree root.
+        Collection<INode> invalidatedINodes = null;
+        if (callingThreadINodeContext != null) {
+            INodeContext transactionINodeContext = (INodeContext) callingThreadINodeContext;
+            invalidatedINodes = transactionINodeContext.getInvalidatedINodes();
+            int numInvalidated = invalidatedINodes.size();
 
-        Collection<INode> invalidatedINodes = transactionINodeContext.getInvalidatedINodes();
-        int numInvalidated = invalidatedINodes.size();
-
-        // If there are no invalidated INodes, then we do not need to carry out the consistency protocol;
-        // however, if there is at least 1 invalidated INode, then we must proceed with the protocol.
-        if (numInvalidated == 0) {
-            this.canProceed = true;
-            return;
+            // If there are no invalidated INodes, then we do not need to carry out the consistency protocol;
+            // however, if there is at least 1 invalidated INode, then we must proceed with the protocol.
+            if (numInvalidated == 0) {
+                this.canProceed = true;
+                return;
+            }
         }
 
         LOG.debug("=-=-=-=-= CONSISTENCY PROTOCOL =-=-=-=-=");
@@ -333,6 +340,14 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         if (involvedDeployments == null) {
             LOG.debug("Computing involved deployments as they were not provided to us directly.");
             involvedDeployments = new HashSet<>();
+
+            // If we entered this if-statement's code block, then we should NOT be executing a subtree operation.
+            // As a result, we should have access to the set of invalidated INodes for this particular transaction.
+            if (invalidatedINodes == null) {
+                throw new IllegalStateException(
+                        "Set of invalidated INodes is null when it shouldn't be. INode Context object was null: " +
+                                (callingThreadINodeContext == null));
+            }
 
             for (INode invalidatedINode : invalidatedINodes) {
                 int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);

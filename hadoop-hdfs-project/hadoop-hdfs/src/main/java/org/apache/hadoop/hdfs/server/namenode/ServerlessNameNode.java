@@ -3433,6 +3433,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return false;
     }
 
+    // If the ID is our local ID, then return true, since we're clearly alive.
+    if (namenodeId == instance.getId())
+      return true;
+
     // If not in cache, then check ZooKeeper. We'll check for the existence of a persistent ZNode
     // in the permanent sub-group of each deployment. If one does not exist, then the NN is dead.
     ZKClient zkClient = instance.getZooKeeperClient();
