@@ -35,6 +35,7 @@ import io.hops.transaction.lock.TransactionLockTypes.INodeLockType;
 import io.hops.transaction.lock.TransactionLockTypes.INodeResolveType;
 import io.hops.transaction.lock.TransactionLockTypes.LockType;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.InvalidPathException;
 import org.apache.hadoop.fs.Options;
@@ -51,18 +52,14 @@ import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.fs.XAttr;
 import org.apache.hadoop.hdfs.protocol.FSLimitException;
+import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.util.ChunkedArrayList;
 import org.apache.hadoop.util.Time;
 
@@ -156,9 +153,6 @@ class FSDirRenameOp {
   @SuppressWarnings("deprecation")
   static boolean renameForEditLog(FSDirectory fsd, String src, String dst, long timestamp)
       throws IOException {
-    
-    
-    
     PathInformation srcInfo = fsd.getFSNamesystem().getPathExistingINodesFromDB(src,
         false, null, FsAction.WRITE, null, null);
     INodesInPath srcIIP = srcInfo.getINodesInPath();
@@ -269,9 +263,9 @@ class FSDirRenameOp {
   }
 
   private static boolean renameToTransaction(final FSDirectory fsd, final String src, final long srcINodeID,
-      final String dst, final QuotaCounts srcCounts, final QuotaCounts dstCounts,
-      final boolean isUsingSubTreeLocks,
-      final Collection<INodeMetadataLogEntry> logEntries, final long timestamp) throws IOException {
+                                             final String dst, final QuotaCounts srcCounts, final QuotaCounts dstCounts,
+                                             final boolean isUsingSubTreeLocks, final Collection<INodeMetadataLogEntry> logEntries,
+                                             final long timestamp) throws IOException {
 
     HopsTransactionalRequestHandler renameToHandler = new HopsTransactionalRequestHandler(
         isUsingSubTreeLocks ? HDFSOperationType.SUBTREE_DEPRICATED_RENAME : HDFSOperationType.DEPRICATED_RENAME,
@@ -515,6 +509,7 @@ class FSDirRenameOp {
             FsAction.WRITE, SubTreeOperation.Type.RENAME_STO);
 
         if (srcSubTreeRoot != null) {
+          long fileTreeBuildStart = System.currentTimeMillis();
           AbstractFileTree.QuotaCountingFileTree srcFileTree;
           if (shouldLogSubtreeInodes(srcInfo, dstInfo, srcDataSet,
               dstDataSet, srcSubTreeRoot)) {
@@ -529,7 +524,25 @@ class FSDirRenameOp {
           }
           srcCounts = new QuotaCounts.Builder().quotaCount(srcFileTree.getQuotaCount()).build();
 
-          fsd.getFSNamesystem().delayAfterBbuildingTree("Built Tree for "+src+" for rename. ");
+          long fileTreeBuildEnd = System.currentTimeMillis();
+          long fileTreeBuildDuration = (fileTreeBuildEnd - fileTreeBuildStart);
+          fsd.getFSNamesystem().delayAfterBbuildingTree("Built Tree for " + src + " for rename in " +
+                  fileTreeBuildDuration + " ms.");
+
+          Set<Integer> associatedDeployments = srcFileTree.getAssociatedDeployments();
+
+          boolean canProceed = ConsistencyProtocol.runConsistencyProtocolForSubtreeOperation(associatedDeployments, src);
+
+          if (!canProceed) {
+            LOG.debug("Rename operation FAILED (due to failed subtree consistency protocol).");
+            // renameTransactionCommitted should be false, but it is already set to false at this point.
+            ServerlessNameNode.stateChangeLog.warn(
+                    "DIR* FSDirectory.unprotectedRenameTo: " + "failed to rename '" + src + "' to '" + dst +
+                    "' due to failed subtree consistency protocol.");
+            throw new IOException("Rename from '" + src + "' to '" + dst +
+                    "' failed due to failed subtree consistency protocol.");
+          }
+
         } else {
           isUsingSubTreeLocks=false;
         }
@@ -554,12 +567,10 @@ class FSDirRenameOp {
       
   }
 
-  private 
-  static RenameResult renameToTransaction(final FSDirectory fsd, final String src, final long srcINodeID, final String dst,
-      final QuotaCounts srcCounts, final QuotaCounts dstCounts,
-      final boolean isUsingSubTreeLocks,
-      final Collection<INodeMetadataLogEntry> logEntries, final long timestamp,
-      final Options.Rename... options) throws IOException {
+  private static RenameResult renameToTransaction(final FSDirectory fsd, final String src, final long srcINodeID,
+                                                  final String dst, final QuotaCounts srcCounts, final QuotaCounts dstCounts,
+                                                  final boolean isUsingSubTreeLocks, final Collection<INodeMetadataLogEntry> logEntries,
+                                                  final long timestamp, final Options.Rename... options) throws IOException {
 
     return (RenameResult) new HopsTransactionalRequestHandler(
         isUsingSubTreeLocks ? HDFSOperationType.SUBTREE_RENAME : HDFSOperationType.RENAME, src) {

@@ -191,6 +191,68 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         this.subtreeRoot = subtreeRoot;
     }
 
+    /**
+     * Utility function for running an instance of the Consistency Protocol for subtree operations.
+     *
+     * @param associatedDeployments The deployments involved in the subtree operation. These deployments will require
+     *                              an invalidation during the consistency protocol.
+     * @param src The source/target directory of the subtree operation (the root of the subtree).
+     * @return True if the consistency protocol executed successfully, indicating that the subtree operation
+     * should proceed like normal. Otherwise false, which means that the subtree protocol should abort.
+     */
+    public static boolean runConsistencyProtocolForSubtreeOperation(Set<Integer> associatedDeployments, String src) {
+        LOG.debug("=============== Subtree Consistency Protocol ===============");
+        int numAssociatedDeployments = associatedDeployments.size();
+
+        LOG.debug("There " + (numAssociatedDeployments == 1 ? "is 1 deployment " : "are " +
+                associatedDeployments.size() + " deployments ") + " associated with subtree rooted at '" + src + "'.");
+        LOG.debug("Associated deployments: " + StringUtils.join(", ", associatedDeployments));
+
+        // This is sort of a dummy ID.
+        long transactionId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+        long txStartTime = System.currentTimeMillis();
+        TransactionAttempt txAttempt = new TransactionAttempt(0);
+        TransactionEvent txEvent = new TransactionEvent(transactionId);
+        txEvent.setTransactionStartTime(txStartTime);
+        txEvent.addAttempt(txAttempt);
+        ConsistencyProtocol subtreeConsistencyProtocol = new ConsistencyProtocol(
+                null, associatedDeployments, txAttempt, txEvent,
+                txStartTime, true, true, src);
+        subtreeConsistencyProtocol.start();
+
+        boolean interruptedExceptionOccurred = false;
+
+        try {
+            subtreeConsistencyProtocol.join();
+        } catch (InterruptedException ex) {
+            LOG.error("Encountered interrupted exception while joining with subtree consistency protocol:", ex);
+            interruptedExceptionOccurred = true;
+        }
+
+        long txEndTime = System.currentTimeMillis();
+        txEvent.setTransactionEndTime(txEndTime);
+        long txDurationMilliseconds = txEndTime - txStartTime;
+
+        if (!subtreeConsistencyProtocol.getCanProceed() || interruptedExceptionOccurred) {
+            LOG.error("Subtree Consistency Protocol failed to execute properly. Time elapsed: " +
+                    txDurationMilliseconds + " ms. Checking for exceptions...");
+
+            List<Exception> exceptions = subtreeConsistencyProtocol.getExceptions();
+
+            LOG.error("Found " + exceptions.size() + " exception(s) from Subtree Consistency Protocol.");
+
+            int counter = 1;
+            for (Exception ex : exceptions) {
+                LOG.error("Exception #" + (counter++) + " from Subtree Consistency Protocol:");
+                LOG.error(ex);
+            }
+            return false;
+        }
+
+        LOG.debug("Subtree Consistency Protocol executed successfully in " + txDurationMilliseconds + " ms.");
+        return true;
+    }
+
     public boolean getCanProceed() { return this.canProceed; }
 
     public List<Exception> getExceptions() { return this.exceptions; }
