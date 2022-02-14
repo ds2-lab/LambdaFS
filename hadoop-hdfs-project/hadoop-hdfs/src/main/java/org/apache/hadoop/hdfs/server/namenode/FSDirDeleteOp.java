@@ -266,7 +266,7 @@ class FSDirDeleteOp {
 
           // If we cannot get the instance for some reason (shouldn't happen), or if there just aren't enough files
           // to batch across multiple NNs, then we'll perform the delete operations locally.
-          if (instance == null || children.size() < SUBTREE_DELETE_BATCH_SIZE) {
+          if (instance == null || children.size() <= SUBTREE_DELETE_BATCH_SIZE) {
             // These if statements are just to determine what message to log.
             if (instance == null)
               LOG.error("Cannot retrieve singleton ServerlessNameNode instance for batched subtree delete.");
