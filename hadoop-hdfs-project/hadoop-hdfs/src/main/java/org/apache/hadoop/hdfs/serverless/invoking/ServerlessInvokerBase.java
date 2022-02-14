@@ -56,6 +56,11 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
  * ServerlessNameNodeClient class interacts with a concrete child class of this ServerlessInvokerBase class to
  * invoke NameNode functions (e.g., the {@link OpenWhiskInvoker} class).
  *
+ * The "main" API exposed by this class is the {@code invokeNameNodeViaHttpPost} function, which issues an HTTP POST
+ * to the API Gateway of the serverless platform. (It doesn't have to be the API Gateway; that's just often what the
+ * serverless platform component is. We issue a request to whatever we're supposed to in order to invoke functions. In
+ * the case of OpenWhisk, that's the API Gateway component.)
+ *
  * @param <T> The type of object returned by invoking serverless functions, usually a JsonObject.
  */
 public abstract class ServerlessInvokerBase<T> {
