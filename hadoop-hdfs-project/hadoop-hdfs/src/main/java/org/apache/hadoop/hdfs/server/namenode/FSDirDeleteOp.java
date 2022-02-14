@@ -213,10 +213,9 @@ class FSDirDeleteOp {
       LightWeightCacheDistributed.putTransactional(ret);
     }
   }
-  
-    private static boolean deleteTreeLevel(final FSNamesystem fsn, final String subtreeRootPath,
-                                           final long subTreeRootID, final AbstractFileTree.FileTree fileTree,
-                                           int level) throws TransactionContextException, IOException {
+
+  private static boolean deleteTreeLevel(final FSNamesystem fsn, final String subtreeRootPath, final long subTreeRootID,
+                                        final AbstractFileTree.FileTree fileTree, int level) throws IOException {
       LOG.debug("Deleting tree level " + level + " of tree rooted at " + subtreeRootPath + " (ID = " +
               subTreeRootID + ") now...");
 
@@ -240,7 +239,7 @@ class FSDirDeleteOp {
           for (final ProjectedINode inode : fileTree.getChildren(dir.getId())) {
             LOG.debug("    Trying to delete child INode " + inode.getName() + " (id=" + inode.getId() + ").");
             if (!inode.isDirectory()) {
-              LOG.debug("        INode " + inode.getName() + "(id=" + inode.getId() + ") is NOT a directory.");
+              // LOG.debug("        INode " + inode.getName() + "(id=" + inode.getId() + ") is NOT a directory.");
               final String path = fileTree.createAbsolutePath(subtreeRootPath, inode);
               Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
               barrier.add(f);
@@ -267,7 +266,7 @@ class FSDirDeleteOp {
       return processResponses(barrier);
   }
 
-  private static boolean processResponses(ArrayList<Future> barrier) throws IOException {
+  public static boolean processResponses(ArrayList<Future> barrier) throws IOException {
     boolean result = true;
     for (Future f : barrier) {
       try {
@@ -289,9 +288,9 @@ class FSDirDeleteOp {
     }
     return result;
   }
-    
-  private static Future multiTransactionDeleteInternal(final FSNamesystem fsn, final String src,
-      final long subTreeRootId) {
+
+  // Made public so that we can call it from the ServerlessNameNode class when off-loading/batching these operations.
+  public static Future multiTransactionDeleteInternal(final FSNamesystem fsn, final String src, final long subTreeRootId) {
     final FSDirectory fsd = fsn.getFSDirectory();
 
     LOG.debug("Performing multi-transaction internal delete for " + src + " now...");

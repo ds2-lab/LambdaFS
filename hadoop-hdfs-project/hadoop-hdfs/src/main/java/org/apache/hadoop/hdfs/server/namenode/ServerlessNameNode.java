@@ -114,6 +114,7 @@ import java.security.PrivilegedExceptionAction;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -808,6 +809,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       setPermission(args);
       return null;
     });
+    operations.put("subtreeDeleteSubOperation", args -> (Serializable)subtreeDeleteSubOperation(args));
     operations.put("truncate", args -> (Serializable)truncate(args));
     operations.put("updatePipeline", args -> {
       updatePipeline(args);
@@ -1647,6 +1649,55 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
 
     return namesystem.getFileInfo(src, false);
+  }
+
+  /**
+   * This function is only ever issued/invoked by other NameNodes. During subtree delete operations, the Leader
+   * NameNode will split up the task of deleting all the files in the subtree into many sub-operations that are
+   * executed in-parallel. Normally this all occurs on a single NN. Because Serverless NNs do not have a large
+   * amount of vCPU allocated to them, it is better to spread these sub-operations out among multiple Serverless
+   * NNs. To do this, the Leader NN will issue requests to other NameNodes, requesting that they execute this
+   * function in order to help process the delete operation.
+   *
+   * @param args The arguments passed by the Leader NN.
+   *
+   * @return True if the delete operation was successful, otherwise false.
+   */
+  private boolean subtreeDeleteSubOperation(JsonObject args)
+          throws IOException {
+    // The INode ID of the INode corresponding to the subtree root.
+    long subtreeRootId = args.getAsJsonPrimitive("subtreeRootId").getAsLong();
+
+    // The unique ID of the leader NameNode orchestrating this subtree operation.
+    long leaderNameNodeID = args.getAsJsonPrimitive("leaderNameNodeID").getAsLong();
+
+    // The full paths of the files/directories that we should delete.
+    JsonArray pathsJson = args.getAsJsonPrimitive("paths").getAsJsonArray();
+    List<String> paths = new ArrayList<>();
+    for (int i = 0; i < pathsJson.size(); i++) {
+      paths.add(pathsJson.get(i).getAsString());
+    }
+
+    LOG.debug("Executed batched subtree operation. Leader NN ID: " + leaderNameNodeID + ".");
+    LOG.debug("Subtree root path: '" + subtreeRootId + "', subtree root ID: " + subtreeRootId + ".");
+    LOG.debug("There are " + paths.size() + " paths to delete: " + StringUtils.join(", ", paths));
+
+    ArrayList<Future> barrier = new ArrayList<>();
+    for (String path : paths) {
+      LOG.debug("Submitting deletion for path '" + path + "' now...");
+      Future f = FSDirDeleteOp.multiTransactionDeleteInternal(namesystem, path, subtreeRootId);
+      barrier.add(f);
+    }
+
+    boolean success = FSDirDeleteOp.processResponses(barrier);
+
+    if (!success) {
+      LOG.error("Batched subtree delete op on subtree " + subtreeRootId + " FAILED.");
+      return false;
+    }
+
+    LOG.debug("Batched subtree delete op on subtree " + subtreeRootId + " succeeded.");
+    return true;
   }
 
   private NamespaceInfo versionRequest(JsonObject fsArgs) throws IOException {
