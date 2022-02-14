@@ -1677,7 +1677,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     long leaderNameNodeID = args.getAsJsonPrimitive("leaderNameNodeID").getAsLong();
 
     // The full paths of the files/directories that we should delete.
-    JsonArray pathsJson = args.getAsJsonPrimitive("paths").getAsJsonArray();
+    JsonArray pathsJson = args.getAsJsonPrimitive("pathsJson").getAsJsonArray();
     List<String> paths = new ArrayList<>();
     for (int i = 0; i < pathsJson.size(); i++) {
       paths.add(pathsJson.get(i).getAsString());
