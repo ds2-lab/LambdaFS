@@ -159,7 +159,7 @@ public class INodesInPath {
     int inodeNum = 0;
     INode[] inodes = new INode[components.length];
 
-    LOG.debug("resolve() function called. components.length: " + components.length);
+    // LOG.debug("resolve() function called. components.length: " + components.length);
 
     while (count < components.length && curNode != null) {
       final boolean lastComp = (count == components.length - 1);
@@ -195,15 +195,15 @@ public class INodesInPath {
         LOG.debug("INode " + childNameAsString + " is already cached locally under key '" + fullPathToCurrentComponent + "'. Using cached INode.");
       } else {
         LOG.debug("INode " + childNameAsString + " is NOT cached locally.");
-        LOG.debug("Valid keys in metadata cache (" + metadataCache.size(false) + "): "
-                + metadataCache.getPathKeys(false));
+        // LOG.debug("Valid keys in metadata cache (" + metadataCache.size(false) + "): "
+        //        + metadataCache.getPathKeys(false));
       }
 
       // normal case, and also for resolving file/dir under snapshot root
       curNode = dir.getChildINode(childName);
 
-      if (curNode != null)
-        LOG.debug("Current INode (id=" + curNode.getId() + "): " + curNode.toString());
+      //if (curNode != null)
+      //  LOG.debug("Current INode (id=" + curNode.getId() + "): " + curNode.toString());
 
       count++;
     }

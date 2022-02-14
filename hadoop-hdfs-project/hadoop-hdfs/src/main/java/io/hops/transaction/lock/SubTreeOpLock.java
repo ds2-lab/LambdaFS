@@ -57,14 +57,12 @@ public final class SubTreeOpLock extends Lock {
       } else {
         newPath = pathPrefix;
       }
-      LOG.debug("Checking if the path \"" + newPath + "\" belongs to a file or a dir");
+      // LOG.debug("Checking if the path \"" + newPath + "\" belongs to a file or a dir");
       BaseINodeLock inodeLock = (BaseINodeLock) locks.getLock(Type.INode);
       List<INode> inodes = inodeLock.getPathINodes(newPath);
       if (inodes.get(inodes.size() - 1).isDirectory()) {
-        LOG.debug(newPath + " is a directory so checking the STO table for ongoing operations ");
+        // LOG.debug(newPath + " is a directory so checking the STO table for ongoing operations ");
         acquireLockList(lockType, SubTreeOperation.Finder.ByPathPrefix, pathPrefix);
-      } else {
-        LOG.debug("The last component of the path is not dir. ignoring the request to look in on " + "going STO table");
       }
     } else {
       acquireLock(lockType, SubTreeOperation.Finder.ByPath, path);

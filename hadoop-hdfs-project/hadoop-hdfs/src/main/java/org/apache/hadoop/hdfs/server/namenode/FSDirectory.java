@@ -1668,26 +1668,26 @@ public class FSDirectory implements Closeable {
 
       if (node != null) {
         // Just used for debugging. Will eventually remove this code.
-        if (i == 0) {
-          if (node.isRoot())
-            LOG.debug("First INode in path is root.");
-          else
-            LOG.debug("First INode in path: " + node.toDetailString());
-        }
+//        if (i == 0) {
+//          if (node.isRoot())
+//            LOG.debug("First INode in path is root.");
+//          else
+//            LOG.debug("First INode in path: " + node.toDetailString());
+//        }
 
 
         if (namesystem.shouldCacheLocally(node)) {
-          LOG.debug("Caching INode '" + component + "' in metadata cache under key '"
-                  + fullPathToComponent + "' now...");
+//          LOG.debug("Caching INode '" + component + "' in metadata cache under key '"
+//                  + fullPathToComponent + "' now...");
           namesystem.getMetadataCache().put(fullPathToComponent, node.getId(), node);
-        } else {
+        } /*else {
           LOG.debug("INode " + node + " should be cached by NameNode " +
                   namesystem.getMappedServerlessFunction(node) + ", not us.");
-        }
+        }*/
       }
-      else {
-        LOG.warn("INode is null. Path component: " + component + ", full path: " + fullPathToComponent);
-      }
+//      else {
+//        LOG.warn("INode is null. Path component: " + component + ", full path: " + fullPathToComponent);
+//      }
     }
 
     return pathINodes;
