@@ -333,6 +333,8 @@ class FSDirDeleteOp {
                 targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments() + 1);
               }
 
+              LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i + "/" + batches.size());
+
               int finalTargetDeployment = targetDeployment;
               Future<Boolean> future = executorService.submit(() -> {
                 JsonObject response = serverlessInvoker.invokeNameNodeViaHttpPost(

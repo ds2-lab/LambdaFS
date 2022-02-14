@@ -460,8 +460,7 @@ class FSDirRenameOp {
     INodesInPath dstIIP = dstInfo.getINodesInPath();
     if (dstIIP.length() == 1) {
       error = "rename destination cannot be the root";
-      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " +
-          error);
+      ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: " + error);
       throw new IOException(error);
     }
 
