@@ -171,7 +171,7 @@ class FSDirDeleteOp {
         subtreeRoot = fsn.lockSubtreeAndCheckOwnerAndParentPermission(src, false,
             FsAction.WRITE, SubTreeOperation.Type.DELETE_STO);
 
-        LOG.debug("Subtree root: " + subtreeRoot.toString());
+        // LOG.debug("Subtree root: " + subtreeRoot.toString());
 
         List<AclEntry> nearestDefaultsForSubtree = fsn.calculateNearestDefaultAclForSubtree(pathInfo);
         AbstractFileTree.FileTree fileTree = new AbstractFileTree.FileTree(fsn, subtreeRoot, FsAction.ALL, true,

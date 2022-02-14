@@ -563,7 +563,10 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArgumentsJson.addProperty(DEBUG_NDB, debugEnabledNdb);
         nameNodeArgumentsJson.addProperty(DEBUG_STRING_NDB, debugStringNdb);
         nameNodeArgumentsJson.addProperty(TCP_PORT, tcpPort);
-        nameNodeArgumentsJson.addProperty(CLIENT_INTERNAL_IP, InvokerUtilities.getInternalIpAddress());
+
+        // If we aren't a client invoker (e.g., DataNode, other NameNode, etc.), then don't populate the internal IP field.
+        nameNodeArgumentsJson.addProperty(CLIENT_INTERNAL_IP, (isClientInvoker ? InvokerUtilities.getInternalIpAddress() : "0.0.0.0"));
+
         nameNodeArgumentsJson.addProperty(TCP_ENABLED, tcpEnabled);
         nameNodeArgumentsJson.addProperty(LOCAL_MODE, localMode);
         nameNodeArgumentsJson.addProperty(CONSISTENCY_PROTOCOL_ENABLED, consistencyProtocolEnabled);
