@@ -330,7 +330,7 @@ class FSDirDeleteOp {
               // Randomly pick a deployment different from our own so that we don't invoke ourselves, as that
               // would defeat the purpose of offloading/batching these delete operations to another NameNode.
               while (targetDeployment == -1 || targetDeployment == instance.getDeploymentNumber()) {
-                targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments() + 1);
+                targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments());
               }
 
               LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i + "/" + batches.size());
