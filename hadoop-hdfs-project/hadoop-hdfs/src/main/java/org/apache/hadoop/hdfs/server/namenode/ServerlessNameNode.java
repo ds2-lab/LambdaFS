@@ -768,7 +768,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     });
     operations.put("create", this::create);
     operations.put("delete", this::delete);
-    operations.put("getActiveNamenodesForClient", this::getActiveNamenodesForClient);
+    operations.put("getActiveNamenodesForClient", args -> (Serializable)getActiveNamenodesForClient(args));
     operations.put("getBlockLocations", this::getBlockLocations);
     operations.put("getDatanodeReport", this::getDatanodeReport);
     operations.put("getFileInfo", this::getFileInfo);
