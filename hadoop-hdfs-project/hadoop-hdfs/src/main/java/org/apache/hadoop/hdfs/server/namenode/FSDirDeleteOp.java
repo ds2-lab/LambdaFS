@@ -309,75 +309,72 @@ class FSDirDeleteOp {
               }
             }
 
-            ExecutorService executorService = Executors.newFixedThreadPool(batches.size() - 1);
-            ServerlessInvokerBase<JsonObject> serverlessInvoker = instance.getServerlessInvoker();
-            // final HashMap<String, Future<Boolean>> futures = new HashMap<>();
             ArrayList<Future> remoteBarrier = new ArrayList<>();
-            final String serverlessEndpointBase = instance.getServerlessEndpointBase();
-            String[] localBatch = batches.get(0);
-            LOG.debug("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
-            for (int i = 1; i < batches.size(); i++) {
-              String[] batch = batches.get(i);
-              String requestId = UUID.randomUUID().toString();
+            // It's possible that we could end up with just one batch (or maybe none) if the directory contains
+            // a bunch of directories, rather than actual files. So, let's make sure we have multiple batches
+            // to process before trying to offload batches to other NNs.
+            if (batches.size() > 1) {
+              ExecutorService executorService = Executors.newFixedThreadPool(batches.size() - 1);
+              ServerlessInvokerBase<JsonObject> serverlessInvoker = instance.getServerlessInvoker();
+              // final HashMap<String, Future<Boolean>> futures = new HashMap<>();
+              final String serverlessEndpointBase = instance.getServerlessEndpointBase();
+              LOG.debug("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
+              for (int i = 1; i < batches.size(); i++) {
+                String[] batch = batches.get(i);
+                String requestId = UUID.randomUUID().toString();
 
-              ArgumentContainer argumentContainer = new ArgumentContainer();
-              argumentContainer.addPrimitive("subtreeRootId", subTreeRootID);
-              argumentContainer.addPrimitive("leaderNameNodeID", instance.getId());
-              argumentContainer.addNonByteArray("pathsJson", batch);
+                ArgumentContainer argumentContainer = new ArgumentContainer();
+                argumentContainer.addPrimitive("subtreeRootId", subTreeRootID);
+                argumentContainer.addPrimitive("leaderNameNodeID", instance.getId());
+                argumentContainer.addNonByteArray("pathsJson", batch);
 
-              int targetDeployment = -1;
+                int targetDeployment = -1;
 
-              // Randomly pick a deployment different from our own so that we don't invoke ourselves, as that
-              // would defeat the purpose of offloading/batching these delete operations to another NameNode.
-              while (targetDeployment == -1 || targetDeployment == instance.getDeploymentNumber()) {
-                targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments());
+                // Randomly pick a deployment different from our own so that we don't invoke ourselves, as that
+                // would defeat the purpose of offloading/batching these delete operations to another NameNode.
+                while (targetDeployment == -1 || targetDeployment == instance.getDeploymentNumber()) {
+                  targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments());
+                }
+
+                LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i + "/" + batches.size());
+
+                int finalTargetDeployment = targetDeployment;
+                Future<Boolean> future = executorService.submit(() -> {
+                  JsonObject response = serverlessInvoker.invokeNameNodeViaHttpPost(
+                          "subtreeDeleteSubOperation", serverlessEndpointBase, new HashMap<>(),
+                          argumentContainer, requestId, finalTargetDeployment);
+
+                  // Attempt to extract the result. If it is null, then return false. Otherwise, return the result.
+                  Object result = serverlessInvoker.extractResultFromJsonResponse(response);
+                  if (result == null) return false;
+                  return (boolean) result;
+                });
+
+                // futures.put(requestId, future);
+                remoteBarrier.add(future);
               }
-
-              LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i + "/" + batches.size());
-
-              int finalTargetDeployment = targetDeployment;
-              Future<Boolean> future = executorService.submit(() -> {
-                JsonObject response = serverlessInvoker.invokeNameNodeViaHttpPost(
-                        "subtreeDeleteSubOperation", serverlessEndpointBase, new HashMap<>(),
-                        argumentContainer, requestId, finalTargetDeployment);
-
-                // Attempt to extract the result. If it is null, then return false. Otherwise, return the result.
-                Object result = serverlessInvoker.extractResultFromJsonResponse(response);
-                if (result == null) return false;
-                return (boolean)result;
-              });
-
-              // futures.put(requestId, future);
-              remoteBarrier.add(future);
+            } else {
+              LOG.warn("We somehow ended up with just one batch. No need to offload deletes to other NNs.");
             }
 
-            // Process the local batch of deletes.
-            LOG.debug("Finished off-loading batched deletes to other NameNodes. Processing local batch now.");
-            for (String path : localBatch) {
-              Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
-              barrier.add(f);
-            }
-
-//            boolean localSuccess = processResponses(barrier);
-//
-//            if (localSuccess) {
-//              LOG.debug("Local batch of deletes executed successfully.");
-//            } else {
-//              LOG.error("Local batch of deletes FAILED.");
-//              // TODO: What to do about off-loaded/batched deletes?
-//              return false;
-//            }
-//
-//            boolean remoteSucess = processResponses(remoteBarrier);
-//
-//            if (remoteSucess) {
-//              LOG.debug("Remote batch of deletes executed successfully.");
-//            } else {
-//              LOG.error("Remote batch of deletes FAILED.");
-//              return false;
-//            }
-
+            // Add all of the futures corresponding to NameNode invocations to the barrier. There could 0 or more.
             barrier.addAll(remoteBarrier);
+
+            // It is theoretically possible that we end up with zero batches. This could occur if the directory
+            // we're processing exclusively contains other directories and no files. So, let's make sure we
+            // have at least one batch before trying to process a batch locally.
+            if (batches.size() >= 1) {
+              LOG.debug("Processing local batch now.");
+              // Process the local batch of deletes.
+              String[] localBatch = batches.get(0);
+              LOG.debug("Finished off-loading batched deletes to other NameNodes. Processing local batch now.");
+              for (String path : localBatch) {
+                Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
+                barrier.add(f);
+              }
+            } else {
+              LOG.warn("In fact, we somehow ended up with zero batches. No need to process deletes locally either.");
+            }
           }
         }
 
