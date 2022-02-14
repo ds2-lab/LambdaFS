@@ -226,6 +226,13 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_OPENWHISK_AUTH_DEFAULT = "789c46b1-71f6-4ed5-8c54-816aa4f8c502:abczO3xZCLrMN6v2BKK1dXYFpXlPkccOFqm12CdAsMgRU4VrNZ9lyGVCGuMDGIwP";
 
   /**
+   * When deleting the contents of a directory one-by-one, we will partition that operation across multiple
+   * Serverless NameNodes to execute it in-parallel. We send each other Serverless NN this many paths to delete.
+   */
+  public static final String SERVERLESS_SUBTREE_DELETE_BATCH_SIZE = "serverless.subtree.delete.batchsize";
+  public static final int SERVERLESS_SUBTREE_DELETE_BATCH_SIZE_DEFAULT = 128;
+
+  /**
    * When using local mode, the NameNode container for the first NameNode deployment (i.e., namenode0) will
    * listen on this port. The containers for subsequent deployments will listen on this port +1, +2, etc.
    */

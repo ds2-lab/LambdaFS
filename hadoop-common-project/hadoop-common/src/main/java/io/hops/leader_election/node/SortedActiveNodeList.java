@@ -15,10 +15,11 @@
  */
 package io.hops.leader_election.node;
 
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-public interface SortedActiveNodeList {
+public interface SortedActiveNodeList extends Serializable {
 
   public boolean isEmpty();
 

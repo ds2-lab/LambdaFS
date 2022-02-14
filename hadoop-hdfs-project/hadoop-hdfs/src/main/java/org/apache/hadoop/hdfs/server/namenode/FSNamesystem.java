@@ -523,6 +523,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
               DFS_SUBTREE_EXECUTOR_LIMIT_DEFAULT));
       FSDirDeleteOp.BIGGEST_DELETABLE_DIR = conf.getLong(DFS_DIR_DELETE_BATCH_SIZE,
               DFS_DIR_DELETE_BATCH_SIZE_DEFAULT);
+      FSDirDeleteOp.SUBTREE_DELETE_BATCH_SIZE = conf.getInt(SERVERLESS_SUBTREE_DELETE_BATCH_SIZE,
+              SERVERLESS_SUBTREE_DELETE_BATCH_SIZE_DEFAULT);
 
       LOG.info("fsOwner             = " + fsOwner);
       LOG.info("superGroup          = " + superGroup);

@@ -25,6 +25,8 @@ import java.util.*;
 //TODO change it to avoid going through the proto when it is not needed
 public class SortedActiveNodeListPBImpl implements SortedActiveNodeList {
 
+  private static final long serialVersionUID = 5976014425827924826L;
+
   SortedActiveNodeListProto proto =
       SortedActiveNodeListProto.getDefaultInstance();
   SortedActiveNodeListProto.Builder builder = null;

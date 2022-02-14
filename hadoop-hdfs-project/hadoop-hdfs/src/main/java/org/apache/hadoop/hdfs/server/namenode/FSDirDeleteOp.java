@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hdfs.server.namenode;
 
+import com.google.gson.JsonObject;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.hdfs.entity.*;
@@ -38,6 +39,8 @@ import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
+import org.apache.hadoop.hdfs.serverless.invoking.ArgumentContainer;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.ipc.RetriableException;
 import org.apache.hadoop.ipc.Server;
@@ -45,9 +48,7 @@ import org.apache.hadoop.util.ChunkedArrayList;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 import static org.apache.hadoop.util.Time.now;
@@ -56,6 +57,13 @@ class FSDirDeleteOp {
   public static final Log LOG = LogFactory.getLog(FSDirDeleteOp.class);
   
   public static long BIGGEST_DELETABLE_DIR;
+
+  /**
+   * When deleting the contents of a directory one-by-one, we will partition that operation across multiple
+   * Serverless NameNodes to execute it in-parallel. We send each other Serverless NN this many paths to delete.
+   */
+  public static int SUBTREE_DELETE_BATCH_SIZE;
+
   /**
    * Delete the target directory and collect the blocks under it
    *
@@ -93,10 +101,8 @@ class FSDirDeleteOp {
    * For small directory or file the deletion is done in one shot.
    *
    * @param fsn namespace
-   * @param src path name to be deleted
+   * @param srcArg path name to be deleted
    * @param recursive boolean true to apply to all sub-directories recursively
-   * @param logRetryCache whether to record RPC ids in editlog for retry cache
-   *          rebuilding
    * @return blocks collected from the deleted path
    * @throws IOException
    */
@@ -214,6 +220,22 @@ class FSDirDeleteOp {
     }
   }
 
+//  /**
+//   * Process a batch of paths to delete.
+//   *
+//   * @param paths The paths to delete.
+//   * @param barrier Barrier containing Futures, where the Futures represent individual deletions.
+//   * @param fsn Reference to the local FSNamesystem instance.
+//   * @param subTreeRootID INode ID of the root of the subtree.
+//   */
+//  private static void deleteBatch(Collection<String> paths, List<Future> barrier, final FSNamesystem fsn,
+//                                     final long subTreeRootID) {
+//    for (final String path : paths) {
+//      Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
+//      barrier.add(f);
+//    }
+//  }
+
   private static boolean deleteTreeLevel(final FSNamesystem fsn, final String subtreeRootPath, final long subTreeRootID,
                                         final AbstractFileTree.FileTree fileTree, int level) throws IOException {
       LOG.debug("Deleting tree level " + level + " of tree rooted at " + subtreeRootPath + " (ID = " +
@@ -224,8 +246,9 @@ class FSDirDeleteOp {
       List<ProjectedINode> emptyDirs = new ArrayList();
 
       for (final ProjectedINode dir : fileTree.getDirsByLevel(level)) {
-        LOG.debug("Children in directory (id=" + dir.getId() + "): " + fileTree.countChildren(dir.getId()));
-        if (fileTree.countChildren(dir.getId()) <= BIGGEST_DELETABLE_DIR) {
+        int numChildren = fileTree.countChildren(dir.getId());
+        LOG.debug("Children in directory (id=" + dir.getId() + "): " + numChildren);
+        if (numChildren <= BIGGEST_DELETABLE_DIR) {
           LOG.debug("Directory " + dir.getId() + " has less than " + BIGGEST_DELETABLE_DIR
                   + " children. Can delete it directly.");
           final String path = fileTree.createAbsolutePath(subtreeRootPath, dir);
@@ -233,20 +256,130 @@ class FSDirDeleteOp {
           Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
           barrier.add(f);
         } else {
-          //delete the content of the directory one by one.
-          LOG.debug("Directory " + dir.getId() + " has too many child files. Deleting content of directory one-by-one.");
+          // Delete the content of the directory one by one.
+          LOG.debug("Directory " + dir.getId() + " has too many child files (" + numChildren +
+                  "). Deleting content of directory one-by-one.");
 
-          for (final ProjectedINode inode : fileTree.getChildren(dir.getId())) {
-            LOG.debug("    Trying to delete child INode " + inode.getName() + " (id=" + inode.getId() + ").");
-            if (!inode.isDirectory()) {
-              // LOG.debug("        INode " + inode.getName() + "(id=" + inode.getId() + ") is NOT a directory.");
-              final String path = fileTree.createAbsolutePath(subtreeRootPath, inode);
+          Collection<ProjectedINode> children = fileTree.getChildren(dir.getId());
+
+          ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+
+          // If we cannot get the instance for some reason (shouldn't happen), or if there just aren't enough files
+          // to batch across multiple NNs, then we'll perform the delete operations locally.
+          if (instance == null || children.size() < SUBTREE_DELETE_BATCH_SIZE) {
+            // These if statements are just to determine what message to log.
+            if (instance == null)
+              LOG.error("Cannot retrieve singleton ServerlessNameNode instance for batched subtree delete.");
+            else
+              LOG.debug("There are not enough files to batch across multiple NNs ("
+                      + "Performing all deletes locally.");
+
+            for (final ProjectedINode inode : children) {
+              LOG.debug("    Trying to delete child INode " + inode.getName() + " (id=" + inode.getId() + ").");
+              if (!inode.isDirectory()) {
+                final String path = fileTree.createAbsolutePath(subtreeRootPath, inode);
+                Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
+                barrier.add(f);
+              }
+            }
+            // emptyDirs.add(dir);
+          }
+          else {
+            List<String[]> batches = new ArrayList<>();
+            String[] currentBatch = new String[SUBTREE_DELETE_BATCH_SIZE];
+
+            LOG.debug("Splitting the " + children.size() + " child files into " +
+                    children.size() / SUBTREE_DELETE_BATCH_SIZE + " batches of size ~" + SUBTREE_DELETE_BATCH_SIZE + ".");
+
+            // Create batches of paths of size 'SUBTREE_DELETE_BATCH_SIZE'.
+            // We will partition these batches across multiple other NameNodes in order to complete them in-parallel.
+            // I do this manually rather than using the `partition` function from commons.collections or Guava so that
+            // we can construct the paths for the various nodes as we go.
+            int idx = 0;
+            for (ProjectedINode node : children) {
+              if (node.isDirectory()) continue; // Skip directories like we do when performing the deletes locally.
+
+              final String path = fileTree.createAbsolutePath(subtreeRootPath, node);
+              currentBatch[idx++] = path;
+
+              if (idx >= SUBTREE_DELETE_BATCH_SIZE) {
+                batches.add(currentBatch);
+                currentBatch = new String[SUBTREE_DELETE_BATCH_SIZE];
+                idx = 0;
+              }
+            }
+
+            ExecutorService executorService = Executors.newFixedThreadPool(batches.size() - 1);
+            ServerlessInvokerBase<JsonObject> serverlessInvoker = instance.getServerlessInvoker();
+            // final HashMap<String, Future<Boolean>> futures = new HashMap<>();
+            ArrayList<Future> remoteBarrier = new ArrayList<>();
+            final String serverlessEndpointBase = instance.getServerlessEndpointBase();
+            String[] localBatch = batches.get(0);
+            LOG.debug("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
+            for (int i = 1; i < batches.size(); i++) {
+              String[] batch = batches.get(i);
+              String requestId = UUID.randomUUID().toString();
+
+              ArgumentContainer argumentContainer = new ArgumentContainer();
+              argumentContainer.addPrimitive("subtreeRootId", subTreeRootID);
+              argumentContainer.addPrimitive("leaderNameNodeID", instance.getId());
+              argumentContainer.addNonByteArray("pathsJson", batch);
+
+              int targetDeployment = -1;
+
+              // Randomly pick a deployment different from our own so that we don't invoke ourselves, as that
+              // would defeat the purpose of offloading/batching these delete operations to another NameNode.
+              while (targetDeployment == -1 || targetDeployment == instance.getDeploymentNumber()) {
+                targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments() + 1);
+              }
+
+              int finalTargetDeployment = targetDeployment;
+              Future<Boolean> future = executorService.submit(() -> {
+                JsonObject response = serverlessInvoker.invokeNameNodeViaHttpPost(
+                        "subtreeDeleteSubOperation", serverlessEndpointBase, new HashMap<>(),
+                        argumentContainer, requestId, finalTargetDeployment);
+
+                // Attempt to extract the result. If it is null, then return false. Otherwise, return the result.
+                Object result = serverlessInvoker.extractResultFromJsonResponse(response);
+                if (result == null) return false;
+                return (boolean)result;
+              });
+
+              // futures.put(requestId, future);
+              remoteBarrier.add(future);
+            }
+
+            // Process the local batch of deletes.
+            LOG.debug("Finished off-loading batched deletes to other NameNodes. Processing local batch now.");
+            for (String path : localBatch) {
               Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
               barrier.add(f);
             }
+
+//            boolean localSuccess = processResponses(barrier);
+//
+//            if (localSuccess) {
+//              LOG.debug("Local batch of deletes executed successfully.");
+//            } else {
+//              LOG.error("Local batch of deletes FAILED.");
+//              // TODO: What to do about off-loaded/batched deletes?
+//              return false;
+//            }
+//
+//            boolean remoteSucess = processResponses(remoteBarrier);
+//
+//            if (remoteSucess) {
+//              LOG.debug("Remote batch of deletes executed successfully.");
+//            } else {
+//              LOG.error("Remote batch of deletes FAILED.");
+//              return false;
+//            }
+
+            barrier.addAll(remoteBarrier);
           }
-          emptyDirs.add(dir);
         }
+
+        emptyDirs.add(dir);
       }
 
       LOG.debug("There are " + barrier.size() + " child files to delete next.");
@@ -425,8 +558,6 @@ class FSDirDeleteOp {
    * @param fsn namespace
    * @param src path name to be deleted
    * @param iip the INodesInPath instance containing all the INodes for the path
-   * @param logRetryCache whether to record RPC ids in editlog for retry cache
-   *          rebuilding
    * @return blocks collected from the deleted path
    * @throws IOException
    */

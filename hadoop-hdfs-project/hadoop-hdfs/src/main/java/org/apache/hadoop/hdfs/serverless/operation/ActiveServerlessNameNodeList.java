@@ -18,14 +18,14 @@ import java.util.*;
  * is in this list does not guarantee that it is running. The list is based on the metadata available in
  * intermediate storage. It is periodically updated by the NameNode's worker thread.
  */
-public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Serializable {
+public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
     public static final Logger LOG = LoggerFactory.getLogger(ActiveServerlessNameNodeList.class.getName());
     private static final long serialVersionUID = -1602619427888192710L;
 
     /**
      * The active NameNodes partitioned by deployment.
      */
-    private HashMap<Integer, List<ActiveNode>> activeNodesPerDeployment;
+    private final HashMap<Integer, List<ActiveNode>> activeNodesPerDeployment;
 
     // Initially unsorted, but gets sorted getSortedActiveNodes() gets called.
     // Becomes unsorted again once refresh() is called.

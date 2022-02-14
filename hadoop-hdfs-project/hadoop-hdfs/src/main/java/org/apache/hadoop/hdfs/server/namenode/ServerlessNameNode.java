@@ -288,6 +288,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private ServerlessInvokerBase<JsonObject> serverlessInvoker;
 
   /**
+   * The base endpoint to which we direct requests when invoking serverless functions.
+   */
+  private String serverlessEndpointBase;
+
+  /**
    * The time at which this instance of the NameNode began executing.
    *
    * This is used to initially grab StorageReport instances from NDB. In regular HopsFS, NameNodes
@@ -742,7 +747,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       abandonBlock(args);
       return null;
     });
-    operations.put("addBlock", args -> (Serializable)addBlock(args));
+    operations.put("addBlock", this::addBlock);
     operations.put("addGroup", args -> {
       addGroup(args);
       return null;
@@ -755,24 +760,24 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       addUserToGroup(args);
       return null;
     });
-    operations.put("append", args -> (Serializable)append(args));
-    operations.put("complete", args -> (Serializable)complete(args));
+    operations.put("append", this::append);
+    operations.put("complete", this::complete);
     operations.put("concat", args -> {
       concat(args);
       return null;
     });
-    operations.put("create", args -> (Serializable)create(args));
-    operations.put("delete", args -> (Serializable)delete(args));
-    operations.put("getActiveNamenodesForClient", args -> (Serializable)getActiveNamenodesForClient(args));
-    operations.put("getBlockLocations", args -> (Serializable)getBlockLocations(args));
-    operations.put("getDatanodeReport", args -> (Serializable)getDatanodeReport(args));
-    operations.put("getFileInfo", args -> (Serializable)getFileInfo(args));
-    operations.put("getFileLinkInfo", args -> (Serializable)getFileLinkInfo(args));
-    operations.put("getListing", args -> (Serializable)getListing(args));
-    operations.put("getServerDefaults", args -> (Serializable)getServerDefaults(args));
-    operations.put("getStats", args -> (Serializable)getStats(args));
-    operations.put("isFileClosed", args -> (Serializable)isFileClosed(args));
-    operations.put("mkdirs", args -> (Serializable)mkdirs(args));
+    operations.put("create", this::create);
+    operations.put("delete", this::delete);
+    operations.put("getActiveNamenodesForClient", this::getActiveNamenodesForClient);
+    operations.put("getBlockLocations", this::getBlockLocations);
+    operations.put("getDatanodeReport", this::getDatanodeReport);
+    operations.put("getFileInfo", this::getFileInfo);
+    operations.put("getFileLinkInfo", this::getFileLinkInfo);
+    operations.put("getListing", this::getListing);
+    operations.put("getServerDefaults", this::getServerDefaults);
+    operations.put("getStats", this::getStats);
+    operations.put("isFileClosed", this::isFileClosed);
+    operations.put("mkdirs", this::mkdirs);
     operations.put("ping", args ->  {
       LOG.debug("We've been pinged!");
       return null;
@@ -809,14 +814,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       setPermission(args);
       return null;
     });
-    operations.put("subtreeDeleteSubOperation", args -> (Serializable)subtreeDeleteSubOperation(args));
-    operations.put("truncate", args -> (Serializable)truncate(args));
+    operations.put("subtreeDeleteSubOperation", this::subtreeDeleteSubOperation);
+    operations.put("truncate", this::truncate);
     operations.put("updatePipeline", args -> {
       updatePipeline(args);
       return null;
     });
-    operations.put("updateBlockForPipeline", args -> (Serializable)updateBlockForPipeline(args));
-    operations.put("versionRequest", args -> (Serializable)versionRequest(args));
+    operations.put("updateBlockForPipeline", this::updateBlockForPipeline);
+    operations.put("versionRequest", this::versionRequest);
   }
 
   /**
@@ -2311,6 +2316,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
     this.serverlessInvoker.setConfiguration(conf, "NN" + deploymentNumber + "-" + getId());
     this.serverlessInvoker.setIsClientInvoker(false); // We are not a client.
+    this.serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 
     this.nameNodeTCPClient = new NameNodeTCPClient(conf,this, nameNodeID, deploymentNumber, actionMemory);
 
@@ -2565,9 +2571,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Return the Serverless Invoker object used by this NameNode.
    */
-  public ServerlessInvokerBase<JsonObject> getServerlessInvoker() {
-    return serverlessInvoker;
-  }
+  public ServerlessInvokerBase<JsonObject> getServerlessInvoker() { return serverlessInvoker; }
+
+  public String getServerlessEndpointBase() { return serverlessEndpointBase; }
 
   /**
    * Return the EventManager instance.
