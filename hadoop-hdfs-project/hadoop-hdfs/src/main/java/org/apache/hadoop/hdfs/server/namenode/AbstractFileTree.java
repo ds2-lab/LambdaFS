@@ -108,7 +108,7 @@ abstract class AbstractFileTree {
       this.inheritedStoragePolicy = inheritedStoragePolicy;
 
       int parentDeployment = instance.getMappedDeploymentNumber(parent.getId());
-      LOG.debug("Parent INode " + parent.toString() + " is mapped to deployment " + parentDeployment);
+      // LOG.debug("Parent INode " + parent.toString() + " is mapped to deployment " + parentDeployment);
       associatedDeployments.add(parentDeployment);
     }
     

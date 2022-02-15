@@ -1629,7 +1629,6 @@ public class FSDirectory implements Closeable {
     /** @return the {@link INodesInPath} containing all inodes in the path. */
   public INodesInPath getINodesInPath(String path, boolean resolveLink) throws UnresolvedLinkException, StorageException,
       TransactionContextException {
-    LOG.debug("Getting INodes in path: " + path);
 
     // In this new strategy, we first check for INodes in our local cache.
     // We retrieve any missing INodes from intermediate storage.
@@ -1639,11 +1638,6 @@ public class FSDirectory implements Closeable {
     INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), components, resolveLink, namesystem.getMetadataCache());
 
     int smallestLength = Math.min(components.length, pathINodes.length());
-
-    LOG.debug("Finished resolving INodes. INodesInPath contains " + pathINodes.length()
-            + " INodes. Processing INodes for caching purposes now...");
-    LOG.debug("paths.length: " + paths.length + ", pathINodes.length(): " + pathINodes.length()
-            + ", components.length: " + components.length);
 
     // We initially assign the root partition ID to `lastPartitionId`.
     for (int i = 0; i < smallestLength; i++) {
@@ -1664,29 +1658,8 @@ public class FSDirectory implements Closeable {
       else
         fullPathToComponent = constructPath(components, 0, i + 1);
 
-      LOG.debug("Processing INode '" + component + "' now. INode is null: " + (node == null));
-
-      if (node != null) {
-        // Just used for debugging. Will eventually remove this code.
-        if (i == 0) {
-          if (node.isRoot())
-            LOG.debug("First INode in path is root.");
-          else
-            LOG.debug("First INode in path: " + node.toDetailString());
-        }
-
-
-        if (namesystem.shouldCacheLocally(node)) {
-          LOG.debug("Caching INode '" + component + "' in metadata cache under key '"
-                  + fullPathToComponent + "' now...");
-          namesystem.getMetadataCache().put(fullPathToComponent, node.getId(), node);
-        } else {
-          LOG.debug("INode " + node + " should be cached by NameNode " +
-                  namesystem.getMappedServerlessFunction(node) + ", not us.");
-        }
-      }
-      else {
-        LOG.warn("INode is null. Path component: " + component + ", full path: " + fullPathToComponent);
+      if (node != null && namesystem.shouldCacheLocally(node)) {
+        namesystem.getMetadataCache().put(fullPathToComponent, node.getId(), node);
       }
     }
 
