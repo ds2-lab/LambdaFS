@@ -255,7 +255,8 @@ class FSDirDeleteOp {
 
           Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
           barrier.add(f);
-        } else {
+        }
+        else {
           // Delete the content of the directory one by one.
           LOG.debug("Directory " + dir.getId() + " has too many child files (" + numChildren +
                   "). Deleting content of directory one-by-one.");
@@ -282,7 +283,6 @@ class FSDirDeleteOp {
                 barrier.add(f);
               }
             }
-            // emptyDirs.add(dir);
           }
           else {
             List<String[]> batches = new ArrayList<>();
@@ -376,9 +376,9 @@ class FSDirDeleteOp {
               LOG.warn("In fact, we somehow ended up with zero batches. No need to process deletes locally either.");
             }
           }
-        }
 
-        emptyDirs.add(dir);
+          emptyDirs.add(dir);
+        }
       }
 
       LOG.debug("There are " + barrier.size() + " child files to delete next.");
