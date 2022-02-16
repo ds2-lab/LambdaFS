@@ -136,7 +136,7 @@ class FSDirDeleteOp {
       //this is because before the deletion is done the quota manager has to apply all the outstanding
       //quota updates for the directory. The current design of the quota manager is not distributed.
       //HopsFS clients send the delete operations to the leader namenode if quota is enabled
-      if (!fsn.isLeader()) {
+      if (!fsn.isLeader() && fsd.isQuotaEnabled()) {
         throw new QuotaUpdateException("Unable to delete the file " + src
             + " because Quota is enabled and I am not the leader");
       }
