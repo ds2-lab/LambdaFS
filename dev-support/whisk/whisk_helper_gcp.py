@@ -74,7 +74,7 @@ if __name__ == "__main__":
     concurrency = arguments.concurrency
     memory = arguments.memory
     #tag = parser.tag
-    kind = parser.kind
+    kind = arguments.kind
 
     # Only one of `do_create` and `do_update` should be true.
     if (do_create and do_update):
