@@ -59,6 +59,9 @@ if __name__ == "__main__":
     parser.add_argument("-j", "--path", dest = "jar_path", type = str, default = "/home/ubuntu/repos/hops/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-3.2.0.3-SNAPSHOT.jar",
         help = "Path to the JAR file containing the ServerlessNameNode code.")
 
+    #parser.add_argument("-t", "--tag", dest = "tag", type = str, default = "latest", help = "Docker image tag. Defaults to 'latest'")
+    parser.add_argument("-k", "--kind", dest = "kind", type = str, default = "generic-namenode:10", help = "Options are 'generic-namenode:10' and 'generic-namenode:5'")
+
     arguments = parser.parse_args()
 
     num_functions = arguments.num_functions
@@ -70,6 +73,8 @@ if __name__ == "__main__":
     jar_path = arguments.jar_path
     concurrency = arguments.concurrency
     memory = arguments.memory
+    #tag = parser.tag
+    kind = parser.kind
 
     # Only one of `do_create` and `do_update` should be true.
     if (do_create and do_update):
@@ -89,11 +94,11 @@ if __name__ == "__main__":
         if do_create:
             logger.debug("Creating function with name \"%s\"" % function_name)
             #command = "wsk -i action create /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
-            command = "wsk -i action create %s %s --main %s --web true --concurrency %d --kind generic-namenode --memory %d --param actionMemory %d" % (function_name, jar_path, main_class, concurrency, memory, memory)
+            command = "wsk -i action create %s %s --main %s --web true --concurrency %d --kind %s --memory %d --param actionMemory %d" % (function_name, jar_path, main_class, concurrency, kind, memory, memory)
         else:
             logger.debug("Updating function with name \"%s\"" % function_name)
             #command = "wsk -i action update /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
-            command = "wsk -i action update %s %s --main %s --web true --concurrency %d --kind generic-namenode --memory %d --param actionMemory %d" % (function_name, jar_path, main_class, concurrency, memory, memory)
+            command = "wsk -i action update %s %s --main %s --web true --concurrency %d --kind %s --memory %d --param actionMemory %d" % (function_name, jar_path, main_class, concurrency, kind, memory, memory)
 
         split_command = command.split(" ")
 
