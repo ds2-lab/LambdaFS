@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-n", "--num-vms", type = int, dest = "num_vms", default = 1, help = "Number of VMs to create.")
     parser.add_argument("-i", "--image", type = str, default = "ndb-datanode", help = "Machine image to use for the DataNode VMs")
-    parser.add_argument("-t", "--machine-type", type = str, dest = "machine_type", default = "e2-standard-16", help = "Google Compute Engine machine type to use.")
+    parser.add_argument("-t", "--machine-type", type = str, dest = "machine_type", default = "c2-standard-16", help = "Google Compute Engine machine type to use.")
     parser.add_argument("-o", "--output", type = str, default = "/var/lib/mysql-cluster/config.ini", help = "Filepath for the config.ini file that gets generated after creating the VMs.")
     parser.add_argument("-mii", "--manager-internal-ip", type = str, dest = "manager_internal_ip", default = "10.150.0.18", help = "Internal IP address of the MySQL Cluster NDB Manager Node.")
     parser.add_argument("-c", "--client-ip", type = str, dest = "hopsfs_client_ip", default = "10.150.0.17", help = "Internal IP of the HopsFS client node.")
