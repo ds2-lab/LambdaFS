@@ -758,7 +758,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * Clear both HTTP and TCP latency values.
      */
-    public void clearLatencyValues() { this.latency.clear();}
+    public void clearLatencyValues() {
+        this.latency.clear();
+        this.latencyHttp.clear();
+        this.latencyTcp.clear();
+        this.latencyWithWindow.clear();
+    }
 
     /**
      * Clear HTTP latency values.
