@@ -114,28 +114,28 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * Statistics about per-invocation latency. This includes both TCP and HTTP requests.
      */
-    private DescriptiveStatistics latency;
+    private final DescriptiveStatistics latency;
 
     /**
      * Statistics about per-invocation latency. This includes both TCP and HTTP requests.
      * This instance has a window so that we can calculate a rolling average.
      */
-    private DescriptiveStatistics latencyWithWindow;
+    private final DescriptiveStatistics latencyWithWindow;
 
     /**
      * Statistics about per-invocation latency. This is just for TCP requests.
      */
-    private DescriptiveStatistics latencyTcp;
+    private final DescriptiveStatistics latencyTcp;
 
     /**
      * Statistics about per-invocation latency. This is just for HTTP requests.
      */
-    private DescriptiveStatistics latencyHttp;
+    private final DescriptiveStatistics latencyHttp;
 
     /**
      * For debugging, keep track of the operations we've performed.
      */
-    private HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
+    private final HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
 
     /**
      * The number of operations we've issued to a NameNode.
@@ -211,6 +211,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.latency = new DescriptiveStatistics();
         this.latencyTcp = new DescriptiveStatistics();
         this.latencyHttp = new DescriptiveStatistics();
+        this.latencyWithWindow = new DescriptiveStatistics();
     }
 
     public void setConsistencyProtocolEnabled(boolean enabled) {
@@ -729,25 +730,30 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     /**
-     * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics objects.
+     * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics object.
      */
     public DescriptiveStatistics getLatencyStatistics() {
         return latency.copy();
     }
 
     /**
-     * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics objects.
+     * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics object.
      */
     public DescriptiveStatistics getLatencyHttpStatistics() {
         return latencyHttp.copy();
     }
 
     /**
-     * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics objects.
+     * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics object.
      */
     public DescriptiveStatistics getLatencyTcpStatistics() {
         return latencyTcp.copy();
     }
+
+    /**
+     * Return a copy of the moving window latency (TCP & HTTP) DescriptiveStatistics object.
+     */
+    public DescriptiveStatistics getLatencyWithWindowStatistics() { return this.latencyWithWindow.copy(); }
 
     /**
      * Clear both HTTP and TCP latency values.
