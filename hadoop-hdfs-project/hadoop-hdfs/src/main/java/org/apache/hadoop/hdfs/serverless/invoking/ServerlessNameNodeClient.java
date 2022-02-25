@@ -8,6 +8,7 @@ import io.hops.metadata.hdfs.entity.MetaStatus;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
 import org.apache.hadoop.fs.*;
@@ -111,6 +112,21 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     protected boolean consistencyProtocolEnabled = true;
 
     /**
+     * Statistics about per-invocation latency. This includes both TCP and HTTP requests.
+     */
+    private DescriptiveStatistics latency;
+
+    /**
+     * Statistics about per-invocation latency. This is just for TCP requests.
+     */
+    private DescriptiveStatistics latencyTcp;
+
+    /**
+     * Statistics about per-invocation latency. This is just for HTTP requests.
+     */
+    private DescriptiveStatistics latencyHttp;
+
+    /**
      * For debugging, keep track of the operations we've performed.
      */
     private HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
@@ -140,6 +156,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         this.tcpServer = new HopsFSUserServer(conf, this);
         this.tcpServer.startServer();
+
+        this.latency = new DescriptiveStatistics();
+        this.latencyTcp = new DescriptiveStatistics();
+        this.latencyHttp = new DescriptiveStatistics();
     }
 
     public void setConsistencyProtocolEnabled(boolean enabled) {
@@ -179,7 +199,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                        ArgumentContainer opArguments,
                                        int targetDeployment)
             throws InterruptedException, ExecutionException, IOException {
-        long opStart = Time.getUtcTime();
+        long opStart = System.currentTimeMillis();
         String requestId = UUID.randomUUID().toString();
 
         JsonObject payload = new JsonObject();
@@ -200,11 +220,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         while (backoffInterval >= 0) {
             JsonObject response;
 
+            long localStart = -1L;
             try {
+                localStart = System.currentTimeMillis();
                 LOG.debug("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
                         requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" +
                         exponentialBackOff.getMaximumRetries() + ". Time elapsed so far: " +
-                        (Time.getUtcTime() - opStart) + " ms.");
+                        (System.currentTimeMillis() - opStart) + " ms.");
                 response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload,
                         serverlessInvoker.httpTimeoutMilliseconds);
 
@@ -242,7 +264,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     }
                 }
 
-                long opEnd = Time.getUtcTime();
+                long localEnd = System.currentTimeMillis();
+                long opEnd = System.currentTimeMillis();
+
+                latency.addValue(localEnd - localStart);
+                latencyTcp.addValue(localEnd - localStart);
 
                 // Collect and save/record metrics.
                 long nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
@@ -283,7 +309,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // In either scenario, we simply fall back to HTTP.
                 LOG.error("Encountered IOException while trying to issue TCP request for operation " +
                         operationName + ":", ex);
-                LOG.error("Falling back to HTTP instead. Time elapsed: " + (Time.getUtcTime() - opStart) + " ms.");
+                LOG.error("Falling back to HTTP instead. Time elapsed: " + (System.currentTimeMillis() - opStart) + " ms.");
+
+                long startTime = System.currentTimeMillis();
 
                 // Issue the HTTP request. This function will handle retries and timeouts.
                 response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
@@ -294,7 +322,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         requestId,
                         targetDeployment);
 
-                long opEnd = Time.getUtcTime();
+                long endTime = System.currentTimeMillis();
+
+                latency.addValue(endTime - startTime);
+                latencyHttp.addValue(endTime - startTime);
+
+                long opEnd = System.currentTimeMillis();
                 LOG.debug("Received result from NameNode after falling back to HTTP for operation " +
                         operationName + ". Time elapsed: " + (opEnd - opStart) + ".");
 
@@ -374,7 +407,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
 
-        long startTime = Time.getUtcTime();
+        long startTime = System.currentTimeMillis();
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
@@ -385,6 +418,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 opArguments,
                 requestId,
                 mappedFunctionNumber);
+        
+        long endTime = System.currentTimeMillis();
+
+        latency.addValue(endTime - startTime);
+        latencyHttp.addValue(endTime - startTime);
 
         LOG.debug("Response: " + response.toString());
 
@@ -411,7 +449,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
-                startTime, Time.getUtcTime(), enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
+                startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                 deployment, true, true,
                 response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(), nameNodeId, cacheMisses, cacheHits);
         operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
@@ -503,6 +541,79 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println(String.format(formatString.toString(), requestsPerNameNode.values().toArray()));
 
         System.out.println("\n==================================================================");
+    }
+
+    /**
+     * Print the average latency.
+     *
+     * If choice <= 0, prints both TCP and HTTP.
+     * If choice == 1, prints just TCP.
+     * If choice > 1, prints just HTTP.
+     * @param choice If choice <= 0, prints both TCP and HTTP. If choice == 1, prints just TCP. If
+     *               choice > 1, prints just HTTP.
+     */
+    public void printLatencyStatistics(int choice) {
+        if (choice <= 0) {
+            LOG.info("AVG Latency: Both: " + latency.getMean() + "ms, TCP: " + latencyTcp.getMean() +
+                    "ms, HTTP: " + latencyHttp.getMean() + "ms");
+        } else if (choice == 1) {
+            LOG.info("AVG Latency (TCP): " + latencyTcp.getMean());
+        } else {
+            LOG.info("AVG Latency (HTTP): " + latencyHttp.getMean());
+        }
+    }
+
+    /**
+     * Print the average, min, max, std. dev of latency.
+     *
+     * If choice <= 0, prints both TCP and HTTP.
+     * If choice == 1, prints just TCP.
+     * If choice > 2, prints just HTTP.
+     * @param choice If choice <= 0, prints both TCP and HTTP. If choice == 1, prints just TCP. If
+     *               choice > 1, prints just HTTP.
+     */
+    public void printLatencyStatisticsDetailed(int choice) {
+        if (choice <= 0) {
+            LOG.info("AVG Latency: Both: " + latency.getMean() + "ms, TCP: " + latencyTcp.getMean() +
+                    "ms, HTTP: " + latencyHttp.getMean() + "ms");
+            LOG.info("Min Latency: Both: " + latency.getMin() + "ms, TCP: " + latencyTcp.getMin() +
+                    "ms, HTTP: " + latencyHttp.getMin() + "ms");
+            LOG.info("Max Latency: Both: " + latency.getMax() + "ms, TCP: " + latencyTcp.getMax() +
+                    "ms, HTTP: " + latencyHttp.getMax() + "ms");
+            LOG.info("STD DEV Latency: Both: " + latency.getStandardDeviation() + "ms, TCP: " +
+                    latencyTcp.getStandardDeviation() + "ms, HTTP: " + latencyHttp.getStandardDeviation() + "ms");
+        } else if (choice == 1) {
+            LOG.info("AVG Latency (TCP): " + latencyTcp.getMean());
+            LOG.info("MIN Latency (TCP): " + latencyTcp.getMin());
+            LOG.info("MAX Latency (TCP): " + latencyTcp.getMax());
+            LOG.info("STD DEV Latency (TCP): " + latencyTcp.getStandardDeviation());
+        } else {
+            LOG.info("AVG Latency (HTTP): " + latencyHttp.getMean());
+            LOG.info("MIN Latency (HTTP): " + latencyHttp.getMin());
+            LOG.info("MAX Latency (HTTP): " + latencyHttp.getMax());
+            LOG.info("STD DEV Latency (HTTP): " + latencyHttp.getStandardDeviation());
+        }
+    }
+
+    /**
+     * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics objects.
+     */
+    public DescriptiveStatistics getLatencyStatistics() {
+        return latency.copy();
+    }
+
+    /**
+     * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics objects.
+     */
+    public DescriptiveStatistics getLatencyHttpStatistics() {
+        return latencyHttp.copy();
+    }
+
+    /**
+     * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics objects.
+     */
+    public DescriptiveStatistics getLatencyTcpStatistics() {
+        return latencyTcp.copy();
     }
 
     /**
