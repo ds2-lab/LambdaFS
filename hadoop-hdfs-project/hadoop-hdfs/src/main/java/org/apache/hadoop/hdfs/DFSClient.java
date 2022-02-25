@@ -32,6 +32,7 @@ import io.hops.transaction.context.EntityContextStat;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.CipherSuite;
@@ -290,6 +291,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient) namenode;
       client.clearOperationsPerformed();
+    } else {
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
     }
   }
 
@@ -1651,6 +1654,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
       client.printOperationsPerformed();
+    } else {
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
     }
   }
 
@@ -1658,6 +1663,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
       client.addOperationPerformed(operationPerformed);
+    } else {
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
     }
   }
 
@@ -1665,6 +1672,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
       client.addOperationPerformeds(operationPerformeds);
+    } else {
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
     }
   }
 
@@ -1675,9 +1684,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
       return client.getOperationsPerformed();
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
     }
-
-    return null;
   }
 
   // Added for debugging serverless NN.
@@ -1685,6 +1696,119 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
       client.printDebugInformation();
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  public void printLatencyStatistics(int choice) {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      client.printLatencyStatistics(choice);
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+  public void printLatencyStatisticsDetailed(int choice) {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      client.printLatencyStatisticsDetailed(choice);
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  public void setLatencyThreshold(double threshold) {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      client.setLatencyThreshold(threshold);
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  public double getLatencyThreshold() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      return client.getLatencyThreshold();
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  public void clearLatencyValuesTcp() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      client.clearLatencyValuesTcp();
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  public void clearLatencyValuesHttp() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      client.clearLatencyValuesHttp();
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  public void clearLatencyValues() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      client.clearLatencyValues();
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  public DescriptiveStatistics getLatencyStatistics() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      return client.getLatencyStatistics();
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  public DescriptiveStatistics getLatencyHttpStatistics() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      return client.getLatencyHttpStatistics();
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  public DescriptiveStatistics getLatencyTcpStatistics() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      return client.getLatencyTcpStatistics();
+    } else {
+      // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
+      // If it isn't, then none of the Serverless-specific APIs will work.
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
     }
   }
 

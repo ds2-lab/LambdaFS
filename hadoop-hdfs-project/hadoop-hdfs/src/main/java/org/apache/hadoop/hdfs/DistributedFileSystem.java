@@ -24,6 +24,7 @@ import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -1222,6 +1223,46 @@ public class DistributedFileSystem extends FileSystem {
       LOG.debug("Clearing statistics packages now...");
       this.dfs.clearStatisticsPackages();
     }
+  }
+
+  public void printLatencyStatistics(int choice) {
+    dfs.printLatencyStatistics(choice);
+  }
+
+  public void printLatencyStatisticsDetailed(int choice) {
+    dfs.printLatencyStatisticsDetailed(choice);
+  }
+
+  public void setLatencyThreshold(double threshold) {
+    dfs.setLatencyThreshold(threshold);
+  }
+
+  public double getLatencyThreshold() {
+    return dfs.getLatencyThreshold();
+  }
+
+  public void clearLatencyValuesTcp() {
+    dfs.clearLatencyValuesTcp();
+  }
+
+  public void clearLatencyValuesHttp() {
+    dfs.clearLatencyValuesHttp();
+  }
+
+  public void clearLatencyValues() {
+    dfs.clearLatencyValues();
+  }
+
+  public DescriptiveStatistics getLatencyStatistics() {
+    return dfs.getLatencyStatistics();
+  }
+
+  public DescriptiveStatistics getLatencyHttpStatistics() {
+    return dfs.getLatencyHttpStatistics();
+  }
+
+  public DescriptiveStatistics getLatencyTcpStatistics() {
+    return dfs.getLatencyTcpStatistics();
   }
 
   @Override
