@@ -131,12 +131,21 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
 
+    /**
+     * Threshold at which we stop targeting specific deployments in an effort to prevent additional pods
+     * from being scheduled. This is useful when we're constraining the available vCPU to the serverless
+     * cluster. This would only really be done in order to perform a "fair" comparison against a serverful
+     * framework.
+     */
+    private double latencyThreshold;
+
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
         serverlessEndpointBase = dfsClient.serverlessEndpoint;
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
         tcpEnabled = conf.getBoolean(SERVERLESS_TCP_REQUESTS_ENABLED, SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
         localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
+        latencyThreshold = conf.getDouble(SERVERLESS_LATENCY_THRESHOLD, SERVERLESS_LATENCY_THRESHOLD_DEFAULT);
 
         if (localMode)
             numDeployments = 1;
@@ -480,6 +489,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         for (OperationPerformed op : operationPerformeds)
             operationsPerformed.put(op.getRequestId(), op);
     }
+
+    /**
+     * Allows for dynamically changing the latency threshold at runtime.
+     * @param threshold New latency threshold.
+     */
+    public void setLatencyThreshold(double threshold) { this.latencyThreshold = threshold; }
+
+    public double getLatencyThreshold() { return this.latencyThreshold; }
 
     /**
      * Return the list of the operations we've performed. This is just used for debugging purposes.

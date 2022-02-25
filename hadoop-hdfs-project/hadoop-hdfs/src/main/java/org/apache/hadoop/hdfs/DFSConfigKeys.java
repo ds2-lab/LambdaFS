@@ -216,6 +216,9 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_LOCAL_MODE = "serverless.localmode.enabled";
   public static final boolean SERVERLESS_LOCAL_MODE_DEFAULT = false;
 
+  public static final String SERVERLESS_LATENCY_THRESHOLD = "serverless.latency.threshold";
+  public static final double SERVERLESS_LATENCY_THRESHOLD_DEFAULT = 8000;
+
   /**
    * OpenWhisk uses an authorization string for HTTP requests. We need this string if we're using the OpenWhisk platform.
    */
