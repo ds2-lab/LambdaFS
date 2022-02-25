@@ -206,6 +206,9 @@ public class OpenWhiskHandler {
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
                 requestId, clientName, isClientInvoker, tcpEnabled, tcpPort, actionMemory, localMode);
 
+        // isCold is still equal to its original value here, which would be 'true' if this was in fact a cold start.
+        result.setColdStart(isCold);
+
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
 

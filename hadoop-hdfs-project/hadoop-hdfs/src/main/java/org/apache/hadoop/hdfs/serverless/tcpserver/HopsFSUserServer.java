@@ -583,7 +583,8 @@ public class HopsFSUserServer {
      * This function then waits for a response from the NameNode to be returned.
      *
      * This should NOT be called from the main thread.
-     * @param deploymentNumber The NameNode to issue a request to.
+     * @param deploymentNumber The NameNode to issue a request to. If this is -1, then the TCP server will randomly
+     *                         select a target deployment/NameNode from among all available, active connections.
      * @param bypassCheck Do not check if the connection exists.
      * @param payload The payload to send to the NameNode in the TCP request.
      * @param timeout If positive, then wait for future to resolve with a timeout.
@@ -593,6 +594,25 @@ public class HopsFSUserServer {
      */
     public JsonObject issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, JsonObject payload, int timeout)
             throws ExecutionException, InterruptedException, TimeoutException, IOException {
+        if (deploymentNumber == -1) {
+            // Randomly select an available connection. This is implemented using existing constructs, so it
+            // is a little awkward. We have a mapping of ALL active NN connections from NN ID --> Connection, and
+            // we have a mapping from NN ID --> Deployment Number. So, we randomly select a NN ID from the active
+            // connection mapping, then we resolve the NN ID to the deployment number, and use that as the target
+            // deployment. The NN ID we randomly select may not be the NN we actually issue a request to, as we
+            // pass that NN's deployment number. If we have multiple connections for that deployment, we may
+            // randomly pick a different connection from that deployment.
+
+            // So, get the IDs of all NNs for which we have an active connections.
+            Long[] activeNameNodeConnectionIDs = allActiveConnections.keySet().toArray(new Long[0]);
+
+            // Randomly select an ID from among all the IDs.
+            long nameNodeId = activeNameNodeConnectionIDs[new Random().nextInt(activeNameNodeConnectionIDs.length)];
+
+            // Resolve that ID to a deployment, and use that as the target deployment.
+            deploymentNumber = nameNodeIdToDeploymentMapping.get(nameNodeId);
+        }
+
         RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck, payload);
 
         if (requestResponseFuture == null)

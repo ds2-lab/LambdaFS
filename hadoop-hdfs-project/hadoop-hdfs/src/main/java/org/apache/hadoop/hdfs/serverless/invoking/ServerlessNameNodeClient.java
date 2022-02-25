@@ -117,6 +117,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private DescriptiveStatistics latency;
 
     /**
+     * Statistics about per-invocation latency. This includes both TCP and HTTP requests.
+     * This instance has a window so that we can calculate a rolling average.
+     */
+    private DescriptiveStatistics latencyWithWindow;
+
+    /**
      * Statistics about per-invocation latency. This is just for TCP requests.
      */
     private DescriptiveStatistics latencyTcp;
@@ -132,12 +138,46 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
 
     /**
+     * The number of operations we've issued to a NameNode.
+     * This includes both successful and failed operations.
+     * This does not count individual retries for HTTP, as those are handled by the invoker implementation.
+     */
+    private int numOperationsIssued = 0;
+
+    /**
+     * The number of operations we've issued to a NameNode via HTTP.
+     * This includes both successful and failed operations.
+     * This does not count individual retries, as those are handled by the invoker implementation.
+     */
+    private int numOperationsIssuedViaHttp = 0;
+
+    /**
+     * The number of operations we've issued to a NameNode via TCP.
+     * This includes both successful and failed operations.
+     */
+    private int numOperationsIssuedViaTcp = 0;
+
+    /**
      * Threshold at which we stop targeting specific deployments in an effort to prevent additional pods
      * from being scheduled. This is useful when we're constraining the available vCPU to the serverless
      * cluster. This would only really be done in order to perform a "fair" comparison against a serverful
      * framework.
+     *
+     * When this is set to a value <= 0, the feature is disabled. Default value is -1.
      */
     private double latencyThreshold;
+
+    /**
+     * When true, we stop targeting specific deployments based on hashing parent INode IDs and instead just try
+     * to reuse existing TCP connections as much as possible. This is done to hopefully prevent the serverless
+     * framework from scheduling additional pods when resource availability is low.
+     */
+    private boolean antiThrashingModeEnabled = false;
+
+    /**
+     * We use a rolling window when computing the average latency. This is the size of that rolling window.
+     */
+    private int latencyWindowSize;
 
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
@@ -146,6 +186,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         tcpEnabled = conf.getBoolean(SERVERLESS_TCP_REQUESTS_ENABLED, SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
         localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         latencyThreshold = conf.getDouble(SERVERLESS_LATENCY_THRESHOLD, SERVERLESS_LATENCY_THRESHOLD_DEFAULT);
+        latencyWindowSize = conf.getInt(SERVERLESS_LATENCY_WINDOW_SIZE, SERVERLESS_LATENCY_WINDOW_SIZE_DEFAULT);
 
         if (localMode)
             numDeployments = 1;
@@ -155,6 +196,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LOG.info("Serverless endpoint: " + serverlessEndpointBase);
         LOG.info("Serverless platform: " + serverlessPlatformName);
         LOG.info("TCP requests are " + (tcpEnabled ? "enabled." : "disabled."));
+        LOG.debug("Latency Window: " + latencyWindowSize + ", Latency Threshold: " + latencyThreshold + " ms.");
 
         this.serverlessInvoker = dfsClient.serverlessInvoker;
 
@@ -191,6 +233,64 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     public void printDebugInformation() {
         this.tcpServer.printDebugInformation();
+    }
+
+//    /**
+//     * Add latency values to the statistics objects. Only adds the values if they are positive. So, if
+//     * you only want to add a tcp latency, then pass something < 0 for httpLatency.
+//     *
+//     * @param coldStart If true, then we only add the (presumably http) latency value if we've issued more than
+//     *                  the threshold number of operations, as we don't want standard cold starts to impact
+//     *                  the average too much.
+//     */
+//    private void addLatency(double tcpLatency, double httpLatency, boolean coldStart) {
+//        if (tcpLatency > 0) {
+//            latencyTcp.addValue(tcpLatency);
+//            latency.addValue(tcpLatency);
+//        }
+//
+//        if (httpLatency > 0) {
+//            latencyHttp.addValue(httpLatency);
+//            latency.addValue(httpLatency);
+//        }
+//    }
+
+    /**
+     * Add latency values to the statistics objects. Only adds the values if they are positive. So, if
+     * you only want to add a tcp latency, then pass something < 0 for httpLatency.
+     */
+    private void addLatency(double tcpLatency, double httpLatency) {
+        if (tcpLatency > 0) {
+            latencyTcp.addValue(tcpLatency);
+            latency.addValue(tcpLatency);
+            latencyWithWindow.addValue(tcpLatency);
+        }
+
+        if (httpLatency > 0) {
+            latencyHttp.addValue(httpLatency);
+            latency.addValue(httpLatency);
+            latencyWithWindow.addValue(httpLatency);
+        }
+
+        // If the latency threshold is <= 0, then we don't bother with this feature.
+        if (latencyThreshold > 0) {
+            double averageLatency = latencyWithWindow.getMean();
+
+            // If anti-thrashing mode is already enabled, then the latency being high doesn't change anything.
+            // Thus, anti-thrashing mode must currently be disabled for us to check if latency is high.
+            if (!antiThrashingModeEnabled && averageLatency >= latencyThreshold) {
+                LOG.warn("Rolling average latency (" + averageLatency + " ms, n=" + latencyWindowSize +
+                        ") has exceeded threshold value of " + latencyThreshold + " ms. Enabling anti-thrashing mode.");
+                antiThrashingModeEnabled = true;
+            }
+            // Likewise, if anti-thrashing mode is not enabled, then having a low latency doesn't change anything.
+            // Thus, anti-thrashing mode must already be enabled for us to check if latency is low.
+            else if (antiThrashingModeEnabled && averageLatency < latencyThreshold) {
+                LOG.warn("Rolling average latency (" + averageLatency + " ms, n=" + latencyWindowSize +
+                        ") has fallen below threshold value of " + latencyThreshold + " ms. Disabling anti-thrashing mode.");
+                antiThrashingModeEnabled = false;
+            }
+        }
     }
 
     /**
@@ -236,6 +336,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" +
                         exponentialBackOff.getMaximumRetries() + ". Time elapsed so far: " +
                         (System.currentTimeMillis() - opStart) + " ms.");
+                numOperationsIssuedViaTcp++;
+                numOperationsIssued++;
                 response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload,
                         serverlessInvoker.httpTimeoutMilliseconds);
 
@@ -276,8 +378,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 long localEnd = System.currentTimeMillis();
                 long opEnd = System.currentTimeMillis();
 
-                latency.addValue(localEnd - localStart);
-                latencyTcp.addValue(localEnd - localStart);
+                //addLatency(localEnd - localStart, -1, response.has(COLD_START) && response.get(COLD_START).getAsBoolean());
+                addLatency(localEnd - localStart, -1);
 
                 // Collect and save/record metrics.
                 long nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
@@ -322,6 +424,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 long startTime = System.currentTimeMillis();
 
+                numOperationsIssued++;
+                numOperationsIssuedViaHttp++;
                 // Issue the HTTP request. This function will handle retries and timeouts.
                 response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                         operationName,
@@ -333,8 +437,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 long endTime = System.currentTimeMillis();
 
-                latency.addValue(endTime - startTime);
-                latencyHttp.addValue(endTime - startTime);
+                //addLatency(-1, endTime - startTime, response.has(COLD_START) && response.get(COLD_START).getAsBoolean());
+                addLatency(-1, endTime - startTime);
 
                 long opEnd = System.currentTimeMillis();
                 LOG.debug("Received result from NameNode after falling back to HTTP for operation " +
@@ -398,7 +502,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 /*return issueConcurrentTcpHttpRequests(
                         operationName, serverlessEndpoint, nameNodeArguments, opArguments, mappedFunctionNumber);*/
-            } else {
+            }
+            else if (antiThrashingModeEnabled) {
+                // If anti-thrashing mode is enabled, then we'll just try to use ANY available TCP connections.
+
+            }
+            else {
                 LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " +
                         mappedFunctionNumber + ". TCP connection exists: " +
                         tcpServer.connectionExists(mappedFunctionNumber));
@@ -418,6 +527,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         long startTime = System.currentTimeMillis();
 
+        numOperationsIssued++;
+        numOperationsIssuedViaHttp++;
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
         JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
@@ -430,8 +541,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         
         long endTime = System.currentTimeMillis();
 
-        latency.addValue(endTime - startTime);
-        latencyHttp.addValue(endTime - startTime);
+        //addLatency(-1, endTime - startTime, response.has(COLD_START) && response.get(COLD_START).getAsBoolean());
+        addLatency(-1, endTime - startTime);
 
         LOG.debug("Response: " + response.toString());
 

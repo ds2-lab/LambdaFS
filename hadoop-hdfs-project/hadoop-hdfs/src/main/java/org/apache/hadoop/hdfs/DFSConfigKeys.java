@@ -216,8 +216,23 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_LOCAL_MODE = "serverless.localmode.enabled";
   public static final boolean SERVERLESS_LOCAL_MODE_DEFAULT = false;
 
+  /**
+   * Latency at which we start re-using existing TCP connections whenever possible, even if we aren't targeting
+   * the right deployment, so as to avoid invoking too many extra NameNodes. This is used when we are restricting
+   * the CPU of the serverless platform in order to compare against a serverful platform.
+   *
+   * The units of this parameter are milliseconds (ms).
+   *
+   * Set this value to something <= 0 to disable this feature.
+   */
   public static final String SERVERLESS_LATENCY_THRESHOLD = "serverless.latency.threshold";
-  public static final double SERVERLESS_LATENCY_THRESHOLD_DEFAULT = 8000;
+  public static final double SERVERLESS_LATENCY_THRESHOLD_DEFAULT = -1;
+
+  /**
+   * We use a rolling window when computing the average latency. This is the size of that rolling window.
+   */
+  public static final String SERVERLESS_LATENCY_WINDOW_SIZE = "serverless.latency.windowsize";
+  public static final int SERVERLESS_LATENCY_WINDOW_SIZE_DEFAULT = 50;
 
   /**
    * OpenWhisk uses an authorization string for HTTP requests. We need this string if we're using the OpenWhisk platform.

@@ -79,6 +79,12 @@ public class NameNodeResult implements Serializable {
     private boolean hasResult = false;
 
     /**
+     * Indicates whether the NameNode was cold-started when computing this result.
+     * Only used for HTTP, as TCP cannot be used except with warm NameNodes.
+     */
+    private boolean coldStart = false;
+
+    /**
      * Any extra fields to be added explicitly/directly to the result payload. As of right now,
      * only strings are supported as additional fields.
      *
@@ -176,6 +182,10 @@ public class NameNodeResult implements Serializable {
      */
     public void addExtraString(String key, String value) {
         this.additionalFields.put(key, value);
+    }
+
+    public void setColdStart(boolean coldStart) {
+        this.coldStart = coldStart;
     }
 
     /**
@@ -353,6 +363,7 @@ public class NameNodeResult implements Serializable {
         json.addProperty(ServerlessNameNodeKeys.ENQUEUED_TIME, enqueuedTime);
         json.addProperty(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
         json.addProperty(ServerlessNameNodeKeys.PROCESSING_FINISHED_TIME, processingFinishedTime);
+        json.addProperty(COLD_START, coldStart);
 
         if (statisticsPackageSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
