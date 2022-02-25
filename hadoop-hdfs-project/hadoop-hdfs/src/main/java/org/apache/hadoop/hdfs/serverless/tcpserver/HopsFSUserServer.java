@@ -296,6 +296,8 @@ public class HopsFSUserServer {
         nameNodeIdToDeploymentMapping.put(nameNodeId, deploymentNumber);
     }
 
+    public int getNumActiveConnections() { return this.allActiveConnections.size(); }
+
     /**
      * Get the TCP connection associated with the NameNode deployment identified by the given function number.
      *

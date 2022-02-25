@@ -503,9 +503,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 /*return issueConcurrentTcpHttpRequests(
                         operationName, serverlessEndpoint, nameNodeArguments, opArguments, mappedFunctionNumber);*/
             }
-            else if (antiThrashingModeEnabled) {
+            else if (antiThrashingModeEnabled && tcpServer.getNumActiveConnections() > 0) {
                 // If anti-thrashing mode is enabled, then we'll just try to use ANY available TCP connections.
-
+                // By passing -1, we'll randomly select a TCP connection from among all active deployments.
+                // Notice that we checked to make sure that there is at least one active TCP connection before
+                // entering the body of this if-else statement. We wouldn't want to bother trying to issue a TCP
+                // request if we already know there are no available TCP connections. That being said, if we lose
+                // all TCP connections prior to issuing the request, then we'll just fall back to HTTP.
+                return issueTCPRequest(operationName, opArguments, -1);
             }
             else {
                 LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " +
