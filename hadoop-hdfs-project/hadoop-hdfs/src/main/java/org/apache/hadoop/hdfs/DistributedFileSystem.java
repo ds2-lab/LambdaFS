@@ -1225,30 +1225,67 @@ public class DistributedFileSystem extends FileSystem {
     }
   }
 
+  /**
+   * Print the average latency.
+   *
+   * If choice <= 0, prints both TCP and HTTP.
+   * If choice == 1, prints just TCP.
+   * If choice > 1, prints just HTTP.
+   * @param choice If choice <= 0, prints both TCP and HTTP. If choice == 1, prints just TCP. If
+   *               choice > 1, prints just HTTP.
+   */
   public void printLatencyStatistics(int choice) {
     dfs.printLatencyStatistics(choice);
   }
 
+
+  /**
+   * Print the max, min, average, and standard deviation of latency.
+   *
+   * If choice <= 0, prints both TCP and HTTP.
+   * If choice == 1, prints just TCP.
+   * If choice > 1, prints just HTTP.
+   * @param choice If choice <= 0, prints both TCP and HTTP. If choice == 1, prints just TCP. If
+   *               choice > 1, prints just HTTP.
+   */
   public void printLatencyStatisticsDetailed(int choice) {
     dfs.printLatencyStatisticsDetailed(choice);
   }
 
+  /**
+   * Dynamically change the threshold at which client stops targeting specific deployments and instead tries
+   * to reuse existing TCP connections.
+   * @param threshold Updated threshold.
+   */
   public void setLatencyThreshold(double threshold) {
     dfs.setLatencyThreshold(threshold);
   }
 
+  /**
+   * Get the threshold at which client stops targeting specific deployments and instead tries
+   * to reuse existing TCP connections.
+   */
   public double getLatencyThreshold() {
     return dfs.getLatencyThreshold();
   }
 
+  /**
+   * Clear TCP latency values.
+   */
   public void clearLatencyValuesTcp() {
     dfs.clearLatencyValuesTcp();
   }
 
+  /**
+   * Clear HTTP latency values.
+   */
   public void clearLatencyValuesHttp() {
     dfs.clearLatencyValuesHttp();
   }
 
+  /**
+   * Clear both TCP and HTTP latency values.
+   */
   public void clearLatencyValues() {
     dfs.clearLatencyValues();
   }

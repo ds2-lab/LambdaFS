@@ -1703,6 +1703,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
+  /**
+   * Print the average latency.
+   *
+   * If choice <= 0, prints both TCP and HTTP.
+   * If choice == 1, prints just TCP.
+   * If choice > 1, prints just HTTP.
+   * @param choice If choice <= 0, prints both TCP and HTTP. If choice == 1, prints just TCP. If
+   *               choice > 1, prints just HTTP.
+   */
   public void printLatencyStatistics(int choice) {
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
@@ -1713,6 +1722,16 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
     }
   }
+
+  /**
+   * Print the max, min, average, and standard deviation of latency.
+   *
+   * If choice <= 0, prints both TCP and HTTP.
+   * If choice == 1, prints just TCP.
+   * If choice > 1, prints just HTTP.
+   * @param choice If choice <= 0, prints both TCP and HTTP. If choice == 1, prints just TCP. If
+   *               choice > 1, prints just HTTP.
+   */
   public void printLatencyStatisticsDetailed(int choice) {
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
@@ -1724,6 +1743,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
+  /**
+   * Dynamically change the threshold at which client stops targeting specific deployments and instead tries
+   * to reuse existing TCP connections.
+   * @param threshold Updated threshold.
+   */
   public void setLatencyThreshold(double threshold) {
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
@@ -1735,6 +1759,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
+  /**
+   * Get the threshold at which client stops targeting specific deployments and instead tries
+   * to reuse existing TCP connections.
+   */
   public double getLatencyThreshold() {
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
@@ -1746,6 +1774,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
+  /**
+   * Clear TCP latency values.
+   */
   public void clearLatencyValuesTcp() {
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
@@ -1757,6 +1788,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
+  /**
+   * Clear HTTP latency values.
+   */
   public void clearLatencyValuesHttp() {
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
@@ -1768,6 +1802,9 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
+  /**
+   * Clear both TCP and HTTP latency values.
+   */
   public void clearLatencyValues() {
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
