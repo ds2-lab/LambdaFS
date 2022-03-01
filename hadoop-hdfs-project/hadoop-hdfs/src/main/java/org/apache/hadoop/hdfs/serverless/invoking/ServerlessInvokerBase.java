@@ -353,6 +353,13 @@ public abstract class ServerlessInvokerBase<T> {
      */
     public Object extractResultFromJsonResponse(JsonObject resp) {
         JsonObject response = resp;
+
+        // TODO: This might happen if all requests to a NN time out, in which case we should either handle
+        //       it more cleanly and/or throw a more meaningful exception.
+        if (response == null) {
+            throw new IllegalStateException("Response from serverless NameNode was null.");
+        }
+
         // Sometimes(?) the actual result is included in the "body" key.
         if (response.has("body"))
             response = resp.get("body").getAsJsonObject();
