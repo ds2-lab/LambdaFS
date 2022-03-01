@@ -66,6 +66,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>commons-collections4</artifactId>
       <version>4.4</version>
     </dependency>
+    <dependency>
+      <groupId>io.nuclio</groupId>
+      <artifactId>nuclio-sdk-java</artifactId>
+      <version>1.1.0</version>
+    </dependency>
     <!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client-bom &ndash;&gt;-->
 <!--    <dependency>-->
 <!--      <groupId>org.asynchttpclient</groupId>-->
