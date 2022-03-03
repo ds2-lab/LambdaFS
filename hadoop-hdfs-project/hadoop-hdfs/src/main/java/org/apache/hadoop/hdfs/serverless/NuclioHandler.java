@@ -50,6 +50,12 @@ public class NuclioHandler implements EventHandler {
 
     @Override
     public Response handleEvent(Context context, Event event) {
+
+        // Should ALWAYS be true.
+        if (event != null) {
+            return new Response().setBody("Hello, world!");
+        }
+
         long startTime = System.nanoTime();
         String functionName = platformSpecificInitialization(event);
 
