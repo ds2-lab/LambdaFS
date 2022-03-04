@@ -57,11 +57,11 @@ public class NuclioHandler implements EventHandler {
             System.err.println("Testing 123, I repeat, testing 123: System.err.println");
             LOG.info("Event: " + event.toString());
             LOG.info("Event.getHeaders(): " + event.getHeaders().toString());
-
-            System.out.flush();
-            System.err.flush();
-
             io.nuclio.Logger nuclioLogger = context.getLogger();
+
+            nuclioLogger.info("LOG.isInfoEnabled(): " + LOG.isInfoEnabled());
+            nuclioLogger.info("LOG.isDebugEnabled(): " + LOG.isDebugEnabled());
+
             nuclioLogger.info("NuclioLogger -- testing123: INFO");
             nuclioLogger.debug("NuclioLogger -- testing123: DEBUG");
             nuclioLogger.warn("NuclioLogger -- testing123: WARN");
