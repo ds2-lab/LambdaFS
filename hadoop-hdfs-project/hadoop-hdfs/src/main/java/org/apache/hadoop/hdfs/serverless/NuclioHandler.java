@@ -61,12 +61,25 @@ public class NuclioHandler implements EventHandler {
             nuclioLogger.info("LOG.isDebugEnabled(): " + LOG.isDebugEnabled());
 
             LogManager.getRootLogger().setLevel(getLogLevelFromString("INFO"));
+
             nuclioLogger.info("LOG.isInfoEnabled(): " + LOG.isInfoEnabled());
             nuclioLogger.info("LOG.isDebugEnabled(): " + LOG.isDebugEnabled());
 
             nuclioLogger.info("LOG.isWarnEnabled(): " + LOG.isWarnEnabled());
             nuclioLogger.info("LOG.isErrorEnabled(): " + LOG.isErrorEnabled());
             nuclioLogger.info("LOG.isTraceEnabled(): " + LOG.isTraceEnabled());
+
+
+            org.apache.log4j.Logger logger = LogManager.getLogger(NuclioHandler.class);
+            nuclioLogger.info("logger.isInfoEnabled(): " + logger.isInfoEnabled());
+            nuclioLogger.info("logger.isDebugEnabled(): " + logger.isDebugEnabled());
+
+            logger.setLevel(getLogLevelFromString("INFO"));
+
+            nuclioLogger.info("logger.isInfoEnabled(): " + logger.isInfoEnabled());
+            nuclioLogger.info("logger.isDebugEnabled(): " + logger.isDebugEnabled());
+            nuclioLogger.info("logger.isTraceEnabled(): " + logger.isTraceEnabled());
+
             nuclioLogger.info("NuclioLogger -- testing123: INFO");
             nuclioLogger.debug("NuclioLogger -- testing123: DEBUG");
             nuclioLogger.warn("NuclioLogger -- testing123: WARN");
