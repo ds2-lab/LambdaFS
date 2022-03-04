@@ -60,7 +60,13 @@ public class NuclioHandler implements EventHandler {
             LOG.info("Event: " + event.toString());
             LOG.info("Event.getHeaders(): " + event.getHeaders().toString());
 
-            return new Response().setBody("Hello, world! v1 ");
+            io.nuclio.Logger nuclioLogger = context.getLogger();
+            nuclioLogger.info("NuclioLogger -- testing123: INFO");
+            nuclioLogger.debug("NuclioLogger -- testing123: DEBUG");
+            nuclioLogger.warn("NuclioLogger -- testing123: WARN");
+            nuclioLogger.error("NuclioLogger -- testing123: ERROR");
+
+            return new Response().setBody("Hello, world! v2 ");
         }
 
         long startTime = System.nanoTime();
