@@ -55,13 +55,18 @@ public class NuclioHandler implements EventHandler {
             LOG.debug("Testing 123, I repeat, testing 123: DEBUG");
             System.out.println("Testing 123, I repeat, testing 123: System.out.println");
             System.err.println("Testing 123, I repeat, testing 123: System.err.println");
-            LOG.info("Event: " + event.toString());
-            LOG.info("Event.getHeaders(): " + event.getHeaders().toString());
-            io.nuclio.Logger nuclioLogger = context.getLogger();
 
+            io.nuclio.Logger nuclioLogger = context.getLogger();
             nuclioLogger.info("LOG.isInfoEnabled(): " + LOG.isInfoEnabled());
             nuclioLogger.info("LOG.isDebugEnabled(): " + LOG.isDebugEnabled());
 
+            LogManager.getRootLogger().setLevel(getLogLevelFromString("INFO"));
+            nuclioLogger.info("LOG.isInfoEnabled(): " + LOG.isInfoEnabled());
+            nuclioLogger.info("LOG.isDebugEnabled(): " + LOG.isDebugEnabled());
+
+            nuclioLogger.info("LOG.isWarnEnabled(): " + LOG.isWarnEnabled());
+            nuclioLogger.info("LOG.isErrorEnabled(): " + LOG.isErrorEnabled());
+            nuclioLogger.info("LOG.isTraceEnabled(): " + LOG.isTraceEnabled());
             nuclioLogger.info("NuclioLogger -- testing123: INFO");
             nuclioLogger.debug("NuclioLogger -- testing123: DEBUG");
             nuclioLogger.warn("NuclioLogger -- testing123: WARN");
