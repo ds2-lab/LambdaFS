@@ -53,6 +53,12 @@ public class NuclioHandler implements EventHandler {
 
         // Should ALWAYS be true.
         if (event != null) {
+            LOG.info("Testing 123, I repeat, testing 123: INFO");
+            LOG.debug("Testing 123, I repeat, testing 123: DEBUG");
+            System.out.println("Testing 123, I repeat, testing 123: System.out.println");
+            LOG.info("Event: " + event.toString());
+            LOG.info("Event.getHeaders(): " + event.getHeaders().toString());
+
             return new Response().setBody("Hello, world!");
         }
 
