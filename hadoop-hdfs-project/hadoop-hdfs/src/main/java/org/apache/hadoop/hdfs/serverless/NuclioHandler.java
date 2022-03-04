@@ -13,13 +13,11 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.log4j.LogManager;
+import org.apache.log4j.spi.Configurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -59,6 +57,9 @@ public class NuclioHandler implements EventHandler {
             System.err.println("Testing 123, I repeat, testing 123: System.err.println");
             LOG.info("Event: " + event.toString());
             LOG.info("Event.getHeaders(): " + event.getHeaders().toString());
+
+            System.out.flush();
+            System.err.flush();
 
             io.nuclio.Logger nuclioLogger = context.getLogger();
             nuclioLogger.info("NuclioLogger -- testing123: INFO");
