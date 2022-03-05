@@ -12,6 +12,7 @@ import io.nuclio.Response;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
+import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.spi.Configurator;
 import org.slf4j.Logger;
@@ -32,6 +33,8 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.LOG_LEVEL
 public class NuclioHandler implements EventHandler {
     public static final Logger LOG = LoggerFactory.getLogger(NuclioHandler.class.getName());
 
+    public static io.nuclio.Logger NUCLIO_LOGGER;
+
     /**
      * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
      * it is finished being created, so we store the TransactionEvent instances from those transactions here.
@@ -48,6 +51,8 @@ public class NuclioHandler implements EventHandler {
 
     @Override
     public Response handleEvent(Context context, Event event) {
+        if (NUCLIO_LOGGER == null)
+            NUCLIO_LOGGER = context.getLogger();
 
         // Should ALWAYS be true.
         if (event != null) {
@@ -59,26 +64,16 @@ public class NuclioHandler implements EventHandler {
             io.nuclio.Logger nuclioLogger = context.getLogger();
             nuclioLogger.info("LOG.isInfoEnabled(): " + LOG.isInfoEnabled());
             nuclioLogger.info("LOG.isDebugEnabled(): " + LOG.isDebugEnabled());
-
-            LogManager.getRootLogger().setLevel(getLogLevelFromString("INFO"));
-
+            LogManager.getRootLogger().setLevel(Level.DEBUG);
             nuclioLogger.info("LOG.isInfoEnabled(): " + LOG.isInfoEnabled());
             nuclioLogger.info("LOG.isDebugEnabled(): " + LOG.isDebugEnabled());
-
-            nuclioLogger.info("LOG.isWarnEnabled(): " + LOG.isWarnEnabled());
-            nuclioLogger.info("LOG.isErrorEnabled(): " + LOG.isErrorEnabled());
-            nuclioLogger.info("LOG.isTraceEnabled(): " + LOG.isTraceEnabled());
-
 
             org.apache.log4j.Logger logger = LogManager.getLogger(NuclioHandler.class);
             nuclioLogger.info("logger.isInfoEnabled(): " + logger.isInfoEnabled());
             nuclioLogger.info("logger.isDebugEnabled(): " + logger.isDebugEnabled());
-
-            logger.setLevel(getLogLevelFromString("INFO"));
-
+            logger.setLevel(getLogLevelFromString("DEBUG"));
             nuclioLogger.info("logger.isInfoEnabled(): " + logger.isInfoEnabled());
             nuclioLogger.info("logger.isDebugEnabled(): " + logger.isDebugEnabled());
-            nuclioLogger.info("logger.isTraceEnabled(): " + logger.isTraceEnabled());
 
             nuclioLogger.info("NuclioLogger -- testing123: INFO");
             nuclioLogger.debug("NuclioLogger -- testing123: DEBUG");
