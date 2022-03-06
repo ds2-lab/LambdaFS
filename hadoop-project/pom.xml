@@ -40,7 +40,7 @@
     <!-- Used to modify the scope of a large number of dependencies.
      This is useful if we want to switch between including all of the dependencies directly
      within the generated JAR file or if instead we want them to be provided by the Docker image. -->
-    <dependency-scope>provided</dependency-scope>
+    <dependency-scope>compile</dependency-scope>
 
     <failIfNoTests>false</failIfNoTests>
     <maven.test.redirectTestOutputToFile>true</maven.test.redirectTestOutputToFile>
