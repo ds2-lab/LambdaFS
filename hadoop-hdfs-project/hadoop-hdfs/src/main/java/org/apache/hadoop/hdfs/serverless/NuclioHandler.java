@@ -54,35 +54,6 @@ public class NuclioHandler implements EventHandler {
         if (NUCLIO_LOGGER == null)
             NUCLIO_LOGGER = context.getLogger();
 
-        // Should ALWAYS be true.
-        if (event != null) {
-            LOG.info("Testing 123, I repeat, testing 123: INFO");
-            LOG.debug("Testing 123, I repeat, testing 123: DEBUG");
-            System.out.println("Testing 123, I repeat, testing 123: System.out.println");
-            System.err.println("Testing 123, I repeat, testing 123: System.err.println");
-
-            io.nuclio.Logger nuclioLogger = context.getLogger();
-            nuclioLogger.info("LOG.isInfoEnabled(): " + LOG.isInfoEnabled());
-            nuclioLogger.info("LOG.isDebugEnabled(): " + LOG.isDebugEnabled());
-            LogManager.getRootLogger().setLevel(Level.DEBUG);
-            nuclioLogger.info("LOG.isInfoEnabled(): " + LOG.isInfoEnabled());
-            nuclioLogger.info("LOG.isDebugEnabled(): " + LOG.isDebugEnabled());
-
-            org.apache.log4j.Logger logger = LogManager.getLogger(NuclioHandler.class);
-            nuclioLogger.info("logger.isInfoEnabled(): " + logger.isInfoEnabled());
-            nuclioLogger.info("logger.isDebugEnabled(): " + logger.isDebugEnabled());
-            logger.setLevel(getLogLevelFromString("DEBUG"));
-            nuclioLogger.info("logger.isInfoEnabled(): " + logger.isInfoEnabled());
-            nuclioLogger.info("logger.isDebugEnabled(): " + logger.isDebugEnabled());
-
-            nuclioLogger.info("NuclioLogger -- testing123: INFO");
-            nuclioLogger.debug("NuclioLogger -- testing123: DEBUG");
-            nuclioLogger.warn("NuclioLogger -- testing123: WARN");
-            nuclioLogger.error("NuclioLogger -- testing123: ERROR");
-
-            return new Response().setBody("Hello, world! v2 ");
-        }
-
         long startTime = System.nanoTime();
         String functionName = platformSpecificInitialization(event);
 
