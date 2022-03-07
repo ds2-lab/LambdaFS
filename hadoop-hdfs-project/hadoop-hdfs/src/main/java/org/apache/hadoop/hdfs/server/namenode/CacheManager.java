@@ -99,7 +99,7 @@ import org.slf4j.LoggerFactory;
 @InterfaceAudience.LimitedPrivate({"HDFS"})
 public final class CacheManager {
 
-  public static final Logger LOG = LoggerFactory.getLogger(CacheManager.class);
+  public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
   private static final float MIN_CACHED_BLOCKS_PERCENT = 0.001f;
 

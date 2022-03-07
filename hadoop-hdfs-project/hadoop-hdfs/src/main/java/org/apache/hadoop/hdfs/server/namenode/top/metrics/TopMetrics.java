@@ -59,7 +59,7 @@ import static org.apache.hadoop.hdfs.server.namenode.top.window.RollingWindowMan
  */
 @InterfaceAudience.Private
 public class TopMetrics {
-  public static final Logger LOG = LoggerFactory.getLogger(TopMetrics.class);
+  public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
   private static void logConf(Configuration conf) {
     LOG.info("NNTop conf: " + DFSConfigKeys.NNTOP_BUCKETS_PER_WINDOW_KEY +

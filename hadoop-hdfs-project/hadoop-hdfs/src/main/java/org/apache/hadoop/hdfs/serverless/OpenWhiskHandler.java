@@ -40,7 +40,7 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
  * This is used on the NameNode side (obviously).
  */
 public class OpenWhiskHandler {
-    public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class.getName());
+    public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
 
 

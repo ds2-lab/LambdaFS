@@ -110,7 +110,7 @@ import org.apache.hadoop.hdfs.XAttrHelper;
  * @see org.apache.hadoop.hdfs.server.namenode.FSNamesystem
  **/
 public class FSDirectory implements Closeable {
-  static final Logger LOG = LoggerFactory.getLogger(FSDirectory.class);
+  static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
   @VisibleForTesting
   static boolean CHECK_RESERVED_FILE_NAMES = true;
   public final static String DOT_RESERVED_STRING = ".reserved";

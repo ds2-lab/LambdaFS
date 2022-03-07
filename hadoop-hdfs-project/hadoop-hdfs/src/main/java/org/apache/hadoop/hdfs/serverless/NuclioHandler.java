@@ -31,7 +31,7 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.CONSISTEN
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.LOG_LEVEL;
 
 public class NuclioHandler implements EventHandler {
-    public static final Logger LOG = LoggerFactory.getLogger(NuclioHandler.class.getName());
+    public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
     public static io.nuclio.Logger NUCLIO_LOGGER;
 
@@ -57,10 +57,10 @@ public class NuclioHandler implements EventHandler {
 
     @Override
     public Response handleEvent(Context context, Event event) {
-        if (NUCLIO_LOGGER == null && context != null)
+        if (NUCLIO_LOGGER == null)
             NUCLIO_LOGGER = context.getLogger();
 
-        if (NUCLIO_LOGGER != null) {
+        /*if (NUCLIO_LOGGER != null) {
             LOG.info("Received HTTP invocation.");
             LOG.debug("Received HTTP invocation.");
             NUCLIO_LOGGER.info("Received HTTP invocation.");
@@ -94,9 +94,8 @@ public class NuclioHandler implements EventHandler {
 
 
             return new Response().setBody("Hello, world.");
-        }
+        }*/
 
-        /*
         long startTime = System.nanoTime();
         String functionName = platformSpecificInitialization(event);
 
@@ -136,7 +135,6 @@ public class NuclioHandler implements EventHandler {
         return new Response()
                 .setContentType("application/json")
                 .setBody(response.toString());
-        */
     }
 
     /**

@@ -31,7 +31,7 @@ import java.util.List;
 
 /** A collection of block storage policies. */
 public class BlockStoragePolicySuite {
-  static final Logger LOG = LoggerFactory.getLogger(BlockStoragePolicySuite
+  static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
       .class);
 
   public static final String STORAGE_POLICY_XATTR_NAME

@@ -89,7 +89,7 @@ import static org.apache.hadoop.util.ExitUtil.terminate;
 @InterfaceAudience.Private
 public class BlockManager {
 
-  public static final Logger LOG = LoggerFactory.getLogger(BlockManager.class);
+  public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
   public static final Logger blockLog = ServerlessNameNode.blockStateChangeLog;
 
   private final Namesystem namesystem;

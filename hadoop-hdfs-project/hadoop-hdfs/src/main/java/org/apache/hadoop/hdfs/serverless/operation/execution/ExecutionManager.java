@@ -38,7 +38,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
  * There should only be one ExecutionManager instance at any given time.
  */
 public class ExecutionManager {
-    public static final Logger LOG = LoggerFactory.getLogger(ExecutionManager.class.getName());
+    public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
     /**
      * Reference to the Serverless NameNode instance created in the OpenWhiskHandler class.

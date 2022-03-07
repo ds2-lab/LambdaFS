@@ -19,7 +19,7 @@ import java.util.*;
  * intermediate storage. It is periodically updated by the NameNode's worker thread.
  */
 public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
-    public static final Logger LOG = LoggerFactory.getLogger(ActiveServerlessNameNodeList.class.getName());
+    public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
     private static final long serialVersionUID = -1602619427888192710L;
 
     /**

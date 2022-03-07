@@ -29,7 +29,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
  * This is used on the NameNode side.
  */
 public class NameNodeWorkerThread extends Thread {
-    public static final Logger LOG = LoggerFactory.getLogger(NameNodeWorkerThread.class.getName());
+    public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
     /**
      * The ID of the request currently being processed by the worker thread.

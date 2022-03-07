@@ -44,7 +44,7 @@ import java.util.Set;
  * by the heartbeat manager lock.
  */
 class HeartbeatManager implements DatanodeStatistics {
-  static final Logger LOG = LoggerFactory.getLogger(HeartbeatManager.class);
+  static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
   /**
    * Stores a subset of the datanodeMap in DatanodeManager,

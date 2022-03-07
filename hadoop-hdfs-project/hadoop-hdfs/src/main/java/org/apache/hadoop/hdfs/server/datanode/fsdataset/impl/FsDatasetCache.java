@@ -110,7 +110,7 @@ public class FsDatasetCache {
     }
   }
 
-  private static final Logger LOG = LoggerFactory.getLogger(FsDatasetCache.class);
+  private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
   /**
    * Stores MappableBlock objects and the states they're in.

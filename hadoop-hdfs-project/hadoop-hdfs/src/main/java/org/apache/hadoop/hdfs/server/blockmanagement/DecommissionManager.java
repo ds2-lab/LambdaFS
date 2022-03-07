@@ -98,7 +98,7 @@ import org.apache.hadoop.hdfs.server.namenode.INode;
  */
 @InterfaceAudience.Private
 public class DecommissionManager {
-  private static final Logger LOG = LoggerFactory.getLogger(DecommissionManager
+  private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
       .class);
 
   private final Namesystem namesystem;
