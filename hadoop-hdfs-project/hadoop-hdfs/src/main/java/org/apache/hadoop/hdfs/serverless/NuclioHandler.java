@@ -1,7 +1,6 @@
 package org.apache.hadoop.hdfs.serverless;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import com.logicalclocks.shaded.org.apache.commons.lang3.time.DurationFormatUtils;
 import com.mysql.clusterj.ClusterJHelper;
 import io.hops.metrics.TransactionEvent;
@@ -19,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -83,30 +83,38 @@ public class NuclioHandler implements EventHandler {
         LOG.info("Active HTTP requests: " + activeRequests);
         LOG.info("============================================================\n");
 
-        JsonObject args = null;
-        ObjectInput in = null;
-        ByteArrayInputStream bis = new ByteArrayInputStream(eventBody);
-        try {
-            in = new ObjectInputStream(bis);
-        } catch (IOException e) {
-            LOG.error("Failed to create ObjectOutputStream for Event body.");
-            e.printStackTrace();
+        String bodyAsString = new String(eventBody, StandardCharsets.UTF_8);
+        JsonParser jsonParser = new JsonParser();
+        JsonObject args = (JsonObject) jsonParser.parse(bodyAsString);
 
-            JsonObject response = new JsonObject();
-
-            // TODO: Return an error to user/client here.
+        if (args == null) {
+            LOG.error("Could not decode event body to valid JSON object...");
+            return new Response().setBody("ERROR: Failed to decode event body to valid JSON.");
         }
 
-        try {
-            args = (JsonObject)in.readObject();
-        } catch (ClassNotFoundException | IOException e) {
-            LOG.error("Failed to read in object from Event body.");
-            e.printStackTrace();
-
-            // TODO: Return an error to user/client here.
-        }
-
-        assert args != null;
+//        ObjectInput in = null;
+//        ByteArrayInputStream bis = new ByteArrayInputStream(eventBody);
+//        try {
+//            in = new ObjectInputStream(bis);
+//        } catch (IOException e) {
+//            LOG.error("Failed to create ObjectOutputStream for Event body.");
+//            e.printStackTrace();
+//
+//            JsonObject response = new JsonObject();
+//
+//            // TODO: Return an error to user/client here.
+//        }
+//
+//        try {
+//            args = (JsonObject)in.readObject();
+//        } catch (ClassNotFoundException | IOException e) {
+//            LOG.error("Failed to read in object from Event body.");
+//            e.printStackTrace();
+//
+//            // TODO: Return an error to user/client here.
+//        }
+//
+//        assert args != null;
         JsonObject response = OpenWhiskHandler.main(args);
 
         return new Response()
@@ -122,11 +130,8 @@ public class NuclioHandler implements EventHandler {
      * then we return "namenode0", removing the "/whisk.system/" from the function's name.
      */
     private static String platformSpecificInitialization(Event event) {
-        String functionNameWithNamespace = event.getPath();
-        Path functionNameAsPath = Paths.get(functionNameWithNamespace);
-
-        // This will extract just the last part. The function names are really:
-        // /whisk.system/namenodeX, where X is an integer. We don't want the "/whisk.system/" part.
-        return functionNameAsPath.getFileName().toString();
+        String nuclioFunctionName = System.getenv("NUCLIO_FUNCTION_NAME");
+        LOG.debug("Nuclio function name: " + nuclioFunctionName);
+        return nuclioFunctionName;
     }
 }

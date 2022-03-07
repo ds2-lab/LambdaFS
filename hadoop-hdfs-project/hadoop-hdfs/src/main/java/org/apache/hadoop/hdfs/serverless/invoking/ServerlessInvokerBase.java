@@ -103,11 +103,11 @@ public abstract class ServerlessInvokerBase<T> {
      */
     protected boolean configured = false;
 
+
     /**
      * HTTPClient used to invoke serverless functions.
      */
     protected CloseableHttpClient httpClient;
-
     /**
      * Maintains a mapping of files and directories to the serverless functions responsible for caching the
      * metadata of the file/directory in question.
