@@ -42,8 +42,6 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 public class OpenWhiskHandler {
     public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
-
-
     /**
      * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
      * it is finished being created, so we store the TransactionEvent instances from those transactions here.
@@ -502,10 +500,10 @@ public class OpenWhiskHandler {
     private static void performStaticInitialization() {
         System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
 
-        if (LOG.isDebugEnabled())
-            LOG.info("Debug-logging IS enabled.");
-        else
-            LOG.info("Debug-logging is NOT enabled.");
+//        if (LOG.isDebugEnabled())
+//            LOG.info("Debug-logging IS enabled.");
+//        else
+//            LOG.info("Debug-logging is NOT enabled.");
     }
 
     /**

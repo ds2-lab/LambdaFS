@@ -886,7 +886,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("Creating and initializing new instance of Serverless NameNode now...");
 
     try {
-      StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
+      // StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
       ServerlessNameNode nameNode = createNameNode(commandLineArgs, null, functionName, actionMemory, localMode);
 
       if (nameNode == null) {
@@ -3212,9 +3212,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       URI defaultUri = URI.create(HdfsConstants.HDFS_URI_SCHEME + "://" +
           conf.get(DFS_NAMENODE_RPC_ADDRESS_KEY));
       conf.set(FS_DEFAULT_NAME_KEY, defaultUri.toString());
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Setting " + FS_DEFAULT_NAME_KEY + " to " + defaultUri.toString());
-      }
+      LOG.debug("Setting " + FS_DEFAULT_NAME_KEY + " to " + defaultUri.toString());
     }
   }
 
@@ -3283,7 +3281,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     try {
-      StringUtils.startupShutdownMessage(ServerlessNameNode.class, argv, LOG);
+      // StringUtils.startupShutdownMessage(ServerlessNameNode.class, argv, LOG);
       ServerlessNameNode namenode = createNameNode(argv, null, "LocalVMNameNode0", (int) Runtime.getRuntime().maxMemory(), false);
       if (namenode != null) {
         namenode.join();
