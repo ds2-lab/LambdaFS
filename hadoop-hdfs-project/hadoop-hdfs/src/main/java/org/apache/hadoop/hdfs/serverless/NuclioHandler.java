@@ -31,7 +31,7 @@ import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFrom
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.CONSISTENCY_PROTOCOL_ENABLED;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.LOG_LEVEL;
 
-public class NuclioHandler implements EventHandler {
+public class NuclioHandler extends BaseHandler implements EventHandler {
     //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
     public static io.nuclio.Logger NUCLIO_LOGGER;
@@ -77,13 +77,13 @@ public class NuclioHandler implements EventHandler {
         }
 
         long startTime = System.nanoTime();
-        String functionName = platformSpecificInitialization(event);
+//        String functionName = platformSpecificInitialization();
 
-        LOG.info("============================================================");
-        LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " received HTTP request.");
-        int activeRequests = activeRequestCounter.incrementAndGet();
-        LOG.info("Active HTTP requests: " + activeRequests);
-        LOG.info("============================================================\n");
+//        LOG.info("============================================================");
+//        LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " received HTTP request.");
+//        int activeRequests = activeRequestCounter.incrementAndGet();
+//        LOG.info("Active HTTP requests: " + activeRequests);
+//        LOG.info("============================================================\n");
 
         String bodyAsString = new String(eventBody, StandardCharsets.UTF_8);
         JsonParser jsonParser = new JsonParser();
@@ -94,47 +94,10 @@ public class NuclioHandler implements EventHandler {
             return new Response().setBody("ERROR: Failed to decode event body to valid JSON.");
         }
 
-//        ObjectInput in = null;
-//        ByteArrayInputStream bis = new ByteArrayInputStream(eventBody);
-//        try {
-//            in = new ObjectInputStream(bis);
-//        } catch (IOException e) {
-//            LOG.error("Failed to create ObjectOutputStream for Event body.");
-//            e.printStackTrace();
-//
-//            JsonObject response = new JsonObject();
-//
-//            // TODO: Return an error to user/client here.
-//        }
-//
-//        try {
-//            args = (JsonObject)in.readObject();
-//        } catch (ClassNotFoundException | IOException e) {
-//            LOG.error("Failed to read in object from Event body.");
-//            e.printStackTrace();
-//
-//            // TODO: Return an error to user/client here.
-//        }
-//
-//        assert args != null;
         JsonObject response = OpenWhiskHandler.main(args);
 
         return new Response()
                 .setContentType("application/json")
                 .setBody(response.toString());
-    }
-
-    /**
-     * In this case, we are performing OpenWhisk-specific initialization.
-     *
-     * @return The name of this particular OpenWhisk serverless function/action. Note that the namespace portion
-     * of the function's name is removed. So, if the function's fully-qualified name is "/whisk.system/namenode0",
-     * then we return "namenode0", removing the "/whisk.system/" from the function's name.
-     */
-    private static String platformSpecificInitialization(Event event) {
-        LOG.info("Performing platform-specific initialization...");
-        String nuclioFunctionName = System.getenv("NUCLIO_FUNCTION_NAME");
-        LOG.info("Nuclio function name: " + nuclioFunctionName);
-        return nuclioFunctionName;
     }
 }

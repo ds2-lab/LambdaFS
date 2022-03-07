@@ -39,7 +39,7 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
  *
  * This is used on the NameNode side (obviously).
  */
-public class OpenWhiskHandler {
+public class OpenWhiskHandler extends BaseHandler {
     public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
     /**
@@ -499,31 +499,5 @@ public class OpenWhiskHandler {
      */
     private static void performStaticInitialization() {
         System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
-
-//        if (LOG.isDebugEnabled())
-//            LOG.info("Debug-logging IS enabled.");
-//        else
-//            LOG.info("Debug-logging is NOT enabled.");
-    }
-
-    /**
-     * In this case, we are performing OpenWhisk-specific initialization.
-     *
-     * @return The name of this particular OpenWhisk serverless function/action. Note that the namespace portion
-     * of the function's name is removed. So, if the function's fully-qualified name is "/whisk.system/namenode0",
-     * then we return "namenode0", removing the "/whisk.system/" from the function's name.
-     */
-    private static String platformSpecificInitialization() {
-        String activationId = System.getenv("__OW_ACTIVATION_ID");
-
-        LOG.debug("Hadoop configuration directory: " + System.getenv("HADOOP_CONF_DIR"));
-        LOG.debug("OpenWhisk activation ID: " + activationId);
-
-        String functionNameWithNamespace = System.getenv("__OW_ACTION_NAME");
-        Path functionNameAsPath = Paths.get(functionNameWithNamespace);
-
-        // This will extract just the last part. The function names are really:
-        // /whisk.system/namenodeX, where X is an integer. We don't want the "/whisk.system/" part.
-        return functionNameAsPath.getFileName().toString();
     }
 }
