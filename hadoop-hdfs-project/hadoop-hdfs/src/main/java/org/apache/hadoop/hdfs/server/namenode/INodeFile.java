@@ -252,14 +252,14 @@ public class INodeFile extends INodeWithAdditionalFields implements BlockCollect
     }else{
       fid = (FileInodeData) fida.get(getId());
     }
-    if (FSNamesystem.LOG.isDebugEnabled()) {
+    //if (FSNamesystem.LOG.isDebugEnabled()) {
       long dataLength = 0;
       if(fid!=null && fid.getInodeData()!=null){
         dataLength = fid.getInodeData().length;
       }
       FSNamesystem.LOG.debug("Stuffed Inode:  Read file data from the database. Data length is :"
           + dataLength);
-    }
+    //}
     return fid == null ? null : fid.getInodeData();
   }
 

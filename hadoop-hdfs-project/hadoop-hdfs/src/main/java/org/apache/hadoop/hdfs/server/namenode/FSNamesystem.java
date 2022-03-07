@@ -2030,10 +2030,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
     for (CryptoProtocolVersion c : supportedVersions) {
       if (c.equals(CryptoProtocolVersion.UNKNOWN)) {
-        if (LOG.isDebugEnabled()) {
+        //if (LOG.isDebugEnabled()) {
           LOG.debug("Ignoring unknown CryptoProtocolVersion provided by " +
               "client: " + c.getUnknownValue());
-        }
+        //}
         continue;
       }
       if (c.equals(required)) {
@@ -4251,9 +4251,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           if (deleteBlock) {
             // This may be a retry attempt so ignore the failure
             // to locate the block.
-            if (LOG.isDebugEnabled()) {
+            //if (LOG.isDebugEnabled()) {
               LOG.debug("Block (=" + oldBlock + ") not found");
-            }
+            //}
             return null;
           } else {
             throw new IOException("Block (=" + oldBlock + ") not found");
@@ -4331,11 +4331,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         
         if ((!iFile.isUnderConstruction() || storedBlock.isComplete()) &&
           iFile.getLastBlock().isComplete()) {
-          if (LOG.isDebugEnabled()) {
+          //if (LOG.isDebugEnabled()) {
             LOG.debug("Unexpected block (=" + oldBlock
                 + ") since the file (=" + iFile.getLocalName()
                 + ") is not under construction");
-          }
+          //}
           return;
         }
           
@@ -4371,9 +4371,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
             if (targetNode != null) {
               trimmedTargets.add(targetNode);
               trimmedStorages.add(newTargetStorages[i]);
-            } else if (LOG.isDebugEnabled()) {
+            } //else if (LOG.isDebugEnabled()) {
               LOG.debug("DatanodeDescriptor (=" + newTargets[i] + ") not found");
-            }
+            //}
           }
           if ((closeFile) && !trimmedTargets.isEmpty()) {
             // the file is getting closed. Insert block locations into blockManager.
@@ -5453,9 +5453,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     private void adjustBlockTotals(List<Block> deltaSafe, int deltaTotal)
         throws IOException {
       int oldBlockSafe = 0;
-      if (LOG.isDebugEnabled()) {
+      //if (LOG.isDebugEnabled()) {
         oldBlockSafe = blockSafe();
-      }
+      //}
       
       if (deltaSafe != null) {
         for (Block b : deltaSafe) {
@@ -5463,29 +5463,29 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         }
       }
       
-      if (LOG.isDebugEnabled()) {
+      //if (LOG.isDebugEnabled()) {
         int newBlockSafe = blockSafe();
         long blockTotal = blockTotal();
         LOG.debug("Adjusting block totals from " + oldBlockSafe + "/" + blockTotal + " to " + newBlockSafe + "/"
             + (blockTotal + deltaTotal));
-      }
+      //}
             
       updateBlockTotal(deltaTotal);
     }
 
     private void setSafeModePendingOperation(Boolean val) {
-      if (LOG.isDebugEnabled()) {
+      //if (LOG.isDebugEnabled()) {
         LOG.debug("SafeModeX Some operation are put on hold");
-      }
+      //}
       safeModePendingOperation.set(val);
     }
 
     private void adjustSafeBlocks(Set<Long> safeBlocks) throws IOException {
       int added = addSafeBlocks(new ArrayList<Long>(safeBlocks));
-      if (LOG.isDebugEnabled()) {
+      //if (LOG.isDebugEnabled()) {
         long blockTotal = blockTotal();
         LOG.debug("Adjusting safe blocks, added " + added +" blocks");
-      }
+      //}
       
       StartupProgress prog = ServerlessNameNode.getStartupProgress();
         if (prog.getStatus(Phase.SAFEMODE) != Status.COMPLETE) {
@@ -7711,9 +7711,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       @Override
       public void setUp() throws IOException {
         super.setUp();
-        if(LOG.isDebugEnabled()) {
+        //if(LOG.isDebugEnabled()) {
           LOG.debug("About to lock '" + path + "'");
-        }
+        //}
       }
 
       @Override
@@ -7748,11 +7748,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           inode.setSubtreeLocked(true);
           inode.setSubtreeLockOwner(getNamenodeId());
           EntityManager.update(inode);
-          if(LOG.isDebugEnabled()) {
+          //if(LOG.isDebugEnabled()) {
             LOG.debug("Lock the INode with sub tree lock flag. Path: '" + path + "' "
                     + " id: " + inode.getId()
                     + " pid: " + inode.getParentId() + " name: " + inode.getLocalName());
-          }
+          //}
 
           EntityManager.update(new SubTreeOperation(getSubTreeLockPathPrefix(path),
                   inode.getId() , serverlessNameNode.getId(), stoType,
@@ -7766,10 +7766,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           delayBeforeSTOFlag(stoType.toString());
           return  iNodeIdentifier;
         }else{
-          if(LOG.isInfoEnabled()) {
+          //if(LOG.isInfoEnabled()) {
             LOG.info("No component was locked in the path using sub tree flag. "
                     + "Path: '" + path + "'");
-          }
+          //}
           return null;
         }
       }
