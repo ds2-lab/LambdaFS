@@ -59,8 +59,10 @@ public class NuclioHandler implements EventHandler {
 
     @Override
     public Response handleEvent(Context context, Event event) {
-        if (NUCLIO_LOGGER == null)
+        if (NUCLIO_LOGGER == null) {
             NUCLIO_LOGGER = context.getLogger();
+            LOG = NUCLIO_LOGGER;
+        }
 
         NUCLIO_LOGGER.info("Event Header: " + event.getHeaders().toString());
         NUCLIO_LOGGER.info("Event Body: " + Arrays.toString(event.getBody()));
@@ -130,8 +132,9 @@ public class NuclioHandler implements EventHandler {
      * then we return "namenode0", removing the "/whisk.system/" from the function's name.
      */
     private static String platformSpecificInitialization(Event event) {
+        LOG.info("Performing platform-specific initialization...");
         String nuclioFunctionName = System.getenv("NUCLIO_FUNCTION_NAME");
-        LOG.debug("Nuclio function name: " + nuclioFunctionName);
+        LOG.info("Nuclio function name: " + nuclioFunctionName);
         return nuclioFunctionName;
     }
 }
