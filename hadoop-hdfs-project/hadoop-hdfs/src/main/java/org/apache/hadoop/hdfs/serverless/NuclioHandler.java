@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -61,41 +62,12 @@ public class NuclioHandler implements EventHandler {
         if (NUCLIO_LOGGER == null)
             NUCLIO_LOGGER = context.getLogger();
 
-        /*if (NUCLIO_LOGGER != null) {
-            LOG.info("Received HTTP invocation.");
-            LOG.debug("Received HTTP invocation.");
-            NUCLIO_LOGGER.info("Received HTTP invocation.");
+        NUCLIO_LOGGER.info("Event Header: " + event.getHeaders().toString());
+        NUCLIO_LOGGER.info("Event Body: " + Arrays.toString(event.getBody()));
 
-            if (LOG.isDebugEnabled())
-                NUCLIO_LOGGER.info("Debugging logging is DISABLED for Log4j");
-            else
-                NUCLIO_LOGGER.info("Debugging logging is ENABLED for Log4j");
-
-            if (LOG.isInfoEnabled())
-                NUCLIO_LOGGER.info("Info logging is DISABLED for Log4j");
-            else
-                NUCLIO_LOGGER.info("Info logging is ENABLED for Log4j");
-
-
-            return new Response().setBody("Hello, world.");
-        } else {
-            LOG.info("Received HTTP invocation.");
-            LOG.debug("Received HTTP invocation.");
-            System.out.println("Received HTTP invocation.");
-
-            if (LOG.isDebugEnabled())
-                System.out.println("Debugging logging is DISABLED for Log4j");
-            else
-                System.out.println("Debugging logging is ENABLED for Log4j");
-
-            if (LOG.isInfoEnabled())
-                System.out.println("Info logging is DISABLED for Log4j");
-            else
-                System.out.println("Info logging is ENABLED for Log4j");
-
-
-            return new Response().setBody("Hello, world.");
-        }*/
+        System.out.println("Event Header: " + event.getHeaders().toString());
+        System.out.println("Event Body: " + Arrays.toString(event.getBody()));
+        System.out.println("Fields: " + event.getFields().toString());
 
         long startTime = System.nanoTime();
         String functionName = platformSpecificInitialization(event);
@@ -107,6 +79,11 @@ public class NuclioHandler implements EventHandler {
         LOG.info("============================================================\n");
 
         byte[] eventBody = event.getBody();
+
+        if (eventBody == null || eventBody.length == 0) {
+            return new Response().setBody("");
+        }
+
         JsonObject args = null;
         ObjectInput in = null;
         ByteArrayInputStream bis = new ByteArrayInputStream(eventBody);
