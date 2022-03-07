@@ -59,6 +59,17 @@ public class NuclioHandler implements EventHandler {
             LOG.debug("Received HTTP invocation.");
             NUCLIO_LOGGER.info("Received HTTP invocation.");
 
+            if (LOG.isDebugEnabled())
+                NUCLIO_LOGGER.info("Debugging logging is DISABLED for Log4j");
+            else
+                NUCLIO_LOGGER.info("Debugging logging is ENABLED for Log4j");
+
+            if (LOG.isInfoEnabled())
+                NUCLIO_LOGGER.info("Info logging is DISABLED for Log4j");
+            else
+                NUCLIO_LOGGER.info("Info logging is ENABLED for Log4j");
+
+
             return new Response().setBody("Hello, world.");
         }
 
