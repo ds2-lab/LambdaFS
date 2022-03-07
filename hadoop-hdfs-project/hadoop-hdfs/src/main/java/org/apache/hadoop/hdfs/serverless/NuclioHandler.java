@@ -96,6 +96,7 @@ public class NuclioHandler implements EventHandler {
             return new Response().setBody("Hello, world.");
         }
 
+        /*
         long startTime = System.nanoTime();
         String functionName = platformSpecificInitialization(event);
 
@@ -135,6 +136,7 @@ public class NuclioHandler implements EventHandler {
         return new Response()
                 .setContentType("application/json")
                 .setBody(response.toString());
+        */
     }
 
     /**
