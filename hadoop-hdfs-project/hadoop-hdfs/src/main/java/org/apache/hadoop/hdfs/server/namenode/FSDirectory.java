@@ -1244,10 +1244,10 @@ public class FSDirectory implements Closeable {
       return null;
     } else if(encryptionZone.getPath() == null
         || encryptionZone.getPath().isEmpty()) {
-      if (ServerlessNameNode.LOG.isDebugEnabled()) {
+      //if (ServerlessNameNode.LOG.isDebugEnabled()) {
         ServerlessNameNode.LOG.debug("Encryption zone " +
             encryptionZone.getPath() + " does not have a valid path.");
-      }
+      //}
     }
 
     final CryptoProtocolVersion version = encryptionZone.getVersion();
@@ -1429,9 +1429,9 @@ public class FSDirectory implements Closeable {
       path.append(Path.SEPARATOR).append(
           DFSUtil.bytes2String(pathComponents[i]));
     }
-    if (ServerlessNameNode.LOG.isDebugEnabled()) {
+    //if (ServerlessNameNode.LOG.isDebugEnabled()) {
       ServerlessNameNode.LOG.debug("Resolved path is " + path);
-    }
+    //}
     return path.toString();
   }
   

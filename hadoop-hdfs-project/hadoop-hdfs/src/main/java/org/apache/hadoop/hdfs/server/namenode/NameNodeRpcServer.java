@@ -94,6 +94,7 @@ import org.apache.hadoop.tracing.TraceAdminProtocolServerSideTranslatorPB;
 import org.apache.hadoop.util.VersionInfo;
 import org.apache.hadoop.util.VersionUtil;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -112,7 +113,7 @@ import static org.apache.hadoop.util.Time.now;
  */
 public class NameNodeRpcServer implements NamenodeProtocols {
   
-  private static final Logger LOG = ServerlessNameNode.LOG;
+  private static final Logger LOG = LoggerFactory.getLogger(NameNodeRpcServer.class); //ServerlessNameNode.LOG;
   private static final Logger stateChangeLog = ServerlessNameNode.stateChangeLog;
   private static final Logger blockStateChangeLog = ServerlessNameNode
       .blockStateChangeLog;

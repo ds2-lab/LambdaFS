@@ -939,7 +939,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         }
       } catch (IOException ie) {
         LOG.error("Error closing FSDirectory", ie);
-        IOUtils.cleanup(LOG, dir);
+        //IOUtils.cleanup(LOG, dir);
+        IOUtils.cleanup(null, dir);
       }
     }
   }
@@ -2694,7 +2695,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       return appendFileHopFS(src, holder, clientMachine,
           flag.contains(CreateFlag.NEW_BLOCK));
     } catch(HDFSClientAppendToDBFileException e){
-      LOG.debug(e);
+      LOG.debug(e.toString());
       return moveToDNsAndAppend(src, holder, clientMachine, flag.contains(CreateFlag.NEW_BLOCK));
     }
   }
@@ -5351,7 +5352,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         blockThreshold = blockThreshold();
         blockTotal = blockTotal();
       } catch (IOException ex) {
-        LOG.error(ex);
+        LOG.error(ex.toString());
         return "got exception " + ex.getMessage();
       }
       if (blockSafe < blockThreshold) {
@@ -5583,7 +5584,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           LOG.info("NameNode is being shutdown, exit SafeModeMonitor thread");
         }
       } catch (IOException ex) {
-        LOG.error(ex);
+        LOG.error(ex.toString());
       }
     }
   }
@@ -5894,7 +5895,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     try {
       return this.dir.totalInodes();
     } catch (Exception ex) {
-      LOG.error(ex);
+      LOG.error(ex.toString());
       return -1;
     }
   }
@@ -7116,7 +7117,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     try{
       upgradeInfo = getRollingUpgradeInfoTX();
     }catch(IOException ex){
-      LOG.warn(ex);
+      LOG.warn(ex.toString());
     }
     if (upgradeInfo != null) {
       return new RollingUpgradeInfo.Bean(upgradeInfo);
@@ -9149,7 +9150,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         Thread.sleep(time.delayBeforeSTOFlag);
         LOG.debug("Testing STO. "+message+" Waking up from sleep of " + time.delayBeforeSTOFlag);
       } catch (InterruptedException e) {
-        LOG.warn(e);
+        LOG.warn(e.toString());
       }
     }
   }
@@ -9166,7 +9167,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         Thread.sleep(time.delayAfterBuildingTree);
         LOG.debug("Testing STO. "+message+" Waking up from sleep of " + time.delayAfterBuildingTree);
       } catch (InterruptedException e) {
-        LOG.warn(e);
+        LOG.warn(e.toString());
       }
     }
   }
