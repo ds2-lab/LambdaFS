@@ -75,7 +75,7 @@ import static org.apache.hadoop.util.ExitUtil.terminate;
 @InterfaceAudience.LimitedPrivate({"HDFS"})
 public class CacheReplicationMonitor extends Thread implements Closeable {
 
-  private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+  private static final Logger LOG = LoggerFactory.getLogger(CacheReplicationMonitor.class);
 
   private final FSNamesystem namesystem;
 

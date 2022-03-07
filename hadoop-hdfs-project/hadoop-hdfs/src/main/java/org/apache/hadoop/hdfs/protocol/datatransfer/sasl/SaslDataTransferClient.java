@@ -75,7 +75,7 @@ import com.google.common.collect.Lists;
 @InterfaceAudience.Private
 public class SaslDataTransferClient {
 
-  private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+  private static final Logger LOG = LoggerFactory.getLogger(
     SaslDataTransferClient.class);
 
   private final Configuration conf;

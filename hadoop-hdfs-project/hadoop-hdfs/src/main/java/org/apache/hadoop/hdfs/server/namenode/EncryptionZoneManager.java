@@ -66,7 +66,7 @@ import static org.apache.hadoop.hdfs.server.common.HdfsServerConstants
  */
 public class EncryptionZoneManager {
 
-  public static io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+  public static Logger LOG = LoggerFactory.getLogger(EncryptionZoneManager
       .class);
 
   /**

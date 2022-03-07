@@ -96,6 +96,7 @@ import org.apache.hadoop.hdfs.server.namenode.top.window.RollingWindowManager;
 import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMethods;
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 import org.apache.hadoop.hdfs.serverless.zookeeper.Invalidatable;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
@@ -177,7 +178,8 @@ import static org.apache.hadoop.util.Time.now;
 @InterfaceAudience.Private
 @Metrics(context="dfs")
 public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBean, HopsEventListener, Invalidatable {
-  public static final Log LOG = LogFactory.getLog(FSNamesystem.class);
+  //public static final Log LOG = LogFactory.getLog(FSNamesystem.class);
+  public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
   private static final ThreadLocal<StringBuilder> auditBuffer =
       new ThreadLocal<StringBuilder>() {

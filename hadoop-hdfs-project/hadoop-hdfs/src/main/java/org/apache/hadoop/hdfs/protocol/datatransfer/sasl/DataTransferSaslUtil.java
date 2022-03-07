@@ -68,7 +68,7 @@ import com.google.protobuf.ByteString;
 @InterfaceAudience.Private
 public final class DataTransferSaslUtil {
 
-  private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+  private static final Logger LOG = LoggerFactory.getLogger(
     DataTransferSaslUtil.class);
 
   /**

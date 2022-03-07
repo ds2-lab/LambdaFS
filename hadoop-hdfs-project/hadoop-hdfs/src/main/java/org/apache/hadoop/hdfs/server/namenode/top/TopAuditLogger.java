@@ -35,7 +35,7 @@ import org.apache.hadoop.hdfs.server.namenode.top.metrics.TopMetrics;
  */
 @InterfaceAudience.Private
 public class TopAuditLogger implements AuditLogger {
-  public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+  public static final Logger LOG = LoggerFactory.getLogger(TopAuditLogger.class);
 
   private final TopMetrics topMetrics;
 

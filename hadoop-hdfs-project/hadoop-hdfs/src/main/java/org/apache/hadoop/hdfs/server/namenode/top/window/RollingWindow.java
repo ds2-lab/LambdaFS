@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
  */
 @InterfaceAudience.Private
 public class RollingWindow {
-  private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+  private static final Logger LOG = LoggerFactory.getLogger(RollingWindow.class);
 
   /**
    * Each window is composed of buckets, which offer a trade-off between

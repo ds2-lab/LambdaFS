@@ -71,6 +71,7 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
@@ -394,6 +395,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public static final int DEFAULT_PORT = 8020;
+  // public static final Logger LOG = LoggerFactory.getLogger(ServerlessNameNode.class.getName());
   public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
   public static final Logger stateChangeLog = LoggerFactory.getLogger("org.apache.hadoop.hdfs.StateChange");
   public static final Logger blockStateChangeLog = LoggerFactory.getLogger("BlockStateChange");

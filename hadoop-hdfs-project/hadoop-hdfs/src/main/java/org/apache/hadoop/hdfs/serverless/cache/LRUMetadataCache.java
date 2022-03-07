@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless.cache;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

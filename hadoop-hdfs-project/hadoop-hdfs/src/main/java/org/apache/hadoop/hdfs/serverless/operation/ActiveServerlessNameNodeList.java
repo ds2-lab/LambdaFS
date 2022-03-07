@@ -4,6 +4,7 @@ import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;

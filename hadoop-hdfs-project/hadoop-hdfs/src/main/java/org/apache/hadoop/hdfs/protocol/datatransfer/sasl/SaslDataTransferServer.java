@@ -70,7 +70,7 @@ import com.google.common.collect.Lists;
 @InterfaceAudience.Private
 public class SaslDataTransferServer {
 
-  private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+  private static final Logger LOG = LoggerFactory.getLogger(
     SaslDataTransferServer.class);
 
   private final BlockPoolTokenSecretManager blockPoolTokenSecretManager;

@@ -10,6 +10,7 @@ import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;

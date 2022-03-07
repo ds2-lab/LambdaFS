@@ -31,9 +31,10 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.CONSISTEN
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.LOG_LEVEL;
 
 public class NuclioHandler implements EventHandler {
-    public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
     public static io.nuclio.Logger NUCLIO_LOGGER;
+    public static io.nuclio.Logger LOG = NUCLIO_LOGGER;
 
     /**
      * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until

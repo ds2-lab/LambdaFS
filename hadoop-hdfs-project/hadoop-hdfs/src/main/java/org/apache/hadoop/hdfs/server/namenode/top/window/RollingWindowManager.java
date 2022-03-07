@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
  */
 @InterfaceAudience.Private
 public class RollingWindowManager {
-  public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+  public static final Logger LOG = LoggerFactory.getLogger(
       RollingWindowManager.class);
 
   private final int windowLenMs;
