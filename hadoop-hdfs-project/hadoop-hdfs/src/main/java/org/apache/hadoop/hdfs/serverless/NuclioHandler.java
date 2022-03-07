@@ -81,7 +81,10 @@ public class NuclioHandler implements EventHandler {
         byte[] eventBody = event.getBody();
 
         if (eventBody == null || eventBody.length == 0) {
-            return new Response().setBody("");
+            NUCLIO_LOGGER.info("Received request with empty body. Probably a HEALTHCHECK.");
+            return new Response().setBody("Healthy."); // I don't think it matters what we return here.
+        } else {
+            NUCLIO_LOGGER.info("Request body: " + event);
         }
 
         JsonObject args = null;
