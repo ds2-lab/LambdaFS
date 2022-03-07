@@ -54,6 +54,14 @@ public class NuclioHandler implements EventHandler {
         if (NUCLIO_LOGGER == null)
             NUCLIO_LOGGER = context.getLogger();
 
+        if (event != null) {
+            LOG.info("Received HTTP invocation.");
+            LOG.debug("Received HTTP invocation.");
+            NUCLIO_LOGGER.info("Received HTTP invocation.");
+
+            return new Response().setBody("Hello, world.");
+        }
+
         long startTime = System.nanoTime();
         String functionName = platformSpecificInitialization(event);
 
