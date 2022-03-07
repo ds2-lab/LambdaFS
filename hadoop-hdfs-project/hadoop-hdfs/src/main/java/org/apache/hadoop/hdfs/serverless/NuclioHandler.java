@@ -65,9 +65,14 @@ public class NuclioHandler implements EventHandler {
         NUCLIO_LOGGER.info("Event Header: " + event.getHeaders().toString());
         NUCLIO_LOGGER.info("Event Body: " + Arrays.toString(event.getBody()));
 
-        System.out.println("Event Header: " + event.getHeaders().toString());
-        System.out.println("Event Body: " + Arrays.toString(event.getBody()));
-        System.out.println("Fields: " + event.getFields().toString());
+        byte[] eventBody = event.getBody();
+
+        if (eventBody == null || eventBody.length == 0) {
+            NUCLIO_LOGGER.info("Received request with empty body. Probably a HEALTHCHECK.");
+            return new Response().setBody("Healthy."); // I don't think it matters what we return here.
+        } else {
+            NUCLIO_LOGGER.info("Request body: " + event);
+        }
 
         long startTime = System.nanoTime();
         String functionName = platformSpecificInitialization(event);
@@ -77,15 +82,6 @@ public class NuclioHandler implements EventHandler {
         int activeRequests = activeRequestCounter.incrementAndGet();
         LOG.info("Active HTTP requests: " + activeRequests);
         LOG.info("============================================================\n");
-
-        byte[] eventBody = event.getBody();
-
-        if (eventBody == null || eventBody.length == 0) {
-            NUCLIO_LOGGER.info("Received request with empty body. Probably a HEALTHCHECK.");
-            return new Response().setBody("Healthy."); // I don't think it matters what we return here.
-        } else {
-            NUCLIO_LOGGER.info("Request body: " + event);
-        }
 
         JsonObject args = null;
         ObjectInput in = null;
