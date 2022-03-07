@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.esotericsoftware.kryo.Kryo;
+import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
@@ -9,7 +10,7 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
  * Utility functions exposed by both TCP clients and servers.
  */
 public class ServerlessClientServerUtilities {
-    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(ServerlessClientServerUtilities.class);
+    private static final Log LOG = LogFactory.getLog(ServerlessClientServerUtilities.class);
 
     /**
      * This operation is used when a NameNode is first connecting to and registering with a client.

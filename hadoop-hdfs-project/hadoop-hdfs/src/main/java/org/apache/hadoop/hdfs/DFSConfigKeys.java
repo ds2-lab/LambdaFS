@@ -251,6 +251,13 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_SUBTREE_DELETE_BATCH_SIZE_DEFAULT = 128;
 
   /**
+   * List of endpoints (IPs) for the load balancers exposing each Nuclio deployment. The first IP corresponds
+   * to deployment 0, and the subsequent IPs correspond to deployment 1, 2, 3, ..., etc.
+   */
+  public static final String SERVERLESS_NUCLIO_ENDPOINTS = "serverless.nuclio.endpoints";
+  public static final String[] SERVERLESS_NUCLIO_ENDPOINTS_DEFAULT = new String[0];
+
+  /**
    * When using local mode, the NameNode container for the first NameNode deployment (i.e., namenode0) will
    * listen on this port. The containers for subsequent deployments will listen on this port +1, +2, etc.
    */
