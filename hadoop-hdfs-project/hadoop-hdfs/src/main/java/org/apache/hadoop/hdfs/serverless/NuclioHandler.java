@@ -49,12 +49,18 @@ public class NuclioHandler implements EventHandler {
 
     public static AtomicInteger activeRequestCounter = new AtomicInteger(0);
 
+    public static void main(String[] args) {
+        NuclioHandler handler = new NuclioHandler();
+
+        handler.handleEvent(null,null);
+    }
+
     @Override
     public Response handleEvent(Context context, Event event) {
-        if (NUCLIO_LOGGER == null)
+        if (NUCLIO_LOGGER == null && context != null)
             NUCLIO_LOGGER = context.getLogger();
 
-        if (event != null) {
+        if (true) {
             LOG.info("Received HTTP invocation.");
             LOG.debug("Received HTTP invocation.");
             NUCLIO_LOGGER.info("Received HTTP invocation.");
