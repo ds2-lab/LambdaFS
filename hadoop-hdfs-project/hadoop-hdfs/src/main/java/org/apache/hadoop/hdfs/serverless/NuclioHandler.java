@@ -47,7 +47,9 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
     }
 
     static {
+        System.out.println("Performing static initialization.");
         BasicConfigurator.configure();
+        LOG.info("Can you see this?");
     }
 
     @Override
@@ -57,6 +59,7 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
             LOG = NUCLIO_LOGGER;
         }
 
+        System.out.println("Testing 321.");
         LOG4J_LOG.info("Testing 123.");
 
         NUCLIO_LOGGER.info("Event Header: " + event.getHeaders().toString());
@@ -82,10 +85,11 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
             return new Response().setBody("ERROR: Failed to decode event body to valid JSON.");
         }
 
-        JsonObject response = OpenWhiskHandler.main(args);
-
-        return new Response()
-                .setContentType("application/json")
-                .setBody(response.toString());
+        return new Response().setBody("Hello, world. ");
+//        JsonObject response = OpenWhiskHandler.main(args);
+//
+//        return new Response()
+//                .setContentType("application/json")
+//                .setBody(response.toString());
     }
 }
