@@ -49,7 +49,7 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
     static {
         System.out.println("Performing static initialization.");
         BasicConfigurator.configure();
-        LOG.info("Can you see this?");
+        LOG4J_LOG.info("Can you see this?");
     }
 
     @Override
