@@ -148,6 +148,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <scope>${dependency-scope}</scope>
     </dependency>
     <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
     </dependency>
