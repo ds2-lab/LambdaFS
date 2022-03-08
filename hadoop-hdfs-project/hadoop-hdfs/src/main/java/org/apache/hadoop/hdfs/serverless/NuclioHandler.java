@@ -11,6 +11,7 @@ import io.nuclio.Response;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.spi.Configurator;
@@ -34,27 +35,19 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.LOG_LEVEL
 public class NuclioHandler extends BaseHandler implements EventHandler {
     //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
+    public static final Logger LOG4J_LOG = LoggerFactory.getLogger(NuclioHandler.class);
+
     public static io.nuclio.Logger NUCLIO_LOGGER;
     public static io.nuclio.Logger LOG = NUCLIO_LOGGER;
-
-    /**
-     * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
-     * it is finished being created, so we store the TransactionEvent instances from those transactions here.
-     * Once the NameNode is created, we add these events to the NameNode instance.
-     */
-    public static ThreadLocal<Set<TransactionEvent>> temporaryEventSet = new ThreadLocal<>();
-
-    /**
-     * Used internally to determine whether this instance is warm or cold.
-     */
-    private static boolean isCold = true;
-
-    public static AtomicInteger activeRequestCounter = new AtomicInteger(0);
 
     public static void main(String[] args) {
         NuclioHandler handler = new NuclioHandler();
 
         handler.handleEvent(null,null);
+    }
+
+    static {
+        BasicConfigurator.configure();
     }
 
     @Override
@@ -63,6 +56,8 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
             NUCLIO_LOGGER = context.getLogger();
             LOG = NUCLIO_LOGGER;
         }
+
+        LOG4J_LOG.info("Testing 123.");
 
         NUCLIO_LOGGER.info("Event Header: " + event.getHeaders().toString());
         NUCLIO_LOGGER.info("Event Body: " + Arrays.toString(event.getBody()));
@@ -77,13 +72,6 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
         }
 
         long startTime = System.nanoTime();
-//        String functionName = platformSpecificInitialization();
-
-//        LOG.info("============================================================");
-//        LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " received HTTP request.");
-//        int activeRequests = activeRequestCounter.incrementAndGet();
-//        LOG.info("Active HTTP requests: " + activeRequests);
-//        LOG.info("============================================================\n");
 
         String bodyAsString = new String(eventBody, StandardCharsets.UTF_8);
         JsonParser jsonParser = new JsonParser();
