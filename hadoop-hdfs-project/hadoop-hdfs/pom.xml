@@ -151,6 +151,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <scope>compile</scope>
+      <version>${slf4j.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.code.gson</groupId>
@@ -350,7 +351,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <!--<scope>provided</scope>-->
+      <version>${slf4j.version}</version>
       <scope>${dependency-scope}</scope>
     </dependency>
     <dependency>
