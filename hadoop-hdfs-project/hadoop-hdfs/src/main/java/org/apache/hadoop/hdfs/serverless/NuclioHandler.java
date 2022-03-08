@@ -46,18 +46,16 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
         handler.handleEvent(null,null);
     }
 
-    static {
-        System.out.println("Performing static initialization.");
-        BasicConfigurator.configure();
-        LOG4J_LOG.info("Can you see this?");
-    }
-
     @Override
     public Response handleEvent(Context context, Event event) {
-        if (NUCLIO_LOGGER == null) {
+        if (NUCLIO_LOGGER == null && context != null) {
             NUCLIO_LOGGER = context.getLogger();
             LOG = NUCLIO_LOGGER;
         }
+
+        System.out.println("Performing static initialization.");
+        BasicConfigurator.configure();
+        LOG4J_LOG.info("Can you see this?");
 
         System.out.println("Testing 321.");
         LOG4J_LOG.info("Testing 123.");
