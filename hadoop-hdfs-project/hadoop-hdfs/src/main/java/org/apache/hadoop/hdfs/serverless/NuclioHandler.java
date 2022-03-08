@@ -61,6 +61,7 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
         LOG4J_LOG.info("Testing 123.");
 
         System.out.flush();
+        System.err.flush();
 
         NUCLIO_LOGGER.info("Event Header: " + event.getHeaders().toString());
         NUCLIO_LOGGER.info("Event Body: " + Arrays.toString(event.getBody()));
