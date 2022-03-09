@@ -251,6 +251,18 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>jetty-webapp</artifactId>
       <version>9.3.24.v20180605</version>
     </dependency>
+    <dependency>
+      <groupId>org.codehaus.woodstox</groupId>
+      <artifactId>stax2-api</artifactId>
+      <scope>compile</scope>
+      <version>3.1.4</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.woodstox</groupId>
+      <artifactId>woodstox-core</artifactId>
+      <scope>compile</scope>
+      <version>5.0.3</version>
+    </dependency>
     <!-- Used for NameNode TCP client/server -->
     <dependency>
       <groupId>kryonet</groupId>
