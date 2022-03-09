@@ -51,6 +51,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_ENDPOINT_LOCAL_DEFAULT = "http://localhost:8080/run";
 
   /**
+   * If non-null, then we add the folder specified by this configuration parameter to the CLASSPATH.
+   */
+  public static final String SERVERLESS_ADDITIONAL_LIBS_PATH = "serverless.additional.libs.folder";
+  public static final String SERVERLESS_ADDITIONAL_LIBS_PATH_DEFAULT = null;
+
+  /**
    * Configuration property for defining the serverless platform in use.
    */
   public static final String SERVERLESS_PLATFORM = "serverless.platform";

@@ -109,8 +109,11 @@ import org.slf4j.LoggerFactory;
 import javax.management.ObjectName;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.PrivilegedExceptionAction;
 import java.time.Duration;
 import java.time.Instant;
@@ -2701,6 +2704,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
                                int actionMemory, boolean localMode) throws Exception {
     this.functionName = functionName;
     this.localMode = localMode;
+
+    String additionalLibsFolder = conf.get(SERVERLESS_ADDITIONAL_LIBS_PATH, SERVERLESS_ADDITIONAL_LIBS_PATH_DEFAULT);
+    if (additionalLibsFolder != null) {
+      LOG.debug("Adding additional libraries folder to classpath. Folder path: '" + additionalLibsFolder + "'");
+      URLClassLoader urlClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+      Class<URLClassLoader> urlClass = URLClassLoader.class;
+      File f = new File(additionalLibsFolder);
+      URL u = f.toURI().toURL();
+      Method method = urlClass.getDeclaredMethod("addURL", URL.class);
+      method.setAccessible(true);
+      method.invoke(urlClassLoader, u);
+    }
 
     LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
 
