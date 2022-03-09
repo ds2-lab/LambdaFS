@@ -252,6 +252,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <version>9.3.24.v20180605</version>
     </dependency>
     <dependency>
+      <groupId>commons-collections</groupId>
+      <artifactId>commons-collections</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>org.codehaus.woodstox</groupId>
       <artifactId>stax2-api</artifactId>
       <scope>compile</scope>
