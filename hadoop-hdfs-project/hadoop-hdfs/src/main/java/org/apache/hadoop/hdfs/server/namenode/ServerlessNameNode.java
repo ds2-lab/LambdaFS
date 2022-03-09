@@ -3145,13 +3145,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     LOG.debug("Adding additional libraries folder to classpath. Folder path: '/additional_java_libs/'");
-    URLClassLoader urlClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+
     Class<URLClassLoader> urlClass = URLClassLoader.class;
     File f = new File("/additional_java_libs/");
     URL u = f.toURI().toURL();
-    Method method = urlClass.getDeclaredMethod("addURL", URL.class);
-    method.setAccessible(true);
-    method.invoke(urlClassLoader, u);
+    URLClassLoader urlClassLoader = new URLClassLoader(new URL[]{u}, ClassLoader.getSystemClassLoader());
 
     // TODO: Make this not hard-coded. It doesn't have to be hard-coded for OpenWhisk, but Nuclio doesn't
     //       seem to be finding the configuration files...?
