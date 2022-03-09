@@ -57,6 +57,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_ADDITIONAL_LIBS_PATH_DEFAULT = null;
 
   /**
+   * Location of the hdfs-site.xml and core-site.xml configuration files.
+   */
+  public static final String SERVERLESS_CONFIG_DIR = "serverless.config.dir";
+  public static final String SERVERLESS_CONFIG_DIR_DEFAULT = "/conf/";
+
+  /**
    * Configuration property for defining the serverless platform in use.
    */
   public static final String SERVERLESS_PLATFORM = "serverless.platform";

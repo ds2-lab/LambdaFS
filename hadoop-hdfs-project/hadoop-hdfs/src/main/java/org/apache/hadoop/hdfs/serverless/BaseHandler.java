@@ -31,6 +31,7 @@ public class BaseHandler {
 
     private static String nuclioInitialization() {
         LOG.info("Performing platform-specific initialization...");
+        LOG.debug("Hadoop configuration directory: " + System.getenv("HADOOP_CONF_DIR"));
         String nuclioFunctionName = System.getenv("NUCLIO_FUNCTION_NAME");
         LOG.info("Nuclio function name: " + nuclioFunctionName);
         return nuclioFunctionName;

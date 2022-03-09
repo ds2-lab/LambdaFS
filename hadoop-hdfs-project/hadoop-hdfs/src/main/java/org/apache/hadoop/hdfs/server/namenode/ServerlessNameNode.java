@@ -3142,6 +3142,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("createNameNode " + Arrays.asList(argv));
     if (conf == null) {
       conf = new HdfsConfiguration();
+      conf.addResource("/conf/hdfs-site.xml");
+      conf.addResource("/conf/core-site.xml");
     }
     StartupOption startOpt = parseArguments(argv);
     if (startOpt == null) {
