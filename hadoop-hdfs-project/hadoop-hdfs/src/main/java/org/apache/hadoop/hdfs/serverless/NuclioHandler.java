@@ -54,8 +54,6 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
         if (eventBody == null || eventBody.length == 0) {
             LOG.debug("Received request with empty body. Probably a HEALTHCHECK.");
             return new Response().setBody("Healthy."); // I don't think it matters what we return here.
-        } else {
-            LOG.debug("Request body: " + eventBody);
         }
 
         String bodyAsString = new String(eventBody, StandardCharsets.UTF_8);

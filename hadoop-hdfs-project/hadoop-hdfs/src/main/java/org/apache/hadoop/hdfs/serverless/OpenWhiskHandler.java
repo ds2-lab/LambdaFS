@@ -57,6 +57,10 @@ public class OpenWhiskHandler extends BaseHandler {
 
     public static AtomicInteger activeRequestCounter = new AtomicInteger(0);
 
+    static {
+        System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
+    }
+
     /**
      * OpenWhisk handler.
      */
@@ -84,11 +88,12 @@ public class OpenWhiskHandler extends BaseHandler {
             actionMemory = Integer.parseInt(System.getenv("__ACTION_MEMORY"));
         } else {
             // The arguments passed by the user are included under the 'value' key.
-            actionMemory = args.get(ServerlessNameNodeKeys.ACTION_MEMORY).getAsInt();
+            // TODO: This may be included or not depending on the platform. If it is Nuclio, then
+            //       we'll probably set it as an environment variable going forward. Just going to
+            //       hard-code it for now, though.
+            actionMemory = 1280; // args.get(ServerlessNameNodeKeys.ACTION_MEMORY).getAsInt();
             userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
         }
-
-        performStaticInitialization();
 
         String clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
 
@@ -491,14 +496,5 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug(key + ": " + resultJson.get(key).toString());
 
         return response;
-    }
-
-    /**
-     * Perform some standard start-up procedures, set as setting certain environment variables.
-     *
-     * I am aware that static initialization blocks exist, but I prefer to use methods.
-     */
-    private static void performStaticInitialization() {
-        System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
     }
 }
