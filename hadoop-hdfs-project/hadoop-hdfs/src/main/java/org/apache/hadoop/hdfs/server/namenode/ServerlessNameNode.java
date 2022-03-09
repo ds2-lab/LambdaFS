@@ -2705,18 +2705,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     this.functionName = functionName;
     this.localMode = localMode;
 
-    String additionalLibsFolder = conf.get(SERVERLESS_ADDITIONAL_LIBS_PATH, SERVERLESS_ADDITIONAL_LIBS_PATH_DEFAULT);
-    if (additionalLibsFolder != null) {
-      LOG.debug("Adding additional libraries folder to classpath. Folder path: '" + additionalLibsFolder + "'");
-      URLClassLoader urlClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
-      Class<URLClassLoader> urlClass = URLClassLoader.class;
-      File f = new File(additionalLibsFolder);
-      URL u = f.toURI().toURL();
-      Method method = urlClass.getDeclaredMethod("addURL", URL.class);
-      method.setAccessible(true);
-      method.invoke(urlClassLoader, u);
-    }
-
     LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
 
     if (this.localMode)
@@ -3213,6 +3201,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         return null;
       }
       default: {
+
+        String additionalLibsFolder = conf.get(SERVERLESS_ADDITIONAL_LIBS_PATH, SERVERLESS_ADDITIONAL_LIBS_PATH_DEFAULT);
+        if (additionalLibsFolder != null) {
+          LOG.debug("Adding additional libraries folder to classpath. Folder path: '" + additionalLibsFolder + "'");
+          URLClassLoader urlClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+          Class<URLClassLoader> urlClass = URLClassLoader.class;
+          File f = new File(additionalLibsFolder);
+          URL u = f.toURI().toURL();
+          Method method = urlClass.getDeclaredMethod("addURL", URL.class);
+          method.setAccessible(true);
+          method.invoke(urlClassLoader, u);
+        }
+
         DefaultMetricsSystem.initialize("NameNode");
         // Make sure the NameNode does not already exist.
         assert(ServerlessNameNode.tryGetNameNodeInstance(false) == null);
