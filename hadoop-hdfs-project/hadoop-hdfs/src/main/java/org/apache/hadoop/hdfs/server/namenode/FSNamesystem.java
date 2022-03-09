@@ -178,8 +178,8 @@ import static org.apache.hadoop.util.Time.now;
 @InterfaceAudience.Private
 @Metrics(context="dfs")
 public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBean, HopsEventListener, Invalidatable {
-  //public static final Log LOG = LogFactory.getLog(FSNamesystem.class);
-  public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+  public static final Log LOG = LogFactory.getLog(FSNamesystem.class);
+  //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
 
   private static final ThreadLocal<StringBuilder> auditBuffer =
       new ThreadLocal<StringBuilder>() {

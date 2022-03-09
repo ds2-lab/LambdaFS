@@ -36,7 +36,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * Used by Serverless NameNodes to store and retrieve cached metadata.
  */
 public class LRUMetadataCache<T> {
-    static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    //static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(LRUMetadataCache.class);
 
     private static final int DEFAULT_MAX_ENTRIES = 250;         // Default maximum capacity.
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;     // Default load factor.

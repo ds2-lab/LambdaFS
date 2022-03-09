@@ -1,10 +1,14 @@
 package org.apache.hadoop.hdfs.serverless;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class BaseHandler {
-    public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    // public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(BaseHandler.class);
 
     /**
      * Defines the platform we're using. This will eventually just be controlled by a configuration parameter.

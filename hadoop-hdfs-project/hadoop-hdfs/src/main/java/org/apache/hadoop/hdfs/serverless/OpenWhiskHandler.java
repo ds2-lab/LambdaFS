@@ -40,7 +40,8 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
  * This is used on the NameNode side (obviously).
  */
 public class OpenWhiskHandler extends BaseHandler {
-    public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class);
 
     /**
      * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until

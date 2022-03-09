@@ -36,7 +36,8 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
  * This is used on the NameNode side.
  */
 public class NameNodeResult implements Serializable {
-    private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    //private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(NameNodeResult.class);
     private static final long serialVersionUID = -6018521672360252605L;
 
     /**

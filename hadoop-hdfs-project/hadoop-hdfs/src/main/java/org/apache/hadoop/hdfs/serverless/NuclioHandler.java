@@ -34,11 +34,7 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.LOG_LEVEL
 
 public class NuclioHandler extends BaseHandler implements EventHandler {
     //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
-
-    public static final Logger LOG4J_LOG = LoggerFactory.getLogger(NuclioHandler.class);
-
-    public static io.nuclio.Logger NUCLIO_LOGGER;
-    public static io.nuclio.Logger LOG = NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(NuclioHandler.class);
 
     public static void main(String[] args) {
         NuclioHandler handler = new NuclioHandler();
@@ -48,21 +44,19 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
 
     @Override
     public Response handleEvent(Context context, Event event) {
-        if (NUCLIO_LOGGER == null && context != null) {
-            NUCLIO_LOGGER = context.getLogger();
-            LOG = NUCLIO_LOGGER;
-        }
+//        if (NUCLIO_LOGGER == null && context != null) {
+//            NUCLIO_LOGGER = context.getLogger();
+//            LOG = NUCLIO_LOGGER;
+//        }
 
         byte[] eventBody = event.getBody();
 
         if (eventBody == null || eventBody.length == 0) {
-            NUCLIO_LOGGER.info("Received request with empty body. Probably a HEALTHCHECK.");
+            LOG.debug("Received request with empty body. Probably a HEALTHCHECK.");
             return new Response().setBody("Healthy."); // I don't think it matters what we return here.
         } else {
-            NUCLIO_LOGGER.info("Request body: " + event);
+            LOG.debug("Request body: " + eventBody);
         }
-
-        long startTime = System.nanoTime();
 
         String bodyAsString = new String(eventBody, StandardCharsets.UTF_8);
         JsonParser jsonParser = new JsonParser();
@@ -72,6 +66,8 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
             LOG.error("Could not decode event body to valid JSON object...");
             return new Response().setBody("ERROR: Failed to decode event body to valid JSON.");
         }
+
+        LOG.debug("Decoded JSON payload to: " + args);
 
         JsonObject response = OpenWhiskHandler.main(args);
 
