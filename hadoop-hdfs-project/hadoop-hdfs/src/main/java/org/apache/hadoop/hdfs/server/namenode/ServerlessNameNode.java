@@ -3142,11 +3142,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("createNameNode " + Arrays.asList(argv));
     if (conf == null) {
       conf = new HdfsConfiguration();
-      // TODO: Make this not hard-coded. It doesn't have to be hard-coded for OpenWhisk, but Nuclio doesn't
-      //       seem to be finding the configuration files...?
-      conf.addResource(new File("/conf/hdfs-site.xml").toURI().toURL());
-      conf.addResource(new File("/conf/core-site.xml").toURI().toURL());
     }
+    // TODO: Make this not hard-coded. It doesn't have to be hard-coded for OpenWhisk, but Nuclio doesn't
+    //       seem to be finding the configuration files...?
+    conf.addResource(new File("/conf/hdfs-site.xml").toURI().toURL());
+    conf.addResource(new File("/conf/core-site.xml").toURI().toURL());
     StartupOption startOpt = parseArguments(argv);
     if (startOpt == null) {
       printUsage(System.err);
