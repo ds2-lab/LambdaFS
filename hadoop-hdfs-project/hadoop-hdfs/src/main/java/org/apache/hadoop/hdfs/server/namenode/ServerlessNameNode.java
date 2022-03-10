@@ -3144,13 +3144,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       conf = new HdfsConfiguration();
     }
 
-    LOG.debug("Adding additional libraries folder to classpath. Folder path: '/additional_java_libs/'");
-
-    Class<URLClassLoader> urlClass = URLClassLoader.class;
-    File f = new File("/additional_java_libs/");
-    URL u = f.toURI().toURL();
-    URLClassLoader urlClassLoader = new URLClassLoader(new URL[]{u}, ClassLoader.getSystemClassLoader());
-
     // TODO: Make this not hard-coded. It doesn't have to be hard-coded for OpenWhisk, but Nuclio doesn't
     //       seem to be finding the configuration files...?
     conf.addResource(new File("/conf/hdfs-site.xml").toURI().toURL());
