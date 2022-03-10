@@ -544,7 +544,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 opArguments,
                 requestId,
                 mappedFunctionNumber);
-        
+
+        if (response == null)
+            throw new IOException("Received null response from NameNode for Request " + requestId + ", op=" +
+                    operationName + ". Time elapsed: " + (System.currentTimeMillis() - startTime) + " ms.");
+
         long endTime = System.currentTimeMillis();
 
         //addLatency(-1, endTime - startTime, response.has(COLD_START) && response.get(COLD_START).getAsBoolean());

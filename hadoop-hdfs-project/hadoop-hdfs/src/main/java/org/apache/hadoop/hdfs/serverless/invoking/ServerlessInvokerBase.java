@@ -1,7 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.logging.Log;
@@ -13,6 +12,7 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 import org.apache.hadoop.util.ExponentialBackOff;
+import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
@@ -30,6 +30,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.util.EntityUtils;
 
 import javax.net.ssl.*;
 import java.io.*;
@@ -218,6 +219,47 @@ public abstract class ServerlessInvokerBase<T> {
         return -1;
     }
 
+    protected JsonObject processHttpResponse(HttpResponse httpResponse) throws IOException {
+        String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+        Gson gson = new Gson();
+
+        int responseCode = httpResponse.getStatusLine().getStatusCode();
+        String reasonPhrase = httpResponse.getStatusLine().getReasonPhrase();
+        String protocolVersion = httpResponse.getStatusLine().getProtocolVersion().toString();
+
+        Header contentType = httpResponse.getEntity().getContentType();
+        long contentLength = httpResponse.getEntity().getContentLength();
+
+        LOG.debug("====== HTTP RESPONSE ======");
+        LOG.debug(protocolVersion + " - " + responseCode);
+        LOG.debug(reasonPhrase);
+        LOG.debug("---------------------------");
+        if (contentType != null)
+            LOG.debug(contentType.getName() + ": " + contentType.getValue());
+        LOG.debug("Content-length: " + contentLength);
+        LOG.debug("===========================");
+
+        LOG.debug("HTTP Response from Nuclio function:\n" + httpResponse);
+        LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
+        LOG.debug("HTTP Response Entity Content: " + json);
+
+        JsonObject jsonObjectResponse = null;
+        JsonPrimitive jsonPrimitiveResponse = null;
+
+        // If there was an OpenWhisk error, like a 502 Bad Gateway (for example), then this will
+        // be a JsonPrimitive object. Specifically, it'd be a String containing the error message.
+        try {
+            jsonObjectResponse = gson.fromJson(json, JsonObject.class);
+        } catch (JsonSyntaxException ex) {
+            jsonPrimitiveResponse = gson.fromJson(json, JsonPrimitive.class);
+
+            throw new IOException("Unexpected response from OpenWhisk function invocation: "
+                    + jsonPrimitiveResponse.getAsString());
+        }
+
+        return jsonObjectResponse;
+    }
+
     /**
      * Create a TrustManager that does not validate certificate chains.
      *
@@ -363,7 +405,7 @@ public abstract class ServerlessInvokerBase<T> {
      * @param httpResponse The response returned by the NameNode.
      * @return The result intended for the HopsFS client in the form of a JSON object.
      */
-    protected abstract JsonObject processHttpResponse(HttpResponse httpResponse) throws IOException;
+    // protected abstract JsonObject processHttpResponse(HttpResponse httpResponse) throws IOException;
 
     /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient

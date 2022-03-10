@@ -160,48 +160,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         return builder.toString();
     }
 
-    @Override
-    protected JsonObject processHttpResponse(HttpResponse httpResponse) throws IOException {
-        String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
-        Gson gson = new Gson();
-
-        int responseCode = httpResponse.getStatusLine().getStatusCode();
-        String reasonPhrase = httpResponse.getStatusLine().getReasonPhrase();
-        String protocolVersion = httpResponse.getStatusLine().getProtocolVersion().toString();
-
-        Header contentType = httpResponse.getEntity().getContentType();
-        long contentLength = httpResponse.getEntity().getContentLength();
-
-        LOG.debug("====== HTTP RESPONSE ======");
-        LOG.debug(protocolVersion + " - " + responseCode);
-        LOG.debug(reasonPhrase);
-        LOG.debug("---------------------------");
-        if (contentType != null)
-            LOG.debug(contentType.getName() + ": " + contentType.getValue());
-        LOG.debug("Content-length: " + contentLength);
-        LOG.debug("===========================");
-
-        LOG.debug("HTTP Response from OpenWhisk function:\n" + httpResponse);
-        LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
-        // LOG.debug("HTTP Response Entity Content: " + json);
-
-        JsonObject jsonObjectResponse = null;
-        JsonPrimitive jsonPrimitiveResponse = null;
-
-        // If there was an OpenWhisk error, like a 502 Bad Gateway (for example), then this will
-        // be a JsonPrimitive object. Specifically, it'd be a String containing the error message.
-        try {
-            jsonObjectResponse = gson.fromJson(json, JsonObject.class);
-        } catch (JsonSyntaxException ex) {
-            jsonPrimitiveResponse = gson.fromJson(json, JsonPrimitive.class);
-
-            throw new IOException("Unexpected response from OpenWhisk function invocation: "
-                    + jsonPrimitiveResponse.getAsString());
-        }
-
-        return jsonObjectResponse;
-    }
-
     /**
      * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
      * function in Serverless HopsFS. (OpenWhisk supports HTTP GET, I think? But we don't use that, in any case.)
