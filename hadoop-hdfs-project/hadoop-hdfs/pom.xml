@@ -387,6 +387,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpcore</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-auth</artifactId>
       <scope>compile</scope>
