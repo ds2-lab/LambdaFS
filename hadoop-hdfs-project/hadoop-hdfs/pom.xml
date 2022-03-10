@@ -328,11 +328,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <scope>test</scope>
     </dependency>
     <!-- https://mvnrepository.com/artifact/com.mysql.ndb/clusterj-hops-fix -->
-    <dependency>
-      <groupId>com.mysql.ndb</groupId>
-      <artifactId>clusterj-hops-fix</artifactId>
-      <version>7.6.7</version>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>com.mysql.ndb</groupId>-->
+<!--      <artifactId>clusterj-hops-fix</artifactId>-->
+<!--      <version>7.6.7</version>-->
+<!--    </dependency>-->
     <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
     <!--<dependency>
       <groupId>mysql</groupId>
