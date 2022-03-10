@@ -436,9 +436,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         requestId,
                         targetDeployment);
 
+                // TODO: This might happen if all requests to a NN time out, in which case we should
+                //       either handle it more cleanly and/or throw a more meaningful exception.
+                if (response == null)
+                    throw new IOException("Received null response from NameNode for Request " + requestId + ", op=" +
+                            operationName + ". Time elapsed: " + (System.currentTimeMillis() - startTime) + " ms.");
+
                 long endTime = System.currentTimeMillis();
 
-                //addLatency(-1, endTime - startTime, response.has(COLD_START) && response.get(COLD_START).getAsBoolean());
                 addLatency(-1, endTime - startTime);
 
                 long opEnd = System.currentTimeMillis();
