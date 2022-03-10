@@ -3219,7 +3219,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //          method.invoke(urlClassLoader, u);
 //        }
 
-        DefaultMetricsSystem.initialize("NameNode");
+        // DefaultMetricsSystem.initialize("NameNode");
         // Make sure the NameNode does not already exist.
         assert(ServerlessNameNode.tryGetNameNodeInstance(false) == null);
         return new ServerlessNameNode(conf, functionName, actionMemory, localMode);
