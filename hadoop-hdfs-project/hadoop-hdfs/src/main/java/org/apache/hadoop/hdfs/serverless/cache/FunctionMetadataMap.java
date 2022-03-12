@@ -88,7 +88,7 @@ public class FunctionMetadataMap {
 
         String pathToCache = getPathToCache(file);
 
-        LOG.debug("Checking path '" + pathToCache + "' for target '" + file + "'");
+        // LOG.debug("Checking path '" + pathToCache + "' for target '" + file + "'");
 
         try (Jedis jedis = redisPool.getResource()) {
             if (jedis.exists(pathToCache))

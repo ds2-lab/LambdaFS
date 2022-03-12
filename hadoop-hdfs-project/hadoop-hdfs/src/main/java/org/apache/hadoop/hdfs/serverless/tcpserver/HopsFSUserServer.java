@@ -484,7 +484,7 @@ public class HopsFSUserServer {
             return;
         }
 
-        LOG.debug("[TCP SERVER " + tcpPort + "] Registering future for request " + requestResponseFuture.getRequestId() + ".");
+        // LOG.debug("[TCP SERVER " + tcpPort + "] Registering future for request " + requestResponseFuture.getRequestId() + ".");
         activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
     }
 
@@ -564,9 +564,9 @@ public class HopsFSUserServer {
         // TODO: Handle this scenario somehow (resubmit the TCP request, notify the client, etc.)
         if (bytesSent == 0)
             LOG.error("Transmission of TCP request " + requestId + " sent 0 bytes.");
-        else
-            LOG.debug("[TCP SERVER " + tcpPort + "] Sent " + bytesSent + " bytes to NameNode " + tcpConnection.name + " from deployment #" +
-                    deploymentNumber + ".");
+//        else
+//            LOG.debug("[TCP SERVER " + tcpPort + "] Sent " + bytesSent + " bytes to NameNode " + tcpConnection.name + " from deployment #" +
+//                    deploymentNumber + ".");
 
         // Make note of this future as being incomplete.
         List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(
@@ -620,8 +620,8 @@ public class HopsFSUserServer {
         if (requestResponseFuture == null)
             throw new IOException("Issuing TCP request returned null instead of future. Must have been no connections.");
 
-        LOG.debug("[TCP SERVER " + tcpPort + "] Waiting for result from future for request " + requestResponseFuture.getRequestId()
-                + ", associated serverless function NameNode " + deploymentNumber);
+        //LOG.debug("[TCP SERVER " + tcpPort + "] Waiting for result from future for request " + requestResponseFuture.getRequestId()
+        //       + ", associated serverless function NameNode " + deploymentNumber);
 
         if (timeout >= 0)
             return requestResponseFuture.get(timeout, TimeUnit.MILLISECONDS);
@@ -736,8 +736,8 @@ public class HopsFSUserServer {
                 if (body.has("requestId"))
                     requestId = body.getAsJsonPrimitive("requestId").getAsString();
 
-                LOG.debug("[TCP SERVER " + tcpPort + "] NN ID: " + nameNodeId + ", Deployment #: " + deploymentNumber +
-                        ", RequestID: " + requestId + ", Operation: " + operation);
+                //LOG.debug("[TCP SERVER " + tcpPort + "] NN ID: " + nameNodeId + ", Deployment #: " + deploymentNumber +
+                //        ", RequestID: " + requestId + ", Operation: " + operation);
 
                 // There are currently two different operations that a NameNode may perform.
                 // The first is registration. This operation results in the connection to the NameNode
@@ -786,7 +786,8 @@ public class HopsFSUserServer {
                         List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
                         incompleteFutures.remove(future);
 
-                        LOG.debug("[TCP SERVER " + tcpPort + "] Successfully obtained result for request " + requestId + "!");
+                        LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId +
+                                " from NN " + nameNodeId + ", deployment " + deploymentNumber + ".");
 
                         break;
                     default:
