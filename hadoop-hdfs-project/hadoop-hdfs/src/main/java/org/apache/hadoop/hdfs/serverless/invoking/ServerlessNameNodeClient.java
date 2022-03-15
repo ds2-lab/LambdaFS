@@ -179,6 +179,20 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private int latencyWindowSize;
 
+    /**
+     * If enabled, then the client will randomly issue an HTTP request, even when TCP is available. The
+     * goal in doing this is to still involve the serverless platform in the invocation/request process,
+     * so that the platform can still auto-scale to some degree. There is a separate parameter that
+     * controls the chance that an HTTP request is issued in place of a TCP request.
+     */
+    protected boolean randomHttpEnabled = false;
+
+    /**
+     * The percentage chance that a given TCP request will be replaced with an HTTP request.
+     * This is only used when the {@code randomHttpEnabled} parameter is set to `true`.
+     */
+    protected double randomHttpChance = 0.05f;
+
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
         serverlessEndpointBase = dfsClient.serverlessEndpoint;
@@ -187,16 +201,22 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         latencyThreshold = conf.getDouble(SERVERLESS_LATENCY_THRESHOLD, SERVERLESS_LATENCY_THRESHOLD_DEFAULT);
         latencyWindowSize = conf.getInt(SERVERLESS_LATENCY_WINDOW_SIZE, SERVERLESS_LATENCY_WINDOW_SIZE_DEFAULT);
+        randomHttpEnabled = conf.getBoolean(SERVERLESS_INVOKER_RANDOM_HTTP, SERVERLESS_INVOKER_RANDOM_HTTP_DEFAULT);
+        randomHttpChance = conf.getDouble(SERVERLESS_INVOKER_RANDOM_HTTP_CHANCE,
+                SERVERLESS_INVOKER_RANDOM_HTTP_CHANCE_DEFAULT);
 
         if (localMode)
             numDeployments = 1;
         else
-            numDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS, DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+            numDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
+                    DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
         LOG.info("Serverless endpoint: " + serverlessEndpointBase);
         LOG.info("Serverless platform: " + serverlessPlatformName);
         LOG.info("TCP requests are " + (tcpEnabled ? "enabled." : "disabled."));
         LOG.debug("Latency Window: " + latencyWindowSize + ", Latency Threshold: " + latencyThreshold + " ms.");
+        LOG.debug("Random HTTP " + (randomHttpEnabled ? "enabled." : "disabled.") +
+                " HTTP Chance: " + randomHttpChance);
 
         this.serverlessInvoker = dfsClient.serverlessInvoker;
 
@@ -499,10 +519,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
             // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
             if (mappedFunctionNumber != -1 && tcpServer.connectionExists(mappedFunctionNumber)) {
-                return issueTCPRequest(operationName, opArguments, mappedFunctionNumber);
 
-                /*return issueConcurrentTcpHttpRequests(
-                        operationName, serverlessEndpoint, nameNodeArguments, opArguments, mappedFunctionNumber);*/
+                // If random HTTP is disabled, then just issue a TCP request.
+                // Alternatively, if random HTTP is enabled, then we generate a random number between 0 and 1.
+                // If this number is strictly greater than the `randomHttpChance` threshold, then we still issue
+                // a TCP request. Otherwise, we'll fall all the way through an issue an HTTP request.
+                //
+                // For example, if `randomHttpChance` is 0.05, then we'd have to generate a number in the interval
+                // [0.0, 0.05] to issue an HTTP request. If we generate a number in the interval (0.05, 1], then we
+                // would just issue a TCP request.
+                if (!randomHttpEnabled || Math.random() > randomHttpChance)
+                    return issueTCPRequest(operationName, opArguments, mappedFunctionNumber);
             }
             else if (antiThrashingModeEnabled && tcpServer.getNumActiveConnections() > 0) {
                 // If anti-thrashing mode is enabled, then we'll just try to use ANY available TCP connections.

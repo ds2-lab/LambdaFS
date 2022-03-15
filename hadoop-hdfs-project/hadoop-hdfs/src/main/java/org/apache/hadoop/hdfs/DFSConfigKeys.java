@@ -80,6 +80,22 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final boolean NDB_DEBUG_DEFAULT = false;
 
   /**
+   * If enabled, then the client will randomly issue an HTTP request, even when TCP is available. The
+   * goal in doing this is to still involve the serverless platform in the invocation/request process,
+   * so that the platform can still auto-scale to some degree. There is a separate parameter that
+   * controls the chance that an HTTP request is issued in place of a TCP request.
+   */
+  public static final String SERVERLESS_INVOKER_RANDOM_HTTP = "serverless.invoker.randomhttp.enabled";
+  public static final boolean SERVERLESS_INVOKER_RANDOM_HTTP_DEFAULT = false;
+
+  /**
+   * The percentage chance that a given TCP request will be replaced with an HTTP request.
+   * This is only used when the {@code SERVERLESS_INVOKER_RANDOM_HTTP} parameter is set to `true`.
+   */
+  public static final String SERVERLESS_INVOKER_RANDOM_HTTP_CHANCE = "serverless.invoker.randomhttp.chance";
+  public static final double SERVERLESS_INVOKER_RANDOM_HTTP_CHANCE_DEFAULT = 0.05;
+
+  /**
    * This string is passed to the NDB C++ library (on the NameNodes) if NDB debugging is enabled.
    */
   public static final String NDB_DEBUG_STRING = "storage.ndb.debug.string";

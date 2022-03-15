@@ -25,8 +25,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 
-import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_LOCAL_MODE;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_LOCAL_MODE_DEFAULT;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 
 /**
