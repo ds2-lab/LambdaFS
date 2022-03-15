@@ -206,6 +206,7 @@ import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
 import org.apache.hadoop.hdfs.protocol.CachePoolEntry;
 import org.apache.hadoop.hdfs.protocol.RollingUpgradeInfo;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -221,7 +222,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
     implements ClientNamenodeProtocolPB {
   final private ClientProtocol server;
 
-  private static final Logger LOG = ServerlessNameNode.LOG;
+  private static final Logger LOG = LoggerFactory.getLogger(ClientNamenodeProtocolServerSideTranslatorPB.class);
 
   static final ClientNamenodeProtocolProtos.SetStoragePolicyResponseProto
       VOID_SET_STORAGE_POLICY_RESPONSE =

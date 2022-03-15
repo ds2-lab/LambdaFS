@@ -4,6 +4,8 @@ import io.hops.leader_election.node.ActiveNode;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
+import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
@@ -19,7 +21,8 @@ import java.util.*;
  * intermediate storage. It is periodically updated by the NameNode's worker thread.
  */
 public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
-    public static final Logger LOG = LoggerFactory.getLogger(ActiveServerlessNameNodeList.class.getName());
+    //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(ActiveServerlessNameNodeList.class);
     private static final long serialVersionUID = -1602619427888192710L;
 
     /**

@@ -39,10 +39,9 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
  *
  * This is used on the NameNode side (obviously).
  */
-public class OpenWhiskHandler {
-    public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class.getName());
-
-
+public class OpenWhiskHandler extends BaseHandler {
+    //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class);
 
     /**
      * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
@@ -57,6 +56,10 @@ public class OpenWhiskHandler {
     private static boolean isCold = true;
 
     public static AtomicInteger activeRequestCounter = new AtomicInteger(0);
+
+    static {
+        System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
+    }
 
     /**
      * OpenWhisk handler.
@@ -85,11 +88,12 @@ public class OpenWhiskHandler {
             actionMemory = Integer.parseInt(System.getenv("__ACTION_MEMORY"));
         } else {
             // The arguments passed by the user are included under the 'value' key.
-            actionMemory = args.get(ServerlessNameNodeKeys.ACTION_MEMORY).getAsInt();
+            // TODO: This may be included or not depending on the platform. If it is Nuclio, then
+            //       we'll probably set it as an environment variable going forward. Just going to
+            //       hard-code it for now, though.
+            actionMemory = 1280; // args.get(ServerlessNameNodeKeys.ACTION_MEMORY).getAsInt();
             userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
         }
-
-        performStaticInitialization();
 
         String clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
 
@@ -492,40 +496,5 @@ public class OpenWhiskHandler {
             LOG.debug(key + ": " + resultJson.get(key).toString());
 
         return response;
-    }
-
-    /**
-     * Perform some standard start-up procedures, set as setting certain environment variables.
-     *
-     * I am aware that static initialization blocks exist, but I prefer to use methods.
-     */
-    private static void performStaticInitialization() {
-        System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
-
-        if (LOG.isDebugEnabled())
-            LOG.info("Debug-logging IS enabled.");
-        else
-            LOG.info("Debug-logging is NOT enabled.");
-    }
-
-    /**
-     * In this case, we are performing OpenWhisk-specific initialization.
-     *
-     * @return The name of this particular OpenWhisk serverless function/action. Note that the namespace portion
-     * of the function's name is removed. So, if the function's fully-qualified name is "/whisk.system/namenode0",
-     * then we return "namenode0", removing the "/whisk.system/" from the function's name.
-     */
-    private static String platformSpecificInitialization() {
-        String activationId = System.getenv("__OW_ACTIVATION_ID");
-
-        LOG.debug("Hadoop configuration directory: " + System.getenv("HADOOP_CONF_DIR"));
-        LOG.debug("OpenWhisk activation ID: " + activationId);
-
-        String functionNameWithNamespace = System.getenv("__OW_ACTION_NAME");
-        Path functionNameAsPath = Paths.get(functionNameWithNamespace);
-
-        // This will extract just the last part. The function names are really:
-        // /whisk.system/namenodeX, where X is an integer. We don't want the "/whisk.system/" part.
-        return functionNameAsPath.getFileName().toString();
     }
 }

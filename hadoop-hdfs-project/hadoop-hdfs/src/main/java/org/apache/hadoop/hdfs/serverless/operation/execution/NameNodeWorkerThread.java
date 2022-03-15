@@ -6,6 +6,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
@@ -29,7 +30,8 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
  * This is used on the NameNode side.
  */
 public class NameNodeWorkerThread extends Thread {
-    public static final Logger LOG = LoggerFactory.getLogger(NameNodeWorkerThread.class.getName());
+    //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(NameNodeWorkerThread.class);
 
     /**
      * The ID of the request currently being processed by the worker thread.

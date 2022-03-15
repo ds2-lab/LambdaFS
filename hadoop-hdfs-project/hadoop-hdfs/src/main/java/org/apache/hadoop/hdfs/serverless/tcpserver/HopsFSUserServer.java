@@ -484,7 +484,6 @@ public class HopsFSUserServer {
             return;
         }
 
-        //LOG.debug("[TCP SERVER " + tcpPort + "] Registering future for request " + requestResponseFuture.getRequestId() + ".");
         activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
     }
 
@@ -620,9 +619,6 @@ public class HopsFSUserServer {
         if (requestResponseFuture == null)
             throw new IOException("Issuing TCP request returned null instead of future. Must have been no connections.");
 
-//        LOG.debug("[TCP SERVER " + tcpPort + "] Waiting for result from future for request " + requestResponseFuture.getRequestId()
-//                + ", associated serverless function NameNode " + deploymentNumber);
-
         if (timeout >= 0)
             return requestResponseFuture.get(timeout, TimeUnit.MILLISECONDS);
         else
@@ -735,9 +731,6 @@ public class HopsFSUserServer {
                 // There won't be a requestId during registration attempts, just when results are being returned.
                 if (body.has("requestId"))
                     requestId = body.getAsJsonPrimitive("requestId").getAsString();
-
-//                LOG.debug("[TCP SERVER " + tcpPort + "] NN ID: " + nameNodeId + ", Deployment #: " + deploymentNumber +
-//                        ", RequestID: " + requestId + ", Operation: " + operation);
 
                 // There are currently two different operations that a NameNode may perform.
                 // The first is registration. This operation results in the connection to the NameNode

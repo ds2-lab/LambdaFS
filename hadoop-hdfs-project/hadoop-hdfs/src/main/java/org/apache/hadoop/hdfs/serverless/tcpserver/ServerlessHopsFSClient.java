@@ -2,7 +2,6 @@ package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hdfs.serverless.invoking.OpenWhiskInvoker;
 
 import java.io.Serializable;
 import java.util.UUID;

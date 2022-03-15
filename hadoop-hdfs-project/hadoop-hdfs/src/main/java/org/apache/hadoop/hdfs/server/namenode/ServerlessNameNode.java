@@ -71,6 +71,7 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
@@ -108,8 +109,11 @@ import org.slf4j.LoggerFactory;
 import javax.management.ObjectName;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.PrivilegedExceptionAction;
 import java.time.Duration;
 import java.time.Instant;
@@ -395,6 +399,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   public static final int DEFAULT_PORT = 8020;
   public static final Logger LOG = LoggerFactory.getLogger(ServerlessNameNode.class.getName());
+  //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
   public static final Logger stateChangeLog = LoggerFactory.getLogger("org.apache.hadoop.hdfs.StateChange");
   public static final Logger blockStateChangeLog = LoggerFactory.getLogger("BlockStateChange");
 
@@ -884,7 +889,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("Creating and initializing new instance of Serverless NameNode now...");
 
     try {
-      StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
+      // StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
       ServerlessNameNode nameNode = createNameNode(commandLineArgs, null, functionName, actionMemory, localMode);
 
       if (nameNode == null) {
@@ -3138,6 +3143,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (conf == null) {
       conf = new HdfsConfiguration();
     }
+
+    // TODO: Make this not hard-coded. It doesn't have to be hard-coded for OpenWhisk, but Nuclio doesn't
+    //       seem to be finding the configuration files...?
+    conf.addResource(new File("/conf/hdfs-site.xml").toURI().toURL());
+    conf.addResource(new File("/conf/core-site.xml").toURI().toURL());
     StartupOption startOpt = parseArguments(argv);
     if (startOpt == null) {
       printUsage(System.err);
@@ -3196,7 +3206,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         return null;
       }
       default: {
-        DefaultMetricsSystem.initialize("NameNode");
+
+//        String additionalLibsFolder = conf.get(SERVERLESS_ADDITIONAL_LIBS_PATH, SERVERLESS_ADDITIONAL_LIBS_PATH_DEFAULT);
+//        if (additionalLibsFolder != null) {
+//          LOG.debug("Adding additional libraries folder to classpath. Folder path: '" + additionalLibsFolder + "'");
+//          URLClassLoader urlClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+//          Class<URLClassLoader> urlClass = URLClassLoader.class;
+//          File f = new File(additionalLibsFolder);
+//          URL u = f.toURI().toURL();
+//          Method method = urlClass.getDeclaredMethod("addURL", URL.class);
+//          method.setAccessible(true);
+//          method.invoke(urlClassLoader, u);
+//        }
+
+        // DefaultMetricsSystem.initialize("NameNode");
         // Make sure the NameNode does not already exist.
         assert(ServerlessNameNode.tryGetNameNodeInstance(false) == null);
         return new ServerlessNameNode(conf, functionName, actionMemory, localMode);
@@ -3210,9 +3233,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       URI defaultUri = URI.create(HdfsConstants.HDFS_URI_SCHEME + "://" +
           conf.get(DFS_NAMENODE_RPC_ADDRESS_KEY));
       conf.set(FS_DEFAULT_NAME_KEY, defaultUri.toString());
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Setting " + FS_DEFAULT_NAME_KEY + " to " + defaultUri.toString());
-      }
+      LOG.debug("Setting " + FS_DEFAULT_NAME_KEY + " to " + defaultUri.toString());
     }
   }
 
@@ -3281,7 +3302,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
 
     try {
-      StringUtils.startupShutdownMessage(ServerlessNameNode.class, argv, LOG);
+      // StringUtils.startupShutdownMessage(ServerlessNameNode.class, argv, LOG);
       ServerlessNameNode namenode = createNameNode(argv, null, "LocalVMNameNode0", (int) Runtime.getRuntime().maxMemory(), false);
       if (namenode != null) {
         namenode.join();

@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless.cache;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +36,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * Used by Serverless NameNodes to store and retrieve cached metadata.
  */
 public class LRUMetadataCache<T> {
-    static final Logger LOG = LoggerFactory.getLogger(LRUMetadataCache.class);
+    //static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(LRUMetadataCache.class);
 
     private static final int DEFAULT_MAX_ENTRIES = 250;         // Default maximum capacity.
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;     // Default load factor.

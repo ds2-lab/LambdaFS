@@ -51,6 +51,18 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_ENDPOINT_LOCAL_DEFAULT = "http://localhost:8080/run";
 
   /**
+   * If non-null, then we add the folder specified by this configuration parameter to the CLASSPATH.
+   */
+  public static final String SERVERLESS_ADDITIONAL_LIBS_PATH = "serverless.additional.libs.folder";
+  public static final String SERVERLESS_ADDITIONAL_LIBS_PATH_DEFAULT = null;
+
+  /**
+   * Location of the hdfs-site.xml and core-site.xml configuration files.
+   */
+  public static final String SERVERLESS_CONFIG_DIR = "serverless.config.dir";
+  public static final String SERVERLESS_CONFIG_DIR_DEFAULT = "/conf/";
+
+  /**
    * Configuration property for defining the serverless platform in use.
    */
   public static final String SERVERLESS_PLATFORM = "serverless.platform";
@@ -265,6 +277,13 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    */
   public static final String SERVERLESS_SUBTREE_DELETE_BATCH_SIZE = "serverless.subtree.delete.batchsize";
   public static final int SERVERLESS_SUBTREE_DELETE_BATCH_SIZE_DEFAULT = 128;
+
+  /**
+   * List of endpoints (IPs) for the load balancers exposing each Nuclio deployment. The first IP corresponds
+   * to deployment 0, and the subsequent IPs correspond to deployment 1, 2, 3, ..., etc.
+   */
+  public static final String SERVERLESS_NUCLIO_ENDPOINTS = "serverless.nuclio.endpoints";
+  public static final String[] SERVERLESS_NUCLIO_ENDPOINTS_DEFAULT = new String[0];
 
   /**
    * When using local mode, the NameNode container for the first NameNode deployment (i.e., namenode0) will

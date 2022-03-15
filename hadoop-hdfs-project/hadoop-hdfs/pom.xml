@@ -66,6 +66,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>commons-collections4</artifactId>
       <version>4.4</version>
     </dependency>
+    <dependency>
+      <groupId>io.nuclio</groupId>
+      <artifactId>nuclio-sdk-java</artifactId>
+      <version>1.1.0</version>
+    </dependency>
     <!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client-bom &ndash;&gt;-->
 <!--    <dependency>-->
 <!--      <groupId>org.asynchttpclient</groupId>-->
@@ -129,7 +134,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>javax.servlet</groupId>
       <artifactId>javax.servlet-api</artifactId>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -139,24 +144,26 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-annotations</artifactId>
-      <!--<scope>provided</scope>-->
       <scope>${dependency-scope}</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <scope>compile</scope>
+      <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math3</artifactId>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
-      <version>2.8.7</version>
-    </dependency>
-    <dependency>
-      <groupId>io.hops</groupId>
-      <artifactId>hadoop-auth</artifactId>
-      <scope>provided</scope>
-      <version>3.2.0.3-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
-      <!--<scope>provided</scope>-->
       <scope>${dependency-scope}</scope>
     </dependency>
     <!--<dependency>
@@ -241,6 +248,28 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>jetty-webapp</artifactId>
       <version>9.3.24.v20180605</version>
     </dependency>
+    <dependency>
+      <groupId>commons-collections</groupId>
+      <artifactId>commons-collections</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-configuration2</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.woodstox</groupId>
+      <artifactId>stax2-api</artifactId>
+      <scope>compile</scope>
+      <version>3.1.4</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.woodstox</groupId>
+      <artifactId>woodstox-core</artifactId>
+      <scope>compile</scope>
+      <version>5.0.3</version>
+    </dependency>
     <!-- Used for NameNode TCP client/server -->
     <dependency>
       <groupId>kryonet</groupId>
@@ -281,9 +310,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>commons-daemon</artifactId>
       <scope>compile</scope>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
     <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>2.17.1</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -297,11 +328,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <scope>test</scope>
     </dependency>
     <!-- https://mvnrepository.com/artifact/com.mysql.ndb/clusterj-hops-fix -->
-    <dependency>
-      <groupId>com.mysql.ndb</groupId>
-      <artifactId>clusterj-hops-fix</artifactId>
-      <version>7.6.7</version>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>com.mysql.ndb</groupId>-->
+<!--      <artifactId>clusterj-hops-fix</artifactId>-->
+<!--      <version>7.6.7</version>-->
+<!--    </dependency>-->
     <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
     <!--<dependency>
       <groupId>mysql</groupId>
@@ -339,7 +370,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <!--<scope>provided</scope>-->
+      <version>${slf4j.version}</version>
       <scope>${dependency-scope}</scope>
     </dependency>
     <dependency>
@@ -348,9 +379,25 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-all</artifactId>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpcore</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.hops</groupId>
+      <artifactId>hadoop-auth</artifactId>
+      <scope>compile</scope>
+      <version>3.2.0.3-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.hamcrest</groupId>
@@ -389,7 +436,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <groupId>com.gmail.benrcarver</groupId>
       <artifactId>clusterj-modified</artifactId>
       <version>1.0</version>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 

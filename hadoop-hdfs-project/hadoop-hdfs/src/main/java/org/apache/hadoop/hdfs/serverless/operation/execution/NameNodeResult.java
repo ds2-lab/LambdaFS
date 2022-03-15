@@ -6,6 +6,7 @@ import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.server.namenode.INode;
+import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 import org.apache.hadoop.util.Time;
@@ -35,7 +36,8 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
  * This is used on the NameNode side.
  */
 public class NameNodeResult implements Serializable {
-    private static final Logger LOG = LoggerFactory.getLogger(NameNodeResult.class);
+    //private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
+    public static final Logger LOG = LoggerFactory.getLogger(NameNodeResult.class);
     private static final long serialVersionUID = -6018521672360252605L;
 
     /**
