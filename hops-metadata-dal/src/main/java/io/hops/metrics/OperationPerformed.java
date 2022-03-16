@@ -245,6 +245,25 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         return resultReceivedTime;
     }
 
+    public boolean getIssuedViaHttp() { return issuedViaHttp; }
+
+    public boolean getIssuedViaTcp() { return issuedViaTcp; }
+
+    /**
+     * Alias for {@code getLatency()}
+     * @return The latency/end-to-end duration of this request.
+     */
+    public long getEndToEndDuration() {
+        return getLatency();
+    }
+
+    /**
+     * @return The latency/end-to-end duration of this request.
+     */
+    public long getLatency() {
+        return resultReceivedTime - invokedAtTime;
+    }
+
     /**
      * Update the timestamp at which a result was received.
      * Also updates the 'endToEndDuration' field.
