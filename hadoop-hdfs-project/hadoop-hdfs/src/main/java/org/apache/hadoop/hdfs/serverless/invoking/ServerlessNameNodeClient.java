@@ -281,6 +281,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * you only want to add a tcp latency, then pass something < 0 for httpLatency.
      */
     private void addLatency(double tcpLatency, double httpLatency) {
+        LOG.info("Add Latency: tcpLatency: " + tcpLatency + ", httpLatency: " + httpLatency);
+
         if (tcpLatency > 0) {
             latencyTcp.addValue(tcpLatency);
             latency.addValue(tcpLatency);
@@ -350,7 +352,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         while (backoffInterval >= 0) {
             JsonObject response;
 
-            long localStart = -1L;
+            long localStart;
             try {
                 localStart = System.currentTimeMillis();
                 LOG.debug("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
@@ -743,12 +745,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     public void printLatencyStatistics(int choice) {
         if (choice <= 0) {
-            LOG.info("AVG Latency: Both: " + latency.getMean() + "ms, TCP: " + latencyTcp.getMean() +
-                    "ms, HTTP: " + latencyHttp.getMean() + "ms");
+            System.out.println("AVG Latency: Both: " + latency.getMean() + " ms, TCP: " + latencyTcp.getMean() +
+                    "ms, HTTP: " + latencyHttp.getMean() + " ms");
         } else if (choice == 1) {
-            LOG.info("AVG Latency (TCP): " + latencyTcp.getMean());
+            System.out.println("AVG Latency (TCP): " + latencyTcp.getMean());
         } else {
-            LOG.info("AVG Latency (HTTP): " + latencyHttp.getMean());
+            System.out.println("AVG Latency (HTTP): " + latencyHttp.getMean());
         }
     }
 
@@ -763,14 +765,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     public void printLatencyStatisticsDetailed(int choice) {
         if (choice <= 0) {
-            LOG.info("AVG Latency: Both: " + latency.getMean() + "ms, TCP: " + latencyTcp.getMean() +
-                    "ms, HTTP: " + latencyHttp.getMean() + "ms");
-            LOG.info("Min Latency: Both: " + latency.getMin() + "ms, TCP: " + latencyTcp.getMin() +
-                    "ms, HTTP: " + latencyHttp.getMin() + "ms");
-            LOG.info("Max Latency: Both: " + latency.getMax() + "ms, TCP: " + latencyTcp.getMax() +
-                    "ms, HTTP: " + latencyHttp.getMax() + "ms");
-            LOG.info("STD DEV Latency: Both: " + latency.getStandardDeviation() + "ms, TCP: " +
-                    latencyTcp.getStandardDeviation() + "ms, HTTP: " + latencyHttp.getStandardDeviation() + "ms");
+            System.out.println("AVG Latency (ms): Both: " + latency.getMean() + ", TCP: " + latencyTcp.getMean() +
+                    ", HTTP: " + latencyHttp.getMean() + " ");
+            System.out.println("Min Latency (ms): Both: " + latency.getMin() + ", TCP: " + latencyTcp.getMin() +
+                    ", HTTP: " + latencyHttp.getMin() + " ");
+            System.out.println("Max Latency (ms): Both: " + latency.getMax() + ", TCP: " + latencyTcp.getMax() +
+                    ", HTTP: " + latencyHttp.getMax() + "");
+            System.out.println("STD DEV Latency: Both: " + latency.getStandardDeviation() + ", TCP: " +
+                    latencyTcp.getStandardDeviation() + ", HTTP: " + latencyHttp.getStandardDeviation() + "");
         } else if (choice == 1) {
             LOG.info("AVG Latency (TCP): " + latencyTcp.getMean());
             LOG.info("MIN Latency (TCP): " + latencyTcp.getMin());
