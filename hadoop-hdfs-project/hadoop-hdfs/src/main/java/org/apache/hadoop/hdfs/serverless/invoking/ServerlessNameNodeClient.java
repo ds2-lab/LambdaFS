@@ -485,8 +485,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
                 operationsPerformed.put(requestId, operationPerformed);
 
-                latencyTcp.addValue(opEnd - opStart);
-
                 return response;
             }
         }
@@ -619,8 +617,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
         operationsPerformed.put(requestId, operationPerformed);
 
-        latencyHttp.addValue(endTime - startTime);
-
         return response;
     }
 
@@ -731,12 +727,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 ", N: " + httpStatistics.getN() + "]");
 
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
-        System.out.println("Latency TCP (ms) [min: " + latencyTcp.getMin() + ", max: " + latencyTcp.getMax() +
-                ", avg: " + latencyTcp.getMean() + ", std dev: " + latencyTcp.getStandardDeviation() +
-                ", N: " + latencyTcp.getN() + "]");
-        System.out.println("Latency HTTP (ms) [min: " + latencyHttp.getMin() + ", max: " + latencyHttp.getMax() +
-                ", avg: " + latencyHttp.getMean() + ", std dev: " + latencyHttp.getStandardDeviation() +
-                ", N: " + latencyHttp.getN() + "]");
+        printLatencyStatisticsDetailed(0);
 
         System.out.println("\n==================================================================");
     }
