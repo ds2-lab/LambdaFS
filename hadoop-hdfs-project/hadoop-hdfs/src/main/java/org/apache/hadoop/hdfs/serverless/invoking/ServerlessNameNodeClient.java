@@ -742,8 +742,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
                 ", N: " + httpStatistics.getN() + "]");
 
-//        System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
-//        printLatencyStatisticsDetailed(0);
+        System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
+        printLatencyStatisticsDetailed(0);
 
         System.out.println("\n==================================================================");
     }
