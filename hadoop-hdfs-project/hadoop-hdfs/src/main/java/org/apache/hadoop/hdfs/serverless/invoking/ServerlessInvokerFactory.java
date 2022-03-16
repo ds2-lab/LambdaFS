@@ -26,10 +26,11 @@ public class ServerlessInvokerFactory {
      */
     private static String getInvokerClassName(String serverlessPlatformName) throws StorageInitializtionException {
         if (serverlessPlatformName.toLowerCase(Locale.ROOT).equals("openwhisk") ||
-                serverlessPlatformName.toLowerCase(Locale.ROOT).equals("open whisk"))
+                serverlessPlatformName.toLowerCase(Locale.ROOT).equals("open whisk") ||
+                serverlessPlatformName.equalsIgnoreCase("nuclio"))
             return "org.apache.hadoop.hdfs.serverless.invoking.OpenWhiskInvoker";
-        else if (serverlessPlatformName.equalsIgnoreCase("nuclio"))
-            return "org.apache.hadoop.hdfs.serverless.invoking.NuclioInvoker";
+        //else if (serverlessPlatformName.equalsIgnoreCase("nuclio"))
+        //    return "org.apache.hadoop.hdfs.serverless.invoking.NuclioInvoker";
         else
             throw new StorageInitializtionException(
                     "Unsupported serverless platform specified: \"" + serverlessPlatformName + "\"");
