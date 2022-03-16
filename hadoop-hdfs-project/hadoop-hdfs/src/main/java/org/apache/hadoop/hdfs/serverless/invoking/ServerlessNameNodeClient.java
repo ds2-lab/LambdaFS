@@ -719,18 +719,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println(String.format(formatString.toString(), requestsPerNameNode.values().toArray()));
 
         System.out.println("\n-- Current HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
-        LOG.info("Latency TCP (ms) [min: " + tcpStatistics.getMin() + ", max: " + tcpStatistics.getMax() +
+        System.out.println("Latency TCP (ms) [min: " + tcpStatistics.getMin() + ", max: " + tcpStatistics.getMax() +
                 ", avg: " + tcpStatistics.getMean() + ", std dev: " + tcpStatistics.getStandardDeviation() +
                 ", N: " + tcpStatistics.getN() + "]");
-        LOG.info("Latency HTTP (ms) [min: " + httpStatistics.getMin() + ", max: " + httpStatistics.getMax() +
+        System.out.println("Latency HTTP (ms) [min: " + httpStatistics.getMin() + ", max: " + httpStatistics.getMax() +
                 ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
                 ", N: " + httpStatistics.getN() + "]");
 
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
-        LOG.info("Latency TCP (ms) [min: " + latencyTcp.getMin() + ", max: " + latencyTcp.getMax() +
+        System.out.println("Latency TCP (ms) [min: " + latencyTcp.getMin() + ", max: " + latencyTcp.getMax() +
                 ", avg: " + latencyTcp.getMean() + ", std dev: " + latencyTcp.getStandardDeviation() +
                 ", N: " + latencyTcp.getN() + "]");
-        LOG.info("Latency HTTP (ms) [min: " + latencyHttp.getMin() + ", max: " + latencyHttp.getMax() +
+        System.out.println("Latency HTTP (ms) [min: " + latencyHttp.getMin() + ", max: " + latencyHttp.getMax() +
                 ", avg: " + latencyHttp.getMean() + ", std dev: " + latencyHttp.getStandardDeviation() +
                 ", N: " + latencyHttp.getN() + "]");
 
