@@ -231,7 +231,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.latency = new DescriptiveStatistics();
         this.latencyTcp = new DescriptiveStatistics();
         this.latencyHttp = new DescriptiveStatistics();
-        this.latencyWithWindow = new DescriptiveStatistics();
+        this.latencyWithWindow = new DescriptiveStatistics(latencyWindowSize);
     }
 
     public void setConsistencyProtocolEnabled(boolean enabled) {
@@ -256,33 +256,47 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.tcpServer.printDebugInformation();
     }
 
-//    /**
-//     * Add latency values to the statistics objects. Only adds the values if they are positive. So, if
-//     * you only want to add a tcp latency, then pass something < 0 for httpLatency.
-//     *
-//     * @param coldStart If true, then we only add the (presumably http) latency value if we've issued more than
-//     *                  the threshold number of operations, as we don't want standard cold starts to impact
-//     *                  the average too much.
-//     */
-//    private void addLatency(double tcpLatency, double httpLatency, boolean coldStart) {
-//        if (tcpLatency > 0) {
-//            latencyTcp.addValue(tcpLatency);
-//            latency.addValue(tcpLatency);
-//        }
-//
-//        if (httpLatency > 0) {
-//            latencyHttp.addValue(httpLatency);
-//            latency.addValue(httpLatency);
-//        }
-//    }
+    /**
+     * Used for merging latency values in from other clients into a master client that we use for book-keeping.
+     * This is primarily done using Ben's HopsFS benchmarking application.
+     * @param tcpLatencies Latencies from TCP requests.
+     * @param httpLatencies Latencies from HTTP requests.
+     */
+    public void addLatencies(double[] tcpLatencies, double[] httpLatencies) {
+        for (double tcpLatency : tcpLatencies) {
+            latencyTcp.addValue(tcpLatency);
+            latency.addValue(tcpLatency);
+        }
+
+        for (double httpLatency : httpLatencies) {
+            latencyHttp.addValue(httpLatency);
+            latency.addValue(httpLatency);
+        }
+    }
+
+    /**
+     * Used for merging latency values in from other clients into a master client that we use for book-keeping.
+     * This is primarily done using Ben's HopsFS benchmarking application.
+     * @param tcpLatencies Latencies from TCP requests.
+     * @param httpLatencies Latencies from HTTP requests.
+     */
+    public void addLatencies(Collection<Double> tcpLatencies, Collection<Double>  httpLatencies) {
+        for (double tcpLatency : tcpLatencies) {
+            latencyTcp.addValue(tcpLatency);
+            latency.addValue(tcpLatency);
+        }
+
+        for (double httpLatency : httpLatencies) {
+            latencyHttp.addValue(httpLatency);
+            latency.addValue(httpLatency);
+        }
+    }
 
     /**
      * Add latency values to the statistics objects. Only adds the values if they are positive. So, if
      * you only want to add a tcp latency, then pass something < 0 for httpLatency.
      */
     private void addLatency(double tcpLatency, double httpLatency) {
-        LOG.info("Add Latency: tcpLatency: " + tcpLatency + ", httpLatency: " + httpLatency);
-
         if (tcpLatency > 0) {
             latencyTcp.addValue(tcpLatency);
             latency.addValue(tcpLatency);
@@ -728,8 +742,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
                 ", N: " + httpStatistics.getN() + "]");
 
-        System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
-        printLatencyStatisticsDetailed(0);
+//        System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
+//        printLatencyStatisticsDetailed(0);
 
         System.out.println("\n==================================================================");
     }

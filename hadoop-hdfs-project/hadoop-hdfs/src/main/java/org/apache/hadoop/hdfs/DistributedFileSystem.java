@@ -1277,6 +1277,26 @@ public class DistributedFileSystem extends FileSystem {
   }
 
   /**
+   * Used for merging latency values in from other clients into a master client that we use for book-keeping.
+   * This is primarily done using Ben's HopsFS benchmarking application.
+   * @param tcpLatencies Latencies from TCP requests.
+   * @param httpLatencies Latencies from HTTP requests.
+   */
+  public void addLatencies(double[] tcpLatencies, double[] httpLatencies) {
+    dfs.addLatencies(tcpLatencies, httpLatencies);
+  }
+
+  /**
+   * Used for merging latency values in from other clients into a master client that we use for book-keeping.
+   * This is primarily done using Ben's HopsFS benchmarking application.
+   * @param tcpLatencies Latencies from TCP requests.
+   * @param httpLatencies Latencies from HTTP requests.
+   */
+  public void addLatencies(Collection<Double> tcpLatencies, Collection<Double>  httpLatencies) {
+    dfs.addLatencies(tcpLatencies, httpLatencies);
+  }
+
+  /**
    * Clear HTTP latency values.
    */
   public void clearLatencyValuesHttp() {

@@ -285,6 +285,36 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   }
 
   /**
+   * Used for merging latency values in from other clients into a master client that we use for book-keeping.
+   * This is primarily done using Ben's HopsFS benchmarking application.
+   * @param tcpLatencies Latencies from TCP requests.
+   * @param httpLatencies Latencies from HTTP requests.
+   */
+  public void addLatencies(double[] tcpLatencies, double[] httpLatencies) {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient) namenode;
+      client.addLatencies(tcpLatencies, httpLatencies);
+    } else {
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  /**
+   * Used for merging latency values in from other clients into a master client that we use for book-keeping.
+   * This is primarily done using Ben's HopsFS benchmarking application.
+   * @param tcpLatencies Latencies from TCP requests.
+   * @param httpLatencies Latencies from HTTP requests.
+   */
+  public void addLatencies(Collection<Double> tcpLatencies, Collection<Double>  httpLatencies) {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient) namenode;
+      client.addLatencies(tcpLatencies, httpLatencies);
+    } else {
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  /**
    * Clear the operations performed.
    */
   public void clearOperationsPerformed() {
