@@ -485,6 +485,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
                 operationsPerformed.put(requestId, operationPerformed);
 
+                latencyTcp.addValue(opEnd - opStart);
+
                 return response;
             }
         }
@@ -616,6 +618,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(), nameNodeId, cacheMisses, cacheHits);
         operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
         operationsPerformed.put(requestId, operationPerformed);
+
+        latencyHttp.addValue(endTime - startTime);
 
         return response;
     }
