@@ -338,16 +338,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
-            serverlessNameNode.getExecutionManager().tryExecuteTask(task, result, true);
-
-//            LOG.debug("Adding result from operation " + op + " to response for request " + requestId);
-//            if (fileSystemOperationResult != null) {
-//                LOG.debug("Merging NameNodeResult instances now...");
-//                result.mergeInto(fileSystemOperationResult, false);
-//            } else {
-//                // This will be caught immediately and added to the result returned to the client.
-//                throw new IllegalStateException("Did not receive a result from the execution of task " + requestId);
-//            }
+            serverlessNameNode.getExecutionManager().tryExecuteTask(task, result, true);git a
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);
@@ -464,29 +455,6 @@ public class OpenWhiskHandler extends BaseHandler {
         response.addProperty("statusCode", 200);
         response.addProperty("status", "success");
         response.addProperty("success", true);
-
-        // Only indicate that this failed if there is no result and there are exceptions.
-        // If there are exceptions, but we managed to compute a result, then we'll consider it a success.
-        /*if (result.getHasResult()) {
-            response.addProperty("statusCode", 200);
-            response.addProperty("status", "success");
-            response.addProperty("success", true);
-        }
-        // No result and exceptions? Indicate a failure.
-        else if (result.numExceptions() > 0) {
-            response.addProperty("statusCode", 422);
-            response.addProperty("status", "exception");
-            response.addProperty("success", false);
-        }*/
-        // No result and no exception(s) means that there was probably just a duplicate request,
-        // or an operation than doesn't return anything!
-        /*else {
-            // https://stackoverflow.com/a/3290369/5937661
-            // "The request could not be completed due to a conflict with the current state of the resource."
-            response.addProperty("statusCode", 409);
-            response.addProperty("status", "unknown_failure");
-            response.addProperty("success", false);
-        }*/
 
         response.add("headers", headers);
         response.add("body", resultJson);
