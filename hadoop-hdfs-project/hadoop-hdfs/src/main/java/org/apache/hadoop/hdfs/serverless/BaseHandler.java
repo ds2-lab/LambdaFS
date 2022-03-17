@@ -17,7 +17,7 @@ public class BaseHandler {
      *       normally parsed AFTER the NameNode is created, but there is some platform-specific code that runs
      *       BEFORE the NameNode is created. The solution to this is to just rework things a bit so that platform-
      *       specific code doesn't run until after the NameNode is created. This is not actually a difficult change
-     *       to do; it just hasn't been high-priority...
+     *       to implement; it just hasn't been high-priority...
      */
     public static final String PLATFORM_NAME = "openwhisk";
 
