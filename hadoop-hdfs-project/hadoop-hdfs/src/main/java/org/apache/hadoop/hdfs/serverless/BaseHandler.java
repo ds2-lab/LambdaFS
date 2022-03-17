@@ -13,7 +13,7 @@ public class BaseHandler {
     /**
      * Defines the platform we're using. This will eventually just be controlled by a configuration parameter.
      */
-    public static final String PLATFORM_NAME = "nuclio";
+    public static final String PLATFORM_NAME = "openwhisk";
 
     /**
      * Perform initialization specific to the particular platform.
