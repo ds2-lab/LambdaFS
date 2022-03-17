@@ -16,11 +16,15 @@ public class NuclioHandler extends BaseHandler implements EventHandler {
     public Response handleEvent(Context context, Event event) {
         byte[] eventBody = event.getBody();
 
+        // Nuclio sends "health tests" to basically ping the function to make sure it is alive.
+        // If the event body is empty, then we just assume it is a health test request, and we return whatever.
         if (eventBody == null || eventBody.length == 0) {
             LOG.debug("Received request with empty body. Probably a HEALTHCHECK.");
             return new Response().setBody("Healthy."); // I don't think it matters what we return here.
         }
 
+        // The event body is non-empty, so parse it as JSON to extract the arguments.
+        // Once extracted, we will pass these arguments directly to the OpenWhisk handler.
         String bodyAsString = new String(eventBody, StandardCharsets.UTF_8);
         JsonParser jsonParser = new JsonParser();
         JsonObject args = (JsonObject) jsonParser.parse(bodyAsString);
