@@ -94,6 +94,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-n", "--num-vms", type = int, dest = "num_vms", default = 1, help = "Number of VMs to create.")
+    parser.add_argument("-s", "--starting-index", type = int, dest = "starting_index", default = 0, help = "Index to start naming the instances at")
     parser.add_argument("-i", "--image", type = str, default = "ndb-datanode", help = "Machine image to use for the DataNode VMs")
     parser.add_argument("-t", "--machine-type", type = str, dest = "machine_type", default = "c2-standard-16", help = "Google Compute Engine machine type to use.")
     parser.add_argument("-o", "--output", type = str, default = "/var/lib/mysql-cluster/config.ini", help = "Filepath for the config.ini file that gets generated after creating the VMs.")
@@ -115,8 +116,9 @@ if __name__ == "__main__":
     hopsfs_client_ip = args.hopsfs_client_ip
     data_directory = args.data_directory
     project_id = args.project_id 
-    zone = args.zone 
-    current_nodeid = 1
+    zone = args.zone
+    starting_index = args.starting_index
+    current_nodeid = 1 + starting_index
 
     # According to the official documentation, the total maximum number of nodes in an NDB cluster is 255. This number includes all SQL nodes 
     # (MySQL Servers), API nodes (applications accessing the cluster other than MySQL servers), data nodes, and management servers. Thus, we
@@ -131,7 +133,7 @@ if __name__ == "__main__":
 
     instance_names = []
     command = "gcloud beta compute instances create "
-    for i in range(num_vms):
+    for i in range(starting_index, num_vms + starting_index):
         instance_name = "ndb-datanode-%d" % i
         instance_names.append(instance_name)
         command += instance_name + " "
