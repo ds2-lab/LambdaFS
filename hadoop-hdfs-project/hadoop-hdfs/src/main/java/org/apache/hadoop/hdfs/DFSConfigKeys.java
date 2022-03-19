@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault;
 import org.apache.hadoop.hdfs.server.namenode.XAttrStorage;
 import org.apache.hadoop.http.HttpConfig;
@@ -277,6 +278,14 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    */
   public static final String SERVERLESS_SUBTREE_DELETE_BATCH_SIZE = "serverless.subtree.delete.batchsize";
   public static final int SERVERLESS_SUBTREE_DELETE_BATCH_SIZE_DEFAULT = 128;
+
+  /**
+   * When enabled, we "spoof" network operations to NDB. This is expected to be done exclusively
+   * with file read operations. We basically just return a hard-coded {@link LocatedBlocks} object.
+   * This is used for testing our performance without NDB network operations being on the critical path.
+   */
+  public static final String SERVERLESS_SPOOF_NDB = "serverless.spoof.ndb";
+  public static final boolean SERVERLESS_SPOOF_NDB_DEFAULT = false;
 
   /**
    * List of endpoints (IPs) for the load balancers exposing each Nuclio deployment. The first IP corresponds

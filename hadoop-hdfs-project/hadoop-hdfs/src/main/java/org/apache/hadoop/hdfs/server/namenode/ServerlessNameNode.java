@@ -324,6 +324,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private volatile long lastIntermediateStorageUpdate = -1L;
 
   /**
+   * When enabled, we "spoof" network operations to NDB. This is expected to be done exclusively
+   * with file read operations. We basically just return a hard-coded {@link LocatedBlocks} object.
+   * This is used for testing our performance without NDB network operations being on the critical path.
+   */
+  private boolean spoofNdbOperations = false;
+
+  /**
    * HDFS configuration can have three types of parameters:
    * <ol>
    * <li>Parameters that are common for all the name services in the
@@ -1606,6 +1613,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     metrics.incrGetBlockLocations();
 
+    if (spoofNdbOperations) {
+      LOG.debug("Spoofing getBlockLocations() operation for src argument '" + src + "'");
+      return new LocatedBlocks(0, false, new ArrayList<>(),
+              null, false, null);
+    }
+
     return namesystem.getBlockLocations(NameNodeRpcServer.getClientMachine(), src, offset, length);
   }
 
@@ -1630,11 +1643,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
   }
 
-  private void concat(JsonObject fsArgs) throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+  private void concat(JsonObject fsArgs) throws IOException {
     LOG.info("Unpacking arguments for the CONCAT operation now...");
-
-    //Method method = FSNamesystem.class.getMethod("concat");
-    //method.invoke(ServerlessUtilities.extractArguments(fsArgs, method, new String[] {"target", "srcs"}));
 
     String trg = fsArgs.getAsJsonPrimitive("trg").getAsString();
 
@@ -2326,6 +2336,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     this.nameNodeTCPClient = new NameNodeTCPClient(conf,this, nameNodeID, deploymentNumber, actionMemory);
 
     this.useNdbForConsistencyProtocol = conf.getBoolean(SERVERLESS_CONSISTENCY_USENDB, SERVERLESS_CONSISTENCY_USENDB_DEFAULT);
+
+    this.spoofNdbOperations = conf.getBoolean(SERVERLESS_SPOOF_NDB, SERVERLESS_LOCAL_MODE_DEFAULT);
 
     if (useNdbForConsistencyProtocol)
       LOG.debug("Using MySQL Cluster NDB for the consistency protocol.");
