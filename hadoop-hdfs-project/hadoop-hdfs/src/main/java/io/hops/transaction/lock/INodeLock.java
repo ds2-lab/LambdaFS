@@ -28,6 +28,8 @@ import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 import org.apache.hadoop.ipc.RetriableException;
 
 import java.io.IOException;
@@ -160,12 +162,17 @@ public class INodeLock extends BaseINodeLock {
       throw new IOException("Cannot acquire INode locks along paths because paths is null!");
 
     for (String path : paths) {
-      LOG.debug("Attempting to acquire lock for path: " + path + "");
+      LOG.debug("Attempting to acquire " + lockType.name() + " lock for path: " + path + "");
 
       List<INode> resolvedINodes = null;
+
+      if (lockType == TransactionLockTypes.INodeLockType.READ ||
+              lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
+        resolvedINodes = resolveUsingServerlessMetadataCache(path);
+      }
+
       if (getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
         LOG.debug("Attempting to resolve INodes using INode Hint Cache.");
-
         // Batching only works in READ_COMMITTED mode. If locking is enabled then it can lead to deadlocks.
         resolvedINodes = resolveUsingINodeHintCache(path);
       }
@@ -204,9 +211,35 @@ public class INodeLock extends BaseINodeLock {
    * @param path The path along which we need to resolve the INodes (for each path component).
    * @return The resolved INodes.
    */
-  private List<INode> resolveUsingServerlessMetadataCache(String path) throws IOException {
+  private List<INode> resolveUsingServerlessMetadataCache(String path) {
+    LOG.debug("Attempting to resolve INodes using in-memory cache for path '" + path + "'.");
 
-    return null;
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+
+    if (instance == null) {
+      LOG.warn("Cannot get access to ServerlessNameNode instance, and thus cannot use in-memory cache.");
+
+      return null;
+    }
+
+    LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+    List<INode> resolvedINodes = new ArrayList<INode>();
+    List<String> fullPathComponents = INode.getFullPathComponents(path);
+
+    for (String pathComponentFullPath : fullPathComponents) {
+      INode cachedINode = metadataCache.getByPath(pathComponentFullPath);
+
+      if (cachedINode == null) {
+        LOG.debug("Path component '" + pathComponentFullPath + "' was NOT cached locally.");
+      } else {
+        LOG.debug("Path component '" + pathComponentFullPath + "' WAS cached locally.");
+        resolvedINodes.add(cachedINode);
+      }
+    }
+
+    LOG.debug("Resolved " + resolvedINodes.size() + "/" + fullPathComponents.size() +
+            " INodes using local metadata cache.");
+    return resolvedINodes;
   }
 
   /**

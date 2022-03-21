@@ -571,53 +571,10 @@ public class INodeClusterj implements TablesDef.INodeTableDef, INodeDataAccess<I
       session.release(results);
     }
   }
-//  public List<ProjectedINode> findInodesForSubtreeOperationsWithWriteLockPPIS(
-//      int parentId, int partitionId) throws StorageException {
-//    final String query = String.format(
-//        "SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s FROM %s " +
-//            "WHERE %s=%d and %s=%d FOR UPDATE",
-//        ID, NAME, PARENT_ID, PARTITION_ID, IS_DIR, PERMISSION, USER_ID, GROUP_ID, HEADER, SYMLINK,
-//        QUOTA_ENABLED,
-//        UNDER_CONSTRUCTION, SUBTREE_LOCKED, SUBTREE_LOCK_OWNER, SIZE, TABLE_NAME,
-//        PARENT_ID, parentId, PARTITION_ID, partitionId);
-//    ArrayList<ProjectedINode> resultList;
-//    try {
-//      Connection conn = mysqlConnector.obtainSession();
-//      PreparedStatement s = conn.prepareStatement(query);
-//      ResultSet result = s.executeQuery();
-//      resultList = new ArrayList<ProjectedINode>();
-//
-//      while (result.next()) {
-//        resultList.add(
-//            new ProjectedINode(result.getInt(ID), result.getInt(PARENT_ID),
-//                result.getString(NAME), result.getInt(PARTITION_ID),
-//                result.getBoolean(IS_DIR), result.getShort(PERMISSION),
-//                result.getInt(USER_ID), result.getInt(GROUP_ID),
-//                result.getLong(HEADER),
-//                result.getString(SYMLINK) == null ? false : true,
-//                result.getBoolean(QUOTA_ENABLED),
-//                result.getBoolean(UNDER_CONSTRUCTION),
-//                result.getBoolean(SUBTREE_LOCKED),
-//                result.getLong(SUBTREE_LOCK_OWNER),
-//                result.getLong(SIZE)));
-//      }
-//    } catch (SQLException ex) {
-//      throw HopsSQLExceptionHelper.wrap(ex);
-//    } finally {
-//      mysqlConnector.closeSession();
-//    }
-//    return resultList;
-//  }
 
   @Override
   public INode findInodeByNameParentIdAndPartitionIdPK(String name, long parentId, long partitionId)
           throws StorageException {
-    // This gets called too much because the RootINodeCache calls this on an interval. So I am commenting
-    // it out and just adding separate prints to other locations where this is called.
-
-    //printCallStackDebug("findInodeByNameParentIdAndPartitionIdPK(\"" + name + "\", " + parentId +
-    //        ", " + partitionId + ")");
-
     HopsSession session = connector.obtainSession();
 
     Object[] pk = new Object[3];

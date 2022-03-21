@@ -62,16 +62,6 @@ public class INodeDALAdaptor
     return convertDALtoHDFS(dataAccess.findInodeByIdFTIS(inodeId));
   }
 
-//  @Override
-//  public void setInvalidFlag(long inodeId, boolean flag) throws StorageException {
-//    dataAccess.setInvalidFlag(inodeId, flag);
-//  }
-
-//  @Override
-//  public void setInvalidFlag(long[] inodeIds, boolean flag) throws StorageException {
-//    dataAccess.setInvalidFlag(inodeIds, flag);
-//  }
-
   @Override
   public Collection<org.apache.hadoop.hdfs.server.namenode.INode> findInodesByIdsFTIS(long[] inodeId) throws
       StorageException {
@@ -128,13 +118,6 @@ public class INodeDALAdaptor
   @Override
   public org.apache.hadoop.hdfs.server.namenode.INode findInodeByNameParentIdAndPartitionIdPK(
       String name, long parentId, long partitionId) throws StorageException {
-
-    /*LOG.debug("Calling function findInodeByNameParentIdAndPartitionIdPK (\"" + name + "\", " + parentId +
-            ", " + partitionId + ") now. Printing call stack...");
-    StackTraceElement[] elements = Thread.currentThread().getStackTrace();
-    for (StackTraceElement element : elements) {
-      LOG.debug("\tat " + element.getClassName() + "." + element.getMethodName() + "(" + element.getFileName() + ":" + element.getLineNumber() + ")");
-    }*/
 
     return convertDALtoHDFS(
         dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId));

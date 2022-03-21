@@ -681,6 +681,47 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
   }
 
   /**
+   * Splits an absolute path into a list of "full paths", one for each component.
+   *
+   * For example, given the path "/a/b/c/d", this will return a list whose contents are:
+   * - /
+   * - /a
+   * - /a/b
+   * - /a/b/c
+   * - /a/b/c/d
+   *
+   * Running time is O(n) in the length of the path argument.
+   *
+   * @param path The absolute path to be split.
+   *
+   * @return An array of "full paths", one for each component.
+   */
+  public static List<String> getFullPathComponents(String path) {
+    ArrayList<String> fullPaths = new ArrayList<>();
+
+    int i;
+    if (path.charAt(0) == '/') {
+      fullPaths.add("/");
+      i = 1;
+    } else {
+      i = 0;
+    }
+
+    while (i < path.length()) {
+      char currentCharacter = path.charAt(i);
+
+      if (currentCharacter == '/') {
+        fullPaths.add(path.substring(0, i));
+      }
+
+      i++;
+    }
+
+    fullPaths.add(path);
+    return fullPaths;
+  }
+
+  /**
    * Given some components, create a path name.
    *
    * @param components
