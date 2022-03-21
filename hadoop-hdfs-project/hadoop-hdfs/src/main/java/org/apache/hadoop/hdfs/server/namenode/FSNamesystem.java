@@ -8304,6 +8304,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   public INode getINode(String path)
       throws UnresolvedLinkException, StorageException,
       TransactionContextException {
+    // First, try to serve the node directly from the metadata cache. If this fails (i.e., if the
+    INode node = metadataCache.getByPath(path);
+    if (node != null)
+      return node;
+
+    // If we were unable to serve the INode from our cache, then we'll go about it the ordinary way.
     INodesInPath inodesInPath = dir.getINodesInPath4Write(path);
     return inodesInPath.getLastINode();
   }
