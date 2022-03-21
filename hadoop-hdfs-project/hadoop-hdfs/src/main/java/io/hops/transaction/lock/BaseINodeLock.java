@@ -46,6 +46,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 
 public abstract class BaseINodeLock extends Lock {
   private final Map<INode, TransactionLockTypes.INodeLockType>
@@ -171,13 +172,49 @@ public abstract class BaseINodeLock extends Lock {
     return resolvedINodesMap.getAll();
   }
 
-  void addPathINodesAndUpdateResolvingCache(String path, List<INode> iNodes) {
+  /**
+   * Update both the resolving and in-memory metadata caches.
+   */
+  void addPathINodesAndUpdateResolvingAndInMemoryCaches(String path, List<INode> iNodes) {
     addPathINodes(path, iNodes);
     updateResolvingCache(path, iNodes);
+
+    try {
+      updateMetadataCache(iNodes);
+    } catch (TransactionContextException | StorageException ex) {
+      LOG.error("Exception encountered while caching metadata locally:", ex);
+    }
   }
 
   void updateResolvingCache(String path, List<INode> iNodes){
     Cache.getInstance().set(path, iNodes);
+  }
+
+  /**
+   * Attempt to update the local, in-memory metadata cache. This should be called whenever
+   * the {@link BaseINodeLock#updateResolvingCache} function is called.
+   *
+   * @param iNodes The INodes we retrieved from intermediate storage that we'd now like to cache.
+   */
+  private void updateMetadataCache(List<INode> iNodes) throws TransactionContextException, StorageException {
+    if (iNodes == null)
+      throw new IllegalArgumentException("The list of INodes to cache must be non-null.");
+
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+    if (instance == null) {
+      LOG.warn("Cannot update in-memory metadata cache because ServerlessNameNode instance is null.");
+      return;
+    }
+
+    LOG.debug("Caching " + iNodes.size() + " INodes in local, in-memory cache.");
+
+    LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+    for (INode node : iNodes) {
+      // In theory, getFullPathName() could access storage, but given we'd only be doing this after having
+      // accessed storage (that's why we're updating the cache), all of this information should already
+      // be available locally.
+      metadataCache.put(node.getFullPathName(), node.getId(), node);
+    }
   }
 
   void addPathINodes(String path, List<INode> iNodes) {
@@ -633,7 +670,8 @@ public abstract class BaseINodeLock extends Lock {
       addPathINodesWithOffset(path, inodes, offset);
     }
 
-    private void addPathINodesWithOffset(String path, List<INode> inodes, int offset) {
+    private void addPathINodesWithOffset(String path, List<INode> inodes, int offset)
+            throws TransactionContextException, StorageException {
       addPathINodes(path, inodes);
       if (offset == 0) {
         updateResolvingCache(path, inodes);
@@ -647,6 +685,9 @@ public abstract class BaseINodeLock extends Lock {
         updateResolvingCache(
             Joiner.on(Path.SEPARATOR_CHAR).join(newPath), newInodes);
       }
+
+      // Also update the metadata cache.
+      updateMetadataCache(inodes);
     }
 
     protected List<INode> readINodesWhileRespectingLocks(final TransactionLockTypes.INodeLockType lockType,

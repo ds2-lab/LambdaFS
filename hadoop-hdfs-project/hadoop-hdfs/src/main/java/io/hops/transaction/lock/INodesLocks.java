@@ -54,7 +54,7 @@ final class INodesLocks extends BaseINodeLock {
       List<INode> resolvedINodes = resolveUsingINodeHintCache(lockType, inodeIdentifier.getInodeId());
       
       String path = INodeUtil.constructPath(resolvedINodes);
-      addPathINodesAndUpdateResolvingCache(path, resolvedINodes);
+      addPathINodesAndUpdateResolvingAndInMemoryCaches(path, resolvedINodes);
 
     }
     acquireINodeAttributes();

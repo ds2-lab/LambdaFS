@@ -558,12 +558,12 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
     if (isRoot()) {
       return null;
     }
-    if (parent == null && getParentId()!= HdfsConstantsClient.GRANDFATHER_INODE_ID) {
+    if (parent == null && getParentId() != HdfsConstantsClient.GRANDFATHER_INODE_ID) {
       parent = (INode) EntityManager
           .find(INode.Finder.ByINodeIdFTIS, getParentId());
     }
 
-    if(parent==null){
+    if (parent==null) {
       return null;
     }
     

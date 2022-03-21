@@ -52,7 +52,7 @@ public class MultipleINodesLock extends BaseINodeLock {
       for (INode inode : inodes) {
         if (inode != null) {
           List<INode> pathInodes = readUpInodes(inode);
-          addPathINodesAndUpdateResolvingCache(INodeUtil.constructPath(pathInodes),
+          addPathINodesAndUpdateResolvingAndInMemoryCaches(INodeUtil.constructPath(pathInodes),
                   pathInodes);
         }
       }

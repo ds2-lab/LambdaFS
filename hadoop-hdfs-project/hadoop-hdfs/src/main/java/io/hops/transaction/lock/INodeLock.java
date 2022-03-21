@@ -134,7 +134,7 @@ public class INodeLock extends BaseINodeLock {
     List<INode> resolvedINodes = resolveUsingINodeHintCache(lockType, inodeId);
 
     String path = INodeUtil.constructPath(resolvedINodes);
-    addPathINodesAndUpdateResolvingCache(path, resolvedINodes);
+    addPathINodesAndUpdateResolvingAndInMemoryCaches(path, resolvedINodes);
 
     if (resolvedINodes!=null && resolvedINodes.size() > 0) {
       INode lastINode = resolvedINodes.get(resolvedINodes.size() - 1);
@@ -166,12 +166,21 @@ public class INodeLock extends BaseINodeLock {
 
       List<INode> resolvedINodes = null;
 
+      // We only use our local, in-memory metadata cache for read operations.
       if (lockType == TransactionLockTypes.INodeLockType.READ ||
               lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
-        resolvedINodes = resolveUsingServerlessMetadataCache(path);
+        resolvedINodes = resolveUsingServerlessMetadataCache(path, true);
+
+        if (resolvedINodes == null)
+          LOG.debug("Failed to completely resolve the path using the in-memory metadata cache. " +
+                  "Falling back to INode Hint Cache or recursive resolution.");
+        else
+          LOG.debug("Successfully resolved entirety of path using in-memory metadata cache.");
       }
 
-      if (getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
+      // Added clause 'resolvedINodes == null' as we do not need to bother with the INode Hint Cache
+      // if we fully resolved the path using our local, in-memory metadata cache.
+      if (resolvedINodes == null && getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
         LOG.debug("Attempting to resolve INodes using INode Hint Cache.");
         // Batching only works in READ_COMMITTED mode. If locking is enabled then it can lead to deadlocks.
         resolvedINodes = resolveUsingINodeHintCache(path);
@@ -185,7 +194,7 @@ public class INodeLock extends BaseINodeLock {
           setPartitioningKey(rand.nextLong());
         }
         resolvedINodes = acquireINodeLockByPath(path);
-        addPathINodesAndUpdateResolvingCache(path, resolvedINodes);
+        addPathINodesAndUpdateResolvingAndInMemoryCaches(path, resolvedINodes);
       } else {
         LOG.debug("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
       }
@@ -209,9 +218,17 @@ public class INodeLock extends BaseINodeLock {
    * Resolve the desired INodes using our new, in-memory metadata cache.
    *
    * @param path The path along which we need to resolve the INodes (for each path component).
+   * @param exitOnFirstMiss When true, this method will return upon the first cache miss. If at least one component
+   *                        of the path is not cached locally, we'll have to go to NDB, so in most (if not all) cases,
+   *                        as soon as there is a cache miss, we should just give up to save time. We're going to
+   *                        NDB anyway, and we might as well retrieve all the INodes we need.
+   *
+   *                        Note that, in this case, we return null so that it's easier to determine that the cache
+   *                        missed at least once, and we're not going to use any of the cached metadata here anyway.
+   *
    * @return The resolved INodes.
    */
-  private List<INode> resolveUsingServerlessMetadataCache(String path) {
+  private List<INode> resolveUsingServerlessMetadataCache(String path, boolean exitOnFirstMiss) {
     LOG.debug("Attempting to resolve INodes using in-memory cache for path '" + path + "'.");
 
     ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
@@ -231,6 +248,10 @@ public class INodeLock extends BaseINodeLock {
 
       if (cachedINode == null) {
         LOG.debug("Path component '" + pathComponentFullPath + "' was NOT cached locally.");
+
+        // This will almost always be true.
+        if (exitOnFirstMiss)
+          return null;
       } else {
         LOG.debug("Path component '" + pathComponentFullPath + "' WAS cached locally.");
         resolvedINodes.add(cachedINode);

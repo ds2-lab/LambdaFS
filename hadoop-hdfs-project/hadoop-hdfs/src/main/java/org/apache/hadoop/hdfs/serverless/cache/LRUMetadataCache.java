@@ -201,7 +201,7 @@ public class LRUMetadataCache<T> {
      * @param iNodeId The INode ID of the given metadata object.
      * @param value The metadata object to cache under the given key.
      */
-    public synchronized T put(String key, long iNodeId, T value) {
+    public T put(String key, long iNodeId, T value) {
         if (value == null)
             throw new IllegalArgumentException("LRUMetadataCache does NOT support null values. Associated key: " + key);
 
