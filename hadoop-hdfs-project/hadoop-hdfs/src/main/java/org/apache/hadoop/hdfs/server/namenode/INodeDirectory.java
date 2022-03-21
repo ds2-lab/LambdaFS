@@ -43,6 +43,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 
 
 /**
@@ -138,6 +139,18 @@ public class INodeDirectory extends INodeWithAdditionalFields {
   
   public static INodeDirectory getRootDir()
     throws StorageException, TransactionContextException {
+
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+    if (instance == null) {
+      LOG.warn("Cannot check local, in-memory cache for root INode as ServerlessNameNode instance is null.");
+    } else {
+      LRUMetadataCache<INode> metadataCache = instance.namesystem.getMetadataCache();
+
+      INode node = metadataCache.getByINodeId(ROOT_INODE_ID);
+      if (node != null)
+        return (INodeDirectory) node;
+    }
+
     INode inode = EntityManager.find(Finder.ByINodeIdFTIS, ROOT_INODE_ID);
     return (INodeDirectory) inode;
   }
