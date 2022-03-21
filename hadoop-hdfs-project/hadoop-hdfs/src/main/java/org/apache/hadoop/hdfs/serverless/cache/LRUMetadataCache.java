@@ -220,9 +220,9 @@ public class LRUMetadataCache<T> {
             boolean removed = invalidatedKeys.remove(key);
 
             if (removed)
-                LOG.debug("Previously invalid key " + key + " updated with valid cache value. Cache size: " + cache.size());
+                LOG.debug("Previously invalid key '" + key + "' updated with valid cache value. Cache size: " + cache.size());
             else
-                LOG.debug("Inserted metadata object into cache under key " + key + ". Cache size: " + cache.size());
+                LOG.debug("Inserted metadata object into cache under key '" + key + "'. Cache size: " + cache.size());
 
             return returnValue;
         } finally {

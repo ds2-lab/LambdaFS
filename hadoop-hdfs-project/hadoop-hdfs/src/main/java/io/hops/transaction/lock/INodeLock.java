@@ -161,6 +161,9 @@ public class INodeLock extends BaseINodeLock {
     if (paths == null)
       throw new IOException("Cannot acquire INode locks along paths because paths is null!");
 
+    LOG.debug("Acquiring locks on " + paths.length + " path(s). Lock type: " + lockType.name() +
+            ", resolve type: " + resolveType.name());
+
     for (String path : paths) {
       LOG.debug("Attempting to acquire " + lockType.name() + " lock for path: " + path + "");
 
@@ -195,8 +198,6 @@ public class INodeLock extends BaseINodeLock {
         }
         resolvedINodes = acquireINodeLockByPath(path);
         addPathINodesAndUpdateResolvingAndInMemoryCaches(path, resolvedINodes);
-      } else {
-        LOG.debug("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
       }
 
       if (resolvedINodes.size() > 0) {
@@ -244,6 +245,7 @@ public class INodeLock extends BaseINodeLock {
     List<String> fullPathComponents = INode.getFullPathComponents(path);
 
     for (String pathComponentFullPath : fullPathComponents) {
+      LOG.debug("Checking cache for component '" + pathComponentFullPath + "'");
       INode cachedINode = metadataCache.getByPath(pathComponentFullPath);
 
       if (cachedINode == null) {
@@ -276,13 +278,18 @@ public class INodeLock extends BaseINodeLock {
     }
     List<INode> resolvedINodes = cacheResolver.fetchINodes(lockType, path, resolveLink);
     if (resolvedINodes != null) {
+      LOG.debug("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
+
       for (INode iNode : resolvedINodes) {
         if(iNode!=null){
           checkSubtreeLock(iNode);
         }
       }
       handleLockUpgrade(resolvedINodes, INode.getPathComponents(path), path);
+    } else {
+      LOG.debug("Failed to resolve any INodes via INode Hint Cache.");
     }
+
     return resolvedINodes;
   }
 
