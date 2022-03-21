@@ -2339,6 +2339,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     this.spoofNdbOperations = conf.getBoolean(SERVERLESS_SPOOF_NDB, SERVERLESS_LOCAL_MODE_DEFAULT);
 
+    if (spoofNdbOperations)
+      LOG.warn("SPOOFING OF NDB OPERATIONS IS ENABLED.");
+    else
+      LOG.debug("Spoofing of NDB operations is DISABLED.");
+
     if (useNdbForConsistencyProtocol)
       LOG.debug("Using MySQL Cluster NDB for the consistency protocol.");
     else

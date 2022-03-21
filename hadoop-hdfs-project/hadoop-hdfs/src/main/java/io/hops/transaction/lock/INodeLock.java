@@ -28,12 +28,12 @@ import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
-import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.ipc.RetriableException;
 
 import java.io.IOException;
 import java.util.*;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
+import org.apache.hadoop.util.StringUtils;
 
 public class INodeLock extends BaseINodeLock {
   
@@ -104,17 +104,18 @@ public class INodeLock extends BaseINodeLock {
   public void acquire(TransactionLocks locks) throws IOException {
     if (paths != null) {
       /*
-       * Needs to be sorted in order to avoid deadlocks. Otherwise one transaction
-       * could acquire path0 and path1 in the given order while another one does
-       * it in the opposite order, more precisely path1, path0, what could cause
-       * a dealock situation.
+       * Needs to be sorted in order to avoid deadlocks. Otherwise, one transaction
+       * could acquire path0 and path1 in the that order while another one does it
+       * in the opposite order (i.e., path1, path0), which could cause a deadlock.
        */
       Arrays.sort(paths);
 
-      LOG.debug("Acquiring iNode locks on the following paths: " + Arrays.toString(paths));
+      LOG.debug("Acquiring INode locks on the following paths: " + StringUtils.join(", ", paths));
 
       acquirePathsINodeLocks();
     } else {
+      LOG.debug("Acquiring INode lock on INode with ID=" + inodeId);
+
       acquireInodeIdInodeLock();
     }
     if (!skipReadingQuotaAttr) {
@@ -128,7 +129,7 @@ public class INodeLock extends BaseINodeLock {
             TransactionLockTypes.INodeResolveType.PATH_AND_ALL_CHILDREN_RECURSIVELY)) {
       throw new IllegalArgumentException("Unknown type " + resolveType.name());
     }
-    List<INode> resolvedINodes = resolveUsingCache(lockType, inodeId);
+    List<INode> resolvedINodes = resolveUsingINodeHintCache(lockType, inodeId);
 
     String path = INodeUtil.constructPath(resolvedINodes);
     addPathINodesAndUpdateResolvingCache(path, resolvedINodes);
@@ -154,16 +155,23 @@ public class INodeLock extends BaseINodeLock {
       throw new IllegalArgumentException("Unknown type " + resolveType.name());
     }
 
+    // This check was not here before, so I assume it just cannot happen.
+    if (paths == null)
+      throw new IOException("Cannot acquire INode locks along paths because paths is null!");
+
     for (String path : paths) {
       LOG.debug("Attempting to acquire lock for path: " + path + "");
 
       List<INode> resolvedINodes = null;
       if (getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
-        //Batching only works in READ_COMITTED mode. If locking is enabled then it can lead to deadlocks.
-        resolvedINodes = resolveUsingCache(path);
+        LOG.debug("Attempting to resolve INodes using INode Hint Cache.");
+
+        // Batching only works in READ_COMMITTED mode. If locking is enabled then it can lead to deadlocks.
+        resolvedINodes = resolveUsingINodeHintCache(path);
       }
 
       if (resolvedINodes == null) {
+        LOG.debug("Path '" + path + "' was either not in INode Hint Cache or we couldn't use the cache.");
         // path not found in the cache
         // set random partition key if enabled
         if (setRandomParitionKeyEnabled) {
@@ -171,6 +179,8 @@ public class INodeLock extends BaseINodeLock {
         }
         resolvedINodes = acquireINodeLockByPath(path);
         addPathINodesAndUpdateResolvingCache(path, resolvedINodes);
+      } else {
+        LOG.debug("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
       }
 
       if (resolvedINodes.size() > 0) {
@@ -188,7 +198,24 @@ public class INodeLock extends BaseINodeLock {
     }
   }
 
-  private List<INode> resolveUsingCache(String path) throws IOException {
+  /**
+   * Resolve the desired INodes using our new, in-memory metadata cache.
+   *
+   * @param path The path along which we need to resolve the INodes (for each path component).
+   * @return The resolved INodes.
+   */
+  private List<INode> resolveUsingServerlessMetadataCache(String path) throws IOException {
+
+    return null;
+  }
+
+  /**
+   * This was previously called resolveUsingCache(), but I changed the name so that it is clear that this
+   * uses the INode Hint Cache and not our new metadata cache.
+   *
+   * @param path The path along which we need to resolve the INodes (for each path component).
+   */
+  private List<INode> resolveUsingINodeHintCache(String path) throws IOException {
     CacheResolver cacheResolver = getCacheResolver();
     if (cacheResolver == null) {
       return null;

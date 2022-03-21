@@ -51,7 +51,7 @@ final class INodesLocks extends BaseINodeLock {
 
     Collections.sort(inodeIdentifiers);
     for (INodeIdentifier inodeIdentifier : inodeIdentifiers) {
-      List<INode> resolvedINodes = resolveUsingCache(lockType, inodeIdentifier.getInodeId());
+      List<INode> resolvedINodes = resolveUsingINodeHintCache(lockType, inodeIdentifier.getInodeId());
       
       String path = INodeUtil.constructPath(resolvedINodes);
       addPathINodesAndUpdateResolvingCache(path, resolvedINodes);

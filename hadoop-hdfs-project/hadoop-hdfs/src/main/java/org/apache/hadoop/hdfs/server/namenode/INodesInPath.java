@@ -114,7 +114,13 @@ public class INodesInPath {
   // TODO: Eliminate null elements from inodes (to be provided by HDFS-7104)
   static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components, final boolean resolveLink)
           throws UnresolvedLinkException, StorageException, TransactionContextException {
-    return resolve(startingDir, components, resolveLink, null);
+
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+
+    if (instance == null)
+      throw new StorageException("Cannot retrieve ServerlessNameNode instance, and thus cannot retrieve metadata cache.");
+
+    return resolve(startingDir, components, resolveLink, instance.getNamesystem().getMetadataCache());
   }
 
 
@@ -159,8 +165,6 @@ public class INodesInPath {
     int inodeNum = 0;
     INode[] inodes = new INode[components.length];
 
-    // LOG.debug("resolve() function called. components.length: " + components.length);
-
     while (count < components.length && curNode != null) {
       final boolean lastComp = (count == components.length - 1);
       inodes[inodeNum++] = curNode;
@@ -195,15 +199,8 @@ public class INodesInPath {
         LOG.debug("INode " + childNameAsString + " is already cached locally under key '" + fullPathToCurrentComponent + "'. Using cached INode.");
       } else {
         LOG.debug("INode " + childNameAsString + " is NOT cached locally.");
-        // LOG.debug("Valid keys in metadata cache (" + metadataCache.size(false) + "): "
-        //        + metadataCache.getPathKeys(false));
+        curNode = dir.getChildINode(childName);
       }
-
-      // normal case, and also for resolving file/dir under snapshot root
-      curNode = dir.getChildINode(childName);
-
-      //if (curNode != null)
-      //  LOG.debug("Current INode (id=" + curNode.getId() + "): " + curNode.toString());
 
       count++;
     }
