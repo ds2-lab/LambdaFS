@@ -202,13 +202,15 @@ public class INodeLock extends BaseINodeLock {
 
       if (resolvedINodes.size() > 0) {
         INode lastINode = resolvedINodes.get(resolvedINodes.size() - 1);
-        if (resolveType ==
-                TransactionLockTypes.INodeResolveType.PATH_AND_IMMEDIATE_CHILDREN) {
+        if (resolveType == TransactionLockTypes.INodeResolveType.PATH_AND_IMMEDIATE_CHILDREN) {
+          LOG.debug("Resolving immediate children for last INode " + lastINode.getLocalName());
           List<INode> children = findImmediateChildren(lastINode);
+          LOG.debug("Found " + children.size() + " immediate children for last INode " + lastINode.getLocalName());
           addChildINodes(path, children);
-        } else if (resolveType ==
-                TransactionLockTypes.INodeResolveType.PATH_AND_ALL_CHILDREN_RECURSIVELY) {
+        } else if (resolveType == TransactionLockTypes.INodeResolveType.PATH_AND_ALL_CHILDREN_RECURSIVELY) {
+          LOG.debug("Resolving ALL children recursively for last INode " + lastINode.getLocalName());
           List<INode> children = findChildrenRecursively(lastINode);
+          LOG.debug("Found " + children.size() + " children for last INode " + lastINode.getLocalName());
           addChildINodes(path, children);
         }
       }
