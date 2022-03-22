@@ -47,6 +47,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
 import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+import org.apache.hadoop.util.StringUtils;
 
 public abstract class BaseINodeLock extends Lock {
   private final Map<INode, TransactionLockTypes.INodeLockType>
@@ -245,9 +246,17 @@ public abstract class BaseINodeLock extends Lock {
   List<INode> getTargetINodes() {
     List<INode> targetInodes =
         Lists.newArrayListWithExpectedSize(resolvedINodesMap.pathToPathINodes.size());
+
+    LOG.debug("Expecting " + resolvedINodesMap.pathToPathINodes.size() + " target INode(s).");
+
     for(String path : resolvedINodesMap.pathToPathINodes.keySet()) {
       List<INode> list = resolvedINodesMap.getPathINodes(path);
-      targetInodes.add(list.get(list.size() - 1));
+      LOG.debug("Path INodes for path '" + path + "': " + (list != null ? list.stream().map(INode::getLocalName) : "null"));
+
+      if (list == null)
+        LOG.warn("Path INodes for path '" + path + "' is null...");
+      else
+        targetInodes.add(list.get(list.size() - 1));
     }
     targetInodes.addAll(resolvedINodesMap.individualInodes);
     return targetInodes;
