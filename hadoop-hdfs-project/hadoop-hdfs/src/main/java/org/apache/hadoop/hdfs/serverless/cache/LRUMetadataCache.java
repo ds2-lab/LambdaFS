@@ -214,14 +214,14 @@ public class LRUMetadataCache<T> {
             idToNameMapping.put(iNodeId, key);
 
             // Store the metadata in the Trie data structure, using the path of the metadata as the key.
-            metadataTrie.put(key, value);
+            T existingEntry = metadataTrie.put(key, value);
 
             // If this key was previously invalidated, then it is no longer invalid, seeing as we're caching it now.
             boolean removed = invalidatedKeys.remove(key);
 
             if (removed)
                 LOG.debug("Previously invalid key '" + key + "' updated with valid cache value. Cache size: " + cache.size());
-            else
+            else if (existingEntry == null) // This ensures we only print the message if the object wasn't already cached.
                 LOG.debug("Inserted metadata object into cache under key '" + key + "'. Cache size: " + cache.size());
 
             return returnValue;
