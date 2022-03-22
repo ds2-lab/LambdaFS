@@ -3386,7 +3386,26 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
               iip = dir.getINodesInPath(srcInt, true);
               inode = iip.getLastINode();
             } else {
-              inode = EntityManager.find(INode.Finder.ByINodeIdFTIS, fileId);
+
+              // First, we'll try the metadata cache. If we cannot gain access to the
+              // metadata cache for some reason, then we'll fall back to the EntityManager.
+              ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+              if (instance == null) {
+                LOG.warn("Cannot check metadata cache for INode with ID " + fileId +
+                        " because ServerlessNameNode instance is null...");
+                inode = EntityManager.find(INode.Finder.ByINodeIdFTIS, fileId); // Fall back to EntityManager.
+              }
+              else {
+                // We can check the cache. If the desired INode is not in the cache, then fall back to EntityManager.
+                LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+                INode temp = metadataCache.getByINodeId(fileId);
+
+                if (temp != null)
+                  inode = temp; // Desired INode was in cache, so assign it to the `inode` variable.
+                else
+                  inode = EntityManager.find(INode.Finder.ByINodeIdFTIS, fileId); // Fall back to EntityManager.
+              }
+
               iip = INodesInPath.fromINode(inode);
               if (inode != null) {
                 srcInt = iip.getPath();

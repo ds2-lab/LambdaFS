@@ -71,6 +71,7 @@ import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockStoragePolicySuite;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.BlockUCState;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 import org.apache.hadoop.hdfs.util.ByteArray;
 import org.apache.hadoop.hdfs.util.EnumCounters;
 import org.apache.hadoop.security.AccessControlException;
@@ -1595,6 +1596,19 @@ public class FSDirectory implements Closeable {
   }
   
   INode getInode(final long id) throws IOException {
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+
+    if (instance == null)
+      LOG.warn("Cannot check metadata cache for INode with ID=" + id +
+              " because ServerlessNameNode instance is null...");
+    else {
+      LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+      INode node = metadataCache.getByINodeId(id);
+
+      if (node != null)
+        return node;
+    }
+
     return EntityManager.find(INode.Finder.ByINodeIdFTIS, id);
   }
   
