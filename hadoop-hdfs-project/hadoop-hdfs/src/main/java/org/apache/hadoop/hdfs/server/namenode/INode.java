@@ -45,6 +45,7 @@ import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.AclException;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockStoragePolicySuite;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 import org.apache.hadoop.util.StringUtils;
 
 import java.util.ArrayList;
@@ -560,10 +561,25 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
     }
     if (parent == null && getParentId() != HdfsConstantsClient.GRANDFATHER_INODE_ID) {
       LOG.debug("Using EntityManager to find parent of INode " + getId() + " (" + getLocalName() + ")");
-      parent = EntityManager.find(INode.Finder.ByINodeIdFTIS, getParentId());
+
+      ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+
+      if (instance == null) {
+        LOG.warn("Cannot check metadata cache for parent of INode " + getLocalName() + " (ID=" + getId() +
+                ") because ServerlessNameNode instance is null...");
+
+        parent = EntityManager.find(INode.Finder.ByINodeIdFTIS, getParentId());
+      } else {
+        LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+        parent = metadataCache.getByINodeId(getParentId());
+
+        // If the parent could not be resolved from the metadata cache, then we'll have to retrieve it from storage.
+        if (parent == null)
+          parent = EntityManager.find(INode.Finder.ByINodeIdFTIS, getParentId());
+      }
     }
 
-    if (parent==null) {
+    if (parent == null) {
       return null;
     }
     
