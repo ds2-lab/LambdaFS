@@ -207,7 +207,7 @@ public abstract class BaseINodeLock extends Lock {
       return;
     }
 
-    LOG.debug("Caching " + iNodes.size() + " INodes in local, in-memory cache.");
+    // LOG.debug("Caching " + iNodes.size() + " INodes in local, in-memory cache.");
 
     LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
     for (INode node : iNodes) {
