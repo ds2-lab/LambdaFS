@@ -156,7 +156,7 @@ public class LRUMetadataCache<T> {
                 cacheMiss();
             }
             else {
-                LOG.debug("Retrieved value " + returnValue + " from cache using key " + key + ".");
+                // LOG.debug("Retrieved value " + returnValue + " from cache using key " + key + ".");
                 cacheHit();
             }
 

@@ -35,6 +35,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,6 +63,43 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     this.dataAccess = dataAccess;
   }
 
+  private LRUMetadataCache<INode> getMetadataCache() {
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+
+    if (instance == null) {
+      return null;
+    }
+
+    return instance.getNamesystem().getMetadataCache();
+  }
+
+  /**
+   * Check the local metadata cache for the specified INode.
+   * @param id The ID of the desired INode.
+   * @return The INode with the specified ID, or null if the INode is not in the cache.
+   */
+  private INode checkCache(long id) {
+    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    if (metadataCache == null) {
+      LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
+      return null;
+    }
+    return metadataCache.getByINodeId(id);
+  }
+
+  /**
+   * Check the local metadata cache for the specified INode.
+   * @param path The fully-qualified path of the desired INode.
+   * @return The INode for the file/directory at the specified path, or null if the INode is not in the cache.
+   */
+  private INode checkCache(String path) {
+    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    if (metadataCache == null) {
+      LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
+      return null;
+    }
+    return metadataCache.getByPath(path);
+  }
   @Override
   public void clear() throws TransactionContextException {
     super.clear();
@@ -312,6 +351,12 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       throws TransactionContextException, StorageException {
     INode result = null;
     final Long inodeId = (Long) params[0];
+
+    // First, check the local, in-memory metadata cache.
+    result = checkCache(inodeId);
+    if (result != null)
+      return result;
+
     if (contains(inodeId)) {
       result = get(inodeId);
       if(result!=null) {
