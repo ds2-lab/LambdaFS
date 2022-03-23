@@ -244,7 +244,7 @@ public class INodeLock extends BaseINodeLock {
       return null;
     }
 
-    LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+    LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
     List<INode> resolvedINodes = new ArrayList<INode>();
     List<String> fullPathComponents = INode.getFullPathComponents(path);
 

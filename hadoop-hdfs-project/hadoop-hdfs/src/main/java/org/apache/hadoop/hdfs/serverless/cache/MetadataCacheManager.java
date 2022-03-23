@@ -49,6 +49,8 @@ public class MetadataCacheManager {
                 .build();
     }
 
+    public LRUMetadataCache<INode> getINodeCache() { return inodeCache; }
+
     public int invalidateINodesByPrefix(String prefix) {
         Collection<INode> prefixedINodes = inodeCache.invalidateKeysByPrefix(prefix);
 
@@ -71,6 +73,13 @@ public class MetadataCacheManager {
         }
 
         return inodeCache.invalidateKey(key, skipCheck);
+    }
+
+    public void invalidateAllINodes() {
+        encryptionZoneCache.invalidateAll();
+        aceCache.invalidateAll();
+        aceCacheByINodeId.invalidateAll();
+        inodeCache.invalidateEntireCache();
     }
 
     public boolean invalidateINode(long inodeId) {

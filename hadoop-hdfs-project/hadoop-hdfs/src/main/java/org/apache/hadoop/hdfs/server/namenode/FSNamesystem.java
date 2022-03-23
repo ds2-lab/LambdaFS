@@ -98,6 +98,7 @@ import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+import org.apache.hadoop.hdfs.serverless.cache.MetadataCacheManager;
 import org.apache.hadoop.hdfs.serverless.zookeeper.Invalidatable;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZooKeeperInvalidation;
@@ -254,7 +255,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * Used to cache file system metadata locally within a serverless name node.
    */
-  private final LRUMetadataCache<INode> metadataCache;
+  // private final LRUMetadataCache<INode> metadataCache;
+  private final MetadataCacheManager metadataCacheManager;
 
   private final boolean isPermissionEnabled;
   private final UserGroupInformation fsOwner;
@@ -486,7 +488,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           conf.getLong(DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_KEY,
               DFS_NAMENODE_RESOURCE_CHECK_INTERVAL_DEFAULT);
 
-      this.metadataCache = new LRUMetadataCache<>(conf);
+      // this.metadataCache = new LRUMetadataCache<>(conf);
+      this.metadataCacheManager = new MetadataCacheManager(conf);
 
       this.blockManager = new BlockManager(this, conf);
       this.erasureCodingEnabled =
@@ -1002,9 +1005,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     logAuditEvent(true, "setOwner", src, null, auditStat);
   }
 
-  public LRUMetadataCache<INode> getMetadataCache() {
-    return metadataCache;
-  }
+//  public LRUMetadataCache<INode> getMetadataCache() {
+//    return metadataCache;
+//  }
+  public MetadataCacheManager getMetadataCacheManager() { return metadataCacheManager; }
 
   /**
    * This is the "ZooKeeper consistency protocol" counterpart to the {@code eventReceived} function, which handled
@@ -1037,11 +1041,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     // TODO: Add support for subtree operations.
     serverlessNameNode.getZooKeeperClient().acknowledge(path, localNameNodeId);
     if (isSubtreeInvalidation) {
-      metadataCache.invalidateKeysByPrefix(subtreeRoot);
+      // metadataCache.invalidateKeysByPrefix(subtreeRoot);
+      metadataCacheManager.invalidateINodesByPrefix(subtreeRoot);
     } else {
       for (long id : invalidatedINodes) {
         LOG.debug("Attempting to invalidate INode " + id + " (if we have it cached).");
-        metadataCache.invalidateKey(id);
+        // metadataCache.invalidateKey(id);
+        metadataCacheManager.invalidateINode(id);
       }
     }
   }
@@ -1071,7 +1077,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       return;
     }
 
-    metadataCache.invalidateKey(inodeId);
+    // metadataCache.invalidateKey(inodeId);
+    metadataCacheManager.invalidateINode(inodeId);
 
     WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
             (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
@@ -1143,7 +1150,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   @Override
   public void invalidateCache() {
     LOG.debug("Invalidating entire cache. Connection to ZooKeeper must have been lost.");
-    metadataCache.invalidateEntireCache();
+    // metadataCache.invalidateEntireCache();
+    metadataCacheManager.invalidateAllINodes();
   }
 
   public static class GetBlockLocationsResult {
@@ -1810,57 +1818,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @return True if the key was invalidated, otherwise false.
    */
   public synchronized boolean invalidateMetadataCacheEntry(long iNodeId) {
-    return metadataCache.invalidateKey(iNodeId);
-  }
-
-  /**
-   * Invalidate a subset of keys stored in the metadata cache.
-   *
-   * @param invalidatedKeys List of keys that have been invalidated and need to be updated (via retrieving the data
-   *                        from intermediate storage/NDB).
-   * @param updatedValues Any updated cache values that have already been retrieved. This may happen in the case of
-   *                      NDB events, as the post-event values can optionally be received along with the events
-   *                      themselves.
-   */
-  public synchronized void invalidateMetadataCache(
-          List<String> invalidatedKeys,
-          Map<String, INode> updatedValues)
-  {
-    // Ensure we're using proper grammar in our debug messages.
-    String entry;
-    if (invalidatedKeys.size() == 1)
-      entry = "entry";
-    else
-      entry = "entries";
-
-    LOG.debug("Invalidating " + invalidatedKeys.size() + " metadata cache " + entry + ".");
-
-    if (updatedValues.size() > 0)
-      LOG.debug("Already have " + updatedValues.size() + " updated cache " + entry + " locally.");
-
-    // TODO:
-    //    Receive parentId during events so the NN can determine if the event corresponds to an
-    //    INode that it is responsible for caching. If it isn't, then the NN can just skip the
-    //    processing of that key.
-
-    int numKeysInvalidated = 0;
-    for (String invalidatedKey : invalidatedKeys) {
-      LOG.debug("Invalidating key: " + invalidatedKey);
-
-      // If we already have the value for this key, then update the cache.
-      if (updatedValues.containsKey(invalidatedKey)) {
-        LOG.debug("Using local, updated value for entry " + invalidatedKey + ".");
-        INode updatedINode = updatedValues.get(invalidatedKey);
-
-        metadataCache.put(invalidatedKey, updatedINode.getId(), updatedINode);
-      } else {
-        LOG.debug("Invalidating cache entry " + invalidatedKey + ".");
-        metadataCache.invalidateKey(invalidatedKey, false);
-        numKeysInvalidated++;
-      }
-    }
-
-    LOG.debug("Invalidated (without updating) " + numKeysInvalidated + " key(s).");
+    // return metadataCache.invalidateKey(iNodeId);
+    return metadataCacheManager.invalidateINode(iNodeId);
   }
 
   /**
@@ -3387,24 +3346,26 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
               inode = iip.getLastINode();
             } else {
 
-              // First, we'll try the metadata cache. If we cannot gain access to the
-              // metadata cache for some reason, then we'll fall back to the EntityManager.
-              ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
-              if (instance == null) {
-                LOG.warn("Cannot check metadata cache for INode with ID " + fileId +
-                        " because ServerlessNameNode instance is null...");
-                inode = EntityManager.find(INode.Finder.ByINodeIdFTIS, fileId); // Fall back to EntityManager.
-              }
-              else {
-                // We can check the cache. If the desired INode is not in the cache, then fall back to EntityManager.
-                LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
-                INode temp = metadataCache.getByINodeId(fileId);
+//              // First, we'll try the metadata cache. If we cannot gain access to the
+//              // metadata cache for some reason, then we'll fall back to the EntityManager.
+//              ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+//              if (instance == null) {
+//                LOG.warn("Cannot check metadata cache for INode with ID " + fileId +
+//                        " because ServerlessNameNode instance is null...");
+//                inode = EntityManager.find(INode.Finder.ByINodeIdFTIS, fileId); // Fall back to EntityManager.
+//              }
+//              else {
+//                // We can check the cache. If the desired INode is not in the cache, then fall back to EntityManager.
+//                LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+//                INode temp = metadataCache.getByINodeId(fileId);
+//
+//                if (temp != null)
+//                  inode = temp; // Desired INode was in cache, so assign it to the `inode` variable.
+//                else
+//                  inode = EntityManager.find(INode.Finder.ByINodeIdFTIS, fileId); // Fall back to EntityManager.
+//              }
 
-                if (temp != null)
-                  inode = temp; // Desired INode was in cache, so assign it to the `inode` variable.
-                else
-                  inode = EntityManager.find(INode.Finder.ByINodeIdFTIS, fileId); // Fall back to EntityManager.
-              }
+              inode = EntityManager.find(INode.Finder.ByINodeIdFTIS, fileId);
 
               iip = INodesInPath.fromINode(inode);
               if (inode != null) {
@@ -8324,7 +8285,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       throws UnresolvedLinkException, StorageException,
       TransactionContextException {
     // First, try to serve the node directly from the metadata cache. If this fails (i.e., if the
-    INode node = metadataCache.getByPath(path);
+    INode node = metadataCacheManager.getINodeCache().getByPath(path);
     if (node != null)
       return node;
 

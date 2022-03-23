@@ -439,8 +439,7 @@ public class OpenWhiskHandler extends BaseHandler {
     private static JsonObject createJsonResponse(NameNodeResult result) {
         JsonObject resultJson = result.toJson(null, ServerlessNameNode.
                 tryGetNameNodeInstance(true).
-                getNamesystem().
-                getMetadataCache());
+                getNamesystem().getMetadataCacheManager().getINodeCache());
 
         JsonObject response = new JsonObject();
         JsonObject headers = new JsonObject();

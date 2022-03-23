@@ -144,7 +144,7 @@ public class INodeDirectory extends INodeWithAdditionalFields {
     if (instance == null) {
       LOG.warn("Cannot check local, in-memory cache for root INode as ServerlessNameNode instance is null.");
     } else {
-      LRUMetadataCache<INode> metadataCache = instance.namesystem.getMetadataCache();
+      LRUMetadataCache<INode> metadataCache = instance.namesystem.getMetadataCacheManager().getINodeCache();
 
       INode node = metadataCache.getByINodeId(ROOT_INODE_ID);
       if (node != null)

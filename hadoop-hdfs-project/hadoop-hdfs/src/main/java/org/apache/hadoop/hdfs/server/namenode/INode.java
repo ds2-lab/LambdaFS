@@ -570,7 +570,7 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
 
         parent = EntityManager.find(INode.Finder.ByINodeIdFTIS, getParentId());
       } else {
-        LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+        LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
         parent = metadataCache.getByINodeId(getParentId());
 
         // If the parent could not be resolved from the metadata cache, then we'll have to retrieve it from storage.

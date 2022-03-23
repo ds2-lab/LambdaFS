@@ -1602,7 +1602,7 @@ public class FSDirectory implements Closeable {
       LOG.warn("Cannot check metadata cache for INode with ID=" + id +
               " because ServerlessNameNode instance is null...");
     else {
-      LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+      LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
       INode node = metadataCache.getByINodeId(id);
 
       if (node != null)

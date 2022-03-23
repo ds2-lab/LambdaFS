@@ -211,7 +211,7 @@ public abstract class BaseINodeLock extends Lock {
 
     // LOG.debug("Caching " + iNodes.size() + " INodes in local, in-memory cache.");
 
-    LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCache();
+    LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
     for (INode node : iNodes) {
       // In theory, getFullPathName() could access storage, but given we'd only be doing this after having
       // accessed storage (that's why we're updating the cache), all of this information should already

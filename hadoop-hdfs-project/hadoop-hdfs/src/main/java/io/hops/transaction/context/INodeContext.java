@@ -70,7 +70,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       return null;
     }
 
-    return instance.getNamesystem().getMetadataCache();
+    return instance.getNamesystem().getMetadataCacheManager().getINodeCache();
   }
 
   /**

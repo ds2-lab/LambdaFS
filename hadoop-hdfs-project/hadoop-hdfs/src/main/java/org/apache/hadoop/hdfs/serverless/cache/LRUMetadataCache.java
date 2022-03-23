@@ -381,7 +381,7 @@ public class LRUMetadataCache<T> {
      *
      * @return True if the key was invalidated, otherwise false.
      */
-    public boolean invalidateKey(long inodeId) {
+    protected boolean invalidateKey(long inodeId) {
         _mutex.lock();
         try  {
             if (idToNameMapping.containsKey(inodeId)) {
@@ -417,7 +417,7 @@ public class LRUMetadataCache<T> {
      * @return True if the key was invalidated, otherwise false. If {@code skipCheck} is true, then this
      * function will always return true.
      */
-    public boolean invalidateKey(String key, boolean skipCheck) {
+    protected boolean invalidateKey(String key, boolean skipCheck) {
         return invalidateKeyInternal(key, skipCheck);
     }
 
@@ -451,12 +451,14 @@ public class LRUMetadataCache<T> {
     /**
      * Invalidate all entries in the cache.
      */
-    public void invalidateEntireCache() {
+    protected void invalidateEntireCache() {
         LOG.warn("Invalidating ENTIRE cache. ");
         _mutex.lock();
         try {
-            for (String key : cache.keySet())
-                invalidateKey(key, true);
+//            for (String key : cache.keySet())
+//                invalidateKey(key, true);
+            cache.clear();
+            metadataTrie.clear();
         } finally {
             _mutex.unlock();
         }
