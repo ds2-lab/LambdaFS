@@ -177,8 +177,10 @@ public class INodeLock extends BaseINodeLock {
         if (resolvedINodes == null)
           LOG.debug("Failed to completely resolve the path using the in-memory metadata cache. " +
                   "Falling back to INode Hint Cache or recursive resolution.");
-        else
+        else {
           LOG.debug("Successfully resolved entirety of path using in-memory metadata cache.");
+          addPathINodes(path, resolvedINodes);
+        }
       }
 
       // Added clause 'resolvedINodes == null' as we do not need to bother with the INode Hint Cache
