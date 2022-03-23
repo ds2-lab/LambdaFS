@@ -3,8 +3,8 @@ package org.apache.hadoop.hdfs.serverless.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.hops.metadata.hdfs.entity.Ace;
+import io.hops.metadata.hdfs.entity.EncryptionZone;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 
 import java.util.*;

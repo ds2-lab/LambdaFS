@@ -17,13 +17,21 @@
  */
 package io.hops.transaction.context;
 
+import com.google.common.collect.Lists;
 import io.hops.exception.StorageCallPreventedException;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.AceDataAccess;
 import io.hops.metadata.hdfs.entity.Ace;
+import io.hops.metadata.hdfs.entity.EncryptionZone;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.cache.MetadataCacheManager;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 
 import java.util.Collection;
@@ -32,8 +40,8 @@ import java.util.List;
 import java.util.Map;
 import javax.swing.text.html.parser.Entity;
 
-public class AcesContext
-    extends BaseEntityContext<Ace.PrimaryKey, Ace> {
+public class AcesContext extends BaseEntityContext<Ace.PrimaryKey, Ace> {
+  public static final Logger LOG = LoggerFactory.getLogger(AcesContext.class);
   
   private AceDataAccess<Ace> dataAccess;
   private Map<Long, List<Ace>> inodeAces = new HashMap<>();
@@ -41,7 +49,35 @@ public class AcesContext
   public AcesContext(AceDataAccess<Ace> aceDataAccess) {
     this.dataAccess = aceDataAccess;
   }
-  
+
+  private MetadataCacheManager getMetadataCacheManager() {
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+    if (instance == null) {
+      return null;
+    }
+    return instance.getNamesystem().getMetadataCacheManager();
+  }
+
+  /**
+   * Check the metadata cache for the Ace associated with the given INode.
+   */
+  private List<Ace> checkCache(long inodeId, int[] aceIds) {
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return null;
+    }
+
+    List<Ace> aces = Lists.newArrayListWithExpectedSize(aceIds.length);
+    for (int id : aceIds) {
+      Ace ace = metadataCacheManager.getAce(inodeId, id);
+      if (ace == null)
+        return null;
+      aces.add(ace);
+    }
+
+    return aces;
+  }
+
   @Override
   public Collection<Ace> findList(FinderType<Ace> finder, Object... params)
       throws TransactionContextException, StorageException {
@@ -59,11 +95,18 @@ public class AcesContext
     long inodeId = (long) params[0];
     int[] aceIds = (int[]) params[1];
     
-    List<Ace> result;
+    List<Ace> result = checkCache(inodeId, aceIds);
+
+    if (result != null) {
+      LOG.debug("Successfully retrieved all Ace instances from local cache for INode ID=" + inodeId + ".");
+      return result;
+    }
+
     if(inodeAces.containsKey(inodeId)){
       result = inodeAces.get(inodeId);
       hit(aceFinder, result, "inodeId", inodeId);
     } else {
+      LOG.debug("Retrieving EncryptionZones from intermediate storage for INode ID=" + inodeId);
       aboutToAccessStorage(aceFinder, params);
       result = dataAccess.getAcesByPKBatched(inodeId, aceIds);
       inodeAces.put(inodeId, result);
