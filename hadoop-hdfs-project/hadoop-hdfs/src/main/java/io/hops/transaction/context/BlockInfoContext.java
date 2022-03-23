@@ -29,6 +29,7 @@ import io.hops.transaction.lock.LastTwoBlocksLock;
 import io.hops.transaction.lock.Lock;
 import io.hops.transaction.lock.SqlBatchedBlocksLock;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 
@@ -40,8 +41,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 
 public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguous> {
+  private static final Log LOG = LogFactory.getLog(BlockInfoContext.class);
 
   private final static int DEFAULT_NUM_BLOCKS_PER_INODE = 10;
 
@@ -175,6 +178,7 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
       result = inodeBlocks.get(inodeId);
       hit(bFinder, result, "inodeid", inodeId);
     } else {
+      LOG.debug("Reading BlockInfoContiguous objects from intermediate storage for INode ID " + inodeId);
       aboutToAccessStorage(bFinder, params);
       result = dataAccess.findByInodeId(inodeId);
       inodeBlocks.put(inodeId, syncBlockInfoInstances(result));
