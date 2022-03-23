@@ -43,8 +43,8 @@ import javax.swing.text.html.parser.Entity;
 public class AcesContext extends BaseEntityContext<Ace.PrimaryKey, Ace> {
   public static final Logger LOG = LoggerFactory.getLogger(AcesContext.class);
   
-  private AceDataAccess<Ace> dataAccess;
-  private Map<Long, List<Ace>> inodeAces = new HashMap<>();
+  private final AceDataAccess<Ace> dataAccess;
+  private final Map<Long, List<Ace>> inodeAces = new HashMap<>();
   
   public AcesContext(AceDataAccess<Ace> aceDataAccess) {
     this.dataAccess = aceDataAccess;
@@ -76,6 +76,22 @@ public class AcesContext extends BaseEntityContext<Ace.PrimaryKey, Ace> {
     }
 
     return aces;
+  }
+
+  /**
+   * Cache the Ace instances retrieved from intermediate storage in our local, in-memory metadata cache.
+   *
+   * The INode ID of each ace will be the same as the one we pass in. It's just for convenience.
+   */
+  private void cacheResults(long inodeId, List<Ace> results) {
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return;
+    }
+
+    for (Ace ace : results) {
+      metadataCacheManager.putAce(inodeId, ace.getIndex(), ace);
+    }
   }
 
   @Override
@@ -110,6 +126,7 @@ public class AcesContext extends BaseEntityContext<Ace.PrimaryKey, Ace> {
       aboutToAccessStorage(aceFinder, params);
       result = dataAccess.getAcesByPKBatched(inodeId, aceIds);
       inodeAces.put(inodeId, result);
+      cacheResults(inodeId, result);
       gotFromDB(result);
       miss(aceFinder, result, "inodeId", inodeId);
     }

@@ -24,6 +24,7 @@ import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.EncryptionZoneDataAccess;
+import io.hops.metadata.hdfs.entity.Ace;
 import io.hops.metadata.hdfs.entity.EncryptionZone;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.hdfs.server.namenode.INode;
@@ -90,6 +91,20 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
     return encryptionZones;
   }
 
+  /**
+   * Cache the EncryptionZone instances retrieved from intermediate storage in our local, in-memory metadata cache.
+   */
+  private void cacheResults(List<EncryptionZone> results) {
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return;
+    }
+
+    for (EncryptionZone ez : results) {
+      metadataCacheManager.putEncryptionZone(ez.getInodeId(), ez);
+    }
+  }
+
   @Override
   Long getKey(EncryptionZone encryptionZone) {
     return encryptionZone.getInodeId();
@@ -153,6 +168,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
       aboutToAccessStorage(finder, params);
       results = dataAccess.getEncryptionZoneByInodeIdBatch(pks);
       gotFromDB(pks, results);
+      cacheResults(results);
       miss(finder, results, "pks", pks, "results", results);
     }
     return results;
