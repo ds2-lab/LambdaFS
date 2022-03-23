@@ -50,11 +50,14 @@ public final class BlockLock extends IndividualBlockLock {
   public void acquire(TransactionLocks locks) throws IOException {
     boolean individualBlockAlreadyRead = false;
     if (locks.containsLock(Type.INode)) {
+      LOG.debug("Acquiring BlockLock when TransactionLocks contains an INode lock.");
       BaseINodeLock inodeLock = (BaseINodeLock) locks.getLock(Type.INode);
       Iterable blks = Collections.EMPTY_LIST;
+
       for (INode inode : inodeLock.getAllResolvedINodes()) {
+        LOG.debug("Acquiring BlockLock on INode " + inode.getLocalName() + ", ID=" + inode.getId());
         if (BaseINodeLock.isStoredInDB(inode)) {
-          LOG.debug("Stuffed Inode:  BlockLock. Skipping acquring locks on the inode named: " + inode.getLocalName()
+          LOG.debug("Stuffed Inode:  BlockLock. Skipping acquiring locks on the inode named: " + inode.getLocalName()
               + " as the file is stored in the database");
           announceEmptyFile(inode.getId());
           continue;
