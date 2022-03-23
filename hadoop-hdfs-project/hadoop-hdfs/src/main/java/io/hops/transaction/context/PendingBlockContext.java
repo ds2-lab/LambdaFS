@@ -25,14 +25,20 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.PendingBlockDataAccess;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.PendingBlockInfo;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PendingBlockContext
     extends BaseReplicaContext<BlockPK, PendingBlockInfo> {
+
+  public static final Logger LOG = LoggerFactory.getLogger(PendingBlockContext.class);
 
   private final PendingBlockDataAccess<PendingBlockInfo> dataAccess;
   private boolean allPendingRead = false;
@@ -134,6 +140,7 @@ public class PendingBlockContext
       }
       hit(pFinder, result, "bid", blockId, "inodeid", inodeId);
     } else {
+      LOG.debug("Going to NDB for PendingBlockInfo instance with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(pFinder, params);
       result = dataAccess.findByBlockAndInodeIds(blockId, inodeId);
       gotFromDB(new BlockPK(blockId, inodeId), result);
@@ -149,6 +156,7 @@ public class PendingBlockContext
       result = new ArrayList<>(getAll());
       hit(pFinder, result);
     } else {
+      LOG.debug("Going to NDB for ALL PendingBlockInfo instances");
       aboutToAccessStorage(pFinder);
       result = dataAccess.findAll();
       gotFromDB(result);
@@ -166,6 +174,7 @@ public class PendingBlockContext
       result = getByINode(inodeId);
       hit(pFinder, result, "inodeid", inodeId);
     } else {
+      LOG.debug("Going to NDB for PendingBlockInfo instances with INodeID=" + inodeId);
       aboutToAccessStorage(pFinder, params);
       result = dataAccess.findByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
@@ -178,6 +187,8 @@ public class PendingBlockContext
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
     List<PendingBlockInfo> result = null;
+    LOG.debug("Going to NDB for PendingBlockInfo instances with INodeIDs=" +
+            StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(pFinder, params);
     result = dataAccess.findByINodeIds(inodeIds);
     gotFromDB(BlockPK.getBlockKeys(inodeIds), result);

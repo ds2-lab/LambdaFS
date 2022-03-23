@@ -26,6 +26,8 @@ import io.hops.metadata.hdfs.entity.Replica;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.cache.ReplicaCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -33,6 +35,7 @@ import java.util.List;
 
 public class ReplicaContext
     extends BaseReplicaContext<BlockPK.ReplicaPK, Replica> {
+  public static final Logger LOG = LoggerFactory.getLogger(ReplicaContext.class);
 
   private ReplicaDataAccess dataAccess;
 
@@ -152,6 +155,7 @@ public class ReplicaContext
       results = getByBlock(blockId);
       hit(iFinder, results, "bid", blockId);
     } else {
+      LOG.debug("Going to NDB to find Replicas for INode ID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findReplicasById(blockId, inodeId);
       gotFromDB(new BlockPK(blockId, null), results);

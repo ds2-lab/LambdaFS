@@ -24,13 +24,18 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.UnderReplicatedBlockDataAccess;
 import io.hops.metadata.hdfs.entity.UnderReplicatedBlock;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class UnderReplicatedBlockContext
     extends BaseReplicaContext<BlockPK, UnderReplicatedBlock> {
+  public static final Logger LOG = LoggerFactory.getLogger(UnderReplicatedBlockContext.class);
 
   private final UnderReplicatedBlockDataAccess<UnderReplicatedBlock> dataAccess;
 
@@ -131,6 +136,7 @@ public class UnderReplicatedBlockContext
       }
       hit(urFinder, result, "bid", blockId, "inodeid", inodeId);
     } else {
+      LOG.debug("Going to NDB for UnderReplicatedBlock instances with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(urFinder, params);
       result = dataAccess.findByPk(blockId, inodeId);
       gotFromDB(new BlockPK(blockId, inodeId), result);
@@ -148,6 +154,7 @@ public class UnderReplicatedBlockContext
       result = getByINode(inodeId);
       hit(urFinder, result, "inodeid", inodeId);
     } else {
+      LOG.debug("Going to NDB for UnderReplicatedBlock instances with INodeID=" + inodeId);
       aboutToAccessStorage(urFinder, params);
       result = dataAccess.findByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
@@ -161,6 +168,8 @@ public class UnderReplicatedBlockContext
       throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
     List<UnderReplicatedBlock> result = null;
+    LOG.debug("Going to NDB for UnderReplicatedBlock instances with INodeIDs=" +
+            StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(urFinder, params);
     result = dataAccess.findByINodeIds(inodeIds);
     gotFromDB(BlockPK.getBlockKeys(inodeIds), result);

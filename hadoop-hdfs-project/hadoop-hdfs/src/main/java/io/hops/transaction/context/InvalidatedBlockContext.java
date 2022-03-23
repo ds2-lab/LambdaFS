@@ -24,6 +24,8 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.InvalidateBlockDataAccess;
 import io.hops.metadata.hdfs.entity.InvalidatedBlock;
 import io.hops.transaction.lock.TransactionLocks;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,6 +35,7 @@ import java.util.List;
 
 public class InvalidatedBlockContext
     extends BaseReplicaContext<BlockPK.ReplicaPK, InvalidatedBlock> {
+  public static final Logger LOG = LoggerFactory.getLogger(InvalidatedBlockContext.class);
 
   private final InvalidateBlockDataAccess<InvalidatedBlock> dataAccess;
   private boolean allInvBlocksRead = false;
@@ -140,6 +143,8 @@ public class InvalidatedBlockContext
       hit(iFinder, result, "bid", blockId, "sid", storageId, "inodeId",
           inodeId);
     } else {
+      LOG.debug("Going to NDB for InvalidatedBlock instance with INodeID=" + inodeId + ", BlockID=" + blockId +
+              ", StorageID=" + storageId);
       aboutToAccessStorage(iFinder, params);
       result = dataAccess.findInvBlockByPkey(blockId, storageId, inodeId);
       gotFromDB(key, result);
@@ -159,6 +164,7 @@ public class InvalidatedBlockContext
       result = getByBlock(blockId);
       hit(iFinder, result, "bid", blockId, "inodeId", inodeId);
     } else {
+      LOG.debug("Going to NDB for InvalidatedBlock instances.");
       aboutToAccessStorage(iFinder, params);
       result = dataAccess.findInvalidatedBlocksByBlockId(blockId, inodeId);
       Collections.sort(result);
@@ -177,6 +183,7 @@ public class InvalidatedBlockContext
       result = getByINode(inodeId);
       hit(iFinder, result, "inodeId", inodeId);
     } else {
+      LOG.debug("Going to NDB for InvalidatedBlock instances with INodeID=" + inodeId);
       aboutToAccessStorage(iFinder, params);
       result = dataAccess.findInvalidatedBlocksByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
@@ -192,6 +199,7 @@ public class InvalidatedBlockContext
       result = new ArrayList<>(getAll());
       hit(iFinder, result);
     } else {
+      LOG.debug("Going to NDB for ALL InvalidatedBlock instances.");
       aboutToAccessStorage(iFinder);
       result = dataAccess.findAllInvalidatedBlocks();
       gotFromDB(result);
@@ -208,6 +216,8 @@ public class InvalidatedBlockContext
     final long[] inodeIds = (long[]) params[1];
     final int sid = (Integer) params[2];
 
+    LOG.debug("Going to NDB for InvalidatedBlock instances with SID=" + sid);
+
     aboutToAccessStorage(iFinder, params);
     List<InvalidatedBlock> result = dataAccess.findInvalidatedBlockByStorageId(sid);
 
@@ -221,6 +231,8 @@ public class InvalidatedBlockContext
   private List<InvalidatedBlock> findByINodeIds(InvalidatedBlock.Finder iFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
+
+    LOG.debug("Going to NDB for InvalidatedBlock instances");
 
     aboutToAccessStorage(iFinder, params);
     List<InvalidatedBlock> result =

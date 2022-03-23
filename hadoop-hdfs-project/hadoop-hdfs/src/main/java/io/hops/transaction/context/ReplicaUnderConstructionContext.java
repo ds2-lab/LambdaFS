@@ -24,13 +24,18 @@ import io.hops.metadata.hdfs.dal.ReplicaUnderConstructionDataAccess;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.ReplicaUnderConstruction;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ReplicaUnderConstructionContext
     extends BaseReplicaContext<BlockPK.ReplicaPK, ReplicaUnderConstruction> {
+  public static final Logger LOG = LoggerFactory.getLogger(ReplicaUnderConstructionContext.class);
 
   ReplicaUnderConstructionDataAccess dataAccess;
 
@@ -116,9 +121,9 @@ public class ReplicaUnderConstructionContext
       result = getByBlock(blockId);
       hit(rFinder, result, "bid", blockId, "inodeid", inodeId);
     } else {
+      LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(rFinder, params);
-      result =
-          dataAccess.findReplicaUnderConstructionByBlockId(blockId, inodeId);
+      result = dataAccess.findReplicaUnderConstructionByBlockId(blockId, inodeId);
       gotFromDB(new BlockPK(blockId, inodeId), result);
       miss(rFinder, result, "bid", blockId, "inodeid", inodeId);
     }
@@ -134,6 +139,7 @@ public class ReplicaUnderConstructionContext
       result = getByINode(inodeId);
       hit(rFinder, result, "inodeid", inodeId);
     } else {
+      LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeID=" + inodeId);
       aboutToAccessStorage(rFinder, params);
       result = dataAccess.findReplicaUnderConstructionByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
@@ -146,6 +152,8 @@ public class ReplicaUnderConstructionContext
       ReplicaUnderConstruction.Finder rFinder, Object[] params)
       throws TransactionContextException, StorageException {
     final long[] inodeIds = (long[]) params[0];
+    LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeIDs=" +
+            StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(rFinder, params);
     List<ReplicaUnderConstruction> result =
         dataAccess.findReplicaUnderConstructionByINodeIds(inodeIds);

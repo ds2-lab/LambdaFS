@@ -24,14 +24,19 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.ExcessReplicaDataAccess;
 import io.hops.metadata.hdfs.entity.ExcessReplica;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ExcessReplicaContext
     extends BaseReplicaContext<BlockPK.ReplicaPK, ExcessReplica> {
+  public static final Logger LOG = LoggerFactory.getLogger(ExcessReplicaContext.class);
 
   ExcessReplicaDataAccess<ExcessReplica> dataAccess;
 
@@ -120,6 +125,8 @@ public class ExcessReplicaContext
       result = get(key);
       hit(eFinder, result, "bid", blockId, "uuid", storageId);
     } else {
+      LOG.debug("Going to NDB for ExcessReplica instances with INodeID=" + inodeId + ", BlockID=" + blockId +
+              ", StorageID=" + storageId);
       aboutToAccessStorage(eFinder, params);
       result = dataAccess.findByPK(blockId, storageId, inodeId);
       gotFromDB(key, result);
@@ -137,6 +144,7 @@ public class ExcessReplicaContext
       result = getByBlock(blockId);
       hit(eFinder, result, "bid", blockId, "inodeId", inodeId);
     } else {
+      LOG.debug("Going to NDB for ExcessReplica instances with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(eFinder, params);
       result = dataAccess.findExcessReplicaByBlockId(blockId, inodeId);
       Collections.sort(result);
@@ -154,6 +162,7 @@ public class ExcessReplicaContext
       result = getByINode(inodeId);
       hit(eFinder, result, "inodeId", inodeId);
     } else {
+      LOG.debug("Going to NDB for ExcessReplica instances with INodeID=" + inodeId);
       aboutToAccessStorage(eFinder, params);
       result = dataAccess.findExcessReplicaByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
@@ -165,6 +174,8 @@ public class ExcessReplicaContext
   private List<ExcessReplica> findByINodeIds(ExcessReplica.Finder eFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
+    LOG.debug("Going to NDB for ExcessReplica instances with INodeIDs=" +
+            StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(eFinder, params);
     List<ExcessReplica> result =
         dataAccess.findExcessReplicaByINodeIds(inodeIds);

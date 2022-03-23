@@ -170,6 +170,11 @@ public class BlockPK {
       this.datanodeId = datanodeId;
     }
 
+    @Override
+    public String toString() {
+      return "CachedBlockPK[DataNodeID=" + datanodeId + ", BlockID=" + getBlockId() + ", INodeID=" + getInodeId() + "]";
+    }
+
     CachedBlockPK(long blockId, long inodeId) {
       super(blockId, inodeId);
     }
