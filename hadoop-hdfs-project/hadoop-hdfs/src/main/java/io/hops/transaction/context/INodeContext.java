@@ -117,6 +117,11 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
   }
 
   private void updateCache(List<INode> nodes) throws TransactionContextException, StorageException {
+    if (nodes == null) {
+      LOG.warn("Attempting to update cache with null List<INode>.");
+      return;
+    }
+
     LRUMetadataCache<INode> metadataCache = getMetadataCache();
     if (metadataCache == null) return;
 
@@ -126,6 +131,11 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
   }
 
   private void updateCache(INode node) throws TransactionContextException, StorageException {
+    if (node == null) {
+      LOG.warn("Attempting to update cache with null INode.");
+      return;
+    }
+
     LRUMetadataCache<INode> metadataCache = getMetadataCache();
     if (metadataCache == null) return;
 
