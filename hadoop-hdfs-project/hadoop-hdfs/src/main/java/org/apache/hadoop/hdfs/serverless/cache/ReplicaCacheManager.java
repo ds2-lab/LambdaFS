@@ -4,6 +4,8 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.transaction.context.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 
@@ -12,6 +14,8 @@ import java.util.HashMap;
  * separate class so as not to clutter the MetadataCacheManager, which manages INodes, Aces, and EncryptionZones.
  */
 public class ReplicaCacheManager {
+    public static final Logger LOG = LoggerFactory.getLogger(ReplicaCacheManager.class);
+
     private static ReplicaCacheManager instance;
 
     private final ReplicaCache<BlockPK.ReplicaPK, Replica> replicaCache;
@@ -34,6 +38,8 @@ public class ReplicaCacheManager {
 //        underReplicatedBlockCache = Caffeine.newBuilder().maximumSize(10_000).build();
 //        excessReplicaCache = Caffeine.newBuilder().maximumSize(10_000).build();
 //        cachedBlockCache = Caffeine.newBuilder().maximumSize(10_000).build();
+        LOG.debug("Instantiating the Replica Cache Manager.");
+
         replicaCache = new ReplicaCache<>(10_000);
         corruptReplicaCache = new ReplicaCache<>(10_000);
         invalidatedBlockCache = new ReplicaCache<>(10_000);
@@ -54,27 +60,33 @@ public class ReplicaCacheManager {
         masterCacheMapping.put(CachedBlockContext.class, cachedBlockCache);
     }
 
-    /**
-     * Return the cache associated with the given context, or null if no such cache exists.
-     *
-     * This uses the class of the given context.
-     *
-     * @param context The context for which the associated cache is desired.
-     * @return The associated cache, or null if none exists.
-     */
-    public ReplicaCache<? extends BlockPK, ?> getCache(BaseReplicaContext<? extends BlockPK, ?> context) {
-        if (context == null)
-            throw new IllegalArgumentException("Context parameter must be non-null.");
-        return masterCacheMapping.get(context.getClass());
-    }
+//    /**
+//     * Return the cache associated with the given context, or null if no such cache exists.
+//     *
+//     * This uses the class of the given context.
+//     *
+//     * @param context The context for which the associated cache is desired.
+//     * @return The associated cache, or null if none exists.
+//     */
+//    public <T extends BaseReplicaContext<? extends BlockPK, ?>> ReplicaCache<? extends BlockPK, ?> getCache(T context) {
+//        if (context == null)
+//            throw new IllegalArgumentException("Context parameter must be non-null.");
+//        return masterCacheMapping.get(context.getClass());
+//    }
 
-    /**
-     * Return the cache associated with the given context class, or null if no such cache exists.
-     *
-     * @param clazz The context class for which the associated cache is desired.
-     * @return The associated cache, or null if none exists.
-     */
-    public ReplicaCache<? extends BlockPK, ?> getCache(Class<BaseReplicaContext<? extends BlockPK, ?>> clazz) {
+//    /**
+//     * Return the cache associated with the given context class, or null if no such cache exists.
+//     *
+//     * @param clazz The context class for which the associated cache is desired.
+//     * @return The associated cache, or null if none exists.
+//     */
+//    public <T extends BaseReplicaContext<? extends BlockPK, E>, E extends ReplicaBase, K extends BlockPK, V extends ReplicaBase> ReplicaCache<? extends BlockPK, ? extends ReplicaBase> getCache(Class<T> clazz) {
+//        if (clazz == null)
+//            throw new IllegalArgumentException("Class parameter must be non-null.");
+//        return masterCacheMapping.get(clazz);
+//    }
+
+    public ReplicaCache<? extends BlockPK, ?> getReplicaCache(Class<? extends BaseReplicaContext<?,?>> clazz) {
         if (clazz == null)
             throw new IllegalArgumentException("Class parameter must be non-null.");
         return masterCacheMapping.get(clazz);
@@ -83,7 +95,7 @@ public class ReplicaCacheManager {
     /**
      * Get the singleton ReplicaCacheManager instance. Will instantiate it if it does not already exist.
      */
-    protected ReplicaCacheManager getInstance() {
+    protected static ReplicaCacheManager getInstance() {
         if (instance == null)
             instance = new ReplicaCacheManager();
 

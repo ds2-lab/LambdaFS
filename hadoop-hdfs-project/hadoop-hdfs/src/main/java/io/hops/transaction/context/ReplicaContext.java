@@ -24,6 +24,8 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.ReplicaDataAccess;
 import io.hops.metadata.hdfs.entity.Replica;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.cache.ReplicaCache;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -36,6 +38,14 @@ public class ReplicaContext
 
   public ReplicaContext(ReplicaDataAccess dataAccess) {
     this.dataAccess = dataAccess;
+  }
+
+  private ReplicaCache<BlockPK.ReplicaPK, Replica> getReplicaCache() {
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+    if (instance == null)
+      return null;
+
+    return (ReplicaCache<BlockPK.ReplicaPK, Replica>) instance.getNamesystem().getMetadataCacheManager().getReplicaCacheManager().getReplicaCache(this.getClass());
   }
 
   @Override

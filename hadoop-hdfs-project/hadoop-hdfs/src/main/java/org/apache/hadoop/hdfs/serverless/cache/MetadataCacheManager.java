@@ -6,6 +6,8 @@ import io.hops.metadata.hdfs.entity.Ace;
 import io.hops.metadata.hdfs.entity.EncryptionZone;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.INode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -14,6 +16,8 @@ import java.util.*;
  *
  */
 public class MetadataCacheManager {
+    public static final Logger LOG = LoggerFactory.getLogger(MetadataCacheManager.class);
+
     /**
      * Caches INodes.
      */
@@ -36,6 +40,11 @@ public class MetadataCacheManager {
      */
     private final Cache<Long, Set<CachedAce>> aceCacheByINodeId;
 
+    /**
+     * Manages the caches associated with the various types of replicas.
+     */
+    private final ReplicaCacheManager replicaCacheManager;
+
     public MetadataCacheManager(Configuration configuration) {
         inodeCache = new LRUMetadataCache<INode>(configuration);
         encryptionZoneCache = Caffeine.newBuilder()
@@ -47,7 +56,11 @@ public class MetadataCacheManager {
         aceCacheByINodeId = Caffeine.newBuilder()
                 .maximumSize(10_000)
                 .build();
+
+        this.replicaCacheManager = ReplicaCacheManager.getInstance();
     }
+
+    public ReplicaCacheManager getReplicaCacheManager() { return this.replicaCacheManager; }
 
     public LRUMetadataCache<INode> getINodeCache() { return inodeCache; }
 

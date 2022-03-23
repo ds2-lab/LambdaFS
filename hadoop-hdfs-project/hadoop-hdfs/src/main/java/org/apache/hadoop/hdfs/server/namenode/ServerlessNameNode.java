@@ -739,7 +739,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // We'll go ahead and cache the INode locally if we're responsible for caching it since
     // we went to the effort of retrieving it from NDB already.
     if (this.deploymentNumber == mappedDeployment && inode != null)
-      this.namesystem.getMetadataCache().put(src, inode.getId(), inode);
+      this.namesystem.getMetadataCacheManager().put(src, inode.getId(), inode);
 
     return (this.deploymentNumber == mappedDeployment);
   }
