@@ -90,24 +90,4 @@ public class FileSystemTaskUtils {
 
         return newTask;
     }
-
-    /**
-     * Check if this NameNode is authorized to perform the specified operation. Specifically, we check if we're
-     * being asked to perform a write operation on an INode that we do not cache. If this is the case, then we invoke
-     * a function from the deployment responsible for this NameNode, and we return the result of that operation
-     * to the client.
-     *
-     * @param op The name of the operation we're performing.
-     * @param src The target file/directory of the operation we've been asked to perform.
-     * @param serverlessNameNode The ServerlessNameNode instance running in this container.
-     *
-     * @return True if we're allowed to perform this operation, otherwise false.
-     */
-    public static boolean checkIfAuthorized(String op, String src, ServerlessNameNode serverlessNameNode)
-            throws IOException {
-        if (serverlessNameNode.isWriteOperation(op))
-            return serverlessNameNode.authorizedToPerformWrite(src);
-
-        return true;
-    }
 }

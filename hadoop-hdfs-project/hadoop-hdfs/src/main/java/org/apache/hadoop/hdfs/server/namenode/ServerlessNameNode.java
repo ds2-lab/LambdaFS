@@ -716,35 +716,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
-   * Check that this NameNode is "authorized" to perform a write operation on the file or directory specified
-   * by the provided path. A NameNode is "authorized" to perform a write operation if it is responsible for caching
-   * the metadata of the given file or directory. This is determined by consistently hashing the INode to a NameNode
-   * deployment, and checking to see if this NameNode is an instance of that deployment.
-   *
-   * @param src The file or directory to be written to.
-   *
-   * @return True if this NN is authorized to write to that file/directory, otherwise False.
-   */
-  public boolean authorizedToPerformWrite(String src) throws IOException {
-    LOG.debug("Checking if NameNode " + functionName + " is authorized to perform a write to file/directory " + src);
-
-    INode inode = this.getINodeForCache(src);
-
-    if (inode == null)
-      LOG.warn("Failed to retrieve INode '" + src
-              + "' from intermediate storage. This is a problem unless we're creating the file/directory now.");
-
-    int mappedDeployment = getMappedDeploymentNumber(src);
-
-    // We'll go ahead and cache the INode locally if we're responsible for caching it since
-    // we went to the effort of retrieving it from NDB already.
-    if (this.deploymentNumber == mappedDeployment && inode != null)
-      this.namesystem.getMetadataCacheManager().put(src, inode.getId(), inode);
-
-    return (this.deploymentNumber == mappedDeployment);
-  }
-
-  /**
    * Populate the operations HashMap with all the functions.
    * Each supported FS operation has a function mapped to the operation's name.
    */
