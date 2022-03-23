@@ -42,8 +42,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class CorruptReplicaClusterj implements TablesDef.CorruptReplicaTableDef,
-    CorruptReplicaDataAccess<CorruptReplica> {
+public class CorruptReplicaClusterj implements TablesDef.CorruptReplicaTableDef, CorruptReplicaDataAccess<CorruptReplica> {
 
 
   @PersistenceCapable(table = TABLE_NAME)

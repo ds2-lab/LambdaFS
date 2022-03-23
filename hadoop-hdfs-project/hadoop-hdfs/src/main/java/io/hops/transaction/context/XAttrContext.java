@@ -26,6 +26,8 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.XAttrDataAccess;
 import io.hops.metadata.hdfs.entity.StoredXAttr;
 import io.hops.transaction.lock.TransactionLocks;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,8 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey,
-    StoredXAttr> {
+public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey, StoredXAttr> {
+  public static final Logger LOG = LoggerFactory.getLogger(XAttrContext.class);
   
   private final XAttrDataAccess<StoredXAttr, StoredXAttr.PrimaryKey> dataAccess;
   private final Map<Long, Collection<StoredXAttr>> xAttrsByInodeId =
@@ -122,6 +124,7 @@ public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey,
       results = xAttrsByInodeId.get(inodeId);
       hit(finder, results, "inodeId", inodeId, "results", results);
     }else{
+      LOG.debug("Accessing intermediate storage for StoredXAttr instances for INode ID=" + inodeId);
       aboutToAccessStorage(finder, params);
       results = dataAccess.getXAttrsByInodeId(inodeId);
       gotFromDB(results);

@@ -231,7 +231,6 @@ public class PendingBlockClusterj
         targets.add(pendingTable.getTarget());
       }
     }
-   PendingBlockDTO pendingTable = pendingTables.get(0);
     PendingBlockInfo pendingBlockInfo =  new PendingBlockInfo(blockId,nodeId, timestamp, targets);
     session.release(pendingTables);
     return pendingBlockInfo;
