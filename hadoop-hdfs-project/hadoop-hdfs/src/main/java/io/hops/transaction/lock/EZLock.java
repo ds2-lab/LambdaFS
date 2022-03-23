@@ -33,7 +33,7 @@ public class EZLock extends Lock {
       inodeIds.add(inode.getId());
     }
     if (!inodeIds.isEmpty()) {
-      //the locking should have been done on the inodes so it does not mappter which lock we take here.
+      // The locking should have been done on the INodes, so it does not matter which lock we take here.
       acquireLockList(DEFAULT_LOCK_TYPE, EncryptionZone.Finder.ByPrimaryKeyBatch, inodeIds);
     }
   }

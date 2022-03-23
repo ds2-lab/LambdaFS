@@ -57,7 +57,7 @@ public class LRUMetadataCache<T> {
      *
      * This must remain a subset of the keyset of the cache variable.
      */
-    private final HashSet<String> invalidatedKeys;
+    // private final HashSet<String> invalidatedKeys;
 
     /**
      * Mapping between INode IDs and their names.
@@ -105,7 +105,7 @@ public class LRUMetadataCache<T> {
      * Create an LRU Metadata Cache using a specified maximum capacity and load factor.
      */
     public LRUMetadataCache(Configuration conf, int capacity, float loadFactor) {
-        this.invalidatedKeys = new HashSet<>();
+        //this.invalidatedKeys = new HashSet<>();
         this.idToNameMapping = new HashMap<>(capacity, loadFactor);
         this.parentIdPlusLocalNameToFullPathMapping = new HashMap<>(capacity, loadFactor);
         this.cache = new HashMap<>(capacity, loadFactor);
@@ -153,10 +153,10 @@ public class LRUMetadataCache<T> {
             if (!enabled)
                 return null;
 
-            if (invalidatedKeys.contains(key)){
-                cacheMiss();
-                return null;
-            }
+//            if (invalidatedKeys.contains(key)){
+//                cacheMiss();
+//                return null;
+//            }
 
             T returnValue = cache.get(key);
 
@@ -192,10 +192,10 @@ public class LRUMetadataCache<T> {
             String parentIdPlusLocalName = parentId + localName;
             String key = parentIdPlusLocalNameToFullPathMapping.getOrDefault(parentIdPlusLocalName, null);
 
-            if (invalidatedKeys.contains(key)){
-                cacheMiss();
-                return null;
-            }
+//            if (invalidatedKeys.contains(key)){
+//                cacheMiss();
+//                return null;
+//            }
 
             T returnValue = cache.get(key);
 
@@ -271,10 +271,10 @@ public class LRUMetadataCache<T> {
             metadataTrie.put(key, value);
 
             // If this key was previously invalidated, then it is no longer invalid, seeing as we're caching it now.
-            boolean removed = invalidatedKeys.remove(key);
+            // boolean removed = invalidatedKeys.remove(key);
 
-            if (removed)
-                LOG.debug("Previously invalid key '" + key + "' updated with valid cache value. Cache size: " + cache.size());
+            //if (removed)
+            //    LOG.debug("Previously invalid key '" + key + "' updated with valid cache value. Cache size: " + cache.size());
 //            else if (existingEntry == null) // This ensures we only print the message if the object wasn't already cached.
 //                LOG.debug("Inserted metadata object into cache under key '" + key + "'. Cache size: " + cache.size());
 
@@ -295,12 +295,14 @@ public class LRUMetadataCache<T> {
         try {
             // If the given key is a string, then we can use it directly.
             if (key instanceof String) {
-                return !invalidatedKeys.contains(key) && cache.containsKey(key);
+                // return !invalidatedKeys.contains(key) && cache.containsKey(key);
+                return cache.containsKey(key);
             } else if (key instanceof Long) {
                 // If the key is a long, we need to check if we've mapped this long to a String key. If so,
                 // then we can get the string version and continue as before.
                 String keyAsStr = idToNameMapping.getOrDefault((Long) key, null);
-                return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
+                // return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
+                return keyAsStr != null && cache.containsKey(keyAsStr);
             }
 
             return false;
@@ -319,8 +321,8 @@ public class LRUMetadataCache<T> {
         try {
             int cacheSize = cache.size();
 
-            if (!includeInvalidKeys)
-                cacheSize -= invalidatedKeys.size();
+//            if (!includeInvalidKeys)
+//                cacheSize -= invalidatedKeys.size();
 
             return cacheSize;
         } finally {
@@ -328,12 +330,12 @@ public class LRUMetadataCache<T> {
         }
     }
 
-    /**
-     * Return the number of keys that have been invalidated.
-     */
-    public int numInvalidatedKeys() {
-        return invalidatedKeys.size();
-    }
+//    /**
+//     * Return the number of keys that have been invalidated.
+//     */
+//    public int numInvalidatedKeys() {
+//        return invalidatedKeys.size();
+//    }
 
     /**
      * Check if there is an entry for the given key in this cache, regardless of whether not that entry is
@@ -365,7 +367,8 @@ public class LRUMetadataCache<T> {
 
             // Returns true if we are able to resolve the NameNode ID to a string-typed key, that key is not
             // invalidated, and we're actively caching the key.
-            return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
+            //return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
+            return keyAsStr != null && cache.containsKey(keyAsStr);
         } finally {
             _mutex.unlock();
         }
@@ -391,6 +394,15 @@ public class LRUMetadataCache<T> {
         } finally {
             _mutex.unlock();
         }
+    }
+
+    /**
+     * Return the fully-qualified path of the INode with the given ID, if we have a mapping for it.
+     *
+     * This mapping is not guaranteed to be up-to-date (i.e., if cache has been invalidated, then this could be wrong).
+     */
+    protected String getNameFromId(long inodeId) {
+        return idToNameMapping.get(inodeId);
     }
 
     /**
@@ -421,7 +433,11 @@ public class LRUMetadataCache<T> {
         _mutex.lock();
         try {
             if (skipCheck || containsKeySkipInvalidCheck(key)) {
-                invalidatedKeys.add(key);
+                // invalidatedKeys.add(key);
+
+                cache.remove(key);
+                metadataTrie.remove(key);
+
                 LOG.debug("Invalidated key " + key + ".");
                 return true;
             }
@@ -446,32 +462,32 @@ public class LRUMetadataCache<T> {
         }
     }
 
-    /**
-     * Return the current set of keys in the cache.
-     * @param includeInvalidKeys If true, the invalid keys will also be included in the returned list.
-     */
-    public List<String> getPathKeys(boolean includeInvalidKeys) {
-        ArrayList<String> keyList = new ArrayList<>();
-
-        _mutex.lock();
-        try {
-            for (String key : cache.keySet()) {
-                if (includeInvalidKeys || !invalidatedKeys.contains(key))
-                    keyList.add(key);
-            }
-
-            return keyList;
-        } finally {
-            _mutex.unlock();
-        }
-    }
+//    /**
+//     * Return the current set of keys in the cache.
+//     * @param includeInvalidKeys If true, the invalid keys will also be included in the returned list.
+//     */
+//    public List<String> getPathKeys(boolean includeInvalidKeys) {
+//        ArrayList<String> keyList = new ArrayList<>();
+//
+//        _mutex.lock();
+//        try {
+//            for (String key : cache.keySet()) {
+//                if (includeInvalidKeys || !invalidatedKeys.contains(key))
+//                    keyList.add(key);
+//            }
+//
+//            return keyList;
+//        } finally {
+//            _mutex.unlock();
+//        }
+//    }
 
     /**
      * Get the invalidated keys.
      */
-    public String[] getInvalidatedKeys() {
-        return invalidatedKeys.toArray(new String[0]);
-    }
+//    public String[] getInvalidatedKeys() {
+//        return invalidatedKeys.toArray(new String[0]);
+//    }
 
     /**
      * Invalidate any keys in our cache prefixed by the {@code prefix} parameter.
@@ -481,9 +497,10 @@ public class LRUMetadataCache<T> {
      *
      * @param prefix Any metadata prefixed by this path will be invalidated.
      *
-     * @return The number of cache entries that were invalidated.
+     * @return The entries that were prefixed by the specified prefix, so we can invalidate other
+     * cached metadata objects (e.g., Ace and EncryptionZone instances).
      */
-    public int invalidateKeysByPrefix(String prefix) {
+    protected Collection<T> invalidateKeysByPrefix(String prefix) {
         LOG.debug("Invalidating all cached INodes contained within the file subtree rooted at '" + prefix + "'.");
 
         _mutex.lock();
@@ -501,7 +518,7 @@ public class LRUMetadataCache<T> {
 
             LOG.debug("Invalidated " + numInvalidated + "/" + prefixedEntries.size() + " of the nodes in the prefix map.");
 
-            return numInvalidated;
+            return prefixedEntries.values();
         } finally {
             _mutex.unlock();
         }

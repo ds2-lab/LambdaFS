@@ -32,8 +32,7 @@ import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguousUnderCon
 
 public class BlockInfoDALAdaptor extends
     DalAdaptor<org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous, BlockInfo>
-    implements
-    BlockInfoDataAccess<org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous> {
+    implements BlockInfoDataAccess<org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous> {
 
   private final BlockInfoDataAccess<BlockInfo> dataAccess;
 
