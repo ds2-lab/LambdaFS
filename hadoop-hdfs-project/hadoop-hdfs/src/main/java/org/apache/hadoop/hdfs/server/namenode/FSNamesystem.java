@@ -1220,9 +1220,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       @Override
       public Object performTask() throws IOException {
         long s = System.currentTimeMillis();
-        GetBlockLocationsResult res = null;
-        
-        res = getBlockLocationsInt(srcArg, src, offset, length, true, true);
+
+        LOG.debug("Getting block locations for file '" + src + "' with offset=" + offset + ", length=" + length);
+
+        GetBlockLocationsResult res = getBlockLocationsInt(srcArg, src, offset, length, true, true);
 
         if (res.updateAccessTime()) {
           final long now = now();

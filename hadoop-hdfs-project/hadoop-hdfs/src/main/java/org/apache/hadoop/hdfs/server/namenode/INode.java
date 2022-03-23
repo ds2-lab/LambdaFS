@@ -560,7 +560,7 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
       return null;
     }
     if (parent == null && getParentId() != HdfsConstantsClient.GRANDFATHER_INODE_ID) {
-      LOG.debug("Using EntityManager to find parent of INode " + getId() + " (" + getLocalName() + ")");
+      // LOG.debug("Using EntityManager to find parent of INode " + getId() + " (" + getLocalName() + ")");
 
       ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
 

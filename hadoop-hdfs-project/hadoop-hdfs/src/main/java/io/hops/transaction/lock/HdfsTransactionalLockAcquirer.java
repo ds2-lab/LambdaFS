@@ -15,10 +15,14 @@
  */
 package io.hops.transaction.lock;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
+
 import java.io.IOException;
 
-public final class HdfsTransactionalLockAcquirer
-    extends TransactionLockAcquirer {
+public final class HdfsTransactionalLockAcquirer extends TransactionLockAcquirer {
+  public static final Log LOG = LogFactory.getLog(HdfsTransactionalLockAcquirer.class);
 
   private final HdfsTransactionLocks locks;
 
@@ -29,6 +33,7 @@ public final class HdfsTransactionalLockAcquirer
   @Override
   public void acquire() throws IOException {
     for (Lock lock : locks.getSortedLocks()) {
+      LOG.debug("Acquiring lock of type " + lock.getClass().getSimpleName() + " now...");
       lock.acquire(locks);
     }
   }

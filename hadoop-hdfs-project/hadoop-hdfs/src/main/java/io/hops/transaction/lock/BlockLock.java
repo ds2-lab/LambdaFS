@@ -61,7 +61,7 @@ public final class BlockLock extends IndividualBlockLock {
         }
         if (inode instanceof INodeFile) {
           Collection<BlockInfoContiguous> inodeBlocks = Collections.EMPTY_LIST;
-          if (((INodeFile) inode).hasBlocks()) {
+          if (inode.hasBlocks()) {
             inodeBlocks = acquireLockList(DEFAULT_LOCK_TYPE, BlockInfoContiguous.Finder.ByINodeId,
                 inode.getId());
           }
