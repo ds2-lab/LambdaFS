@@ -1214,7 +1214,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         }else {
           locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
         }
-        LOG.info("Acquired locks for getBlockLocationsWithLock() in " + (System.currentTimeMillis() - s) + " ms.");
       }
 
       @Override

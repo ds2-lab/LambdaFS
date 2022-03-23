@@ -132,8 +132,11 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         oldTime = System.currentTimeMillis();
         
         locksAcquirer = newLockAcquirer();
+        // Basically populate the TransactionLocks object with the locks that we need to acquire.
+        // This doesn't actually do any acquiring of locks as far as I know.
         acquireLock(locksAcquirer.getLocks());
 
+        // This actually acquires the locks and reads the metadata into memory from intermediate storage.
         locksAcquirer.acquire();
 
         acquireLockTime = (System.currentTimeMillis() - oldTime);

@@ -188,19 +188,22 @@ public class INodesInPath {
       final byte[] childName = components[count + 1];
 
       // Convert the byte[] representation to a String representation.
-      String childNameAsString = DFSUtil.bytes2String(childName);
-
-      final String fullPathToCurrentComponent = constructPath(components, 0, count + 2);
+//      String childNameAsString = DFSUtil.bytes2String(childName);
+//
+//      final String fullPathToCurrentComponent = constructPath(components, 0, count + 2);
 
       // If this returns null, then we just don't have the value cached.
-      curNode = metadataCache.getByPath(fullPathToCurrentComponent);
+//      curNode = metadataCache.getByPath(fullPathToCurrentComponent);
 
-      if (curNode != null) {
-        LOG.debug("INode " + childNameAsString + " is already cached locally under key '" + fullPathToCurrentComponent + "'. Using cached INode.");
-      } else {
-        LOG.debug("INode " + childNameAsString + " is NOT cached locally.");
-        curNode = dir.getChildINode(childName);
-      }
+//      if (curNode != null) {
+//        LOG.debug("INode " + childNameAsString + " is already cached locally under key '" + fullPathToCurrentComponent + "'. Using cached INode.");
+//      } else {
+//        LOG.debug("INode " + childNameAsString + " is NOT cached locally.");
+//        curNode = dir.getChildINode(childName);
+//      }
+
+//      LOG.debug("INode " + childNameAsString + " is NOT cached locally.");
+      curNode = dir.getChildINode(childName);
 
       count++;
     }
