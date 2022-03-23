@@ -465,7 +465,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
           result = RootINodeCache.getRootINode();
           LOG.trace("Reading root inode from the cache. "+result);
        } else {
-          LOG.debug("Reading INode " + name + " from NDB to upgrade the lock.");
+          // LOG.debug("Reading INode " + name + " from NDB to upgrade the lock.");
 
           aboutToAccessStorage(inodeFinder, params);
 
