@@ -53,6 +53,7 @@ public final class BlockLock extends IndividualBlockLock {
       LOG.debug("Acquiring BlockLock when TransactionLocks contains an INode lock.");
       BaseINodeLock inodeLock = (BaseINodeLock) locks.getLock(Type.INode);
       Iterable blks = Collections.EMPTY_LIST;
+      int counter = 0;
 
       for (INode inode : inodeLock.getAllResolvedINodes()) {
         LOG.debug("Acquiring BlockLock on INode " + inode.getLocalName() + ", ID=" + inode.getId());
@@ -80,7 +81,10 @@ public final class BlockLock extends IndividualBlockLock {
           blks = Iterables.concat(blks, inodeBlocks);
           files.add((INodeFile) inode);
         }
+        counter++;
       }
+
+      LOG.debug("Iterated over " + counter + " INode(s) while acquiring BlockLock.");
     } else if (locks.containsLock(Type.AllCachedBlock)) {
       AllCachedBlockLock cachedBlockLock = (AllCachedBlockLock) locks.getLock(Type.AllCachedBlock);
       Collection<io.hops.metadata.hdfs.entity.CachedBlock> cBlocks = cachedBlockLock.getAllResolvedCachedBlock();
