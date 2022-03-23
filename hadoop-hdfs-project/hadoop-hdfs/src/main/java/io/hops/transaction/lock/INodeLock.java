@@ -170,22 +170,23 @@ public class INodeLock extends BaseINodeLock {
       List<INode> resolvedINodes = null;
 
       // We only use our local, in-memory metadata cache for read operations.
-      if (lockType == TransactionLockTypes.INodeLockType.READ ||
-              lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
-        resolvedINodes = resolveUsingServerlessMetadataCache(path, true);
-
-        if (resolvedINodes == null)
-          LOG.debug("Failed to completely resolve the path using the in-memory metadata cache. " +
-                  "Falling back to INode Hint Cache or recursive resolution.");
-        else {
-          LOG.debug("Successfully resolved entirety of path using in-memory metadata cache.");
-          addPathINodes(path, resolvedINodes);
-        }
-      }
+//      if (lockType == TransactionLockTypes.INodeLockType.READ ||
+//              lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
+//        resolvedINodes = resolveUsingServerlessMetadataCache(path, true);
+//
+//        if (resolvedINodes == null)
+//          LOG.debug("Failed to completely resolve the path using the in-memory metadata cache. " +
+//                  "Falling back to INode Hint Cache or recursive resolution.");
+//        else {
+//          LOG.debug("Successfully resolved entirety of path using in-memory metadata cache.");
+//          addPathINodes(path, resolvedINodes);
+//        }
+//      }
 
       // Added clause 'resolvedINodes == null' as we do not need to bother with the INode Hint Cache
       // if we fully resolved the path using our local, in-memory metadata cache.
-      if (resolvedINodes == null && getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
+      //if (resolvedINodes == null && getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
+      if (getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
         LOG.debug("Attempting to resolve INodes using INode Hint Cache.");
         // Batching only works in READ_COMMITTED mode. If locking is enabled then it can lead to deadlocks.
         resolvedINodes = resolveUsingINodeHintCache(path);

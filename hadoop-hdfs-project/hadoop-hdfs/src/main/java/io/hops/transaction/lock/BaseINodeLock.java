@@ -182,11 +182,11 @@ public abstract class BaseINodeLock extends Lock {
     addPathINodes(path, iNodes);
     updateResolvingCache(path, iNodes);
 
-    try {
-      updateMetadataCache(iNodes);
-    } catch (TransactionContextException | StorageException ex) {
-      LOG.error("Exception encountered while caching metadata locally:", ex);
-    }
+//    try {
+//      updateMetadataCache(iNodes);
+//    } catch (TransactionContextException | StorageException ex) {
+//      LOG.error("Exception encountered while caching metadata locally:", ex);
+//    }
   }
 
   void updateResolvingCache(String path, List<INode> iNodes){
@@ -698,7 +698,7 @@ public abstract class BaseINodeLock extends Lock {
       }
 
       // Also update the metadata cache.
-      updateMetadataCache(inodes);
+      // updateMetadataCache(inodes);
     }
 
     protected List<INode> readINodesWhileRespectingLocks(final TransactionLockTypes.INodeLockType lockType,

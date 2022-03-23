@@ -116,6 +116,22 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     return metadataCache.getByParentINodeIdAndLocalName(parentId, localName);
   }
 
+  private void updateCache(List<INode> nodes) throws TransactionContextException, StorageException {
+    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    if (metadataCache == null) return;
+
+    for (INode node : nodes) {
+      metadataCache.put(node.getFullPathName(), node.getId(), node);
+    }
+  }
+
+  private void updateCache(INode node) throws TransactionContextException, StorageException {
+    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    if (metadataCache == null) return;
+
+    metadataCache.put(node.getFullPathName(), node.getId(), node);
+  }
+
   @Override
   public void clear() throws TransactionContextException {
     super.clear();
@@ -370,8 +386,10 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
     // First, check the local, in-memory metadata cache.
     result = checkCache(inodeId);
-    if (result != null)
+    if (result != null) {
+      LOG.debug("Successfully resolved INode ID=" + inodeId + " in local, in-memory metadata cache.");
       return result;
+    }
 
     if (contains(inodeId)) {
       result = get(inodeId);
@@ -382,6 +400,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         hit(inodeFinder, result, "id", inodeId);
       }
     } else {
+      LOG.debug("Retrieving INode ID=" + inodeId + " from intermediate storage.");
       aboutToAccessStorage(inodeFinder, params);
       result = dataAccess.findInodeByIdFTIS(inodeId);
       gotFromDB(inodeId, result);
@@ -389,7 +408,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         inodesNameParentIndex.put(result.nameParentKey(), result);
         miss(inodeFinder, result, "id", inodeId, "name", result.getLocalName(), "parent_id", result.getParentId(),
           "partition_id", result.getPartitionId());
-      }else {
+        updateCache(result);
+      } else {
         miss(inodeFinder, result, "id");
       }
     }
@@ -417,6 +437,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       result = inodesNameParentIndex.get(nameParentKey);
       if (!preventStorageCalls() &&
           (currentLockMode.get() == LockMode.WRITE_LOCK)) {
+        LOG.debug("Re-reading INode " + name + " from NDB to upgrade the lock.");
         //trying to upgrade lock. re-read the row from DB
         aboutToAccessStorage(inodeFinder, params);
 
@@ -424,6 +445,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         gotFromDBWithPossibleInodeId(result, possibleInodeId);
         inodesNameParentIndex.put(nameParentKey, result);
         missUpgrade(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
+        updateCache(result);
       } else {
         hit(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
       }
@@ -433,6 +455,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
           result = RootINodeCache.getRootINode();
           LOG.trace("Reading root inode from the cache. "+result);
        } else {
+          LOG.debug("Reading INode " + name + " from NDB to upgrade the lock.");
+
           aboutToAccessStorage(inodeFinder, params);
 
           result = dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);
@@ -441,6 +465,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         inodesNameParentIndex.put(nameParentKey, result);
         miss(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId,
             "possible_inode_id",possibleInodeId);
+        updateCache(result);
       }
     }
     return result;
