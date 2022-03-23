@@ -387,7 +387,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     // First, check the local, in-memory metadata cache.
     result = checkCache(inodeId);
     if (result != null) {
-      LOG.debug("Successfully resolved INode ID=" + inodeId + " in local, in-memory metadata cache.");
+      // LOG.debug("Successfully resolved INode ID=" + inodeId + " in local, in-memory metadata cache.");
       return result;
     }
 

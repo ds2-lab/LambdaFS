@@ -177,7 +177,7 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
     List<BlockInfoContiguous> result = null;
     final Long inodeId = (Long) params[0];
     if (inodeBlocks.containsKey(inodeId)) {
-      LOG.debug("BlockInfoContiguous instances for INode ID=" + inodeId + " found in transaction context.");
+      //LOG.debug("BlockInfoContiguous instances for INode ID=" + inodeId + " found in transaction context.");
       result = inodeBlocks.get(inodeId);
       hit(bFinder, result, "inodeid", inodeId);
     } else {
