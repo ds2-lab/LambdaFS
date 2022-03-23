@@ -54,18 +54,35 @@ public class ReplicaCacheManager {
         masterCacheMapping.put(CachedBlockContext.class, cachedBlockCache);
     }
 
+    /**
+     * Return the cache associated with the given context, or null if no such cache exists.
+     *
+     * This uses the class of the given context.
+     *
+     * @param context The context for which the associated cache is desired.
+     * @return The associated cache, or null if none exists.
+     */
     public ReplicaCache<? extends BlockPK, ?> getCache(BaseReplicaContext<? extends BlockPK, ?> context) {
         if (context == null)
             throw new IllegalArgumentException("Context parameter must be non-null.");
         return masterCacheMapping.get(context.getClass());
     }
 
+    /**
+     * Return the cache associated with the given context class, or null if no such cache exists.
+     *
+     * @param clazz The context class for which the associated cache is desired.
+     * @return The associated cache, or null if none exists.
+     */
     public ReplicaCache<? extends BlockPK, ?> getCache(Class<BaseReplicaContext<? extends BlockPK, ?>> clazz) {
         if (clazz == null)
             throw new IllegalArgumentException("Class parameter must be non-null.");
         return masterCacheMapping.get(clazz);
     }
 
+    /**
+     * Get the singleton ReplicaCacheManager instance. Will instantiate it if it does not already exist.
+     */
     protected ReplicaCacheManager getInstance() {
         if (instance == null)
             instance = new ReplicaCacheManager();
