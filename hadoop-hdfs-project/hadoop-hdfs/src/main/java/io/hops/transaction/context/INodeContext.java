@@ -100,6 +100,22 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     }
     return metadataCache.getByPath(path);
   }
+
+  /**
+   * Check the local metadata cache for the specified INode.
+   * @param localName The local name of the desired INode.
+   * @param parentId The ID of the parent INode.
+   * @return The desired INode if it is was in the cache, otherwise null.
+   */
+  private INode checkCache(String localName, long parentId) {
+    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    if (metadataCache == null) {
+      LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
+      return null;
+    }
+    return metadataCache.getByParentINodeIdAndLocalName(parentId, localName);
+  }
+
   @Override
   public void clear() throws TransactionContextException {
     super.clear();
@@ -126,7 +142,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       throws TransactionContextException, StorageException {
     INode.Finder iFinder = (INode.Finder) finder;
     switch (iFinder) {
-      case ByParentIdFTIS:
+      case ByParentIdFTIS: // TODO: Add support for this case for local, in-memory metadata cache.
         return findByParentIdFTIS(iFinder, params);
       case ByParentIdAndPartitionId:
         return findByParentIdAndPartitionIdPPIS(iFinder,params);
@@ -392,6 +408,10 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       possibleInodeId = (Long) params[3];
     }
     final String nameParentKey = INode.nameParentKey(parentId, name);
+
+    result = checkCache(name, parentId);
+    if (result != null)
+      return result;
 
     if (inodesNameParentIndex.containsKey(nameParentKey)) {
       result = inodesNameParentIndex.get(nameParentKey);

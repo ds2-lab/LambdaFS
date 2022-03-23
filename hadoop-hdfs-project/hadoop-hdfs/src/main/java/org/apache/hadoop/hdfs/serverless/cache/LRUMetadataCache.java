@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless.cache;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +40,8 @@ public class LRUMetadataCache<T> {
     //static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
     public static final Logger LOG = LoggerFactory.getLogger(LRUMetadataCache.class);
 
-    private static final int DEFAULT_MAX_ENTRIES = 250;         // Default maximum capacity.
-    private static final float DEFAULT_LOAD_FACTOR = 0.75f;     // Default load factor.
+    private static final int DEFAULT_MAX_ENTRIES = 10000;         // Default maximum capacity.
+    private static final float DEFAULT_LOAD_FACTOR = 0.75f;       // Default load factor.
 
     private static final long serialVersionUID = -8140463703331613827L;
 
@@ -62,6 +63,12 @@ public class LRUMetadataCache<T> {
      * Mapping between INode IDs and their names.
      */
     private final HashMap<Long, String> idToNameMapping;
+
+    /**
+     * Mapping between keys of the form [PARENT_ID][LOCAL_NAME], which is how some INodes are
+     * cached/stored by HopsFS during transactions, to the fully-qualified paths of the INode.
+     */
+    private final HashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
 
     private final HashMap<String, T> cache;
 
@@ -100,6 +107,7 @@ public class LRUMetadataCache<T> {
     public LRUMetadataCache(Configuration conf, int capacity, float loadFactor) {
         this.invalidatedKeys = new HashSet<>();
         this.idToNameMapping = new HashMap<>(capacity, loadFactor);
+        this.parentIdPlusLocalNameToFullPathMapping = new HashMap<>(capacity, loadFactor);
         this.cache = new HashMap<>(capacity, loadFactor);
         this.metadataTrie = new PatriciaTrie<>();
         this.enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED,
@@ -170,6 +178,45 @@ public class LRUMetadataCache<T> {
      * Return the metadata object associated with the given key, or null if:
      *  (1) No entry exists for the given key, or
      *  (2) The given key has been invalidated.
+     * @param parentId The INode ID of the parent INode of the desired INode.
+     * @param localName The local name of the desired INode.
+     * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
+     * invalidated.
+     */
+    public T getByParentINodeIdAndLocalName(long parentId, String localName) {
+        _mutex.lock();
+        try {
+            if (!enabled)
+                return null;
+
+            String parentIdPlusLocalName = parentId + localName;
+            String key = parentIdPlusLocalNameToFullPathMapping.getOrDefault(parentIdPlusLocalName, null);
+
+            if (invalidatedKeys.contains(key)){
+                cacheMiss();
+                return null;
+            }
+
+            T returnValue = cache.get(key);
+
+            if (returnValue == null) {
+                cacheMiss();
+            }
+            else {
+                // LOG.debug("Retrieved value " + returnValue + " from cache using key " + key + ".");
+                cacheHit();
+            }
+
+            return returnValue;
+        } finally {
+            _mutex.unlock();
+        }
+    }
+
+    /**
+     * Return the metadata object associated with the given key, or null if:
+     *  (1) No entry exists for the given key, or
+     *  (2) The given key has been invalidated.
      * @param iNodeId The INode ID of the given metadata object.
      * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
      * invalidated.
@@ -210,17 +257,24 @@ public class LRUMetadataCache<T> {
             // Store the metadata in the cache directly.
             T returnValue = cache.put(key, value);
 
+            if (value instanceof INode) {
+                INode valueAsINode = (INode) value;
+                String parentIdPlusLocalName = valueAsINode.getParentId() + valueAsINode.getLocalName();
+                parentIdPlusLocalNameToFullPathMapping.put(parentIdPlusLocalName, key);
+            }
+
             // Create a mapping between the INode ID and the path.
             idToNameMapping.put(iNodeId, key);
 
             // Store the metadata in the Trie data structure, using the path of the metadata as the key.
-            T existingEntry = metadataTrie.put(key, value);
+            /*T existingEntry = */
+            metadataTrie.put(key, value);
 
             // If this key was previously invalidated, then it is no longer invalid, seeing as we're caching it now.
             boolean removed = invalidatedKeys.remove(key);
 
-//            if (removed)
-//                LOG.debug("Previously invalid key '" + key + "' updated with valid cache value. Cache size: " + cache.size());
+            if (removed)
+                LOG.debug("Previously invalid key '" + key + "' updated with valid cache value. Cache size: " + cache.size());
 //            else if (existingEntry == null) // This ensures we only print the message if the object wasn't already cached.
 //                LOG.debug("Inserted metadata object into cache under key '" + key + "'. Cache size: " + cache.size());
 

@@ -29,6 +29,7 @@ import io.hops.transaction.lock.LastTwoBlocksLock;
 import io.hops.transaction.lock.Lock;
 import io.hops.transaction.lock.SqlBatchedBlocksLock;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.server.namenode.INode;
@@ -204,6 +205,8 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
     List<BlockInfoContiguous> result = null;
     final long[] ids = (long[]) params[0];
     aboutToAccessStorage(bFinder, params);
+    LOG.debug("Finding BlockInfoContiguous instances for the following INodes: " +
+            StringUtils.join(", ", ids));
     result = dataAccess.findByInodeIds(ids);
     for (long id : ids) {
       inodeBlocks.put(id, null);
@@ -248,7 +251,7 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
           inodeId != null ? Long.toString(inodeId) : "NULL");
     } else {
       // some test intentionally look for blocks that are not in the DB
-      // duing the acquire lock phase if we see that an id does not
+      // during the acquire-lock phase if we see that an id does not
       // exist in the db then we should put null in the cache for that id
 
       if (inodeId == null) {

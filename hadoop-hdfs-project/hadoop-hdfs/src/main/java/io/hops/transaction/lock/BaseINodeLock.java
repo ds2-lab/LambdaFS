@@ -41,6 +41,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
+
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
@@ -251,7 +253,7 @@ public abstract class BaseINodeLock extends Lock {
 
     for(String path : resolvedINodesMap.pathToPathINodes.keySet()) {
       List<INode> list = resolvedINodesMap.getPathINodes(path);
-      LOG.debug("Path INodes for path '" + path + "': " + (list != null ? list.stream().map(INode::getLocalName) : "null"));
+      LOG.debug("Path INodes for path '" + path + "': " + (list != null ? list.stream().map(INode::getLocalName).collect(Collectors.toList()) : "null"));
 
       if (list == null)
         LOG.warn("Path INodes for path '" + path + "' is null...");
