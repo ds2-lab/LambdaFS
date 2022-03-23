@@ -112,16 +112,16 @@ public class INodesInPath {
    * @return the specified number of existing INodes in the path
    */
   // TODO: Eliminate null elements from inodes (to be provided by HDFS-7104)
-  static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components, final boolean resolveLink)
-          throws UnresolvedLinkException, StorageException, TransactionContextException {
-
-    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
-
-    if (instance == null)
-      throw new StorageException("Cannot retrieve ServerlessNameNode instance, and thus cannot retrieve metadata cache.");
-
-    return resolve(startingDir, components, resolveLink, instance.getNamesystem().getMetadataCache());
-  }
+//  static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components, final boolean resolveLink)
+//          throws UnresolvedLinkException, StorageException, TransactionContextException {
+//
+//    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+//
+//    if (instance == null)
+//      throw new StorageException("Cannot retrieve ServerlessNameNode instance, and thus cannot retrieve metadata cache.");
+//
+//    return resolve(startingDir, components, resolveLink);
+//  }
 
 
   /**
@@ -149,15 +149,10 @@ public class INodesInPath {
    * @param startingDir the starting directory
    * @param components array of path component name
    * @param resolveLink indicates whether UnresolvedLinkException should be thrown when the path refers to a symbolic link.
-   * @param metadataCache The metadata cache of this serverless name node.
    * @return the specified number of existing INodes in the path
    */
-  static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components,
-                              final boolean resolveLink, final LRUMetadataCache<INode> metadataCache)
+  static INodesInPath resolve(final INodeDirectory startingDir, final byte[][] components, final boolean resolveLink)
           throws UnresolvedLinkException, StorageException, TransactionContextException {
-    if (metadataCache == null)
-      throw new IllegalArgumentException("Metadata cache should not be null during INode path resolution.");
-
     Preconditions.checkArgument(startingDir.compareTo(components[0]) == 0);
 
     INode curNode = startingDir;

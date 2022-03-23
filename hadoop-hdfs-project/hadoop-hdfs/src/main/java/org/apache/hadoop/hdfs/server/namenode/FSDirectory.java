@@ -548,8 +548,8 @@ public class FSDirectory implements Closeable {
   /**
    * update count of each inode with quota
    *
-   * @param inodes
-   *     an array of inodes on a path
+   * @param iip
+   *     inodes on the path
    * @param numOfINodes
    *     the number of inodes to update starting from index 0
    * @param counts the count of space/namespace/type usage to be update
@@ -598,11 +598,6 @@ public class FSDirectory implements Closeable {
   /**
    * updates quota without verification
    * callers responsibility is to make sure quota is not exceeded
-   *
-   * @param inodes
-   * @param numOfINodes
-   * @param nsDelta
-   * @param dsDelta
    */
   void unprotectedUpdateCount(INodesInPath inodesInPath, 
       int numOfINodes, QuotaCounts counts) throws StorageException, TransactionContextException {
@@ -1622,7 +1617,7 @@ public class FSDirectory implements Closeable {
 
   INodesInPath getExistingPathINodes(byte[][] components)
       throws UnresolvedLinkException, StorageException, TransactionContextException {
-    return INodesInPath.resolve(getRootDir(), components, false, namesystem.getMetadataCache());
+    return INodesInPath.resolve(getRootDir(), components, false);
   }
 
   /**
@@ -1650,59 +1645,7 @@ public class FSDirectory implements Closeable {
     String[] paths = INode.getPathNames(path);
 
     final byte[][] components = INode.getPathComponents(paths);
-    INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), components, resolveLink, namesystem.getMetadataCache());
-
-    int smallestLength = Math.min(components.length, pathINodes.length());
-
-//    LOG.debug("Finished resolving INodes. INodesInPath contains " + pathINodes.length()
-//            + " INodes. Processing INodes for caching purposes now...");
-//    LOG.debug("paths.length: " + paths.length + ", pathINodes.length(): " + pathINodes.length()
-//            + ", components.length: " + components.length);
-
-    // We initially assign the root partition ID to `lastPartitionId`.
-    for (int i = 0; i < smallestLength; i++) {
-      String component;
-
-      // When paths is length 0, components[0] will be null. We need to account for this, as this
-      // scenario will occur with the path is "/" (i.e., the root directory).
-      if (components[i] != null)
-        component = DFSUtil.bytes2String(components[i]);
-      else
-        component = "";
-
-      INode node = pathINodes.getINode(i);
-
-      String fullPathToComponent;
-      if (components.length == 1 && components[0] == null)
-         fullPathToComponent = INodeDirectory.ROOT_NAME;
-      else
-        fullPathToComponent = constructPath(components, 0, i + 1);
-
-      LOG.debug("Processing INode '" + component + "' now. INode is null: " + (node == null));
-
-      if (node != null) {
-        // Just used for debugging. Will eventually remove this code.
-//        if (i == 0) {
-//          if (node.isRoot())
-//            LOG.debug("First INode in path is root.");
-//          else
-//            LOG.debug("First INode in path: " + node.toDetailString());
-//        }
-
-
-        if (namesystem.shouldCacheLocally(node)) {
-//          LOG.debug("Caching INode '" + component + "' in metadata cache under key '"
-//                  + fullPathToComponent + "' now...");
-          namesystem.getMetadataCache().put(fullPathToComponent, node.getId(), node);
-        } /*else {
-          LOG.debug("INode " + node + " should be cached by NameNode " +
-                  namesystem.getMappedServerlessFunction(node) + ", not us.");
-        }*/
-      }
-//      else {
-//        LOG.warn("INode is null. Path component: " + component + ", full path: " + fullPathToComponent);
-//      }
-    }
+    INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), components, resolveLink);
 
     return pathINodes;
   }
@@ -1726,8 +1669,7 @@ public class FSDirectory implements Closeable {
   INodesInPath getINodesInPath4Write(String src, boolean resolveLink)
           throws UnresolvedLinkException, StorageException, TransactionContextException {
     final byte[][] components = INode.getPathComponents(src);
-    INodesInPath inodesInPath = INodesInPath.resolve(getRootDir(), components,
-            resolveLink, namesystem.getMetadataCache());
+    INodesInPath inodesInPath = INodesInPath.resolve(getRootDir(), components, resolveLink);
     return inodesInPath;
   }
   
@@ -1787,7 +1729,7 @@ public class FSDirectory implements Closeable {
               // yields the String "". So we cache the root INode under the empty String key.
 
               LOG.debug("Caching the root INode under the key " + INodeDirectory.ROOT_NAME + " now...");
-              namesystem.getMetadataCache().put(INodeDirectory.ROOT_NAME, newRootINode.getId(), newRootINode);
+              namesystem.getMetadataCacheManager().getINodeCache().put(INodeDirectory.ROOT_NAME, newRootINode.getId(), newRootINode);
             } else {
               LOG.warn("New root INode is null. Cannot cache the INode.");
             }
