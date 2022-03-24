@@ -91,13 +91,24 @@ public class ReplicaContext
     return cache.getByBlockId(blockId);
   }
 
-//  private List<Replica> checkCache(long[] inodeIds) {
-//    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
-//    if (cache == null) return null;
-//  }
+  private void updateCache(Replica replica) {
+    if (replica == null) return;
 
-  private void updateCache(long inodeId, long blockId) {
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return;
 
+    cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+  }
+
+  private void updateCache(List<Replica> replicas) {
+    if (replicas == null) return;
+
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return;
+
+    for (Replica replica : replicas) {
+      cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+    }
   }
 
   @Override
@@ -214,6 +225,7 @@ public class ReplicaContext
       LOG.debug("Going to NDB to find Replicas for INode ID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findReplicasById(blockId, inodeId);
+      updateCache(results);
       gotFromDB(new BlockPK(blockId, null), results);
       miss(iFinder, results, "bid", blockId, "inodeid", inodeId);
     }
@@ -233,6 +245,7 @@ public class ReplicaContext
     } else {
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findReplicasByINodeId(inodeId);
+      updateCache(results);
       gotFromDB(new BlockPK(null, inodeId), results);
       miss(iFinder, results, "inodeid", inodeId);
     }

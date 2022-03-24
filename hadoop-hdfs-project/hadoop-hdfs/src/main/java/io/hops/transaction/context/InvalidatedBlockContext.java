@@ -24,6 +24,8 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.InvalidateBlockDataAccess;
 import io.hops.metadata.hdfs.entity.InvalidatedBlock;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.cache.ReplicaCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +46,74 @@ public class InvalidatedBlockContext
     this.dataAccess = dataAccess;
   }
 
+  private ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock> getReplicaCache() {
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+    if (instance == null)
+      return null;
+
+    return (ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock>) instance.getNamesystem().getMetadataCacheManager().getReplicaCacheManager().getReplicaCache(this.getClass());
+  }
+
+  private InvalidatedBlock checkCache(long inodeId, long blockId, int storageId) {
+    ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    BlockPK.ReplicaPK pk = new BlockPK.ReplicaPK(blockId, inodeId, storageId);
+
+    return cache.getByPrimaryKey(pk);
+  }
+
+  // Uses same semantics as the `findByPK()` function.
+  private InvalidatedBlock checkCacheByPk(long blockId, int storageId) {
+    ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    List<InvalidatedBlock> possibleReplicas = cache.getByBlockId(blockId);
+
+    if (possibleReplicas == null) return null;
+
+    for (InvalidatedBlock replica : possibleReplicas) {
+      if (replica.getStorageId() == storageId)
+        return replica;
+    }
+
+    return null;
+  }
+
+  private List<InvalidatedBlock> checkCacheByINodeId(long inodeId) {
+    ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByINodeId(inodeId);
+  }
+
+  private List<InvalidatedBlock> checkCacheByBlockId(long blockId) {
+    ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByBlockId(blockId);
+  }
+
+  private void updateCache(InvalidatedBlock replica) {
+    if (replica == null) return;
+
+    ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock> cache = getReplicaCache();
+    if (cache == null) return;
+
+    cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+  }
+
+  private void updateCache(List<InvalidatedBlock> replicas) {
+    if (replicas == null) return;
+
+    ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock> cache = getReplicaCache();
+    if (cache == null) return;
+
+    for (InvalidatedBlock replica : replicas) {
+      cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+    }
+  }
+  
   @Override
   public void update(InvalidatedBlock hopInvalidatedBlock)
       throws TransactionContextException {
@@ -137,7 +207,10 @@ public class InvalidatedBlockContext
     final long inodeId = (Long) params[2];
 
     final BlockPK.ReplicaPK key = new BlockPK.ReplicaPK(blockId, inodeId, storageId);
-    InvalidatedBlock result = null;
+
+    InvalidatedBlock result = checkCache(blockId, inodeId, storageId);
+    if (result != null) return result;
+
     if (contains(key) || containsByBlock(blockId) || containsByINode(inodeId)) {
       result = get(key);
       hit(iFinder, result, "bid", blockId, "sid", storageId, "inodeId",
@@ -148,6 +221,7 @@ public class InvalidatedBlockContext
       aboutToAccessStorage(iFinder, params);
       result = dataAccess.findInvBlockByPkey(blockId, storageId, inodeId);
       gotFromDB(key, result);
+      updateCache(result);
       miss(iFinder, result, "bid", blockId, "sid", storageId, "inodeId",
           inodeId);
     }
@@ -159,7 +233,11 @@ public class InvalidatedBlockContext
     final long blockId = (Long) params[0];
     final long inodeId = (Long) params[1];
 
-    List<InvalidatedBlock> result = null;
+    List<InvalidatedBlock> result = checkCacheByBlockId(blockId);
+    if (result != null) return  result;
+    result = checkCacheByINodeId(inodeId);
+    if (result != null) return  result;
+
     if (containsByBlock(blockId) || containsByINode(inodeId)) {
       result = getByBlock(blockId);
       hit(iFinder, result, "bid", blockId, "inodeId", inodeId);
@@ -169,6 +247,7 @@ public class InvalidatedBlockContext
       result = dataAccess.findInvalidatedBlocksByBlockId(blockId, inodeId);
       Collections.sort(result);
       gotFromDB(new BlockPK(blockId, null), result);
+      updateCache(result);
       miss(iFinder, result, "bid", blockId, "inodeId", inodeId);
     }
     return result;
@@ -178,7 +257,9 @@ public class InvalidatedBlockContext
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long inodeId = (Long) params[0];
 
-    List<InvalidatedBlock> result = null;
+    List<InvalidatedBlock> result = checkCacheByINodeId(inodeId);
+    if (result != null) return  result;
+
     if (containsByINode(inodeId)) {
       result = getByINode(inodeId);
       hit(iFinder, result, "inodeId", inodeId);
@@ -187,6 +268,7 @@ public class InvalidatedBlockContext
       aboutToAccessStorage(iFinder, params);
       result = dataAccess.findInvalidatedBlocksByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
+      updateCache(result);
       miss(iFinder, result, "inodeId", inodeId);
     }
     return result;
@@ -202,6 +284,7 @@ public class InvalidatedBlockContext
       LOG.debug("Going to NDB for ALL InvalidatedBlock instances.");
       aboutToAccessStorage(iFinder);
       result = dataAccess.findAllInvalidatedBlocks();
+      updateCache(result);
       gotFromDB(result);
       allInvBlocksRead = true;
       miss(iFinder, result);
@@ -224,6 +307,8 @@ public class InvalidatedBlockContext
     gotFromDB(BlockPK.ReplicaPK.getKeys(blockIds, inodeIds, sid),
         result);
 
+    updateCache(result);
+
     miss(iFinder, result, "bids", Arrays.toString(blockIds), "inodeIds", Arrays.toString(inodeIds), "sid", sid);
     return result;
   }
@@ -239,6 +324,8 @@ public class InvalidatedBlockContext
         dataAccess.findInvalidatedBlocksByINodeIds(inodeIds);
     gotFromDB(BlockPK.ReplicaPK.getKeys(inodeIds), result);
     miss(iFinder, result, "inodeIds", Arrays.toString(inodeIds));
+
+    updateCache(result);
     return result;
   }
 }
