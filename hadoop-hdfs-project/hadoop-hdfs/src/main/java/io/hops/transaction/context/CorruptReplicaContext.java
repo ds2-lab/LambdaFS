@@ -110,7 +110,7 @@ public class CorruptReplicaContext
       result = getByBlock(blockId);
       hit(cFinder, result, "bid", blockId, "inodeid", inodeId);
     } else {
-      LOG.debug("Retrieving CorruptReplica instances from NDB for INode ID=" + inodeId + ", BlockID=" + blockId);
+      // LOG.debug("Retrieving CorruptReplica instances from NDB for INode ID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(cFinder, params);
       result = dataAccess.findByBlockId(blockId, inodeId);
       Collections.sort(result);
@@ -128,7 +128,7 @@ public class CorruptReplicaContext
       result = getByINode(inodeId);
       hit(cFinder, result, "inodeid", inodeId);
     } else {
-      LOG.debug("Retrieving CorruptReplica instances from NDB for INode ID=" + inodeId);
+      // LOG.debug("Retrieving CorruptReplica instances from NDB for INode ID=" + inodeId);
       aboutToAccessStorage(cFinder, params);
       result = dataAccess.findByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
@@ -140,7 +140,7 @@ public class CorruptReplicaContext
   private List<CorruptReplica> findByINodeIds(CorruptReplica.Finder cFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
-    LOG.debug("Retrieving CorruptReplica instances from NDB for INode IDs=" + StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
+    // LOG.debug("Retrieving CorruptReplica instances from NDB for INode IDs=" + StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(cFinder, params);
     List<CorruptReplica> result = dataAccess.findByINodeIds(inodeIds);
     miss(cFinder, result, "inodeids", Arrays.toString(inodeIds));
