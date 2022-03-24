@@ -29,6 +29,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
  *
  * This is used on the NameNode side.
  */
+@Deprecated
 public class NameNodeWorkerThread extends Thread {
     //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
     public static final Logger LOG = LoggerFactory.getLogger(NameNodeWorkerThread.class);
@@ -101,7 +102,7 @@ public class NameNodeWorkerThread extends Thread {
                     LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
 
                 // Clear and reset statistics from previously-executed tasks.
-                serverlessNameNodeInstance.getNamesystem().getMetadataCache().clearCurrentRequestCacheCounters();
+                serverlessNameNodeInstance.getNamesystem().getMetadataCacheManager().getINodeCache().clearCurrentRequestCacheCounters();
                 serverlessNameNodeInstance.clearTransactionEvents();
                 TransactionsStats.getInstance().clearForServerless();
                 requestCurrentlyProcessing = task.getTaskId();
