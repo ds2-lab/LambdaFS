@@ -24,6 +24,8 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.ExcessReplicaDataAccess;
 import io.hops.metadata.hdfs.entity.ExcessReplica;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.cache.ReplicaCache;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +46,74 @@ public class ExcessReplicaContext
     this.dataAccess = dataAccess;
   }
 
+  private ReplicaCache<BlockPK.ReplicaPK, ExcessReplica> getReplicaCache() {
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+    if (instance == null)
+      return null;
+
+    return (ReplicaCache<BlockPK.ReplicaPK, ExcessReplica>) instance.getNamesystem().getMetadataCacheManager().getReplicaCacheManager().getReplicaCache(this.getClass());
+  }
+
+  private ExcessReplica checkCache(long inodeId, long blockId, int storageId) {
+    ReplicaCache<BlockPK.ReplicaPK, ExcessReplica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    BlockPK.ReplicaPK pk = new BlockPK.ReplicaPK(blockId, inodeId, storageId);
+
+    return cache.getByPrimaryKey(pk);
+  }
+
+  // Uses same semantics as the `findByPK()` function.
+  private ExcessReplica checkCacheByPk(long blockId, int storageId) {
+    ReplicaCache<BlockPK.ReplicaPK, ExcessReplica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    List<ExcessReplica> possibleReplicas = cache.getByBlockId(blockId);
+
+    if (possibleReplicas == null) return null;
+
+    for (ExcessReplica replica : possibleReplicas) {
+      if (replica.getStorageId() == storageId)
+        return replica;
+    }
+
+    return null;
+  }
+
+  private List<ExcessReplica> checkCacheByINodeId(long inodeId) {
+    ReplicaCache<BlockPK.ReplicaPK, ExcessReplica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByINodeId(inodeId);
+  }
+
+  private List<ExcessReplica> checkCacheByBlockId(long blockId) {
+    ReplicaCache<BlockPK.ReplicaPK, ExcessReplica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByBlockId(blockId);
+  }
+
+  private void updateCache(ExcessReplica replica) {
+    if (replica == null) return;
+
+    ReplicaCache<BlockPK.ReplicaPK, ExcessReplica> cache = getReplicaCache();
+    if (cache == null) return;
+
+    cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+  }
+
+  private void updateCache(List<ExcessReplica> replicas) {
+    if (replicas == null) return;
+
+    ReplicaCache<BlockPK.ReplicaPK, ExcessReplica> cache = getReplicaCache();
+    if (cache == null) return;
+
+    for (ExcessReplica replica : replicas) {
+      cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+    }
+  }
+  
   @Override
   public void update(ExcessReplica hopExcessReplica)
       throws TransactionContextException {
@@ -120,7 +190,9 @@ public class ExcessReplicaContext
     final long inodeId = (Long) params[2];
     final BlockPK.ReplicaPK key = new BlockPK.ReplicaPK(blockId, inodeId, storageId);
 
-    ExcessReplica result = null;
+    ExcessReplica result = checkCache(inodeId, blockId, storageId);
+    if (result != null) return result;
+
     if (contains(key) || containsByINode(inodeId) || containsByBlock(blockId)) {
       result = get(key);
       hit(eFinder, result, "bid", blockId, "uuid", storageId);
@@ -131,6 +203,7 @@ public class ExcessReplicaContext
       result = dataAccess.findByPK(blockId, storageId, inodeId);
       gotFromDB(key, result);
       miss(eFinder, result, "bid", blockId, "sid", storageId);
+      updateCache(result);
     }
     return result;
   }
@@ -139,7 +212,12 @@ public class ExcessReplicaContext
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long blockId = (Long) params[0];
     final long inodeId = (Long) params[1];
-    List<ExcessReplica> result = null;
+
+    List<ExcessReplica> result = checkCacheByBlockId(blockId);
+    if (result != null) return  result;
+    result = checkCacheByINodeId(inodeId);
+    if (result != null) return  result;
+
     if (containsByBlock(blockId) || containsByINode(inodeId)) {
       result = getByBlock(blockId);
       hit(eFinder, result, "bid", blockId, "inodeId", inodeId);
@@ -149,6 +227,7 @@ public class ExcessReplicaContext
       result = dataAccess.findExcessReplicaByBlockId(blockId, inodeId);
       Collections.sort(result);
       gotFromDB(new BlockPK(blockId, null), result);
+      updateCache(result);
       miss(eFinder, result, "bid", blockId, "inodeId", inodeId);
     }
     return result;
@@ -157,7 +236,10 @@ public class ExcessReplicaContext
   private List<ExcessReplica> findByINodeId(ExcessReplica.Finder eFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long inodeId = (Long) params[0];
-    List<ExcessReplica> result = null;
+
+    List<ExcessReplica> result = checkCacheByINodeId(inodeId);
+    if (result != null) return  result;
+
     if (containsByINode(inodeId)) {
       result = getByINode(inodeId);
       hit(eFinder, result, "inodeId", inodeId);
@@ -167,6 +249,7 @@ public class ExcessReplicaContext
       result = dataAccess.findExcessReplicaByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
       miss(eFinder, result, "inodeId", inodeId);
+      updateCache(result);
     }
     return result;
   }
@@ -181,6 +264,7 @@ public class ExcessReplicaContext
         dataAccess.findExcessReplicaByINodeIds(inodeIds);
     gotFromDB(BlockPK.ReplicaPK.getKeys(inodeIds), result);
     miss(eFinder, result, "inodeIds", Arrays.toString(inodeIds));
+    updateCache(result);
     return result;
   }
 }

@@ -24,6 +24,8 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.UnderReplicatedBlockDataAccess;
 import io.hops.metadata.hdfs.entity.UnderReplicatedBlock;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.cache.ReplicaCache;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,57 @@ public class UnderReplicatedBlockContext
   public UnderReplicatedBlockContext(
       UnderReplicatedBlockDataAccess dataAccess) {
     this.dataAccess = dataAccess;
+  }
+
+  private ReplicaCache<BlockPK, UnderReplicatedBlock> getReplicaCache() {
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+    if (instance == null)
+      return null;
+
+    return (ReplicaCache<BlockPK, UnderReplicatedBlock>) instance.getNamesystem().getMetadataCacheManager().getReplicaCacheManager().getReplicaCache(this.getClass());
+  }
+
+  private UnderReplicatedBlock checkCache(long inodeId, long blockId) {
+    ReplicaCache<BlockPK, UnderReplicatedBlock> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    BlockPK pk = new BlockPK(blockId, inodeId);
+
+    return cache.getByPrimaryKey(pk);
+  }
+
+  private List<UnderReplicatedBlock> checkCacheByINodeId(long inodeId) {
+    ReplicaCache<BlockPK, UnderReplicatedBlock> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByINodeId(inodeId);
+  }
+
+  private List<UnderReplicatedBlock> checkCacheByBlockId(long blockId) {
+    ReplicaCache<BlockPK, UnderReplicatedBlock> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByBlockId(blockId);
+  }
+
+  private void updateCache(UnderReplicatedBlock replica) {
+    if (replica == null) return;
+
+    ReplicaCache<BlockPK, UnderReplicatedBlock> cache = getReplicaCache();
+    if (cache == null) return;
+
+    cache.cacheEntry(new BlockPK(replica.getBlockId(), replica.getInodeId()), replica);
+  }
+
+  private void updateCache(List<UnderReplicatedBlock> replicas) {
+    if (replicas == null) return;
+
+    ReplicaCache<BlockPK, UnderReplicatedBlock> cache = getReplicaCache();
+    if (cache == null) return;
+
+    for (UnderReplicatedBlock replica : replicas) {
+      cache.cacheEntry(new BlockPK(replica.getBlockId(), replica.getInodeId()), replica);
+    }
   }
 
   @Override
@@ -122,7 +175,24 @@ public class UnderReplicatedBlockContext
       throws StorageCallPreventedException, StorageException {
     final long blockId = (Long) params[0];
     final long inodeId = (Long) params[1];
+
+    List<UnderReplicatedBlock> results = checkCacheByBlockId(blockId);
+    if (results != null) {
+      if (results.size() > 1)
+        throw new IllegalStateException("Should have only one PendingBlockInfo per block");
+      if (!results.isEmpty())
+        return results.get(0);
+    } else {
+      results = checkCacheByINodeId(inodeId);
+      if (results != null) {
+        if (results.size() > 1)
+          throw new IllegalStateException("Should have only one PendingBlockInfo per block");
+        if (!results.isEmpty())
+          return results.get(0);
+      }
+    }
     UnderReplicatedBlock result = null;
+
     if (containsByBlock(blockId) || containsByINode(inodeId)) {
       List<UnderReplicatedBlock> urblks = getByBlock(blockId);
       if (urblks != null) {
@@ -140,6 +210,7 @@ public class UnderReplicatedBlockContext
       aboutToAccessStorage(urFinder, params);
       result = dataAccess.findByPk(blockId, inodeId);
       gotFromDB(new BlockPK(blockId, inodeId), result);
+      updateCache(result);
       miss(urFinder, result, "bid", blockId, "inodeid", inodeId);
     }
     return result;
@@ -149,7 +220,10 @@ public class UnderReplicatedBlockContext
       UnderReplicatedBlock.Finder urFinder, Object[] params)
       throws StorageCallPreventedException, StorageException {
     final long inodeId = (Long) params[0];
-    List<UnderReplicatedBlock> result = null;
+
+    List<UnderReplicatedBlock> result = checkCacheByINodeId(inodeId);
+    if (result != null) return  result;
+
     if (containsByINode(inodeId)) {
       result = getByINode(inodeId);
       hit(urFinder, result, "inodeid", inodeId);
@@ -158,6 +232,7 @@ public class UnderReplicatedBlockContext
       aboutToAccessStorage(urFinder, params);
       result = dataAccess.findByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
+      updateCache(result);
       miss(urFinder, result, "inodeid", inodeId);
     }
     return result;
@@ -173,6 +248,7 @@ public class UnderReplicatedBlockContext
     aboutToAccessStorage(urFinder, params);
     result = dataAccess.findByINodeIds(inodeIds);
     gotFromDB(BlockPK.getBlockKeys(inodeIds), result);
+    updateCache(result);
     miss(urFinder, result, "inodeids", Arrays.toString(inodeIds));
     return result;
   }

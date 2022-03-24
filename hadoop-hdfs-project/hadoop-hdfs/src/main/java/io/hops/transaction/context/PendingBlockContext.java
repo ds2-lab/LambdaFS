@@ -187,6 +187,14 @@ public class PendingBlockContext
         throw new IllegalStateException("Should have only one PendingBlockInfo per block");
       if (!results.isEmpty())
         return results.get(0);
+    } else {
+      results = checkCacheByINodeId(inodeId);
+      if (results != null) {
+        if (results.size() > 1)
+          throw new IllegalStateException("Should have only one PendingBlockInfo per block");
+        if (!results.isEmpty())
+          return results.get(0);
+      }
     }
 
     if (containsByBlock(blockId) || containsByINode(inodeId)) {

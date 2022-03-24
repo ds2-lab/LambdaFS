@@ -24,6 +24,8 @@ import io.hops.metadata.hdfs.dal.ReplicaUnderConstructionDataAccess;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.ReplicaUnderConstruction;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.cache.ReplicaCache;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,74 @@ public class ReplicaUnderConstructionContext
   public ReplicaUnderConstructionContext(
       ReplicaUnderConstructionDataAccess dataAccess) {
     this.dataAccess = dataAccess;
+  }
+
+  private ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction> getReplicaCache() {
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+    if (instance == null)
+      return null;
+
+    return (ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction>) instance.getNamesystem().getMetadataCacheManager().getReplicaCacheManager().getReplicaCache(this.getClass());
+  }
+
+  private ReplicaUnderConstruction checkCache(long inodeId, long blockId, int storageId) {
+    ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    BlockPK.ReplicaPK pk = new BlockPK.ReplicaPK(blockId, inodeId, storageId);
+
+    return cache.getByPrimaryKey(pk);
+  }
+
+  // Uses same semantics as the `findByPK()` function.
+  private ReplicaUnderConstruction checkCacheByPk(long blockId, int storageId) {
+    ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    List<ReplicaUnderConstruction> possibleReplicas = cache.getByBlockId(blockId);
+
+    if (possibleReplicas == null) return null;
+
+    for (ReplicaUnderConstruction replica : possibleReplicas) {
+      if (replica.getStorageId() == storageId)
+        return replica;
+    }
+
+    return null;
+  }
+
+  private List<ReplicaUnderConstruction> checkCacheByINodeId(long inodeId) {
+    ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByINodeId(inodeId);
+  }
+
+  private List<ReplicaUnderConstruction> checkCacheByBlockId(long blockId) {
+    ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByBlockId(blockId);
+  }
+
+  private void updateCache(ReplicaUnderConstruction replica) {
+    if (replica == null) return;
+
+    ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction> cache = getReplicaCache();
+    if (cache == null) return;
+
+    cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+  }
+
+  private void updateCache(List<ReplicaUnderConstruction> replicas) {
+    if (replicas == null) return;
+
+    ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction> cache = getReplicaCache();
+    if (cache == null) return;
+
+    for (ReplicaUnderConstruction replica : replicas) {
+      cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+    }
   }
 
   @Override
@@ -116,7 +186,12 @@ public class ReplicaUnderConstructionContext
       throws TransactionContextException, StorageException {
     final long blockId = (Long) params[0];
     final long inodeId = (Long) params[1];
-    List<ReplicaUnderConstruction> result = null;
+
+    List<ReplicaUnderConstruction> result = checkCacheByBlockId(blockId);
+    if (result != null) return  result;
+    result = checkCacheByINodeId(inodeId);
+    if (result != null) return  result;
+
     if (containsByBlock(blockId) || containsByINode(inodeId)) {
       result = getByBlock(blockId);
       hit(rFinder, result, "bid", blockId, "inodeid", inodeId);
@@ -124,6 +199,7 @@ public class ReplicaUnderConstructionContext
       LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(rFinder, params);
       result = dataAccess.findReplicaUnderConstructionByBlockId(blockId, inodeId);
+      updateCache(result);
       gotFromDB(new BlockPK(blockId, inodeId), result);
       miss(rFinder, result, "bid", blockId, "inodeid", inodeId);
     }
@@ -134,7 +210,10 @@ public class ReplicaUnderConstructionContext
       ReplicaUnderConstruction.Finder rFinder, Object[] params)
       throws TransactionContextException, StorageException {
     final long inodeId = (Long) params[0];
-    List<ReplicaUnderConstruction> result = null;
+
+    List<ReplicaUnderConstruction> result = checkCacheByINodeId(inodeId);
+    if (result != null) return  result;
+
     if (containsByINode(inodeId)) {
       result = getByINode(inodeId);
       hit(rFinder, result, "inodeid", inodeId);
@@ -142,6 +221,7 @@ public class ReplicaUnderConstructionContext
       LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeID=" + inodeId);
       aboutToAccessStorage(rFinder, params);
       result = dataAccess.findReplicaUnderConstructionByINodeId(inodeId);
+      updateCache(result);
       gotFromDB(new BlockPK(null, inodeId), result);
       miss(rFinder, result, "inodeid", inodeId);
     }
@@ -158,6 +238,7 @@ public class ReplicaUnderConstructionContext
     List<ReplicaUnderConstruction> result =
         dataAccess.findReplicaUnderConstructionByINodeIds(inodeIds);
     gotFromDB(BlockPK.ReplicaPK.getKeys(inodeIds), result);
+    updateCache(result);
     miss(rFinder, result, "inodeids", Arrays.toString(inodeIds));
     return result;
   }
