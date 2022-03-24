@@ -47,11 +47,11 @@ public class BlockPK {
     return this.inodeId != BlockInfoContiguous.NON_EXISTING_ID;
   }
 
-  long getBlockId() {
+  public long getBlockId() {
     return blockId;
   }
 
-  long getInodeId() {
+  public long getInodeId() {
     return inodeId;
   }
 

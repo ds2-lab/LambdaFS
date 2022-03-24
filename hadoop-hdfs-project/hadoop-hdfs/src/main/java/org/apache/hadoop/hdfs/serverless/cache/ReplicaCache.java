@@ -24,7 +24,14 @@ public class ReplicaCache<Key extends BlockPK, Value> {
      * there could be multiple replica instances associated with a single INode ID. Thus, this is a Cache that maps
      * INode ID to Set<Value>, where Value is some type of replica object.
      */
-    private final Cache<Long, Set<Value>> idReplicaCache;
+    private final Cache<Long, Set<Value>> inodeIdsToReplicas;
+
+    /**
+     * With this cache, we map Block ID to replicas. Since Block ID by itself is not the primary key of a replica,
+     * there could be multiple replica instances associated with a single Block ID. Thus, this is a Cache that maps
+     * Block ID to Set<Value>, where Value is some type of replica object.
+     */
+    private final Cache<Long, Set<Value>> blockIdsToReplicas;
 
     protected ReplicaCache() {
         this(DEFAULT_MAX_CACHE_SIZE);
@@ -32,26 +39,19 @@ public class ReplicaCache<Key extends BlockPK, Value> {
 
     protected ReplicaCache(int maximumSize) {
         replicaCache = Caffeine.newBuilder().maximumSize(maximumSize).build();
-        idReplicaCache = Caffeine.newBuilder().maximumSize(maximumSize).build();
-    }
-
-    /**
-     * Invalidate the entry with the given key.
-     * @param key The primary key of the replica to invalidate.
-     */
-    public void invalidateEntry(Key key) {
-        replicaCache.invalidate(key);
+        inodeIdsToReplicas = Caffeine.newBuilder().maximumSize(maximumSize).build();
+        blockIdsToReplicas = Caffeine.newBuilder().maximumSize(maximumSize).build();
     }
 
     /**
      * Invalidate the entry with the given key. The INode ID is also passed in order to invalidate the separate
      * INode ID to multiple-replicas cache.
      * @param key The primary key of the replica to invalidate.
-     * @param id The INode ID of the replica we're invalidating, so we can invalidate other replicas.
      */
-    public void invalidateEntry(Key key, long id) {
+    public void invalidateEntry(Key key) {
         replicaCache.invalidate(key);
-        idReplicaCache.invalidate(id);
+        inodeIdsToReplicas.invalidate(key.getInodeId());
+        blockIdsToReplicas.invalidate(key.getBlockId());
     }
 
     /**
@@ -59,24 +59,55 @@ public class ReplicaCache<Key extends BlockPK, Value> {
      */
     public void invalidateAll() {
         replicaCache.invalidateAll();
-        idReplicaCache.invalidateAll();
+        inodeIdsToReplicas.invalidateAll();
+        blockIdsToReplicas.invalidateAll();
     }
 
     /**
      * Cache a replica.
      * @param key The primary key object of the replica.
      * @param value The replica being cached.
-     * @param id The INode ID associated with the replica. This will be a component of the primary key.
      */
-    public void cacheEntry(Key key, Value value, long id) {
+    public void cacheEntry(Key key, Value value) {
         replicaCache.put(key, value);
 
-        Set<Value> replicasAssociatedWithINodeId = idReplicaCache.getIfPresent(id);
+        long inodeId = key.getInodeId();
+        long blockId = key.getBlockId();
+
+        Set<Value> replicasAssociatedWithINodeId = inodeIdsToReplicas.getIfPresent(inodeId);
         if (replicasAssociatedWithINodeId == null) {
             replicasAssociatedWithINodeId = new HashSet<>();
-            idReplicaCache.put(id, replicasAssociatedWithINodeId);
+            inodeIdsToReplicas.put(blockId, replicasAssociatedWithINodeId);
+        }
+
+        Set<Value> replicasAssociatedWithBlockId = blockIdsToReplicas.getIfPresent(blockId);
+        if (replicasAssociatedWithBlockId == null) {
+            replicasAssociatedWithBlockId = new HashSet<>();
+            blockIdsToReplicas.put(blockId, replicasAssociatedWithBlockId);
         }
 
         replicasAssociatedWithINodeId.add(value);
+    }
+
+    public Value getByPrimaryKey(Key key) {
+        return replicaCache.getIfPresent(key);
+    }
+
+    public List<Value> getByINodeId(long inodeId) {
+        Set<Value> nodes = inodeIdsToReplicas.getIfPresent(inodeId);
+
+        if (nodes != null)
+            return new ArrayList<>(nodes);
+
+        return null;
+    }
+
+    public List<Value> getByBlockId(long blockId) {
+        Set<Value> nodes = blockIdsToReplicas.getIfPresent(blockId);
+
+        if (nodes != null)
+            return new ArrayList<>(nodes);
+
+        return null;
     }
 }

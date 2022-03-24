@@ -51,6 +51,55 @@ public class ReplicaContext
     return (ReplicaCache<BlockPK.ReplicaPK, Replica>) instance.getNamesystem().getMetadataCacheManager().getReplicaCacheManager().getReplicaCache(this.getClass());
   }
 
+  private Replica checkCache(long inodeId, long blockId, int storageId) {
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    BlockPK.ReplicaPK pk = new BlockPK.ReplicaPK(blockId, inodeId, storageId);
+
+    return cache.getByPrimaryKey(pk);
+  }
+
+  // Uses same semantics as the `findByPK()` function.
+  private Replica checkCacheByPk(long blockId, int storageId) {
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    List<Replica> possibleReplicas = cache.getByBlockId(blockId);
+
+    if (possibleReplicas == null) return null;
+
+    for (Replica replica : possibleReplicas) {
+      if (replica.getStorageId() == storageId)
+        return replica;
+    }
+
+    return null;
+  }
+
+  private List<Replica> checkCacheByINodeId(long inodeId) {
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByINodeId(inodeId);
+  }
+
+  private List<Replica> checkCacheByBlockId(long blockId) {
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByBlockId(blockId);
+  }
+
+//  private List<Replica> checkCache(long[] inodeIds) {
+//    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+//    if (cache == null) return null;
+//  }
+
+  private void updateCache(long inodeId, long blockId) {
+
+  }
+
   @Override
   public void update(Replica replica)
       throws TransactionContextException {
@@ -130,7 +179,9 @@ public class ReplicaContext
       Object[] params) {
     final long blockId = (Long) params[0];
     final int storageId = (Integer) params[1];
-    Replica result = null;
+    Replica result = checkCacheByPk(blockId, storageId);
+    if (result != null) return result;
+
     List<Replica> replicas = getByBlock(blockId);
     if (replicas != null) {
       for (Replica replica : replicas) {
@@ -150,7 +201,12 @@ public class ReplicaContext
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long blockId = (Long) params[0];
     final long inodeId = (Long) params[1];
-    List<Replica> results = null;
+
+    List<Replica> results = checkCacheByBlockId(blockId);
+    if (results != null) return results;
+    results = checkCacheByINodeId(inodeId);
+    if (results != null && storageCallPrevented) return results;
+
     if (containsByBlock(blockId) || (containsByINode(inodeId) && storageCallPrevented)) {
       results = getByBlock(blockId);
       hit(iFinder, results, "bid", blockId);
@@ -167,7 +223,10 @@ public class ReplicaContext
   private List<Replica> findByINodeId(Replica.Finder iFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long inodeId = (Long) params[0];
-    List<Replica> results = null;
+
+    List<Replica> results = checkCacheByINodeId(inodeId);
+    if (results != null) return results;
+
     if (containsByINode(inodeId)) {
       results = getByINode(inodeId);
       hit(iFinder, results, "inodeid", inodeId);
