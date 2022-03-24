@@ -545,6 +545,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       // First, check in-memory cache.
       INode node = checkCache(names[i], parentIds[i]);
       if (node != null) {
+        LOG.debug("Successfully retrieved INode " + names[i] + ", parentID=" + parentIds[i] + " from local cache.");
         result.set(i, node);
       } else {
         // Next, try INode Hint Cache.
