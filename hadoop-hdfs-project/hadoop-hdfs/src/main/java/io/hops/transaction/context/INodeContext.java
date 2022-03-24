@@ -36,7 +36,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,7 +63,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     this.dataAccess = dataAccess;
   }
 
-  private LRUMetadataCache<INode> getMetadataCache() {
+  private InMemoryINodeCache getMetadataCache() {
     ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
 
     if (instance == null) {
@@ -79,7 +79,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
    * @return The INode with the specified ID, or null if the INode is not in the cache.
    */
   private INode checkCache(long id) {
-    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    InMemoryINodeCache metadataCache = getMetadataCache();
     if (metadataCache == null) {
       LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
       return null;
@@ -93,7 +93,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
    * @return The INode for the file/directory at the specified path, or null if the INode is not in the cache.
    */
   private INode checkCache(String path) {
-    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    InMemoryINodeCache metadataCache = getMetadataCache();
     if (metadataCache == null) {
       LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
       return null;
@@ -108,7 +108,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
    * @return The desired INode if it is was in the cache, otherwise null.
    */
   private INode checkCache(String localName, long parentId) {
-    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    InMemoryINodeCache metadataCache = getMetadataCache();
     if (metadataCache == null) {
       LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
       return null;
@@ -122,7 +122,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       return;
     }
 
-    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    InMemoryINodeCache metadataCache = getMetadataCache();
     if (metadataCache == null) return;
 
     for (INode node : nodes) {
@@ -136,7 +136,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       return;
     }
 
-    LRUMetadataCache<INode> metadataCache = getMetadataCache();
+    InMemoryINodeCache metadataCache = getMetadataCache();
     if (metadataCache == null) return;
 
     metadataCache.put(node.getFullPathName(), node.getId(), node);
@@ -541,15 +541,27 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
     for(int i=0; i<names.length; i++){
       final String nameParentKey = INode.nameParentKey(parentIds[i], names[i]);
-      INode node = inodesNameParentIndex.get(nameParentKey);
-      if(node != null){
+
+      // First, check in-memory cache.
+      INode node = checkCache(names[i], parentIds[i]);
+      if (node != null) {
         result.set(i, node);
-        hit(inodeFinder, node, "name", names[i], "parent_id", parentIds[i], "partition_id", partitionIds[i]);
-      }else{
-        namesRest.add(names[i]);
-        parentIdsRest.add(parentIds[i]);
-        partitionIdsRest.add(partitionIds[i]);
-        unpopulatedIndeces.add(i);
+      } else {
+        // Next, try INode Hint Cache.
+        node = inodesNameParentIndex.get(nameParentKey);
+
+        if (node != null) {
+          result.set(i, node);
+          hit(inodeFinder, node, "name", names[i], "parent_id", parentIds[i], "partition_id", partitionIds[i]);
+        } else {
+          // Finally, fall back to resolving from NDB.
+          LOG.debug("INode " + names[i] + " with parentID=" + parentIds[i] +
+                  " not in either local cache. Will have to fall back to retrieving from NDB.");
+          namesRest.add(names[i]);
+          parentIdsRest.add(parentIds[i]);
+          partitionIdsRest.add(partitionIds[i]);
+          unpopulatedIndeces.add(i);
+        }
       }
     }
 

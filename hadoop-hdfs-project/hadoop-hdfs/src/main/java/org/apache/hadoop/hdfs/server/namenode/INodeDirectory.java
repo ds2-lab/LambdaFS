@@ -43,7 +43,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
-import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 
 
 /**
@@ -144,7 +144,7 @@ public class INodeDirectory extends INodeWithAdditionalFields {
     if (instance == null) {
       LOG.warn("Cannot check local, in-memory cache for root INode as ServerlessNameNode instance is null.");
     } else {
-      LRUMetadataCache<INode> metadataCache = instance.namesystem.getMetadataCacheManager().getINodeCache();
+      InMemoryINodeCache metadataCache = instance.namesystem.getMetadataCacheManager().getINodeCache();
 
       INode node = metadataCache.getByINodeId(ROOT_INODE_ID);
       if (node != null)

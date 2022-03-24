@@ -4,7 +4,6 @@ import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.INode;
-import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,9 +35,9 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Used by Serverless NameNodes to store and retrieve cached metadata.
  */
-public class LRUMetadataCache<T> {
+public class InMemoryINodeCache {
     //static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
-    public static final Logger LOG = LoggerFactory.getLogger(LRUMetadataCache.class);
+    public static final Logger LOG = LoggerFactory.getLogger(InMemoryINodeCache.class);
 
     private static final int DEFAULT_MAX_ENTRIES = 10000;         // Default maximum capacity.
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;       // Default load factor.
@@ -48,7 +47,7 @@ public class LRUMetadataCache<T> {
     private final Lock _mutex = new ReentrantLock(true);
 
     // TODO: Add org.apache.commons.collections4.trie.PatriciaTrie to store INodes to support subtree invalidations.
-    private final PatriciaTrie<T> metadataTrie;
+    private final PatriciaTrie<INode> metadataTrie;
 
     /**
      * Keys are added to this set upon being invalidated. If a key is in this set,
@@ -70,7 +69,7 @@ public class LRUMetadataCache<T> {
      */
     private final HashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
 
-    private final HashMap<String, T> cache;
+    private final HashMap<String, INode> cache;
 
     /**
      * Cache hits experienced across all requests processed by the NameNode.
@@ -97,14 +96,14 @@ public class LRUMetadataCache<T> {
     /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
      */
-    public LRUMetadataCache(Configuration conf) {
+    public InMemoryINodeCache(Configuration conf) {
         this(conf, DEFAULT_MAX_ENTRIES, DEFAULT_LOAD_FACTOR);
     }
 
     /**
      * Create an LRU Metadata Cache using a specified maximum capacity and load factor.
      */
-    public LRUMetadataCache(Configuration conf, int capacity, float loadFactor) {
+    public InMemoryINodeCache(Configuration conf, int capacity, float loadFactor) {
         //this.invalidatedKeys = new HashSet<>();
         this.idToNameMapping = new HashMap<>(capacity, loadFactor);
         this.parentIdPlusLocalNameToFullPathMapping = new HashMap<>(capacity, loadFactor);
@@ -147,7 +146,7 @@ public class LRUMetadataCache<T> {
      * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
      * invalidated.
      */
-    public T getByPath(String key) {
+    public INode getByPath(String key) {
         _mutex.lock();
         try {
             if (!enabled)
@@ -158,7 +157,7 @@ public class LRUMetadataCache<T> {
 //                return null;
 //            }
 
-            T returnValue = cache.get(key);
+            INode returnValue = cache.get(key);
 
             if (returnValue == null) {
                 cacheMiss();
@@ -183,7 +182,7 @@ public class LRUMetadataCache<T> {
      * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
      * invalidated.
      */
-    public T getByParentINodeIdAndLocalName(long parentId, String localName) {
+    public INode getByParentINodeIdAndLocalName(long parentId, String localName) {
         _mutex.lock();
         try {
             if (!enabled)
@@ -192,18 +191,12 @@ public class LRUMetadataCache<T> {
             String parentIdPlusLocalName = parentId + localName;
             String key = parentIdPlusLocalNameToFullPathMapping.getOrDefault(parentIdPlusLocalName, null);
 
-//            if (invalidatedKeys.contains(key)){
-//                cacheMiss();
-//                return null;
-//            }
-
-            T returnValue = cache.get(key);
+            INode returnValue = cache.get(key);
 
             if (returnValue == null) {
                 cacheMiss();
             }
             else {
-                // LOG.debug("Retrieved value " + returnValue + " from cache using key " + key + ".");
                 cacheHit();
             }
 
@@ -221,7 +214,7 @@ public class LRUMetadataCache<T> {
      * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
      * invalidated.
      */
-    public T getByINodeId(long iNodeId) {
+    public INode getByINodeId(long iNodeId) {
         _mutex.lock();
         try {
             if (!enabled) {
@@ -248,20 +241,17 @@ public class LRUMetadataCache<T> {
      * @param iNodeId The INode ID of the given metadata object.
      * @param value The metadata object to cache under the given key.
      */
-    public T put(String key, long iNodeId, T value) {
+    public INode put(String key, long iNodeId, INode value) {
         if (value == null)
             throw new IllegalArgumentException("LRUMetadataCache does NOT support null values. Associated key: " + key);
 
         _mutex.lock();
         try {
             // Store the metadata in the cache directly.
-            T returnValue = cache.put(key, value);
+            INode returnValue = cache.put(key, value);
 
-            if (value instanceof INode) {
-                INode valueAsINode = (INode) value;
-                String parentIdPlusLocalName = valueAsINode.getParentId() + valueAsINode.getLocalName();
-                parentIdPlusLocalNameToFullPathMapping.put(parentIdPlusLocalName, key);
-            }
+            String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
+            parentIdPlusLocalNameToFullPathMapping.put(parentIdPlusLocalName, key);
 
             // Create a mapping between the INode ID and the path.
             idToNameMapping.put(iNodeId, key);
@@ -502,13 +492,13 @@ public class LRUMetadataCache<T> {
      * @return The entries that were prefixed by the specified prefix, so we can invalidate other
      * cached metadata objects (e.g., Ace and EncryptionZone instances).
      */
-    protected Collection<T> invalidateKeysByPrefix(String prefix) {
+    protected Collection<INode> invalidateKeysByPrefix(String prefix) {
         LOG.debug("Invalidating all cached INodes contained within the file subtree rooted at '" + prefix + "'.");
 
         _mutex.lock();
 
         try {
-            SortedMap<String, T> prefixedEntries = metadataTrie.prefixMap(prefix);
+            SortedMap<String, INode> prefixedEntries = metadataTrie.prefixMap(prefix);
             int numInvalidated = 0;
 
             for (String path : prefixedEntries.keySet()) {

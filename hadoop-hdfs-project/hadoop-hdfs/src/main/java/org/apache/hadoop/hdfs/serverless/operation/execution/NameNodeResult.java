@@ -5,10 +5,8 @@ import com.google.gson.JsonObject;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.hadoop.hdfs.server.namenode.INode;
-import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
-import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -300,7 +298,7 @@ public class NameNodeResult implements Serializable {
      *                  This is used by TCP connections in particular, as TCP messages generally contain an "op"
      *                  field to designate the request as one containing a result or one used for registration.
      */
-    public JsonObject toJson(String operation, LRUMetadataCache<INode> metadataCache) {
+    public JsonObject toJson(String operation, InMemoryINodeCache metadataCache) {
         JsonObject json = new JsonObject();
 
         // If the result is a duplicate request, then don't bother sending an actual result field.

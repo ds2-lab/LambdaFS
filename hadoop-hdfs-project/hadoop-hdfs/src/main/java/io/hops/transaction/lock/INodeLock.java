@@ -29,7 +29,7 @@ import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 import org.apache.hadoop.ipc.RetriableException;
 
 import java.io.IOException;
@@ -245,7 +245,7 @@ public class INodeLock extends BaseINodeLock {
       return null;
     }
 
-    LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
+    InMemoryINodeCache metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
     List<INode> resolvedINodes = new ArrayList<INode>();
     List<String> fullPathComponents = INode.getFullPathComponents(path);
 

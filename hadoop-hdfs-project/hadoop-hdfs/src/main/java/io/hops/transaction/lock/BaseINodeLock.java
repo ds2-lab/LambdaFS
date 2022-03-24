@@ -28,7 +28,7 @@ import io.hops.resolvingcache.Cache;
 import io.hops.metadata.hdfs.entity.INodeCandidatePrimaryKey;
 import io.hops.metadata.hdfs.entity.INodeIdentifier;
 import io.hops.transaction.EntityManager;
-import static io.hops.transaction.lock.Lock.LOG;
+
 import java.io.IOException;
 import org.apache.hadoop.hdfs.server.namenode.*;
 
@@ -48,8 +48,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
-import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
-import org.apache.hadoop.util.StringUtils;
+import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 
 public abstract class BaseINodeLock extends Lock {
   private final Map<INode, TransactionLockTypes.INodeLockType>
@@ -211,7 +210,7 @@ public abstract class BaseINodeLock extends Lock {
 
     // LOG.debug("Caching " + iNodes.size() + " INodes in local, in-memory cache.");
 
-    LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
+    InMemoryINodeCache metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
     for (INode node : iNodes) {
       // In theory, getFullPathName() could access storage, but given we'd only be doing this after having
       // accessed storage (that's why we're updating the cache), all of this information should already

@@ -44,8 +44,7 @@ import org.apache.hadoop.hdfs.server.blockmanagement.BlockStoragePolicySuite;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.AclException;
 import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.server.blockmanagement.BlockStoragePolicySuite;
-import org.apache.hadoop.hdfs.serverless.cache.LRUMetadataCache;
+import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 import org.apache.hadoop.util.StringUtils;
 
 import java.util.ArrayList;
@@ -54,7 +53,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
+
 import org.apache.hadoop.fs.XAttr;
 import org.apache.hadoop.hdfs.protocol.QuotaExceededException;
 import org.apache.hadoop.hdfs.util.ChunkedArrayList;
@@ -570,7 +569,7 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
 
         parent = EntityManager.find(INode.Finder.ByINodeIdFTIS, getParentId());
       } else {
-        LRUMetadataCache<INode> metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
+        InMemoryINodeCache metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
         parent = metadataCache.getByINodeId(getParentId());
 
         // If the parent could not be resolved from the metadata cache, then we'll have to retrieve it from storage.

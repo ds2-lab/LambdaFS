@@ -21,7 +21,7 @@ public class MetadataCacheManager {
     /**
      * Caches INodes.
      */
-    private final LRUMetadataCache<INode> inodeCache;
+    private final InMemoryINodeCache inodeCache;
 
     /**
      * Caches EncryptionZone instances. The key is INode ID.
@@ -46,7 +46,7 @@ public class MetadataCacheManager {
     private final ReplicaCacheManager replicaCacheManager;
 
     public MetadataCacheManager(Configuration configuration) {
-        inodeCache = new LRUMetadataCache<INode>(configuration);
+        inodeCache = new InMemoryINodeCache(configuration);
         encryptionZoneCache = Caffeine.newBuilder()
                 .maximumSize(10_000)
                 .build();
@@ -62,7 +62,7 @@ public class MetadataCacheManager {
 
     public ReplicaCacheManager getReplicaCacheManager() { return this.replicaCacheManager; }
 
-    public LRUMetadataCache<INode> getINodeCache() { return inodeCache; }
+    public InMemoryINodeCache getINodeCache() { return inodeCache; }
 
     public int invalidateINodesByPrefix(String prefix) {
         Collection<INode> prefixedINodes = inodeCache.invalidateKeysByPrefix(prefix);
