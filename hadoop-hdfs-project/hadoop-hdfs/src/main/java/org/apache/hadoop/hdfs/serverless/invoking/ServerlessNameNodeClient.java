@@ -413,25 +413,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 }
 
                 long localEnd = System.currentTimeMillis();
-                long opEnd = System.currentTimeMillis();
 
                 //addLatency(localEnd - localStart, -1, response.has(COLD_START) && response.get(COLD_START).getAsBoolean());
                 addLatency(localEnd - localStart, -1);
 
                 // Collect and save/record metrics.
-                long nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
-                int cacheHits = response.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
-                int cacheMisses = response.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
-                long fnStartTime = response.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
-                long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
-                long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
-                long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
-                long finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
-                OperationPerformed operationPerformed = new OperationPerformed(operationName, requestId, opStart,
-                        opEnd, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime, targetDeployment, false,
-                        true, "TCP", nameNodeId, cacheHits, cacheMisses);
-                operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
-                operationsPerformed.put(requestId, operationPerformed);
+                createAndStoreOperationPerformed(response, operationName, requestId, opStart, localEnd, targetDeployment);
 
                 return response;
             } catch (TimeoutException ex) {
@@ -487,19 +474,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         operationName + ". Time elapsed: " + (opEnd - opStart) + ".");
 
                 // Collect and save/record metrics.
-                long nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
-                int cacheHits = response.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
-                int cacheMisses = response.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
-                long fnStartTime = response.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
-                long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
-                long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
-                long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
-                long finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
-                OperationPerformed operationPerformed = new OperationPerformed(operationName, requestId, opStart,
-                        opEnd, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime, targetDeployment, true,
-                        true, "HTTP", nameNodeId, cacheHits, cacheMisses);
-                operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
-                operationsPerformed.put(requestId, operationPerformed);
+                createAndStoreOperationPerformed(response, operationName, requestId, opStart, opEnd, targetDeployment);
 
                 return response;
             }
@@ -607,6 +582,23 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (response.has("body"))
             response = response.get("body").getAsJsonObject();
 
+        createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime, mappedFunctionNumber);
+
+        return response;
+    }
+
+    /**
+     * Create and store an {@link OperationPerformed} object using the metrics stored in the response
+     * from the serverless function.
+     * @param response The (body of the) response from the serverless function.
+     * @param operationName The name of the file system operation that was performed.
+     * @param requestId The unique ID of the request associated with this file system operation.
+     * @param startTime The local timestamp at which this operation began.
+     * @param endTime The local timestamp at which this operation completed.
+     * @param mappedFunctionNumber The deployment targeted during this operation.
+     */
+    private void createAndStoreOperationPerformed(JsonObject response, String operationName, String requestId,
+                                                  long startTime, long endTime, int mappedFunctionNumber) {
         long nameNodeId = -1;
         if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
             nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
@@ -632,8 +624,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(), nameNodeId, cacheMisses, cacheHits);
         operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
         operationsPerformed.put(requestId, operationPerformed);
-
-        return response;
     }
 
     /**

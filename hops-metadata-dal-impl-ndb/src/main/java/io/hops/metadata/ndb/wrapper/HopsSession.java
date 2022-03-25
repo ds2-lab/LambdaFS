@@ -31,6 +31,7 @@ import io.hops.events.HopsEventOperation;
 import io.hops.exception.StorageException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.Collection;
 
@@ -38,8 +39,33 @@ public class HopsSession {
   private final Session session;
   private LockMode lockMode = LockMode.READ_COMMITTED;
 
+//  /**
+//   * The read-related statistics across the entire lifetime of this HopsSession object.
+//   */
+//  private final DescriptiveStatistics lifetimeReadStatistics;
+//
+//  /**
+//   * The write-related statistics across the entire lifetime of this HopsSession object.
+//   */
+//  private final DescriptiveStatistics lifetimeWriteStatistics;
+//
+//  /**
+//   * The read-related statistics of this HopsSession object for the current operation being performed.
+//   */
+//  private final DescriptiveStatistics currentOperationReadStatistics;
+//
+//  /**
+//   * The write-related statistics of this HopsSession object for the current operation being performed.
+//   */
+//  private final DescriptiveStatistics currentOperationWriteStatistics;
+
   public HopsSession(Session session) {
     this.session = session;
+
+//    this.lifetimeReadStatistics = new DescriptiveStatistics();
+//    this.lifetimeWriteStatistics = new DescriptiveStatistics();
+//    this.currentOperationReadStatistics = new DescriptiveStatistics();
+//    this.currentOperationWriteStatistics = new DescriptiveStatistics();
   }
 
   static final Log LOG = LogFactory.getLog(HopsSession.class);
