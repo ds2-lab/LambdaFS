@@ -119,6 +119,7 @@ public class InMemoryINodeCache {
      */
     protected void cacheHit() {
         int currentHits = threadLocalCacheHits.get();
+        LOG.debug("Cache hit! Current number of cache hits: " + (currentHits + 1));
         threadLocalCacheHits.set(currentHits + 1);
     }
 
@@ -127,6 +128,7 @@ public class InMemoryINodeCache {
      */
     protected void cacheMiss() {
         int currentMisses = threadLocalCacheMisses.get();
+        LOG.debug("Cache miss! Current number of cache misses: " + (currentMisses + 1));
         threadLocalCacheMisses.set(currentMisses + 1);
     }
 
