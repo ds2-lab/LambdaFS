@@ -146,12 +146,10 @@ public class InMemoryINodeCache {
 
             INode returnValue = cache.get(key);
 
-            if (returnValue == null) {
+            if (returnValue == null)
                 cacheMiss();
-            }
-            else {
+            else
                 cacheHit();
-            }
 
             return returnValue;
         } finally {
@@ -179,12 +177,10 @@ public class InMemoryINodeCache {
 
             INode returnValue = cache.get(key);
 
-            if (returnValue == null) {
+            if (returnValue == null)
                 cacheMiss();
-            }
-            else {
+            else
                 cacheHit();
-            }
 
             return returnValue;
         } finally {
@@ -204,12 +200,12 @@ public class InMemoryINodeCache {
         _mutex.lock();
         try {
             if (!enabled) {
-                cacheMiss();
                 return null;
             }
 
             if (idToNameMapping.containsKey(iNodeId)) {
                 String key = idToNameMapping.get(iNodeId);
+                cacheHit();
                 return getByPath(key);
             }
 
