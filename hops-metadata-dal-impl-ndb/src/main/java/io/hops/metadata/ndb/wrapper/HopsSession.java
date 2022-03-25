@@ -39,6 +39,11 @@ public class HopsSession {
   private final Session session;
   private LockMode lockMode = LockMode.READ_COMMITTED;
 
+  // Using the DescriptiveStatistics objects with transactions and everything would be complicated.
+  // The individual calls here may or may not actually perform network I/O depending on if we're
+  // in a transaction or not. Could maybe check if currentTransaction() is null or not and, if not
+  // then record the statistics, but then I'd have to separately account for the transactions.
+
 //  /**
 //   * The read-related statistics across the entire lifetime of this HopsSession object.
 //   */
