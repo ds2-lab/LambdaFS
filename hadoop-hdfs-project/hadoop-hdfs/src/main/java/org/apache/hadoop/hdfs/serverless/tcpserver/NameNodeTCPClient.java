@@ -343,9 +343,8 @@ public class NameNodeTCPClient {
                     tcpResult.addException(ex);
                 }
 
-                String jsonString = new Gson().toJson(tcpResult.toJson(
-                        ServerlessClientServerUtilities.OPERATION_RESULT,
-                        serverlessNameNode.getNamesystem().getMetadataCacheManager().getINodeCache()));
+                String jsonString = new Gson().toJson(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT,
+                        serverlessNameNode.getNamesystem().getMetadataCacheManager()));
 
                 trySendTcp(connection, jsonString, false);
             }

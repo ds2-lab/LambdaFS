@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.hops.transaction.context.BlockPK;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -32,6 +33,8 @@ public class ReplicaCache<Key extends BlockPK, Value> {
      * Block ID to Set<Value>, where Value is some type of replica object.
      */
     private final Cache<Long, Set<Value>> blockIdsToReplicas;
+
+    private ReplicaCacheManager replicaCacheManager;
 
     protected ReplicaCache() {
         this(DEFAULT_MAX_CACHE_SIZE);
@@ -64,6 +67,34 @@ public class ReplicaCache<Key extends BlockPK, Value> {
     }
 
     /**
+     * Record a cache hit.
+     */
+    private void cacheHit() {
+        if (replicaCacheManager == null) {
+            ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+            if (instance == null) return;
+            MetadataCacheManager metadataCacheManager = instance.getNamesystem().getMetadataCacheManager();
+            replicaCacheManager = metadataCacheManager.getReplicaCacheManager();
+        }
+
+        replicaCacheManager.cacheHit();
+    }
+
+    /**
+     * Record a cache miss.
+     */
+    private void cacheMiss() {
+        if (replicaCacheManager == null) {
+            ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+            if (instance == null) return;
+            MetadataCacheManager metadataCacheManager = instance.getNamesystem().getMetadataCacheManager();
+            replicaCacheManager = metadataCacheManager.getReplicaCacheManager();
+        }
+
+        replicaCacheManager.cacheMiss();
+    }
+
+    /**
      * Cache a replica.
      * @param key The primary key object of the replica.
      * @param value The replica being cached.
@@ -90,24 +121,35 @@ public class ReplicaCache<Key extends BlockPK, Value> {
     }
 
     public Value getByPrimaryKey(Key key) {
-        return replicaCache.getIfPresent(key);
+        Value val = replicaCache.getIfPresent(key);
+        if (val == null)
+            cacheMiss();
+        else
+            cacheHit();
+        return val;
     }
 
     public List<Value> getByINodeId(long inodeId) {
         Set<Value> nodes = inodeIdsToReplicas.getIfPresent(inodeId);
 
-        if (nodes != null)
+        if (nodes != null) {
+            cacheHit();
             return new ArrayList<>(nodes);
+        }
 
+        cacheMiss();
         return null;
     }
 
     public List<Value> getByBlockId(long blockId) {
         Set<Value> nodes = blockIdsToReplicas.getIfPresent(blockId);
 
-        if (nodes != null)
+        if (nodes != null) {
+            cacheHit();
             return new ArrayList<>(nodes);
+        }
 
+        cacheMiss();
         return null;
     }
 }

@@ -102,7 +102,7 @@ public class NameNodeWorkerThread extends Thread {
                     LOG.debug("Task " + task.getTaskId() + " does NOT appear to be a duplicate.");
 
                 // Clear and reset statistics from previously-executed tasks.
-                serverlessNameNodeInstance.getNamesystem().getMetadataCacheManager().getINodeCache().clearCurrentRequestCacheCounters();
+                // serverlessNameNodeInstance.getNamesystem().getMetadataCacheManager().getINodeCache().clearCurrentRequestCacheCounters();
                 serverlessNameNodeInstance.clearTransactionEvents();
                 TransactionsStats.getInstance().clearForServerless();
                 requestCurrentlyProcessing = task.getTaskId();

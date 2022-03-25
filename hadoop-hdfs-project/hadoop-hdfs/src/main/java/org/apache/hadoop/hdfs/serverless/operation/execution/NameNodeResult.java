@@ -7,6 +7,8 @@ import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
+import org.apache.hadoop.hdfs.serverless.cache.MetadataCacheManager;
+import org.apache.hadoop.hdfs.serverless.cache.ReplicaCacheManager;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -289,8 +291,7 @@ public class NameNodeResult implements Serializable {
      * is added to the payload indicating that this response is for a duplicate request and should not be
      * returned as the true result of the associated file system operation.
      *
-     * @param metadataCache The metadata cache used by this NameNode. We use this to get the cache HITS and cache
-     *                      MISSES encountered while executing the current request.
+     * @param metadataCacheManager The manager of the in-memory metadata caches so we can get cache hit/miss metrics.
      *
      *                      We do NOT clear the counters on the metadataCache object after extracting them.
      *                      This is done by the NameNodeWorkerThread when it first starts executing a request.
@@ -298,8 +299,10 @@ public class NameNodeResult implements Serializable {
      *                  This is used by TCP connections in particular, as TCP messages generally contain an "op"
      *                  field to designate the request as one containing a result or one used for registration.
      */
-    public JsonObject toJson(String operation, InMemoryINodeCache metadataCache) {
+    public JsonObject toJson(String operation, MetadataCacheManager metadataCacheManager) {
         JsonObject json = new JsonObject();
+        InMemoryINodeCache metadataCache = metadataCacheManager.getINodeCache();
+        ReplicaCacheManager replicaCacheManager = metadataCacheManager.getReplicaCacheManager();
 
         // If the result is a duplicate request, then don't bother sending an actual result field.
         // That's just unnecessary network I/O. We can just include a flag indicating that this is
@@ -357,8 +360,10 @@ public class NameNodeResult implements Serializable {
         json.addProperty(ServerlessNameNodeKeys.REQUEST_METHOD, requestMethod);
         json.addProperty(ServerlessNameNodeKeys.CANCELLED, false);
         json.addProperty(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
-        json.addProperty(ServerlessNameNodeKeys.CACHE_HITS, metadataCache.getNumCacheHitsCurrentRequest());
-        json.addProperty(ServerlessNameNodeKeys.CACHE_MISSES, metadataCache.getNumCacheMissesCurrentRequest());
+        int totalCacheHits = metadataCache.getNumCacheHitsCurrentRequest() + replicaCacheManager.getThreadLocalCacheHits();
+        int totalCacheMisses = metadataCache.getNumCacheMissesCurrentRequest() + replicaCacheManager.getThreadLocalCacheMisses();
+        json.addProperty(ServerlessNameNodeKeys.CACHE_HITS, totalCacheHits);
+        json.addProperty(ServerlessNameNodeKeys.CACHE_MISSES, totalCacheMisses);
         json.addProperty(ServerlessNameNodeKeys.FN_START_TIME, fnStartTime);
         json.addProperty(ServerlessNameNodeKeys.ENQUEUED_TIME, enqueuedTime);
         json.addProperty(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
@@ -374,6 +379,10 @@ public class NameNodeResult implements Serializable {
             json.addProperty(ServerlessNameNodeKeys.TRANSACTION_EVENTS, txEventsSerializedAndEncoded);
         else
             LOG.warn("There are no Transaction Statistics to return to the client...");
+
+        // Reset these in-case this thread gets re-used in the future for another request.
+        metadataCache.resetCacheHitMissCounters();
+        replicaCacheManager.resetCacheHitMissCounters();
 
         json.addProperty(ServerlessNameNodeKeys.FN_END_TIME, System.currentTimeMillis());
         return json;

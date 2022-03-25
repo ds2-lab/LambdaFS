@@ -1,7 +1,5 @@
 package org.apache.hadoop.hdfs.serverless.cache;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.transaction.context.*;
 import org.slf4j.Logger;
@@ -29,15 +27,10 @@ public class ReplicaCacheManager {
 
     private final HashMap<Class<? extends BaseReplicaContext<? extends BlockPK, ?>>, ReplicaCache<? extends BlockPK, ?>> masterCacheMapping;
 
+    private final ThreadLocal<Integer> threadLocalCacheHits = ThreadLocal.withInitial(() -> 0);
+    private final ThreadLocal<Integer> threadLocalCacheMisses = ThreadLocal.withInitial(() -> 0);
+
     private ReplicaCacheManager() {
-//        replicaCache = Caffeine.newBuilder().maximumSize(10_000).build();
-//        corruptReplicaCache = Caffeine.newBuilder().maximumSize(10_000).build();
-//        invalidatedBlockCache = Caffeine.newBuilder().maximumSize(10_000).build();
-//        pendingBlockCache = Caffeine.newBuilder().maximumSize(10_000).build();
-//        replicaUnderConstructionCache = Caffeine.newBuilder().maximumSize(10_000).build();
-//        underReplicatedBlockCache = Caffeine.newBuilder().maximumSize(10_000).build();
-//        excessReplicaCache = Caffeine.newBuilder().maximumSize(10_000).build();
-//        cachedBlockCache = Caffeine.newBuilder().maximumSize(10_000).build();
         LOG.debug("Instantiating the Replica Cache Manager.");
 
         replicaCache = new ReplicaCache<>(10_000);
@@ -60,31 +53,33 @@ public class ReplicaCacheManager {
         masterCacheMapping.put(CachedBlockContext.class, cachedBlockCache);
     }
 
-//    /**
-//     * Return the cache associated with the given context, or null if no such cache exists.
-//     *
-//     * This uses the class of the given context.
-//     *
-//     * @param context The context for which the associated cache is desired.
-//     * @return The associated cache, or null if none exists.
-//     */
-//    public <T extends BaseReplicaContext<? extends BlockPK, ?>> ReplicaCache<? extends BlockPK, ?> getCache(T context) {
-//        if (context == null)
-//            throw new IllegalArgumentException("Context parameter must be non-null.");
-//        return masterCacheMapping.get(context.getClass());
-//    }
+    public int getThreadLocalCacheHits() { return this.threadLocalCacheHits.get(); }
 
-//    /**
-//     * Return the cache associated with the given context class, or null if no such cache exists.
-//     *
-//     * @param clazz The context class for which the associated cache is desired.
-//     * @return The associated cache, or null if none exists.
-//     */
-//    public <T extends BaseReplicaContext<? extends BlockPK, E>, E extends ReplicaBase, K extends BlockPK, V extends ReplicaBase> ReplicaCache<? extends BlockPK, ? extends ReplicaBase> getCache(Class<T> clazz) {
-//        if (clazz == null)
-//            throw new IllegalArgumentException("Class parameter must be non-null.");
-//        return masterCacheMapping.get(clazz);
-//    }
+    public int getThreadLocalCacheMisses() { return this.threadLocalCacheMisses.get(); }
+
+    /**
+     * Record a cache hit.
+     */
+    protected void cacheHit() {
+        int currentHits = threadLocalCacheHits.get();
+        threadLocalCacheHits.set(currentHits + 1);
+    }
+
+    /**
+     * Record a cache miss.
+     */
+    protected void cacheMiss() {
+        int currentMisses = threadLocalCacheMisses.get();
+        threadLocalCacheMisses.set(currentMisses + 1);
+    }
+
+    /**
+     * Set the 'cache hits' and 'cache misses' counters to 0.
+     */
+    public void resetCacheHitMissCounters() {
+        threadLocalCacheHits.set(0);
+        threadLocalCacheMisses.set(0);
+    }
 
     public ReplicaCache<? extends BlockPK, ?> getReplicaCache(Class<? extends BaseReplicaContext<?,?>> clazz) {
         if (clazz == null)

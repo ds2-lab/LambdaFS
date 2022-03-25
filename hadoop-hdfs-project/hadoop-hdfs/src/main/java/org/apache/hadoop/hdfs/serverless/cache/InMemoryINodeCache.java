@@ -74,22 +74,15 @@ public class InMemoryINodeCache {
     /**
      * Cache hits experienced across all requests processed by the NameNode.
      */
-    private int numCacheHits;
+    //private int numCacheHits;
 
     /**
      * Cache misses experienced across all requests processed by the NameNode.
      */
-    private int numCacheMisses;
+    //private int numCacheMisses;
 
-    /**
-     * Cache hits experienced while processing the CURRENT request.
-     */
-    private int numCacheHitsCurrentRequest;
-
-    /**
-     * Cache misses experienced while processing the CURRENT request.
-     */
-    private int numCacheMissesCurrentRequest;
+    private final ThreadLocal<Integer> threadLocalCacheHits = ThreadLocal.withInitial(() -> 0);
+    private final ThreadLocal<Integer> threadLocalCacheMisses = ThreadLocal.withInitial(() -> 0);
 
     private final boolean enabled;
 
@@ -114,28 +107,27 @@ public class InMemoryINodeCache {
     }
 
     /**
-     * Update counters that track the number of cache hits there have been.
+     * Set the 'cache hits' and 'cache misses' counters to 0.
      */
-    private void cacheHit() {
-        this.numCacheHits++;
-        this.numCacheHitsCurrentRequest++;
+    public void resetCacheHitMissCounters() {
+        threadLocalCacheHits.set(0);
+        threadLocalCacheMisses.set(0);
     }
 
     /**
-     * Update counters that track the number of cache misses there have been.
+     * Record a cache hit.
      */
-    private void cacheMiss() {
-        this.numCacheMisses++;
-        this.numCacheMissesCurrentRequest++;
+    protected void cacheHit() {
+        int currentHits = threadLocalCacheHits.get();
+        threadLocalCacheHits.set(currentHits + 1);
     }
 
     /**
-     * Reset the current-request counters for cache hits/misses.
+     * Record a cache miss.
      */
-    @Deprecated // TODO: Why deprecated?
-    public void clearCurrentRequestCacheCounters() {
-        this.numCacheHitsCurrentRequest = 0;
-        this.numCacheMissesCurrentRequest = 0;
+    protected void cacheMiss() {
+        int currentMisses = threadLocalCacheMisses.get();
+        threadLocalCacheMisses.set(currentMisses + 1);
     }
 
     /**
@@ -152,18 +144,12 @@ public class InMemoryINodeCache {
             if (!enabled)
                 return null;
 
-//            if (invalidatedKeys.contains(key)){
-//                cacheMiss();
-//                return null;
-//            }
-
             INode returnValue = cache.get(key);
 
             if (returnValue == null) {
                 cacheMiss();
             }
             else {
-                // LOG.debug("Retrieved value " + returnValue + " from cache using key " + key + ".");
                 cacheHit();
             }
 
@@ -260,14 +246,6 @@ public class InMemoryINodeCache {
             /*T existingEntry = */
             metadataTrie.put(key, value);
 
-            // If this key was previously invalidated, then it is no longer invalid, seeing as we're caching it now.
-            // boolean removed = invalidatedKeys.remove(key);
-
-            //if (removed)
-            //    LOG.debug("Previously invalid key '" + key + "' updated with valid cache value. Cache size: " + cache.size());
-//            else if (existingEntry == null) // This ensures we only print the message if the object wasn't already cached.
-//                LOG.debug("Inserted metadata object into cache under key '" + key + "'. Cache size: " + cache.size());
-
             return returnValue;
         } finally {
             _mutex.unlock();
@@ -309,23 +287,11 @@ public class InMemoryINodeCache {
     public int size(boolean includeInvalidKeys) {
         _mutex.lock();
         try {
-            int cacheSize = cache.size();
-
-//            if (!includeInvalidKeys)
-//                cacheSize -= invalidatedKeys.size();
-
-            return cacheSize;
+            return cache.size();
         } finally {
             _mutex.unlock();
         }
     }
-
-//    /**
-//     * Return the number of keys that have been invalidated.
-//     */
-//    public int numInvalidatedKeys() {
-//        return invalidatedKeys.size();
-//    }
 
     /**
      * Check if there is an entry for the given key in this cache, regardless of whether not that entry is
@@ -445,41 +411,12 @@ public class InMemoryINodeCache {
         LOG.warn("Invalidating ENTIRE cache. ");
         _mutex.lock();
         try {
-//            for (String key : cache.keySet())
-//                invalidateKey(key, true);
             cache.clear();
             metadataTrie.clear();
         } finally {
             _mutex.unlock();
         }
     }
-
-//    /**
-//     * Return the current set of keys in the cache.
-//     * @param includeInvalidKeys If true, the invalid keys will also be included in the returned list.
-//     */
-//    public List<String> getPathKeys(boolean includeInvalidKeys) {
-//        ArrayList<String> keyList = new ArrayList<>();
-//
-//        _mutex.lock();
-//        try {
-//            for (String key : cache.keySet()) {
-//                if (includeInvalidKeys || !invalidatedKeys.contains(key))
-//                    keyList.add(key);
-//            }
-//
-//            return keyList;
-//        } finally {
-//            _mutex.unlock();
-//        }
-//    }
-
-    /**
-     * Get the invalidated keys.
-     */
-//    public String[] getInvalidatedKeys() {
-//        return invalidatedKeys.toArray(new String[0]);
-//    }
 
     /**
      * Invalidate any keys in our cache prefixed by the {@code prefix} parameter.
@@ -517,18 +454,10 @@ public class InMemoryINodeCache {
     }
 
     public int getNumCacheMissesCurrentRequest() {
-        return numCacheMissesCurrentRequest;
+        return threadLocalCacheHits.get();
     }
 
     public int getNumCacheHitsCurrentRequest() {
-        return numCacheHitsCurrentRequest;
-    }
-
-    public int getNumCacheMisses() {
-        return numCacheMisses;
-    }
-
-    public int getNumCacheHits() {
-        return numCacheHits;
+        return threadLocalCacheHits.get();
     }
 }
