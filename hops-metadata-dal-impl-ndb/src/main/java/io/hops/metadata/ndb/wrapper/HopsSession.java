@@ -31,7 +31,6 @@ import io.hops.events.HopsEventOperation;
 import io.hops.exception.StorageException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.Collection;
 

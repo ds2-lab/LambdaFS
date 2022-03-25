@@ -146,7 +146,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         if(requestHandlerLOG.isTraceEnabled()){
           requestHandlerLOG.debug("All Locks Acquired. Time " + acquireLockTime + " ms");
         }
-        //sometimes in setup we call light weight request handler that messes up with the NDC
+        //sometimes in setup we call lightweight request handler that messes up with the NDC
         removeNDC();
         setNDC(info);
         EntityManager.preventStorageCall(true);
