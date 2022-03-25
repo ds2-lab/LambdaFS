@@ -452,7 +452,7 @@ public class InMemoryINodeCache {
     }
 
     public int getNumCacheMissesCurrentRequest() {
-        return threadLocalCacheHits.get();
+        return threadLocalCacheMisses.get();
     }
 
     public int getNumCacheHitsCurrentRequest() {
