@@ -14,6 +14,11 @@ public class TransactionEvent implements Serializable {
     private static final long serialVersionUID = 6838852634713013849L;
     private final List<TransactionAttempt> attempts;
 
+    public static String LOCKING =              "LOCKING";
+    public static String PROCESSING =           "IN-MEMORY PROCESSING";
+
+    public static String CONSISTENCY_PROTOCOL = "CONSISTENCY_PROTOCOL";
+
     public static String INITIALIZATION =       "INITIALIZATION";
     public static String CREATE_ACKS =          "CREATE_ACKS";
     public static String SUBSCRIBE_TO_ACKS =    "SUBSCRIBE_TO_ACKS";
@@ -21,6 +26,8 @@ public class TransactionEvent implements Serializable {
     public static String ISSUE_INVALIDATIONS =  "ISSUE_INVALIDATIONS";
     public static String WAIT_FOR_ACKS =        "WAIT_FOR_ACKS";
     public static String CLEAN_UP =             "CLEAN_UP";
+
+    public static String COMMIT =               "COMMIT";
 
     /**
      * Time at which the transaction started.
@@ -151,6 +158,9 @@ public class TransactionEvent implements Serializable {
 
     public static HashMap<String, Long> getSums(Collection<TransactionEvent> collection) {
         HashMap<String, Long> sums = new HashMap<>();
+        sums.put(LOCKING, 0L);
+        sums.put(PROCESSING, 0L);
+
         sums.put(INITIALIZATION, 0L);
         sums.put(CREATE_ACKS, 0L);
         sums.put(SUBSCRIBE_TO_ACKS, 0L);
@@ -159,8 +169,13 @@ public class TransactionEvent implements Serializable {
         sums.put(WAIT_FOR_ACKS, 0L);
         sums.put(CLEAN_UP, 0L);
 
+        sums.put(COMMIT, 0L);
+
         for (TransactionEvent ev : collection) {
             for (TransactionAttempt attempt : ev.attempts) {
+                long lockTime = sums.get(LOCKING);
+                long inMemoryProcessingTime = sums.get(PROCESSING);
+
                 long initializationTime = sums.get(INITIALIZATION);
                 long createAcks = sums.get(CREATE_ACKS);
                 long subscribeToAcks = sums.get(SUBSCRIBE_TO_ACKS);
@@ -169,6 +184,11 @@ public class TransactionEvent implements Serializable {
                 long waitForAcksTime = sums.get(WAIT_FOR_ACKS);
                 long cleanUpTime = sums.get(CLEAN_UP);
 
+                long commitTime = sums.get(COMMIT);
+
+                sums.put(LOCKING, lockTime + (attempt.getAcquireLocksEnd() - attempt.getAcquireLocksStart()));
+                sums.put(PROCESSING, inMemoryProcessingTime + (attempt.getProcessingEnd() - attempt.getProcessingStart()));
+
                 sums.put(INITIALIZATION, initializationTime + (attempt.getConsistencyPreprocessingEnd() - attempt.getConsistencyPreprocessingStart()));
                 sums.put(CREATE_ACKS, createAcks + (attempt.getConsistencyComputeAckRecordsEnd() - attempt.getConsistencyComputeAckRecordsStart()));
                 sums.put(SUBSCRIBE_TO_ACKS, subscribeToAcks + (attempt.getConsistencySubscribeAckEventsEnd() - attempt.getConsistencySubscribeAckEventsStart()));
@@ -176,6 +196,8 @@ public class TransactionEvent implements Serializable {
                 sums.put(ISSUE_INVALIDATIONS, issueInvalidationsTime + (attempt.getConsistencyIssueInvalidationsEnd() - attempt.getConsistencyIssueInvalidationsStart()));
                 sums.put(WAIT_FOR_ACKS, waitForAcksTime + (attempt.getConsistencyWaitForAcksEnd() - attempt.getConsistencyWaitForAcksStart()));
                 sums.put(CLEAN_UP, cleanUpTime + (attempt.getConsistencyCleanUpEnd() - attempt.getConsistencyCleanUpStart()));
+
+                sums.put(COMMIT, commitTime + (attempt.getCommitEnd() - attempt.getCommitStart()));
             }
         }
 
@@ -183,11 +205,22 @@ public class TransactionEvent implements Serializable {
     }
 
     public static String getMetricsHeader() {
+        return String.format("%-20s %-22s ", LOCKING, PROCESSING) + getConsistencyProtocolHeader() +
+                String.format(" %-20s", COMMIT);
+    }
+
+    public static String getMetricsString(HashMap<String, ?> metrics) {
+        return String.format("%-20s %-22s ", metrics.get(LOCKING), metrics.get(PROCESSING)) +
+                getConsistencyProtocolString(metrics) + String.format(" %-20s", metrics.get(COMMIT));
+
+    }
+
+    public static String getConsistencyProtocolHeader() {
         return String.format("%-20s %-20s %-20s %-20s %-20s %-20s %-20s", INITIALIZATION, CREATE_ACKS,
                 SUBSCRIBE_TO_ACKS, WRITE_ACKS_TO_NDB, ISSUE_INVALIDATIONS, WAIT_FOR_ACKS, CLEAN_UP);
     }
 
-    public static String getMetricsString(HashMap<String, ?> metrics) {
+    public static String getConsistencyProtocolString(HashMap<String, ?> metrics) {
         return String.format("%-20s %-20s %-20s %-20s %-20s %-20s %-20s", metrics.get(INITIALIZATION),
                 metrics.get(CREATE_ACKS), metrics.get(SUBSCRIBE_TO_ACKS), metrics.get(WRITE_ACKS_TO_NDB),
                 metrics.get(ISSUE_INVALIDATIONS), metrics.get(WAIT_FOR_ACKS), metrics.get(CLEAN_UP));
