@@ -17,6 +17,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
@@ -550,6 +551,8 @@ public class NameNodeTCPClient {
         // Create a new task. After this, we assign it to the worker thread and wait for the
         // result to be computed before returning it to the user.
         FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, false, "TCP");
+
+        BaseHandler.currentRequestId.set(requestId);
 
         serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult, false);
         return tcpResult;

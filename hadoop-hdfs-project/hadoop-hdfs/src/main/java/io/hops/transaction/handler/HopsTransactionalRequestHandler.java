@@ -38,6 +38,7 @@ import org.apache.hadoop.hdfs.protocol.RecoveryInProgressException;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
@@ -90,10 +91,7 @@ public abstract class HopsTransactionalRequestHandler
             serverlessNameNodeInstance;
 
     if (instance == null) {
-      // requestHandlerLOG.warn("Serverless NameNode instance is null. Cannot commit events directly.");
-      // requestHandlerLOG.warn("Committing events to temporary, static variable.");
-
-      ThreadLocal<Set<TransactionEvent>> tempEventsThreadLocal = OpenWhiskHandler.temporaryEventSet;
+      ThreadLocal<Set<TransactionEvent>> tempEventsThreadLocal = BaseHandler.temporaryEventSet;
       Set<TransactionEvent> tempEvents = tempEventsThreadLocal.get();
 
       if (tempEvents == null) {
@@ -103,9 +101,12 @@ public abstract class HopsTransactionalRequestHandler
 
       tempEvents.add(this.transactionEvent);
     } else {
-      // String requestId = instance.getRequestCurrentlyProcessing();
-      this.transactionEvent.setRequestId("UNKNOWN");
-      // requestHandlerLOG.debug("Committing transaction event for transaction " + operationId + " now. Associated request ID: " + requestId);
+      // Try to get the current request ID from the base handler. If, for whatever reason, the current
+      // request ID is null, then just generate and use a random UUID to ensure the hash is unique.
+      String currentRequestId = BaseHandler.currentRequestId.get();
+      if (currentRequestId == null) currentRequestId = UUID.randomUUID().toString();
+      this.transactionEvent.setRequestId(currentRequestId);
+
       // This adds to a set, so multiple adds won't mess anything up.
       instance.addTransactionEvent(this.transactionEvent);
     }

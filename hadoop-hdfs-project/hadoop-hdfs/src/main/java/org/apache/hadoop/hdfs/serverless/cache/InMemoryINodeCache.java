@@ -128,7 +128,7 @@ public class InMemoryINodeCache {
      */
     protected void cacheMiss() {
         int currentMisses = threadLocalCacheMisses.get();
-        //LOG.debug("Cache miss! Current number of cache misses: " + (currentMisses + 1));
+        // LOG.debug("Cache miss! Current number of cache misses: " + (currentMisses + 1));
         threadLocalCacheMisses.set(currentMisses + 1);
     }
 
@@ -279,10 +279,8 @@ public class InMemoryINodeCache {
 
     /**
      * Return the size of the cache.
-     *
-     * @param includeInvalidKeys If true, include invalid keys in the size.
      */
-    public int size(boolean includeInvalidKeys) {
+    public int size() {
         _mutex.lock();
         try {
             return cache.size();

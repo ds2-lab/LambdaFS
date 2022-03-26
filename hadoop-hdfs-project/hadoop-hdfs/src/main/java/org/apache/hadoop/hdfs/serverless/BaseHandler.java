@@ -1,10 +1,12 @@
 package org.apache.hadoop.hdfs.serverless;
 
+import io.hops.metrics.TransactionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
 
 public class BaseHandler {
     // public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
@@ -20,6 +22,15 @@ public class BaseHandler {
      *       to implement; it just hasn't been high-priority...
      */
     public static final String PLATFORM_NAME = "openwhisk";
+
+    /**
+     * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
+     * it is finished being created, so we store the TransactionEvent instances from those transactions here.
+     * Once the NameNode is created, we add these events to the NameNode instance.
+     */
+    public static ThreadLocal<Set<TransactionEvent>> temporaryEventSet = new ThreadLocal<>();
+
+    public static ThreadLocal<String> currentRequestId = new ThreadLocal<>();
 
     /**
      * Perform initialization specific to the particular platform.

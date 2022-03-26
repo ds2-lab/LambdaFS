@@ -44,13 +44,6 @@ public class OpenWhiskHandler extends BaseHandler {
     public static final Logger LOG = LoggerFactory.getLogger(OpenWhiskHandler.class);
 
     /**
-     * Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
-     * it is finished being created, so we store the TransactionEvent instances from those transactions here.
-     * Once the NameNode is created, we add these events to the NameNode instance.
-     */
-    public static ThreadLocal<Set<TransactionEvent>> temporaryEventSet = new ThreadLocal<>();
-
-    /**
      * Used internally to determine whether this instance is warm or cold.
      */
     private static boolean isCold = true;
@@ -335,6 +328,8 @@ public class OpenWhiskHandler extends BaseHandler {
         FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, redoEvenIfDuplicate, "HTTP");
 
         result.setFnStartTime(creationStart);
+
+        currentRequestId.set(requestId);
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
