@@ -539,9 +539,6 @@ public abstract class BaseINodeLock extends Lock {
 
         setPartitionKey(inodeIds, parentIds, partitionIds, partial);
 
-        LOG.debug("Trying to resolve " + names.length + " INodes: " + StringUtils.join(", ", names) +
-                " using PathResolver. LockType: " + lockType.name() + ", path: '" + path + "'");
-
         List<INode> inodes = readINodesWhileRespectingLocks(lockType, path, names,
             parentIds, partitionIds, resolveLink);
         if (inodes != null && !inodes.isEmpty()) {
@@ -752,6 +749,11 @@ public abstract class BaseINodeLock extends Lock {
 
       boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
                                              lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
+
+      LOG.debug("Trying to resolve " + names.length + " INodes: " + StringUtils.join(", ", names) +
+              " using PathResolver. LockType: " + lockType.name() + ", path: '" + path +
+              "', CanUseMetadataCache: " + canUseInMemoryMetadataCache);
+
       List<INode> inodes = null;
       if (rowsToReadWithDefaultLock > 0) {
         inodes = find(getDefaultInodeLockType(),
