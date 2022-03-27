@@ -79,6 +79,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
    * @return The INode with the specified ID, or null if the INode is not in the cache.
    */
   private INode checkCache(long id) {
+    if (BaseEntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+
     InMemoryINodeCache metadataCache = getMetadataCache();
     if (metadataCache == null) {
       LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
@@ -93,6 +95,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
    * @return The INode for the file/directory at the specified path, or null if the INode is not in the cache.
    */
   private INode checkCache(String path) {
+    if (BaseEntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+
     InMemoryINodeCache metadataCache = getMetadataCache();
     if (metadataCache == null) {
       LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
@@ -108,6 +112,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
    * @return The desired INode if it is was in the cache, otherwise null.
    */
   private INode checkCache(String localName, long parentId) {
+    if (BaseEntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+
     InMemoryINodeCache metadataCache = getMetadataCache();
     if (metadataCache == null) {
       LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");

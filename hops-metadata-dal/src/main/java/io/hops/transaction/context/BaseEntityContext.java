@@ -116,8 +116,7 @@ public abstract class BaseEntityContext<Key, Entity> extends EntityContext<Entit
     if (contextEntity != null && contextEntity.getEntity() != null) {
       contextEntity.update(entity, State.REMOVED);
     } else {
-      throw new TransactionContextException(
-          "Unattached Entity passed to be removed " + entity);
+      throw new TransactionContextException("Unattached Entity passed to be removed " + entity);
     }
   }
   
