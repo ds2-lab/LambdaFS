@@ -82,7 +82,7 @@ class FSDirXAttrOp {
         xAttrsToLock.add(FSDirXAttrOp.XATTR_ENCRYPTION_ZONE);
         locks.add(lf.getXAttrLock(xAttrsToLock));
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
         
         if(fsd.getFSNamesystem().isRetryCacheEnabled()) {
           locks.add(lf.getRetryCacheEntryLock(Server.getClientId(),
@@ -180,7 +180,7 @@ class FSDirXAttrOp {
           locks.add(lf.getRetryCacheEntryLock(Server.getClientId(),
               Server.getCallId(), Server.getRpcEpoch()));
         }
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
       }
       
       @Override

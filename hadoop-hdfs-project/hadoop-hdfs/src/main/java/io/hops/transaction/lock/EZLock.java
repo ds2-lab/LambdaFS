@@ -26,6 +26,21 @@ import io.hops.transaction.EntityManager;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 
 public class EZLock extends Lock {
+  private final TransactionLockTypes.LockType lockType;
+
+  /**
+   * Creates a new EZLock instance. This instance will use the default lock type, whatever that is.
+   */
+  public EZLock() {
+    lockType = DEFAULT_LOCK_TYPE;
+  }
+
+  /**
+   * Creates a new EZLock instance, specifying the lock type to use.
+   */
+  public EZLock(TransactionLockTypes.LockType lockType) {
+    this.lockType = lockType;
+  }
   
   @Override
   public void acquire(TransactionLocks locks) throws IOException {
@@ -36,7 +51,7 @@ public class EZLock extends Lock {
     }
     if (!inodeIds.isEmpty()) {
       // The locking should have been done on the INodes, so it does not matter which lock we take here.
-      acquireLockList(DEFAULT_LOCK_TYPE, EncryptionZone.Finder.ByPrimaryKeyBatch, inodeIds);
+      acquireLockList(this.lockType, EncryptionZone.Finder.ByPrimaryKeyBatch, inodeIds);
     }
   }
 

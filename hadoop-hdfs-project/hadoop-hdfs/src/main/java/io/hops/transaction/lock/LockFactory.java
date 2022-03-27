@@ -417,6 +417,13 @@ public class LockFactory {
   public Lock getEZLock(){
     return new EZLock();
   }
+
+  /**
+   * Create and return a new {@link EZLock} instance with the specified {@link TransactionLockTypes.LockType}.
+   */
+  public Lock getEZLock(TransactionLockTypes.LockType lockType) {
+    return new EZLock(lockType);
+  }
   
   public void setConfiguration(Configuration conf) {
     BaseINodeLock.enableSetPartitionKey(

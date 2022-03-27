@@ -91,7 +91,7 @@ public class FSDirAttrOp {
           }
           locks.add(il).add(lf.getBlockLock());
           locks.add(lf.getAcesLock());
-          locks.add(lf.getEZLock());
+          locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
           locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
         }
 
@@ -154,7 +154,7 @@ public class FSDirAttrOp {
                     getFSNamesystem().getSubTreeLockPathPrefix(src), false));
               }
               locks.add(il).add(lf.getBlockLock()).add(lf.getAcesLock());
-              locks.add(lf.getEZLock());
+              locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
               locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
             }
 
@@ -219,7 +219,7 @@ public class FSDirAttrOp {
             .setActiveNameNodes(fsd.getFSNamesystem().getNameNode().getActiveNameNodes().getActiveNodes());
         locks.add(il).add(lf.getBlockLock());
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
       }
 
@@ -315,7 +315,7 @@ public class FSDirAttrOp {
             .setNameNodeID(fsd.getFSNamesystem().getNamenodeId())
             .setActiveNameNodes(fsd.getFSNamesystem().getNameNode().getActiveNameNodes().getActiveNodes());
         locks.add(il);
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
         locks.add(lf.getAcesLock());
       }

@@ -98,7 +98,7 @@ class FSDirConcatOp {
           locks.add(lf.getEncodingStatusLock(LockType.WRITE.WRITE, srcs));
         }
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
       }
 

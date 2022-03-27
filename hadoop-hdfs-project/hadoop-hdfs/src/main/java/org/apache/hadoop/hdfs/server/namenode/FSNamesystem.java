@@ -1709,7 +1709,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           locks.add(lf.getEncodingStatusLock(LockType.WRITE.WRITE, src));
         }
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
       }
 
@@ -2074,7 +2074,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
               .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes())
               .skipReadingQuotaAttr(!dir.isQuotaEnabled());
           locks.add(il);
-          locks.add(lf.getEZLock());
+          locks.add(lf.getEZLock(LockType.WRITE));
         }
 
         @Override
@@ -2138,7 +2138,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           locks.add(lf.getEncodingStatusLock(LockType.WRITE, src));
         }
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(LockType.WRITE));
         List<XAttr> xAttrsToLock = new ArrayList<>();
         xAttrsToLock.add(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO);
         xAttrsToLock.add(FSDirXAttrOp.XATTR_ENCRYPTION_ZONE);
@@ -2718,7 +2718,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
               locks.add(lf.getEncodingStatusLock(LockType.READ_COMMITTED, src));
             }
             locks.add(lf.getAcesLock());
-            locks.add(lf.getEZLock());
+            locks.add(lf.getEZLock(LockType.WRITE));
             locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
           }
 
@@ -8518,7 +8518,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
                 .setNameNodeID(serverlessNameNode.getId())
                 .setActiveNameNodes(serverlessNameNode.getActiveNameNodes().getActiveNodes());
             locks.add(il);
-            locks.add(lf.getEZLock());
+            locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
             List<XAttr> xAttrsToLock = new ArrayList<>();
             xAttrsToLock.add(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO);
             xAttrsToLock.add(FSDirXAttrOp.XATTR_ENCRYPTION_ZONE);

@@ -459,7 +459,7 @@ class FSDirDeleteOp {
             if (fsn.isErasureCodingEnabled()) {
               locks.add(lf.getEncodingStatusLock(true, LockType.WRITE, src));
             }
-            locks.add(lf.getEZLock());
+            locks.add(lf.getEZLock(LockType.WRITE));
           }
 
           @Override
@@ -515,7 +515,7 @@ class FSDirDeleteOp {
         if (fsn.isErasureCodingEnabled()) {
           locks.add(lf.getEncodingStatusLock(LockType.WRITE, src));
         }
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(LockType.WRITE));
         locks.add(lf.getAcesLock());
       }
 

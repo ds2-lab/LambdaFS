@@ -297,7 +297,7 @@ class FSDirRenameOp {
         if (fsd.isQuotaEnabled()) {
           locks.add(lf.getQuotaUpdateLock(true, src, dst));
         }
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_ENCRYPTION_ZONE));
         locks.add(lf.getAcesLock());
       }
@@ -612,7 +612,7 @@ class FSDirRenameOp {
             locks.add(lf.getAllUsedHashBucketsLock());
           }
         }
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(LockType.WRITE));
         List<XAttr> xAttrsToLock = new ArrayList<>();
         xAttrsToLock.add(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO);
         xAttrsToLock.add(FSDirXAttrOp.XATTR_ENCRYPTION_ZONE);

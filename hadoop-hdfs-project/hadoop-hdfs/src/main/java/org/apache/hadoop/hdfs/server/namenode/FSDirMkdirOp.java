@@ -22,6 +22,7 @@ import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.INodeLock;
 import io.hops.transaction.lock.LockFactory;
+import io.hops.transaction.lock.TransactionLockTypes;
 import io.hops.transaction.lock.TransactionLockTypes.INodeLockType;
 import io.hops.transaction.lock.TransactionLockTypes.INodeResolveType;
 import io.hops.transaction.lock.TransactionLocks;
@@ -73,7 +74,7 @@ class FSDirMkdirOp {
             .skipReadingQuotaAttr(!fsd.isQuotaEnabled());
         locks.add(il);
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock());
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
         List<XAttr> xAttrsToLock = new ArrayList<>();
         xAttrsToLock.add(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO);
         xAttrsToLock.add(FSDirXAttrOp.XATTR_ENCRYPTION_ZONE);
