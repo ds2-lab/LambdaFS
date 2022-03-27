@@ -434,7 +434,6 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
   private INode findByNameParentIdAndPartitionIdPK(INode.Finder inodeFinder, Object[] params)
       throws TransactionContextException, StorageException {
-
     INode result = null;
     final String name = (String) params[0];
     final Long parentId = (Long) params[1];
@@ -471,8 +470,6 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
           result = RootINodeCache.getRootINode();
           LOG.trace("Reading root inode from the cache. "+result);
        } else {
-          // LOG.debug("Reading INode " + name + " from NDB to upgrade the lock.");
-
           aboutToAccessStorage(inodeFinder, params);
 
           result = dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);

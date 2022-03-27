@@ -300,13 +300,40 @@ public abstract class BaseINodeLock extends Lock {
   }
 
   protected List<INode> find(TransactionLockTypes.INodeLockType lock,
-      String[] names, long[] parentIds, long[] partitionIds, boolean checkLocalCache)
+      String[] names, long[] parentIds, long[] partitionIds, boolean checkINodeHintCache)
       throws StorageException, TransactionContextException {
     setINodeLockType(lock);
-    List<INode> inodes = (List<INode>) EntityManager.findList(checkLocalCache ? INode.Finder
+    List<INode> inodes = (List<INode>) EntityManager.findList(checkINodeHintCache ? INode.Finder
                 .ByNamesParentIdsAndPartitionIdsCheckLocal : INode.Finder
                 .ByNamesParentIdsAndPartitionIds, names, parentIds, partitionIds,
                 (lock == TransactionLockTypes.INodeLockType.READ || lock == TransactionLockTypes.INodeLockType.READ_COMMITTED));
+    if(inodes != null) {
+      for (INode inode : inodes) {
+        addLockedINodes(inode, lock);
+      }
+    }
+    return inodes;
+  }
+
+  /**
+   * Overload of the find() function that enables the caller to explicitly specify whether the local, in-memory
+   * metadata cache can be checked or not. This is useful during subtree delete operations, as normally we call
+   * find() and pass the default lock type, rather than a write-lock. I'm not sure why this is the case yet. But
+   * we do not want to use the in-memory cache at this point, as it is a write operation, and later on, we DO
+   * write-lock things, meaning the cache is inaccessible. So, if we had used the cache earlier, then the INodes will
+   * not have been read from NDB and will not be in the INodeContext, and then we will try to go to NDB after write
+   * locking and after disabling NDB storage access, which causes an exception. So, here we can explicitly deny
+   * access to the local in-memory cache, forcing reads to NDB.
+   */
+  protected List<INode> find(TransactionLockTypes.INodeLockType lock,
+                             String[] names, long[] parentIds, long[] partitionIds,
+                             boolean checkINodeHintCache,
+                             boolean checkInMemoryMetadataCache)
+          throws StorageException, TransactionContextException {
+    setINodeLockType(lock);
+    List<INode> inodes = (List<INode>) EntityManager.findList(checkINodeHintCache ? INode.Finder
+                    .ByNamesParentIdsAndPartitionIdsCheckLocal : INode.Finder
+                    .ByNamesParentIdsAndPartitionIds, names, parentIds, partitionIds, checkInMemoryMetadataCache);
     if(inodes != null) {
       for (INode inode : inodes) {
         addLockedINodes(inode, lock);
@@ -719,12 +746,15 @@ public abstract class BaseINodeLock extends Lock {
       rowsToReadWithDefaultLock = Math.min(rowsToReadWithDefaultLock,
           parentIds.length);
 
+      boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
+                                             lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
       List<INode> inodes = null;
       if (rowsToReadWithDefaultLock > 0) {
         inodes = find(getDefaultInodeLockType(),
             Arrays.copyOf(names, rowsToReadWithDefaultLock),
             Arrays.copyOf(parentIds, rowsToReadWithDefaultLock),
-            Arrays.copyOf(partitionIds, rowsToReadWithDefaultLock), true);
+            Arrays.copyOf(partitionIds, rowsToReadWithDefaultLock),
+                true, canUseInMemoryMetadataCache);
       }
 
       if (inodes != null) {
