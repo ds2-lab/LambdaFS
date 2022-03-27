@@ -21,6 +21,8 @@ import io.hops.metadata.hdfs.entity.EncryptionZone;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import io.hops.transaction.EntityManager;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 
 public class EZLock extends Lock {

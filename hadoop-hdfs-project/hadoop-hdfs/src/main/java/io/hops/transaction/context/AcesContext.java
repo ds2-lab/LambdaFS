@@ -62,7 +62,7 @@ public class AcesContext extends BaseEntityContext<Ace.PrimaryKey, Ace> {
    * Check the metadata cache for the Ace associated with the given INode.
    */
   private List<Ace> checkCache(long inodeId, int[] aceIds) {
-    if (BaseEntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+    if (EntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
 
     MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
     if (metadataCacheManager == null) {

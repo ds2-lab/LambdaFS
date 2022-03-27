@@ -15,6 +15,8 @@
  */
 package io.hops.transaction;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.common.CounterType;
@@ -36,6 +38,7 @@ public class EntityManager {
 
   private EntityManager() {
   }
+  public static final Logger LOG = LoggerFactory.getLogger(EntityManager.class);
 
   private static ThreadLocal<TransactionContext> threadContext = new ThreadLocal();
   private static CopyOnWriteArrayList<ContextInitializer> contextInitializers =
@@ -130,16 +133,19 @@ public class EntityManager {
   }
 
   public static void writeLock() throws StorageException {
+    LOG.debug("[WRITE LOCKING]");
     EntityContext.setLockMode(EntityContext.LockMode.WRITE_LOCK);
     contextInitializers.get(0).getConnector().writeLock();
   }
 
   public static void readLock() throws StorageException {
+    LOG.debug("[READ LOCKING]");
     EntityContext.setLockMode(EntityContext.LockMode.READ_LOCK);
     contextInitializers.get(0).getConnector().readLock();
   }
 
   public static void readCommited() throws StorageException {
+    LOG.debug("[READ COMMITTED]");
     EntityContext.setLockMode(EntityContext.LockMode.READ_COMMITTED);
     contextInitializers.get(0).getConnector().readCommitted();
   }

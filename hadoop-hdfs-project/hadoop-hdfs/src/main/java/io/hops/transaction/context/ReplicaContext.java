@@ -52,7 +52,7 @@ public class ReplicaContext
   }
 
   private Replica checkCache(long inodeId, long blockId, int storageId) {
-    if (BaseEntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+    if (EntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
 
     ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
     if (cache == null) return null;

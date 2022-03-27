@@ -55,7 +55,7 @@ public class InvalidatedBlockContext
   }
 
   private InvalidatedBlock checkCache(long inodeId, long blockId, int storageId) {
-    if (BaseEntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+    if (EntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
 
     ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock> cache = getReplicaCache();
     if (cache == null) return null;
