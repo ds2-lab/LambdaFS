@@ -143,8 +143,13 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
     final Long pk = (Long) params[0];
     EncryptionZone result = checkCache(pk);
 
+    if (result != null) {
+      LOG.debug("Successfully retrieved EncryptionZone instance from local cache.");
+      return result;
+    }
+
     // If we don't have it cached in our in-memory metadata cache, then check the context.
-    if (result == null && contains(pk)) {
+    if (contains(pk)) {
       result = get(pk);
       hit(finder, result, "pk", pk, "results", result);
     }
