@@ -562,6 +562,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       node = inodesNameParentIndex.get(nameParentKey);
 
       if (node != null) {
+        LOG.debug("Retrieved INode " + names[i] + " from INode Hint Cache.");
         result.set(i, node);
         hit(inodeFinder, node, "name", names[i], "parent_id", parentIds[i], "partition_id", partitionIds[i]);
       } else {

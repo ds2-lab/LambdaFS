@@ -49,6 +49,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
 import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
+import org.apache.hadoop.util.StringUtils;
 
 public abstract class BaseINodeLock extends Lock {
   private final Map<INode, TransactionLockTypes.INodeLockType>
@@ -537,6 +538,9 @@ public abstract class BaseINodeLock extends Lock {
         }
 
         setPartitionKey(inodeIds, parentIds, partitionIds, partial);
+
+        LOG.debug("Trying to resolve " + names.length + " INodes: " + StringUtils.join(", ", names) +
+                " using PathResolver. LockType: " + lockType.name() + ", path: '" + path + "'");
 
         List<INode> inodes = readINodesWhileRespectingLocks(lockType, path, names,
             parentIds, partitionIds, resolveLink);
