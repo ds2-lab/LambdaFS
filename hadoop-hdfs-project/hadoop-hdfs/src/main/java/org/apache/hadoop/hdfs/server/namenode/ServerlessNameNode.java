@@ -869,7 +869,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     try {
       // StringUtils.startupShutdownMessage(ServerlessNameNode.class, commandLineArgs, LOG);
-      ServerlessNameNode nameNode = createNameNode(commandLineArgs, null, functionName, actionMemory, localMode);
+      ServerlessNameNode nameNode = createNameNode(commandLineArgs, null, functionName, actionMemory, localMode, true);
 
       if (nameNode == null) {
         LOG.info("ERROR: NameNode is null. Failed to create and/or initialize the Serverless NameNode.");
@@ -3123,17 +3123,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
    *                     connections at once, then it might crash due to OOM errors.
    * @param localMode Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
-   * @throws Exception
+   * @param asServerless Only true if we're running in a serverless function (or in localMode). If we're being
+   *                     called from the proper main method of this class, then the 'asServerless' field is false.
+   *                     This prevents us from using the hard-coded config file paths, as they won't work unless
+   *                     we're in the Docker image used by serverless functions.
    */
-  public static ServerlessNameNode createNameNode(String argv[], Configuration conf, String functionName,
-                                                  int actionMemory, boolean localMode)
+  public static ServerlessNameNode createNameNode(String[] argv, Configuration conf, String functionName,
+                                                  int actionMemory, boolean localMode, boolean asServerless)
           throws Exception {
     LOG.info("createNameNode " + Arrays.asList(argv));
     if (conf == null) {
       conf = new HdfsConfiguration();
     }
 
-    if (BaseHandler.PLATFORM_NAME.equals("nuclio")) {
+    if (asServerless) {
       // TODO: Make this not hard-coded. It doesn't have to be hard-coded for OpenWhisk, but Nuclio doesn't
       //       seem to be finding the configuration files...?
       conf.addResource(new File("/conf/hdfs-site.xml").toURI().toURL());
@@ -3294,7 +3297,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     try {
       // StringUtils.startupShutdownMessage(ServerlessNameNode.class, argv, LOG);
-      ServerlessNameNode namenode = createNameNode(argv, null, "LocalVMNameNode0", (int) Runtime.getRuntime().maxMemory(), false);
+      ServerlessNameNode namenode = createNameNode(argv, null, "LocalVMNameNode0", (int) Runtime.getRuntime().maxMemory(), false, false);
       if (namenode != null) {
         namenode.join();
       }
