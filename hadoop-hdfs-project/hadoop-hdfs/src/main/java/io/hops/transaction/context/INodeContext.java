@@ -530,6 +530,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     final String[] names = (String[]) params[0];
     final long[] parentIds = (long[]) params[1];
     final long[] partitionIds = (long[]) params[2];
+    boolean canUseLocalCache = (boolean) params[3];
 
     List<String> namesRest = Lists.newArrayList();
     List<Long> parentIdsRest = Lists.newArrayList();
@@ -542,27 +543,31 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     for(int i=0; i<names.length; i++){
       final String nameParentKey = INode.nameParentKey(parentIds[i], names[i]);
 
-      // First, check in-memory cache.
-      INode node = checkCache(names[i], parentIds[i]);
-      if (node != null) {
-        LOG.debug("Successfully retrieved INode " + names[i] + ", parentID=" + parentIds[i] + " from local cache.");
-        result.set(i, node);
-      } else {
-        // Next, try INode Hint Cache.
-        node = inodesNameParentIndex.get(nameParentKey);
+      INode node = null;
 
+      // First, check in-memory cache, if we're not doing a write operation.
+      if (canUseLocalCache) {
+        node = checkCache(names[i], parentIds[i]);
         if (node != null) {
+          LOG.debug("Successfully retrieved INode " + names[i] + ", parentID=" + parentIds[i] + " from local cache.");
           result.set(i, node);
-          hit(inodeFinder, node, "name", names[i], "parent_id", parentIds[i], "partition_id", partitionIds[i]);
-        } else {
-          // Finally, fall back to resolving from NDB.
-          LOG.debug("INode " + names[i] + " with parentID=" + parentIds[i] +
-                  " not in either local cache. Will have to fall back to retrieving from NDB.");
-          namesRest.add(names[i]);
-          parentIdsRest.add(parentIds[i]);
-          partitionIdsRest.add(partitionIds[i]);
-          unpopulatedIndeces.add(i);
-        }
+          continue;
+      }
+
+      // Next, try INode Hint Cache.
+      node = inodesNameParentIndex.get(nameParentKey);
+
+      if (node != null) {
+        result.set(i, node);
+        hit(inodeFinder, node, "name", names[i], "parent_id", parentIds[i], "partition_id", partitionIds[i]);
+      } else {
+        // Finally, fall back to resolving from NDB.
+        LOG.debug("INode " + names[i] + " with parentID=" + parentIds[i] +
+                " not in either local cache. Will have to fall back to retrieving from NDB.");
+        namesRest.add(names[i]);
+        parentIdsRest.add(parentIds[i]);
+        partitionIdsRest.add(partitionIds[i]);
+        unpopulatedIndeces.add(i);
       }
     }
 
