@@ -552,6 +552,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
           LOG.debug("Successfully retrieved INode " + names[i] + ", parentID=" + parentIds[i] + " from local cache.");
           result.set(i, node);
           continue;
+        }
       }
 
       // Next, try INode Hint Cache.
