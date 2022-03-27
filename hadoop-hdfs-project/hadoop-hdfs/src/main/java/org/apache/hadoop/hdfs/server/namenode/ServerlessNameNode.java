@@ -71,6 +71,7 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
@@ -3132,10 +3133,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       conf = new HdfsConfiguration();
     }
 
-    // TODO: Make this not hard-coded. It doesn't have to be hard-coded for OpenWhisk, but Nuclio doesn't
-    //       seem to be finding the configuration files...?
-    conf.addResource(new File("/conf/hdfs-site.xml").toURI().toURL());
-    conf.addResource(new File("/conf/core-site.xml").toURI().toURL());
+    if (BaseHandler.PLATFORM_NAME.equals("nuclio")) {
+      // TODO: Make this not hard-coded. It doesn't have to be hard-coded for OpenWhisk, but Nuclio doesn't
+      //       seem to be finding the configuration files...?
+      conf.addResource(new File("/conf/hdfs-site.xml").toURI().toURL());
+      conf.addResource(new File("/conf/core-site.xml").toURI().toURL());
+    }
     StartupOption startOpt = parseArguments(argv);
     if (startOpt == null) {
       printUsage(System.err);
