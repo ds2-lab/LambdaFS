@@ -58,7 +58,7 @@ class FSDirAclOp {
             .skipReadingQuotaAttr(false);
         locks.add(il);
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock(LockType.WRITE));
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
       }
 
@@ -112,7 +112,7 @@ class FSDirAclOp {
             .skipReadingQuotaAttr(true);
         locks.add(il);
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock(LockType.WRITE));
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
       }
 
@@ -154,7 +154,7 @@ class FSDirAclOp {
             .skipReadingQuotaAttr(true);
         locks.add(il);
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock(LockType.WRITE));
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
       }
 
@@ -195,7 +195,7 @@ class FSDirAclOp {
             .skipReadingQuotaAttr(true);
         locks.add(il);
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock(LockType.WRITE));
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
       }
 
@@ -226,7 +226,7 @@ class FSDirAclOp {
             .skipReadingQuotaAttr(true);
         locks.add(il);
         locks.add(lf.getAcesLock());
-        locks.add(lf.getEZLock(LockType.WRITE));
+        locks.add(lf.getEZLock(TransactionLockTypes.LockType.WRITE));
         locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO));
       }
 
