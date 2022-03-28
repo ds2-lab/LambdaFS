@@ -615,7 +615,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       rootINode = RootINodeCache.getRootINode();
       if (rootINode != null) {
         if(names[0].equals(INodeDirectory.ROOT_NAME) && parentIds[0] == HdfsConstantsClient.GRANDFATHER_INODE_ID){
-          LOG.trace("Reading root inode from the cache "+rootINode);
+          LOG.trace("Reading root inode from the RootINodeCache "+rootINode);
           //remove root from the batch operation. Cached root inode will be added later to the results
           names = Arrays.copyOfRange(names, 1, names.length);
           parentIds = Arrays.copyOfRange(parentIds, 1, parentIds.length);

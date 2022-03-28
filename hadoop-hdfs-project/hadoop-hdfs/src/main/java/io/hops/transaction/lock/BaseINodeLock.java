@@ -787,8 +787,12 @@ public abstract class BaseINodeLock extends Lock {
         UnresolvedPathException {
       byte[][] components = INode.getPathComponents(path);
       INode currentINode = inodes.get(inodes.size() - 1);
+
+      boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
+              lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
+
       INodeResolver resolver = new INodeResolver(components, currentINode, resolveLink, true,
-          inodes.size() - 1);
+          inodes.size() - 1, canUseInMemoryMetadataCache);
       while (resolver.hasNext()) {
         TransactionLockTypes.INodeLockType currentINodeLock = identifyLockType(lockType, resolver.getCount() + 1,
             components);

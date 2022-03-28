@@ -43,7 +43,7 @@ public class INodeResolver {
   public INodeResolver(byte[][] components, INode baseINode, boolean resolveLink,
                        boolean transactional, boolean canCheckCache) {
     this.components = components;
-    currentInode = baseINode;
+    this.currentInode = baseINode;
     this.resolveLink = resolveLink;
     this.transactional = transactional;
     this.canCheckCache = canCheckCache;
@@ -51,10 +51,14 @@ public class INodeResolver {
 
   public INodeResolver(byte[][] components, INode baseINode,
       boolean resolveLink, boolean transactional, int initialCount) {
-    this(components, baseINode, resolveLink, transactional);
+    this(components, baseINode, resolveLink, transactional, initialCount, true);
+  }
+
+  public INodeResolver(byte[][] components, INode baseINode,
+                       boolean resolveLink, boolean transactional, int initialCount, boolean canCheckCache) {
+    this(components, baseINode, resolveLink, transactional, canCheckCache);
     this.count = initialCount;
     this.depth = INodeDirectory.ROOT_DIR_DEPTH + (initialCount);
-    this.canCheckCache = true;
   }
 
   public boolean hasNext() {
