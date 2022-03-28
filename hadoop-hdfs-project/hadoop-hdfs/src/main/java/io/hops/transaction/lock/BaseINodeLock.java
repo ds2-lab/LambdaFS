@@ -791,6 +791,10 @@ public abstract class BaseINodeLock extends Lock {
       boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
               lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
 
+      LOG.debug("Resolving rest of path for path '" + path + "', INodes: " +
+              StringUtils.join(", ", inodes) + ", LockType: " + lockType.name() +
+              ", CanUseMetadataCache: " + canUseInMemoryMetadataCache);
+
       INodeResolver resolver = new INodeResolver(components, currentINode, resolveLink, true,
           inodes.size() - 1, canUseInMemoryMetadataCache);
       while (resolver.hasNext()) {
