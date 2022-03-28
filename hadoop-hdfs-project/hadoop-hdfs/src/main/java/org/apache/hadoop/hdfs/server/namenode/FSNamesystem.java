@@ -3796,7 +3796,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           numInvalidated++;
       }
       LOG.debug("Invalidated " + numInvalidated + "/" + removedINodes.size()
-              + " cache " + (numInvalidated == 1 ? "entry" : "entries") + " corresponding to removed INodes.");
+              + " cache entries corresponding to deleted INodes. (We must've not had the others cached.)");
 
       removedINodes.clear();
     }

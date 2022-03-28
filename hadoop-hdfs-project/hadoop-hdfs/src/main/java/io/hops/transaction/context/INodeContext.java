@@ -445,8 +445,10 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     final String nameParentKey = INode.nameParentKey(parentId, name);
 
     result = checkCache(name, parentId);
-    if (result != null)
+    if (result != null) {
+      LOG.debug("Retrieved INode '" + name + "', parentID=" + parentId + " from local metadata cache.");
       return result;
+    }
 
     if (inodesNameParentIndex.containsKey(nameParentKey)) {
       result = inodesNameParentIndex.get(nameParentKey);
@@ -462,14 +464,17 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         missUpgrade(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
         updateCache(result);
       } else {
+        LOG.debug("Successfully retrieved INode '" + name + "', parentID=" + parentId + " from INode Hint Cache.");
         hit(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
       }
     } else {
       if (!isNewlyAdded(parentId) && !containsRemoved(parentId, name)) {
         if (canReadCachedRootINode(name, parentId)) {
           result = RootINodeCache.getRootINode();
-          LOG.trace("Reading root inode from the cache. "+result);
+          LOG.trace("Reading root inode from the RootINodeCache: " + result);
        } else {
+          LOG.debug("Cannot resolve INode '" + name + "', parentID=" + parentId +
+                  " from either cache. Reading from NDB instead.");
           aboutToAccessStorage(inodeFinder, params);
 
           result = dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);
@@ -546,7 +551,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     for(int i=0; i<names.length; i++){
       final String nameParentKey = INode.nameParentKey(parentIds[i], names[i]);
 
-      INode node = null;
+      INode node;
 
       // First, check in-memory cache, if we're not doing a write operation.
       if (canUseLocalCache) {
@@ -562,13 +567,12 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       node = inodesNameParentIndex.get(nameParentKey);
 
       if (node != null) {
-        LOG.debug("Retrieved INode " + names[i] + " from INode Hint Cache.");
+        LOG.debug("Retrieved INode '" + names[i] + "' with parentID=" + parentIds[i] + " from INode Hint Cache.");
         result.set(i, node);
         hit(inodeFinder, node, "name", names[i], "parent_id", parentIds[i], "partition_id", partitionIds[i]);
       } else {
         // Finally, fall back to resolving from NDB.
-        LOG.debug("INode " + names[i] + " with parentID=" + parentIds[i] +
-                " not in either local cache. Will have to fall back to retrieving from NDB.");
+        LOG.debug("Falling back to NDB for INode '" + names[i] + "' with parentID=" + parentIds[i] + ".");
         namesRest.add(names[i]);
         parentIdsRest.add(parentIds[i]);
         partitionIdsRest.add(partitionIds[i]);
@@ -626,6 +630,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
   private List<INode> syncInodeInstances(List<INode> newInodes) {
     List<INode> finalList = new ArrayList<>(newInodes.size());
+
+    LOG.debug("Retrieved batch of INodes from NDB: " + StringUtils.join(", ", newInodes));
     
     for (INode inode : newInodes) {
       if (isRemoved(inode.getId())) {
