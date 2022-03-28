@@ -78,10 +78,15 @@ public class INodeUtil {
 
   public static INode getNode(byte[] name, long parentId, long partitionId, boolean transactional)
       throws StorageException, TransactionContextException {
+    return getNode(name, parentId, partitionId, transactional, true);
+  }
+
+  public static INode getNode(byte[] name, long parentId, long partitionId, boolean transactional, boolean canCheckCache)
+          throws StorageException, TransactionContextException {
     String nameString = DFSUtil.bytes2String(name);
     if (transactional) {
       return EntityManager
-          .find(INode.Finder.ByNameParentIdAndPartitionId, nameString, parentId, partitionId);
+              .find(INode.Finder.ByNameParentIdAndPartitionId, nameString, parentId, partitionId, null, canCheckCache);
     } else {
       return findINodeWithNoTransaction(nameString, parentId, partitionId);
     }

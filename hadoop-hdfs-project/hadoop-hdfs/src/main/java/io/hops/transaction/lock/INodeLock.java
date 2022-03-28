@@ -315,8 +315,14 @@ public class INodeLock extends BaseINodeLock {
     }
     resolvedINodes.add(currentINode);
 
-    INodeResolver resolver =
-        new INodeResolver(components, currentINode, resolveLink, true);
+    INodeResolver resolver;
+
+    if (lockType == TransactionLockTypes.INodeLockType.WRITE || lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT) {
+      resolver = new INodeResolver(components, currentINode, resolveLink, true, false);
+    } else {
+      resolver = new INodeResolver(components, currentINode, resolveLink, true, true);
+    }
+
     while (resolver.hasNext()) {
       TransactionLockTypes.INodeLockType currentINodeLock =
           identifyLockType(lockType, resolver.getCount() + 1, components);

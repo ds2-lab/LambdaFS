@@ -33,13 +33,20 @@ public class INodeResolver {
   private INode currentInode;
   private int count = 0;
   private int depth = INodeDirectory.ROOT_DIR_DEPTH;
+  private boolean canCheckCache;
 
   public INodeResolver(byte[][] components, INode baseINode,
       boolean resolveLink, boolean transactional) {
+    this(components, baseINode, resolveLink, transactional, true);
+  }
+
+  public INodeResolver(byte[][] components, INode baseINode, boolean resolveLink,
+                       boolean transactional, boolean canCheckCache) {
     this.components = components;
     currentInode = baseINode;
     this.resolveLink = resolveLink;
     this.transactional = transactional;
+    this.canCheckCache = canCheckCache;
   }
 
   public INodeResolver(byte[][] components, INode baseINode,
@@ -47,6 +54,7 @@ public class INodeResolver {
     this(components, baseINode, resolveLink, transactional);
     this.count = initialCount;
     this.depth = INodeDirectory.ROOT_DIR_DEPTH + (initialCount);
+    this.canCheckCache = true;
   }
 
   public boolean hasNext() {
@@ -89,7 +97,7 @@ public class INodeResolver {
     long partitionId = INode.calculatePartitionId(currentInode.getId(), DFSUtil.bytes2String(components[count]), (short) depth);
 
     currentInode = INodeUtil
-        .getNode(components[count], currentInode.getId(), partitionId, transactional);
+        .getNode(components[count], currentInode.getId(), partitionId, transactional, canCheckCache);
     return currentInode;
   }
 

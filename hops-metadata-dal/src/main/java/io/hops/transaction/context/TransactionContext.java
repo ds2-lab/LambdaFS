@@ -146,7 +146,6 @@ public class TransactionContext {
       throws TransactionContextException, StorageException {
     aboutToPerform();
     if (typeContextMap.containsKey(finder.getType())) {
-      //      logger.debug("TX-Find: " + finder.getType().getName());
       return (T) typeContextMap.get(finder.getType()).find(finder, params);
     } else {
       throw new RuntimeException(UNKNOWN_TYPE + finder.getType());
@@ -157,7 +156,6 @@ public class TransactionContext {
       throws TransactionContextException, StorageException {
       aboutToPerform();
     if (typeContextMap.containsKey(finder.getType())) {
-      //      logger.debug("TX-FindList: " + finder.getType().getName());
       return typeContextMap.get(finder.getType()).findList(finder, params);
     } else {
       throw new RuntimeException(UNKNOWN_TYPE + finder.getType());
@@ -168,7 +166,6 @@ public class TransactionContext {
       throws StorageException, TransactionContextException {
     aboutToPerform();
     if (typeContextMap.containsKey(counter.getType())) {
-      //      logger.debug("TX-Count: " + counter.getType().getName());
       return typeContextMap.get(counter.getType()).count(counter, params);
     } else {
       throw new RuntimeException(UNKNOWN_TYPE + counter.getType());

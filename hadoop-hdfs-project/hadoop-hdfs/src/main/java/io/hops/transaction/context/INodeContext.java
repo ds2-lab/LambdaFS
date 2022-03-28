@@ -442,12 +442,18 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     if (params.length == 4) {
       possibleInodeId = (Long) params[3];
     }
+    boolean canCheckCache = true;
+    if (params.length == 5) {
+      canCheckCache = (boolean) params[4];
+    }
     final String nameParentKey = INode.nameParentKey(parentId, name);
 
-    result = checkCache(name, parentId);
-    if (result != null) {
-      LOG.debug("Retrieved INode '" + name + "', parentID=" + parentId + " from local metadata cache.");
-      return result;
+    if (canCheckCache) {
+      result = checkCache(name, parentId);
+      if (result != null) {
+        LOG.debug("Retrieved INode '" + name + "', parentID=" + parentId + " from local metadata cache.");
+        return result;
+      }
     }
 
     if (inodesNameParentIndex.containsKey(nameParentKey)) {
