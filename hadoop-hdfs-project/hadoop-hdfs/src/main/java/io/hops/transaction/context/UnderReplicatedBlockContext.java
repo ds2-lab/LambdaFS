@@ -55,7 +55,7 @@ public class UnderReplicatedBlockContext
   }
 
   private UnderReplicatedBlock checkCache(long inodeId, long blockId) {
-    if (EntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+    if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
 
     ReplicaCache<BlockPK, UnderReplicatedBlock> cache = getReplicaCache();
     if (cache == null) return null;

@@ -23,6 +23,7 @@ import io.hops.exception.TransactionContextException;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
+import io.hops.transaction.EntityManager;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.INodeLock;

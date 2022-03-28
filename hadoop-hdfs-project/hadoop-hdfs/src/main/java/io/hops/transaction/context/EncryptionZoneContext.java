@@ -58,7 +58,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
    */
   private EncryptionZone checkCache(long inodeId) {
     // LOG.debug("Checking in-memory cache for EZ. Lock Mode: " + EntityContext.getLockMode().name());
-    if (EntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+    if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
 
     MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
     if (metadataCacheManager == null) {
@@ -75,7 +75,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
    */
   private List<EncryptionZone> checkCache(Collection<Long> inodeIds) {
     // LOG.debug("Checking in-memory cache for EZ. Lock Mode: " + EntityContext.getLockMode().name());
-    if (EntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+    if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
 
     MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
     if (metadataCacheManager == null) {

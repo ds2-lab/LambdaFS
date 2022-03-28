@@ -132,6 +132,15 @@ public class EntityManager {
     context().snapshotMaintenance(cmds, params);
   }
 
+  /**
+   * Pass true to enable; pass false to disable.
+   */
+  public static void toggleLocalMetadataCache(boolean enabled) {
+    if (enabled) LOG.debug("[ENABLING LOCAL METADATA CACHE]");
+    else LOG.debug("[DISABLING LOCAL METADATA CACHE]");
+    EntityContext.toggleLocalMetadataCache(enabled);
+  }
+
   public static void writeLock() throws StorageException {
     LOG.debug("[LOCKING: WRITE]");
     EntityContext.setLockMode(EntityContext.LockMode.WRITE_LOCK);

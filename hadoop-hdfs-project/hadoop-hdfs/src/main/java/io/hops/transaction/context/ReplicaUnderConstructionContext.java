@@ -55,7 +55,7 @@ public class ReplicaUnderConstructionContext
   }
 
   private ReplicaUnderConstruction checkCache(long inodeId, long blockId, int storageId) {
-    if (EntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+    if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
 
     ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction> cache = getReplicaCache();
     if (cache == null) return null;

@@ -494,7 +494,7 @@ public class INodeLock extends BaseINodeLock {
 
   private INode acquireLockOnRoot(TransactionLockTypes.INodeLockType lock)
       throws StorageException, TransactionContextException {
-    LOG.trace("Acquiring " + lock + " on the root node");
+    LOG.debug("Acquiring " + lock + " on the root INode.");
     return find(lock, INodeDirectory.ROOT_NAME, HdfsConstantsClient.GRANDFATHER_INODE_ID, INodeDirectory.
         getRootDirPartitionKey());
   }

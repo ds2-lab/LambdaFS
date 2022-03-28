@@ -58,7 +58,7 @@ public class PendingBlockContext
   }
 
   private PendingBlockInfo checkCache(long inodeId, long blockId) {
-    if (EntityContext.getLockMode() == LockMode.WRITE_LOCK) return null;
+    if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
 
     ReplicaCache<BlockPK, PendingBlockInfo> cache = getReplicaCache();
     if (cache == null) return null;

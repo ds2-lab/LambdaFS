@@ -54,6 +54,11 @@ public abstract class EntityContext<T> {
       new ThreadLocal<>();
 
   /**
+   * We set this to false when performing a write operation and true when performing a read operation.
+   */
+  final protected static ThreadLocal<Boolean> localMetadataCachedEnabled = ThreadLocal.withInitial(() -> true);
+
+  /**
    * Defines the cache state of the request. This enum is only used for logging
    * purpose.
    */
@@ -227,6 +232,20 @@ public abstract class EntityContext<T> {
     return currentLockMode.get();
   }
 
+  /**
+   * Returns true if both localMetadataCachedEnabled is true and the current lock mode is not WRITE LOCK.
+   */
+  public static boolean isLocalMetadataCacheEnabled() {
+    return localMetadataCachedEnabled.get() && currentLockMode.get() != LockMode.WRITE_LOCK;
+  }
+
+  /**
+   * Pass true to enable; pass false to disable.
+   */
+  public static void toggleLocalMetadataCache(boolean enabled) {
+    localMetadataCachedEnabled.set(enabled);
+  }
+
   protected void aboutToAccessStorage(FinderType finderType)
       throws StorageCallPreventedException {
     aboutToAccessStorage(finderType, "");
@@ -235,8 +254,6 @@ public abstract class EntityContext<T> {
   protected void aboutToAccessStorage(FinderType finderType, Object... params)
       throws StorageCallPreventedException {
     if (storageCallPrevented) {
-      
-
       throw new StorageCallPreventedException("[" + finderType + "] Trying " +
           "to access storage while it is disabled in transaction; inconsistent" +
           " transaction context statement. Params=" + Arrays.toString(params));
