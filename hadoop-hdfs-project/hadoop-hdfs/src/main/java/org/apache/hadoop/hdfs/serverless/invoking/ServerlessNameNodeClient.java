@@ -418,7 +418,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 addLatency(localEnd - localStart, -1);
 
                 // Collect and save/record metrics.
-                createAndStoreOperationPerformed(response, operationName, requestId, opStart, localEnd, targetDeployment);
+                createAndStoreOperationPerformed(response, operationName, requestId, opStart, localEnd,
+                        targetDeployment, true, false);
 
                 return response;
             } catch (TimeoutException ex) {
@@ -474,7 +475,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         operationName + ". Time elapsed: " + (opEnd - opStart) + ".");
 
                 // Collect and save/record metrics.
-                createAndStoreOperationPerformed(response, operationName, requestId, opStart, opEnd, targetDeployment);
+                createAndStoreOperationPerformed(response, operationName, requestId, opStart, opEnd, targetDeployment,
+                        true, true);
 
                 return response;
             }
@@ -582,7 +584,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (response.has("body"))
             response = response.get("body").getAsJsonObject();
 
-        createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime, mappedFunctionNumber);
+        createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime, mappedFunctionNumber,
+                false, true);
 
         return response;
     }
@@ -596,9 +599,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param startTime The local timestamp at which this operation began.
      * @param endTime The local timestamp at which this operation completed.
      * @param mappedFunctionNumber The deployment targeted during this operation.
+     * @param issuedViaTCP Indicates whether the associated operation was issued via TCP to a NN.
+     * @param issuedViaHTTP Indicates whether the associated operation was issued via HTTP to a NN.
      */
     private void createAndStoreOperationPerformed(JsonObject response, String operationName, String requestId,
-                                                  long startTime, long endTime, int mappedFunctionNumber) {
+                                                  long startTime, long endTime, int mappedFunctionNumber,
+                                                  boolean issuedViaTCP, boolean issuedViaHTTP) {
         long nameNodeId = -1;
         if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
             nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
@@ -620,7 +626,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
                 startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
-                deployment, true, true,
+                deployment, issuedViaHTTP, issuedViaTCP,
                 response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(), nameNodeId, cacheMisses, cacheHits);
         operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
         operationsPerformed.put(requestId, operationPerformed);
