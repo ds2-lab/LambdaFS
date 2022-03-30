@@ -344,8 +344,13 @@ public class NameNodeTCPClient {
                     tcpResult.addException(ex);
                 }
 
+                long s = System.currentTimeMillis();
                 String jsonString = new Gson().toJson(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT,
                         serverlessNameNode.getNamesystem().getMetadataCacheManager()));
+                long t = System.currentTimeMillis();
+
+                if (t - s > 10)
+                    LOG.warn("Converting NameNodeResult instance to JSON took " + (t - s) + " ms.");
 
                 trySendTcp(connection, jsonString, false);
             }

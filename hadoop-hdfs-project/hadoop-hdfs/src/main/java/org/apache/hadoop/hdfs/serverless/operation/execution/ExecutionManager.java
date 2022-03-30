@@ -223,9 +223,16 @@ public class ExecutionManager {
                 LOG.warn("Notifying completion of task " + task.getTaskId() + " took " + (t - s) + " ms.");
         }
 
+        long s = System.currentTimeMillis();
         // Cache the result for a bit.
         PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
         cachePreviousResult(task.getTaskId(), previousResult);
+        long t = System.currentTimeMillis();
+
+        // notifyTaskCompleted() modifies some ConcurrentHashMaps (or possibly Caffeine Cache objects now).
+        // If these operations are taking a long time, then we log a warning about it. They should be fast though.
+        if (t - s > 10)
+            LOG.warn("Caching result of task " + task.getTaskId() + " took " + (t - s) + " ms.");
     }
 
     /**

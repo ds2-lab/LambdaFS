@@ -189,7 +189,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * Maximum of the previous results cache.
    */
   public static final String SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE = "serverless.task.maxcachesize";
-  public static final int SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE_DEFAULT = 10;
+  public static final int SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE_DEFAULT = 100;
 
   /**
    * Comma-delimited list of hostnames of ZooKeeper servers.
