@@ -1203,7 +1203,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         HDFSOperationType.GET_BLOCK_LOCATIONS, src) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
-        long s = System.currentTimeMillis();
+        // long s = System.currentTimeMillis();
         LockFactory lf = getInstance();
         INodeLock il = lf.getINodeLock(lockType, INodeResolveType.PATH, src)
             .setNameNodeID(serverlessNameNode.getId())
@@ -1222,9 +1222,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
       @Override
       public Object performTask() throws IOException {
-        long s = System.currentTimeMillis();
+        // long s = System.currentTimeMillis();
 
-        LOG.debug("Getting block locations for file '" + src + "' with offset=" + offset + ", length=" + length);
+        // LOG.debug("Getting block locations for file '" + src + "' with offset=" + offset + ", length=" + length);
 
         GetBlockLocationsResult res = getBlockLocationsInt(srcArg, src, offset, length, true, true);
 
@@ -1259,7 +1259,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
                 clientMachine, lastBlockList);
           }
         }
-        LOG.info("Performed task for getBlockLocationsWithLock() in " + (System.currentTimeMillis() - s) + " ms.");
+        // LOG.info("Performed task for getBlockLocationsWithLock() in " + (System.currentTimeMillis() - s) + " ms.");
         return blocks;
       }
     };
