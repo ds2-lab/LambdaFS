@@ -736,48 +736,52 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
                 ", N: " + httpStatistics.getN() + "]");
 
-        // Calculating bin width: https://stats.stackexchange.com/questions/798/calculating-optimal-number-of-bins-in-a-histogram
-        double binWidthHttp = 2 * httpStatistics.getPercentile(0.75) - httpStatistics.getPercentile(0.25) * Math.pow(httpStatistics.getN(), -1.0/3.0);
-        int numBinsHttp = (int)((httpStatistics.getMax() - httpStatistics.getMin()) / binWidthHttp);
-        numBinsHttp = Math.min(numBinsHttp, 100);
-        Plot currentHttpPlot = new Histogram.HistogramBuilder(
-                Pair.create("HTTP Latencies", httpStatistics.getValues()))
-                .setBinNumber(numBinsHttp)
-                .plotObject();
-        System.out.println("\nHistogram of HTTP Latencies:");
-        currentHttpPlot.printPlot(true);
-        
-        double[] httpLatenciesSorted = httpStatistics.getSortedValues();
-        double[] cumulativeHttpProbabilities = new double[httpLatenciesSorted.length];
-        double cumulativeProbabilityHttp = 0.0;
-        for (int i = 0; i < httpLatenciesSorted.length; i++) {
-            cumulativeProbabilityHttp += (1.0/httpLatenciesSorted.length);
-            cumulativeHttpProbabilities[i] = cumulativeProbabilityHttp;
+        if (httpStatistics.getN() > 1) {
+            // Calculating bin width: https://stats.stackexchange.com/questions/798/calculating-optimal-number-of-bins-in-a-histogram
+            double binWidthHttp = 2 * httpStatistics.getPercentile(0.75) - httpStatistics.getPercentile(0.25) * Math.pow(httpStatistics.getN(), -1.0 / 3.0);
+            int numBinsHttp = (int) ((httpStatistics.getMax() - httpStatistics.getMin()) / binWidthHttp);
+            numBinsHttp = Math.min(numBinsHttp, 100);
+            Plot currentHttpPlot = new Histogram.HistogramBuilder(
+                    Pair.create("HTTP Latencies", httpStatistics.getValues()))
+                    .setBinNumber(numBinsHttp)
+                    .plotObject();
+            System.out.println("\nHistogram of HTTP Latencies:");
+            currentHttpPlot.printPlot(true);
+
+            double[] httpLatenciesSorted = httpStatistics.getSortedValues();
+            double[] cumulativeHttpProbabilities = new double[httpLatenciesSorted.length];
+            double cumulativeProbabilityHttp = 0.0;
+            for (int i = 0; i < httpLatenciesSorted.length; i++) {
+                cumulativeProbabilityHttp += (1.0 / httpLatenciesSorted.length);
+                cumulativeHttpProbabilities[i] = cumulativeProbabilityHttp;
+            }
+
+            System.out.println("HTTP Latency CDF:");
+            System.out.println(ASCIIGraph.fromSeries(cumulativeHttpProbabilities).plot());
         }
 
-        System.out.println("HTTP Latency CDF:");
-        System.out.println(ASCIIGraph.fromSeries(cumulativeHttpProbabilities).plot());
+        if (tcpStatistics.getN() > 1) {
+            double binWidthTcp = 2 * tcpStatistics.getPercentile(0.75) - tcpStatistics.getPercentile(0.25) * Math.pow(tcpStatistics.getN(), -1.0 / 3.0);
+            int numBinsTcp = (int) ((tcpStatistics.getMax() - tcpStatistics.getMin()) / binWidthTcp);
+            numBinsTcp = Math.min(numBinsTcp, 100);
+            Plot currentTcpPlot = new Histogram.HistogramBuilder(
+                    Pair.create("TCP Latencies", tcpStatistics.getValues()))
+                    .setBinNumber(numBinsTcp)
+                    .plotObject();
+            System.out.println("Histogram of TCP Latencies:");
+            currentTcpPlot.printPlot(true);
 
-        double binWidthTcp = 2 * tcpStatistics.getPercentile(0.75) - tcpStatistics.getPercentile(0.25) * Math.pow(tcpStatistics.getN(), -1.0/3.0);
-        int numBinsTcp = (int)((tcpStatistics.getMax() - tcpStatistics.getMin()) / binWidthTcp);
-        numBinsTcp = Math.min(numBinsTcp, 100);
-        Plot currentTcpPlot = new Histogram.HistogramBuilder(
-                Pair.create("TCP Latencies", tcpStatistics.getValues()))
-                .setBinNumber(numBinsTcp)
-                .plotObject();
-        System.out.println("Histogram of TCP Latencies:");
-        currentTcpPlot.printPlot(true);
+            double[] tcpLatenciesSorted = tcpStatistics.getSortedValues();
+            double[] cumulativeTcpProbabilities = new double[tcpLatenciesSorted.length];
+            double cumulativeProbabilityTcp = 0.0;
+            for (int i = 0; i < tcpLatenciesSorted.length; i++) {
+                cumulativeProbabilityTcp += (1.0 / tcpLatenciesSorted.length);
+                cumulativeTcpProbabilities[i] = cumulativeProbabilityTcp;
+            }
 
-        double[] tcpLatenciesSorted = tcpStatistics.getSortedValues();
-        double[] cumulativeTcpProbabilities = new double[tcpLatenciesSorted.length];
-        double cumulativeProbabilityTcp = 0.0;
-        for (int i = 0; i < tcpLatenciesSorted.length; i++) {
-            cumulativeProbabilityTcp += (1.0/tcpLatenciesSorted.length);
-            cumulativeTcpProbabilities[i] = cumulativeProbabilityTcp;
+            System.out.println("TCP Latency CDF:");
+            System.out.println(ASCIIGraph.fromSeries(cumulativeTcpProbabilities).plot());
         }
-
-        System.out.println("TCP Latency CDF:");
-        System.out.println(ASCIIGraph.fromSeries(cumulativeHttpProbabilities).plot());
 
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
         printLatencyStatisticsDetailed(0);
