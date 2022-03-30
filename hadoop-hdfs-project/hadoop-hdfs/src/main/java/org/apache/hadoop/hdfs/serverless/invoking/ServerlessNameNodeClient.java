@@ -1,6 +1,8 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
+import de.davidm.textplots.Histogram;
+import de.davidm.textplots.Plot;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
@@ -9,6 +11,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.util.Pair;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
 import org.apache.hadoop.fs.*;
@@ -674,12 +677,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
           "Op Name", "Start Time", "End Time", "Duration (ms)", "Deployment", "HTTP", "TCP"
         };
 
-        // Object[][] data = new Object[opsPerformedList.size()][];
-        for (int i = 0; i < opsPerformedList.size(); i++) {
-            OperationPerformed opPerformed = opsPerformedList.get(i);
-            // data[i] = opPerformed.getAsArray();
-        }
-
         System.out.println("====================== Operations Performed ======================");
         System.out.println("Number performed: " + operationsPerformed.size());
         System.out.println(OperationPerformed.getToStringHeader());
@@ -737,6 +734,25 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println("Latency HTTP (ms) [min: " + httpStatistics.getMin() + ", max: " + httpStatistics.getMax() +
                 ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
                 ", N: " + httpStatistics.getN() + "]");
+
+        double binWidthHttp = 2 * httpStatistics.getPercentile(0.75) - httpStatistics.getPercentile(0.25) * Math.pow(httpStatistics.getN(), -1.0/3.0);
+        int numBinsHttp = (int)((httpStatistics.getMax() - httpStatistics.getMin()) / binWidthHttp);
+        numBinsHttp = Math.max(numBinsHttp, 50);
+        Plot currentHttpPlot = new Histogram.HistogramBuilder(
+                Pair.create("HTTP Latencies", httpStatistics.getValues()))
+                .setBinNumber(8)
+                .setWidth(numBinsHttp)
+                .plotObject();
+        currentHttpPlot.printPlot(true);
+
+        double binWidthTcp = 2 * tcpStatistics.getPercentile(0.75) - tcpStatistics.getPercentile(0.25) * Math.pow(tcpStatistics.getN(), -1.0/3.0);
+        int numBinsTcp = (int)((tcpStatistics.getMax() - tcpStatistics.getMin()) / binWidthTcp);
+        numBinsTcp = Math.max(numBinsTcp, 50);
+        Plot currentTcpPlot = new Histogram.HistogramBuilder(
+                Pair.create("TCP Latencies", tcpStatistics.getValues()))
+                .setBinNumber(numBinsTcp)
+                .plotObject();
+        currentTcpPlot.printPlot(true);
 
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
         printLatencyStatisticsDetailed(0);
