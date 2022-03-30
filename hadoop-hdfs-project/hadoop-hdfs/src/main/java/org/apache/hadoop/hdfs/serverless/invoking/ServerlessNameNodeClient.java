@@ -743,6 +743,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 .setBinNumber(8)
                 .setWidth(numBinsHttp)
                 .plotObject();
+        System.out.println("Histogram of HTTP Latencies:\n");
         currentHttpPlot.printPlot(true);
 
         double binWidthTcp = 2 * tcpStatistics.getPercentile(0.75) - tcpStatistics.getPercentile(0.25) * Math.pow(tcpStatistics.getN(), -1.0/3.0);
@@ -752,6 +753,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 Pair.create("TCP Latencies", tcpStatistics.getValues()))
                 .setBinNumber(numBinsTcp)
                 .plotObject();
+        System.out.println("Histogram of TCP Latencies:\n");
         currentTcpPlot.printPlot(true);
 
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
