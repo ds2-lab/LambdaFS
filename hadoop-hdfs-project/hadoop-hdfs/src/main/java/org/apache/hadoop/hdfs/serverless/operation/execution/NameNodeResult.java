@@ -393,18 +393,18 @@ public class NameNodeResult implements Serializable {
      * instance of NameNodeResult.
      */
     public void commitStatisticsPackages() {
-        LOG.debug("Committing statistics packages for request " + requestId + " now...");
+        // LOG.debug("Committing statistics packages for request " + requestId + " now...");
         TransactionsStats.ServerlessStatisticsPackage statisticsPackage
                 = TransactionsStats.getInstance().exportForServerless(requestId);
         if (statisticsPackage != null) {
-            LOG.debug("Statistics package was NOT null. Serializing and encoding it now.");
+            // LOG.debug("Statistics package was NOT null. Serializing and encoding it now.");
             this.statisticsPackageSerializedAndEncoded = serializeAndEncode(statisticsPackage);
         }
     }
 
     public void commitTransactionEvents(List<TransactionEvent> transactionEvents) {
         if (transactionEvents != null) {
-            LOG.debug("Serializing and encoding transaction events for request " + requestId + " now...");
+            // LOG.debug("Serializing and encoding transaction events for request " + requestId + " now...");
             this.txEventsSerializedAndEncoded = serializeAndEncode(transactionEvents);
         }
     }
