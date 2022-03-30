@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
+import com.mitchtalmadge.asciidata.graph.ASCIIGraph;
 import de.davidm.textplots.Histogram;
 import de.davidm.textplots.Plot;
 import io.hops.leader_election.node.SortedActiveNodeList;
@@ -743,8 +744,19 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 Pair.create("HTTP Latencies", httpStatistics.getValues()))
                 .setBinNumber(numBinsHttp)
                 .plotObject();
-        System.out.println("Histogram of HTTP Latencies:\n");
+        System.out.println("\nHistogram of HTTP Latencies:");
         currentHttpPlot.printPlot(true);
+        
+        double[] httpLatenciesSorted = httpStatistics.getSortedValues();
+        double[] cumulativeHttpProbabilities = new double[httpLatenciesSorted.length];
+        double cumulativeProbabilityHttp = 0.0;
+        for (int i = 0; i < httpLatenciesSorted.length; i++) {
+            cumulativeProbabilityHttp += (1.0/httpLatenciesSorted.length);
+            cumulativeHttpProbabilities[i] = cumulativeProbabilityHttp;
+        }
+
+        System.out.println("HTTP Latency CDF:");
+        System.out.println(ASCIIGraph.fromSeries(cumulativeHttpProbabilities).plot());
 
         double binWidthTcp = 2 * tcpStatistics.getPercentile(0.75) - tcpStatistics.getPercentile(0.25) * Math.pow(tcpStatistics.getN(), -1.0/3.0);
         int numBinsTcp = (int)((tcpStatistics.getMax() - tcpStatistics.getMin()) / binWidthTcp);
@@ -753,8 +765,19 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 Pair.create("TCP Latencies", tcpStatistics.getValues()))
                 .setBinNumber(numBinsTcp)
                 .plotObject();
-        System.out.println("Histogram of TCP Latencies:\n");
+        System.out.println("Histogram of TCP Latencies:");
         currentTcpPlot.printPlot(true);
+
+        double[] tcpLatenciesSorted = tcpStatistics.getSortedValues();
+        double[] cumulativeTcpProbabilities = new double[tcpLatenciesSorted.length];
+        double cumulativeProbabilityTcp = 0.0;
+        for (int i = 0; i < tcpLatenciesSorted.length; i++) {
+            cumulativeProbabilityTcp += (1.0/tcpLatenciesSorted.length);
+            cumulativeTcpProbabilities[i] = cumulativeProbabilityTcp;
+        }
+
+        System.out.println("TCP Latency CDF:");
+        System.out.println(ASCIIGraph.fromSeries(cumulativeHttpProbabilities).plot());
 
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
         printLatencyStatisticsDetailed(0);
