@@ -1,7 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
-import com.mitchtalmadge.asciidata.graph.ASCIIGraph;
 import de.davidm.textplots.Histogram;
 import de.davidm.textplots.Plot;
 import io.hops.leader_election.node.SortedActiveNodeList;
@@ -37,7 +36,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.ExponentialBackOff;
-import org.apache.hadoop.util.Time;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -686,10 +684,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         DescriptiveStatistics tcpStatistics = new DescriptiveStatistics();
 
         for (OperationPerformed operationPerformed : opsPerformedList) {
-            if (operationPerformed.getIssuedViaHttp())
-                httpStatistics.addValue(operationPerformed.getLatency());
-            if (operationPerformed.getIssuedViaTcp())
-                tcpStatistics.addValue(operationPerformed.getLatency());
+            if (operationPerformed.getIssuedViaHttp()) {
+                double latency = operationPerformed.getLatency();
+                if (latency > 0)
+                    httpStatistics.addValue(latency);
+            }
+            if (operationPerformed.getIssuedViaTcp()) {
+                double latency = operationPerformed.getLatency();
+                if (latency > 0)
+                    tcpStatistics.addValue(latency);
+            }
         }
 
         System.out.println("\n-- SUMS ----------------------------------------------------------------------------------------------------------------------");
@@ -748,16 +752,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             System.out.println("\nHistogram of HTTP Latencies:");
             currentHttpPlot.printPlot(true);
 
-            double[] httpLatenciesSorted = httpStatistics.getSortedValues();
-            double[] cumulativeHttpProbabilities = new double[httpLatenciesSorted.length];
-            double cumulativeProbabilityHttp = 0.0;
-            for (int i = 0; i < httpLatenciesSorted.length; i++) {
-                cumulativeProbabilityHttp += (1.0 / httpLatenciesSorted.length);
-                cumulativeHttpProbabilities[i] = cumulativeProbabilityHttp;
-            }
-
-            System.out.println("HTTP Latency CDF:");
-            System.out.println(ASCIIGraph.fromSeries(cumulativeHttpProbabilities).plot());
+//            double[] httpLatenciesSorted = httpStatistics.getSortedValues();
+//            double[] cumulativeHttpProbabilities = new double[httpLatenciesSorted.length];
+//            double cumulativeProbabilityHttp = 0.0;
+//            for (int i = 0; i < httpLatenciesSorted.length; i++) {
+//                cumulativeProbabilityHttp += (1.0 / httpLatenciesSorted.length);
+//                cumulativeHttpProbabilities[i] = cumulativeProbabilityHttp;
+//            }
+//
+//            System.out.println("HTTP Latency CDF:");
+//            System.out.println(ASCIIGraph.fromSeries(cumulativeHttpProbabilities).plot());
         }
 
         if (tcpStatistics.getN() > 1) {
@@ -771,16 +775,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             System.out.println("Histogram of TCP Latencies:");
             currentTcpPlot.printPlot(true);
 
-            double[] tcpLatenciesSorted = tcpStatistics.getSortedValues();
-            double[] cumulativeTcpProbabilities = new double[tcpLatenciesSorted.length];
-            double cumulativeProbabilityTcp = 0.0;
-            for (int i = 0; i < tcpLatenciesSorted.length; i++) {
-                cumulativeProbabilityTcp += (1.0 / tcpLatenciesSorted.length);
-                cumulativeTcpProbabilities[i] = cumulativeProbabilityTcp;
-            }
-
-            System.out.println("TCP Latency CDF:");
-            System.out.println(ASCIIGraph.fromSeries(cumulativeTcpProbabilities).plot());
+//            double[] tcpLatenciesSorted = tcpStatistics.getSortedValues();
+//            double[] cumulativeTcpProbabilities = new double[tcpLatenciesSorted.length];
+//            double cumulativeProbabilityTcp = 0.0;
+//            for (int i = 0; i < tcpLatenciesSorted.length; i++) {
+//                cumulativeProbabilityTcp += (1.0 / tcpLatenciesSorted.length);
+//                cumulativeTcpProbabilities[i] = cumulativeProbabilityTcp;
+//            }
+//
+//            System.out.println("TCP Latency CDF:");
+//            System.out.println(ASCIIGraph.fromSeries(cumulativeTcpProbabilities).plot());
         }
 
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
