@@ -330,13 +330,7 @@ public class ExecutionManager {
         // we'll correctly return true. If we removed it from 'currently executing tasks' first, then there could
         // be a race where the task has been removed from 'currently executing tasks' but not yet added to 'completed
         // tasks' yet, which could result in false negatives when checking for duplicates.
-//        if (completedTasks.containsKey(taskId))
-//            throw new IllegalStateException("Task " + taskId + " (op=" + task.getOperationName() +
-//                    ") has just finished executing, yet it is already present in the completedTasks map...");
         completedTasks.put(taskId, task);
-
-//        if (!currentlyExecutingTasks.containsKey(taskId))
-//            throw new IllegalStateException("Task " + taskId + " is not currently executing.");
         currentlyExecutingTasks.remove(taskId);
     }
 

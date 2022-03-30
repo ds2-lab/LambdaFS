@@ -372,13 +372,13 @@ public class NameNodeResult implements Serializable {
 
         if (statisticsPackageSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
-        else
-            LOG.warn("There are no Statistics Packages to return to the client...");
+//        else
+//            LOG.warn("There are no Statistics Packages to return to the client...");
 
         if (txEventsSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.TRANSACTION_EVENTS, txEventsSerializedAndEncoded);
-        else
-            LOG.warn("There are no Transaction Statistics to return to the client...");
+//        else
+//            LOG.warn("There are no Transaction Statistics to return to the client...");
 
         // Reset these in-case this thread gets re-used in the future for another request.
         metadataCache.resetCacheHitMissCounters();

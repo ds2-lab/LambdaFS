@@ -1129,9 +1129,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       throw new IOException("Failed to successfully process any of the " + datanodes.size() +
               " non-skipped registration(s).");
     }
-    else if (datanodes.size() == 0) {
-      LOG.warn("There were NO datanode registrations to process...");
-    }
+//    else if (datanodes.size() == 0) {
+//      LOG.warn("There were NO datanode registrations to process...");
+//    }
   }
 
   /**
@@ -1489,7 +1489,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private DirectoryListing getListing(JsonObject fsArgs) throws IOException {
     EntityManager.toggleLocalMetadataCache(true);
-    LOG.info("Unpacking arguments for the GET-LISTING operation now...");
+    //LOG.info("Unpacking arguments for the GET-LISTING operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     boolean needLocation = fsArgs.getAsJsonPrimitive("needLocation").getAsBoolean();
@@ -1557,7 +1557,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private boolean isFileClosed(JsonObject fsArgs) throws IOException {
     EntityManager.toggleLocalMetadataCache(true);
-    LOG.info("Unpacking arguments for the IS-FILE-CLOSED operation now...");
+    //LOG.info("Unpacking arguments for the IS-FILE-CLOSED operation now...");
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
 
     return namesystem.isFileClosed(src);
@@ -1565,7 +1565,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private LocatedBlocks getBlockLocations(JsonObject fsArgs) throws IOException {
     EntityManager.toggleLocalMetadataCache(true);
-    LOG.info("Unpacking arguments for the GET-BLOCK-LOCATIONS operation now...");
+    //LOG.info("Unpacking arguments for the GET-BLOCK-LOCATIONS operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     long offset = fsArgs.getAsJsonPrimitive("offset").getAsLong();
@@ -1608,7 +1608,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private void concat(JsonObject fsArgs) throws IOException {
     EntityManager.toggleLocalMetadataCache(false);
 
-    LOG.info("Unpacking arguments for the CONCAT operation now...");
+    //LOG.info("Unpacking arguments for the CONCAT operation now...");
 
     String trg = fsArgs.getAsJsonPrimitive("trg").getAsString();
 
@@ -1715,7 +1715,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private HdfsFileStatus create(JsonObject fsArgs) throws IOException {
     EntityManager.toggleLocalMetadataCache(false);
-    LOG.info("Unpacking arguments for the CREATE operation now...");
+    //LOG.info("Unpacking arguments for the CREATE operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     short permissionAsShort = fsArgs.getAsJsonPrimitive("masked").getAsShort();
@@ -1796,7 +1796,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private boolean delete(JsonObject fsArgs) throws IOException {
     EntityManager.toggleLocalMetadataCache(false);
-    LOG.info("Unpacking arguments for the DELETE operation now...");
+    //LOG.info("Unpacking arguments for the DELETE operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     boolean recursive = fsArgs.getAsJsonPrimitive("recursive").getAsBoolean();
@@ -1836,7 +1836,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private void rename(JsonObject fsArgs) throws IOException {
     EntityManager.toggleLocalMetadataCache(false);
-    LOG.info("Unpacking arguments for the RENAME operation now...");
+    //LOG.info("Unpacking arguments for the RENAME operation now...");
 
     String src = fsArgs.getAsJsonPrimitive("src").getAsString();
     String dst = fsArgs.getAsJsonPrimitive("dst").getAsString();
