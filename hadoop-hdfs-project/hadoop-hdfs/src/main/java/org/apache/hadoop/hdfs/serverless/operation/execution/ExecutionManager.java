@@ -150,6 +150,8 @@ public class ExecutionManager {
             currentlyExecutingTasks.put(task.getTaskId(), task);
         }
 
+        LOG.info("Executing task " + task.getTaskId() + ", operation: " + task.getOperationName() + " now.");
+
         workerResult.setDequeuedTime(System.currentTimeMillis());
 
         Serializable result = null;
