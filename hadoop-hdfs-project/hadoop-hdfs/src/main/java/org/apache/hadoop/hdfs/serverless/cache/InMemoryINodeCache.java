@@ -41,21 +41,20 @@ public class InMemoryINodeCache {
     private static final int DEFAULT_MAX_ENTRIES = 10000;         // Default maximum capacity.
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;       // Default load factor.
 
-    private static final long serialVersionUID = -8140463703331613827L;
-
     private final Lock _mutex = new ReentrantLock(true);
 
-    // TODO: Add org.apache.commons.collections4.trie.PatriciaTrie to store INodes to support subtree invalidations.
+    /**
+     * This is the main cache, along with the cache HashMap.
+     *
+     * We use this object when we want to grab a bunch of INodes using a path prefix (e.g., /home/ben/docs/).
+     */
     private final PatriciaTrie<INode> metadataTrie;
 
     /**
-     * Keys are added to this set upon being invalidated. If a key is in this set,
-     * then the data in the cache for that key is out-of-date and must be retrieved from
-     * intermediate storage, rather than from the cache.
-     *
-     * This must remain a subset of the keyset of the cache variable.
+     * This is the main cache, along with the metadataTrie variable. We use this when we want to grab a single
+     * INode by its full path.
      */
-    // private final HashSet<String> invalidatedKeys;
+    private final HashMap<String, INode> cache;
 
     /**
      * Mapping between INode IDs and their names.
@@ -67,8 +66,6 @@ public class InMemoryINodeCache {
      * cached/stored by HopsFS during transactions, to the fully-qualified paths of the INode.
      */
     private final HashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
-
-    private final HashMap<String, INode> cache;
 
     /**
      * Cache hits experienced across all requests processed by the NameNode.
