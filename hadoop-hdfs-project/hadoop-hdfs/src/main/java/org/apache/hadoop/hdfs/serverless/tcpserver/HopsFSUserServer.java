@@ -562,11 +562,6 @@ public class HopsFSUserServer {
 
         int bytesSent = tcpConnection.sendTCP(payload.toString());
 
-        // If 'bytesSent' is zero, then an error must have occurred.
-        // TODO: Handle this scenario somehow (resubmit the TCP request, notify the client, etc.)
-        if (bytesSent == 0)
-            LOG.error("Transmission of TCP request " + requestId + " sent 0 bytes.");
-
         // Make note of this future as being incomplete.
         List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(
                 tcpConnection.name, k -> new ArrayList<>());
@@ -676,10 +671,6 @@ public class HopsFSUserServer {
             // If we received a JsonObject, then add it to the queue for processing.
             if (object instanceof String) {
                 JsonObject body = new JsonParser().parse((String)object).getAsJsonObject();
-                //JsonParser.parseString((String)object).getAsJsonObject();
-
-                if (LOG.isDebugEnabled())
-                    LOG.debug("[TCP SERVER " + tcpPort + "] Received message from NameNode at " + connection.toString() + " at " + connection.getRemoteAddressTCP() + ".");
 
                 int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
                 long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();

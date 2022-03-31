@@ -41,9 +41,9 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
     public void setConfiguration(Configuration conf, String invokerIdentity) {
         super.setConfiguration(conf, invokerIdentity);
         String[] endpoints = conf.getStrings(SERVERLESS_NUCLIO_ENDPOINTS, SERVERLESS_NUCLIO_ENDPOINTS_DEFAULT);
-        LOG.debug("Found " + endpoints.length + " Nuclio endpoint(s) in configuration.");
+        if (LOG.isDebugEnabled()) LOG.debug("Found " + endpoints.length + " Nuclio endpoint(s) in configuration.");
         for (int i = 0; i < endpoints.length; i++) {
-            LOG.debug("Nuclio deployment #1's endpoint: " + endpoints[i]);
+            if (LOG.isDebugEnabled()) LOG.debug("Nuclio deployment #1's endpoint: " + endpoints[i]);
             deploymentToEndpointMap.put(i, endpoints[i]);
         }
     }
@@ -83,18 +83,18 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
                             fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
                     targetDeployment = cache.getFunction(sourceFileOrDirectory);
                 } else {
-                    LOG.debug("No `src` property found in file system arguments... " +
+                    if (LOG.isDebugEnabled()) LOG.debug("No `src` property found in file system arguments... " +
                             "skipping the checking of INode cache...");
                 }
             } else {
-                LOG.debug("Explicitly targeting deployment #" + targetDeployment + ".");
+                if (LOG.isDebugEnabled()) LOG.debug("Explicitly targeting deployment #" + targetDeployment + ".");
             }
 
             // If we have a cache entry for this function, then we'll invoke that specific function.
             // Otherwise, we'll just select a function at random.
             if (targetDeployment < 0) {
                 targetDeployment = ThreadLocalRandom.current().nextInt(0, numDeployments);
-                LOG.debug("Randomly selected serverless function " + targetDeployment);
+                if (LOG.isDebugEnabled()) LOG.debug("Randomly selected serverless function " + targetDeployment);
             }
 
             if (!deploymentToEndpointMap.containsKey(targetDeployment)) {

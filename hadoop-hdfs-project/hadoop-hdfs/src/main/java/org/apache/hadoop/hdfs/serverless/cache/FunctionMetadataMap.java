@@ -76,19 +76,7 @@ public class FunctionMetadataMap {
      *         entry exists in the map for this function yet.
      */
     public int getFunction(String file) {
-        /*if (cache.containsKey(file)) {
-            int functionName = cache.get(file);
-            LOG.debug(String.format("Returning function %s for file %s", file, functionName));
-            return functionName;
-        }
-        else {
-            LOG.debug("No entry associated with file " + file);
-            return -1;
-        }*/
-
         String pathToCache = getPathToCache(file);
-
-        // LOG.debug("Checking path '" + pathToCache + "' for target '" + file + "'");
 
         try (Jedis jedis = redisPool.getResource()) {
             if (jedis.exists(pathToCache))
@@ -134,21 +122,16 @@ public class FunctionMetadataMap {
      * @return `true` if entry was added to the cache, otherwise `false`.
      */
     public boolean addEntry(String path, int function, boolean overwriteExisting) {
-        // Only add the file to the cache if we're supposed to overwrite existing entries or
-        // if there does not already exist an entry for the given file/directory.
-        /*if (overwriteExisting || !cache.containsKey(path)) {
-            cache.put(path, function);
-            return true;
-        }*/
-
         String pathToCache = getPathToCache(path);
 
-        LOG.debug("Adding cache entry with key '" + pathToCache + "' for target '" + path + "'. Value: " + function + ".");
+        if (LOG.isDebugEnabled())
+            LOG.debug("Adding cache entry with key '" + pathToCache + "' for target '" + path + "'. Value: " + function + ".");
 
         try (Jedis jedis = redisPool.getResource()) {
             String resp = jedis.set(pathToCache, String.valueOf(function));
 
-            LOG.debug("Response from jedis.set('" + pathToCache + "', " + function + "): " + resp);
+            if (LOG.isDebugEnabled())
+                LOG.debug("Response from jedis.set('" + pathToCache + "', " + function + "): " + resp);
         }
 
         return false;
@@ -161,7 +144,6 @@ public class FunctionMetadataMap {
         try (Jedis jedis = redisPool.getResource()) {
             return jedis.dbSize();
         }
-        // return cache.size();
     }
 
     /**

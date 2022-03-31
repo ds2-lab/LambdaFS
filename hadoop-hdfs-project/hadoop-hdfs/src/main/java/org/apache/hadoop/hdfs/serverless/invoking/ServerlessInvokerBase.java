@@ -229,18 +229,20 @@ public abstract class ServerlessInvokerBase<T> {
         Header contentType = httpResponse.getEntity().getContentType();
         long contentLength = httpResponse.getEntity().getContentLength();
 
-        LOG.debug("====== HTTP RESPONSE ======");
-        LOG.debug(protocolVersion + " - " + responseCode);
-        LOG.debug(reasonPhrase);
-        LOG.debug("---------------------------");
-        if (contentType != null)
-            LOG.debug(contentType.getName() + ": " + contentType.getValue());
-        LOG.debug("Content-length: " + contentLength);
-        LOG.debug("===========================");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("====== HTTP RESPONSE ======");
+            LOG.debug(protocolVersion + " - " + responseCode);
+            LOG.debug(reasonPhrase);
+            LOG.debug("---------------------------");
+            if (contentType != null)
+                LOG.debug(contentType.getName() + ": " + contentType.getValue());
+            LOG.debug("Content-length: " + contentLength);
+            LOG.debug("===========================");
 
-        LOG.debug("HTTP Response from Nuclio function:\n" + httpResponse);
-        LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
-        LOG.debug("HTTP Response Entity Content: " + json);
+            LOG.debug("HTTP Response from Nuclio function:\n" + httpResponse);
+            LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
+            LOG.debug("HTTP Response Entity Content: " + json);
+        }
 
         JsonObject jsonObjectResponse = null;
         JsonPrimitive jsonPrimitiveResponse = null;
@@ -325,7 +327,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Set parameters of the invoker specified in the HopsFS configuration.
      */
     public void setConfiguration(Configuration conf, String invokerIdentity) {
-        LOG.debug("Configuring ServerlessInvokerBase now...");
+        if (LOG.isDebugEnabled()) LOG.debug("Configuring ServerlessInvokerBase now...");
         cache = new FunctionMetadataMap(conf);
         this.localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         maxHttpRetries = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX,
@@ -345,8 +347,8 @@ public abstract class ServerlessInvokerBase<T> {
         // NDB
         debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);
         debugStringNdb = conf.get(DFSConfigKeys.NDB_DEBUG_STRING, DFSConfigKeys.NDB_DEBUG_STRING_DEFAULT);
-        LOG.debug("NDB debug enabled: " + debugEnabledNdb);
-        if (debugEnabledNdb)
+        if (LOG.isDebugEnabled()) LOG.debug("NDB debug enabled: " + debugEnabledNdb);
+        if (debugEnabledNdb && LOG.isDebugEnabled())
             LOG.debug("NDB debug string: " + debugStringNdb);
 
         try {
@@ -459,8 +461,10 @@ public abstract class ServerlessInvokerBase<T> {
         request.setEntity(parameters);
         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
-        LOG.info("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
-        LOG.debug("Request URI/URL: " + request.getURI().toURL());
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
+            LOG.debug("Request URI/URL: " + request.getURI().toURL());
+        }
 
         ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(maxHttpRetries)
@@ -485,8 +489,8 @@ public abstract class ServerlessInvokerBase<T> {
                 httpResponse = httpClient.execute(request);
                 currentTime = System.nanoTime();
                 timeElapsed = (currentTime - invokeStart) / 1000000.0;
-                LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName +
-                        "). Time elapsed: " + timeElapsed + " milliseconds.");
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName +"). Time elapsed: " + timeElapsed + " milliseconds.");
 
                 int responseCode = httpResponse.getStatusLine().getStatusCode();
 
@@ -534,7 +538,7 @@ public abstract class ServerlessInvokerBase<T> {
 
             long invokeEnd = System.nanoTime();
             double duration = (invokeEnd - invokeStart) / 1000000.0;
-            LOG.debug("Returning result to client after " + duration + " milliseconds.");
+            if (LOG.isDebugEnabled()) LOG.debug("Returning result to client after " + duration + " milliseconds.");
             return processedResponse;
         } while (backoffInterval != -1);
 
@@ -547,8 +551,10 @@ public abstract class ServerlessInvokerBase<T> {
      * so it is insecure.
      */
     public CloseableHttpClient getGenericTrustAllHttpClient() throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException {
-        LOG.debug("Setting HTTP connection timeout to " + httpTimeoutMilliseconds + " milliseconds.");
-        LOG.debug("Setting HTTP socket timeout to " + httpTimeoutMilliseconds + " milliseconds.");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Setting HTTP connection timeout to " + httpTimeoutMilliseconds + " milliseconds.");
+            LOG.debug("Setting HTTP socket timeout to " + httpTimeoutMilliseconds + " milliseconds.");
+        }
 
         RequestConfig requestConfig = RequestConfig
                 .custom()
@@ -636,19 +642,16 @@ public abstract class ServerlessInvokerBase<T> {
 
         // First, let's check and see if there's any information about file/directory-to-function mappings.
         if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_MAPPING) && cache != null) {
-            LOG.debug("JSON response from serverless name node contains function mapping information.");
             JsonObject functionMapping = response.getAsJsonObject(ServerlessNameNodeKeys.DEPLOYMENT_MAPPING);
 
             String src = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FILE_OR_DIR).getAsString();
             long parentINodeId = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.PARENT_ID).getAsLong();
             int function = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION).getAsInt();
 
-            LOG.debug("File or directory: \"" + src + "\", parent INode ID: " + parentINodeId +
-                    ", function: " + function);
+            if (LOG.isDebugEnabled())
+
 
             cache.addEntry(src, function, false);
-
-            LOG.debug("Added entry to function-mapping cache. File/directory \"" + src + "\" --> " + function);
         }
 
         // Print any exceptions that were encountered first.
@@ -665,9 +668,6 @@ public abstract class ServerlessInvokerBase<T> {
                 for (int i = 0; i < exceptionsJson.size(); i++)
                     LOG.error(exceptionsJson.get(i).getAsString());
                 LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
-            }
-            else {
-                LOG.debug("The Serverless NameNode did not encounter any exceptions while executing task " + requestId);
             }
         }
 
@@ -715,7 +715,8 @@ public abstract class ServerlessInvokerBase<T> {
                     return null;
                 }
 
-                LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": "
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": "
                         + result.toString());
                 return result;
             } catch (Exception ex) {

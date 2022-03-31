@@ -36,7 +36,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * Used by Serverless NameNodes to store and retrieve cached metadata.
  */
 public class InMemoryINodeCache {
-    //static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
     public static final Logger LOG = LoggerFactory.getLogger(InMemoryINodeCache.class);
 
     private static final int DEFAULT_MAX_ENTRIES = 10000;         // Default maximum capacity.
@@ -119,7 +118,6 @@ public class InMemoryINodeCache {
      */
     protected void cacheHit() {
         int currentHits = threadLocalCacheHits.get();
-        //LOG.debug("Cache hit! Current number of cache hits: " + (currentHits + 1));
         threadLocalCacheHits.set(currentHits + 1);
     }
 
@@ -128,7 +126,6 @@ public class InMemoryINodeCache {
      */
     protected void cacheMiss() {
         int currentMisses = threadLocalCacheMisses.get();
-        // LOG.debug("Cache miss! Current number of cache misses: " + (currentMisses + 1));
         threadLocalCacheMisses.set(currentMisses + 1);
     }
 
@@ -390,7 +387,7 @@ public class InMemoryINodeCache {
                 cache.remove(key);
                 metadataTrie.remove(key);
 
-                LOG.debug("Invalidated key " + key + ".");
+                if (LOG.isDebugEnabled()) LOG.debug("Invalidated key " + key + ".");
                 return true;
             }
 
@@ -426,7 +423,7 @@ public class InMemoryINodeCache {
      * cached metadata objects (e.g., Ace and EncryptionZone instances).
      */
     protected Collection<INode> invalidateKeysByPrefix(String prefix) {
-        LOG.debug("Invalidating all cached INodes contained within the file subtree rooted at '" + prefix + "'.");
+        if (LOG.isDebugEnabled()) LOG.debug("Invalidating all cached INodes contained within the file subtree rooted at '" + prefix + "'.");
 
         _mutex.lock();
 
@@ -441,7 +438,7 @@ public class InMemoryINodeCache {
                     numInvalidated++;
             }
 
-            LOG.debug("Invalidated " + numInvalidated + "/" + prefixedEntries.size() + " of the nodes in the prefix map.");
+            if (LOG.isDebugEnabled()) LOG.debug("Invalidated " + numInvalidated + "/" + prefixedEntries.size() + " of the nodes in the prefix map.");
 
             return prefixedEntries.values();
         } finally {

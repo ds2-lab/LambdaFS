@@ -201,12 +201,12 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * should proceed like normal. Otherwise false, which means that the subtree protocol should abort.
      */
     public static boolean runConsistencyProtocolForSubtreeOperation(Set<Integer> associatedDeployments, String src) {
-        LOG.debug("=============== Subtree Consistency Protocol ===============");
+        if (LOG.isDebugEnabled()) LOG.debug("=============== Subtree Consistency Protocol ===============");
         int numAssociatedDeployments = associatedDeployments.size();
 
-        LOG.debug("There " + (numAssociatedDeployments == 1 ? "is 1 deployment " : "are " +
+        if (LOG.isDebugEnabled()) LOG.debug("There " + (numAssociatedDeployments == 1 ? "is 1 deployment " : "are " +
                 associatedDeployments.size() + " deployments ") + " associated with subtree rooted at '" + src + "'.");
-        LOG.debug("Associated deployments: " + StringUtils.join(", ", associatedDeployments));
+        if (LOG.isDebugEnabled()) LOG.debug("Associated deployments: " + StringUtils.join(", ", associatedDeployments));
 
         // This is sort of a dummy ID.
         long transactionId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
@@ -249,7 +249,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             return false;
         }
 
-        LOG.debug("Subtree Consistency Protocol executed successfully in " + txDurationMilliseconds + " ms.");
+        if (LOG.isDebugEnabled()) LOG.debug("Subtree Consistency Protocol executed successfully in " + txDurationMilliseconds + " ms.");
         return true;
     }
 
@@ -288,7 +288,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
 
         if (!DO_CONSISTENCY_PROTOCOL) {
-            LOG.debug("Skipping consistency protocol as 'DO_CONSISTENCY_PROTOCOL' is set to false.");
+            if (LOG.isDebugEnabled()) LOG.debug("Skipping consistency protocol as 'DO_CONSISTENCY_PROTOCOL' is set to false.");
             canProceed = true;
             return;
         }
@@ -316,9 +316,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             }
         }
 
-        LOG.debug("=-=-=-=-= CONSISTENCY PROTOCOL =-=-=-=-=");
-        LOG.debug("Operation ID: " + operationId);
-        LOG.debug("Operation Start Time: " + transactionStartTime);
+        if (LOG.isDebugEnabled()) LOG.debug("=-=-=-=-= CONSISTENCY PROTOCOL =-=-=-=-=");
+        if (LOG.isDebugEnabled()) LOG.debug("Operation ID: " + operationId);
+        if (LOG.isDebugEnabled()) LOG.debug("Operation Start Time: " + transactionStartTime);
 
         // Sanity check. Make sure we have a valid reference to the ServerlessNameNode. This isn't the cleanest, but
         // with the way HopsFS has structured its code, this is workable for our purposes.
@@ -338,7 +338,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         //
         // Keep track of all deployments involved in this transaction.
         if (involvedDeployments == null) {
-            LOG.debug("Computing involved deployments as they were not provided to us directly.");
+            if (LOG.isDebugEnabled()) LOG.debug("Computing involved deployments as they were not provided to us directly.");
             involvedDeployments = new HashSet<>();
 
             // If we entered this if-statement's code block, then we should NOT be executing a subtree operation.
@@ -357,16 +357,16 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 // This is common during subtree operations and when creating a new directory (as that modifies the parent
                 // INode of the new directory, which is possibly mapped to a different deployment).
                 if (mappedDeploymentNumber != localDeploymentNumber) {
-                    LOG.debug("INode '" + invalidatedINode.getLocalName() +
+                    if (LOG.isDebugEnabled()) LOG.debug("INode '" + invalidatedINode.getLocalName() +
                             "' is mapped to a different deployment (" + mappedDeploymentNumber + ").");
                     involvedDeployments.add(mappedDeploymentNumber);
                 }
             }
         } else {
-            LOG.debug("Using set of involved deployments provided to us by the calling thread.");
+            if (LOG.isDebugEnabled()) LOG.debug("Using set of involved deployments provided to us by the calling thread.");
         }
 
-        LOG.debug("Leader NameNode: " + serverlessNameNodeInstance.getFunctionName() + ", ID = "
+        if (LOG.isDebugEnabled()) LOG.debug("Leader NameNode: " + serverlessNameNodeInstance.getFunctionName() + ", ID = "
                 + serverlessNameNodeInstance.getId() + ", Follower NameNodes: "
                 + serverlessNameNodeInstance.getActiveNameNodes().getActiveNodes().toString() + ".");
 
@@ -397,7 +397,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         long computeAckRecordsEndTime = System.currentTimeMillis();
         transactionAttempt.setConsistencyComputeAckRecordTimes(preprocessingEndTime, computeAckRecordsEndTime);
-        LOG.debug("Created ACK records in " + (computeAckRecordsEndTime - preprocessingEndTime) + " ms.");
+        if (LOG.isDebugEnabled()) LOG.debug("Created ACK records in " + (computeAckRecordsEndTime - preprocessingEndTime) + " ms.");
 
         // =============== STEP 1 ===============
         //
@@ -435,7 +435,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             // =============== STEP 2 ===============
             //
             // Now that we've subscribed to ACK events, we can add our ACKs to the table.
-            LOG.debug("=-----=-----= Step 2 - Writing ACK Records to Intermediate Storage =-----=-----=");
+            if (LOG.isDebugEnabled()) LOG.debug("=-----=-----= Step 2 - Writing ACK Records to Intermediate Storage =-----=-----=");
             TransactionLockAcquirer locksAcquirer = new HdfsTransactionalLockAcquirer(); // Only used with NDB.
             if (useZooKeeperForACKsAndINVs) {
                 try {
@@ -456,7 +456,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 WriteAcknowledgementDataAccess<WriteAcknowledgement> writeAcknowledgementDataAccess =
                         (WriteAcknowledgementDataAccess<WriteAcknowledgement>) HdfsStorageFactory.getDataAccess(WriteAcknowledgementDataAccess.class);
 
-                LOG.debug("Beginning transaction to write ACKs and INVs in single step.");
+                if (LOG.isDebugEnabled()) LOG.debug("Beginning transaction to write ACKs and INVs in single step.");
 
                 try {
                     EntityManager.begin();
@@ -469,7 +469,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     List<WriteAcknowledgement> writeAcknowledgements = entry.getValue();
 
                     if (writeAcknowledgements.size() > 0) {
-                        LOG.debug("Adding " + writeAcknowledgements.size()
+                        if (LOG.isDebugEnabled()) LOG.debug("Adding " + writeAcknowledgements.size()
                                 + " ACK entries for deployment #" + deploymentNumber + ".");
                         try {
                             writeAcknowledgementDataAccess.addWriteAcknowledgements(writeAcknowledgements, deploymentNumber);
@@ -480,7 +480,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                             return;
                         }
                     } else {
-                        LOG.debug("0 ACKs required from deployment #" + deploymentNumber + "...");
+                        if (LOG.isDebugEnabled()) LOG.debug("0 ACKs required from deployment #" + deploymentNumber + "...");
                     }
                 }
 
@@ -497,7 +497,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     return;
                 }
 
-                LOG.debug("Committing transaction containing ACKs and INVs now.");
+                if (LOG.isDebugEnabled()) LOG.debug("Committing transaction containing ACKs and INVs now.");
                 TransactionLocks transactionLocks = locksAcquirer.getLocks();
 
                 try {
@@ -548,7 +548,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             }
         }
         else {
-            LOG.debug("We do not require any ACKs, so we can skip the rest of the consistency protocol.");
+            if (LOG.isDebugEnabled()) LOG.debug("We do not require any ACKs, so we can skip the rest of the consistency protocol.");
             needToUnsubscribe = false;
         }
 
@@ -591,9 +591,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         String groupName = "namenode" + deploymentNumber;
 
         if (calledManually)
-            LOG.debug("ZooKeeper detected membership change for group: " + groupName);
+            if (LOG.isDebugEnabled()) LOG.debug("ZooKeeper detected membership change for group: " + groupName);
         else
-            LOG.debug("Checking for membership changes for deployment #" + deploymentNumber);
+            if (LOG.isDebugEnabled()) LOG.debug("Checking for membership changes for deployment #" + deploymentNumber);
 
         ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
 
@@ -606,7 +606,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 .boxed()
                 .collect(Collectors.toList());
 
-        LOG.debug("Deployment #" + deploymentNumber + " has " + groupMemberIds.size() +
+        if (LOG.isDebugEnabled()) LOG.debug("Deployment #" + deploymentNumber + " has " + groupMemberIds.size() +
                 " active instance(s): " + StringUtils.join(groupMemberIds, ", "));
 
         // For each NN that we're waiting on, check that it is still a member of the group. If it is not, then remove it.
@@ -615,11 +615,11 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(deploymentNumber);
 
         if (deploymentAcks == null) {
-            LOG.debug("We do not require any ACKs from deployment #" + deploymentNumber + ".");
+            if (LOG.isDebugEnabled()) LOG.debug("We do not require any ACKs from deployment #" + deploymentNumber + ".");
             return;
         }
 
-        LOG.debug("ACKs required from deployment #" + deploymentNumber + ": " +
+        if (LOG.isDebugEnabled()) LOG.debug("ACKs required from deployment #" + deploymentNumber + ": " +
                 StringUtils.join(deploymentAcks, ", "));
 
         // Compare the group member IDs to the ACKs from JUST this deployment, not the master list of all ACKs from all
@@ -645,17 +645,17 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         // If after removing all the failed follower NNs, we are not waiting on anybody, then we can just return.
         if (removeMe.size() > 0 && waitingForAcks.size() == 0) {
-            LOG.debug("After removal of " + removeMe.size() +
+            if (LOG.isDebugEnabled()) LOG.debug("After removal of " + removeMe.size() +
                     " failed follower NameNode(s), we have all required ACKs.");
         } else if (removeMe.size() > 0) {
-            LOG.debug("After removal of " + removeMe.size() +
+            if (LOG.isDebugEnabled()) LOG.debug("After removal of " + removeMe.size() +
                     " failed follower NameNode(s), we are still waiting on " + waitingForAcks.size() +
                     " more ACK(s) from " + waitingForAcks + ".");
         } else if (waitingForAcks.size() > 0) {
-            LOG.debug("No NNs removed from waiting-on ACK list. Still waiting on " + waitingForAcks.size() +
+            if (LOG.isDebugEnabled()) LOG.debug("No NNs removed from waiting-on ACK list. Still waiting on " + waitingForAcks.size() +
                     " more ACK(s) from " + waitingForAcks + ".");
         } else {
-            LOG.debug("No NNs removed from waiting-on ACK list. Not waiting on any ACKs.");
+            if (LOG.isDebugEnabled()) LOG.debug("No NNs removed from waiting-on ACK list. Not waiting on any ACKs.");
         }
     }
 
@@ -664,7 +664,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * follower NNs to ACK our write operations.
      */
     private void waitForAcks() throws Exception {
-        LOG.debug("=-----=-----= Steps 4 & 5 - Waiting for ACKs =-----=-----=");
+        if (LOG.isDebugEnabled()) LOG.debug("=-----=-----= Steps 4 & 5 - Waiting for ACKs =-----=-----=");
 
         ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
         int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
@@ -693,12 +693,12 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         long t = System.currentTimeMillis();
 
-        LOG.debug("Called `checkAndProcessMembershipChanges()` for " + involvedDeployments.size() +
+        if (LOG.isDebugEnabled()) LOG.debug("Called `checkAndProcessMembershipChanges()` for " + involvedDeployments.size() +
                 " deployment(s) in " + (t - s) + " ms.");
 
-        LOG.debug("Waiting for the remaining " + waitingForAcks.size() +
+        if (LOG.isDebugEnabled()) LOG.debug("Waiting for the remaining " + waitingForAcks.size() +
                 " ACK(s) now. Will timeout after " + serverlessNameNodeInstance.getTxAckTimeout() + " milliseconds.");
-        LOG.debug("Count value of CountDownLatch: " + countDownLatch.getCount());
+        if (LOG.isDebugEnabled()) LOG.debug("Count value of CountDownLatch: " + countDownLatch.getCount());
 
         s = System.currentTimeMillis();
         // Wait until we're done. If the latch is already at zero, then this will not block.
@@ -711,12 +711,12 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
         t = System.currentTimeMillis();
 
-        LOG.debug("Spent " + (t - s) + " ms waiting on ACKs.");
+        if (LOG.isDebugEnabled()) LOG.debug("Spent " + (t - s) + " ms waiting on ACKs.");
 
         if (!success) {
             LOG.warn("Timed out while waiting for ACKs from other NNs. Waiting on a total of " +
                     waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
-            LOG.debug("Checking liveliness of NNs that we're still waiting on...");
+            if (LOG.isDebugEnabled()) LOG.debug("Checking liveliness of NNs that we're still waiting on...");
 
             // If we timed-out, verify that the NameNodes we're waiting on are still, in fact, alive.
             for (int deployment : involvedDeployments) {
@@ -747,7 +747,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
 
         assert(waitingForAcks.isEmpty());
-        LOG.debug("We have received all required ACKs for write operation " + operationId + ".");
+        if (LOG.isDebugEnabled()) LOG.debug("We have received all required ACKs for write operation " + operationId + ".");
     }
 
     /**
@@ -761,7 +761,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      */
     private void cleanUpAfterConsistencyProtocol(boolean needToUnsubscribe)
             throws Exception {
-        LOG.debug("Performing clean-up procedure for consistency protocol now.");
+        if (LOG.isDebugEnabled()) LOG.debug("Performing clean-up procedure for consistency protocol now.");
         //long s = System.currentTimeMillis();
         // Unsubscribe and unregister event listener if we haven't done so already. (If we were the only active NN in
         // our deployment at the beginning of the protocol, then we would have already unsubscribed by this point.)
@@ -810,7 +810,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      */
     private void unsubscribeFromAckEvents()
             throws StorageException {
-        LOG.debug("Unsubscribing from ACK events now.");
+        if (LOG.isDebugEnabled()) LOG.debug("Unsubscribing from ACK events now.");
         for (int deploymentNumber : involvedDeployments) {
             String eventName = HopsEvent.ACK_EVENT_NAME_BASE + deploymentNumber;
             EventManager eventManager = serverlessNameNodeInstance.getNdbEventManager();
@@ -822,18 +822,18 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     }
 
     private void handleZooKeeperEvent(String path) {
-        LOG.debug("Received ZooKeeper 'NodeCreated' event with path '" + path + "'");
+        if (LOG.isDebugEnabled()) LOG.debug("Received ZooKeeper 'NodeCreated' event with path '" + path + "'");
         String[] tokens = path.split("/");
         long followerId = Long.parseLong(tokens[tokens.length - 1]);
 
         int mappedDeployment = nameNodeIdToDeploymentNumberMapping.get(followerId);
 
-        LOG.debug("Mapped follower NN " + followerId + " to deployment " + mappedDeployment + ".");
+        if (LOG.isDebugEnabled()) LOG.debug("Mapped follower NN " + followerId + " to deployment " + mappedDeployment + ".");
 
         if (!waitingForAcks.contains(followerId))
             return;
 
-        LOG.debug("Received ACK from NameNode " + followerId + " (deployment = " +
+        if (LOG.isDebugEnabled()) LOG.debug("Received ACK from NameNode " + followerId + " (deployment = " +
                 mappedDeployment + ")!");
 
         waitingForAcks.remove(followerId);
@@ -872,7 +872,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             if (!waitingForAcks.contains(nameNodeId))
                 return;
 
-            LOG.debug("Received ACK from NameNode " + nameNodeId + " (deployment = " +
+            if (LOG.isDebugEnabled()) LOG.debug("Received ACK from NameNode " + nameNodeId + " (deployment = " +
                     mappedDeployment + ")!");
 
             waitingForAcks.remove(nameNodeId);
@@ -923,7 +923,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      *    The Leader will also subscribe to events on the ACKs table for reasons that will be made clear shortly.
      */
     private void subscribeToAckEvents() throws StorageException, InterruptedException {
-        LOG.debug("=-----=-----= Step 1 - Subscribing to ACK Events =-----=-----=");
+        if (LOG.isDebugEnabled()) LOG.debug("=-----=-----= Step 1 - Subscribing to ACK Events =-----=-----=");
 
         // Each time we request that the event manager create an event subscription for us, it returns a semaphore
         // we can use to block until the event operation is created. We want to do this here, as we do not want
@@ -964,13 +964,13 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             }
         }
 
-        LOG.debug("Acquiring " + eventRequestSignalers.size() + " semaphore(s) now.");
+        if (LOG.isDebugEnabled()) LOG.debug("Acquiring " + eventRequestSignalers.size() + " semaphore(s) now.");
 
         for (EventRequestSignaler eventRequestSignaler : eventRequestSignalers) {
             eventRequestSignaler.acquire();
         }
 
-        LOG.debug("Successfully acquired " + eventRequestSignalers.size() + " semaphore(s).");
+        if (LOG.isDebugEnabled()) LOG.debug("Successfully acquired " + eventRequestSignalers.size() + " semaphore(s).");
     }
 
     /**
@@ -995,7 +995,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      */
     private int computeAckRecords(long transactionStartTime)
             throws Exception {
-        LOG.debug("=-----=-----= Step 0 - Pre-Compute NDB ACK Records In-Memory =-----=-----=");
+        if (LOG.isDebugEnabled()) LOG.debug("=-----=-----= Step 0 - Pre-Compute NDB ACK Records In-Memory =-----=-----=");
         ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
         assert(zkClient != null);
 
@@ -1031,10 +1031,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 //                totalNumberOfACKsRequired--;
 //
 //            // Any "involved deployments" with no active instances are removed.
-//            LOG.debug("Removing the following deployments as they contain zero active instances: " +
+//            if (LOG.isDebugEnabled()) LOG.debug("Removing the following deployments as they contain zero active instances: " +
 //                    StringUtils.join(toRemove, ", "));
 //            involvedDeployments.removeAll(toRemove);
-//            LOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
+//            if (LOG.isDebugEnabled()) LOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
 //
 //            countDownLatch = new CountDownLatch(totalNumberOfACKsRequired);
 //            return totalNumberOfACKsRequired;
@@ -1058,9 +1058,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 continue;
             }
             else if (groupMemberIds.size() == 1)
-                LOG.debug("There is 1 active instance in deployment #" + deploymentNumber + " at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
+                if (LOG.isDebugEnabled()) LOG.debug("There is 1 active instance in deployment #" + deploymentNumber + " at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
             else
-                LOG.debug("There are " + groupMemberIds.size() + " active instances in deployment #" + deploymentNumber + " at the start of consistency protocol: " + StringUtils.join(groupMemberIds, ", "));
+                if (LOG.isDebugEnabled()) LOG.debug("There are " + groupMemberIds.size() + " active instances in deployment #" + deploymentNumber + " at the start of consistency protocol: " + StringUtils.join(groupMemberIds, ", "));
 
             Set<Long> acksForCurrentDeployment = waitingForAcksPerDeployment.computeIfAbsent(deploymentNumber, depNum -> new HashSet<Long>());
 
@@ -1097,10 +1097,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
 
         if (toRemove.size() > 0)
-            LOG.debug("Removing the following deployments as they contain zero active instances: " +
+            if (LOG.isDebugEnabled()) LOG.debug("Removing the following deployments as they contain zero active instances: " +
                     StringUtils.join(toRemove, ", "));
         involvedDeployments.removeAll(toRemove);
-        LOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
+        if (LOG.isDebugEnabled()) LOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
 
         // Instantiate the CountDownLatch variable. The value is set to the number of ACKs that we need
         // before we can proceed with the transaction. Receiving an ACK and a follower NN leaving the group
@@ -1112,16 +1112,16 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     }
 
     private void issueInvalidationsZooKeeper(Collection<INode> invalidatedINodes) throws Exception {
-        LOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations via ZooKeeper =-----=-----=");
+        if (LOG.isDebugEnabled()) LOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations via ZooKeeper =-----=-----=");
 
         List<Long> invalidatedINodeIDs = invalidatedINodes.stream().map(INode::getId).collect(Collectors.toList());
 
         ZooKeeperInvalidation invalidation = new ZooKeeperInvalidation(serverlessNameNodeInstance.getId(),
                 operationId, invalidatedINodeIDs, subtreeOperation, subtreeRoot);
 
-        LOG.debug("Issuing invalidation " + invalidation + " for " + involvedDeployments.size() + " deployment(s).");
+        if (LOG.isDebugEnabled()) LOG.debug("Issuing invalidation " + invalidation + " for " + involvedDeployments.size() + " deployment(s).");
         for (int deployment : involvedDeployments) {
-            LOG.debug("Issuing ZooKeeper invalidation for deployment " + deployment + ".");
+            if (LOG.isDebugEnabled()) LOG.debug("Issuing ZooKeeper invalidation for deployment " + deployment + ".");
             serverlessNameNodeInstance.getZooKeeperClient().putInvalidation(
                     invalidation, "namenode" + deployment, watchedEvent -> {
                         if (watchedEvent.getType() == Watcher.Event.EventType.NodeCreated)
@@ -1140,7 +1140,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      */
     private void issueInvalidationsNDB(Collection<INode> invalidatedINodes, long transactionStartTime)
             throws StorageException {
-        LOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations via NDB =-----=-----=");
+        if (LOG.isDebugEnabled()) LOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations via NDB =-----=-----=");
 
         InvalidationDataAccess<Invalidation> dataAccess =
                 (InvalidationDataAccess<Invalidation>) HdfsStorageFactory.getDataAccess(InvalidationDataAccess.class);
@@ -1167,13 +1167,13 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
             int numInvalidations = invalidations.size();
             if (numInvalidations == 0) {
-                LOG.debug("Adding 0 INV entries for deployment #" + deploymentNumber + ".");
+                if (LOG.isDebugEnabled()) LOG.debug("Adding 0 INV entries for deployment #" + deploymentNumber + ".");
                 continue;
             }
             else if (numInvalidations == 1)
-                LOG.debug("Adding 1 INV entry for deployment #" + deploymentNumber + ".");
+                if (LOG.isDebugEnabled()) LOG.debug("Adding 1 INV entry for deployment #" + deploymentNumber + ".");
             else
-                LOG.debug("Adding " + numInvalidations + " INV entries for deployment #" +
+                if (LOG.isDebugEnabled()) LOG.debug("Adding " + numInvalidations + " INV entries for deployment #" +
                         deploymentNumber + ".");
 
             dataAccess.addInvalidations(invalidations, deploymentNumber);

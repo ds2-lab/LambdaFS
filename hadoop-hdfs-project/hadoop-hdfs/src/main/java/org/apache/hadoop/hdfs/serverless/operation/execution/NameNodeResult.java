@@ -219,6 +219,8 @@ public class NameNodeResult implements Serializable {
      * Log some useful debug information about the result field (e.g., the object's type) to the console.
      */
     public void logResultDebugInformation(String opPerformed) {
+        if (!LOG.isDebugEnabled()) return;
+
         LOG.debug("+-+-+-+-+-+-+ Result Debug Information +-+-+-+-+-+-+");
         if (hasResult) {
             LOG.debug("Type: " + result.getClass());
@@ -311,7 +313,7 @@ public class NameNodeResult implements Serializable {
             // Add a flag indicating whether this is just a duplicate result.
             json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, true);
         } else {
-            if (result != null)
+            if (result != null && LOG.isDebugEnabled())
                 LOG.debug("Returning result of type " + result.getClass().getSimpleName()
                         + " to client. Result value: " + result.toString());
 
@@ -393,18 +395,15 @@ public class NameNodeResult implements Serializable {
      * instance of NameNodeResult.
      */
     public void commitStatisticsPackages() {
-        // LOG.debug("Committing statistics packages for request " + requestId + " now...");
         TransactionsStats.ServerlessStatisticsPackage statisticsPackage
                 = TransactionsStats.getInstance().exportForServerless(requestId);
         if (statisticsPackage != null) {
-            // LOG.debug("Statistics package was NOT null. Serializing and encoding it now.");
             this.statisticsPackageSerializedAndEncoded = serializeAndEncode(statisticsPackage);
         }
     }
 
     public void commitTransactionEvents(List<TransactionEvent> transactionEvents) {
         if (transactionEvents != null) {
-            // LOG.debug("Serializing and encoding transaction events for request " + requestId + " now...");
             this.txEventsSerializedAndEncoded = serializeAndEncode(transactionEvents);
         }
     }

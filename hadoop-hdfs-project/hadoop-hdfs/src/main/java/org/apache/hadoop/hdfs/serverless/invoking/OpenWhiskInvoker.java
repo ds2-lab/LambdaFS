@@ -136,18 +136,17 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                             fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
                     targetDeployment = cache.getFunction(sourceFileOrDirectory);
                 } else {
-                    LOG.debug("No `src` property found in file system arguments... " +
-                            "skipping the checking of INode cache...");
+                    if (LOG.isDebugEnabled()) LOG.debug("No `src` property found in file system arguments... " + "skipping the checking of INode cache...");
                 }
             } else {
-                LOG.debug("Explicitly targeting deployment #" + targetDeployment + ".");
+                if (LOG.isDebugEnabled()) LOG.debug("Explicitly targeting deployment #" + targetDeployment + ".");
             }
 
             // If we have a cache entry for this function, then we'll invoke that specific function.
             // Otherwise, we'll just select a function at random.
             if (targetDeployment < 0) {
                 targetDeployment = ThreadLocalRandom.current().nextInt(0, numDeployments);
-                LOG.debug("Randomly selected serverless function " + targetDeployment);
+                if (LOG.isDebugEnabled()) LOG.debug("Randomly selected serverless function " + targetDeployment);
             }
 
             builder.append(targetDeployment);

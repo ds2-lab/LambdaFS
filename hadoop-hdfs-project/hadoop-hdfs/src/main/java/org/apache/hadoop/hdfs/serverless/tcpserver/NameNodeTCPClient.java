@@ -503,9 +503,8 @@ public class NameNodeTCPClient {
             // If we were able to increase the buffer size, then print a message indicating that
             // we did so. If we were already at the max, then we'll print a warning, but currently
             // we don't do anything about it, so future TCP sends of the same object size will fail.
-            if (oldBufferSize < objectBufferSize && LOG.isDebugEnabled())
-                LOG.debug("[TCP Client] Increasing buffer size of future TCP connections to " +
-                        objectBufferSize + " bytes.");
+            if (oldBufferSize < objectBufferSize)
+                if (LOG.isDebugEnabled()) LOG.debug("[TCP Client] Increasing buffer size of future TCP connections to " + objectBufferSize + " bytes.");
             else
                 // TODO: What should we do if this occurs?
                 LOG.warn("[TCP Client] Already at the maximum buffer size for TCP connections...");

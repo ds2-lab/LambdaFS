@@ -55,13 +55,12 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
 
         int deploymentNumber = 0;
         while (deploymentNumber < numDeployments) {
-            // LOG.debug("Adding ZK 'group membership changed' listener on deployment #" + deploymentNumber + ".");
             final String groupName = "namenode" + deploymentNumber;
             final int currentDeployment = deploymentNumber;
             zkClient.addListener(groupName, watchedEvent -> {
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     try {
-                        LOG.debug("Change in membership detected for deployment #" + currentDeployment + "!");
+                        if (LOG.isDebugEnabled()) LOG.debug("Change in membership detected for deployment #" + currentDeployment + "!");
                         refreshFromZooKeeper(zkClient, currentDeployment);
                     } catch (Exception ex) {
                         LOG.error("Exception encountered while refreshing active NNs in deployment #" +
@@ -85,7 +84,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
     public synchronized void refreshFromZooKeeper(ZKClient zkClient) throws Exception {
         int deploymentNumber = 0;
         activeNodes = new ArrayList<>();
-        LOG.debug("Querying ZooKeeper for membership changes in ALL deployments.");
+        if (LOG.isDebugEnabled()) LOG.debug("Querying ZooKeeper for membership changes in ALL deployments.");
         while (deploymentNumber < this.numDeployments) {
             final String groupName = "namenode" + deploymentNumber;
             List<String> groupMembers = zkClient.getPermanentGroupMembers(groupName);
@@ -122,7 +121,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
         final String groupName = "namenode" + deploymentNumber;
         List<String> groupMembers = zkClient.getPermanentGroupMembers(groupName);
         List<ActiveNode> activeNodesInSpecifiedDeployment = new ArrayList<>(groupMembers.size());
-        LOG.debug("Querying ZooKeeper for membership changes in deployments #" + deploymentNumber + ".");
+        if (LOG.isDebugEnabled()) LOG.debug("Querying ZooKeeper for membership changes in deployments #" + deploymentNumber + ".");
 
         for (String memberId : groupMembers) {
             long id;

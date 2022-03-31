@@ -75,7 +75,7 @@ public class InvokerUtilities {
         // of byte, we will simply convert the entire array/list to a base64 string.
         Class<?> clazz = value.getClass().getComponentType();
 
-        LOG.debug("Serializing Collection/Array argument with component type: " + clazz.getSimpleName());
+        if (LOG.isDebugEnabled()) LOG.debug("Serializing Collection/Array argument with component type: " + clazz.getSimpleName());
 
         if (String.class.isAssignableFrom(clazz))
             valueAsList.forEach(e -> arr.add(new JsonPrimitive((String) e)));
@@ -115,7 +115,7 @@ public class InvokerUtilities {
             String key = entry.getKey();
             Object value = entry.getValue();
 
-            LOG.debug("Serializing argument with key \"" + key + "\" and type " + value.getClass().getSimpleName());
+            if (LOG.isDebugEnabled()) LOG.debug("Serializing argument with key \"" + key + "\" and type " + value.getClass().getSimpleName());
 
             if (value instanceof String)
                 dest.addProperty(key, (String)value);
@@ -126,7 +126,7 @@ public class InvokerUtilities {
             else if (value instanceof Character)
                 dest.addProperty(key, (Character)value);
             else if (value instanceof Map) {
-                LOG.debug("Serializing Map argument now...");
+                if (LOG.isDebugEnabled()) LOG.debug("Serializing Map argument now...");
                 JsonObject innerMap = new JsonObject();
                 populateJsonObjectWithArguments((Map<String, Object>) value, innerMap);
                 dest.add(key, innerMap);

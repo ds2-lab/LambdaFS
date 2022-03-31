@@ -371,10 +371,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             long localStart;
             try {
                 localStart = System.currentTimeMillis();
-                LOG.debug("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
-                        requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" +
-                        exponentialBackOff.getMaximumRetries() + ". Time elapsed so far: " +
-                        (System.currentTimeMillis() - opStart) + " ms.");
+
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
+                            requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" +
+                            exponentialBackOff.getMaximumRetries() + ". Time elapsed so far: " +
+                            (System.currentTimeMillis() - opStart) + " ms.");
+                }
                 numOperationsIssuedViaTcp++;
                 numOperationsIssued++;
                 response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload,
@@ -473,7 +476,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 addLatency(-1, endTime - startTime);
 
                 long opEnd = System.currentTimeMillis();
-                LOG.debug("Received result from NameNode after falling back to HTTP for operation " +
+
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Received result from NameNode after falling back to HTTP for operation " +
                         operationName + ". Time elapsed: " + (opEnd - opStart) + ".");
 
                 // Collect and save/record metrics.
@@ -541,13 +546,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 return issueTCPRequest(operationName, opArguments, -1);
             }
             else {
-                LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " +
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " +
                         mappedFunctionNumber + ". TCP connection exists: " +
                         tcpServer.connectionExists(mappedFunctionNumber));
             }
         }
 
-        LOG.debug("Issuing HTTP request only for operation " + operationName);
+        if (LOG.isDebugEnabled())
+            LOG.debug("Issuing HTTP request only for operation " + operationName);
 
         String requestId = UUID.randomUUID().toString();
 
@@ -581,7 +588,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         //addLatency(-1, endTime - startTime, response.has(COLD_START) && response.get(COLD_START).getAsBoolean());
         addLatency(-1, endTime - startTime);
 
-        LOG.debug("Response: " + response.toString());
+        if (LOG.isDebugEnabled())
+            LOG.debug("Response: " + response.toString());
 
         if (response.has("body"))
             response = response.get("body").getAsJsonObject();
@@ -902,7 +910,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * Shuts down this client. Currently, the only steps taken during shut-down is the stopping of the TCP server.
      */
     public void stop() {
-        LOG.debug("ServerlessNameNodeClient stopping now...");
+        if (LOG.isDebugEnabled())
+            LOG.debug("ServerlessNameNodeClient stopping now...");
         this.tcpServer.stop();
     }
 
@@ -1211,8 +1220,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (result != null) {
             LocatedBlock locatedBlock = (LocatedBlock) result;
 
-            LOG.debug("Result returned from addBlock() is of type: " + result.getClass().getSimpleName());
-            LOG.debug("LocatedBlock returned by addBlock(): " + locatedBlock);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Result returned from addBlock() is of type: " + result.getClass().getSimpleName());
+                LOG.debug("LocatedBlock returned by addBlock(): " + locatedBlock);
+            }
 
             return locatedBlock;
         }
@@ -1733,7 +1744,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         for (int deploymentNumber = 0; deploymentNumber < numDeployments; deploymentNumber++) {
             final int depNum = deploymentNumber;
             Thread thread = new Thread(() -> {
-                LOG.debug("Invoking deployment " + depNum + " a total of " + numPingsPerDeployment + "x.");
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Invoking deployment " + depNum + " a total of " + numPingsPerDeployment + "x.");
                 for (int i = 0; i < numPingsPerDeployment; i++) {
                     String requestId = UUID.randomUUID().toString();
 

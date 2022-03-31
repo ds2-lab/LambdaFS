@@ -40,36 +40,6 @@ public class FileSystemTaskUtils {
             String requestId, String op, JsonObject fsArgs, NameNodeResult tcpResult,
             ServerlessNameNode serverlessNameNode, boolean forceRedo, String requestMethod) {
 
-        // Some operations do not have a 'src' argument as they're not operating on a particular file or directory.
-        // In that case, any NameNode is obviously authorized to perform the action.
-//        boolean authorized;
-//        if (fsArgs.has("src")) {
-//            String src = fsArgs.getAsJsonPrimitive("src").getAsString();
-//            authorized = FileSystemTaskUtils.checkIfAuthorized(op, src, serverlessNameNode);
-//
-//            if (!authorized) {
-//                int targetDeployment = serverlessNameNode.getMappedServerlessFunction(src);
-//                LOG.debug("We are NOT authorized to perform a write operation on target file/directory " + src);
-//                LOG.debug("Redirecting request to deployment #" + targetDeployment + " instead...");
-//
-//                // Create an ExecutorService to execute the HTTP and TCP requests concurrently.
-//                ExecutorService executorService = Executors.newFixedThreadPool(1);
-//
-//                // Create a CompletionService to listen for results from the futures we're going to create.
-//                CompletionService<JsonObject> completionService =
-//                        new ExecutorCompletionService<JsonObject>(executorService);
-//
-//                // Submit the HTTP request here.
-//                Future<JsonObject> future = completionService.submit(() ->
-//                        serverlessNameNode.getServerlessInvoker().redirectRequest(op, functionUriBase, new JsonObject(),
-//                                fsArgs,  requestId, targetDeployment));
-//
-//                return new RedirectedRequestFuture(requestId, op, future);
-//            } else {
-//                LOG.debug("We ARE authorized to perform a write operation on target file/directory '" + src + "'.");
-//            }
-//        }
-
         FileSystemTask<Serializable> newTask = new FileSystemTask<>(requestId, op, fsArgs, forceRedo, requestMethod);
 
         // We wait for the task to finish executing in a separate try-catch block so that, if there is
@@ -78,7 +48,7 @@ public class FileSystemTaskUtils {
         // exception occurred when creating/scheduling the task or while waiting for it to complete.
         try {
             // The task does exist, so let's enqueue it.
-            LOG.debug("Adding task " + requestId + " (operation = " + op + ") to work queue now...");
+            if (LOG.isDebugEnabled()) LOG.debug("Adding task " + requestId + " (operation = " + op + ") to work queue now...");
             serverlessNameNode.enqueueFileSystemTask(newTask);
         } catch (InterruptedException ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName()

@@ -406,8 +406,8 @@ public class ExecutionManager {
 
             // This IS thread safe.
             PreviousResult previousResult = previousResultCache.getIfPresent(task.getTaskId());
-            if (previousResult != null && LOG.isDebugEnabled()) {
-                LOG.debug("Result for task " + task.getTaskId() + " is still cached. Returning it to the client now.");
+            if (previousResult != null) {
+                if (LOG.isDebugEnabled()) LOG.debug("Result for task " + task.getTaskId() + " is still cached. Returning it to the client now.");
             } else {
                 LOG.warn("Result for task " + task.getTaskId() + " is no longer in the cache.");
 
