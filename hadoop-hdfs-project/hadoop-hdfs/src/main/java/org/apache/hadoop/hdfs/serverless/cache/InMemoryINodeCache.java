@@ -9,7 +9,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  *
@@ -41,7 +43,7 @@ public class InMemoryINodeCache {
     private static final int DEFAULT_MAX_ENTRIES = 10000;         // Default maximum capacity.
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;       // Default load factor.
 
-    private final Lock _mutex = new ReentrantLock(true);
+    private final ReadWriteLock _mutex = new ReentrantReadWriteLock(true);
 
     /**
      * This is the main cache, along with the cache HashMap.
@@ -60,16 +62,6 @@ public class InMemoryINodeCache {
      * cached/stored by HopsFS during transactions, to the fully-qualified paths of the INode.
      */
     private final HashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
-
-    /**
-     * Cache hits experienced across all requests processed by the NameNode.
-     */
-    //private int numCacheHits;
-
-    /**
-     * Cache misses experienced across all requests processed by the NameNode.
-     */
-    //private int numCacheMisses;
 
     private final ThreadLocal<Integer> threadLocalCacheHits = ThreadLocal.withInitial(() -> 0);
     private final ThreadLocal<Integer> threadLocalCacheMisses = ThreadLocal.withInitial(() -> 0);
@@ -132,7 +124,7 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public INode getByPath(String key) {
-        _mutex.lock();
+        _mutex.readLock().lock();
         try {
             if (!enabled)
                 return null;
@@ -146,7 +138,7 @@ public class InMemoryINodeCache {
 
             return returnValue;
         } finally {
-            _mutex.unlock();
+            _mutex.readLock().unlock();
         }
     }
 
@@ -160,7 +152,7 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public INode getByParentINodeIdAndLocalName(long parentId, String localName) {
-        _mutex.lock();
+        _mutex.readLock().lock();
         try {
             if (!enabled)
                 return null;
@@ -177,7 +169,7 @@ public class InMemoryINodeCache {
 
             return returnValue;
         } finally {
-            _mutex.unlock();
+            _mutex.readLock().unlock();
         }
     }
 
@@ -190,7 +182,7 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public INode getByINodeId(long iNodeId) {
-        _mutex.lock();
+        _mutex.readLock().lock();
         try {
             if (!enabled) {
                 return null;
@@ -205,7 +197,7 @@ public class InMemoryINodeCache {
             cacheMiss();
             return null;
         } finally {
-             _mutex.unlock();
+            _mutex.readLock().unlock();
         }
     }
 
@@ -220,7 +212,7 @@ public class InMemoryINodeCache {
         if (value == null)
             throw new IllegalArgumentException("INode Metadata Cache does NOT support null values. Associated key: " + key);
 
-        _mutex.lock();
+        _mutex.writeLock().lock();
         try {
             // Store the metadata in the cache directly.
             INode returnValue = metadataTrie.put(key, value);
@@ -233,7 +225,7 @@ public class InMemoryINodeCache {
 
             return returnValue;
         } finally {
-            _mutex.unlock();
+            _mutex.writeLock().unlock();
         }
     }
 
@@ -244,7 +236,7 @@ public class InMemoryINodeCache {
         if (key == null)
             return false;
 
-        _mutex.lock();
+        _mutex.readLock().lock();
         try {
             // If the given key is a string, then we can use it directly.
             if (key instanceof String) {
@@ -258,7 +250,7 @@ public class InMemoryINodeCache {
 
             return false;
         } finally {
-            _mutex.unlock();
+            _mutex.readLock().unlock();
         }
     }
 
@@ -266,11 +258,11 @@ public class InMemoryINodeCache {
      * Return the size of the cache.
      */
     public int size() {
-        _mutex.lock();
+        _mutex.readLock().lock();
         try {
             return metadataTrie.size();
         } finally {
-            _mutex.unlock();
+            _mutex.readLock().unlock();
         }
     }
 
@@ -282,12 +274,12 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public boolean containsKeySkipInvalidCheck(String key) {
-        _mutex.lock();
+        _mutex.readLock().lock();
         try {
             // Directly check if the cache itself contains the key.
             return metadataTrie.containsKey(key);
         } finally {
-            _mutex.unlock();
+            _mutex.readLock().unlock();
         }
     }
 
@@ -297,7 +289,7 @@ public class InMemoryINodeCache {
     public boolean containsKey(long inodeId) {
         // If the key is a long, we need to check if we've mapped this long to a String key. If so,
         // then we can get the string version and continue as before.
-        _mutex.lock();
+        _mutex.readLock().lock();
         try {
             // If we don't have a mapping for this key, then this will return null, and this function will return false.
             String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
@@ -306,7 +298,7 @@ public class InMemoryINodeCache {
             // invalidated, and we're actively caching the key.
             return keyAsStr != null && metadataTrie.containsKey(keyAsStr);
         } finally {
-            _mutex.unlock();
+            _mutex.readLock().unlock();
         }
     }
 
@@ -318,7 +310,7 @@ public class InMemoryINodeCache {
      * @return True if the key was invalidated, otherwise false.
      */
     protected boolean invalidateKey(long inodeId) {
-        _mutex.lock();
+        _mutex.writeLock().lock();
         try  {
             if (idToNameMapping.containsKey(inodeId)) {
                 String key = idToNameMapping.get(inodeId);
@@ -328,7 +320,7 @@ public class InMemoryINodeCache {
 
             return false;
         } finally {
-            _mutex.unlock();
+            _mutex.writeLock().unlock();
         }
     }
 
@@ -366,7 +358,7 @@ public class InMemoryINodeCache {
      * function will always return true.
      */
     private boolean invalidateKeyInternal(String key, boolean skipCheck) {
-        _mutex.lock();
+        _mutex.writeLock().lock();
         try {
             if (skipCheck || containsKeySkipInvalidCheck(key)) {
                 // invalidatedKeys.add(key);
@@ -379,7 +371,7 @@ public class InMemoryINodeCache {
 
             return false;
         } finally {
-            _mutex.unlock();
+            _mutex.writeLock().unlock();
         }
     }
 
@@ -388,11 +380,11 @@ public class InMemoryINodeCache {
      */
     protected void invalidateEntireCache() {
         LOG.warn("Invalidating ENTIRE cache. ");
-        _mutex.lock();
+        _mutex.writeLock().lock();
         try {
             metadataTrie.clear();
         } finally {
-            _mutex.unlock();
+            _mutex.writeLock().unlock();
         }
     }
 
@@ -410,7 +402,7 @@ public class InMemoryINodeCache {
     protected Collection<INode> invalidateKeysByPrefix(String prefix) {
         if (LOG.isDebugEnabled()) LOG.debug("Invalidating all cached INodes contained within the file subtree rooted at '" + prefix + "'.");
 
-        _mutex.lock();
+        _mutex.writeLock().lock();
 
         try {
             SortedMap<String, INode> prefixedEntries = metadataTrie.prefixMap(prefix);
@@ -427,7 +419,7 @@ public class InMemoryINodeCache {
 
             return prefixedEntries.values();
         } finally {
-            _mutex.unlock();
+            _mutex.writeLock().unlock();
         }
     }
 
