@@ -195,6 +195,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     protected double randomHttpChance = 0.05f;
 
+    /**
+     * When straggler mitigation is enabled, this is the factor X such that a request
+     * must be delayed for X times the average latency in order to be re-submitted.
+     */
+    protected double stragglerMitigationThresholdFactor;
+
+    /**
+     * When enabled, we employ a straggler mitigation technique in which requests that have been
+     * submitted but not received a response for X times the average latency are resubmitted.
+     */
+    protected boolean stragglerMitigationEnabled;
+
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
         serverlessEndpointBase = dfsClient.serverlessEndpoint;
@@ -206,6 +218,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         randomHttpEnabled = conf.getBoolean(SERVERLESS_INVOKER_RANDOM_HTTP, SERVERLESS_INVOKER_RANDOM_HTTP_DEFAULT);
         randomHttpChance = conf.getDouble(SERVERLESS_INVOKER_RANDOM_HTTP_CHANCE,
                 SERVERLESS_INVOKER_RANDOM_HTTP_CHANCE_DEFAULT);
+        stragglerMitigationEnabled = conf.getBoolean(SERVERLESS_STRAGGLER_MITIGATION,
+                SERVERLESS_STRAGGLER_MITIGATION_DEFAULT);
+        stragglerMitigationThresholdFactor = conf.getDouble(SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR,
+                SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR_DEFAULT);
 
         if (localMode)
             numDeployments = 1;
@@ -216,6 +232,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LOG.info("Serverless endpoint: " + serverlessEndpointBase);
         LOG.info("Serverless platform: " + serverlessPlatformName);
         LOG.info("TCP requests are " + (tcpEnabled ? "enabled." : "disabled."));
+        LOG.debug("Straggler mitigation is " + (stragglerMitigationEnabled ? " enabled. " +
+                "Straggler mitigation factor: " + stragglerMitigationThresholdFactor + "." : "disabled."));
         LOG.debug("Latency Window: " + latencyWindowSize + ", Latency Threshold: " + latencyThreshold + " ms.");
         LOG.debug("Random HTTP " + (randomHttpEnabled ? "enabled." : "disabled.") +
                 " HTTP Chance: " + randomHttpChance);
@@ -357,6 +375,25 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         payload.addProperty(LOG_LEVEL, serverlessFunctionLogLevel);
         payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
 
+        // Determine the request timeout to use. If straggler mitigation is enabled, then the timeout is based on
+        // the average latency, with a minimum of two milliseconds. Alternatively, if straggler mitigation is disabled,
+        // then we just use the HTTP timeout for our TCP timeout.
+        //
+        // Also, when using straggler mitigation, we don't count every timeout towards our exponential backoff.
+        // We count every other request towards the exponential backoff. So, for each exponentially backed-off retry,
+        // we get one retry using the straggler mitigation technique, which does not wait for very long before
+        // resubmitting the task.
+        boolean stragglerResubmissionAlreadyOccurred = false;
+        int requestTimeout;
+        if (stragglerMitigationEnabled) {
+            double averageLatency = latencyWithWindow.getMean();
+            requestTimeout = (int)(averageLatency * stragglerMitigationThresholdFactor);
+            requestTimeout = Math.min(2, requestTimeout); // Timeout should be at least 2 milliseconds.
+        } else {
+            // Just use HTTP requestTimeout.
+            requestTimeout = serverlessInvoker.httpTimeoutMilliseconds;
+        }
+
         ExponentialBackOff exponentialBackOff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(5)
                 .setInitialIntervalMillis(1000)
@@ -365,6 +402,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 .setMultiplier(2.0)
                 .build();
         long backoffInterval = exponentialBackOff.getBackOffInMillis();
+        int maxRetries = exponentialBackOff.getMaximumRetries();
         while (backoffInterval >= 0) {
             JsonObject response;
 
@@ -374,14 +412,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
-                            requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" +
-                            exponentialBackOff.getMaximumRetries() + ". Time elapsed so far: " +
-                            (System.currentTimeMillis() - opStart) + " ms.");
+                            requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() +
+                                    (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
+                            ". Time elapsed so far: " + (System.currentTimeMillis() - opStart) + " ms. Timeout: " +
+                            requestTimeout + " ms. " + (stragglerResubmissionAlreadyOccurred ?
+                            "Straggler resubmission has already occurred." :
+                            "Straggler resubmission has NOT already occurred."));
                 }
                 numOperationsIssuedViaTcp++;
                 numOperationsIssued++;
-                response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload,
-                        serverlessInvoker.httpTimeoutMilliseconds);
+                response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload, requestTimeout);
 
                 // After receiving a response, we need to check if it is a cancellation message or not.
                 // Cancellation messages are posted by the TCP server if the TCP connection is terminated unexpectedly.
@@ -429,6 +469,24 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 return response;
             } catch (TimeoutException ex) {
                 LOG.error("Timed out while waiting for TCP response for request " + requestId + ".");
+
+                // If the straggler mitigation technique/protocol is enabled, then we only count this timeout as a
+                // "real" timeout (i.e., one that uses the exponential backoff mechanism) if we've already re-submitted
+                // the task via the straggler mitigation protocol for this retry. If we haven't already re-submitted
+                // the request, then we'll do so now, and we'll only sleep for a small interval of time.
+                if (stragglerMitigationEnabled) {
+                    if (stragglerResubmissionAlreadyOccurred) {
+                        LOG.error("Already submitted a straggler mitigation request. Counting this as a 'real' timeout.");
+                        stragglerResubmissionAlreadyOccurred = false; // Flip this back to false.
+                        // Don't continue. We need to exponentially backoff.
+                    } else {
+                        stragglerResubmissionAlreadyOccurred = true;
+                        // Sleep for a short interval.
+                        Thread.sleep(Math.min(requestTimeout, 5));
+                        continue; // Use continue statement to avoid exponential backoff.
+                    }
+                }
+
                 LOG.error("Sleeping for " + backoffInterval + " seconds before retrying...");
                 try {
                     Thread.sleep(backoffInterval);

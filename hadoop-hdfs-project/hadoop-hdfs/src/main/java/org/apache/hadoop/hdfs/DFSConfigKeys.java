@@ -74,6 +74,20 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_PLATFORM_DEFAULT = "openwhisk";
 
   /**
+   * When straggler mitigation is enabled, this is the factor X such that a request
+   * must be delayed for X times the average latency in order to be re-submitted.
+   */
+  public static final String SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR = "serverless.straggler.mitigation.threshold";
+  public static final double SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR_DEFAULT = 2.5;
+
+  /**
+   * When enabled, we employ a straggler mitigation technique in which requests that have been
+   * submitted but not received a response for X times the average latency are resubmitted.
+   */
+  public static final String SERVERLESS_STRAGGLER_MITIGATION = "serverless.straggler.mitigation.enabled";
+  public static final boolean SERVERLESS_STRAGGLER_MITIGATION_DEFAULT = false;
+
+  /**
    * Configuration property for the baseline number of unique serverless functions deployed for use in this
    * particular Serverless HopsFS cluster. This is different from the max number of deployments, which is the hard
    * limit for the number of unique serverless functions at disposal.
