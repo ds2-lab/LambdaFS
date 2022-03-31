@@ -112,11 +112,11 @@ public class INodeLock extends BaseINodeLock {
        */
       Arrays.sort(paths);
 
-      LOG.debug("Acquiring INode locks on the following paths: " + StringUtils.join(", ", paths));
+      if (LOG.isDebugEnabled()) LOG.debug("Acquiring INode locks on the following paths: " + StringUtils.join(", ", paths));
 
       acquirePathsINodeLocks();
     } else {
-      LOG.debug("Acquiring INode lock on INode with ID=" + inodeId);
+      if (LOG.isDebugEnabled()) LOG.debug("Acquiring INode lock on INode with ID=" + inodeId);
 
       acquireInodeIdInodeLock();
     }
@@ -161,11 +161,11 @@ public class INodeLock extends BaseINodeLock {
     if (paths == null)
       throw new IOException("Cannot acquire INode locks along paths because paths is null!");
 
-    LOG.debug("Acquiring locks on " + paths.length + " path(s). Lock type: " + lockType.name() +
-            ", resolve type: " + resolveType.name());
+    //if (LOG.isDebugEnabled()) LOG.debug("Acquiring locks on " + paths.length + " path(s). Lock type: " + lockType.name() +
+    //        ", resolve type: " + resolveType.name());
 
     for (String path : paths) {
-      LOG.debug("Attempting to acquire " + lockType.name() + " lock for path: " + path + "");
+      //if (LOG.isDebugEnabled()) LOG.debug("Attempting to acquire " + lockType.name() + " lock for path: " + path + "");
 
       List<INode> resolvedINodes = null;
 
@@ -187,13 +187,13 @@ public class INodeLock extends BaseINodeLock {
       // if we fully resolved the path using our local, in-memory metadata cache.
       //if (resolvedINodes == null && getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
       if (getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
-        LOG.debug("Attempting to resolve INodes using INode Hint Cache.");
+        //if (LOG.isDebugEnabled()) LOG.debug("Attempting to resolve INodes using INode Hint Cache.");
         // Batching only works in READ_COMMITTED mode. If locking is enabled then it can lead to deadlocks.
         resolvedINodes = resolveUsingINodeHintCache(path);
       }
 
       if (resolvedINodes == null) {
-        LOG.debug("Path '" + path + "' was either not in INode Hint Cache or we couldn't use the cache.");
+        //if (LOG.isDebugEnabled()) LOG.debug("Path '" + path + "' was either not in INode Hint Cache or we couldn't use the cache.");
         // path not found in the cache
         // set random partition key if enabled
         if (setRandomParitionKeyEnabled) {
@@ -206,14 +206,10 @@ public class INodeLock extends BaseINodeLock {
       if (resolvedINodes.size() > 0) {
         INode lastINode = resolvedINodes.get(resolvedINodes.size() - 1);
         if (resolveType == TransactionLockTypes.INodeResolveType.PATH_AND_IMMEDIATE_CHILDREN) {
-          LOG.debug("Resolving immediate children for last INode " + lastINode.getLocalName());
           List<INode> children = findImmediateChildren(lastINode);
-          LOG.debug("Found " + children.size() + " immediate children for last INode " + lastINode.getLocalName());
           addChildINodes(path, children);
         } else if (resolveType == TransactionLockTypes.INodeResolveType.PATH_AND_ALL_CHILDREN_RECURSIVELY) {
-          LOG.debug("Resolving ALL children recursively for last INode " + lastINode.getLocalName());
           List<INode> children = findChildrenRecursively(lastINode);
-          LOG.debug("Found " + children.size() + " children for last INode " + lastINode.getLocalName());
           addChildINodes(path, children);
         }
       }
@@ -250,22 +246,22 @@ public class INodeLock extends BaseINodeLock {
     List<String> fullPathComponents = INode.getFullPathComponents(path);
 
     for (String pathComponentFullPath : fullPathComponents) {
-      LOG.debug("Checking cache for component '" + pathComponentFullPath + "'");
+      if (LOG.isDebugEnabled()) LOG.debug("Checking cache for component '" + pathComponentFullPath + "'");
       INode cachedINode = metadataCache.getByPath(pathComponentFullPath);
 
       if (cachedINode == null) {
-        LOG.debug("Path component '" + pathComponentFullPath + "' was NOT cached locally.");
+        if (LOG.isDebugEnabled()) LOG.debug("Path component '" + pathComponentFullPath + "' was NOT cached locally.");
 
         // This will almost always be true.
         if (exitOnFirstMiss)
           return null;
       } else {
-        LOG.debug("Path component '" + pathComponentFullPath + "' WAS cached locally.");
+        if (LOG.isDebugEnabled()) LOG.debug("Path component '" + pathComponentFullPath + "' WAS cached locally.");
         resolvedINodes.add(cachedINode);
       }
     }
 
-    LOG.debug("Resolved " + resolvedINodes.size() + "/" + fullPathComponents.size() +
+    if (LOG.isDebugEnabled()) LOG.debug("Resolved " + resolvedINodes.size() + "/" + fullPathComponents.size() +
             " INodes using local metadata cache.");
     return resolvedINodes;
   }
@@ -283,7 +279,7 @@ public class INodeLock extends BaseINodeLock {
     }
     List<INode> resolvedINodes = cacheResolver.fetchINodes(lockType, path, resolveLink);
     if (resolvedINodes != null) {
-      LOG.debug("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
+      if (LOG.isDebugEnabled()) LOG.debug("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
 
       for (INode iNode : resolvedINodes) {
         if(iNode!=null){
@@ -292,7 +288,7 @@ public class INodeLock extends BaseINodeLock {
       }
       handleLockUpgrade(resolvedINodes, INode.getPathComponents(path), path);
     } else {
-      LOG.debug("Failed to resolve any INodes via INode Hint Cache.");
+      if (LOG.isDebugEnabled()) LOG.debug("Failed to resolve any INodes via INode Hint Cache.");
     }
 
     return resolvedINodes;
@@ -363,8 +359,8 @@ public class INodeLock extends BaseINodeLock {
     } else {
       // TODO: We need to double-check this. But for Serverless HopsFS, if ZooKeeper does not detect that the
       //       NameNode is alive, then we can safely assume that it is dead.
-      LOG.debug("The subtree is supposedly locked, but ZooKeeper has indicated that the owner of the lock is " +
-              "no longer running. Ignoring the lock.");
+      //LOG.debug("The subtree is supposedly locked, but ZooKeeper has indicated that the owner of the lock is " +
+      //        "no longer running. Ignoring the lock.");
 
       // the lock flag is set but the lock is dead
       // you can ignore the lock after some time. it is possible that
@@ -488,13 +484,13 @@ public class INodeLock extends BaseINodeLock {
         children.addAll(clist);
       }
     }
-    LOG.trace("Added " + children.size() + " children.");
+    // LOG.trace("Added " + children.size() + " children.");
     return children;
   }
 
   private INode acquireLockOnRoot(TransactionLockTypes.INodeLockType lock)
       throws StorageException, TransactionContextException {
-    LOG.debug("Acquiring " + lock + " on the root INode.");
+    // if (LOG.isDebugEnabled()) LOG.debug("Acquiring " + lock + " on the root INode.");
     return find(lock, INodeDirectory.ROOT_NAME, HdfsConstantsClient.GRANDFATHER_INODE_ID, INodeDirectory.
         getRootDirPartitionKey());
   }

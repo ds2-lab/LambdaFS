@@ -249,11 +249,11 @@ public abstract class BaseINodeLock extends Lock {
     List<INode> targetInodes =
         Lists.newArrayListWithExpectedSize(resolvedINodesMap.pathToPathINodes.size());
 
-    LOG.debug("Expecting " + resolvedINodesMap.pathToPathINodes.size() + " target INode(s).");
+    //LOG.debug("Expecting " + resolvedINodesMap.pathToPathINodes.size() + " target INode(s).");
 
     for(String path : resolvedINodesMap.pathToPathINodes.keySet()) {
       List<INode> list = resolvedINodesMap.getPathINodes(path);
-      LOG.debug("Path INodes for path '" + path + "': " + (list != null ? list.stream().map(INode::getLocalName).collect(Collectors.toList()) : "null"));
+      //LOG.debug("Path INodes for path '" + path + "': " + (list != null ? list.stream().map(INode::getLocalName).collect(Collectors.toList()) : "null"));
 
       if (list == null)
         LOG.warn("Path INodes for path '" + path + "' is null...");
@@ -566,7 +566,7 @@ public abstract class BaseINodeLock extends Lock {
     }
 
     INode lockInode(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws IOException {
-      LOG.debug("Locking INode " + inodeId + " with lock type " + lockType.name() + " now...");
+      //LOG.debug("Locking INode " + inodeId + " with lock type " + lockType.name() + " now...");
       setINodeLockType(lockType);
       INode targetInode = INodeUtil.getNode(inodeId, true);
       setINodeLockType(getDefaultInodeLockType());
@@ -750,9 +750,9 @@ public abstract class BaseINodeLock extends Lock {
       boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
                                              lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
 
-      LOG.debug("Trying to resolve " + names.length + " INodes: " + StringUtils.join(", ", names) +
-              " using PathResolver. LockType: " + lockType.name() + ", path: '" + path +
-              "', CanUseMetadataCache: " + canUseInMemoryMetadataCache);
+//      LOG.debug("Trying to resolve " + names.length + " INodes: " + StringUtils.join(", ", names) +
+//              " using PathResolver. LockType: " + lockType.name() + ", path: '" + path +
+//              "', CanUseMetadataCache: " + canUseInMemoryMetadataCache);
 
       List<INode> inodes = null;
       if (rowsToReadWithDefaultLock > 0) {
@@ -791,9 +791,9 @@ public abstract class BaseINodeLock extends Lock {
       boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
               lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
 
-      LOG.debug("Resolving rest of path for path '" + path + "', INodes: " +
-              StringUtils.join(", ", inodes) + ", LockType: " + lockType.name() +
-              ", CanUseMetadataCache: " + canUseInMemoryMetadataCache);
+//      LOG.debug("Resolving rest of path for path '" + path + "', INodes: " +
+//              StringUtils.join(", ", inodes) + ", LockType: " + lockType.name() +
+//              ", CanUseMetadataCache: " + canUseInMemoryMetadataCache);
 
       INodeResolver resolver = new INodeResolver(components, currentINode, resolveLink, true,
           inodes.size() - 1, canUseInMemoryMetadataCache);
