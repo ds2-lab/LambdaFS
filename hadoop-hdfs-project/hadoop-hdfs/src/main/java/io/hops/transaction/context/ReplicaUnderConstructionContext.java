@@ -198,7 +198,7 @@ public class ReplicaUnderConstructionContext
       result = getByBlock(blockId);
       hit(rFinder, result, "bid", blockId, "inodeid", inodeId);
     } else {
-      LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeID=" + inodeId + ", BlockID=" + blockId);
+      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(rFinder, params);
       result = dataAccess.findReplicaUnderConstructionByBlockId(blockId, inodeId);
       updateCache(result);
@@ -220,7 +220,7 @@ public class ReplicaUnderConstructionContext
       result = getByINode(inodeId);
       hit(rFinder, result, "inodeid", inodeId);
     } else {
-      LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeID=" + inodeId);
+      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeID=" + inodeId);
       aboutToAccessStorage(rFinder, params);
       result = dataAccess.findReplicaUnderConstructionByINodeId(inodeId);
       updateCache(result);
@@ -234,7 +234,7 @@ public class ReplicaUnderConstructionContext
       ReplicaUnderConstruction.Finder rFinder, Object[] params)
       throws TransactionContextException, StorageException {
     final long[] inodeIds = (long[]) params[0];
-    LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeIDs=" +
+    if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for ReplicaUnderConstruction instances with INodeIDs=" +
             StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(rFinder, params);
     List<ReplicaUnderConstruction> result =

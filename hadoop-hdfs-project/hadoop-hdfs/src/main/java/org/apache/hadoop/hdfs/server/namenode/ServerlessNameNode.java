@@ -556,14 +556,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *  - Processing intermediate block reports from DataNodes.
    */
   public void getAndProcessUpdatesFromIntermediateStorage() throws IOException, ClassNotFoundException {
-    // Instant processUpdatesStart = Instant.now();
-
-//    long msSinceLastUpdate = Time.getUtcTime() - lastIntermediateStorageUpdate;
-//    if (msSinceLastUpdate < heartBeatInterval) {
-//      LOG.debug("We updated intermediate storage " + msSinceLastUpdate + " ms ago. Skipping.");
-//      return;
-//    }
-
     registerDataNodesFromIntermediateStorage();
 
     List<DatanodeDescriptor> dataNodes =
@@ -575,9 +567,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     getAndProcessIntermediateBlockReports();
 
     lastIntermediateStorageUpdate = Time.getUtcTime();
-
-    // Instant processUpdatesEnd = Instant.now();
-    // Duration updateDuration = Duration.between(processUpdatesStart, processUpdatesEnd);
   }
 
   /**
@@ -637,7 +626,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
                                                                             boolean localMode, boolean isCold)
           throws Exception {
     if (instance != null) {
-      LOG.debug("Using existing NameNode instance with ID = " + instance.getId());
+      if (LOG.isDebugEnabled()) LOG.debug("Using existing NameNode instance with ID = " + instance.getId());
       return instance;
     }
 
@@ -649,7 +638,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Next, the NameNode needs to exit safe mode (if it is in safe mode).
     if (instance.isInSafeMode()) {
-      LOG.debug("NameNode is in SafeMode. Leaving SafeMode now...");
       instance.getNamesystem().leaveSafeMode();
     }
 
@@ -764,7 +752,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("isFileClosed", this::isFileClosed);
     operations.put("mkdirs", this::mkdirs);
     operations.put("ping", args ->  {
-      LOG.debug("We've been pinged!");
       return null;
     });
     operations.put("removeUser", args -> {
@@ -953,23 +940,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // every heartbeat interval.
 
     long now = Time.getUtcTime();
-    long millisecondsSinceLastReportRetrieval = now - lastStorageReportGroupId;
-//    if (millisecondsSinceLastReportRetrieval < heartBeatInterval) {
-//      LOG.debug("StorageReports for DataNode " + datanodeDescriptor.getDatanodeUuid() + " were last retrieved at time " +
-//              Instant.ofEpochMilli(lastStorageReportGroupId).toString() + ", which was less than " +
-//              heartBeatInterval + "ms ago. Skipping.");
-//
-//      return null;
-//    }
-
-//    LOG.debug("Retrieving StorageReport instance for datanode " + datanodeUuid
-//            + ". Reports were last retrieved " + millisecondsSinceLastReportRetrieval
-//            + " ms ago (Current timestamp = " + now + ", previous timestamp  = " + lastStorageReportGroupId  + ").");
 
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
         = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId, datanodeUuid);
-
-//    LOG.debug("Retrieved " + storageReports.size() + " storage report instances from intermediate storage...");
 
     // Sometimes there is a "race" where the DN wrote the storage report per its heartbeat interval, but we don't
     // see it yet. Not sure why it happens. But we don't update the timestamp unless we actually read a storage report.
@@ -1069,8 +1042,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       convertedStorageReportMap.put(datanodeUuid, convertedStorageReports);
     }
-
-    //LOG.debug("Processing storage reports from " + convertedStorageReportMap.size() + " data nodes now...");
 
     int numSuccess = 0;               // If we have zero successes and zero skips, that's a problem.
     int numSkippedIntentionally = 0;  // Keep track of how many we've skipped on purpose.
@@ -1232,11 +1203,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         // the for-loop has a smaller creation time stamp, then we do nothing and move onto the next DN in the for-loop.
         if (creationTimeComparisonResult > 0) {
           dnMap.put(key, dataNodeMeta);
-          // LOG.debug("Replacing DN " + existingDN.getDatanodeUuid() + " with DN " + dataNodeMeta.getDatanodeUuid() + " in pre-registration mapping.");
-          //LOG.debug("Creation time of existing DN (uuid=" + existingDN.getDatanodeUuid() + "): "
-          //        + existingDN.getCreationTime());
-          //LOG.debug("Creation time of \"new\" DN (uuid=" + dataNodeMeta.getDatanodeUuid() + "): "
-          //        + dataNodeMeta.getCreationTime());
           numReplaced++;
         }
       }
@@ -1244,19 +1210,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         dnMap.put(key, dataNodeMeta);
       }
     }
-
-//    if (numReplaced > 0) {
-//      LOG.debug("Removed " + numReplaced + " old DataNodeMeta objects from the registration list.");
-//    }
-
-    // LOG.debug("There are " + dnMap.size() + " new DataNodes to register after pre-processing step.");
-
     // TODO: Need to remove old DataNode metadata from intermediate storage. Apparently stop-dfs.sh doesn't
     //       allow DataNodes to shutdown cleanly, meaning they aren't cleaning up their metadata upon exiting.
 
     for (DataNodeMeta dataNodeMeta : dnMap.values()) {
       String datanodeUuid = dataNodeMeta.getDatanodeUuid();
-      // LOG.info("Processing metadata for DataNode: " + dataNodeMeta);
 
       DatanodeID dnId =
           new DatanodeID(dataNodeMeta.getIpAddress(), dataNodeMeta.getHostname(),
@@ -1268,52 +1226,23 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               nsInfo.getNamespaceID(), nsInfo.clusterID, nsInfo.getCTime(),
               HdfsServerConstants.NodeType.DATA_NODE, nsInfo.getBlockPoolID());
 
-      //LOG.info("NamespaceID: {}, ClusterID: {}, CTime: {}, BlockPoolID: {}", nsInfo.getNamespaceID(),
-      //        nsInfo.clusterID, nsInfo.getCTime(), nsInfo.getBlockPoolID());
-
       DatanodeRegistration datanodeRegistration = new DatanodeRegistration(
               dnId, storageInfo, new ExportedBlockKeys(), VersionInfo.getVersion());
 
       // Create an entry for this DataNode.
       if (!lastIntermediateBlockReportTimestamp.containsKey(datanodeUuid)) {
-        //LOG.debug("Adding entry in `lastIntermediateBlockReportIds` for DataNode " + datanodeUuid);
         lastIntermediateBlockReportTimestamp.put(datanodeUuid, creationTime);
-      } //else {
-        //LOG.debug("Entry for DataNode " + datanodeUuid + " already exists in `lastIntermediateBlockReportIds`");
-      //}
-
-      try {
-        if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
-                datanodeRegistration.getDatanodeUuid()) != null) {
-          // LOG.debug("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered... Skipping.");
-          continue;
-        } else {
-          // LOG.debug("Registering DataNode " + datanodeRegistration.getDatanodeUuid());
-          namesystem.registerDatanode(datanodeRegistration);
-        }
-
-        datanodeRegistrations.add(datanodeRegistration);
-      } catch (IOException ex) {
-        // Log this, so we know the source of the exception, then re-throw it so it gets caught one layer up.
-        // LOG.error("Error registering datanode " + dataNodeMeta.getDatanodeUuid());
-        throw ex;
       }
-    }
 
-//    Commented out because DataNodes do not get storages until processing their storage reports.
-//
-//    DatanodeManager datanodeManager = namesystem.getBlockManager().getDatanodeManager();
-//    for (DatanodeRegistration registration : datanodeRegistrations) {
-//      DatanodeDescriptor datanodeDescriptor = datanodeManager.getDatanode(registration.getDatanodeUuid());
-//      DatanodeStorageInfo[] storageInfos = datanodeDescriptor.getStorageInfos();
-//      int numStorageInfos = storageInfos.length;
-//
-//      if (numStorageInfos == 1)
-//        LOG.debug("After registration, DataNode " + registration.getDatanodeUuid() + " has 1 storage info.");
-//      else
-//        LOG.debug("After registration, DataNode " + registration.getDatanodeUuid() + " has " +
-//                numStorageInfos + " storage infos.");
-//    }
+      if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
+              datanodeRegistration.getDatanodeUuid()) != null) {
+        continue;
+      } else {
+        namesystem.registerDatanode(datanodeRegistration);
+      }
+
+      datanodeRegistrations.add(datanodeRegistration);
+    }
 
     return datanodeRegistrations;
   }
@@ -1357,7 +1286,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       }
     }
 
-    LOG.info("addBlock() function of ServerlessNameNodeRpcServer called.");
     if (stateChangeLog.isDebugEnabled()) {
       stateChangeLog.debug(
               "*BLOCK* NameNode.addBlock: file " + src + " fileId=" + fileId + " for " + clientName);
@@ -1666,13 +1594,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       paths.add(pathsJson.get(i).getAsString());
     }
 
-    LOG.debug("Executed batched subtree operation. Leader NN ID: " + leaderNameNodeID + ".");
-    LOG.debug("Subtree root path: '" + subtreeRootId + "', subtree root ID: " + subtreeRootId + ".");
-    LOG.debug("There are " + paths.size() + " paths to delete: " + StringUtils.join(", ", paths));
-
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Executed batched subtree operation. Leader NN ID: " + leaderNameNodeID + ".");
+      LOG.debug("Subtree root path: '" + subtreeRootId + "', subtree root ID: " + subtreeRootId + ".");
+      LOG.debug("There are " + paths.size() + " paths to delete: " + StringUtils.join(", ", paths));
+    }
     ArrayList<Future> barrier = new ArrayList<>();
     for (String path : paths) {
-      LOG.debug("Submitting deletion for path '" + path + "' now...");
+      if (LOG.isDebugEnabled()) LOG.debug("Submitting deletion for path '" + path + "' now...");
       Future f = FSDirDeleteOp.multiTransactionDeleteInternal(namesystem, path, subtreeRootId);
       barrier.add(f);
     }
@@ -1684,13 +1613,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return false;
     }
 
-    LOG.debug("Batched subtree delete op on subtree " + subtreeRootId + " succeeded.");
+    if (LOG.isDebugEnabled()) LOG.debug("Batched subtree delete op on subtree " + subtreeRootId + " succeeded.");
     return true;
   }
 
   private NamespaceInfo versionRequest(JsonObject fsArgs) throws IOException {
     EntityManager.toggleLocalMetadataCache(true);
-    LOG.info("Performing versionRequest operation now...");
 
     String datanodeUuid = fsArgs.get("uuid").getAsString();
 
@@ -1701,7 +1629,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // Check for an existing groupId associated with this DataNode.
     // This would exist if the DN had crashed and is restarting or something to that effect.
     long groupId = this.lastStorageReportGroupIds.getOrDefault(datanodeUuid, creationTime);
-    LOG.debug("Assigning groupId " + groupId + " to DN " + datanodeUuid);
+    if (LOG.isDebugEnabled()) LOG.debug("Assigning groupId " + groupId + " to DN " + datanodeUuid);
     nsInfo.setGroupId(groupId);
 
     return nsInfo;
@@ -1746,8 +1674,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     if (!checkPathLength(src)) {
       throw new IOException(
-              "create: Pathname too long.  Limit " + MAX_PATH_LENGTH +
-                      " characters, " + MAX_PATH_DEPTH + " levels.");
+              "create: Pathname too long.  Limit " + MAX_PATH_LENGTH + " characters, " + MAX_PATH_DEPTH + " levels.");
     }
     // I don't know what to use for this; the RPC server has a method for it, but I don't know if it applies to serverless case...
     String clientMachine = "";
@@ -1759,10 +1686,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // Currently impossible to pass null for EncodingPolicy, but pretending it's possible for now...
     if (policy != null) {
       if (!namesystem.isErasureCodingEnabled()) {
-        throw new IOException("Requesting encoding although erasure coding" +
-                " was disabled");
+        throw new IOException("Requesting encoding although erasure coding was disabled");
       }
-      LOG.info("Create file " + src + " with policy " + policy.toString());
       namesystem.addEncodingStatus(src, policy,
               EncodingStatus.Status.ENCODING_REQUESTED, false);
     }
@@ -1903,59 +1828,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     return cmd;
   }
-
-//  public static void main(String[] args) throws Exception {
-//    LOG.info("=================================================================");
-//    LOG.info("Serverless NameNode v" + versionNumber + " has started executing.");
-//    LOG.info("=================================================================");
-//    System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
-//
-//    HashMap<String, Object> nameNodeArguments = new HashMap<String, Object>();
-//    nameNodeArguments.put("command-line-arguments", args);
-//
-//    Configuration conf = new Configuration();
-//
-//    ServerlessInvokerBase<JsonObject> serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
-//            conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
-//    serverlessInvoker.setClientName("CommandLine");
-//    serverlessInvoker.setConfiguration(conf);
-//
-//    String serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
-//
-//    LOG.debug("Invoking serverless NameNode with commandline arguments: " + Arrays.toString(args));
-//
-//    serverlessInvoker.invokeNameNodeViaHttpPost(DEFAULT_OPERATION, serverlessEndpoint,
-//            nameNodeArguments, new HashMap<String, Object>());
-
-    /*platformSpecificInitialization();
-
-    CommandLine cmd = parseMainArguments(args);
-
-    String[] commandLineArguments;
-
-    // Attempt to extract the command-line arguments, which will be passed as a single string parameter.
-    if (cmd.hasOption("command-line-args"))
-      commandLineArguments = new String[]{cmd.getOptionValue("command-line-args")};
-    else
-      commandLineArguments = new String[0];
-
-    String op = null;
-    JsonObject fsArgs = null;
-
-    if (cmd.hasOption("op"))
-      op = cmd.getOptionValue("op");
-
-    // JSON dictionary containing the arguments/parameters for the specified filesystem operation.
-    if (cmd.hasOption("fsArgs")) {
-      String fsArgsAsString = cmd.getOptionValue("fsArgs");
-      JsonParser parser = new JsonParser();
-      fsArgs = parser.parse(fsArgsAsString).getAsJsonObject(); // Convert to JsonObject.
-    }
-
-    // Just pass `CommandLine` for the function name...
-    JsonObject response = nameNodeDriver(op, fsArgs, commandLineArguments, "CommandLine");
-    LOG.info("Response = " + response);*/
-//  }
 
   /**
    * httpServer
@@ -2278,18 +2150,23 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     Instant securityStartEnd = Instant.now();
     Duration securityDuration = Duration.between(initStart, securityStartEnd);
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
-    LOG.debug("Finished security start-up in " + DurationFormatUtils.formatDurationHMS(securityDuration.toMillis()));
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+      LOG.debug("Finished security start-up in " + DurationFormatUtils.formatDurationHMS(securityDuration.toMillis()));
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+    }
 
     HdfsStorageFactory.setConfiguration(conf);
 
     Instant storageFactorySetup = Instant.now();
     Duration storageFactoryDuration = Duration.between(securityStartEnd, storageFactorySetup);
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
-    LOG.debug("Finished configuring HdfsStorageFactory in " +
-            DurationFormatUtils.formatDurationHMS(storageFactoryDuration.toMillis()));
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+      LOG.debug("Finished configuring HdfsStorageFactory in " +
+              DurationFormatUtils.formatDurationHMS(storageFactoryDuration.toMillis()));
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - -");
+    }
 
     Instant nameNodeInitStart = Instant.now();
 
@@ -2299,7 +2176,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // https://stackoverflow.com/questions/15184820/how-to-generate-unique-positive-long-using-uuid
     this.nameNodeID = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
 
-    LOG.debug("Assigned new NN instance ID " + nameNodeID);
+    if (LOG.isDebugEnabled()) LOG.debug("Assigned new NN instance ID " + nameNodeID);
 
     this.txAckTimeout =
             conf.getInt(SERVERLESS_TRANSACTION_ACK_TIMEOUT, SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT);
@@ -2328,10 +2205,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     Instant serverlessInitDone = Instant.now();
     Duration serverlessInitDuration = Duration.between(nameNodeInitStart, serverlessInitDone);
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-    LOG.debug("Serverless-specific NN initialization completed in " +
-            DurationFormatUtils.formatDurationHMS(serverlessInitDuration.toMillis()));
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+      LOG.debug("Serverless-specific NN initialization completed in " +
+              DurationFormatUtils.formatDurationHMS(serverlessInitDuration.toMillis()));
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+    }
 
     if (localMode)
       numDeployments = 1;
@@ -2340,7 +2220,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,
             SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT);
-    LOG.debug("Number of unique serverless name nodes: " + numDeployments);
+
+    if (LOG.isDebugEnabled()) LOG.debug("Number of unique serverless name nodes: " + numDeployments);
 
     int baseWaitTime = conf.getInt(DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_KEY,
             DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_DEFAULT);
@@ -2393,18 +2274,24 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     Instant intermediateInitDone = Instant.now();
     Duration intermediateInitDuration = Duration.between(serverlessInitDone, intermediateInitDone);
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-    LOG.debug("Intermediate NameNode initialization completed in " +
-            DurationFormatUtils.formatDurationHMS(intermediateInitDuration.toMillis()));
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+      LOG.debug("Intermediate NameNode initialization completed in " +
+              DurationFormatUtils.formatDurationHMS(intermediateInitDuration.toMillis()));
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+    }
 
     loadNamesystem(conf);
 
     Instant loadNamesystemDone = Instant.now();
     Duration loadNamesystemDuration = Duration.between(intermediateInitDone, loadNamesystemDone);
-    LOG.debug("- - - - - - - - - - - - - - - -");
-    LOG.debug("Loaded namesystem in " + DurationFormatUtils.formatDurationHMS(loadNamesystemDuration.toMillis()));
-    LOG.debug("- - - - - - - - - - - - - - - -");
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("- - - - - - - - - - - - - - - -");
+      LOG.debug("Loaded namesystem in " + DurationFormatUtils.formatDurationHMS(loadNamesystemDuration.toMillis()));
+      LOG.debug("- - - - - - - - - - - - - - - -");
+    }
 
     // We need to do this AFTER the above call to `HdfsStorageFactory.setConfiguration(conf)`, as the ClusterJ/NDB
     // library is loaded during that call. If we try to create the event manager before that, we will get class
@@ -2416,7 +2303,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // but the name system doesn't get loaded until a little later.
     eventManagerThread = new Thread(ndbEventManager);
 
-    LOG.debug("Started the NDB EventManager thread.");
+    if (LOG.isDebugEnabled())
+      LOG.debug("Started the NDB EventManager thread.");
 
     pauseMonitor = new JvmPauseMonitor();
     pauseMonitor.init(conf);
@@ -2427,11 +2315,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     Instant metadataInitStart = Instant.now();
 
     Duration pauseMonitorAndEventManagerDuration = Duration.between(loadNamesystemDone, metadataInitStart);
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-    LOG.debug("Started the Event Manager and Pause Monitor in " +
-            DurationFormatUtils.formatDurationHMS(pauseMonitorAndEventManagerDuration.toMillis()));
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-    // writeMetadataToIntermediateStorage();
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+      LOG.debug("Started the Event Manager and Pause Monitor in " +
+              DurationFormatUtils.formatDurationHMS(pauseMonitorAndEventManagerDuration.toMillis()));
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+    }
 
     this.zooKeeperClient = new SyncZKClient(conf);
 
@@ -2452,19 +2342,24 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     Instant metadataInitEnd = Instant.now();
     Duration metadataInitDuration = Duration.between(metadataInitStart, metadataInitEnd);
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-    LOG.debug("Connected to ZooKeeper in " +
-            DurationFormatUtils.formatDurationHMS(metadataInitDuration.toMillis()));
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+      LOG.debug("Connected to ZooKeeper in " +
+              DurationFormatUtils.formatDurationHMS(metadataInitDuration.toMillis()));
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+    }
 
     startCommonServices(conf, this.activeNameNodes);
     Instant commonServiceEnd = Instant.now();
     Duration startCommonServiceDuration = Duration.between(metadataInitEnd, commonServiceEnd);
 
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
-    LOG.debug("Started common NameNode services in " +
-            DurationFormatUtils.formatDurationHMS(startCommonServiceDuration.toMillis()));
-    LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
+      LOG.debug("Started common NameNode services in " +
+              DurationFormatUtils.formatDurationHMS(startCommonServiceDuration.toMillis()));
+      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
+    }
 
     if(isLeader()) { //if the newly started namenode is the leader then it means
       //that is cluster was restarted and we can reset the number of default
@@ -2474,10 +2369,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       Instant createLeaseLocksEnd = Instant.now();
       Duration createLeaseLocksDuration = Duration.between(commonServiceEnd, createLeaseLocksEnd);
-      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
-      LOG.debug("Created lease locks in " +
-              DurationFormatUtils.formatDurationHMS(startCommonServiceDuration.toMillis()));
-      LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
+
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
+        LOG.debug("Created lease locks in " +
+                DurationFormatUtils.formatDurationHMS(createLeaseLocksDuration.toMillis()));
+        LOG.debug("- - - - - - - - - - - - - - - - - - - - - - -");
+      }
     }
 
     // in case of cluster upgrade the retry cache epoch is set to 0
@@ -2512,10 +2410,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *                       as the Serverless NameNode is starting up.
    */
   private void startCommonServices(Configuration conf, SortedActiveNodeList activeNodeList) throws IOException {
-    LOG.debug("=-=-=-=-=-=-=-==-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-    LOG.debug("Starting common NameNode services now...");
-    LOG.debug("=-=-=-=-=-=-=-==-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-    LOG.debug("NOT starting the Leader Election Service.");
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("=-=-=-=-=-=-=-==-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+      LOG.debug("Starting common NameNode services now...");
+      LOG.debug("=-=-=-=-=-=-=-==-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+      LOG.debug("NOT starting the Leader Election Service.");
+    }
     // startLeaderElectionService();
 
     startMDCleanerService();
@@ -2523,8 +2423,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     namesystem.startCommonServices(conf, activeNodeList);
     registerNNSMXBean();
 
-    LOG.debug("NOT starting the RPC server.");
-    // rpcServer.start();
     plugins = conf.getInstances(DFS_NAMENODE_PLUGINS_KEY, ServicePlugin.class);
     for (ServicePlugin p : plugins) {
       try {
@@ -2699,7 +2597,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     this.functionName = functionName;
     this.localMode = localMode;
 
-    LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
+    if (LOG.isDebugEnabled())LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
 
     if (this.localMode)
       this.deploymentNumber = 0;
@@ -2712,7 +2610,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       throw new IOException("Failed to extract valid deployment number from function name '" +
               functionName + "'");
 
-    LOG.debug("We are function '" + this.functionName + "' from deployment #" + this.deploymentNumber + ".");
+    if (LOG.isDebugEnabled()) LOG.debug("We are function '" + this.functionName + "' from deployment #" + this.deploymentNumber + ".");
     // Subtract five seconds (i.e., 6000 milliseconds) to account for invocation overheads and other start-up times.
     // The default DN heartbeat interval (and therefore, StorageReport interval) is three seconds, so this should
     // ensure that the NN finds at least 1-2 storage reports, which can be used to bootstrap the DN storages.
@@ -2729,14 +2627,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       initialize(conf);
       Instant initEnd = Instant.now();
       Duration initDuration = Duration.between(initStart, initEnd);
-      LOG.debug("NameNode initialization completed. Time elapsed: " +
+      if (LOG.isDebugEnabled()) LOG.debug("NameNode initialization completed. Time elapsed: " +
               DurationFormatUtils.formatDurationHMS(initDuration.toMillis()));
       this.started.set(true);
       Instant activeStateStart = Instant.now();
       enterActiveState();
       Instant activeStateEnd = Instant.now();
       Duration enterActiveStateDuration = Duration.between(activeStateStart, activeStateEnd);
-      LOG.debug("NameNode entered active state. Time elapsed: " +
+      if (LOG.isDebugEnabled()) LOG.debug("NameNode entered active state. Time elapsed: " +
               DurationFormatUtils.formatDurationHMS(enterActiveStateDuration.toMillis()));
     } catch (Exception e) {
       this.stop();
@@ -3154,7 +3052,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
     setStartupOption(conf, startOpt);
 
-    LOG.debug("Start Option given as: " + startOpt.getName() + ", " + startOpt);
+    if (LOG.isDebugEnabled()) LOG.debug("Start Option given as: " + startOpt.getName() + ", " + startOpt);
 
     // TODO: We could eventually have some of these NOT terminate and instead return a message that could
     //       then be passed all the way back to the user/client who invoked the serverless NN initially.
@@ -3232,7 +3130,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       URI defaultUri = URI.create(HdfsConstants.HDFS_URI_SCHEME + "://" +
           conf.get(DFS_NAMENODE_RPC_ADDRESS_KEY));
       conf.set(FS_DEFAULT_NAME_KEY, defaultUri.toString());
-      LOG.debug("Setting " + FS_DEFAULT_NAME_KEY + " to " + defaultUri.toString());
+      if (LOG.isDebugEnabled()) LOG.debug("Setting " + FS_DEFAULT_NAME_KEY + " to " + defaultUri.toString());
     }
   }
 
@@ -3377,7 +3275,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     if (this.zooKeeperClient != null) {
       try {
-        LOG.debug("Attempting to disconnect from ZooKeeper ensemble before ungraceful termination...");
+        if (LOG.isDebugEnabled()) LOG.debug("Attempting to disconnect from ZooKeeper ensemble before ungraceful termination...");
         this.zooKeeperClient.leaveGroup("namenode" + deploymentNumber, Long.toString(getId()), true);
       } catch (Exception e) {
         LOG.error("Exception encountered while trying to disconnect from ZooKeeper:", e);
@@ -3444,15 +3342,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             "ProcessReport from dead or unregistered node: " + nodeID+ ". "
                     + (node != null ? ("The node is alive : " + node.isAlive) : "The node is null "));
       }
-      LOG.debug("NN Id: " + leaderElection.getCurrentId() + ") Received request to assign" +
+      if (LOG.isDebugEnabled()) LOG.debug("NN Id: " + leaderElection.getCurrentId() + ") Received request to assign" +
               " block report work ("+ noOfBlks + " blks) ");
       ActiveNode an = brTrackingService.assignWork(getActiveNameNodes(),
               nodeID.getXferAddr(), noOfBlks);
       return an;
     } else {
-      String msg = "NN Id: " + leaderElection.getCurrentId() + ") Received request to assign" +
-              " work (" + noOfBlks + " blks). Returning null as I am not the leader NN";
-      LOG.debug(msg);
+      if (LOG.isDebugEnabled()) {
+        String msg = "NN Id: " + leaderElection.getCurrentId() + ") Received request to assign" +
+                " work (" + noOfBlks + " blks). Returning null as I am not the leader NN";
+        LOG.debug(msg);
+      }
       throw new BRLoadBalancingNonLeaderException(msg);
     }
   }
@@ -3474,7 +3374,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   public static boolean isNameNodeAlive(long namenodeId, Collection<ActiveNode> activeNamenodes) {
     ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
 
-    LOG.debug("Checking if NameNode " + namenodeId + " is alive...");
+    if (LOG.isDebugEnabled()) LOG.debug("Checking if NameNode " + namenodeId + " is alive...");
 
     Collection<ActiveNode> activeNodes;
 
@@ -3496,7 +3396,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // First check local cache. This contains the NNs currently alive within our deployment.
     for (ActiveNode nameNode : activeNodes) {
       if (nameNode.getId() == namenodeId) {
-        LOG.debug("NameNode " + namenodeId + " IS alive, according to our local records.");
+        if (LOG.isDebugEnabled()) LOG.debug("NameNode " + namenodeId + " IS alive, according to our local records.");
         return true;
       }
     }
@@ -3527,7 +3427,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         boolean alive = zkClient.checkForPermanentGroupMember(i, String.valueOf(namenodeId));
 
         if (alive) {
-          LOG.debug("NameNode " + namenodeId + " IS alive in deployment #" + i + " according to ZooKeeper.");
+          if (LOG.isDebugEnabled()) LOG.debug("NameNode " + namenodeId + " IS alive in deployment #" + i + " according to ZooKeeper.");
           return true;
         }
       } catch (Exception ex) {
@@ -3544,7 +3444,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return true;
     }
 
-    LOG.debug("NameNode " + namenodeId + " is NOT alive, according to our records.");
+    if (LOG.isDebugEnabled()) LOG.debug("NameNode " + namenodeId + " is NOT alive, according to our records.");
     return false;
   }
 
@@ -3671,7 +3571,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   static void createLeaseLocks(Configuration conf) throws IOException {
     int count = conf.getInt(DFSConfigKeys.DFS_LEASE_CREATION_LOCKS_COUNT_KEY,
             DFS_LEASE_CREATION_LOCKS_COUNT_DEFAULT);
-    LOG.debug("Creating lease locks. Count = " + count + ".");
+    if (LOG.isDebugEnabled()) LOG.debug("Creating lease locks. Count = " + count + ".");
     new LightWeightRequestHandler(HDFSOperationType.CREATE_LEASE_LOCKS) {
       @Override
       public Object performTask() throws IOException {

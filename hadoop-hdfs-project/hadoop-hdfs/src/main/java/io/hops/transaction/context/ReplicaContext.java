@@ -224,7 +224,7 @@ public class ReplicaContext
       results = getByBlock(blockId);
       hit(iFinder, results, "bid", blockId);
     } else {
-      LOG.debug("Going to NDB to find Replicas for INode ID=" + inodeId + ", BlockID=" + blockId);
+      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB to find Replicas for INode ID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findReplicasById(blockId, inodeId);
       updateCache(results);

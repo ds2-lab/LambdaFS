@@ -211,7 +211,7 @@ public class PendingBlockContext
       }
       hit(pFinder, result, "bid", blockId, "inodeid", inodeId);
     } else {
-      LOG.debug("Going to NDB for PendingBlockInfo instance with INodeID=" + inodeId + ", BlockID=" + blockId);
+      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for PendingBlockInfo instance with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(pFinder, params);
       result = dataAccess.findByBlockAndInodeIds(blockId, inodeId);
       updateCache(result);
@@ -228,7 +228,7 @@ public class PendingBlockContext
       result = new ArrayList<>(getAll());
       hit(pFinder, result);
     } else {
-      LOG.debug("Going to NDB for ALL PendingBlockInfo instances");
+      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for ALL PendingBlockInfo instances");
       aboutToAccessStorage(pFinder);
       result = dataAccess.findAll();
       gotFromDB(result);
@@ -250,7 +250,7 @@ public class PendingBlockContext
       result = getByINode(inodeId);
       hit(pFinder, result, "inodeid", inodeId);
     } else {
-      LOG.debug("Going to NDB for PendingBlockInfo instances with INodeID=" + inodeId);
+      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for PendingBlockInfo instances with INodeID=" + inodeId);
       aboutToAccessStorage(pFinder, params);
       result = dataAccess.findByINodeId(inodeId);
       updateCache(result);
@@ -264,7 +264,7 @@ public class PendingBlockContext
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
     List<PendingBlockInfo> result = null;
-    LOG.debug("Going to NDB for PendingBlockInfo instances with INodeIDs=" +
+    if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for PendingBlockInfo instances with INodeIDs=" +
             StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(pFinder, params);
     result = dataAccess.findByINodeIds(inodeIds);

@@ -57,7 +57,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
    * Check the metadata cache for the encryption zone associated with the given INode.
    */
   private EncryptionZone checkCache(long inodeId) {
-    // LOG.debug("Checking in-memory cache for EZ. Lock Mode: " + EntityContext.getLockMode().name());
+    // if (LOG.isDebugEnabled()) LOG.debug("Checking in-memory cache for EZ. Lock Mode: " + EntityContext.getLockMode().name());
     if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
 
     MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
@@ -74,7 +74,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
    * Returns null if there's at least one cache miss.
    */
   private List<EncryptionZone> checkCache(Collection<Long> inodeIds) {
-    // LOG.debug("Checking in-memory cache for EZ. Lock Mode: " + EntityContext.getLockMode().name());
+    // if (LOG.isDebugEnabled()) LOG.debug("Checking in-memory cache for EZ. Lock Mode: " + EntityContext.getLockMode().name());
     if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
 
     MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
@@ -146,7 +146,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
     EncryptionZone result = checkCache(pk);
 
     if (result != null) {
-      LOG.debug("Successfully retrieved EncryptionZone instance from local cache.");
+      if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved EncryptionZone instance from local cache.");
       return result;
     }
 
@@ -164,7 +164,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
     List<EncryptionZone> results = checkCache(pks);
 
     if (results != null) {
-      LOG.debug("Successfully retrieved all EncryptionZone instances from local cache.");
+      if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved all EncryptionZone instances from local cache.");
       return results;
     }
 
@@ -172,7 +172,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
       results = getAll(pks);
       hit(finder, results, "pks", pks, "results", results);
     } else {
-      LOG.debug("Retrieving EncryptionZones from intermediate storage for INodes: " + StringUtils.join(", ", pks));
+      if (LOG.isDebugEnabled()) LOG.debug("Retrieving EncryptionZones from intermediate storage for INodes: " + StringUtils.join(", ", pks));
       aboutToAccessStorage(finder, params);
       results = dataAccess.getEncryptionZoneByInodeIdBatch(pks);
       gotFromDB(pks, results);
