@@ -285,7 +285,7 @@ public class HopsFSUserServer {
                 LOG.warn("[TCP SERVER " + tcpPort + "] Replacing old, now-disconnected conn to NameNode " + nameNodeId +
                         " (deployment #" + deploymentNumber + ") with the new one...");
             }
-        } else {
+        } else if (LOG.isDebugEnabled()) {
             // We don't want to print this debug message along with the ones from the if-statement above, so
             // we put it in the else block. It isn't contradictory or anything, but it'd be redundant.
             LOG.debug("Caching connection to NN " + nameNodeId + " (deployment #" + deploymentNumber + ") now.");
@@ -371,11 +371,13 @@ public class HopsFSUserServer {
                     }
                     submittedFutures.remove(connection.name);
 
-                    LOG.debug("[TCP SERVER " + tcpPort + "] Closed and removed connection to NN " + nameNodeId);
+                    if (LOG.isDebugEnabled())
+                        LOG.debug("[TCP SERVER " + tcpPort + "] Closed and removed connection to NN " + nameNodeId);
                     return true;
                 } else {
-                    LOG.debug("[TCP SERVER " + tcpPort + "] Cannot remove connection to NN " + nameNodeId
-                            + " because it is still active " + "(and the override flag was not set to true).");
+                    if (LOG.isDebugEnabled())
+                        LOG.debug("[TCP SERVER " + tcpPort + "] Cannot remove connection to NN " + nameNodeId
+                                + " because it is still active " + "(and the override flag was not set to true).");
                     return false;
                 }
             } else {
@@ -387,7 +389,8 @@ public class HopsFSUserServer {
                         activeConnectionsPerDeployment.get(deploymentNumber);
                 deploymentConnections.remove(nameNodeId);
 
-                LOG.debug("[TCP SERVER " + tcpPort + "] Removed already-closed connection to NN " + nameNodeId);
+                if (LOG.isDebugEnabled())
+                    LOG.debug("[TCP SERVER " + tcpPort + "] Removed already-closed connection to NN " + nameNodeId);
                 return true;
             }
         } else {
@@ -563,9 +566,6 @@ public class HopsFSUserServer {
         // TODO: Handle this scenario somehow (resubmit the TCP request, notify the client, etc.)
         if (bytesSent == 0)
             LOG.error("Transmission of TCP request " + requestId + " sent 0 bytes.");
-//        else
-//            LOG.debug("[TCP SERVER " + tcpPort + "] Sent " + bytesSent + " bytes to NameNode " + tcpConnection.name + " from deployment #" +
-//                    deploymentNumber + ".");
 
         // Make note of this future as being incomplete.
         List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(
@@ -659,8 +659,8 @@ public class HopsFSUserServer {
          * Listener handles connection establishment with remote NameNodes.
          */
         public void connected(Connection conn) {
-            LOG.debug("[TCP SERVER " + tcpPort + "] Connection established with remote NameNode at "
-                    + conn.getRemoteAddressTCP());
+            if (LOG.isDebugEnabled())
+                LOG.debug("[TCP SERVER " + tcpPort + "] Connection established with remote NameNode at " + conn.getRemoteAddressTCP());
             conn.setKeepAliveTCP(6000);
             conn.setTimeout(12000);
         }
@@ -678,53 +678,12 @@ public class HopsFSUserServer {
                 JsonObject body = new JsonParser().parse((String)object).getAsJsonObject();
                 //JsonParser.parseString((String)object).getAsJsonObject();
 
-                LOG.debug("[TCP SERVER " + tcpPort + "] Received message from NameNode at " + connection.toString() + " at " +
-                        connection.getRemoteAddressTCP() + ".");
-
-//                    try {
-//                        LOG.debug("===== Message Contents =====");
-//                        LOG.debug("     Operation" + ": " + body.getAsJsonPrimitive(OPERATION).toString());
-//                        LOG.debug("     RequestID" + ": " + body.getAsJsonPrimitive(REQUEST_ID).toString());
-//                        LOG.debug("     NameNodeID" + ": " + body.getAsJsonPrimitive(NAME_NODE_ID).toString());
-//                        LOG.debug("     Deployment#" + ": " + body.getAsJsonPrimitive(DEPLOYMENT_NUMBER).toString());
-////                        for (String key : body.keySet()) {
-////                            try {
-////                                // Don't print results, statistics packages, or transaction events as they're too long.
-////                                if (key.equals(ServerlessNameNodeKeys.RESULT))
-////                                    LOG.debug("     " + key + ": <RESULT>");
-////                                else if (key.equals(ServerlessNameNodeKeys.STATISTICS_PACKAGE))
-////                                    LOG.debug("     " + key + ": <STATISTICS PACKAGE>");
-////                                else if (key.equals(ServerlessNameNodeKeys.TRANSACTION_EVENTS))
-////                                    LOG.debug("     " + key + ": " + "<TRANSACTION EVENTS>");
-////                                else
-////                                    LOG.debug("     " + key + ": " + body.getAsJsonPrimitive(key).toString());
-////                            } catch (ClassCastException ex) {
-////                                LOG.debug("     " + key + ": " + body.getAsJsonArray(key).toString());
-////                            }
-////                        }
-//                        LOG.debug("============================");
-//                    } catch (Exception ex) {
-//                        LOG.error("Unexpected error encountered while iterating over keys of message:", ex);
-//                        LOG.debug("Printing message in its entirety.");
-//                        LOG.debug(body.toString());
-//                    }
+                if (LOG.isDebugEnabled())
+                    LOG.debug("[TCP SERVER " + tcpPort + "] Received message from NameNode at " + connection.toString() + " at " + connection.getRemoteAddressTCP() + ".");
 
                 int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
                 long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
                 String operation = body.getAsJsonPrimitive("op").getAsString();
-
-                if (body.has(LOG_LEVEL)) {
-                    String logLevel = body.get(LOG_LEVEL).getAsString();
-                    LOG.debug("Setting log4j log level to: " + logLevel + ".");
-
-                    LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
-                }
-
-                if (body.has(CONSISTENCY_PROTOCOL_ENABLED)) {
-                    ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = body.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
-                    LOG.debug("Consistency protocol is " +
-                            (ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
-                }
 
                 String requestId = null;
 
@@ -740,15 +699,10 @@ public class HopsFSUserServer {
                     // The NameNode is registering with the client (i.e., connecting for the first time,
                     // or at least they are connecting after having previously lost connection).
                     case OPERATION_REGISTER:
-//                            LOG.debug("[TCP SERVER " + tcpPort + "] Received registration operation from NameNode " +
-//                                    nameNodeId + ", Deployment #" + deploymentNumber);
                         registerNameNode(connection, deploymentNumber, nameNodeId);
                         break;
                     // The NameNode is returning a result (of a file system operation) to the client.
                     case OPERATION_RESULT:
-//                            LOG.debug("[TCP SERVER " + tcpPort + "] Received result from NameNode " + nameNodeId +
-//                                    ", Deployment #" + deploymentNumber);
-
                         // If there is no request ID, then we have no idea which operation this result is
                         // associated with, and thus we cannot do anything with it.
                         if (requestId == null) {
@@ -779,7 +733,8 @@ public class HopsFSUserServer {
                         List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
                         incompleteFutures.remove(future);
 
-                        LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId +
+                        if (LOG.isDebugEnabled())
+                            LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId +
                                 " from NN " + nameNodeId + ", deployment " + deploymentNumber + ".");
 
                         break;
@@ -790,8 +745,6 @@ public class HopsFSUserServer {
             }
             else if (object instanceof FrameworkMessage.KeepAlive) {
                 // The server periodically sends KeepAlive objects to prevent the client from disconnecting due to timeouts.
-                if (Log.TRACE) // This will print a LOT of messages.
-                    Log.trace("Received KeepAlive from NameNode " + connection.name);
             }
             else {
                 LOG.warn("[TCP SERVER " + tcpPort + "] Received object of unexpected type from remote client " + connection +
@@ -821,7 +774,7 @@ public class HopsFSUserServer {
                 List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
 
                 if (incompleteFutures == null) {
-                    LOG.debug("[TCP SERVER " + tcpPort + "] There were no futures associated with now-closed connection " + connection.name);
+                    if (LOG.isDebugEnabled()) LOG.debug("[TCP SERVER " + tcpPort + "] There were no futures associated with now-closed connection " + connection.name);
                     return;
                 }
 
@@ -830,8 +783,7 @@ public class HopsFSUserServer {
 
                 // Cancel each of the futures.
                 for (RequestResponseFuture future : incompleteFutures) {
-                    LOG.debug("    [TCP SERVER " + tcpPort + "] Cancelling future " + future.getRequestId() + " for operation " +
-                            future.getOperationName());
+                    if (LOG.isDebugEnabled()) LOG.debug("    [TCP SERVER " + tcpPort + "] Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
                     try {
                         future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
                     } catch (InterruptedException ex) {

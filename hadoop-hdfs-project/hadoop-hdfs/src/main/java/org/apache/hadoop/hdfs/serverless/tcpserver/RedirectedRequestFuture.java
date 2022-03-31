@@ -61,9 +61,9 @@ public class RedirectedRequestFuture implements Future<Serializable> {
 
     @Override
     public Serializable get() throws InterruptedException, ExecutionException {
-        LOG.debug("Waiting for result for TCP request " + requestId + " now...");
+        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
         final JsonObject resultOrNull = requestFuture.get();
-        LOG.debug("Got result for TCP future " + requestId + ".");
+        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
 
         if (resultOrNull != null)
             return extractResult(resultOrNull);
@@ -75,9 +75,9 @@ public class RedirectedRequestFuture implements Future<Serializable> {
     @Override
     public Serializable get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
-        LOG.debug("Waiting for result for TCP request " + requestId + " now...");
+        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
         final JsonObject resultOrNull = requestFuture.get(timeout, unit);
-        LOG.debug("Got result for TCP future " + requestId + ".");
+        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
         if (resultOrNull == null) {
             throw new TimeoutException();
         }
@@ -106,7 +106,7 @@ public class RedirectedRequestFuture implements Future<Serializable> {
                     return null;
                 }
 
-                LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result);
+                if (LOG.isDebugEnabled()) LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result);
                 return result;
             } catch (Exception ex) {
                 LOG.error("Error encountered while extracting result from NameNode response:", ex);

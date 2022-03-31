@@ -68,9 +68,9 @@ public class RequestResponseFuture implements Future<JsonObject> {
         cancellationMessage.addProperty(ServerlessNameNodeKeys.REASON, reason);
         cancellationMessage.addProperty(ServerlessNameNodeKeys.SHOULD_RETRY, shouldRetry);
 
-        LOG.debug("About to cancel future " + requestId + " now. Size of result queue: " + resultQueue.size());
+        if (LOG.isDebugEnabled()) LOG.debug("About to cancel future " + requestId + " now. Size of result queue: " + resultQueue.size());
         resultQueue.put(cancellationMessage);
-        LOG.debug("Cancelled future " + requestId + " for operation " + operationName + ". Reason: " + reason);
+        if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " + operationName + ". Reason: " + reason);
     }
 
     @Override
@@ -91,9 +91,9 @@ public class RequestResponseFuture implements Future<JsonObject> {
 
     @Override
     public JsonObject get() throws InterruptedException, ExecutionException {
-        LOG.debug("Waiting for result for TCP request " + requestId + " now...");
+        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
         final Object resultOrNull = this.resultQueue.take();
-        LOG.debug("Got result for TCP future " + requestId + ".");
+        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
         if (resultOrNull instanceof NullResult)
@@ -150,10 +150,8 @@ public class RequestResponseFuture implements Future<JsonObject> {
      * Post a result to this future so that it may be consumed by whoever is waiting on it.
      */
     public void postResult(JsonObject result) {
-//        LOG.debug("Posting result for TCP future " + requestId + " now...");
         try {
             resultQueue.put(result);
-//            LOG.debug("Posted result for TCP future " + requestId + ".");
             this.state = State.DONE;
         }
         catch (Exception ex) {

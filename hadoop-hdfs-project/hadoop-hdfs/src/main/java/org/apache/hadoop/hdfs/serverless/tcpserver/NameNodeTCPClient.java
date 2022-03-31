@@ -5,14 +5,11 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.util.TcpIdleSender;
-import com.esotericsoftware.minlog.Log;
 import com.github.benmanes.caffeine.cache.*;
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.hops.transaction.handler.HopsTransactionalRequestHandler;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -21,9 +18,7 @@ import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
-import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTaskUtils;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
-import org.apache.hadoop.util.Time;
 import org.apache.log4j.LogManager;
 
 import java.io.IOException;
@@ -55,7 +50,7 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.LOG_LEVEL
  * This is used on the NameNode side.
  */
 public class NameNodeTCPClient {
-    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(NameNodeTCPClient.class);
+    private static final Log LOG = LogFactory.getLog(NameNodeTCPClient.class);
 
     /**
      * This is the maximum amount of time a call to connect() will block. Calls to connect() occur when
@@ -169,7 +164,7 @@ public class NameNodeTCPClient {
         if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
                 DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT)) {
             LOG.debug("TCP Debug logging is ENABLED.");
-            Log.set(Log.LEVEL_TRACE);
+            com.esotericsoftware.minlog.Log.set(com.esotericsoftware.minlog.Log.LEVEL_TRACE);
         }
         LOG.debug("TCP Debug logging is DISABLED.");
 
@@ -245,11 +240,7 @@ public class NameNodeTCPClient {
             ServerlessHopsFSClient serverlessHopsFSClient = entry.getKey();
             Client tcpClient = entry.getValue();
 
-            if (tcpClient.isConnected()) {
-                LOG.debug("ServerlessHopsFSClient " + serverlessHopsFSClient.getClientId() + " is still connected.");
-            } else {
-                LOG.debug("ServerlessHopsFSClient " + serverlessHopsFSClient.getClientId()
-                        + " is DISCONNECTED.");
+            if (!tcpClient.isConnected()) {
                 toRemove.add(serverlessHopsFSClient);
             }
         }
@@ -259,8 +250,6 @@ public class NameNodeTCPClient {
 
             for (ServerlessHopsFSClient hopsFSClient : toRemove)
                 tcpClients.asMap().remove(hopsFSClient);
-        } else {
-            LOG.debug("Found 0 disconnected ServerlessHopsFSClients.");
         }
     }
 
@@ -279,12 +268,6 @@ public class NameNodeTCPClient {
             LOG.warn("NameNodeTCPClient already has a connection to client " + newClient);
             return false;
         }
-
-        LOG.debug("Adding new TCP Client: " + newClient + ". Existing number of clients: " +
-                tcpClients.estimatedSize() +
-                ". Existing clients: " + StringUtils.join(tcpClients.asMap().keySet(), ", ") +
-                ", current heap size: " + (Runtime.getRuntime().totalMemory() / 1000000.0) +
-                " MB, free space in heap: " + (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
 
         // We pass the writeBuffer and objectBuffer arguments to the Client constructor.
         // Objects are serialized to the write buffer where the bytes are queued until they can
@@ -321,10 +304,11 @@ public class NameNodeTCPClient {
                 NameNodeResult tcpResult;
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
-                    LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " +
-                                    connection.getRemoteAddressTCP() + ". current heap size: " +
-                                    (Runtime.getRuntime().totalMemory() / 1000000.0) +  " MB, free space in heap: " +
-                                    (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
+                    if (LOG.isDebugEnabled())
+                        LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " +
+                                        connection.getRemoteAddressTCP() + ". current heap size: " +
+                                        (Runtime.getRuntime().totalMemory() / 1000000.0) +  " MB, free space in heap: " +
+                                        (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
                     JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
                     tcpResult = handleWorkAssignment(jsonObject);
                 }
@@ -407,17 +391,17 @@ public class NameNodeTCPClient {
                 TimeUnit.SECONDS.toMillis(connectDuration.getSeconds());
 
         if (tcpClient.isConnected()) {
-            LOG.debug("Successfully established connection with client " + newClient.getClientId()
-                    + " in " + connectMilliseconds + " milliseconds!");
+            if (LOG.isDebugEnabled())
+                LOG.debug("Successfully established connection with client " + newClient.getClientId()
+                        + " in " + connectMilliseconds + " milliseconds!");
 
             tcpClient.setKeepAliveTCP(6000);
 
             // Now that we've registered the classes to be transferred, we can register with the server.
             registerWithClient(tcpClient);
 
-            LOG.debug("[TCP Client] Successfully added new TCP client. Current heap size: " +
-                    (Runtime.getRuntime().totalMemory() / 1000000.0) +  " MB, free space in heap: " +
-                    (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
+            if (LOG.isDebugEnabled())
+                LOG.debug("[TCP Client] Successfully added new TCP client.");
 
             return true;
         } else {
@@ -450,8 +434,9 @@ public class NameNodeTCPClient {
 
                 @Override
                 protected Object next() {
-                    LOG.debug("[TCP Client] Write buffer for connection " +  connection.getRemoteAddressTCP() +
-                            " has reached 'idle' capacity. Sending buffered object now.");
+                    if (LOG.isDebugEnabled())
+                        LOG.debug("[TCP Client] Write buffer for connection " +  connection.getRemoteAddressTCP() +
+                                " has reached 'idle' capacity. Sending buffered object now.");
                     Object toReturn = enqueuedObject;
 
                     // Set this to null before we return so that we cannot get stuck in a loop of returning this
@@ -487,8 +472,9 @@ public class NameNodeTCPClient {
             });
         }
         else {
-            LOG.debug("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
-                    " is at " + (currentCapacity * 100) + "% capacity! Sending payload immediately.");
+            if (LOG.isDebugEnabled())
+                LOG.debug("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
+                        " is at " + (currentCapacity * 100) + "% capacity! Sending payload immediately.");
             sendTcp(connection, payload);
         }
     }
@@ -501,8 +487,9 @@ public class NameNodeTCPClient {
     private void sendTcp(Connection connection, Object payload) {
         int bytesSent = connection.sendTCP(payload);
 
-        LOG.debug("[TCP Client] Sent " + bytesSent + " bytes to HopsFS client at " +
-                connection.getRemoteAddressTCP());
+        if (LOG.isDebugEnabled())
+            LOG.debug("[TCP Client] Sent " + bytesSent + " bytes to HopsFS client at " +
+                    connection.getRemoteAddressTCP());
 
         // Increase the buffer size for future TCP connections to hopefully avoid buffer overflows.
         if (bytesSent > objectBufferSize) {
@@ -516,7 +503,7 @@ public class NameNodeTCPClient {
             // If we were able to increase the buffer size, then print a message indicating that
             // we did so. If we were already at the max, then we'll print a warning, but currently
             // we don't do anything about it, so future TCP sends of the same object size will fail.
-            if (oldBufferSize < objectBufferSize)
+            if (oldBufferSize < objectBufferSize && LOG.isDebugEnabled())
                 LOG.debug("[TCP Client] Increasing buffer size of future TCP connections to " +
                         objectBufferSize + " bytes.");
             else
@@ -533,25 +520,19 @@ public class NameNodeTCPClient {
 
         if (args.has(LOG_LEVEL)) {
             String logLevel = args.get(LOG_LEVEL).getAsString();
-            LOG.debug("Setting log4j log level to: " + logLevel + ".");
-
             LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
         }
 
         if (args.has(CONSISTENCY_PROTOCOL_ENABLED)) {
             ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
-            LOG.debug("Consistency protocol is " +
-                    (ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
         }
 
         NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP", serverlessNameNode.getId());
         tcpResult.setFnStartTime(startTime);
 
-        LOG.debug("================ TCP Message Contents ================");
-        LOG.debug("Request ID: " + requestId);
-        LOG.debug("Operation name: " + op);
-        LOG.debug("FS operation arguments: ");
-        LOG.debug("======================================================\n");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Received TCP Message. RequestID=" + requestId + ", OpName: " + op);
+        }
 
         // Create a new task. After this, we assign it to the worker thread and wait for the
         // result to be computed before returning it to the user.
@@ -574,10 +555,11 @@ public class NameNodeTCPClient {
         registration.addProperty(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER, deploymentNumber);
         registration.addProperty(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
 
-        LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP() + " now...");
+        if (LOG.isDebugEnabled())
+            LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP() + " now...");
         int bytesSent = tcpClient.sendTCP(registration.toString());
-        LOG.debug("Sent " + bytesSent + " bytes to HopsFS client at " +  tcpClient.getRemoteAddressTCP() +
-                " during registration.");
+        //LOG.debug("Sent " + bytesSent + " bytes to HopsFS client at " +  tcpClient.getRemoteAddressTCP() +
+        //        " during registration.");
     }
 
     /**
