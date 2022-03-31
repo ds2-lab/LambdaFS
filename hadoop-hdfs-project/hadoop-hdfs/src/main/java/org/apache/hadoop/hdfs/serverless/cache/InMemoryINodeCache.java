@@ -51,12 +51,6 @@ public class InMemoryINodeCache {
     private final PatriciaTrie<INode> metadataTrie;
 
     /**
-     * This is the main cache, along with the metadataTrie variable. We use this when we want to grab a single
-     * INode by its full path.
-     */
-    private final HashMap<String, INode> cache;
-
-    /**
      * Mapping between INode IDs and their names.
      */
     private final HashMap<Long, String> idToNameMapping;
@@ -96,7 +90,10 @@ public class InMemoryINodeCache {
         //this.invalidatedKeys = new HashSet<>();
         this.idToNameMapping = new HashMap<>(capacity, loadFactor);
         this.parentIdPlusLocalNameToFullPathMapping = new HashMap<>(capacity, loadFactor);
-        this.cache = new HashMap<>(capacity, loadFactor);
+        /**
+         * This is the main cache, along with the metadataTrie variable. We use this when we want to grab a single
+         * INode by its full path.
+         */
         this.metadataTrie = new PatriciaTrie<>();
         this.enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED,
                 DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT);
@@ -140,7 +137,7 @@ public class InMemoryINodeCache {
             if (!enabled)
                 return null;
 
-            INode returnValue = cache.get(key);
+            INode returnValue = metadataTrie.get(key);
 
             if (returnValue == null)
                 cacheMiss();
@@ -171,7 +168,7 @@ public class InMemoryINodeCache {
             String parentIdPlusLocalName = parentId + localName;
             String key = parentIdPlusLocalNameToFullPathMapping.getOrDefault(parentIdPlusLocalName, null);
 
-            INode returnValue = cache.get(key);
+            INode returnValue = metadataTrie.get(key);
 
             if (returnValue == null)
                 cacheMiss();
@@ -226,17 +223,13 @@ public class InMemoryINodeCache {
         _mutex.lock();
         try {
             // Store the metadata in the cache directly.
-            INode returnValue = cache.put(key, value);
+            INode returnValue = metadataTrie.put(key, value);
 
             String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
             parentIdPlusLocalNameToFullPathMapping.put(parentIdPlusLocalName, key);
 
             // Create a mapping between the INode ID and the path.
             idToNameMapping.put(iNodeId, key);
-
-            // Store the metadata in the Trie data structure, using the path of the metadata as the key.
-            /*T existingEntry = */
-            metadataTrie.put(key, value);
 
             return returnValue;
         } finally {
@@ -255,14 +248,12 @@ public class InMemoryINodeCache {
         try {
             // If the given key is a string, then we can use it directly.
             if (key instanceof String) {
-                // return !invalidatedKeys.contains(key) && cache.containsKey(key);
-                return cache.containsKey(key);
+                return metadataTrie.containsKey(key);
             } else if (key instanceof Long) {
                 // If the key is a long, we need to check if we've mapped this long to a String key. If so,
                 // then we can get the string version and continue as before.
                 String keyAsStr = idToNameMapping.getOrDefault((Long) key, null);
-                // return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
-                return keyAsStr != null && cache.containsKey(keyAsStr);
+                return keyAsStr != null && metadataTrie.containsKey(keyAsStr);
             }
 
             return false;
@@ -277,7 +268,7 @@ public class InMemoryINodeCache {
     public int size() {
         _mutex.lock();
         try {
-            return cache.size();
+            return metadataTrie.size();
         } finally {
             _mutex.unlock();
         }
@@ -294,7 +285,7 @@ public class InMemoryINodeCache {
         _mutex.lock();
         try {
             // Directly check if the cache itself contains the key.
-            return cache.containsKey(key);
+            return metadataTrie.containsKey(key);
         } finally {
             _mutex.unlock();
         }
@@ -313,8 +304,7 @@ public class InMemoryINodeCache {
 
             // Returns true if we are able to resolve the NameNode ID to a string-typed key, that key is not
             // invalidated, and we're actively caching the key.
-            //return keyAsStr != null && !invalidatedKeys.contains(keyAsStr) && cache.containsKey(keyAsStr);
-            return keyAsStr != null && cache.containsKey(keyAsStr);
+            return keyAsStr != null && metadataTrie.containsKey(keyAsStr);
         } finally {
             _mutex.unlock();
         }
@@ -381,7 +371,6 @@ public class InMemoryINodeCache {
             if (skipCheck || containsKeySkipInvalidCheck(key)) {
                 // invalidatedKeys.add(key);
 
-                cache.remove(key);
                 metadataTrie.remove(key);
 
                 if (LOG.isDebugEnabled()) LOG.debug("Invalidated key " + key + ".");
@@ -401,7 +390,6 @@ public class InMemoryINodeCache {
         LOG.warn("Invalidating ENTIRE cache. ");
         _mutex.lock();
         try {
-            cache.clear();
             metadataTrie.clear();
         } finally {
             _mutex.unlock();
