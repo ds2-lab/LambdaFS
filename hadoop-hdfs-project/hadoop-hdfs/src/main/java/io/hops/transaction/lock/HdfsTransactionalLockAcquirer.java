@@ -33,7 +33,7 @@ public final class HdfsTransactionalLockAcquirer extends TransactionLockAcquirer
   @Override
   public void acquire() throws IOException {
     for (Lock lock : locks.getSortedLocks()) {
-      LOG.debug("Acquiring lock of type " + lock.getClass().getSimpleName() + " now...");
+      // LOG.debug("Acquiring lock of type " + lock.getClass().getSimpleName() + " now...");
       lock.acquire(locks);
     }
   }

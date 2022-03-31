@@ -136,25 +136,25 @@ public class EntityManager {
    * Pass true to enable; pass false to disable.
    */
   public static void toggleLocalMetadataCache(boolean enabled) {
-    if (enabled) LOG.debug("[ENABLING LOCAL METADATA CACHE]");
-    else LOG.debug("[DISABLING LOCAL METADATA CACHE]");
+    //if (enabled) LOG.debug("[ENABLING LOCAL METADATA CACHE]");
+    //else LOG.debug("[DISABLING LOCAL METADATA CACHE]");
     EntityContext.toggleLocalMetadataCache(enabled);
   }
 
   public static void writeLock() throws StorageException {
-    LOG.debug("[LOCKING: WRITE]");
+    //LOG.debug("[LOCKING: WRITE]");
     EntityContext.setLockMode(EntityContext.LockMode.WRITE_LOCK);
     contextInitializers.get(0).getConnector().writeLock();
   }
 
   public static void readLock() throws StorageException {
-    LOG.debug("[LOCKING: READ]");
+    //LOG.debug("[LOCKING: READ]");
     EntityContext.setLockMode(EntityContext.LockMode.READ_LOCK);
     contextInitializers.get(0).getConnector().readLock();
   }
 
   public static void readCommited() throws StorageException {
-    LOG.debug("[LOCKING: READ COMMITTED]");
+    //LOG.debug("[LOCKING: READ COMMITTED]");
     EntityContext.setLockMode(EntityContext.LockMode.READ_COMMITTED);
     contextInitializers.get(0).getConnector().readCommitted();
   }

@@ -158,7 +158,7 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
         break;
       case EmptyFile:
         Long inodeId = (Long) params[0];
-        LOG.debug("<SNAPSHOT MAINTENANCE> INode file ID=" + inodeId + " is an empty file.");
+        // LOG.debug("<SNAPSHOT MAINTENANCE> INode file ID=" + inodeId + " is an empty file.");
         List<BlockInfoContiguous> result = Collections.emptyList();
         inodeBlocks.put(inodeId, syncBlockInfoInstances(result));
         break;
@@ -181,7 +181,7 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
       result = inodeBlocks.get(inodeId);
       hit(bFinder, result, "inodeid", inodeId);
     } else {
-      LOG.debug("Reading BlockInfoContiguous instances from intermediate storage for INode ID=" + inodeId);
+      // LOG.debug("Reading BlockInfoContiguous instances from intermediate storage for INode ID=" + inodeId);
       aboutToAccessStorage(bFinder, params);
       result = dataAccess.findByInodeId(inodeId);
       inodeBlocks.put(inodeId, syncBlockInfoInstances(result));
@@ -207,8 +207,8 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
     List<BlockInfoContiguous> result = null;
     final long[] ids = (long[]) params[0];
     aboutToAccessStorage(bFinder, params);
-    LOG.debug("Finding BlockInfoContiguous instances for the following INodes: " +
-            StringUtils.join(", ", ids));
+    // LOG.debug("Finding BlockInfoContiguous instances for the following INodes: " +
+    //         StringUtils.join(", ", ids));
     result = dataAccess.findByInodeIds(ids);
     for (long id : ids) {
       inodeBlocks.put(id, null);
@@ -320,7 +320,7 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
       if (syncInodeBlocks) {
         List<BlockInfoContiguous> blockList = inodeBlocks.get(blockInfo.getInodeId());
         if (blockList == null) {
-          LOG.debug("Synchronizing BlockInfoContiguous instances for INode ID=" + blockInfo.getInodeId());
+          // LOG.debug("Synchronizing BlockInfoContiguous instances for INode ID=" + blockInfo.getInodeId());
           blockList = new ArrayList<>();
           inodeBlocks.put(blockInfo.getInodeId(), blockList);
         }
@@ -348,8 +348,8 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
       List<BlockInfoContiguous> list =
           new ArrayList<>(DEFAULT_NUM_BLOCKS_PER_INODE);
       list.add(newBlock);
-      LOG.debug("Caching BlockInfoContiguous instances in transaction context for INode ID=" +
-              newBlock.getInodeId());
+      // LOG.debug("Caching BlockInfoContiguous instances in transaction context for INode ID=" +
+      //         newBlock.getInodeId());
       inodeBlocks.put(newBlock.getInodeId(), list);
     }
   }

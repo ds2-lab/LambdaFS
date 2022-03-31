@@ -50,16 +50,16 @@ public final class BlockLock extends IndividualBlockLock {
   public void acquire(TransactionLocks locks) throws IOException {
     boolean individualBlockAlreadyRead = false;
     if (locks.containsLock(Type.INode)) {
-      LOG.debug("Acquiring BlockLock when TransactionLocks contains an INode lock.");
+      // LOG.debug("Acquiring BlockLock when TransactionLocks contains an INode lock.");
       BaseINodeLock inodeLock = (BaseINodeLock) locks.getLock(Type.INode);
       Iterable blks = Collections.EMPTY_LIST;
       int counter = 0;
 
       for (INode inode : inodeLock.getAllResolvedINodes()) {
-        LOG.debug("Acquiring BlockLock on INode " + inode.getLocalName() + ", ID=" + inode.getId());
+        // LOG.debug("Acquiring BlockLock on INode " + inode.getLocalName() + ", ID=" + inode.getId());
         if (BaseINodeLock.isStoredInDB(inode)) {
-          LOG.debug("Stuffed Inode:  BlockLock. Skipping acquiring locks on the inode named: " + inode.getLocalName()
-              + " as the file is stored in the database");
+          //LOG.debug("Stuffed Inode:  BlockLock. Skipping acquiring locks on the inode named: " + inode.getLocalName()
+          //    + " as the file is stored in the database");
           announceEmptyFile(inode.getId());
           continue;
         }
@@ -84,7 +84,7 @@ public final class BlockLock extends IndividualBlockLock {
         counter++;
       }
 
-      LOG.debug("Iterated over " + counter + " INode(s) while acquiring BlockLock.");
+      // LOG.debug("Iterated over " + counter + " INode(s) while acquiring BlockLock.");
     } else if (locks.containsLock(Type.AllCachedBlock)) {
       AllCachedBlockLock cachedBlockLock = (AllCachedBlockLock) locks.getLock(Type.AllCachedBlock);
       Collection<io.hops.metadata.hdfs.entity.CachedBlock> cBlocks = cachedBlockLock.getAllResolvedCachedBlock();

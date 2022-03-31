@@ -805,7 +805,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   public Serializable performOperation(String op, JsonObject fsArgs)
           throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, IllegalAccessException {
-    LOG.info("Specified operation: " + op);
+    //LOG.info("Specified operation: " + op);
 
     if (op == null || op.equals(DEFAULT_OPERATION)) {
       LOG.info("User did not specify an operation (or specified the default operation " + DEFAULT_OPERATION + ").");

@@ -472,7 +472,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         missUpgrade(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
         updateCache(result);
       } else {
-        if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved INode '" + name + "', parentID=" + parentId + " from INode Hint Cache.");
+        // if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved INode '" + name + "', parentID=" + parentId + " from INode Hint Cache.");
         hit(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
       }
     } else {
@@ -565,7 +565,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       if (canUseLocalCache) {
         node = checkCache(names[i], parentIds[i]);
         if (node != null) {
-          if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved INode " + names[i] + ", parentID=" + parentIds[i] + " from local cache.");
+          // if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved INode " + names[i] + ", parentID=" + parentIds[i] + " from local cache.");
           result.set(i, node);
           continue;
         }
@@ -575,12 +575,12 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       node = inodesNameParentIndex.get(nameParentKey);
 
       if (node != null) {
-        if (LOG.isDebugEnabled()) LOG.debug("Retrieved INode '" + names[i] + "' with parentID=" + parentIds[i] + " from INode Hint Cache.");
+        // if (LOG.isDebugEnabled()) LOG.debug("Retrieved INode '" + names[i] + "' with parentID=" + parentIds[i] + " from INode Hint Cache.");
         result.set(i, node);
         hit(inodeFinder, node, "name", names[i], "parent_id", parentIds[i], "partition_id", partitionIds[i]);
       } else {
         // Finally, fall back to resolving from NDB.
-        if (LOG.isDebugEnabled()) LOG.debug("Falling back to NDB for INode '" + names[i] + "' with parentID=" + parentIds[i] + ".");
+        // if (LOG.isDebugEnabled()) LOG.debug("Falling back to NDB for INode '" + names[i] + "' with parentID=" + parentIds[i] + ".");
         namesRest.add(names[i]);
         parentIdsRest.add(parentIds[i]);
         partitionIdsRest.add(partitionIds[i]);

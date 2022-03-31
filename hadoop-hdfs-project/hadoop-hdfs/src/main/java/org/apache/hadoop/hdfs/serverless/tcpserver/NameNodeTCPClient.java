@@ -305,10 +305,11 @@ public class NameNodeTCPClient {
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
                     if (LOG.isDebugEnabled())
-                        LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " +
-                                        connection.getRemoteAddressTCP() + ". current heap size: " +
-                                        (Runtime.getRuntime().totalMemory() / 1000000.0) +  " MB, free space in heap: " +
-                                        (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
+                        LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " + connection.getRemoteAddressTCP() + ".");
+//                        LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " +
+//                                        connection.getRemoteAddressTCP() + ". current heap size: " +
+//                                        (Runtime.getRuntime().totalMemory() / 1000000.0) +  " MB, free space in heap: " +
+//                                        (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
                     JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
                     tcpResult = handleWorkAssignment(jsonObject);
                 }
@@ -472,9 +473,9 @@ public class NameNodeTCPClient {
             });
         }
         else {
-            if (LOG.isDebugEnabled())
-                LOG.debug("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
-                        " is at " + (currentCapacity * 100) + "% capacity! Sending payload immediately.");
+//            if (LOG.isDebugEnabled())
+//                LOG.debug("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
+//                        " is at " + (currentCapacity * 100) + "% capacity! Sending payload immediately.");
             sendTcp(connection, payload);
         }
     }

@@ -146,7 +146,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
     EncryptionZone result = checkCache(pk);
 
     if (result != null) {
-      if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved EncryptionZone instance from local cache.");
+      // if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved EncryptionZone instance from local cache.");
       return result;
     }
 
@@ -164,7 +164,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
     List<EncryptionZone> results = checkCache(pks);
 
     if (results != null) {
-      if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved all EncryptionZone instances from local cache.");
+      // if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved all EncryptionZone instances from local cache.");
       return results;
     }
 

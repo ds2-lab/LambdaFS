@@ -130,8 +130,7 @@ public class OpenWhiskHandler extends BaseHandler {
             debugString = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.DEBUG_STRING_NDB).getAsString();
 
         if (debugEnabled && debugString != null) {
-            LOG.debug("NDB debugging has been enabled. Using dbug string \"" +
-                    debugString + "\"");
+            LOG.debug("NDB debugging has been enabled. Using dbug string \"" + debugString + "\"");
 
             // I am not sure if we need to make sure this is not called concurrently, but just in case...
             synchronized (OpenWhiskHandler.class) {
@@ -140,8 +139,6 @@ public class OpenWhiskHandler extends BaseHandler {
 
             LOG.debug("Also enabling ClusterJ debug logging...");
             LogManager.getLogger("com.mysql.clusterj").setLevel(Level.DEBUG);
-        } else {
-            LOG.debug("NDB debugging is NOT enabled.");
         }
 
         // The name of the client. This originates from the DFSClient class.
@@ -160,15 +157,15 @@ public class OpenWhiskHandler extends BaseHandler {
         
         if (userArguments.has(LOG_LEVEL)) {
             String logLevel = userArguments.get(LOG_LEVEL).getAsString();
-            LOG.debug("Setting log4j log level to: " + logLevel + ".");
+            // LOG.debug("Setting log4j log level to: " + logLevel + ".");
 
             LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
         }
 
         if (userArguments.has(CONSISTENCY_PROTOCOL_ENABLED)) {
             ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = userArguments.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
-            LOG.debug("Consistency protocol is " +
-                    (ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
+//            LOG.debug("Consistency protocol is " +
+//                    (ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
         }
 
         int tcpPort = -1;
@@ -182,10 +179,12 @@ public class OpenWhiskHandler extends BaseHandler {
                 ServerlessNameNodeKeys.INVOKER_IDENTITY).getAsString();
 
         LOG.info("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
-        LOG.debug("Top-level OpenWhisk arguments: " + args);
-        LOG.debug("User-passed OpenWhisk arguments: " + userArguments);
-        LOG.debug("Action memory: " + actionMemory + "MB");
-        LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Top-level OpenWhisk arguments: " + args);
+            LOG.debug("User-passed OpenWhisk arguments: " + userArguments);
+            LOG.debug("Action memory: " + actionMemory + "MB");
+            LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
+        }
         LOG.info("Serverless function name: " + functionName);
         LOG.info("Invoked by: " + invokerIdentity);
         LOG.info("Client's name: " + clientName);
@@ -193,11 +192,11 @@ public class OpenWhiskHandler extends BaseHandler {
         LOG.info("Function container was " + (isCold ? "COLD" : "WARM") + ".");
         LOG.info("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
         LOG.info("Operation name: " + operation);
-        LOG.debug("Operation arguments: " + fsArgs);
+        if (LOG.isDebugEnabled()) LOG.debug("Operation arguments: " + fsArgs);
         LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
 
-        LOG.debug("Handing control over to driver() function after "
-                + DurationFormatUtils.formatDurationHMS((Duration.between(start, Instant.now()).toMillis())));
+        if (LOG.isDebugEnabled())
+            LOG.debug("Handing control over to driver() function after " + DurationFormatUtils.formatDurationHMS((Duration.between(start, Instant.now()).toMillis())));
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
@@ -212,8 +211,10 @@ public class OpenWhiskHandler extends BaseHandler {
         long endTime = System.nanoTime();
         double timeElapsed = (endTime - startTime) / 1000000.0;
 
-        LOG.debug("Returning back to client. Time elapsed: " + timeElapsed + " milliseconds.");
-        LOG.debug("ServerlessNameNode is exiting now...");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Returning back to client. Time elapsed: " + timeElapsed + " milliseconds.");
+            LOG.debug("ServerlessNameNode is exiting now...");
+        }
         activeRequestCounter.decrementAndGet();
         return createJsonResponse(result);
     }
@@ -273,7 +274,7 @@ public class OpenWhiskHandler extends BaseHandler {
                 requestId, "HTTP", -1);
 
         long creationStart = System.currentTimeMillis();
-        LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
+        if (LOG.isDebugEnabled()) LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
 
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
         // If this container was cold prior to this invocation, then we'll actually be creating the instance now.
@@ -291,10 +292,9 @@ public class OpenWhiskHandler extends BaseHandler {
 
         long creationEnd = System.currentTimeMillis();
         long creationDuration = creationEnd - creationStart;
-        LOG.debug("Obtained NameNode instance with ID=" + serverlessNameNode.getId());
+        if (LOG.isDebugEnabled()) LOG.debug("Obtained NameNode instance with ID=" + serverlessNameNode.getId());
         result.setNameNodeId(serverlessNameNode.getId());
-        LOG.debug("Getting/creating NN instance took: "
-                + DurationFormatUtils.formatDurationHMS(creationDuration));
+        if (LOG.isDebugEnabled()) LOG.debug("Getting/creating NN instance took: " + DurationFormatUtils.formatDurationHMS(creationDuration));
 
         // Some transactions are performed while creating the NameNode. Obviously the NameNode does not exist until
         // it is finished being created, so we store the TransactionEvent instances from those transactions in the
@@ -308,7 +308,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
         // from intermediate storage.
-        LOG.debug("==================================================================");
+        if (LOG.isDebugEnabled())LOG.debug("==================================================================");
 
         // Check if we need to redo this operation. This can occur if the TCP connection that was supposed
         // to deliver the result back to the client was dropped before the client received the result.
@@ -349,14 +349,13 @@ public class OpenWhiskHandler extends BaseHandler {
             // Do this in a separate thread so that we can return the result back to the user immediately.
             new Thread(() -> {
                 try {
-                    LOG.debug("Attempting to connect to client " + serverlessHopsFSClient + " in separate thread.");
+                    if (LOG.isDebugEnabled())LOG.debug("Attempting to connect to client " + serverlessHopsFSClient + " in separate thread.");
                     tcpClient.addClient(serverlessHopsFSClient);
                 } catch (IOException ex) {
                     LOG.error("Encountered exception while connecting to client " + serverlessHopsFSClient + ":", ex);
                 }
             }).start();
-        } else if (!tcpEnabled) // Just so we can print a debug message indicating that we're not doing TCP.
-            LOG.debug("TCP is DISABLED. Will not try to connect to the client.");
+        }
 
         result.logResultDebugInformation(op);
         return result;
@@ -414,12 +413,11 @@ public class OpenWhiskHandler extends BaseHandler {
 
             // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
             if (inode != null) {
-                LOG.debug("Parent INode ID for '" + src + "': " + inode.getParentId());
+                if (LOG.isDebugEnabled()) LOG.debug("Parent INode ID for '" + src + "': " + inode.getParentId());
 
                 int functionNumber = serverlessNameNode.getMappedDeploymentNumber(inode.getParentId());
 
-                LOG.debug("Consistently hashed parent INode ID " + inode.getParentId()
-                        + " to serverless function " + functionNumber);
+                if (LOG.isDebugEnabled()) LOG.debug("Consistently hashed parent INode ID " + inode.getParentId() + " to serverless function " + functionNumber);
 
                 result.addFunctionMapping(src, inode.getParentId(), functionNumber);
             }
@@ -452,9 +450,11 @@ public class OpenWhiskHandler extends BaseHandler {
         response.add("headers", headers);
         response.add("body", resultJson);
 
-        LOG.debug("Contents of result to be returned to the client: ");
-        for (String key : resultJson.keySet())
-            LOG.debug(key + ": " + resultJson.get(key).toString());
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Contents of result to be returned to the client: ");
+            for (String key : resultJson.keySet())
+                LOG.debug(key + ": " + resultJson.get(key).toString());
+        }
 
         return response;
     }
