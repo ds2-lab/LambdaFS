@@ -171,12 +171,23 @@ public class MetadataCacheManager {
     /**
      * We maintain two Caches for Ace instances. One cache maps their primary key (INode ID and index) to a singular
      * Ace index. The other cache maps INode IDs to CachedAce instances. We do this so that, if the INode gets
-     * invalidated, then we can find all of the Ace instances we have cached for that INode and invalidate them
+     * invalidated, then we can find all the Ace instances we have cached for that INode and invalidate them
      * as well.
      */
     private static class CachedAce {
+        /**
+         * INode ID of the INode associated with this Ace object.
+         */
         long inodeId;
+
+        /**
+         * Index/ID of this Ace object. Used as part of the primary key.
+         */
         int index;
+
+        /**
+         * The actual Ace object that we're caching (and that this class is wrapping).
+         */
         Ace ace;
 
         CachedAce(long inodeId, int index, Ace ace) {
