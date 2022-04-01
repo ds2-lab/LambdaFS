@@ -748,9 +748,13 @@ public class HopsFSUserServer {
                         // If there is no future associated with this operation, then we have no means to return
                         // the result back to the client who issued the file system operation.
                         if (future == null) {
-                            LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
-                                    ", but there is no associated future registered with the server.");
-                            resultsWithoutFutures.put(requestId, body);
+                            // Only cache the future if it hasn't already been completed.
+                            if (!completedFutures.containsKey(requestId)) {
+                                LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
+                                        ", but there is no associated future registered with the server.");
+                                resultsWithoutFutures.put(requestId, body);
+                            }
+
                             break;
                         }
 
