@@ -499,7 +499,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         if (LOG.isDebugEnabled()) LOG.debug("Will resubmit request " + requestId + " shortly via straggler mitigation...");
                         stragglerResubmissionAlreadyOccurred = true;
                         // Sleep for a short interval.
-                        Thread.sleep(Math.min(requestTimeout, 5));
+                        Thread.sleep(Math.min(requestTimeout, 100));
                         continue; // Use continue statement to avoid exponential backoff.
                     }
                 }
@@ -755,13 +755,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         List<OperationPerformed> opsPerformedList = new ArrayList<>(operationsPerformed.values());
         Collections.sort(opsPerformedList);
 
-        String[] columnNames = {
+        /*String[] columnNames = {
           "Op Name", "Start Time", "End Time", "Duration (ms)", "Deployment", "HTTP", "TCP"
-        };
+        };*/
 
         System.out.println("====================== Operations Performed ======================");
         System.out.println("Number performed: " + operationsPerformed.size());
-        System.out.println(OperationPerformed.getToStringHeader());
+        // System.out.println(OperationPerformed.getToStringHeader());
 
         DescriptiveStatistics httpStatistics = new DescriptiveStatistics();
         DescriptiveStatistics tcpStatistics = new DescriptiveStatistics();
