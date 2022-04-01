@@ -372,14 +372,22 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *
      * @param stragglerResubmissionAlreadyOccurred If true, then we've already resubmitted this task via straggler
      *                                             mitigation, and thus we should use the standard timeout.
+     * @param backoffInterval The amount of time we would sleep during exponential backoff should this request time-out.
+     *                        We include the 'backoffInterval' in the requestTimeout parameter, however, so we do not
+     *                        do a separate sleep. This is in-case a result comes back while we're sleeping. Might as
+     *                        well sleep while waiting for the result in case it comes in during that time, rather than
+     *                        wait for a bit, then "timeout", then busy-wait (Thread.sleep(backoffInterval)), during
+     *                        which we'd miss the result if it arrived.
+     *
+     *                        We do not include the 'backoffInterval' if 'stragglerResubmissionAlreadyOccurred' is False.
      *
      * @return The timeout to use for the next TCP request.
      */
-    private int calculateRequestTimeout(boolean stragglerResubmissionAlreadyOccurred) {
-        int requestTimeout;
+    private long calculateRequestTimeout(boolean stragglerResubmissionAlreadyOccurred, long backoffInterval) {
+        long requestTimeout;
         if (stragglerMitigationEnabled && !stragglerResubmissionAlreadyOccurred) {
             // First, calculate the potential timeout using the current average latency and the threshold factor.
-            int averageLatencyRoundedDown = (int)Math.floor(latencyWithWindow.getMean());
+            long averageLatencyRoundedDown = (long)Math.floor(latencyWithWindow.getMean());
             requestTimeout = averageLatencyRoundedDown << stragglerMitigationThresholdFactor;
 
             // Next, clamp the request timeout to a minimum value of at least 'minimumStragglerMitigationTimeout' ms.
@@ -390,7 +398,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             requestTimeout = Math.min(requestTimeout, serverlessInvoker.httpTimeoutMilliseconds);
         } else {
             // Just use HTTP requestTimeout.
-            requestTimeout = serverlessInvoker.httpTimeoutMilliseconds;
+            requestTimeout = serverlessInvoker.httpTimeoutMilliseconds + backoffInterval;
         }
 
         return requestTimeout;
@@ -433,7 +441,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         long backoffInterval = exponentialBackOff.getBackOffInMillis();
         int maxRetries = exponentialBackOff.getMaximumRetries();
         while (backoffInterval >= 0) {
-            int requestTimeout = calculateRequestTimeout(stragglerResubmissionAlreadyOccurred);
+            long requestTimeout = calculateRequestTimeout(stragglerResubmissionAlreadyOccurred, backoffInterval);
             JsonObject response;
 
             long localStart;
@@ -522,12 +530,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     }
                 }
 
-                LOG.error("Sleeping for " + backoffInterval + " ms before retrying...");
-                try {
-                    Thread.sleep(backoffInterval);
-                } catch (InterruptedException e) {
-                    LOG.error("Encountered exception while sleeping during exponential backoff:", e);
-                }
+//                LOG.error("Sleeping for " + backoffInterval + " ms before retrying...");
+//                try {
+//                    Thread.sleep(backoffInterval);
+//                } catch (InterruptedException e) {
+//                    LOG.error("Encountered exception while sleeping during exponential backoff:", e);
+//                }
 
                 backoffInterval = exponentialBackOff.getBackOffInMillis();
             } catch (IOException ex) {

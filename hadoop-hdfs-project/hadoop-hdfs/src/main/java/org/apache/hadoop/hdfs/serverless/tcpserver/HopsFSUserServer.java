@@ -603,7 +603,7 @@ public class HopsFSUserServer {
      *                If negative, then block indefinitely, waiting for the future to resolve.
      * @return The response from the NameNode, or null if the request failed for some reason.
      */
-    public JsonObject issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, JsonObject payload, int timeout)
+    public JsonObject issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, JsonObject payload, long timeout)
             throws ExecutionException, InterruptedException, TimeoutException, IOException {
         if (deploymentNumber == -1) {
             // Randomly select an available connection. This is implemented using existing constructs, so it
