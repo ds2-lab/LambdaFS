@@ -480,7 +480,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 // Collect and save/record metrics.
                 createAndStoreOperationPerformed(response, operationName, requestId, opStart, localEnd,
-                        targetDeployment, true, false);
+                        targetDeployment, true, false, stragglerResubmissionAlreadyOccurred);
 
                 return response;
             } catch (TimeoutException ex) {
@@ -558,7 +558,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 // Collect and save/record metrics.
                 createAndStoreOperationPerformed(response, operationName, requestId, opStart, opEnd, targetDeployment,
-                        true, true);
+                        true, true, false);
 
                 return response;
             }
@@ -670,7 +670,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             response = response.get("body").getAsJsonObject();
 
         createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime, mappedFunctionNumber,
-                false, true);
+                false, true, false);
 
         return response;
     }
@@ -689,7 +689,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private void createAndStoreOperationPerformed(JsonObject response, String operationName, String requestId,
                                                   long startTime, long endTime, int mappedFunctionNumber,
-                                                  boolean issuedViaTCP, boolean issuedViaHTTP) {
+                                                  boolean issuedViaTCP, boolean issuedViaHTTP,
+                                                  boolean stragglerResubmissionAlreadyOccurred) {
         long nameNodeId = -1;
         if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
             nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
@@ -711,9 +712,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
                 startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
-                deployment, issuedViaHTTP, issuedViaTCP,
-                response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(), nameNodeId, cacheMisses, cacheHits);
-        operationPerformed.setResultFinishedProcessingTime(finishedProcessingAt);
+                deployment, issuedViaHTTP, issuedViaTCP, response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(),
+                nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, stragglerResubmissionAlreadyOccurred);
         operationsPerformed.put(requestId, operationPerformed);
     }
 

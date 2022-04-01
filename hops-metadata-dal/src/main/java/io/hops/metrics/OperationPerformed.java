@@ -120,6 +120,11 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      */
     private long resultFinishedProcessingTime;
 
+    /**
+     * Indicates whether this request was resubmitted via the straggler mitigation technique.
+     */
+    private boolean stragglerResubmitted;
+
     public OperationPerformed(String operationName, String requestId,
                               long invokedAtTime, long resultReceivedTime,
                               long enqueuedTime, long dequeuedTime,
@@ -127,7 +132,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                               int deployment, boolean issuedViaHttp,
                               boolean issuedViaTcp, String resultReceivedVia,
                               long nameNodeId, int metadataCacheMisses,
-                              int metadataCacheHits) {
+                              int metadataCacheHits, long finishedProcessingAt,
+                              boolean stragglerResubmitted) {
         this.operationName = operationName;
         this.requestId = requestId;
         this.invokedAtTime = invokedAtTime;
@@ -145,6 +151,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.metadataCacheHits = metadataCacheHits;
         this.metadataCacheMisses = metadataCacheMisses;
         this.resultReceivedVia = resultReceivedVia;
+        this.resultFinishedProcessingTime = finishedProcessingAt;
+        this.stragglerResubmitted = stragglerResubmitted;
     }
 
     public void setNameNodeId(long nameNodeId) {
@@ -164,6 +172,18 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     public void setServerlessFnEndTime(long serverlessFnEndTime) {
         this.serverlessFnEndTime = serverlessFnEndTime;
         this.serverlessFunctionDuration = this.serverlessFnEndTime - serverlessFnStartTime;
+    }
+
+    /**
+     * Convert the `stragglerResubmitted` instance variable, which is a boolean, to an int. This is used
+     * when writing CSVs, as we can sum integers to quickly get the total number of requests resubmitted via
+     * straggler mitigation.
+     *
+     * @return 1 if stragglerResubmitted is true, else 0.
+     */
+    private int stragglerResubmittedToInt() {
+        if (stragglerResubmitted) return 1;
+        return 0;
     }
 
     /**
@@ -191,7 +211,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         return "operation_name,request_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
                 "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration," +
                 "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration," +
-                "serverless_fn_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses";
+                "serverless_fn_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses,straggler_resubmitted";
     }
 
     public static String getToStringHeader() {
@@ -313,7 +333,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         String formatString = "%-16s,%-38s," +                                  // 2
                               "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s," +    // 7
                               "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +           // 7
-                              "%-3s,%-22s,%-6s,%-5s,%-5s";                      // 5
+                              "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s";                 // 5
         writer.write(String.format(formatString,
                 operationName, requestId,
                 invokedAtTime,                    // Client invokes NN.
@@ -330,7 +350,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 serverlessFnEndTime - resultFinishedProcessingTime,         // Post-processing.
                 resultReceivedTime - serverlessFnEndTime,                   // Returning to user.
                 serverlessFunctionDuration,
-                deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses));
+                deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses,
+                stragglerResubmittedToInt()));
         writer.newLine();
     }
 

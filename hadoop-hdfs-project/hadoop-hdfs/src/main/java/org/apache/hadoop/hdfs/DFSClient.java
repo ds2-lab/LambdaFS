@@ -2687,11 +2687,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       long connectEnd = Time.getUtcTime();
       long connectDuration = connectEnd - connectStart;
       LOG.debug("Connected to DataNode " + dnAddr + " in " + (connectDuration / 1000000) + " milliseconds.");
-//      OperationPerformed connectToDnOpPerf = new OperationPerformed("ConnectToDataNode",
-//              UUID.randomUUID().toString(), connectStart, connectEnd, connectStart, connectEnd,
-//              connectStart, connectEnd, 999, true, true,
-//              "TCP", 0, 0, 0);
-//      addOperationPerformed(connectToDnOpPerf);
       return ret;
     } finally {
       if (!success) {
