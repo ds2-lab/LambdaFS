@@ -10,6 +10,7 @@ import io.hops.metadata.hdfs.entity.MetaStatus;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math3.util.Pair;
 import org.apache.hadoop.conf.Configuration;
@@ -864,7 +865,23 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
                 ", N: " + httpStatistics.getN() + "]");
 
-        if (httpStatistics.getN() > 1) {
+        try {
+            printHistograms(httpStatistics, tcpStatistics);
+        } catch (NotStrictlyPositiveException ex) {
+            LOG.error("Encountered 'NotStrictlyPositiveException' while trying to generate latency histograms.");
+        }
+
+        System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
+        printLatencyStatisticsDetailed(0);
+
+        System.out.println("\n==================================================================");
+    }
+
+    /**
+     * Print histograms for the latency distributions for both TCP and HTTP requests.
+     */
+    private void printHistograms(DescriptiveStatistics httpStatistics, DescriptiveStatistics tcpStatistics) {
+        if (httpStatistics != null && httpStatistics.getN() > 1) {
             // Calculating bin width: https://stats.stackexchange.com/questions/798/calculating-optimal-number-of-bins-in-a-histogram
             double binWidthHttp = 2 * httpStatistics.getPercentile(0.75) - httpStatistics.getPercentile(0.25) * Math.pow(httpStatistics.getN(), -1.0 / 3.0);
             int numBinsHttp = (int) ((httpStatistics.getMax() - httpStatistics.getMin()) / binWidthHttp);
@@ -875,20 +892,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     .plotObject();
             System.out.println("\nHistogram of HTTP Latencies:");
             currentHttpPlot.printPlot(true);
-
-//            double[] httpLatenciesSorted = httpStatistics.getSortedValues();
-//            double[] cumulativeHttpProbabilities = new double[httpLatenciesSorted.length];
-//            double cumulativeProbabilityHttp = 0.0;
-//            for (int i = 0; i < httpLatenciesSorted.length; i++) {
-//                cumulativeProbabilityHttp += (1.0 / httpLatenciesSorted.length);
-//                cumulativeHttpProbabilities[i] = cumulativeProbabilityHttp;
-//            }
-//
-//            System.out.println("HTTP Latency CDF:");
-//            System.out.println(ASCIIGraph.fromSeries(cumulativeHttpProbabilities).plot());
         }
 
-        if (tcpStatistics.getN() > 1) {
+        if (tcpStatistics != null && tcpStatistics.getN() > 1) {
             double binWidthTcp = 2 * tcpStatistics.getPercentile(0.75) - tcpStatistics.getPercentile(0.25) * Math.pow(tcpStatistics.getN(), -1.0 / 3.0);
             int numBinsTcp = (int) ((tcpStatistics.getMax() - tcpStatistics.getMin()) / binWidthTcp);
             numBinsTcp = Math.min(numBinsTcp, 100);
@@ -898,23 +904,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     .plotObject();
             System.out.println("Histogram of TCP Latencies:");
             currentTcpPlot.printPlot(true);
-
-//            double[] tcpLatenciesSorted = tcpStatistics.getSortedValues();
-//            double[] cumulativeTcpProbabilities = new double[tcpLatenciesSorted.length];
-//            double cumulativeProbabilityTcp = 0.0;
-//            for (int i = 0; i < tcpLatenciesSorted.length; i++) {
-//                cumulativeProbabilityTcp += (1.0 / tcpLatenciesSorted.length);
-//                cumulativeTcpProbabilities[i] = cumulativeProbabilityTcp;
-//            }
-//
-//            System.out.println("TCP Latency CDF:");
-//            System.out.println(ASCIIGraph.fromSeries(cumulativeTcpProbabilities).plot());
         }
-
-        System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
-        printLatencyStatisticsDetailed(0);
-
-        System.out.println("\n==================================================================");
     }
 
     /**
