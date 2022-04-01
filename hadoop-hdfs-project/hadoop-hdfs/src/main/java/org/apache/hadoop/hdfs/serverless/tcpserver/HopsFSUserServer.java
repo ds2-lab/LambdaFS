@@ -495,14 +495,28 @@ public class HopsFSUserServer {
      * associated request to the Future.
      *
      * Checks for duplicate futures before registering it.
+     *
+     * @param requestId The ID of the request associated with the future.
+     * @param operationName The name of the operation being performed.
+     *
+     * @return A new {@link RequestResponseFuture} object if one does not already exist.
+     * Otherwise, returns the existing RequestResponseFuture object.
      */
-    public void registerRequestResponseFuture(RequestResponseFuture requestResponseFuture) {
-        if (activeFutures.containsKey(requestResponseFuture.getRequestId()) ||
-            completedFutures.containsKey(requestResponseFuture.getRequestId())) {
-            return;
+    public RequestResponseFuture registerRequestResponseFuture(String requestId, String operationName) {
+        RequestResponseFuture requestResponseFuture = activeFutures.getOrDefault(requestId, null);
+
+        // TODO: Previously, this function also checked completedFutures before registering. Do we need to do this?
+        if (requestResponseFuture == null) {
+            requestResponseFuture = new RequestResponseFuture(requestId, operationName);
+            activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
         }
 
-        activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
+        return requestResponseFuture;
+
+//        if (activeFutures.containsKey(requestResponseFuture.getRequestId()) ||
+//            completedFutures.containsKey(requestResponseFuture.getRequestId())) {
+//            return;
+//        }
     }
 
     /**
@@ -551,9 +565,8 @@ public class HopsFSUserServer {
         // Create and register a future to keep track of this request and provide a means for the client to obtain
         // a response from the NameNode, should the client deliver one to us.
         String requestId = payload.get("requestId").getAsString();
-        String operation = payload.get("op").getAsString();
-        RequestResponseFuture requestResponseFuture = new RequestResponseFuture(requestId, operation);
-        registerRequestResponseFuture(requestResponseFuture);
+        String opName = payload.get("op").getAsString();
+        RequestResponseFuture requestResponseFuture = registerRequestResponseFuture(requestId, opName);
 
         // Send the TCP request to the NameNode.
         NameNodeConnection tcpConnection = getConnection(deploymentNumber);
