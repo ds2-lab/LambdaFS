@@ -5,6 +5,8 @@ import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
@@ -128,6 +130,15 @@ public class HopsFSUserServer {
     private static final int bufferSizes = (int)12e6;
 
     /**
+     * If we're using straggler mitigation, then we may receive a response from a NN after our straggler
+     * mitigation times out. If this happens, there probably won't be a RequestResponseFuture object registered
+     * with the TCP server when the response comes in, so it just gets discarded, and then we get stuck in this
+     * loop where we keep invoking and then timing out early and then missing the response. So, we hold onto these
+     * responses so that, if the result gets re-submitted, we can return a result.
+     */
+    private final Cache<String, JsonObject> resultsWithoutFutures;
+
+    /**
      * Constructor.
      */
     public HopsFSUserServer(Configuration conf, ServerlessNameNodeClient client) {
@@ -141,6 +152,10 @@ public class HopsFSUserServer {
         this.futureToNameNodeMapping = new ConcurrentHashMap<>();
         this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
         this.activeConnectionsPerDeployment = new ConcurrentHashMap<>();
+        this.resultsWithoutFutures = Caffeine.newBuilder()
+                .maximumSize(10_000)
+                .expireAfterWrite(60, TimeUnit.SECONDS)
+                .build();
         this.client = client;
 
         // Read some options from config file.
@@ -560,6 +575,19 @@ public class HopsFSUserServer {
             return null;
         }
 
+        if (resultsWithoutFutures.asMap().containsKey(requestId)) {
+            if (LOG.isDebugEnabled()) LOG.debug("Found result for request " + requestId +
+                    "in ResultsWithoutFutures cache. Returning cached result.");
+            JsonObject previouslyReceivedResult = resultsWithoutFutures.asMap().remove(requestId);
+
+            // There could be a race where the cache entry expires after we've checked if it exists, but before
+            // we remove it. So, we check to ensure it is non-null before posting the result.
+            if (previouslyReceivedResult != null) {
+                requestResponseFuture.postResult(previouslyReceivedResult);
+                return requestResponseFuture;
+            }
+        }
+
         int bytesSent = tcpConnection.sendTCP(payload.toString());
 
         // Make note of this future as being incomplete.
@@ -709,6 +737,7 @@ public class HopsFSUserServer {
                         if (future == null) {
                             LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
                                     ", but there is no associated future registered with the server.");
+                            resultsWithoutFutures.put(requestId, body);
                             break;
                         }
 
