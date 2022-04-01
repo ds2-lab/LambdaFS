@@ -14,6 +14,11 @@ import java.util.*;
 /**
  * Controls and manages access to several caches, each of which is responsible for caching a different type of metadata.
  *
+ * The main cache is the {@link InMemoryINodeCache}. This is the cache that stores the INodes, which are the primary
+ * metadata object used by HopsFS. This class also manages a cache of {@link Ace} objects and a cache of
+ * {@link EncryptionZone} objects.
+ *
+ * The other caches are of type {@link ReplicaCache}, and these are managed by a separate {@link ReplicaCacheManager}.
  */
 public class MetadataCacheManager {
     public static final Logger LOG = LoggerFactory.getLogger(MetadataCacheManager.class);
