@@ -515,8 +515,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     } else {
                         if (LOG.isDebugEnabled()) LOG.debug("Will resubmit request " + requestId + " shortly via straggler mitigation...");
                         stragglerResubmissionAlreadyOccurred = true;
-                        // Sleep for a short interval.
-                        Thread.sleep(Math.min(requestTimeout, 100));
                         continue; // Use continue statement to avoid exponential backoff.
                     }
                 }
