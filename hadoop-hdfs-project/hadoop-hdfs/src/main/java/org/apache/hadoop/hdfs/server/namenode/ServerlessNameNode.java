@@ -3348,11 +3348,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               nodeID.getXferAddr(), noOfBlks);
       return an;
     } else {
-      if (LOG.isDebugEnabled()) {
-        String msg = "NN Id: " + leaderElection.getCurrentId() + ") Received request to assign" +
-                " work (" + noOfBlks + " blks). Returning null as I am not the leader NN";
-        LOG.debug(msg);
-      }
+      String msg = "NN Id: " + leaderElection.getCurrentId() + ") Received request to assign" +
+              " work (" + noOfBlks + " blks). Returning null as I am not the leader NN";
+      if (LOG.isDebugEnabled()) LOG.debug(msg);
       throw new BRLoadBalancingNonLeaderException(msg);
     }
   }
