@@ -72,8 +72,6 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
-import org.apache.hadoop.hdfs.serverless.BaseHandler;
-import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
@@ -89,7 +87,6 @@ import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.ipc.Server;
-import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.util.MBeans;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.net.Node;
@@ -111,11 +108,8 @@ import org.slf4j.LoggerFactory;
 import javax.management.ObjectName;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.security.PrivilegedExceptionAction;
 import java.time.Duration;
 import java.time.Instant;
@@ -276,7 +270,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * HashSet containing the names of all write operations.
    * Used to check if a given operation is a write operation or not.
    */
-  private static HashSet<String> writeOperations;
+  public static final HashSet<String> WRITE_OPERATIONS;
 
   /**
    * When the 'op' field is set to this in the invocation payload, no operation is performed.
@@ -381,7 +375,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           StartupOption.FORMAT_ALL.getName() + " ]";
 
   static {
-    writeOperations = Sets.newHashSet(
+    WRITE_OPERATIONS = Sets.newHashSet(
             "abandonBlock", "addBlock", "append", "complete", "concat", "create", "delete",
             "mkdirs", "rename", "setOwner", "setPermission", "setMetaStatus", "truncate"
     );
@@ -707,7 +701,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return True if the operation is a write operation, otherwise false.
    */
   public static boolean isWriteOperation(String op) {
-    return writeOperations.contains(op);
+    return WRITE_OPERATIONS.contains(op);
   }
 
   /**
