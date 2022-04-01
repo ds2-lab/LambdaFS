@@ -197,15 +197,23 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     /**
      * When straggler mitigation is enabled, this is the factor X such that a request
-     * must be delayed for X times the average latency in order to be re-submitted.
+     * must be delayed for (avgLatency << X) ms in order to be re-submitted.
      */
-    protected double stragglerMitigationThresholdFactor;
+    protected int stragglerMitigationThresholdFactor;
 
     /**
      * When enabled, we employ a straggler mitigation technique in which requests that have been
      * submitted but not received a response for X times the average latency are resubmitted.
      */
     protected boolean stragglerMitigationEnabled;
+
+    /**
+     * Minimum length of timeout when using straggler mitigation. If it is too short, then we'll thrash (responses
+     * will come back but only after we've prematurely timed out, and this will turn into a cycle). There is a
+     * mechanism in-place to prevent this thrashing (the TCP server holds onto results it receives that do not have
+     * an associated {@link org.apache.hadoop.hdfs.serverless.tcpserver.RequestResponseFuture}, but still.
+     */
+    protected int minimumStragglerMitigationTimeout;
 
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
@@ -220,8 +228,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 SERVERLESS_INVOKER_RANDOM_HTTP_CHANCE_DEFAULT);
         stragglerMitigationEnabled = conf.getBoolean(SERVERLESS_STRAGGLER_MITIGATION,
                 SERVERLESS_STRAGGLER_MITIGATION_DEFAULT);
-        stragglerMitigationThresholdFactor = conf.getDouble(SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR,
+        stragglerMitigationThresholdFactor = conf.getInt(SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR,
                 SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR_DEFAULT);
+        minimumStragglerMitigationTimeout = conf.getInt(SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT,
+                SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT_DEFAULT);
 
         if (localMode)
             numDeployments = 1;
@@ -365,9 +375,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private int calculateRequestTimeout() {
         int requestTimeout;
         if (stragglerMitigationEnabled) {
-            double averageLatency = latencyWithWindow.getMean();
-            requestTimeout = (int)(averageLatency * stragglerMitigationThresholdFactor);
-            requestTimeout = Math.min(10, requestTimeout); // Timeout should be at least 10 milliseconds.
+            // First, calculate the potential timeout using the current average latency and the threshold factor.
+            int averageLatencyRoundedDown = (int)Math.floor(latencyWithWindow.getMean());
+            requestTimeout = averageLatencyRoundedDown << stragglerMitigationThresholdFactor;
+
+            // Next, clamp the request timeout to a minimum value of at least 'minimumStragglerMitigationTimeout' ms.
+            requestTimeout = Math.max(minimumStragglerMitigationTimeout, requestTimeout);
+
+            // Next, if our request timeout is longer than the standard timeout we'd normally use,
+            // then just use the standard timeout.
+            requestTimeout = Math.min(requestTimeout, serverlessInvoker.httpTimeoutMilliseconds);
         } else {
             // Just use HTTP requestTimeout.
             requestTimeout = serverlessInvoker.httpTimeoutMilliseconds;

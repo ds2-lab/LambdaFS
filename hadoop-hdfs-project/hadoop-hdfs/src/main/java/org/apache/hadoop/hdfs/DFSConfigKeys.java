@@ -75,10 +75,10 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
 
   /**
    * When straggler mitigation is enabled, this is the factor X such that a request
-   * must be delayed for X times the average latency in order to be re-submitted.
+   * must be delayed for (avgLatency << X) ms in order to be re-submitted.
    */
   public static final String SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR = "serverless.straggler.mitigation.threshold";
-  public static final double SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR_DEFAULT = 2.5;
+  public static final int SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR_DEFAULT = 2;
 
   /**
    * When enabled, we employ a straggler mitigation technique in which requests that have been
@@ -86,6 +86,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    */
   public static final String SERVERLESS_STRAGGLER_MITIGATION = "serverless.straggler.mitigation.enabled";
   public static final boolean SERVERLESS_STRAGGLER_MITIGATION_DEFAULT = false;
+
+  /**
+   * Minimum timeout when using straggler mitigation.
+   */
+  public static final String SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT = "serverless.straggler.mitigation.timeout.min";
+  public static final int SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT_DEFAULT = 50;
 
   /**
    * Configuration property for the baseline number of unique serverless functions deployed for use in this
