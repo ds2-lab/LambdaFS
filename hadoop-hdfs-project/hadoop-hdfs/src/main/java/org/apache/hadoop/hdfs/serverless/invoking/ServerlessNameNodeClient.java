@@ -367,7 +367,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (stragglerMitigationEnabled) {
             double averageLatency = latencyWithWindow.getMean();
             requestTimeout = (int)(averageLatency * stragglerMitigationThresholdFactor);
-            requestTimeout = Math.min(2, requestTimeout); // Timeout should be at least 2 milliseconds.
+            requestTimeout = Math.min(10, requestTimeout); // Timeout should be at least 10 milliseconds.
         } else {
             // Just use HTTP requestTimeout.
             requestTimeout = serverlessInvoker.httpTimeoutMilliseconds;
