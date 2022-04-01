@@ -370,11 +370,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * we get one retry using the straggler mitigation technique, which does not wait for very long before
      * resubmitting the task.
      *
+     * @param stragglerResubmissionAlreadyOccurred If true, then we've already resubmitted this task via straggler
+     *                                             mitigation, and thus we should use the standard timeout.
+     *
      * @return The timeout to use for the next TCP request.
      */
-    private int calculateRequestTimeout() {
+    private int calculateRequestTimeout(boolean stragglerResubmissionAlreadyOccurred) {
         int requestTimeout;
-        if (stragglerMitigationEnabled) {
+        if (stragglerMitigationEnabled && !stragglerResubmissionAlreadyOccurred) {
             // First, calculate the potential timeout using the current average latency and the threshold factor.
             int averageLatencyRoundedDown = (int)Math.floor(latencyWithWindow.getMean());
             requestTimeout = averageLatencyRoundedDown << stragglerMitigationThresholdFactor;
@@ -419,7 +422,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
 
         boolean stragglerResubmissionAlreadyOccurred = false;
-        int requestTimeout = calculateRequestTimeout();
 
         ExponentialBackOff exponentialBackOff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(5)
@@ -431,6 +433,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         long backoffInterval = exponentialBackOff.getBackOffInMillis();
         int maxRetries = exponentialBackOff.getMaximumRetries();
         while (backoffInterval >= 0) {
+            int requestTimeout = calculateRequestTimeout(stragglerResubmissionAlreadyOccurred);
             JsonObject response;
 
             long localStart;
