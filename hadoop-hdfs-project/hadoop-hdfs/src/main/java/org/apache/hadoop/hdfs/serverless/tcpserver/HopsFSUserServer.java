@@ -77,7 +77,7 @@ public class HopsFSUserServer {
      * The TCP Server maintains a collection of Futures for clients that are awaiting a response from
      * the NameNode to which they issued a request.
      */
-    private final ConcurrentHashMap<String, RequestResponseFuture activeFutures;
+    private final ConcurrentHashMap<String, RequestResponseFuture> activeFutures;
 
     /**
      * We also map the unique IDs of NameNodes to their deployments. This is used for debugging/logging and for
