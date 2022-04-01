@@ -32,7 +32,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static org.apache.hadoop.hdfs.serverless.BaseHandler.PLATFORM_NAME;
 import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromString;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
@@ -78,7 +77,7 @@ public class HopsFSUserServer {
      * The TCP Server maintains a collection of Futures for clients that are awaiting a response from
      * the NameNode to which they issued a request.
      */
-    private final ConcurrentHashMap<String, List<RequestResponseFuture>> activeFutures;
+    private final ConcurrentHashMap<String, RequestResponseFuture activeFutures;
 
     /**
      * We also map the unique IDs of NameNodes to their deployments. This is used for debugging/logging and for
@@ -503,9 +502,7 @@ public class HopsFSUserServer {
             return;
         }
 
-        List<RequestResponseFuture> futures = activeFutures.computeIfAbsent(requestResponseFuture.getRequestId(), k -> new ArrayList<>());
-        futures.add(requestResponseFuture);
-        // activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
+        activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
     }
 
     /**
@@ -514,11 +511,10 @@ public class HopsFSUserServer {
      * @param requestId The ID of the request/task that was resolved via TCP.
      */
     public boolean deactivateFuture(String requestId) {
-        // RequestResponseFuture future = activeFutures.remove(requestId);
-        List<RequestResponseFuture> futures = activeFutures.remove(requestId);
+        RequestResponseFuture future = activeFutures.remove(requestId);
 
-        if (futures != null) {
-            completedFutures.put(requestId, futures.get(0));
+        if (future != null) {
+            completedFutures.put(requestId, future);
 
             if (futureToNameNodeMapping.containsKey(requestId)) {
                 NameNodeConnection connection = futureToNameNodeMapping.get(requestId);
@@ -526,8 +522,8 @@ public class HopsFSUserServer {
                 // Remove this future from the submitted futures list associated with the connection,
                 // if it exists.
                 if (connection != null && submittedFutures.containsKey(connection.name)) {
-                    List<RequestResponseFuture> futuresSubmitted = submittedFutures.get(connection.name);
-                    futuresSubmitted.removeAll(futures);
+                    List<RequestResponseFuture> futures = submittedFutures.get(connection.name);
+                    futures.remove(future);
                 }
             }
 
@@ -734,30 +730,28 @@ public class HopsFSUserServer {
                             break;
                         }
 
-                        //RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
-                        List<RequestResponseFuture> futures = activeFutures.getOrDefault(requestId, null);
+                        RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
 
                         // If there is no future associated with this operation, then we have no means to return
                         // the result back to the client who issued the file system operation.
-                        if (futures == null) {
+                        if (future == null) {
                             LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
                                     ", but there is no associated future registered with the server.");
                             resultsWithoutFutures.put(requestId, body);
                             break;
                         }
 
-                        for (RequestResponseFuture future : futures)
-                            future.postResultImmediate(body);
+                        boolean success = future.postResultImmediate(body);
 
-//                        if (!success)
-//                            throw new IllegalStateException("Failed to post result to future " + future.getRequestId());
+                        if (!success)
+                            throw new IllegalStateException("Failed to post result to future " + future.getRequestId());
 
                         // Update state pertaining to futures.
                         activeFutures.remove(requestId);
-                        completedFutures.put(requestId, futures.get(0));
+                        completedFutures.put(requestId, future);
 
                         List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
-                        incompleteFutures.removeAll(futures);
+                        incompleteFutures.remove(future);
 
                         if (LOG.isDebugEnabled())
                             LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId +
