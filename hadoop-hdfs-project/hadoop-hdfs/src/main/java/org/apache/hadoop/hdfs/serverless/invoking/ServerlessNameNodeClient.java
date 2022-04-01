@@ -519,7 +519,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     }
                 }
 
-                LOG.error("Sleeping for " + backoffInterval + " seconds before retrying...");
+                LOG.error("Sleeping for " + backoffInterval + " ms before retrying...");
                 try {
                     Thread.sleep(backoffInterval);
                 } catch (InterruptedException e) {

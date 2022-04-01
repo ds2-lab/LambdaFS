@@ -575,19 +575,6 @@ public class HopsFSUserServer {
             return null;
         }
 
-        if (resultsWithoutFutures.asMap().containsKey(requestId)) {
-            if (LOG.isDebugEnabled()) LOG.debug("Found result for request " + requestId +
-                    "in ResultsWithoutFutures cache. Returning cached result.");
-            JsonObject previouslyReceivedResult = resultsWithoutFutures.asMap().remove(requestId);
-
-            // There could be a race where the cache entry expires after we've checked if it exists, but before
-            // we remove it. So, we check to ensure it is non-null before posting the result.
-            if (previouslyReceivedResult != null) {
-                requestResponseFuture.postResult(previouslyReceivedResult);
-                return requestResponseFuture;
-            }
-        }
-
         int bytesSent = tcpConnection.sendTCP(payload.toString());
 
         // Make note of this future as being incomplete.
@@ -635,6 +622,19 @@ public class HopsFSUserServer {
 
             // Resolve that ID to a deployment, and use that as the target deployment.
             deploymentNumber = nameNodeIdToDeploymentMapping.get(nameNodeId);
+        }
+
+        String requestId = payload.get("requestId").getAsString();
+
+        if (resultsWithoutFutures.asMap().containsKey(requestId)) {
+            if (LOG.isDebugEnabled()) LOG.debug("Found result for request " + requestId +
+                    "in ResultsWithoutFutures cache. Returning cached result.");
+            JsonObject previouslyReceivedResult = resultsWithoutFutures.asMap().remove(requestId);
+
+            // There could be a race where the cache entry expires after we've checked if it exists, but before
+            // we remove it. So, we check to ensure it is non-null before posting the result.
+            if (previouslyReceivedResult != null)
+                return previouslyReceivedResult;
         }
 
         RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck, payload);
