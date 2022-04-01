@@ -380,7 +380,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
           StartupOption.NO_OF_CONCURRENT_BLOCK_REPORTS.getName() + " concurrentBlockReports ] | [" +
           StartupOption.FORMAT_ALL.getName() + " ]";
 
-
+  static {
+    writeOperations = Sets.newHashSet(
+            "abandonBlock", "addBlock", "append", "complete", "concat", "create", "delete",
+            "mkdirs", "rename", "setOwner", "setPermission", "setMetaStatus", "truncate"
+    );
+  }
 
   public long getProtocolVersion(String protocol, long clientVersion)
       throws IOException {
@@ -711,10 +716,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   public void populateOperationsMap() {
     operations = new HashMap<>();
-    writeOperations = Sets.newHashSet(
-            "abandonBlock", "addBlock", "append", "complete", "concat", "create", "delete",
-            "mkdirs", "rename", "setOwner", "setPermission", "setMetaStatus", "truncate"
-    );
 
     operations.put("abandonBlock", args -> {
       abandonBlock(args);
