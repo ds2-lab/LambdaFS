@@ -276,7 +276,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * HashSet containing the names of all write operations.
    * Used to check if a given operation is a write operation or not.
    */
-  private HashSet<String> writeOperations;
+  private static HashSet<String> writeOperations;
 
   /**
    * When the 'op' field is set to this in the invocation payload, no operation is performed.
@@ -701,7 +701,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param op The name of the operation.
    * @return True if the operation is a write operation, otherwise false.
    */
-  public boolean isWriteOperation(String op) {
+  public static boolean isWriteOperation(String op) {
     return writeOperations.contains(op);
   }
 

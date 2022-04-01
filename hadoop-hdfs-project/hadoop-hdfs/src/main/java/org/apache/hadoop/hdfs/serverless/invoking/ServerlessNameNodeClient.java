@@ -25,6 +25,7 @@ import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
@@ -512,7 +513,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 return response;
             } catch (TimeoutException ex) {
-                LOG.error("Timed out while waiting for TCP response for request " + requestId + ".");
+
 
                 // If the straggler mitigation technique/protocol is enabled, then we only count this timeout as a
                 // "real" timeout (i.e., one that uses the exponential backoff mechanism) if we've already re-submitted
@@ -520,14 +521,21 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // the request, then we'll do so now, and we'll only sleep for a small interval of time.
                 if (stragglerMitigationEnabled) {
                     if (stragglerResubmissionAlreadyOccurred) {
+                        LOG.error("Timed out while waiting for TCP response for request " + requestId + ".");
                         LOG.error("Already submitted a straggler mitigation request. Counting this as a 'real' timeout.");
                         stragglerResubmissionAlreadyOccurred = false; // Flip this back to false.
                         // Don't continue. We need to exponentially backoff.
                     } else {
                         if (LOG.isDebugEnabled()) LOG.debug("Will resubmit request " + requestId + " shortly via straggler mitigation...");
                         stragglerResubmissionAlreadyOccurred = true;
+
+                        // If this isn't a write operation, then make the NN redo it so that it may go faster.
+                        if (!ServerlessNameNode.isWriteOperation(operationName))
+                            payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
                         continue; // Use continue statement to avoid exponential backoff.
                     }
+                } else {
+                    LOG.error("Timed out while waiting for TCP response for request " + requestId + ".");
                 }
 
 //                LOG.error("Sleeping for " + backoffInterval + " ms before retrying...");
