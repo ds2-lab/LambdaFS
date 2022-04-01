@@ -351,6 +351,32 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     /**
+     * Calculate the timeout to use for an TCP request. If straggler mitigation is enabled, then the
+     * timeout is based on the average latency, with a minimum of two milliseconds. Alternatively, if
+     * straggler mitigation is disabled, then we just use the HTTP timeout for our TCP timeout.
+     *
+     * Also, when using straggler mitigation, we don't count every timeout towards our exponential backoff.
+     * We count every other request towards the exponential backoff. So, for each exponentially backed-off retry,
+     * we get one retry using the straggler mitigation technique, which does not wait for very long before
+     * resubmitting the task.
+     *
+     * @return The timeout to use for the next TCP request.
+     */
+    private int calculateRequestTimeout() {
+        int requestTimeout;
+        if (stragglerMitigationEnabled) {
+            double averageLatency = latencyWithWindow.getMean();
+            requestTimeout = (int)(averageLatency * stragglerMitigationThresholdFactor);
+            requestTimeout = Math.min(2, requestTimeout); // Timeout should be at least 2 milliseconds.
+        } else {
+            // Just use HTTP requestTimeout.
+            requestTimeout = serverlessInvoker.httpTimeoutMilliseconds;
+        }
+
+        return requestTimeout;
+    }
+
+    /**
      * Issue a TCP request to the NameNode, instructing it to perform a certain operation.
      * This function will only issue a TCP request. If the TCP connection is lost mid-operation, then
      * the request is re-submitted via HTTP.
@@ -375,24 +401,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         payload.addProperty(LOG_LEVEL, serverlessFunctionLogLevel);
         payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
 
-        // Determine the request timeout to use. If straggler mitigation is enabled, then the timeout is based on
-        // the average latency, with a minimum of two milliseconds. Alternatively, if straggler mitigation is disabled,
-        // then we just use the HTTP timeout for our TCP timeout.
-        //
-        // Also, when using straggler mitigation, we don't count every timeout towards our exponential backoff.
-        // We count every other request towards the exponential backoff. So, for each exponentially backed-off retry,
-        // we get one retry using the straggler mitigation technique, which does not wait for very long before
-        // resubmitting the task.
         boolean stragglerResubmissionAlreadyOccurred = false;
-        int requestTimeout;
-        if (stragglerMitigationEnabled) {
-            double averageLatency = latencyWithWindow.getMean();
-            requestTimeout = (int)(averageLatency * stragglerMitigationThresholdFactor);
-            requestTimeout = Math.min(2, requestTimeout); // Timeout should be at least 2 milliseconds.
-        } else {
-            // Just use HTTP requestTimeout.
-            requestTimeout = serverlessInvoker.httpTimeoutMilliseconds;
-        }
+        int requestTimeout = calculateRequestTimeout();
 
         ExponentialBackOff exponentialBackOff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(5)
@@ -438,6 +448,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                             ") has been cancelled. Reason: " + response.get(REASON).getAsString() + ".");
                 }
 
+                // If the NameNode is reporting that this FS operation was a duplicate, then we check to see if
+                // we're actually still waiting on a result for the operation. If we are, then it might have been
+                // lost (e.g., network connection terminated while NN sending result back to us) or something like
+                // that. In that case, we resubmit the FS operation with an additional argument indicating that the
+                // NN should execute the FS operation regardless of whether it is a duplicate.
                 if (response.has(DUPLICATE_REQUEST) && response.get(DUPLICATE_REQUEST).getAsBoolean()) {
                     LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " +
                             requestId + "...");
@@ -449,10 +464,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                         payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
 
-                        // We don't sleep in this case, as there wasn't a time-out exception or anything.
+                        // We don't sleep in this case, as there wasn't a time-out exception.
                         continue;
                     } else {
-                      LOG.warn("Apparently we are not actually waiting on a result for request " + requestId +
+                        // This generally shouldn't happen in practice...
+                        LOG.warn("Apparently we are not actually waiting on a result for request " + requestId +
                               "... Not resubmitting.");
                     }
                 }
@@ -480,6 +496,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         stragglerResubmissionAlreadyOccurred = false; // Flip this back to false.
                         // Don't continue. We need to exponentially backoff.
                     } else {
+                        if (LOG.isDebugEnabled()) LOG.debug("Will resubmit request " + requestId + " shortly via straggler mitigation...");
                         stragglerResubmissionAlreadyOccurred = true;
                         // Sleep for a short interval.
                         Thread.sleep(Math.min(requestTimeout, 5));
