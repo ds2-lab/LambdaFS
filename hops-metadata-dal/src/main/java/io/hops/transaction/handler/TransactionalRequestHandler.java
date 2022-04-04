@@ -64,7 +64,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
    *
    * @return True if the transaction can safely proceed, otherwise false.
    */
-  protected abstract boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws Exception;
+  protected abstract boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException;
 
   /**
    * Should be overridden by a class in the main codebase. This function should be used
