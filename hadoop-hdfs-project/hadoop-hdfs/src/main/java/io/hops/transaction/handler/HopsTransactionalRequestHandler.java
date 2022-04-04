@@ -139,6 +139,20 @@ public abstract class HopsTransactionalRequestHandler
     setUp();
   }
 
+  /**
+   * Check if the consistency protocol should be executed based on whether there are any
+   * invalidated INodes in the INodeContext.
+   *
+   * @return True if the consistency protocol should performed, otherwise false.
+   */
+  private static boolean shouldRunConsistencyProtocol(INodeContext inodeContext) {
+    if (inodeContext != null) {
+      int numInvalidated = inodeContext.getInvalidatedINodes().size();
+      return numInvalidated == 0;
+    }
+    return true;
+  }
+
   @Override
   protected final boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException {
     if (!ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL) {
@@ -152,46 +166,49 @@ public abstract class HopsTransactionalRequestHandler
     }
 
     EntityContext<?> inodeContext= EntityManager.getEntityContext(INode.class);
-
     serverlessNameNodeInstance = ServerlessNameNode.tryGetNameNodeInstance(false);
 
-    ConsistencyProtocol consistencyProtocol = new ConsistencyProtocol(inodeContext, null,
-            attempt, transactionEvent, txStartTime,
-            // If NN instance is currently null, then we default to using ZooKeeper. If the NN instance is non-null,
-            // then we use the configured value.
-            serverlessNameNodeInstance == null || !serverlessNameNodeInstance.useNdbForConsistencyProtocol(),
-            false, null);
+    if (shouldRunConsistencyProtocol((INodeContext)inodeContext)) {
+      ConsistencyProtocol consistencyProtocol = new ConsistencyProtocol(inodeContext, null,
+              attempt, transactionEvent, txStartTime,
+              // If NN instance is currently null, then we default to using ZooKeeper. If the NN instance is non-null,
+              // then we use the configured value.
+              serverlessNameNodeInstance == null || !serverlessNameNodeInstance.useNdbForConsistencyProtocol(),
+              false, null);
 
-    consistencyProtocol.start();
-    try {
-      consistencyProtocol.join();
-    } catch (InterruptedException ex) {
-      throw new IOException("Encountered InterruptedException while waiting for consistency protocol to finish: ", ex);
-    }
+      // Check if we should bother running. This potentially saves us from starting another thread and joining ,
+      // it which is needlessly expensive if we aren't going to bother running the consistency protocol anyway.
+      consistencyProtocol.start();
+      try {
+        consistencyProtocol.join();
 
-    boolean proceedWithTx = consistencyProtocol.getCanProceed();
-    if (!proceedWithTx) {
-      requestHandlerLOG.error("Encountered " + consistencyProtocol.getExceptions() +
-              " exception(s) while executing the consistency protocol.");
-      int counter = 1;
-      for (Throwable throwable : consistencyProtocol.getExceptions()) {
-        requestHandlerLOG.error("Exception #" + counter++);
-        requestHandlerLOG.error(throwable);
+        boolean proceedWithTx = consistencyProtocol.getCanProceed();
+        if (!proceedWithTx) {
+          requestHandlerLOG.error("Encountered " + consistencyProtocol.getExceptions() +
+                  " exception(s) while executing the consistency protocol.");
+          int counter = 1;
+          for (Throwable throwable : consistencyProtocol.getExceptions()) {
+            requestHandlerLOG.error("Exception #" + counter++);
+            requestHandlerLOG.error(throwable);
+          }
+
+          // Just throw the first exception we encountered.
+          Throwable t = consistencyProtocol.getExceptions().get(0);
+
+          // If no exception was explicitly thrown, then we'll just say that in the exception that we throw.
+          if (t == null)
+            throw new IOException("Transaction encountered critical error, but no exception was thrown. Probably timed out.");
+
+          // If there was an exception thrown, then we'll rethrow it as-is if it is an IOException.
+          // If it is not an IOException, then we'll wrap it in an IOException.
+          if (t instanceof IOException)
+            throw (IOException)t;
+          else
+            throw new IOException("Exception encountered during consistency protocol: " + t.getMessage(), t);
+        }
+      } catch (InterruptedException ex) {
+        throw new IOException("Encountered InterruptedException while waiting for consistency protocol to finish: ", ex);
       }
-
-      // Just throw the first exception we encountered.
-      Throwable t = consistencyProtocol.getExceptions().get(0);
-
-      // If no exception was explicitly thrown, then we'll just say that in the exception that we throw.
-      if (t == null)
-        throw new IOException("Transaction encountered critical error, but no exception was thrown. Probably timed out.");
-
-      // If there was an exception thrown, then we'll rethrow it as-is if it is an IOException.
-      // If it is not an IOException, then we'll wrap it in an IOException.
-      if (t instanceof IOException)
-        throw (IOException)t;
-      else
-        throw new IOException("Exception encountered during consistency protocol: " + t.getMessage(), t);
     }
 
     // 'proceedWithTx' will always be true at this point, since we throw an exception if it is false.
