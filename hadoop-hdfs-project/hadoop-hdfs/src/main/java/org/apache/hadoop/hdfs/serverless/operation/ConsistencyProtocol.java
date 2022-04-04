@@ -448,13 +448,17 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // we do not miss any notifications.
         int totalNumberOfACKsRequired;
 
-        try {
-            // Pass the set of additional deployments we needed to join, as we also need ACKs from those deployments.
-            totalNumberOfACKsRequired = computeAckRecords(transactionStartTime);
-        } catch (Exception ex) {
-            LOG.error("Exception encountered while computing/creating ACK records in-memory:", ex);
-            this.canProceed = false;
-            return;
+        if (totalAcksWerePreComputed) {
+            totalNumberOfACKsRequired = totalNumberOfACKsRequiredPreComputed;
+        } else {
+            try {
+                // Pass the set of additional deployments we needed to join, as we also need ACKs from those deployments.
+                totalNumberOfACKsRequired = computeAckRecords(transactionStartTime);
+            } catch (Exception ex) {
+                LOG.error("Exception encountered while computing/creating ACK records in-memory:", ex);
+                this.canProceed = false;
+                return;
+            }
         }
 
         long computeAckRecordsEndTime = System.currentTimeMillis();
