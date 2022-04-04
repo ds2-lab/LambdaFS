@@ -159,6 +159,7 @@ public class DBSessionProvider implements Runnable {
       // session can be closed even before the reuse count has expired.
       // Close the session in case of database errors.
       toGC.add(returnedSession);
+      toGC.notify();
     } else { // increment the count and return it to the pool
       returnedSession.getSession().setLockMode(LockMode.READ_COMMITTED);
       sessionPool.add(returnedSession);
@@ -200,6 +201,8 @@ public class DBSessionProvider implements Runnable {
             sessionPool.add(initSession());
           }
           //System.out.println("Created " + toGCSize);
+        } else {
+          toGC.wait();
         }
         //                for (int i = 0; i < 100; i++) {
         //                    DBSession session = sessionPool.remove();
@@ -214,7 +217,7 @@ public class DBSessionProvider implements Runnable {
         //                        sessionPool.add(session);
         //                    }
         //                }
-        Thread.sleep(5);
+        // Thread.sleep(50);
       } catch (NoSuchElementException e) {
         //System.out.print(".");
         for (int i = 0; i < 100; i++) {
