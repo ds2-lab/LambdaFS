@@ -5,9 +5,16 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.hadoop.fs.FsServerDefaults;
+import org.apache.hadoop.hdfs.protocol.DirectoryListing;
+import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
+import org.apache.hadoop.hdfs.protocol.LastBlockWithStatus;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 import org.apache.hadoop.hdfs.serverless.cache.MetadataCacheManager;
@@ -48,6 +55,15 @@ public class NameNodeResult implements Serializable {
      * From RuedigerMoeller/fast-serialization.
      */
     private static final FSTConfiguration conf = FSTConfiguration.createDefaultConfiguration();
+
+    /**
+     * One easy and important optimization is to register classes which are serialized for sure in your application
+     * at the FSTConfiguration object. This way FST can avoid writing classnames.
+     */
+    static {
+        conf.registerClass(LocatedBlocks.class, TransactionEvent.class, TransactionAttempt.class, NamespaceInfo.class,
+                LastBlockWithStatus.class, HdfsFileStatus.class, DirectoryListing.class, FsServerDefaults.class);
+    }
 
     /**
      * Exceptions encountered during the current request's execution.
@@ -279,18 +295,21 @@ public class NameNodeResult implements Serializable {
     }
 
     public String serializeAndEncode(Object object) {
-        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-            objectOutputStream.writeObject(object);
-            objectOutputStream.flush();
+//        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+//            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+//            objectOutputStream.writeObject(object);
+//            objectOutputStream.flush();
+//
+//            byte[] objectBytes = byteArrayOutputStream.toByteArray();
+//
+//            return Base64.encodeBase64String(objectBytes);
+//        } catch (Exception ex) {
+//            LOG.error("Exception encountered whilst serializing result of file system operation: ", ex);
+//            addException(ex);
+//        }
 
-            byte[] objectBytes = byteArrayOutputStream.toByteArray();
-
-            return Base64.encodeBase64String(objectBytes);
-        } catch (Exception ex) {
-            LOG.error("Exception encountered whilst serializing result of file system operation: ", ex);
-            addException(ex);
-        }
+        byte[] objectBytes = conf.asByteArray(object);
+        return Base64.encodeBase64String(objectBytes);
 
         return null;
     }

@@ -3,6 +3,8 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import io.hops.metrics.TransactionAttempt;
+import io.hops.metrics.TransactionEvent;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import java.io.*;
@@ -11,6 +13,13 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.*;
+
+import org.apache.hadoop.fs.FsServerDefaults;
+import org.apache.hadoop.hdfs.protocol.DirectoryListing;
+import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
+import org.apache.hadoop.hdfs.protocol.LastBlockWithStatus;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.nustaq.serialization.FSTConfiguration;
 
 /**
@@ -20,6 +29,15 @@ public class InvokerUtilities {
     private static final Log LOG = LogFactory.getLog(InvokerUtilities.class);
 
     private static FSTConfiguration conf = FSTConfiguration.createDefaultConfiguration();
+
+    /**
+     * One easy and important optimization is to register classes which are serialized for sure in your application
+     * at the FSTConfiguration object. This way FST can avoid writing classnames.
+     */
+    static {
+        conf.registerClass(LocatedBlocks.class, TransactionEvent.class, TransactionAttempt.class, NamespaceInfo.class,
+                LastBlockWithStatus.class, HdfsFileStatus.class, DirectoryListing.class, FsServerDefaults.class);
+    }
 
     /**
      * Returns true if the given object is an array.
@@ -38,11 +56,13 @@ public class InvokerUtilities {
      */
     public static String serializableToBase64String(Serializable obj) throws IOException {
         // Source: https://stackoverflow.com/questions/134492/how-to-serialize-an-object-into-a-string
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream( baos );
-        oos.writeObject(obj);
-        oos.close();
-        return Base64.getEncoder().encodeToString(baos.toByteArray());
+//        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//        ObjectOutputStream oos = new ObjectOutputStream( baos );
+//        oos.writeObject(obj);
+//        oos.close();
+//        return Base64.getEncoder().encodeToString(baos.toByteArray());
+        byte[] objectBytes = conf.asByteArray(obj);
+        return Base64.getEncoder().encodeToString(objectBytes);
     }
 
     /**
@@ -54,9 +74,10 @@ public class InvokerUtilities {
     public static Object base64StringToObject(String base64Encoded) throws IOException, ClassNotFoundException {
         byte[] resultSerialized = org.apache.commons.codec.binary.Base64.decodeBase64(base64Encoded);
 
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
-        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-        return objectInputStream.readObject();
+        return conf.asObject(resultSerialized);
+//        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
+//        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+//        return objectInputStream.readObject();
     }
 
     /**
