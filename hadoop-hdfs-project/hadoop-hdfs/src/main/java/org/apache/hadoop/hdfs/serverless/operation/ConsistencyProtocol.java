@@ -157,6 +157,21 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     private final String subtreeRoot;
 
     /**
+     * We can run part of the consistency protocol in the original, calling thread. Specifically, we run Step 0,
+     * which involves computing how many ACKs we need to create. In some cases, we do not need to create any ACKs,
+     * and we can avoid the overhead of starting the Consistency Protocol thread if we see that we will not be
+     * creating/writing any ACKs.
+     */
+    private boolean totalAcksWerePreComputed = false;
+
+    /**
+     * This is computed during the "pre-computation" phase.
+     */
+    private int totalNumberOfACKsRequiredPreComputed = -1;
+
+    private Collection<INode> invalidatedINodes;
+
+    /**
      * Constructor for non-subtree operations.
      *
      * @param callingThreadINodeContext The INode {@link EntityContext} object of the calling thread. We need this
@@ -164,11 +179,17 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      *                                  protocol, as this determines which deployments we issue INVs to.
      * @param involvedDeployments       Set of deployments involved in the subtree operation. This is calculated
      *                                  when obtaining database locks while walking through the subtree at the
-     *                                  beginning of the subtree protocol.
+     *                                  beginning of the subtree protocol. Alternatively, we may wish to compute this
+     *                                  pre-emptively to determine if the protocol will be executed or not. This would
+     *                                  be done BEFORE starting the Consistency Protocol thread, thereby avoiding the
+     *                                  overhead of starting the thread if we're going to end up aborting the protocol
+     *                                  early anyway.
      * @param transactionAttempt        Used for tracking metrics about this particular transaction attempt.
      * @param transactionEvent          Used for tracking metrics about the overall transaction.
      * @param transactionStartTime      The time at which the transaction started.
      * @param useZooKeeper              If true, use ZooKeeper for ACKs and INVs. Otherwise, use the hops-metadata-dal.
+     * @param invalidatedINodes         The INodes that are being invalidated by this transaction. If this is null,
+     *                                  then this will be computed during the execution of the protocol.
      */
     public ConsistencyProtocol(EntityContext<?> callingThreadINodeContext,
                                Set<Integer> involvedDeployments,
@@ -177,7 +198,8 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                                long transactionStartTime,
                                boolean useZooKeeper,
                                boolean subtreeOperation,
-                               String subtreeRoot) {
+                               String subtreeRoot,
+                               Collection<INode> invalidatedINodes) {
         this.callingThreadINodeContext = callingThreadINodeContext;
         this.involvedDeployments = involvedDeployments;
         this.transactionAttempt = transactionAttempt;
@@ -189,6 +211,46 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         this.useZooKeeperForACKsAndINVs = useZooKeeper;
         this.subtreeOperation = subtreeOperation;
         this.subtreeRoot = subtreeRoot;
+        this.invalidatedINodes = invalidatedINodes;
+    }
+
+    /**
+     * Pre-compute the total number of ACKs. This also computes a lot of state used later in the consistency
+     * protocol. Specifically, this populates the 'writeAcknowledgementsMap' map, the
+     * 'waitingForAcksPerDeployment' map, the 'nameNodeIdToDeploymentNumberMapping' map, and the 'waitingForAcks'
+     * map. This also updates the 'involvedDeployments' set by removing from 'involvedDeployments' any deployment
+     * for which we do not actually need any ACKs.
+     */
+    public int precomputeAcks() throws IOException {
+        if (this.invalidatedINodes == null) {
+            LOG.error("Cannot pre-compute ACKs if set of invalidated INodes is null.");
+            return -1;
+        }
+
+        // We should always need to compute the set of involved deployments during this "pre-compute ACKs" step.
+        // The set of involved deployments is only ever passed-in during subtree operations, and we do not perform
+        // this "pre-compute ACKs" step during subtree operations.
+        if (this.involvedDeployments == null) {
+            long s = System.currentTimeMillis();
+            computeInvolvedDeployments();
+            long t1 = System.currentTimeMillis();
+
+            if (LOG.isDebugEnabled()) LOG.debug("Computed involved deployments in " + (t1 - s) + " ms.");
+        }
+
+        long s = System.currentTimeMillis();
+        try {
+            this.totalNumberOfACKsRequiredPreComputed = computeAckRecords(transactionStartTime);
+            this.totalAcksWerePreComputed = true;
+        } catch (Exception ex) {
+            LOG.error("Encountered exception while pre-computing ACKs:", ex);
+            throw new IOException(ex);
+        }
+
+        if (LOG.isDebugEnabled())
+            LOG.debug("Computed ACK records in " + (System.currentTimeMillis() - s) + " ms.");
+
+        return this.totalNumberOfACKsRequiredPreComputed;
     }
 
     /**
@@ -217,7 +279,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         txEvent.addAttempt(txAttempt);
         ConsistencyProtocol subtreeConsistencyProtocol = new ConsistencyProtocol(
                 null, associatedDeployments, txAttempt, txEvent,
-                txStartTime, true, true, src);
+                txStartTime, true, true, src, null);
         subtreeConsistencyProtocol.start();
 
         boolean interruptedExceptionOccurred = false;
@@ -256,6 +318,33 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     public boolean getCanProceed() { return this.canProceed; }
 
     public List<Exception> getExceptions() { return this.exceptions; }
+
+    private void computeInvolvedDeployments() {
+        if (LOG.isDebugEnabled()) LOG.debug("Computing involved deployments as they were not provided to us directly.");
+        involvedDeployments = new HashSet<>();
+
+        // If we entered this if-statement's code block, then we should NOT be executing a subtree operation.
+        // As a result, we should have access to the set of invalidated INodes for this particular transaction.
+        if (invalidatedINodes == null) {
+            throw new IllegalStateException(
+                    "Set of invalidated INodes is null when it shouldn't be. INode Context object was null: " +
+                            (callingThreadINodeContext == null));
+        }
+
+        for (INode invalidatedINode : invalidatedINodes) {
+            int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
+            int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
+
+            // We'll have to guest-join the other deployment if the INode is not mapped to our deployment.
+            // This is common during subtree operations and when creating a new directory (as that modifies the parent
+            // INode of the new directory, which is possibly mapped to a different deployment).
+            if (mappedDeploymentNumber != localDeploymentNumber) {
+                if (LOG.isDebugEnabled()) LOG.debug("INode '" + invalidatedINode.getLocalName() +
+                        "' is mapped to a different deployment (" + mappedDeploymentNumber + ").");
+                involvedDeployments.add(mappedDeploymentNumber);
+            }
+        }
+    }
 
     @Override
     public void run() {
@@ -302,8 +391,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // We don't care about the set of invalidated INodes during a subtree operation, also. We just don't factor
         // that into things. I think it's the case that there will always be at least one invalidated INode anyway
         // in that of the subtree root.
-        Collection<INode> invalidatedINodes = null;
-        if (callingThreadINodeContext != null) {
+        if (invalidatedINodes == null) {
             INodeContext transactionINodeContext = (INodeContext) callingThreadINodeContext;
             invalidatedINodes = transactionINodeContext.getInvalidatedINodes();
             int numInvalidated = invalidatedINodes.size();
@@ -337,34 +425,8 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         //       needs to be invalidated, then it will be added when we see that a modified INode is mapped to it.
         //
         // Keep track of all deployments involved in this transaction.
-        if (involvedDeployments == null) {
-            if (LOG.isDebugEnabled()) LOG.debug("Computing involved deployments as they were not provided to us directly.");
-            involvedDeployments = new HashSet<>();
-
-            // If we entered this if-statement's code block, then we should NOT be executing a subtree operation.
-            // As a result, we should have access to the set of invalidated INodes for this particular transaction.
-            if (invalidatedINodes == null) {
-                throw new IllegalStateException(
-                        "Set of invalidated INodes is null when it shouldn't be. INode Context object was null: " +
-                                (callingThreadINodeContext == null));
-            }
-
-            for (INode invalidatedINode : invalidatedINodes) {
-                int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
-                int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
-
-                // We'll have to guest-join the other deployment if the INode is not mapped to our deployment.
-                // This is common during subtree operations and when creating a new directory (as that modifies the parent
-                // INode of the new directory, which is possibly mapped to a different deployment).
-                if (mappedDeploymentNumber != localDeploymentNumber) {
-                    if (LOG.isDebugEnabled()) LOG.debug("INode '" + invalidatedINode.getLocalName() +
-                            "' is mapped to a different deployment (" + mappedDeploymentNumber + ").");
-                    involvedDeployments.add(mappedDeploymentNumber);
-                }
-            }
-        } else {
-            if (LOG.isDebugEnabled()) LOG.debug("Using set of involved deployments provided to us by the calling thread.");
-        }
+        if (involvedDeployments == null)
+            computeInvolvedDeployments();
 
         if (LOG.isDebugEnabled()) LOG.debug("Leader NameNode: " + serverlessNameNodeInstance.getFunctionName() + ", ID = "
                 + serverlessNameNodeInstance.getId() + ", Follower NameNodes: "
@@ -1006,39 +1068,6 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // If there are no active instances in the deployments that are theoretically involved, then we just remove
         // them from the set of active deployments, as we don't need ACKs from them, nor do we need to store any INVs.
         Set<Integer> toRemove = new HashSet<>();
-
-        // Per the comment above, we do not need to create any ACK records in-memory when using ZooKeeper.
-        // So, we just figure out how many ACKs we'll need for each deployment, and then we return.
-//        if (useZooKeeperForACKsAndINVs) {
-//            for (int deploymentNumber : involvedDeployments) {
-//                List<String> groupMemberIds = zkClient.getPermanentGroupMembers("namenode" + deploymentNumber);
-//                int numActiveInstances = groupMemberIds.size();
-//
-//                // If there aren't any active instances in this deployment, then we do not need any ACKs from them.
-//                // Even if NN instances from this deployment start running before we finish this protocol, we have
-//                // taken exclusive locks in the database, so they wouldn't be able to read the data until we finish
-//                // here. So, there's no synchronization/consistency issues there.
-//                if (numActiveInstances == 0) {
-//                    toRemove.add(deploymentNumber);
-//                } else {
-//                    totalNumberOfACKsRequired += groupMemberIds.size();
-//                }
-//            }
-//
-//            // If our (the Leader NN's) deployment is involved, then we decrement the total number of required
-//            // ACKs by one. We do this because we do not need an ACK from ourselves (and we're the leader).
-//            if (involvedDeployments.contains(serverlessNameNodeInstance.getDeploymentNumber()))
-//                totalNumberOfACKsRequired--;
-//
-//            // Any "involved deployments" with no active instances are removed.
-//            if (LOG.isDebugEnabled()) LOG.debug("Removing the following deployments as they contain zero active instances: " +
-//                    StringUtils.join(toRemove, ", "));
-//            involvedDeployments.removeAll(toRemove);
-//            if (LOG.isDebugEnabled()) LOG.debug("Grand total of " + totalNumberOfACKsRequired + " ACKs required.");
-//
-//            countDownLatch = new CountDownLatch(totalNumberOfACKsRequired);
-//            return totalNumberOfACKsRequired;
-//        }
 
         writeAcknowledgementsMap = new HashMap<>();
 

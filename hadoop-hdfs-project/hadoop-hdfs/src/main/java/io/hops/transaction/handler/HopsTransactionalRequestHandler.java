@@ -15,41 +15,22 @@
  */
 package io.hops.transaction.handler;
 
-import com.esotericsoftware.minlog.Log;
-import io.hops.events.*;
-import io.hops.exception.StorageException;
-import io.hops.metadata.HdfsStorageFactory;
-import io.hops.metadata.hdfs.TablesDef;
-import io.hops.metadata.hdfs.dal.InvalidationDataAccess;
-import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
-import io.hops.metadata.hdfs.entity.Invalidation;
-import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.TransactionInfo;
-import io.hops.transaction.context.EntityContext;
 import io.hops.transaction.context.INodeContext;
 import io.hops.transaction.lock.HdfsTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
-import io.hops.transaction.lock.TransactionLocks;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdfs.protocol.RecoveryInProgressException;
 import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
-import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
-import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
-import org.apache.hadoop.util.ExponentialBackOff;
-import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public abstract class HopsTransactionalRequestHandler
         extends TransactionalRequestHandler {
@@ -139,20 +120,6 @@ public abstract class HopsTransactionalRequestHandler
     setUp();
   }
 
-  /**
-   * Check if the consistency protocol should be executed based on whether there are any
-   * invalidated INodes in the INodeContext.
-   *
-   * @return True if the consistency protocol should performed, otherwise false.
-   */
-  private static boolean shouldRunConsistencyProtocol(INodeContext inodeContext) {
-    if (inodeContext != null) {
-      int numInvalidated = inodeContext.getInvalidatedINodes().size();
-      return numInvalidated == 0;
-    }
-    return true;
-  }
-
   @Override
   protected final boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException {
     if (!ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL) {
@@ -165,16 +132,37 @@ public abstract class HopsTransactionalRequestHandler
       return true;
     }
 
-    EntityContext<?> inodeContext= EntityManager.getEntityContext(INode.class);
+    INodeContext inodeContext= (INodeContext)EntityManager.getEntityContext(INode.class);
     serverlessNameNodeInstance = ServerlessNameNode.tryGetNameNodeInstance(false);
 
-    if (shouldRunConsistencyProtocol((INodeContext)inodeContext)) {
+    // We can check if we need to run the consistency protocol early. We already have access to the INodeContext,
+    // and thus we have access to the collection of invalidated INodes. If the size of this collection is zero, then
+    // we can skip the consistency protocol altogether. If it is non-zero, then we can pass the set to the consistency
+    // protocol object so that it doesn't have to be created again during the actual execution of the protocol.
+    boolean shouldRunConsistencyProtocol = true;
+    Collection<INode> invalidatedINodes = null;
+    if (inodeContext != null) {
+      invalidatedINodes = inodeContext.getInvalidatedINodes();
+      int numInvalidated = invalidatedINodes.size();
+      shouldRunConsistencyProtocol = (numInvalidated == 0);
+    }
+
+    // If we should run the protocol (i.e., if the size of the collection of invalidated INodes is greater than 0),
+    // then we will run it. Otherwise, we skip it altogether.
+    if (shouldRunConsistencyProtocol) {
       ConsistencyProtocol consistencyProtocol = new ConsistencyProtocol(inodeContext, null,
               attempt, transactionEvent, txStartTime,
               // If NN instance is currently null, then we default to using ZooKeeper. If the NN instance is non-null,
               // then we use the configured value.
               serverlessNameNodeInstance == null || !serverlessNameNodeInstance.useNdbForConsistencyProtocol(),
-              false, null);
+              false, null, invalidatedINodes);
+
+      // Pre-compute the ACKs.
+      // This will allow us to avoid starting the thread if it turns out that no ACKs will be required.
+      // So, we may be able to bypass the thread creation overhead, but not the object-creation overhead.
+      int totalAcksRequired = consistencyProtocol.precomputeAcks();
+      if (totalAcksRequired == 0)
+        return true;
 
       // Check if we should bother running. This potentially saves us from starting another thread and joining ,
       // it which is needlessly expensive if we aren't going to bother running the consistency protocol anyway.
