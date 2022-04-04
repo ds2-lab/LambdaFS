@@ -1,5 +1,8 @@
 package org.apache.hadoop.hdfs.serverless.operation.execution;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.hops.metrics.TransactionEvent;
@@ -12,6 +15,7 @@ import org.apache.hadoop.hdfs.serverless.cache.ReplicaCacheManager;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.nustaq.serialization.FSTConfiguration;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
@@ -39,6 +43,11 @@ public class NameNodeResult implements Serializable {
     //private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
     public static final Logger LOG = LoggerFactory.getLogger(NameNodeResult.class);
     private static final long serialVersionUID = -6018521672360252605L;
+
+    /**
+     * From RuedigerMoeller/fast-serialization.
+     */
+    private static final FSTConfiguration conf = FSTConfiguration.createDefaultConfiguration();
 
     /**
      * Exceptions encountered during the current request's execution.
@@ -301,6 +310,108 @@ public class NameNodeResult implements Serializable {
      *                  This is used by TCP connections in particular, as TCP messages generally contain an "op"
      *                  field to designate the request as one containing a result or one used for registration.
      */
+    public ObjectNode toJsonJackson(String operation, MetadataCacheManager metadataCacheManager) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode json = mapper.createObjectNode();
+
+        InMemoryINodeCache metadataCache = metadataCacheManager.getINodeCache();
+        ReplicaCacheManager replicaCacheManager = metadataCacheManager.getReplicaCacheManager();
+
+        // If the result is a duplicate request, then don't bother sending an actual result field.
+        // That's just unnecessary network I/O. We can just include a flag indicating that this is
+        // a duplicate request and leave it at that.
+        if (result instanceof DuplicateRequest) {
+            // Add a flag indicating whether this is just a duplicate result.
+            json.put(ServerlessNameNodeKeys.DUPLICATE_REQUEST, true);
+        } else {
+            if (result != null && LOG.isDebugEnabled())
+                LOG.debug("Returning result of type " + result.getClass().getSimpleName()
+                        + " to client. Result value: " + result.toString());
+
+            String resultSerializedAndEncoded = serializeAndEncode(result);
+
+            if (resultSerializedAndEncoded != null)
+                json.put(ServerlessNameNodeKeys.RESULT, resultSerializedAndEncoded);
+            json.put(ServerlessNameNodeKeys.DUPLICATE_REQUEST, false);
+        }
+
+        if (exceptions.size() > 0) {
+            ArrayNode exceptionsJson = mapper.createArrayNode();
+
+            for (Throwable t : exceptions) {
+                exceptionsJson.add(t.toString());
+            }
+
+            json.set(ServerlessNameNodeKeys.EXCEPTIONS, exceptionsJson);
+        }
+
+        if (serverlessFunctionMapping != null) {
+            // Embed all the information about the serverless function mapping in the Json response.
+            ObjectNode functionMapping = mapper.createObjectNode();
+            functionMapping.put(FILE_OR_DIR, serverlessFunctionMapping.fileOrDirectory);
+            functionMapping.put(PARENT_ID, serverlessFunctionMapping.parentId);
+            functionMapping.put(FUNCTION, serverlessFunctionMapping.mappedFunctionNumber);
+
+            json.set(DEPLOYMENT_MAPPING, functionMapping);
+        }
+
+        if (additionalFields.size() > 0) {
+            for (Map.Entry<String, String> entry : additionalFields.entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue();
+
+                json.put(key, value);
+            }
+        }
+
+        if (operation != null)
+            json.put(ServerlessNameNodeKeys.OPERATION, operation);
+
+        json.put(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
+        json.put(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER, deploymentNumber);
+        json.put(ServerlessNameNodeKeys.REQUEST_ID, requestId);
+        json.put(ServerlessNameNodeKeys.REQUEST_METHOD, requestMethod);
+        json.put(ServerlessNameNodeKeys.CANCELLED, false);
+        json.put(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
+        int totalCacheHits = metadataCache.getNumCacheHitsCurrentRequest(); // + replicaCacheManager.getThreadLocalCacheHits();
+        int totalCacheMisses = metadataCache.getNumCacheMissesCurrentRequest(); // + replicaCacheManager.getThreadLocalCacheMisses();
+        json.put(ServerlessNameNodeKeys.CACHE_HITS, totalCacheHits);
+        json.put(ServerlessNameNodeKeys.CACHE_MISSES, totalCacheMisses);
+        json.put(ServerlessNameNodeKeys.FN_START_TIME, fnStartTime);
+        json.put(ServerlessNameNodeKeys.ENQUEUED_TIME, enqueuedTime);
+        json.put(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
+        json.put(ServerlessNameNodeKeys.PROCESSING_FINISHED_TIME, processingFinishedTime);
+        json.put(COLD_START, coldStart);
+
+        if (statisticsPackageSerializedAndEncoded != null)
+            json.put(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
+
+        if (txEventsSerializedAndEncoded != null)
+            json.put(ServerlessNameNodeKeys.TRANSACTION_EVENTS, txEventsSerializedAndEncoded);
+
+        // Reset these in-case this thread gets re-used in the future for another request.
+        metadataCache.resetCacheHitMissCounters();
+        replicaCacheManager.resetCacheHitMissCounters();
+
+        json.put(ServerlessNameNodeKeys.FN_END_TIME, System.currentTimeMillis());
+        return json;
+    }
+
+    /**
+     * Convert this object to a JsonObject so that it can be returned directly to the invoker.
+     *
+     * This inspects the type of the result field. If it is of type DuplicateRequest, an additional field
+     * is added to the payload indicating that this response is for a duplicate request and should not be
+     * returned as the true result of the associated file system operation.
+     *
+     * @param metadataCacheManager The manager of the in-memory metadata caches so we can get cache hit/miss metrics.
+     *
+     *                      We do NOT clear the counters on the metadataCache object after extracting them.
+     *                      This is done by the NameNodeWorkerThread when it first starts executing a request.
+     * @param operation If non-null, will be included as a top-level entry in the result under the key "op".
+     *                  This is used by TCP connections in particular, as TCP messages generally contain an "op"
+     *                  field to designate the request as one containing a result or one used for registration.
+     */
     public JsonObject toJson(String operation, MetadataCacheManager metadataCacheManager) {
         JsonObject json = new JsonObject();
         InMemoryINodeCache metadataCache = metadataCacheManager.getINodeCache();
@@ -374,13 +485,9 @@ public class NameNodeResult implements Serializable {
 
         if (statisticsPackageSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
-//        else
-//            LOG.warn("There are no Statistics Packages to return to the client...");
 
         if (txEventsSerializedAndEncoded != null)
             json.addProperty(ServerlessNameNodeKeys.TRANSACTION_EVENTS, txEventsSerializedAndEncoded);
-//        else
-//            LOG.warn("There are no Transaction Statistics to return to the client...");
 
         // Reset these in-case this thread gets re-used in the future for another request.
         metadataCache.resetCacheHitMissCounters();

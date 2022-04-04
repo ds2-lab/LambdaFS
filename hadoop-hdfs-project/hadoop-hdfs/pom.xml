@@ -107,17 +107,18 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>curator-recipes</artifactId>
       <version>5.2.0</version>
     </dependency>
+    <dependency>
+      <groupId>de.ruedigermoeller</groupId>
+      <artifactId>fst</artifactId>
+      <version>2.57</version>
+      <scope>compile</scope>
+    </dependency>
     <!-- https://mvnrepository.com/artifact/org.codehaus.jackson/jackson-mapper-asl -->
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-mapper-asl</artifactId>
       <version>1.9.13</version>
     </dependency>
-    <!--<dependency>
-      <groupId>com.mitchtalmadge</groupId>
-      <artifactId>ascii-data</artifactId>
-      <version>1.4.0</version>
-    </dependency>-->
     <!-- https://mvnrepository.com/artifact/com.massisframework/j-text-utils -->
     <dependency>
       <groupId>com.massisframework</groupId>

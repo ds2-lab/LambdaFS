@@ -18,6 +18,8 @@ import java.util.*;
 public class InvokerUtilities {
     private static final Log LOG = LogFactory.getLog(InvokerUtilities.class);
 
+    private static FSTConfiguration conf = FSTConfiguration.createDefaultConfiguration();
+
     /**
      * Returns true if the given object is an array.
      *

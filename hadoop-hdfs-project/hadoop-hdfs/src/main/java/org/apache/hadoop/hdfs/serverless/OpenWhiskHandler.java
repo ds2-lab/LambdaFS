@@ -68,7 +68,7 @@ public class OpenWhiskHandler extends BaseHandler {
         LOG.info("============================================================\n");
 
         boolean localMode = false;
-        int actionMemory = -1;
+        int actionMemory;
         JsonObject userArguments;
         if (args.has("LOCAL_MODE")) {
             LOG.debug("LOCAL MODE IS ENABLED.");

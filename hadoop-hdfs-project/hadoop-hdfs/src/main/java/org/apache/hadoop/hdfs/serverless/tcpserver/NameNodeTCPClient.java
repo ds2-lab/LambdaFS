@@ -5,6 +5,9 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.util.TcpIdleSender;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.github.benmanes.caffeine.cache.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -330,8 +333,19 @@ public class NameNodeTCPClient {
                 }
 
                 long s = System.currentTimeMillis();
-                String jsonString = new Gson().toJson(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT,
-                        serverlessNameNode.getNamesystem().getMetadataCacheManager()));
+//                String jsonString = new Gson().toJson(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT,
+//                        serverlessNameNode.getNamesystem().getMetadataCacheManager()));
+
+                ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+                String jsonString = null;
+                try {
+                    jsonString = ow.writeValueAsString(tcpResult.toJsonJackson(
+                            ServerlessClientServerUtilities.OPERATION_RESULT,
+                            serverlessNameNode.getNamesystem().getMetadataCacheManager()));
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+
                 long t = System.currentTimeMillis();
 
                 if (t - s > 10)
