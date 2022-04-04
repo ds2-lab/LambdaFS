@@ -310,8 +310,6 @@ public class NameNodeResult implements Serializable {
 
         byte[] objectBytes = conf.asByteArray(object);
         return Base64.encodeBase64String(objectBytes);
-
-        return null;
     }
 
     /**
