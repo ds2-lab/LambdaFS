@@ -300,11 +300,11 @@ public class OpenWhiskHandler extends BaseHandler {
         // it is finished being created, so we store the TransactionEvent instances from those transactions in the
         // temporaryEventsSet variable. So, we just check here if it is not null. If not, then we add the events
         // to the NameNode (that was presumably just created). Then we clear the list.
-        Set<TransactionEvent> tempEvents = temporaryEventSet.get();
-        if (tempEvents != null) {
-            serverlessNameNode.addTransactionEvents(tempEvents);
-            tempEvents.clear();
-        }
+//        Set<TransactionEvent> tempEvents = temporaryEventSet.get();
+//        if (tempEvents != null) {
+//            serverlessNameNode.addTransactionEvents(tempEvents);
+//            tempEvents.clear();
+//        }
 
         // Check for duplicate requests. If the request is NOT a duplicate, then have the NameNode check for updates
         // from intermediate storage.

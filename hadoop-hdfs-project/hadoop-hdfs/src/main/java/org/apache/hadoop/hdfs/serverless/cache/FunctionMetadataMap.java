@@ -105,7 +105,7 @@ public class FunctionMetadataMap {
 
         // If there is no parent, then we are caching metadata mapping information for the root.
         if (parentPath == null) {
-            assert(originalPath.equals("/") || originalPath.isEmpty());
+            // assert(originalPath.equals("/") || originalPath.isEmpty());
             pathToCache = originalPath;
         } else {
             pathToCache = parentPath.toString();
