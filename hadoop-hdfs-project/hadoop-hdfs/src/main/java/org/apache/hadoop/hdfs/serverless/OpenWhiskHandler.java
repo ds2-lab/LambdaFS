@@ -179,24 +179,22 @@ public class OpenWhiskHandler extends BaseHandler {
                 ServerlessNameNodeKeys.INVOKER_IDENTITY).getAsString();
 
         LOG.info("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
+        LOG.info("Serverless function name: " + functionName);
+        LOG.info("Operation name: " + operation);
         if (LOG.isDebugEnabled()) {
+            LOG.info("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
             LOG.debug("Top-level OpenWhisk arguments: " + args);
             LOG.debug("User-passed OpenWhisk arguments: " + userArguments);
             LOG.debug("Action memory: " + actionMemory + "MB");
             LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
-        }
-        LOG.info("Serverless function name: " + functionName);
-        LOG.info("Invoked by: " + invokerIdentity);
-        LOG.info("Client's name: " + clientName);
-        LOG.info("Client IP address: " + (clientIpAddress == null ? "N/A" : clientIpAddress));
-        LOG.info("Function container was " + (isCold ? "COLD" : "WARM") + ".");
-        LOG.info("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
-        LOG.info("Operation name: " + operation);
-        if (LOG.isDebugEnabled()) LOG.debug("Operation arguments: " + fsArgs);
-        LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
-
-        if (LOG.isDebugEnabled())
+            LOG.debug("Client's name: " + clientName);
+            LOG.debug("Client IP address: " + (clientIpAddress == null ? "N/A" : clientIpAddress));
+            LOG.debug("Invoked by: " + invokerIdentity);
+            LOG.debug("Function container was " + (isCold ? "COLD" : "WARM") + ".");
+            LOG.debug("Operation arguments: " + fsArgs);
             LOG.debug("Handing control over to driver() function after " + DurationFormatUtils.formatDurationHMS((Duration.between(start, Instant.now()).toMillis())));
+        }
+        LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
