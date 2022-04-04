@@ -202,7 +202,7 @@ public class DBSessionProvider implements Runnable {
           }
           //System.out.println("Created " + toGCSize);
         } else {
-          toGC.wait();
+          toGC.wait(1000);
         }
         //                for (int i = 0; i < 100; i++) {
         //                    DBSession session = sessionPool.remove();
