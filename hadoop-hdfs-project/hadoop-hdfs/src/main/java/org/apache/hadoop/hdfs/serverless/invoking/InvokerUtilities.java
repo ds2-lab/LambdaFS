@@ -11,6 +11,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.*;
+import org.nustaq.serialization.FSTConfiguration;
 
 /**
  * This class provides a number of utility functions common to all or many serverless invokers.
