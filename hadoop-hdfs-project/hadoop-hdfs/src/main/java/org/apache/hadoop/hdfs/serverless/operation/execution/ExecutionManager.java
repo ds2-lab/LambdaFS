@@ -49,14 +49,14 @@ public class ExecutionManager {
     /**
      * All tasks that are currently being executed. For now, we only ever execute one task at a time.
      */
-    // private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
-    private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    //private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
 
     /**
      * All tasks that have been executed by this worker thread.
      */
-    //private final ConcurrentHashMap<String, FileSystemTask<Serializable>> completedTasks;
-    private final Cache<String, FileSystemTask<Serializable>> completedTasks;
+    private final ConcurrentHashMap<String, FileSystemTask<Serializable>> completedTasks;
+    //private final Cache<String, FileSystemTask<Serializable>> completedTasks;
 
     /**
      * Cache of previously-computed results. These results are kept in-memory for a configurable period of time
@@ -108,16 +108,16 @@ public class ExecutionManager {
                 .expireAfterAccess(Duration.ofMillis(resultRetainIntervalMilliseconds))
                 .build();
 
-        //this.currentlyExecutingTasks = new ConcurrentHashMap<>();
-        //this.completedTasks = new ConcurrentHashMap<>();
-        this.currentlyExecutingTasks = Caffeine.newBuilder()
-                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
-                .maximumSize(50_000)
-                .build();
-        this.completedTasks = Caffeine.newBuilder()
-                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
-                .maximumSize(50_000)
-                .build();
+        this.currentlyExecutingTasks = new ConcurrentHashMap<>();
+        this.completedTasks = new ConcurrentHashMap<>();
+//        this.currentlyExecutingTasks = Caffeine.newBuilder()
+//                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
+//                .maximumSize(50_000)
+//                .build();
+//        this.completedTasks = Caffeine.newBuilder()
+//                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
+//                .maximumSize(50_000)
+//                .build();
 
         this.serverlessNameNodeInstance = serverlessNameNode;
         this.nameNodeId = serverlessNameNode.getId();
@@ -351,7 +351,8 @@ public class ExecutionManager {
         // be a race where the task has been removed from 'currently executing tasks' but not yet added to 'completed
         // tasks' yet, which could result in false negatives when checking for duplicates.
         completedTasks.put(taskId, task);
-        currentlyExecutingTasks.asMap().remove(taskId);
+        //currentlyExecutingTasks.asMap().remove(taskId);
+        currentlyExecutingTasks.remove(taskId);
     }
 
     /**
@@ -382,7 +383,8 @@ public class ExecutionManager {
      * @return true if the task is a duplicate, otherwise false.
      */
     public synchronized boolean isTaskDuplicate(String taskId) {
-        return currentlyExecutingTasks.asMap().containsKey(taskId) || completedTasks.asMap().containsKey(taskId);
+        //return currentlyExecutingTasks.asMap().containsKey(taskId) || completedTasks.asMap().containsKey(taskId);
+        return currentlyExecutingTasks.containsKey(taskId) || completedTasks.containsKey(taskId);
     }
 
     /**

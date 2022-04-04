@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Controls and manages access to several caches, each of which is responsible for caching a different type of metadata.
@@ -31,19 +32,19 @@ public class MetadataCacheManager {
     /**
      * Caches EncryptionZone instances. The key is INode ID.
      */
-    private final Cache<Long, EncryptionZone> encryptionZoneCache;
+    private final ConcurrentHashMap<Long, EncryptionZone> encryptionZoneCache;
 
     /**
      * Cache of Ace instances. Key is a string of the form [INodeID]-[Index], which is
      * the primary key of Ace instances in intermediate storage (NDB specifically).
      */
-    private final Cache<String, Ace> aceCache;
+    private final ConcurrentHashMap<String, Ace> aceCache;
 
     /**
      * We also maintain a list of all ace instances associated with a given INode,
      * so that we can invalidate these entries if the given INode gets modified.
      */
-    private final Cache<Long, Set<CachedAce>> aceCacheByINodeId;
+    private final ConcurrentHashMap<Long, Set<CachedAce>> aceCacheByINodeId;
 
     /**
      * Manages the caches associated with the various types of replicas.
@@ -52,15 +53,19 @@ public class MetadataCacheManager {
 
     public MetadataCacheManager(Configuration configuration) {
         inodeCache = new InMemoryINodeCache(configuration);
-        encryptionZoneCache = Caffeine.newBuilder()
-                .maximumSize(10_000)
-                .build();
-        aceCache = Caffeine.newBuilder()
-                .maximumSize(10_000)
-                .build();
-        aceCacheByINodeId = Caffeine.newBuilder()
-                .maximumSize(10_000)
-                .build();
+//        encryptionZoneCache = Caffeine.newBuilder()
+//                .maximumSize(10_000)
+//                .build();
+//        aceCache = Caffeine.newBuilder()
+//                .maximumSize(10_000)
+//                .build();
+//        aceCacheByINodeId = Caffeine.newBuilder()
+//                .maximumSize(10_000)
+//                .build();
+
+        encryptionZoneCache = new ConcurrentHashMap<>();
+        aceCache = new ConcurrentHashMap<>();
+        aceCacheByINodeId = new ConcurrentHashMap<>();
 
         this.replicaCacheManager = ReplicaCacheManager.getInstance();
     }
@@ -75,7 +80,8 @@ public class MetadataCacheManager {
         for (INode node : prefixedINodes) {
             long inodeId = node.getId();
             invalidateAces(inodeId);
-            encryptionZoneCache.invalidate(inodeId);
+            //encryptionZoneCache.invalidate(inodeId);
+            encryptionZoneCache.remove(inodeId);
         }
 
         return prefixedINodes.size();
@@ -87,34 +93,40 @@ public class MetadataCacheManager {
         if (node != null) {
             long inodeId = node.getId();
             invalidateAces(inodeId);
-            encryptionZoneCache.invalidate(inodeId);
+            //encryptionZoneCache.invalidate(inodeId);
+            encryptionZoneCache.remove(inodeId);
         }
 
         return inodeCache.invalidateKey(key, skipCheck);
     }
 
     public void invalidateAllINodes() {
-        encryptionZoneCache.invalidateAll();
-        aceCache.invalidateAll();
-        aceCacheByINodeId.invalidateAll();
+//        encryptionZoneCache.invalidateAll();
+//        aceCache.invalidateAll();
+//        aceCacheByINodeId.invalidateAll();
+        encryptionZoneCache.clear();
+        aceCache.clear();
+        aceCacheByINodeId.clear();
         inodeCache.invalidateEntireCache();
     }
 
     public boolean invalidateINode(long inodeId) {
         invalidateAces(inodeId);
-        encryptionZoneCache.invalidate(inodeId);
+        //encryptionZoneCache.invalidate(inodeId);
+        encryptionZoneCache.remove(inodeId);
         return inodeCache.invalidateKey(inodeId);
     }
 
     private void invalidateAces(long inodeId) {
-        Set<CachedAce> cachedAces = aceCacheByINodeId.getIfPresent(inodeId);
+        Set<CachedAce> cachedAces = aceCacheByINodeId.getOrDefault(inodeId, null); //aceCacheByINodeId.getIfPresent(inodeId);
 
         if (cachedAces == null)
             return;
 
         for (CachedAce cachedAce : cachedAces) {
             String key = getAceKey(cachedAce.inodeId, cachedAce.index);
-            aceCache.invalidate(key);
+            //aceCache.invalidate(key);
+            aceCache.remove(key);
         }
     }
 
@@ -124,7 +136,8 @@ public class MetadataCacheManager {
      * @return The EncryptionZone cached at the given key, or null if it does not exist.
      */
     public EncryptionZone getEncryptionZone(long inodeId) {
-        return encryptionZoneCache.getIfPresent(inodeId);
+        // return encryptionZoneCache.getIfPresent(inodeId);
+        return encryptionZoneCache.getOrDefault(inodeId, null);
     }
 
     /**
@@ -140,7 +153,8 @@ public class MetadataCacheManager {
      */
     public Ace getAce(long inodeId, int index) {
         String key = getAceKey(inodeId, index);
-        return aceCache.getIfPresent(key);
+        //return aceCache.getIfPresent(key);
+        return aceCache.getOrDefault(key,null);
     }
 
     /**
@@ -151,7 +165,7 @@ public class MetadataCacheManager {
         aceCache.put(key, ace);
 
         CachedAce cachedAce = new CachedAce(inodeId, index, ace);
-        Set<CachedAce> cachedAces = aceCacheByINodeId.getIfPresent(inodeId);
+        Set<CachedAce> cachedAces = aceCacheByINodeId.getOrDefault(inodeId, null); //aceCacheByINodeId.getIfPresent(inodeId);
 
         if (cachedAces == null) {
             cachedAces = new HashSet<>();
