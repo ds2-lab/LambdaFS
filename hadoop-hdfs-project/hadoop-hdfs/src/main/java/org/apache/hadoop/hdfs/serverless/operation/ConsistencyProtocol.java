@@ -205,7 +205,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         this.transactionAttempt = transactionAttempt;
         this.transactionEvent = transactionEvent;
         this.transactionStartTime = transactionStartTime;
-        this.serverlessNameNodeInstance = ServerlessNameNode.tryGetNameNodeInstance(false);
+        this.serverlessNameNodeInstance = ServerlessNameNode.tryGetNameNodeInstance(true);
         this.watchers = new HashMap<>();
         this.operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
         this.useZooKeeperForACKsAndINVs = useZooKeeper;

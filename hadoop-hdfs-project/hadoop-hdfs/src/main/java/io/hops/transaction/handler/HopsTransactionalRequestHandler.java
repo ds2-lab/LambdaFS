@@ -144,7 +144,7 @@ public abstract class HopsTransactionalRequestHandler
     if (inodeContext != null) {
       invalidatedINodes = inodeContext.getInvalidatedINodes();
       int numInvalidated = invalidatedINodes.size();
-      shouldRunConsistencyProtocol = (numInvalidated == 0);
+      shouldRunConsistencyProtocol = (numInvalidated > 0);
     }
 
     // If we should run the protocol (i.e., if the size of the collection of invalidated INodes is greater than 0),
