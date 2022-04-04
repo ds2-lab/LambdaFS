@@ -49,8 +49,8 @@ public class ExecutionManager {
     /**
      * All tasks that are currently being executed. For now, we only ever execute one task at a time.
      */
-    private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
-    // private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    // private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
 
     /**
      * All tasks that have been executed by this worker thread.
@@ -108,12 +108,12 @@ public class ExecutionManager {
                 .expireAfterAccess(Duration.ofMillis(resultRetainIntervalMilliseconds))
                 .build();
 
-        this.currentlyExecutingTasks = new ConcurrentHashMap<>();
+        //this.currentlyExecutingTasks = new ConcurrentHashMap<>();
         //this.completedTasks = new ConcurrentHashMap<>();
-//        this.currentlyExecutingTasks = Caffeine.newBuilder()
-//                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
-//                .maximumSize(50_000)
-//                .build();
+        this.currentlyExecutingTasks = Caffeine.newBuilder()
+                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
+                .maximumSize(50_000)
+                .build();
         this.completedTasks = Caffeine.newBuilder()
                 .expireAfterWrite(60, TimeUnit.MILLISECONDS)
                 .maximumSize(50_000)
