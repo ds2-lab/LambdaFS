@@ -1,19 +1,14 @@
 package org.apache.hadoop.hdfs.serverless.operation.execution;
 
-import com.esotericsoftware.kryonet.Client;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
-import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
-import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
-import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,8 +17,6 @@ import java.io.Serializable;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -56,8 +49,8 @@ public class ExecutionManager {
     /**
      * All tasks that are currently being executed. For now, we only ever execute one task at a time.
      */
-    // private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
-    private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    // private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
 
     /**
      * All tasks that have been executed by this worker thread.
@@ -115,12 +108,12 @@ public class ExecutionManager {
                 .expireAfterAccess(Duration.ofMillis(resultRetainIntervalMilliseconds))
                 .build();
 
-        //this.currentlyExecutingTasks = new ConcurrentHashMap<>();
+        this.currentlyExecutingTasks = new ConcurrentHashMap<>();
         //this.completedTasks = new ConcurrentHashMap<>();
-        this.currentlyExecutingTasks = Caffeine.newBuilder()
-                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
-                .maximumSize(50_000)
-                .build();
+//        this.currentlyExecutingTasks = Caffeine.newBuilder()
+//                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
+//                .maximumSize(50_000)
+//                .build();
         this.completedTasks = Caffeine.newBuilder()
                 .expireAfterWrite(60, TimeUnit.MILLISECONDS)
                 .maximumSize(50_000)

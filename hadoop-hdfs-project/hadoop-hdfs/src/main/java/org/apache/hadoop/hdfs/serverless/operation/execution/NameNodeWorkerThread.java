@@ -1,12 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.operation.execution;
 
-import com.esotericsoftware.kryonet.Client;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import io.hops.transaction.context.TransactionsStats;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.NuclioHandler;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
@@ -14,13 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-
-import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 /**
  * This thread actually executes file system operations. Tasks (i.e., file system operations wrapped in a Future
