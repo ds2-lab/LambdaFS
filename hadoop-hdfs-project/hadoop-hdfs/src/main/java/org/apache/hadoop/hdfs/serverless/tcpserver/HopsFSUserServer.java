@@ -584,14 +584,14 @@ public class HopsFSUserServer {
             return null;
         }
 
-        int bytesSent = tcpConnection.sendTCP(payload.toString());
-
         // Make note of this future as being incomplete.
         List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(
                 tcpConnection.name, k -> new ArrayList<>());
 
         incompleteFutures.add(requestResponseFuture);
         futureToNameNodeMapping.put(requestId, tcpConnection);
+
+        int bytesSent = tcpConnection.sendTCP(payload.toString());
 
         return requestResponseFuture;
     }
