@@ -591,6 +591,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     LOG.debug("Received result from NameNode after falling back to HTTP for operation " +
                         operationName + ". Time elapsed: " + (opEnd - opStart) + ".");
 
+                if (response.has("body"))
+                    response = response.get("body").getAsJsonObject();
+
                 // Collect and save/record metrics.
                 createAndStoreOperationPerformed(response, operationName, requestId, opStart, opEnd, targetDeployment,
                         true, true, false);
