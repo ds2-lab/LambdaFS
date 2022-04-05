@@ -726,30 +726,35 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                                   long startTime, long endTime, int mappedFunctionNumber,
                                                   boolean issuedViaTCP, boolean issuedViaHTTP,
                                                   boolean stragglerResubmissionAlreadyOccurred) {
-        long nameNodeId = -1;
-        if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
-            nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
+        try {
+            long nameNodeId = -1;
+            if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
+                nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
 
-        int deployment = mappedFunctionNumber;
-        if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER))
-            deployment = response.get(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
+            int deployment = mappedFunctionNumber;
+            if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER))
+                deployment = response.get(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
 
-        int cacheHits = response.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
-        int cacheMisses = response.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
+            int cacheHits = response.get(ServerlessNameNodeKeys.CACHE_HITS).getAsInt();
+            int cacheMisses = response.get(ServerlessNameNodeKeys.CACHE_MISSES).getAsInt();
 
-        long fnStartTime = response.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
-        long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
+            long fnStartTime = response.get(ServerlessNameNodeKeys.FN_START_TIME).getAsLong();
+            long fnEndTime = response.get(ServerlessNameNodeKeys.FN_END_TIME).getAsLong();
 
-        long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
-        long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
-        long finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
+            long enqueuedAt = response.get(ServerlessNameNodeKeys.ENQUEUED_TIME).getAsLong();
+            long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
+            long finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
 
-        OperationPerformed operationPerformed
-                = new OperationPerformed(operationName, requestId,
-                startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
-                deployment, issuedViaHTTP, issuedViaTCP, response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(),
-                nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, stragglerResubmissionAlreadyOccurred);
-        operationsPerformed.put(requestId, operationPerformed);
+            OperationPerformed operationPerformed
+                    = new OperationPerformed(operationName, requestId,
+                    startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
+                    deployment, issuedViaHTTP, issuedViaTCP, response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(),
+                    nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, stragglerResubmissionAlreadyOccurred);
+            operationsPerformed.put(requestId, operationPerformed);
+        } catch (NullPointerException ex) {
+            LOG.error("Unexpected NullPointerException encountered while creating OperationPerformed from JSON response:", ex);
+            LOG.error("Response: " + response);
+        }
     }
 
     /**
