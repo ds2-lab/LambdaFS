@@ -44,8 +44,10 @@ public class DBSessionProvider implements Runnable {
   static HopsSessionFactory sessionFactory;
   private ConcurrentLinkedQueue<DBSession> sessionPool =
       new ConcurrentLinkedQueue<>();
-  private BlockingQueue<DBSession> toGC =
-      new LinkedBlockingQueue<>();
+//  private BlockingQueue<DBSession> toGC =
+//      new LinkedBlockingQueue<>();
+  private ConcurrentLinkedQueue<DBSession> toGC =
+        new ConcurrentLinkedQueue<>();
   private final int MAX_REUSE_COUNT;
   private Properties conf;
   private final Random rand;
@@ -189,23 +191,23 @@ public class DBSessionProvider implements Runnable {
   public void run() {
     while (automaticRefresh) {
       try {
-        DBSession session = toGC.take();
-        session.getSession().close();
-        sessionPool.add(initSession());
+//        DBSession session = toGC.take();
+//        session.getSession().close();
+//        sessionPool.add(initSession());
+        int toGCSize = toGC.size();
+        if (toGCSize > 0) {
+          LOG.debug("Renewing a session(s) " + toGCSize);
+          for (int i = 0; i < toGCSize; i++) {
+            DBSession session = toGC.remove();
+            session.getSession().close();
+          }
+          //System.out.println("CGed " + toGCSize);
 
-//        if (toGCSize > 0) {
-//          LOG.debug("Renewing a session(s) " + toGCSize);
-//          for (int i = 0; i < toGCSize; i++) {
-//            DBSession session = toGC.remove();
-//            session.getSession().close();
-//          }
-//          //System.out.println("CGed " + toGCSize);
-//
-//          for (int i = 0; i < toGCSize; i++) {
-//            sessionPool.add(initSession());
-//          }
-          //System.out.println("Created " + toGCSize);
-//        }
+          for (int i = 0; i < toGCSize; i++) {
+            sessionPool.add(initSession());
+          }
+//          System.out.println("Created " + toGCSize);
+        }
         //                for (int i = 0; i < 100; i++) {
         //                    DBSession session = sessionPool.remove();
         //                    double percent = (((double) session.getSessionUseCount() / (double) session.getMaxReuseCount()) * (double) 100);
@@ -219,7 +221,7 @@ public class DBSessionProvider implements Runnable {
         //                        sessionPool.add(session);
         //                    }
         //                }
-        // Thread.sleep(50);
+        Thread.sleep(5);
       } catch (NoSuchElementException e) {
         //System.out.print(".");
         for (int i = 0; i < 100; i++) {
