@@ -124,6 +124,8 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public INode getByPath(String key) {
+        long s = System.currentTimeMillis();
+
         _mutex.readLock().lock();
         try {
             if (!enabled)
@@ -139,6 +141,8 @@ public class InMemoryINodeCache {
             return returnValue;
         } finally {
             _mutex.readLock().unlock();
+            if (LOG.isDebugEnabled()) LOG.debug("Checked cache for INode '" + key + "' in " +
+                    (System.currentTimeMillis() - s) + " ms.");
         }
     }
 
@@ -152,6 +156,8 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public INode getByParentINodeIdAndLocalName(long parentId, String localName) {
+        long s = System.currentTimeMillis();
+
         _mutex.readLock().lock();
         try {
             if (!enabled)
@@ -170,6 +176,9 @@ public class InMemoryINodeCache {
             return returnValue;
         } finally {
             _mutex.readLock().unlock();
+
+            if (LOG.isDebugEnabled()) LOG.debug("Checked cache for INode '" + localName + "' in " +
+                    (System.currentTimeMillis() - s) + " ms.");
         }
     }
 
@@ -182,6 +191,7 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public INode getByINodeId(long iNodeId) {
+        long s = System.currentTimeMillis();
         _mutex.readLock().lock();
         try {
             if (!enabled) {
@@ -198,6 +208,9 @@ public class InMemoryINodeCache {
             return null;
         } finally {
             _mutex.readLock().unlock();
+
+            if (LOG.isDebugEnabled()) LOG.debug("Checked cache for INode " + iNodeId + " in " +
+                    (System.currentTimeMillis() - s) + " ms.");
         }
     }
 
