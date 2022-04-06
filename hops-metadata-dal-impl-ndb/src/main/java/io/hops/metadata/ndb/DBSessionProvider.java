@@ -33,7 +33,9 @@ import org.apache.commons.logging.LogFactory;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Random;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DBSessionProvider implements Runnable {
@@ -42,8 +44,8 @@ public class DBSessionProvider implements Runnable {
   static HopsSessionFactory sessionFactory;
   private ConcurrentLinkedQueue<DBSession> sessionPool =
       new ConcurrentLinkedQueue<>();
-  private ConcurrentLinkedQueue<DBSession> toGC =
-      new ConcurrentLinkedQueue<>();
+  private BlockingQueue<DBSession> toGC =
+      new LinkedBlockingQueue<>();
   private final int MAX_REUSE_COUNT;
   private Properties conf;
   private final Random rand;
@@ -187,23 +189,23 @@ public class DBSessionProvider implements Runnable {
   public void run() {
     while (automaticRefresh) {
       try {
-        int toGCSize = toGC.size();
+        DBSession session = toGC.take();
+        session.getSession().close();
+        sessionPool.add(initSession());
 
-        if (toGCSize > 0) {
-          LOG.debug("Renewing a session(s) " + toGCSize);
-          for (int i = 0; i < toGCSize; i++) {
-            DBSession session = toGC.remove();
-            session.getSession().close();
-          }
-          //System.out.println("CGed " + toGCSize);
-
-          for (int i = 0; i < toGCSize; i++) {
-            sessionPool.add(initSession());
-          }
+//        if (toGCSize > 0) {
+//          LOG.debug("Renewing a session(s) " + toGCSize);
+//          for (int i = 0; i < toGCSize; i++) {
+//            DBSession session = toGC.remove();
+//            session.getSession().close();
+//          }
+//          //System.out.println("CGed " + toGCSize);
+//
+//          for (int i = 0; i < toGCSize; i++) {
+//            sessionPool.add(initSession());
+//          }
           //System.out.println("Created " + toGCSize);
-        } else {
-          toGC.wait(1000);
-        }
+//        }
         //                for (int i = 0; i < 100; i++) {
         //                    DBSession session = sessionPool.remove();
         //                    double percent = (((double) session.getSessionUseCount() / (double) session.getMaxReuseCount()) * (double) 100);
