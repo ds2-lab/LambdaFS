@@ -94,18 +94,6 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT_DEFAULT = 50;
 
   /**
-   * Configuration property for the baseline number of unique serverless functions deployed for use in this
-   * particular Serverless HopsFS cluster. This is different from the max number of deployments, which is the hard
-   * limit for the number of unique serverless functions at disposal.
-   */
-  public static final String SERVERLESS_DEPLOYMENTS_BASELINE = "serverless.deployments.baseline";
-
-  /**
-   * The default number of serverless functions associated with this particular Serverless HopsFS cluster.
-   */
-  public static final int SERVERLESS_DEPLOYMENTS_BASELINE_DEFAULT = 1;
-
-  /**
    * If true, then we'll pass an argument to the NNs indicating that they should print their
    * debug output from the underlying NDB C++ library (libndbclient.so).
    */
