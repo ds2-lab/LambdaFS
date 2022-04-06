@@ -224,6 +224,7 @@ public class InMemoryINodeCache {
     public INode put(String key, long iNodeId, INode value) {
         if (value == null)
             throw new IllegalArgumentException("INode Metadata Cache does NOT support null values. Associated key: " + key);
+        long s = System.currentTimeMillis();
 
         _mutex.writeLock().lock();
         try {
@@ -239,6 +240,9 @@ public class InMemoryINodeCache {
             return returnValue;
         } finally {
             _mutex.writeLock().unlock();
+
+            if (LOG.isDebugEnabled()) LOG.debug("Stored INode '" + key + "' (ID=" + iNodeId + ") in cache in " +
+                    (System.currentTimeMillis() - s) + " ms.");
         }
     }
 
