@@ -40,8 +40,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class InMemoryINodeCache {
     public static final Logger LOG = LoggerFactory.getLogger(InMemoryINodeCache.class);
 
-    private static final int DEFAULT_MAX_ENTRIES = 10000;         // Default maximum capacity.
-    private static final float DEFAULT_LOAD_FACTOR = 0.75f;       // Default load factor.
+    private static final int DEFAULT_MAX_ENTRIES = 100_000;         // Default maximum capacity.
+    private static final float DEFAULT_LOAD_FACTOR = 0.75f;         // Default load factor.
 
     private final ReadWriteLock _mutex = new ReentrantReadWriteLock(true);
 
