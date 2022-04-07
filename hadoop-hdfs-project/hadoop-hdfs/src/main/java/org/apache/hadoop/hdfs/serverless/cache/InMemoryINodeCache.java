@@ -81,8 +81,8 @@ public class InMemoryINodeCache {
      */
     public InMemoryINodeCache(Configuration conf, int capacity, float loadFactor) {
         //this.invalidatedKeys = new HashSet<>();
-        this.idToNameMapping = new ConcurrentHashMap<>(capacity, loadFactor);
-        this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(capacity, loadFactor);
+        this.idToNameMapping = new HashMap<>(capacity, loadFactor);
+        this.parentIdPlusLocalNameToFullPathMapping = new HashMap<>(capacity, loadFactor);
         /**
          * This is the main cache, along with the metadataTrie variable. We use this when we want to grab a single
          * INode by its full path.
