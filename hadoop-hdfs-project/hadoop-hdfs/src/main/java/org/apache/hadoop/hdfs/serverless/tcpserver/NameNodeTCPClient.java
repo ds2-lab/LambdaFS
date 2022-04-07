@@ -143,7 +143,7 @@ public class NameNodeTCPClient {
      * deadlock. That is, the disconnected() event handler is called by the update thread. Thus, I can't put a call
      * to client.stop() in the disconnected() event handler, as the update() thread would probably deadlock...
      */
-    private BlockingQueue<Client> disconnectedClients;
+    private final BlockingQueue<Client> disconnectedClients;
 
     /**
      * Constructor.
