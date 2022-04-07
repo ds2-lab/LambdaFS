@@ -176,7 +176,10 @@ public class InMemoryINodeCache {
             String parentIdPlusLocalName = parentId + localName;
             String key = parentIdPlusLocalNameToFullPathMapping.getOrDefault(parentIdPlusLocalName, null);
 
-            return getByPath(key);
+            if (key != null)
+                return getByPath(key);
+            else
+                cacheMiss();
         } finally {
             _mutex.readLock().unlock();
 
