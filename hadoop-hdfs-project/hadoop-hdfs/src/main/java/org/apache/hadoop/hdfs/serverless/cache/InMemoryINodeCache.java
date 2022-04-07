@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -55,13 +56,13 @@ public class InMemoryINodeCache {
     /**
      * Mapping between INode IDs and their names.
      */
-    private final HashMap<Long, String> idToNameMapping;
+    private final ConcurrentHashMap<Long, String> idToNameMapping;
 
     /**
      * Mapping between keys of the form [PARENT_ID][LOCAL_NAME], which is how some INodes are
      * cached/stored by HopsFS during transactions, to the fully-qualified paths of the INode.
      */
-    private final HashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
+    private final ConcurrentHashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
 
     private final ThreadLocal<Integer> threadLocalCacheHits = ThreadLocal.withInitial(() -> 0);
     private final ThreadLocal<Integer> threadLocalCacheMisses = ThreadLocal.withInitial(() -> 0);
@@ -80,8 +81,8 @@ public class InMemoryINodeCache {
      */
     public InMemoryINodeCache(Configuration conf, int capacity, float loadFactor) {
         //this.invalidatedKeys = new HashSet<>();
-        this.idToNameMapping = new HashMap<>(capacity, loadFactor);
-        this.parentIdPlusLocalNameToFullPathMapping = new HashMap<>(capacity, loadFactor);
+        this.idToNameMapping = new ConcurrentHashMap<>(capacity, loadFactor);
+        this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(capacity, loadFactor);
         /**
          * This is the main cache, along with the metadataTrie variable. We use this when we want to grab a single
          * INode by its full path.
@@ -375,11 +376,10 @@ public class InMemoryINodeCache {
      * function will always return true.
      */
     private boolean invalidateKeyInternal(String key, boolean skipCheck) {
+        long s = System.currentTimeMillis();
         _mutex.writeLock().lock();
         try {
             if (skipCheck || containsKeySkipInvalidCheck(key)) {
-                // invalidatedKeys.add(key);
-
                 metadataTrie.remove(key);
 
                 if (LOG.isDebugEnabled()) LOG.debug("Invalidated key " + key + ".");
@@ -389,6 +389,8 @@ public class InMemoryINodeCache {
             return false;
         } finally {
             _mutex.writeLock().unlock();
+            if (LOG.isDebugEnabled()) LOG.debug("Invalidated key '" + key +
+                    "' in " + (System.currentTimeMillis() - s) + " ms.");
         }
     }
 
@@ -397,11 +399,15 @@ public class InMemoryINodeCache {
      */
     protected void invalidateEntireCache() {
         LOG.warn("Invalidating ENTIRE cache. ");
+        long s = System.currentTimeMillis();
         _mutex.writeLock().lock();
         try {
             metadataTrie.clear();
+            idToNameMapping.clear();
+            parentIdPlusLocalNameToFullPathMapping.clear();
         } finally {
             _mutex.writeLock().unlock();
+            if (LOG.isDebugEnabled()) LOG.debug("Invalidated entire cache in " + (System.currentTimeMillis() - s) + " ms.");
         }
     }
 
@@ -417,6 +423,7 @@ public class InMemoryINodeCache {
      * cached metadata objects (e.g., Ace and EncryptionZone instances).
      */
     protected Collection<INode> invalidateKeysByPrefix(String prefix) {
+        long s = System.currentTimeMillis();
         if (LOG.isDebugEnabled()) LOG.debug("Invalidating all cached INodes contained within the file subtree rooted at '" + prefix + "'.");
 
         _mutex.writeLock().lock();
@@ -437,6 +444,8 @@ public class InMemoryINodeCache {
             return prefixedEntries.values();
         } finally {
             _mutex.writeLock().unlock();
+            if (LOG.isDebugEnabled()) LOG.debug("Invalidated all keys prefixed by '" + prefix +
+                    "' in " + (System.currentTimeMillis() - s) + " ms.");
         }
     }
 
