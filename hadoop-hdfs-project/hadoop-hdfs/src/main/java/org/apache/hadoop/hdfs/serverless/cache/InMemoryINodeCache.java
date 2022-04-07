@@ -178,8 +178,8 @@ public class InMemoryINodeCache {
 
             if (key != null)
                 return getByPath(key);
-            else
-                cacheMiss();
+            cacheMiss();
+            return null;
         } finally {
             _mutex.readLock().unlock();
 
