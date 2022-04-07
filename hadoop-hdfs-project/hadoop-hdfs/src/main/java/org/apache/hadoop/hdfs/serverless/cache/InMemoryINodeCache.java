@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -53,18 +54,18 @@ public class InMemoryINodeCache {
     /**
      * Cache that is used when not using a prefix.
      */
-    private final HashMap<String, INode> fullPathMetadataCache;
+    private final ConcurrentHashMap<String, INode> fullPathMetadataCache;
 
     /**
      * Mapping between INode IDs and their names.
      */
-    private final HashMap<Long, String> idToNameMapping;
+    private final ConcurrentHashMap<Long, String> idToNameMapping;
 
     /**
      * Mapping between keys of the form [PARENT_ID][LOCAL_NAME], which is how some INodes are
      * cached/stored by HopsFS during transactions, to the fully-qualified paths of the INode.
      */
-    private final HashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
+    private final ConcurrentHashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
 
     private final ThreadLocal<Integer> threadLocalCacheHits = ThreadLocal.withInitial(() -> 0);
     private final ThreadLocal<Integer> threadLocalCacheMisses = ThreadLocal.withInitial(() -> 0);
@@ -83,9 +84,9 @@ public class InMemoryINodeCache {
      */
     public InMemoryINodeCache(Configuration conf, int capacity, float loadFactor) {
         //this.invalidatedKeys = new HashSet<>();
-        this.idToNameMapping = new HashMap<>(capacity, loadFactor);
-        this.fullPathMetadataCache = new HashMap<>(capacity, loadFactor);
-        this.parentIdPlusLocalNameToFullPathMapping = new HashMap<>(capacity, loadFactor);
+        this.idToNameMapping = new ConcurrentHashMap<>(capacity, loadFactor);
+        this.fullPathMetadataCache = new ConcurrentHashMap<>(capacity, loadFactor);
+        this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(capacity, loadFactor);
         /**
          * This is the main cache, along with the metadataTrie variable. We use this when we want to grab a single
          * INode by its full path.
