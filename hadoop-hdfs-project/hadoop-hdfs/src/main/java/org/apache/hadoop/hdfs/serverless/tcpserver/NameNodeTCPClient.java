@@ -71,7 +71,7 @@ public class NameNodeTCPClient {
     /**
      * The fraction of main memory reserved for TCP connection buffers.
      */
-    private static final float memoryFractionReservedForTcpBuffers = 0.18f;
+    private static final float memoryFractionReservedForTcpBuffers = 0.15f;
 
     /**
      * The deployment number of the local serverless name node instance.
@@ -92,13 +92,13 @@ public class NameNodeTCPClient {
      * The size, in bytes, used for the write buffer of new TCP connections. Objects are serialized to
      * the write buffer where the bytes are queued until they can be written to the TCP socket.
      */
-    private static final int defaultWriteBufferSizeBytes = (int)5e6;
+    private static final int defaultWriteBufferSizeBytes = (int)2e6;
 
     /**
      * The size, in bytes, used for the object buffer of new TCP connections. Object buffers are used
      * to hold the bytes for a single object graph until it can be sent over the network or deserialized.
      */
-    private static final int defaultObjectBufferSizeBytes = (int)5e6;
+    private static final int defaultObjectBufferSizeBytes = (int)2e6;
 
     /**
      * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
@@ -107,7 +107,7 @@ public class NameNodeTCPClient {
      * size of the buffers for future TCP connections to hopefully avoid the problem. This variable sets a hard limit
      * on the maximum size of a buffer.
      */
-    private static final int maxBufferSize = (int)5e6;
+    private static final int maxBufferSize = (int)4e6;
 
     /**
      * The current size, in bytes, being used for TCP write buffers. If we notice a buffer overflow,
