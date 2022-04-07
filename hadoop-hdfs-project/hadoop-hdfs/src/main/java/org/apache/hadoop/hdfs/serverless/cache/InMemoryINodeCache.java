@@ -141,7 +141,7 @@ public class InMemoryINodeCache {
             long s1 = System.currentTimeMillis();
             INode returnValue = fullPathMetadataCache.get(key);
             long t2 = System.currentTimeMillis();
-            if (LOG.isDebugEnabled()) LOG.debug("Accessed Full Path Metadata Cache in " +
+            if (LOG.isDebugEnabled() && (t2 - s1 > 10)) LOG.debug("Accessed Full Path Metadata Cache in " +
                     (t2 - s1) + " ms. Returning value: " + returnValue);
 
             if (returnValue == null)
@@ -149,14 +149,16 @@ public class InMemoryINodeCache {
             else
                 cacheHit();
 
-            if (LOG.isDebugEnabled()) LOG.debug("Updated cache hit/miss counters in " +
-                    (System.currentTimeMillis() - t2 + " ms."));
+            long t3 = System.currentTimeMillis();
+            if (LOG.isDebugEnabled() && (t3 - t2 > 10)) LOG.debug("Updated cache hit/miss counters in " +
+                    (t3 - t2 + " ms."));
 
             return returnValue;
         } finally {
             //_mutex.readLock().unlock();
-            if (LOG.isDebugEnabled()) LOG.debug("Checked cache by path for INode '" + key + "' in " +
-                    (System.currentTimeMillis() - s) + " ms. [1]");
+            long t4 = System.currentTimeMillis();
+            if (LOG.isDebugEnabled() && t4 - s > 10) LOG.debug("Checked cache by path for INode '" + key + "' in " +
+                    (t4 - s) + " ms. [1]");
         }
     }
 
@@ -190,8 +192,9 @@ public class InMemoryINodeCache {
         } finally {
             //_mutex.readLock().unlock();
 
-            if (LOG.isDebugEnabled()) LOG.debug("Checked cache by parent ID and local name for INode '" + localName +
-                    "' in " + (System.currentTimeMillis() - s) + " ms.");
+            long t = System.currentTimeMillis();
+            if (LOG.isDebugEnabled() && t - s > 10) LOG.debug("Checked cache by parent ID and local name for INode '" + localName +
+                    "' in " + (t - s) + " ms.");
         }
     }
 
@@ -222,7 +225,8 @@ public class InMemoryINodeCache {
         } finally {
 //            _mutex.readLock().unlock();
 
-            if (LOG.isDebugEnabled()) LOG.debug("Checked cache by ID for INode " + iNodeId + " in " +
+            long t = System.currentTimeMillis();
+            if (LOG.isDebugEnabled() && t - s > 10) LOG.debug("Checked cache by ID for INode " + iNodeId + " in " +
                     (System.currentTimeMillis() - s) + " ms.");
         }
     }
@@ -246,9 +250,9 @@ public class InMemoryINodeCache {
             returnValue = prefixMetadataCache.put(key, value);
         } finally {
             _mutex.writeLock().unlock();
-
-            if (LOG.isDebugEnabled()) LOG.debug("Stored INode '" + key + "' (ID=" + iNodeId + ") in cache in " +
-                    (System.currentTimeMillis() - s) + " ms.");
+            long t = System.currentTimeMillis();
+            if (LOG.isDebugEnabled() && t - s > 10) LOG.debug("Stored INode '" + key + "' (ID=" + iNodeId + ") in cache in " +
+                    (t - s) + " ms.");
         }
 
         String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
