@@ -56,13 +56,13 @@ public class InMemoryINodeCache {
     /**
      * Mapping between INode IDs and their names.
      */
-    private final ConcurrentHashMap<Long, String> idToNameMapping;
+    private final HashMap<Long, String> idToNameMapping;
 
     /**
      * Mapping between keys of the form [PARENT_ID][LOCAL_NAME], which is how some INodes are
      * cached/stored by HopsFS during transactions, to the fully-qualified paths of the INode.
      */
-    private final ConcurrentHashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
+    private final HashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
 
     private final ThreadLocal<Integer> threadLocalCacheHits = ThreadLocal.withInitial(() -> 0);
     private final ThreadLocal<Integer> threadLocalCacheMisses = ThreadLocal.withInitial(() -> 0);
@@ -125,13 +125,15 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public INode getByPath(String key) {
+        if (!enabled)
+            return null;
+
         long s = System.currentTimeMillis();
 
         _mutex.readLock().lock();
+        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
+                (System.currentTimeMillis() - s) + " ms.");
         try {
-            if (!enabled)
-                return null;
-
             INode returnValue = metadataTrie.get(key);
 
             if (returnValue == null)
@@ -157,12 +159,15 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public INode getByParentINodeIdAndLocalName(long parentId, String localName) {
+        if (!enabled)
+            return null;
+
         long s = System.currentTimeMillis();
 
         _mutex.readLock().lock();
+        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
+                (System.currentTimeMillis() - s) + " ms.");
         try {
-            if (!enabled)
-                return null;
 
             String parentIdPlusLocalName = parentId + localName;
             String key = parentIdPlusLocalNameToFullPathMapping.getOrDefault(parentIdPlusLocalName, null);
@@ -192,13 +197,14 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public INode getByINodeId(long iNodeId) {
+        if (!enabled)
+            return null;
+
         long s = System.currentTimeMillis();
         _mutex.readLock().lock();
+        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
+                (System.currentTimeMillis() - s) + " ms.");
         try {
-            if (!enabled) {
-                return null;
-            }
-
             if (idToNameMapping.containsKey(iNodeId)) {
                 String key = idToNameMapping.get(iNodeId);
                 cacheHit();
