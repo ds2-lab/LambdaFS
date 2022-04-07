@@ -134,9 +134,9 @@ public class InMemoryINodeCache {
 
         long s = System.currentTimeMillis();
 
-        _mutex.readLock().lock();
-        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
-                (System.currentTimeMillis() - s) + " ms.");
+        //_mutex.readLock().lock();
+//        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
+//                (System.currentTimeMillis() - s) + " ms.");
         try {
             long s1 = System.currentTimeMillis();
             INode returnValue = fullPathMetadataCache.get(key);
@@ -154,7 +154,7 @@ public class InMemoryINodeCache {
 
             return returnValue;
         } finally {
-            _mutex.readLock().unlock();
+            //_mutex.readLock().unlock();
             if (LOG.isDebugEnabled()) LOG.debug("Checked cache for INode '" + key + "' in " +
                     (System.currentTimeMillis() - s) + " ms.");
         }
@@ -175,9 +175,9 @@ public class InMemoryINodeCache {
 
         long s = System.currentTimeMillis();
 
-        _mutex.readLock().lock();
-        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
-                (System.currentTimeMillis() - s) + " ms.");
+//        _mutex.readLock().lock();
+//        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
+//                (System.currentTimeMillis() - s) + " ms.");
         try {
 
             String parentIdPlusLocalName = parentId + localName;
@@ -188,7 +188,7 @@ public class InMemoryINodeCache {
             cacheMiss();
             return null;
         } finally {
-            _mutex.readLock().unlock();
+            //_mutex.readLock().unlock();
 
             if (LOG.isDebugEnabled()) LOG.debug("Checked cache for INode '" + localName + "' in " +
                     (System.currentTimeMillis() - s) + " ms.");
@@ -208,9 +208,9 @@ public class InMemoryINodeCache {
             return null;
 
         long s = System.currentTimeMillis();
-        _mutex.readLock().lock();
-        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
-                (System.currentTimeMillis() - s) + " ms.");
+//        _mutex.readLock().lock();
+//        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
+//                (System.currentTimeMillis() - s) + " ms.");
         try {
             if (idToNameMapping.containsKey(iNodeId)) {
                 String key = idToNameMapping.get(iNodeId);
@@ -220,7 +220,7 @@ public class InMemoryINodeCache {
             cacheMiss();
             return null;
         } finally {
-            _mutex.readLock().unlock();
+//            _mutex.readLock().unlock();
 
             if (LOG.isDebugEnabled()) LOG.debug("Checked cache for INode " + iNodeId + " in " +
                     (System.currentTimeMillis() - s) + " ms.");
@@ -240,26 +240,27 @@ public class InMemoryINodeCache {
         long s = System.currentTimeMillis();
 
         _mutex.writeLock().lock();
+        INode returnValue;
         try {
             // Store the metadata in the cache directly.
-            INode returnValue = prefixMetadataCache.put(key, value);
-
-            String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
-            parentIdPlusLocalNameToFullPathMapping.put(parentIdPlusLocalName, key);
-
-            // Create a mapping between the INode ID and the path.
-            idToNameMapping.put(iNodeId, key);
-
-            // Cache by full-path.
-            fullPathMetadataCache.put(key, value);
-
-            return returnValue;
+            returnValue = prefixMetadataCache.put(key, value);
         } finally {
             _mutex.writeLock().unlock();
 
             if (LOG.isDebugEnabled()) LOG.debug("Stored INode '" + key + "' (ID=" + iNodeId + ") in cache in " +
                     (System.currentTimeMillis() - s) + " ms.");
         }
+
+        String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
+        parentIdPlusLocalNameToFullPathMapping.put(parentIdPlusLocalName, key);
+
+        // Create a mapping between the INode ID and the path.
+        idToNameMapping.put(iNodeId, key);
+
+        // Cache by full-path.
+        fullPathMetadataCache.put(key, value);
+
+        return returnValue;
     }
 
     /**
@@ -419,13 +420,13 @@ public class InMemoryINodeCache {
         _mutex.writeLock().lock();
         try {
             prefixMetadataCache.clear();
-            idToNameMapping.clear();
-            fullPathMetadataCache.clear();
-            parentIdPlusLocalNameToFullPathMapping.clear();
         } finally {
             _mutex.writeLock().unlock();
             if (LOG.isDebugEnabled()) LOG.debug("Invalidated entire cache in " + (System.currentTimeMillis() - s) + " ms.");
         }
+        idToNameMapping.clear();
+        fullPathMetadataCache.clear();
+        parentIdPlusLocalNameToFullPathMapping.clear();
     }
 
     /**
