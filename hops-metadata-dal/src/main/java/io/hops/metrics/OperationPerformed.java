@@ -211,7 +211,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         return "operation_name,request_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
                 "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration," +
                 "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration," +
-                "serverless_fn_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses,straggler_resubmitted";
+                "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses,straggler_resubmitted";
     }
 
     public static String getToStringHeader() {
@@ -220,13 +220,14 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     @Override
     public String toString() {
-        String formatString = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-6s %-5s %-5s";
+        String formatString = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-6s %-5s %-5s";
         return String.format(formatString, operationName, requestId,
                 Instant.ofEpochMilli(invokedAtTime).toString(),             // Client invokes NN.
                 Instant.ofEpochMilli(serverlessFnStartTime).toString(),     // NN begins executing.
                 Instant.ofEpochMilli(requestEnqueuedAtTime).toString(),     // NN enqueues req. in work queue.
                 Instant.ofEpochMilli(resultBeganExecutingTime).toString(),  // NN dequeues req. from work queue, begins executing it.
                 Instant.ofEpochMilli(serverlessFnEndTime).toString(),       // NN returns result to client.
+                Instant.ofEpochMilli(endToEndDuration).toString(),          // End-to-end duration.
                 Instant.ofEpochMilli(resultReceivedTime).toString(),        // Client receives result from NN.
                 serverlessFunctionDuration, deployment, nameNodeId,
                 resultReceivedVia, metadataCacheHits, metadataCacheMisses);
@@ -330,10 +331,10 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         // "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration,preprocessing_duration," +
         // "waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration,serverless_fn_duration," +
         // "deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses"
-        String formatString = "%-16s,%-38s," +                                  // 2
-                              "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s," +    // 7
-                              "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +           // 7
-                              "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s";                 // 5
+        String formatString = "%-16s,%-38s," +                                          // 2
+                              "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s" +       // 8
+                              "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +                   // 7
+                              "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s";                         // 5
         writer.write(String.format(formatString,
                 operationName, requestId,
                 invokedAtTime,                    // Client invokes NN.
@@ -349,7 +350,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 resultFinishedProcessingTime - resultBeganExecutingTime,    // Executing.
                 serverlessFnEndTime - resultFinishedProcessingTime,         // Post-processing.
                 resultReceivedTime - serverlessFnEndTime,                   // Returning to user.
-                serverlessFunctionDuration,
+                serverlessFunctionDuration,                                 // Total duration of the serverless func.
+                endToEndDuration,                                           // End-to-end duration of the operation.
                 deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses,
                 stragglerResubmittedToInt()));
         writer.newLine();
