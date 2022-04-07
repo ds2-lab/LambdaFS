@@ -138,12 +138,19 @@ public class InMemoryINodeCache {
         if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
                 (System.currentTimeMillis() - s) + " ms.");
         try {
-            INode returnValue = fullPathMetadataCache.get(key); // prefixMetadataCache.get(key);
+            long s1 = System.currentTimeMillis();
+            INode returnValue = fullPathMetadataCache.get(key);
+            long t2 = System.currentTimeMillis();
+            if (LOG.isDebugEnabled()) LOG.debug("Accessed Full Path Metadata Cache in " +
+                    (t2 - s1) + " ms. Returning value: " + returnValue);
 
             if (returnValue == null)
                 cacheMiss();
             else
                 cacheHit();
+
+            if (LOG.isDebugEnabled()) LOG.debug("Updated cache hit/miss counters in " +
+                    (System.currentTimeMillis() - t2 + " ms."));
 
             return returnValue;
         } finally {
