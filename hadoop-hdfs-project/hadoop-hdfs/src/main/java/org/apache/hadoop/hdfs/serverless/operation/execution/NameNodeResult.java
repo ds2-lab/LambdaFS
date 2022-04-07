@@ -343,7 +343,7 @@ public class NameNodeResult implements Serializable {
         } else {
             if (result != null && LOG.isDebugEnabled())
                 LOG.debug("Returning result of type " + result.getClass().getSimpleName()
-                        + " to client. Result value: " + result.toString());
+                        + " to client for request " + requestId + ".");
 
             String resultSerializedAndEncoded = serializeAndEncode(result);
 
