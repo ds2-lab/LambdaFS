@@ -812,13 +812,21 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         for (OperationPerformed operationPerformed : opsPerformedList) {
             if (operationPerformed.getIssuedViaHttp()) {
                 double latency = operationPerformed.getLatency();
-                if (latency > 0)
+                if (latency > 0) {
                     httpStatistics.addValue(latency);
+
+                    if (latency > 150)
+                        LOG.warn("FOUND HTTP LATENCY OF " + latency + " MS. TASK ID: " + operationPerformed.getRequestId());
+                }
             }
             if (operationPerformed.getIssuedViaTcp()) {
                 double latency = operationPerformed.getLatency();
-                if (latency > 0)
+                if (latency > 0) {
                     tcpStatistics.addValue(latency);
+
+                    if (latency > 100)
+                        LOG.warn("FOUND TCP LATENCY OF " + latency + " MS. TASK ID: " + operationPerformed.getRequestId());
+                }
             }
         }
 

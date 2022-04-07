@@ -191,6 +191,7 @@ public class DBSessionProvider implements Runnable {
   public void run() {
     while (automaticRefresh) {
       try {
+        // We use a BlockingQueue here so that we just block (w/o busy-waiting) when the toGC queue is empty.
         DBSession session = toGC.take();
         session.getSession().close();
         sessionPool.add(initSession());
