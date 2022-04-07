@@ -815,7 +815,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 if (latency > 0) {
                     httpStatistics.addValue(latency);
 
-                    if (latency >= 200)
+                    if (latency >= 150)
                         LOG.warn("FOUND HTTP LATENCY OF " + latency + " MS. TASK ID: " + operationPerformed.getRequestId());
                 }
             }
@@ -824,7 +824,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 if (latency > 0) {
                     tcpStatistics.addValue(latency);
 
-                    if (latency >= 200)
+                    if (latency >= 150)
                         LOG.warn("FOUND TCP LATENCY OF " + latency + " MS. TASK ID: " + operationPerformed.getRequestId());
                 }
             }

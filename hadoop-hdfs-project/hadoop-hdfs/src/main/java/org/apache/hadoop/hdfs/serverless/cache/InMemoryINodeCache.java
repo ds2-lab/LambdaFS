@@ -155,8 +155,8 @@ public class InMemoryINodeCache {
             return returnValue;
         } finally {
             //_mutex.readLock().unlock();
-            if (LOG.isDebugEnabled()) LOG.debug("Checked cache for INode '" + key + "' in " +
-                    (System.currentTimeMillis() - s) + " ms.");
+            if (LOG.isDebugEnabled()) LOG.debug("Checked cache by path for INode '" + key + "' in " +
+                    (System.currentTimeMillis() - s) + " ms. [1]");
         }
     }
 
@@ -190,8 +190,8 @@ public class InMemoryINodeCache {
         } finally {
             //_mutex.readLock().unlock();
 
-            if (LOG.isDebugEnabled()) LOG.debug("Checked cache for INode '" + localName + "' in " +
-                    (System.currentTimeMillis() - s) + " ms.");
+            if (LOG.isDebugEnabled()) LOG.debug("Checked cache by parent ID and local name for INode '" + localName +
+                    "' in " + (System.currentTimeMillis() - s) + " ms.");
         }
     }
 
@@ -222,7 +222,7 @@ public class InMemoryINodeCache {
         } finally {
 //            _mutex.readLock().unlock();
 
-            if (LOG.isDebugEnabled()) LOG.debug("Checked cache for INode " + iNodeId + " in " +
+            if (LOG.isDebugEnabled()) LOG.debug("Checked cache by ID for INode " + iNodeId + " in " +
                     (System.currentTimeMillis() - s) + " ms.");
         }
     }
