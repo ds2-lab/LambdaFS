@@ -279,7 +279,7 @@ public class INodeLock extends BaseINodeLock {
     }
     List<INode> resolvedINodes = cacheResolver.fetchINodes(lockType, path, resolveLink);
     if (resolvedINodes != null) {
-      if (LOG.isDebugEnabled()) LOG.debug("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
+      //if (LOG.isDebugEnabled()) LOG.debug("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
 
       for (INode iNode : resolvedINodes) {
         if(iNode!=null){
@@ -288,7 +288,7 @@ public class INodeLock extends BaseINodeLock {
       }
       handleLockUpgrade(resolvedINodes, INode.getPathComponents(path), path);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Failed to resolve any INodes via INode Hint Cache.");
+      //if (LOG.isDebugEnabled()) LOG.debug("Failed to resolve any INodes via INode Hint Cache.");
     }
 
     return resolvedINodes;

@@ -308,10 +308,6 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     added.addAll(renamedInodes);
     Collection<INode> modified = getModified();
 
-//    LOG.debug("Preparing for transaction. Removed INodes: " + removed.toString());
-//    LOG.debug("Added (or renamed) INodes: " + added.toString());
-//    LOG.debug("Modified INodes: " + modified.toString());
-
     if (lks.containsLock(Lock.Type.INode)) {
       BaseINodeLock hlk = (BaseINodeLock) lks.getLock(Lock.Type.INode);
       if (!removed.isEmpty()) {
@@ -405,7 +401,6 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     // First, check the local, in-memory metadata cache.
     result = checkCache(inodeId);
     if (result != null) {
-      // LOG.debug("Successfully resolved INode ID=" + inodeId + " in local, in-memory metadata cache.");
       return result;
     }
 
@@ -453,7 +448,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     if (canCheckCache) {
       result = checkCache(name, parentId);
       if (result != null) {
-        if (LOG.isDebugEnabled()) LOG.debug("Retrieved INode '" + name + "', parentID=" + parentId + " from local metadata cache.");
+        if (LOG.isTraceEnabled()) LOG.trace("Retrieved INode '" + name + "', parentID=" + parentId + " from local metadata cache.");
         return result;
       }
     }
@@ -462,7 +457,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       result = inodesNameParentIndex.get(nameParentKey);
       if (!preventStorageCalls() &&
           (currentLockMode.get() == LockMode.WRITE_LOCK)) {
-        if (LOG.isDebugEnabled()) LOG.debug("Re-reading INode " + name + " from NDB to upgrade the lock.");
+        if (LOG.isTraceEnabled()) LOG.trace("Re-reading INode " + name + " from NDB to upgrade the lock.");
         //trying to upgrade lock. re-read the row from DB
         aboutToAccessStorage(inodeFinder, params);
 
@@ -481,7 +476,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
           result = RootINodeCache.getRootINode();
           LOG.trace("Reading root inode from the RootINodeCache: " + result);
        } else {
-          if (LOG.isDebugEnabled()) LOG.debug("Cannot resolve INode '" + name + "', parentID=" + parentId +
+          if (LOG.isTraceEnabled()) LOG.trace("Cannot resolve INode '" + name + "', parentID=" + parentId +
                   " from either cache. Reading from NDB instead.");
           aboutToAccessStorage(inodeFinder, params);
 
@@ -565,7 +560,6 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       if (canUseLocalCache) {
         node = checkCache(names[i], parentIds[i]);
         if (node != null) {
-          // if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved INode " + names[i] + ", parentID=" + parentIds[i] + " from local cache.");
           result.set(i, node);
           continue;
         }
@@ -575,13 +569,9 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       node = inodesNameParentIndex.get(nameParentKey);
 
       if (node != null) {
-        // if (LOG.isDebugEnabled()) LOG.debug("Retrieved INode '" + names[i] + "' with parentID=" + parentIds[i] + " from INode Hint Cache.");
         result.set(i, node);
         hit(inodeFinder, node, "name", names[i], "parent_id", parentIds[i], "partition_id", partitionIds[i]);
-      } else {
-        // Finally, fall back to resolving from NDB.
-        // if (LOG.isDebugEnabled()) LOG.debug("Falling back to NDB for INode '" + names[i] + "' with parentID=" + parentIds[i] + ".");
-        namesRest.add(names[i]);
+      } else {namesRest.add(names[i]);
         parentIdsRest.add(parentIds[i]);
         partitionIdsRest.add(partitionIds[i]);
         unpopulatedIndeces.add(i);
@@ -639,7 +629,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
   private List<INode> syncInodeInstances(List<INode> newInodes) {
     List<INode> finalList = new ArrayList<>(newInodes.size());
 
-    if (LOG.isDebugEnabled()) LOG.debug("Retrieved batch of INodes from NDB: " + StringUtils.join(", ", newInodes));
+    if (LOG.isTraceEnabled()) LOG.trace("Retrieved batch of INodes from NDB: " + StringUtils.join(", ", newInodes));
     
     for (INode inode : newInodes) {
       if (isRemoved(inode.getId())) {

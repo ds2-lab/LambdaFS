@@ -1637,7 +1637,7 @@ public class FSDirectory implements Closeable {
     /** @return the {@link INodesInPath} containing all inodes in the path. */
   public INodesInPath getINodesInPath(String path, boolean resolveLink) throws UnresolvedLinkException, StorageException,
       TransactionContextException {
-    LOG.debug("Getting INodes in path: " + path);
+    //LOG.debug("Getting INodes in path: " + path);
 
     // In this new strategy, we first check for INodes in our local cache.
     // We retrieve any missing INodes from intermediate storage.
