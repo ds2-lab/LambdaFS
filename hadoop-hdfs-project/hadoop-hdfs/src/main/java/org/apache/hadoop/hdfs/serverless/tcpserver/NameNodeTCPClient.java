@@ -294,7 +294,7 @@ public class NameNodeTCPClient {
             return false;
         }
 
-        tcpClient.addListener(new Listener() {
+        tcpClient.addListener(new Listener.ThreadedListener(new Listener() {
             /**
              * This listener is responsible for handling messages received from HopsFS clients. These messages will
              * generally be file system operation requests/directions. We will extract the information about the
@@ -372,7 +372,7 @@ public class NameNodeTCPClient {
 
                 tcpClient.stop();
             }
-        });
+        }));
 
         // We time how long it takes to establish the TCP connection for debugging/metric-collection purposes.
         Instant connectStart = Instant.now();
