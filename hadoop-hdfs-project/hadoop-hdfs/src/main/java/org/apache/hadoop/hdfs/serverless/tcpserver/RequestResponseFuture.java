@@ -124,6 +124,8 @@ public class RequestResponseFuture implements Future<JsonObject> {
 
     /**
      * Post a result to this future so that it may be consumed by whoever is waiting on it.
+     * This is how the TCP server returns results to the client that issued a file system operation.
+     * The client should be blocked, waiting for the result to be placed into the resultQueue by the server.
      *
      * @return True if we were able to insert the result into the queue, otherwise false.
      */

@@ -770,11 +770,6 @@ public class HopsFSUserServer {
                 // being cached locally by the client. The second operation is that of returning a result
                 // of a file system operation back to the user.
                 switch (operation) {
-                    // The NameNode is registering with the client (i.e., connecting for the first time,
-                    // or at least they are connecting after having previously lost connection).
-                    case OPERATION_REGISTER:
-                        registerNameNode(connection, deploymentNumber, nameNodeId);
-                        break;
                     // The NameNode is returning a result (of a file system operation) to the client.
                     case OPERATION_RESULT:
                         // If there is no request ID, then we have no idea which operation this result is
@@ -806,8 +801,8 @@ public class HopsFSUserServer {
                             throw new IllegalStateException("Failed to post result to future " + future.getRequestId());
 
                         // Update state pertaining to futures.
+                        completedFutures.put(requestId, future); // Do this first to prevent races.
                         activeFutures.remove(requestId);
-                        completedFutures.put(requestId, future);
 
                         List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
                         incompleteFutures.remove(future);
@@ -817,13 +812,18 @@ public class HopsFSUserServer {
                                 " from NN " + nameNodeId + ", deployment " + deploymentNumber + ".");
 
                         break;
+                    // The NameNode is registering with the client (i.e., connecting for the first time,
+                    // or at least they are connecting after having previously lost connection).
+                    case OPERATION_REGISTER:
+                        registerNameNode(connection, deploymentNumber, nameNodeId);
+                        break;
                     default:
                         LOG.warn("[TCP SERVER " + tcpPort + "] Unknown operation received from NameNode " + nameNodeId +
                                 ", Deployment #" + deploymentNumber + ": '" + operation + "'");
                 }
             }
             else if (object instanceof FrameworkMessage.KeepAlive) {
-                // The server periodically sends KeepAlive objects to prevent the client from disconnecting due to timeouts.
+                // The server periodically sends KeepAlive objects to prevent client from disconnecting.
             }
             else {
                 LOG.warn("[TCP SERVER " + tcpPort + "] Received object of unexpected type from remote client " + connection +
