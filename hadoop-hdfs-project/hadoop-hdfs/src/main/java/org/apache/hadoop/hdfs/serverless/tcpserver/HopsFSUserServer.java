@@ -19,17 +19,12 @@ import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromString;
-import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_RESULT;
 
@@ -321,10 +316,13 @@ public class HopsFSUserServer {
     }
 
     /**
-     * Get a TCP connection for a NameNode from the specified deployment. Returns a random, active connection if one
-     * exists. Otherwise, returns null.
+     * Get a random TCP connection for a NameNode from the specified deployment.
+     *
+     * @param deploymentNumber The deployment for which a connection is desired.
+     *
+     * @return a random, active connection if one exists. Otherwise, returns null.
      */
-    private NameNodeConnection getConnection(int deploymentNumber) {
+    private NameNodeConnection getRandomConnection(int deploymentNumber) {
         ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
@@ -335,7 +333,35 @@ public class HopsFSUserServer {
         if (values.length == 0)
             return null;
 
-        return values[rng.nextInt(values.length)];
+        return values[(rng.nextInt(values.length))];
+    }
+
+    /**
+     * Get a random TCP connection for a NameNode from the specified deployment.
+     *
+     * @param deploymentNumber The deployment for which a connection is desired.
+     * @param excludedNameNode NN who should not have its connections returned.
+     *
+     * @return a random, active connection if one exists. Otherwise, returns null.
+     */
+    private NameNodeConnection getRandomConnection(int deploymentNumber, long excludedNameNode) {
+        ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
+                activeConnectionsPerDeployment.get(deploymentNumber);
+
+        // Return a random NameNode connection.
+        Random rng = new Random();
+        ArrayList<NameNodeConnection> values = new ArrayList<>();
+
+        // Do not add the excluded NN to the set of connections from which we're randomly picking one.
+        for (NameNodeConnection conn : deploymentConnections.values()) {
+            if (excludedNameNode == conn.name)
+                values.add(conn);
+        }
+
+        if (values.size() == 0)
+            return null;
+
+        return values.get(rng.nextInt(values.size()));
     }
 
     /**
@@ -508,11 +534,6 @@ public class HopsFSUserServer {
         }
 
         return requestResponseFuture;
-
-//        if (activeFutures.containsKey(requestResponseFuture.getRequestId()) ||
-//            completedFutures.containsKey(requestResponseFuture.getRequestId())) {
-//            return;
-//        }
     }
 
     /**
@@ -549,12 +570,17 @@ public class HopsFSUserServer {
      * @param deploymentNumber The NameNode to issue a request to.
      * @param bypassCheck Do not check if the connection exists.
      * @param payload The payload to send to the NameNode in the TCP request.
+     * @param tryToAvoidTargetingSameNameNode If true, then we try to avoid resubmitting this request to the same
+     *                                        NameNode as before. This would only be set to 'true' when
+     *                                        resubmitting a request that timed-out. We want to avoid sending it
+     *                                        to the same NN at which the request previously timed-out.
      * @return A Future representing the eventual response from the NameNode.
      */
-    public RequestResponseFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck, JsonObject payload) {
+    public RequestResponseFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck,
+                                                 JsonObject payload, boolean tryToAvoidTargetingSameNameNode) {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue TCP request to NameNode deployment " + deploymentNumber +
-                    ", but connection no longer exists...");
+            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue TCP request to NameNode deployment " +
+                    deploymentNumber + ", but connection no longer exists...");
             return null;
         }
 
@@ -565,7 +591,20 @@ public class HopsFSUserServer {
         RequestResponseFuture requestResponseFuture = registerRequestResponseFuture(requestId, opName);
 
         // Send the TCP request to the NameNode.
-        NameNodeConnection tcpConnection = getConnection(deploymentNumber);
+        NameNodeConnection tcpConnection;
+        if (tryToAvoidTargetingSameNameNode && futureToNameNodeMapping.containsKey(requestId)) {
+            // Check if we already have a mapping to another NN connection for this future.
+            NameNodeConnection previousConnection = futureToNameNodeMapping.getOrDefault(requestId, null);
+
+            // Avoid race in the case that the connection gets terminated between containsKey() returning
+            // and us trying to retrieve the mapped connection from the futureToNameNodeMapping map.
+            if (previousConnection != null)
+                tcpConnection = getRandomConnection(deploymentNumber, previousConnection.name);
+            else
+                tcpConnection = getRandomConnection(deploymentNumber);
+        } else {
+            tcpConnection = getRandomConnection(deploymentNumber);
+        }
 
         // Make sure the connection variable is non-null.
         if (tcpConnection == null) {
@@ -610,9 +649,15 @@ public class HopsFSUserServer {
      * @param timeout If positive, then wait for future to resolve with a timeout.
      *                If zero, then this will return immediately if the future is not available.
      *                If negative, then block indefinitely, waiting for the future to resolve.
+     * @param tryToAvoidTargetingSameNameNode If true, then we try to avoid resubmitting this request to the same
+     *                                        NameNode as before. This would only be set to 'true' when resubmitting
+     *                                        a request that timed-out. We want to avoid sending it to the same NN at
+     *                                        which the request previously timed-out.
      * @return The response from the NameNode, or null if the request failed for some reason.
      */
-    public JsonObject issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, JsonObject payload, long timeout)
+    public JsonObject issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck,
+                                             JsonObject payload, long timeout,
+                                             boolean tryToAvoidTargetingSameNameNode)
             throws ExecutionException, InterruptedException, TimeoutException, IOException {
         if (deploymentNumber == -1) {
             // Randomly select an available connection. This is implemented using existing constructs, so it
@@ -646,7 +691,8 @@ public class HopsFSUserServer {
                 return previouslyReceivedResult;
         }
 
-        RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck, payload);
+        RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck,
+                                                                      payload, tryToAvoidTargetingSameNameNode);
 
         if (requestResponseFuture == null)
             throw new IOException("Issuing TCP request returned null instead of future. Must have been no connections.");

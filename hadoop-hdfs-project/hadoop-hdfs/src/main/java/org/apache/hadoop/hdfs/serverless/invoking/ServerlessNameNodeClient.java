@@ -461,7 +461,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 }
                 numOperationsIssuedViaTcp++;
                 numOperationsIssued++;
-                response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload, requestTimeout);
+                response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload,
+                        requestTimeout, !stragglerResubmissionAlreadyOccurred);
 
                 // After receiving a response, we need to check if it is a cancellation message or not.
                 // Cancellation messages are posted by the TCP server if the TCP connection is terminated unexpectedly.

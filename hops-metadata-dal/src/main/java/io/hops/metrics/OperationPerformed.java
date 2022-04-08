@@ -330,7 +330,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         // "operation_name,request_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
         // "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration,preprocessing_duration," +
         // "waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration,serverless_fn_duration," +
-        // "deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses"
+        // "endToEndDuration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses"
         String formatString = "%-16s,%-38s," +                                          // 2
                               "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s" +       // 8
                               "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +                   // 7
