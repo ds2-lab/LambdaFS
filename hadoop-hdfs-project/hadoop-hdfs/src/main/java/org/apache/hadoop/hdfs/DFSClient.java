@@ -6,6 +6,7 @@ import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 import com.google.gson.JsonObject;
+import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 
 import java.io.*;
@@ -113,6 +114,7 @@ import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import io.hops.metrics.OperationPerformed;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -3521,6 +3523,13 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
               FileNotFoundException.class, SafeModeException.class,
               UnresolvedPathException.class);
     }
+  }
+
+  /**
+   * Return the list of actively-running NameNodes.
+   */
+  public SortedActiveNodeList getActiveNamenodesForClient() throws IOException {
+    return namenode.getActiveNamenodesForClient();
   }
 
   public int getNameNodesCount() throws IOException {

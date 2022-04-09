@@ -11,6 +11,7 @@ import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.*;
@@ -81,7 +82,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
      *
      * @param zkClient The ZooKeeper client from the {@link ServerlessNameNode} object.
      */
-    public synchronized void refreshFromZooKeeper(ZKClient zkClient) throws Exception {
+    public synchronized void refreshFromZooKeeper(ZKClient zkClient) throws IOException {
         int deploymentNumber = 0;
         activeNodes = new ArrayList<>();
         if (LOG.isDebugEnabled()) LOG.debug("Querying ZooKeeper for membership changes in ALL deployments.");

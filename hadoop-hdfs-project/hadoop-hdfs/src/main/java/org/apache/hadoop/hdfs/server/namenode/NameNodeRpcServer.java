@@ -1511,7 +1511,7 @@ public class NameNodeRpcServer implements NamenodeProtocols {
   }
 
   @Override
-  public void prewarm(int numPingsPerDeployment) throws IOException {
+  public void prewarm(int numThreadsPerDeployment, int numPingsPerThread) throws IOException {
     throw new NotImplementedException("The NameNode RPC Server does not support the prewarm operation.");
   }
 

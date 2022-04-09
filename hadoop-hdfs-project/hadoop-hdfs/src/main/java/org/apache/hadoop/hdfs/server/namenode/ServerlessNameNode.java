@@ -736,7 +736,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     });
     operations.put("create", this::create);
     operations.put("delete", this::delete);
-    operations.put("getActiveNamenodesForClient", args -> (Serializable)getActiveNamenodesForClient(args));
+    operations.put("getActiveNamenodesForClient", args -> (Serializable)getActiveNameNodesWithRefresh());
     operations.put("getBlockLocations", this::getBlockLocations);
     operations.put("getDatanodeReport", this::getDatanodeReport);
     operations.put("getFileInfo", this::getFileInfo);
@@ -810,7 +810,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return this.operations.get(op).apply(fsArgs);
   }
 
-  public void refreshActiveNameNodesList() throws Exception {
+  public void refreshActiveNameNodesList() throws IOException {
     synchronized (this) {
       if (activeNameNodes == null)
         activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.numDeployments);
@@ -3447,12 +3447,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    * Return the current version of the active name nodes list.
-   *
-   * The list is updated in one of two ways:
-   *  (1) The worker thread periodically refreshes the list when it has no other work to do.
-   *  (2) The list is updated when the NameNode is first created.
    */
   public SortedActiveNodeList getActiveNameNodes() {
+    return activeNameNodes;
+  }
+
+  /**
+   * Return the current version of the active name nodes list.
+   */
+  public SortedActiveNodeList getActiveNameNodesWithRefresh() throws IOException {
+    refreshActiveNameNodesList();
+
     return activeNameNodes;
   }
 

@@ -4,6 +4,7 @@ import org.apache.curator.framework.recipes.nodes.GroupMember;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -216,7 +217,7 @@ public interface ZKClient {
      * @param groupName The group whose children we desire.
      * @return List of IDs of the members of the permanent sub-group of the specified deployment group.
      */
-    public List<String> getPermanentGroupMembers(String groupName) throws Exception;
+    public List<String> getPermanentGroupMembers(String groupName) throws IOException;
 
     /**
      * Get the children of the given group. This returns GUEST group members.

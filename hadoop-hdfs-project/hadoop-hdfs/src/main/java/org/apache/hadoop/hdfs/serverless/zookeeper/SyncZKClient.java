@@ -415,13 +415,18 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public List<String> getPermanentGroupMembers(String groupName) throws Exception {
+    public List<String> getPermanentGroupMembers(String groupName) throws IOException {
         if (groupName == null)
             throw new IllegalArgumentException("Group name argument cannot be null.");
 
         String path = getPath(groupName, null, true);
 
-        return this.client.getChildren().forPath(path);
+        try {
+            return this.client.getChildren().forPath(path);
+        } catch (Exception ex) {
+            LOG.error("Encountered exception while getting group members from ZooKeeper.");
+            throw new IOException(ex);
+        }
     }
 
     @Override

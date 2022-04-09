@@ -19,6 +19,7 @@
 package org.apache.hadoop.hdfs;
 
 import com.google.gson.JsonObject;
+import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
@@ -74,6 +75,7 @@ import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifie
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.Credentials;
@@ -2036,6 +2038,15 @@ public class DistributedFileSystem extends FileSystem {
         return null;
       }
     }.resolve(this, absF);
+  }
+
+  /**
+   * Get and return the list of currently-active Serverless NameNodes.
+   *
+   * @return the list of currently-active serverless name nodes at the time of calling this function.
+   */
+  public SortedActiveNodeList getActiveNamenodesForClient() throws IOException {
+    return dfs.getActiveNamenodesForClient();
   }
 
   /**
