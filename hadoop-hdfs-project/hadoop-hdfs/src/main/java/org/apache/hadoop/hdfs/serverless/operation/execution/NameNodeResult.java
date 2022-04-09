@@ -19,6 +19,8 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 import org.apache.hadoop.hdfs.serverless.cache.MetadataCacheManager;
 import org.apache.hadoop.hdfs.serverless.cache.ReplicaCacheManager;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +64,8 @@ public class NameNodeResult implements Serializable {
      */
     static {
         conf.registerClass(LocatedBlocks.class, TransactionEvent.class, TransactionAttempt.class, NamespaceInfo.class,
-                LastBlockWithStatus.class, HdfsFileStatus.class, DirectoryListing.class, FsServerDefaults.class);
+                LastBlockWithStatus.class, HdfsFileStatus.class, DirectoryListing.class, FsServerDefaults.class,
+                ActiveServerlessNameNodeList.class, ActiveServerlessNameNode.class);
     }
 
     /**

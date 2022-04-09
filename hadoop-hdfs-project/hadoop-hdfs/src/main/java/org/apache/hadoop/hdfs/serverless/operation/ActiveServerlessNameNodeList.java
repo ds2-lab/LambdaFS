@@ -21,7 +21,7 @@ import java.util.*;
  * is in this list does not guarantee that it is running. The list is based on the metadata available in
  * intermediate storage. It is periodically updated by the NameNode's worker thread.
  */
-public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
+public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Serializable {
     //public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
     public static final Logger LOG = LoggerFactory.getLogger(ActiveServerlessNameNodeList.class);
     private static final long serialVersionUID = -1602619427888192710L;

@@ -19,13 +19,15 @@ import io.hops.leader_election.proto.ActiveNodeProtos.ActiveNodeProto;
 import io.hops.leader_election.proto.ActiveNodeProtos.ActiveNodeProtoOrBuilder;
 import io.hops.metadata.election.entity.LeDescriptor;
 
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 
 //TODO change it to avoid going through the proto when it is not needed
-public class ActiveNodePBImpl implements ActiveNode {
+public class ActiveNodePBImpl implements ActiveNode, Serializable {
 
+  private static final long serialVersionUID = 5777158415977551384L;
   protected ActiveNodeProto proto = ActiveNodeProto.getDefaultInstance();
   protected ActiveNodeProto.Builder builder = null;
   protected boolean viaProto = false;
