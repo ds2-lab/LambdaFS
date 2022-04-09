@@ -873,6 +873,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         System.out.println(String.format(formatString.toString(), idsWithDeployment));
         System.out.println(String.format(formatString.toString(), requestsPerNameNode.values().toArray()));
+        System.out.println("Number of Unique NameNodes: " + requestsPerNameNode.size());
 
         System.out.println("\n-- Current HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
         System.out.println("Latency TCP (ms) [min: " + tcpStatistics.getMin() + ", max: " + tcpStatistics.getMax() +
