@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import io.hops.leader_election.node.ActiveNode;
 import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
 import org.apache.commons.logging.Log;
@@ -39,7 +40,7 @@ public class InvokerUtilities {
     static {
         conf.registerClass(LocatedBlocks.class, TransactionEvent.class, TransactionAttempt.class, NamespaceInfo.class,
                 LastBlockWithStatus.class, HdfsFileStatus.class, DirectoryListing.class, FsServerDefaults.class,
-                ActiveServerlessNameNodeList.class, ActiveServerlessNameNode.class);
+                ActiveServerlessNameNodeList.class, ActiveServerlessNameNode.class, ActiveNode.class);
     }
 
     /**
