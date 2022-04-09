@@ -23,6 +23,8 @@ public class ActiveServerlessNameNode implements ActiveNode, Serializable {
         this.deploymentNumber = deploymentNumber;
     }
 
+    public int getDeploymentNumber() { return this.deploymentNumber; }
+
     @Override
     public String getHostname() {
         return null;

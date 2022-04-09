@@ -74,6 +74,8 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList {
         }
     }
 
+    public int getNumDeployments() { return this.numDeployments; }
+
     /**
      * Explicitly clear and refresh the active node list, using ZooKeeper as the means of tracking group membership.
      *
