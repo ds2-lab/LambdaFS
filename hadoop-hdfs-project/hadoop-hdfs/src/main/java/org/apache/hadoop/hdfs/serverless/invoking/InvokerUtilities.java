@@ -20,6 +20,8 @@ import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LastBlockWithStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.nustaq.serialization.FSTConfiguration;
 
 /**
@@ -36,7 +38,8 @@ public class InvokerUtilities {
      */
     static {
         conf.registerClass(LocatedBlocks.class, TransactionEvent.class, TransactionAttempt.class, NamespaceInfo.class,
-                LastBlockWithStatus.class, HdfsFileStatus.class, DirectoryListing.class, FsServerDefaults.class);
+                LastBlockWithStatus.class, HdfsFileStatus.class, DirectoryListing.class, FsServerDefaults.class,
+                ActiveServerlessNameNodeList.class, ActiveServerlessNameNode.class);
     }
 
     /**
