@@ -1106,7 +1106,7 @@ public class ClientNamenodeProtocolTranslatorPB
   }
 
   @Override
-  public void prewarm(int numPingsPerDeployment) throws IOException {
+  public void prewarm(int numPingsPerThread, int numThreadsPerDeployment) throws IOException {
     throw new NotImplementedException("Not implemented!");
   }
 

@@ -1381,10 +1381,11 @@ public interface ClientProtocol {
 
   /**
    * Attempt to pre-warm the NameNodes by pinging each deployment the specified number of times.
-   * @param numPingsPerDeployment Number of times to ping the deployment.
+   * @param numPingsPerThread Number of times to ping the deployment.
+   * @param numThreadsPerDeployment Number of threads to use when pinging each deployment.
    */
   @Idempotent
-  public void prewarm(int numPingsPerDeployment) throws IOException;
+  public void prewarm(int numPingsPerThread, int numThreadsPerDeployment) throws IOException;
 
   /**
    * The client requesting an updated list of the active namenodes in the

@@ -1062,10 +1062,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
   /**
    * Attempt to pre-warm the NameNodes by pinging each deployment the specified number of times.
-   * @param numPingsPerDeployment Number of times to ping the deployment.
+   * @param numPingsPerThread Number of times to ping the deployment.
+   * @param numThreadsPerDeployment Number of threads to use when pinging each deployment.
    */
-  public void prewarm(int numPingsPerDeployment) throws IOException {
-    this.namenode.prewarm(numPingsPerDeployment);
+  public void prewarm(int numPingsPerThread, int numThreadsPerDeployment) throws IOException {
+    this.namenode.prewarm(numPingsPerThread, numThreadsPerDeployment);
   }
 
   /** Abort and release resources held.  Ignore all errors. */
