@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.hops.leader_election.node.ActiveNode;
 import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
