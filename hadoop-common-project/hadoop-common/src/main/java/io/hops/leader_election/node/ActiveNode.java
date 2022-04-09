@@ -15,9 +15,10 @@
  */
 package io.hops.leader_election.node;
 
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 
-public interface ActiveNode extends Comparable<ActiveNode> {
+public interface ActiveNode extends Comparable<ActiveNode>, Serializable {
   
   public String getHostname();
 
