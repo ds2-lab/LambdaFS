@@ -338,6 +338,10 @@ public class HopsFSUserServer {
 
     /**
      * Get a random TCP connection for a NameNode from the specified deployment.
+     * Will not return a TCP connection to the NameNode with the given ID. If
+     * that is the only TCP connection available for that deployment, then
+     * this will just return null, thereby indicating that there are no TCP
+     * connections available.
      *
      * @param deploymentNumber The deployment for which a connection is desired.
      * @param excludedNameNode NN who should not have its connections returned.
