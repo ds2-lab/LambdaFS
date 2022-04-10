@@ -143,7 +143,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.serverlessFnStartTime = serverlessFnStartTime;
         this.serverlessFnEndTime = serverlessFnEndTime;
         this.serverlessFunctionDuration = serverlessFnEndTime - serverlessFnStartTime;
-        this.endToEndDuration = invokedAtTime - resultReceivedTime;
+        this.endToEndDuration = resultReceivedTime - invokedAtTime;
         this.deployment = deployment;
         this.issuedViaHttp = issuedViaHttp;
         this.issuedViaTcp = issuedViaTcp;
