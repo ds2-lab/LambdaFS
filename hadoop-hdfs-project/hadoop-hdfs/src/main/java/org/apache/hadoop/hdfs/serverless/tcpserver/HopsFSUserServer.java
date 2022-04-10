@@ -110,6 +110,8 @@ public class HopsFSUserServer {
      */
     private final int totalNumberOfDeployments;
 
+    private static final Random rng = new Random();
+
     /**
      * We need a reference to this so that we can tell it what TCP port we ultimated bound to.
      */
@@ -327,7 +329,6 @@ public class HopsFSUserServer {
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
         // Return a random NameNode connection.
-        Random rng = new Random();
         NameNodeConnection[] values = deploymentConnections.values().toArray(new NameNodeConnection[0]);
 
         if (values.length == 0)
@@ -356,7 +357,6 @@ public class HopsFSUserServer {
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
         // Return a random NameNode connection.
-        Random rng = new Random();
         ArrayList<NameNodeConnection> values = new ArrayList<>();
 
         // Do not add the excluded NN to the set of connections from which we're randomly picking one.
@@ -683,7 +683,7 @@ public class HopsFSUserServer {
             Long[] activeNameNodeConnectionIDs = allActiveConnections.keySet().toArray(new Long[0]);
 
             // Randomly select an ID from among all the IDs.
-            long nameNodeId = activeNameNodeConnectionIDs[new Random().nextInt(activeNameNodeConnectionIDs.length)];
+            long nameNodeId = activeNameNodeConnectionIDs[rng.nextInt(activeNameNodeConnectionIDs.length)];
 
             // Resolve that ID to a deployment, and use that as the target deployment.
             deploymentNumber = nameNodeIdToDeploymentMapping.get(nameNodeId);
