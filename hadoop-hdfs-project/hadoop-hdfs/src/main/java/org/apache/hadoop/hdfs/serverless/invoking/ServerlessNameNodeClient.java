@@ -891,10 +891,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         if (stragglerMitigationEnabled) {
             System.out.println("\n-- Straggler Mitigation Statistics --------------------------------------------------------------------------------------------------");
-            System.out.println("Latency TCP (ms) [min: " + resubmittedStatistics.getMin() + ", max: " + resubmittedStatistics.getMax() +
+            System.out.println("Resubmitted [min: " + resubmittedStatistics.getMin() + ", max: " + resubmittedStatistics.getMax() +
                     ", avg: " + resubmittedStatistics.getMean() + ", std dev: " + resubmittedStatistics.getStandardDeviation() +
                     ", N: " + resubmittedStatistics.getN() + "]");
-            System.out.println("Latency HTTP (ms) [min: " + notResubmittedStatistics.getMin() + ", max: " + notResubmittedStatistics.getMax() +
+            System.out.println("NOT Resubmitted [min: " + notResubmittedStatistics.getMin() + ", max: " + notResubmittedStatistics.getMax() +
                     ", avg: " + notResubmittedStatistics.getMean() + ", std dev: " + notResubmittedStatistics.getStandardDeviation() +
                     ", N: " + notResubmittedStatistics.getN() + "]");
 
