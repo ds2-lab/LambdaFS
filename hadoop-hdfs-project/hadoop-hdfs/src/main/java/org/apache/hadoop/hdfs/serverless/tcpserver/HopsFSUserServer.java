@@ -343,6 +343,9 @@ public class HopsFSUserServer {
      * this will just return null, thereby indicating that there are no TCP
      * connections available.
      *
+     * This is used with the 'straggler mitigation' technique to try to re-submit
+     * stragglers to a different NN than the one to which they were originally sent.
+     *
      * @param deploymentNumber The deployment for which a connection is desired.
      * @param excludedNameNode NN who should not have its connections returned.
      *
