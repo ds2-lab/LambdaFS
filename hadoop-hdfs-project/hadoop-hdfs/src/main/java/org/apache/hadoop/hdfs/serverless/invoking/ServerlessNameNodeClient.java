@@ -873,12 +873,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println("Number of Unique NameNodes: " + requestsPerNameNode.size());
 
         System.out.println("\n-- Current HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
-        System.out.println("Latency TCP (ms) [min: " + resubmittedStatistics.getMin() + ", max: " + resubmittedStatistics.getMax() +
-                ", avg: " + resubmittedStatistics.getMean() + ", std dev: " + resubmittedStatistics.getStandardDeviation() +
-                ", N: " + resubmittedStatistics.getN() + "]");
-        System.out.println("Latency HTTP (ms) [min: " + notResubmittedStatistics.getMin() + ", max: " + notResubmittedStatistics.getMax() +
-                ", avg: " + notResubmittedStatistics.getMean() + ", std dev: " + notResubmittedStatistics.getStandardDeviation() +
-                ", N: " + notResubmittedStatistics.getN() + "]");
+        System.out.println("Latency TCP (ms) [min: " + tcpStatistics.getMin() + ", max: " + tcpStatistics.getMax() +
+                ", avg: " + tcpStatistics.getMean() + ", std dev: " + tcpStatistics.getStandardDeviation() +
+                ", N: " + tcpStatistics.getN() + "]");
+        System.out.println("Latency HTTP (ms) [min: " + httpStatistics.getMin() + ", max: " + httpStatistics.getMax() +
+                ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
+                ", N: " + httpStatistics.getN() + "]");
 
         try {
             printHistograms(httpStatistics, tcpStatistics);
@@ -889,14 +889,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
         printLatencyStatisticsDetailed(0);
 
-        System.out.println("\n-- Straggler Mitigation Statistics --------------------------------------------------------------------------------------------------");
-        System.out.println("Latency TCP (ms) [min: " + tcpStatistics.getMin() + ", max: " + tcpStatistics.getMax() +
-                ", avg: " + tcpStatistics.getMean() + ", std dev: " + tcpStatistics.getStandardDeviation() +
-                ", N: " + tcpStatistics.getN() + "]");
-        System.out.println("Latency HTTP (ms) [min: " + httpStatistics.getMin() + ", max: " + httpStatistics.getMax() +
-                ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
-                ", N: " + httpStatistics.getN() + "]");
+        if (stragglerMitigationEnabled) {
+            System.out.println("\n-- Straggler Mitigation Statistics --------------------------------------------------------------------------------------------------");
+            System.out.println("Latency TCP (ms) [min: " + resubmittedStatistics.getMin() + ", max: " + resubmittedStatistics.getMax() +
+                    ", avg: " + resubmittedStatistics.getMean() + ", std dev: " + resubmittedStatistics.getStandardDeviation() +
+                    ", N: " + resubmittedStatistics.getN() + "]");
+            System.out.println("Latency HTTP (ms) [min: " + notResubmittedStatistics.getMin() + ", max: " + notResubmittedStatistics.getMax() +
+                    ", avg: " + notResubmittedStatistics.getMean() + ", std dev: " + notResubmittedStatistics.getStandardDeviation() +
+                    ", N: " + notResubmittedStatistics.getN() + "]");
 
+        }
         System.out.println("\n==================================================================");
     }
 
