@@ -712,8 +712,11 @@ public class HopsFSUserServer {
                 return previouslyReceivedResult;
         }
 
+        long startTime = System.currentTimeMillis();
         RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck,
                                                                       payload, tryToAvoidTargetingSameNameNode);
+        if (LOG.isTraceEnabled())
+            LOG.trace("Issued TCP request in " + (System.currentTimeMillis() - startTime) + " ms.");
 
         if (requestResponseFuture == null)
             throw new IOException("Issuing TCP request returned null instead of future. Must have been no connections.");
