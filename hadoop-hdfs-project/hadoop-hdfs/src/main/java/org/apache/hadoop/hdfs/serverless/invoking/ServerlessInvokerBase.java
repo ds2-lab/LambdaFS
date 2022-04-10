@@ -513,8 +513,8 @@ public abstract class ServerlessInvokerBase<T> {
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
                 currentTime = System.nanoTime();
                 timeElapsed = (currentTime - invokeStart) / 1000000.0;
-                LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke NameNode via URL '" +
-                        request.getURI() + "' timed out. Time elapsed: " + timeElapsed + " ms.");
+                LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke operation " +
+                        requestId + " timed out. Time elapsed: " + timeElapsed + " ms.");
                 LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
