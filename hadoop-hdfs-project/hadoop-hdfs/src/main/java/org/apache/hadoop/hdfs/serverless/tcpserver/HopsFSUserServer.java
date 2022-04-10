@@ -592,6 +592,10 @@ public class HopsFSUserServer {
 
         // Send the TCP request to the NameNode.
         NameNodeConnection tcpConnection;
+
+        // If we're trying to avoid a specific NameNode (as part of the 'straggler mitigation' technique), then we
+        // will try to select a random TCP connection to another NameNode from the same deployment. If no such TCP
+        // connections are available, then we will instead issue a request via HTTP.
         if (tryToAvoidTargetingSameNameNode && futureToNameNodeMapping.containsKey(requestId)) {
             // Check if we already have a mapping to another NN connection for this future.
             NameNodeConnection previousConnection = futureToNameNodeMapping.getOrDefault(requestId, null);
@@ -608,8 +612,8 @@ public class HopsFSUserServer {
 
         // Make sure the connection variable is non-null.
         if (tcpConnection == null) {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue TCP request to NameNode deployment " + deploymentNumber +
-                    ", but connection no longer exists...");
+            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue TCP request to NameNode deployment " +
+                    deploymentNumber + ", but connection no longer exists...");
             return null;
         }
 

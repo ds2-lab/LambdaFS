@@ -607,9 +607,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     /**
-     * Perform an HTTP invocation of a serverless name node function concurrently with a TCP request to the same
-     * Serverless NameNode, if a connection to that NameNode already exists. If no such connection exists, then only
-     * the HTTP request will be issued.
+     * This is the function that is used to submit a file system operation to a NameNode. This is done either via
+     * TCP directly to a NameNode in the target deployment or via an HTTP invocation through OpenWhisk (or whatever
+     * serverless platform is being used).
      *
      * @param operationName The name of the FS operation that the NameNode should perform.
      * @param serverlessEndpoint The (base) OpenWhisk URI of the serverless NameNode(s).
