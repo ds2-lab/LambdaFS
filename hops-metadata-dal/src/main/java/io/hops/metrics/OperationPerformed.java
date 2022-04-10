@@ -332,7 +332,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         // "waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration,serverless_fn_duration," +
         // "endToEndDuration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses"
         String formatString = "%-16s,%-38s," +                                          // 2
-                              "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s" +       // 8
+                              "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s," +      // 8
                               "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +                   // 7
                               "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s";                         // 5
         writer.write(String.format(formatString,

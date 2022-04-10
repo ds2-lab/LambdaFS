@@ -480,9 +480,15 @@ public abstract class ServerlessInvokerBase<T> {
         do {
             long currentTime = System.nanoTime();
             double timeElapsed = (currentTime - invokeStart) / 1000000.0;
-            LOG.info("Invoking NameNode " + targetDeployment + " (op=" + operationName + "), attempt "
-                    + (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries +
-                    ". Time elapsed: " + timeElapsed + " milliseconds.");
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Invoking NameNode " + targetDeployment + " (op=" + operationName +
+                        ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
+                        "/" + maxHttpRetries + ". Time elapsed: " + timeElapsed + " milliseconds.");
+            } else {
+                LOG.info("Invoking NameNode " + targetDeployment + " (op=" + operationName +
+                        ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
+                        "/" + maxHttpRetries + ".");
+            }
 
             CloseableHttpResponse httpResponse = null;
             JsonObject processedResponse;
