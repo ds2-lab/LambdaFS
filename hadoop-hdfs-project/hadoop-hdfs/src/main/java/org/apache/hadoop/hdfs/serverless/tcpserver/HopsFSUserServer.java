@@ -711,6 +711,10 @@ public class HopsFSUserServer {
             if (previouslyReceivedResult != null)
                 return previouslyReceivedResult;
         }
+        else if (activeFutures.containsKey(requestId)) {
+            RequestResponseFuture future = activeFutures.get(requestId);
+            if (future.isDone()) return future.get();
+        }
 
         long startTime = System.currentTimeMillis();
         RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck,
