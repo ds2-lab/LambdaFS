@@ -711,8 +711,8 @@ public class HopsFSUserServer {
             if (previouslyReceivedResult != null)
                 return previouslyReceivedResult;
         }
-        else if (activeFutures.containsKey(requestId)) {
-            RequestResponseFuture future = activeFutures.get(requestId);
+        else if (completedFutures.containsKey(requestId)) {
+            RequestResponseFuture future = completedFutures.get(requestId);
             if (future.isDone()) return future.get();
         }
 
