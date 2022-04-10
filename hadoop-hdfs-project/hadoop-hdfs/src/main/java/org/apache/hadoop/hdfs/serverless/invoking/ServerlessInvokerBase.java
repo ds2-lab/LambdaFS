@@ -462,7 +462,8 @@ public abstract class ServerlessInvokerBase<T> {
         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Invoking the OpenWhisk serverless NameNode function for operation " + operationName + " now...");
+            LOG.debug("Invoking the OpenWhisk serverless NameNode function for operation " + operationName +
+                    " now (requestID = " + requestId + ")");
             LOG.debug("Request URI/URL: " + request.getURI().toURL());
         }
 
