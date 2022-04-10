@@ -66,7 +66,7 @@ public class NameNodeResult implements Serializable {
     static {
         conf.registerClass(LocatedBlocks.class, TransactionEvent.class, TransactionAttempt.class, NamespaceInfo.class,
                 LastBlockWithStatus.class, HdfsFileStatus.class, DirectoryListing.class, FsServerDefaults.class,
-                ActiveServerlessNameNodeList.class, ActiveServerlessNameNode.class, ActiveNode.class);
+                ActiveServerlessNameNodeList.class, ActiveServerlessNameNode.class);
     }
 
     /**
