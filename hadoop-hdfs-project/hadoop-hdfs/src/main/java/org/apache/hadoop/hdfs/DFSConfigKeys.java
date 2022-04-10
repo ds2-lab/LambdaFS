@@ -75,7 +75,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
 
   /**
    * When straggler mitigation is enabled, this is the factor X such that a request
-   * must be delayed for (avgLatency << X) ms in order to be re-submitted.
+   * must be delayed for (avgLatency * X) ms in order to be re-submitted.
    */
   public static final String SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR = "serverless.straggler.mitigation.threshold";
   public static final int SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR_DEFAULT = 2;

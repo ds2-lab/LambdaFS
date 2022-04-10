@@ -199,7 +199,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     /**
      * When straggler mitigation is enabled, this is the factor X such that a request
-     * must be delayed for (avgLatency << X) ms in order to be re-submitted.
+     * must be delayed for (avgLatency * X) ms in order to be re-submitted.
      */
     protected int stragglerMitigationThresholdFactor;
 
@@ -390,14 +390,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (stragglerMitigationEnabled && !stragglerResubmissionAlreadyOccurred) {
             // First, calculate the potential timeout using the current average latency and the threshold factor.
             long averageLatencyRoundedDown = (long)Math.floor(latencyWithWindow.getMean());
-            requestTimeout = averageLatencyRoundedDown << stragglerMitigationThresholdFactor;
+            requestTimeout = averageLatencyRoundedDown * stragglerMitigationThresholdFactor;
 
             // Next, clamp the request timeout to a minimum value of at least 'minimumStragglerMitigationTimeout' ms.
-            requestTimeout = Math.max(minimumStragglerMitigationTimeout, requestTimeout);
-
-            // Next, if our request timeout is longer than the standard timeout we'd normally use,
-            // then just use the standard timeout.
-            requestTimeout = Math.min(requestTimeout, serverlessInvoker.httpTimeoutMilliseconds);
+            // Then, if the timeout is > than the standard timeout we'd normally use, just use the standard timeout.
+            requestTimeout = Math.min(Math.max(minimumStragglerMitigationTimeout, requestTimeout), serverlessInvoker.httpTimeoutMilliseconds);
         } else {
             // Just use HTTP requestTimeout.
             requestTimeout = serverlessInvoker.httpTimeoutMilliseconds + backoffInterval;
