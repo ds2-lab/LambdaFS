@@ -331,8 +331,13 @@ public class HopsFSUserServer {
         // Return a random NameNode connection.
         NameNodeConnection[] values = deploymentConnections.values().toArray(new NameNodeConnection[0]);
 
+        // If there are no available connections, then we will return null to indicate that this is the case.
         if (values.length == 0)
             return null;
+
+        // If there's just one, don't bother with the RNG object. Just return the first available connection.
+        if (values.length == 1)
+            return values[0];
 
         return values[(rng.nextInt(values.length))];
     }
@@ -365,8 +370,13 @@ public class HopsFSUserServer {
                 values.add(conn);
         }
 
+        // If there are no available connections, then we will return null to indicate that this is the case.
         if (values.size() == 0)
             return null;
+
+        // If there's just one, don't bother with the RNG object. Just return the first available connection.
+        if (values.size() == 1)
+            return values.get(0);
 
         return values.get(rng.nextInt(values.size()));
     }
