@@ -429,6 +429,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
 
         boolean stragglerResubmissionAlreadyOccurred = false;
+        boolean wasResubmittedViaStragglerMitigation = false;
 
         ExponentialBackOff exponentialBackOff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(5)
@@ -508,12 +509,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 // Collect and save/record metrics.
                 createAndStoreOperationPerformed(response, operationName, requestId, opStart, localEnd,
-                        targetDeployment, true, false, stragglerResubmissionAlreadyOccurred);
+                        targetDeployment, true, false, wasResubmittedViaStragglerMitigation);
 
                 return response;
             } catch (TimeoutException ex) {
-
-
                 // If the straggler mitigation technique/protocol is enabled, then we only count this timeout as a
                 // "real" timeout (i.e., one that uses the exponential backoff mechanism) if we've already re-submitted
                 // the task via the straggler mitigation protocol for this retry. If we haven't already re-submitted
@@ -526,7 +525,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         // Don't continue. We need to exponentially backoff.
                     } else {
                         if (LOG.isDebugEnabled()) LOG.debug("Will resubmit request " + requestId + " shortly via straggler mitigation...");
-                        stragglerResubmissionAlreadyOccurred = true;
+                        stragglerResubmissionAlreadyOccurred = true; // Technically it hasn't "already" occurred yet, but still.
+                        wasResubmittedViaStragglerMitigation = true;
 
                         // If this isn't a write operation, then make the NN redo it so that it may go faster.
                         if (!ServerlessNameNode.isWriteOperation(operationName))
@@ -536,13 +536,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 } else {
                     LOG.error("Timed out while waiting for TCP response for request " + requestId + ".");
                 }
-
-//                LOG.error("Sleeping for " + backoffInterval + " ms before retrying...");
-//                try {
-//                    Thread.sleep(backoffInterval);
-//                } catch (InterruptedException e) {
-//                    LOG.error("Encountered exception while sleeping during exponential backoff:", e);
-//                }
 
                 backoffInterval = exponentialBackOff.getBackOffInMillis();
             } catch (IOException ex) {
@@ -594,7 +587,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 // Collect and save/record metrics.
                 createAndStoreOperationPerformed(response, operationName, requestId, opStart, opEnd, targetDeployment,
-                        true, true, false);
+                        true, true, wasResubmittedViaStragglerMitigation);
 
                 return response;
             }
@@ -635,7 +628,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
             // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
             if (mappedFunctionNumber != -1 && tcpServer.connectionExists(mappedFunctionNumber)) {
-
                 // If random HTTP is disabled, then just issue a TCP request.
                 // Alternatively, if random HTTP is enabled, then we generate a random number between 0 and 1.
                 // If this number is strictly greater than the `randomHttpChance` threshold, then we still issue
@@ -726,7 +718,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private void createAndStoreOperationPerformed(JsonObject response, String operationName, String requestId,
                                                   long startTime, long endTime, int mappedFunctionNumber,
                                                   boolean issuedViaTCP, boolean issuedViaHTTP,
-                                                  boolean stragglerResubmissionAlreadyOccurred) {
+                                                  boolean wasResubmittedViaStragglerMitigation) {
         try {
             long nameNodeId = -1;
             if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
@@ -750,7 +742,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     = new OperationPerformed(operationName, requestId,
                     startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                     deployment, issuedViaHTTP, issuedViaTCP, response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(),
-                    nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, stragglerResubmissionAlreadyOccurred);
+                    nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation);
             operationsPerformed.put(requestId, operationPerformed);
         } catch (NullPointerException ex) {
             LOG.error("Unexpected NullPointerException encountered while creating OperationPerformed from JSON response:", ex);
@@ -806,6 +798,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         DescriptiveStatistics httpStatistics = new DescriptiveStatistics();
         DescriptiveStatistics tcpStatistics = new DescriptiveStatistics();
+        DescriptiveStatistics resubmittedStatistics = new DescriptiveStatistics();
+        DescriptiveStatistics notResubmittedStatistics = new DescriptiveStatistics();
 
         for (OperationPerformed operationPerformed : opsPerformedList) {
             if (operationPerformed.getIssuedViaHttp()) {
@@ -825,6 +819,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     if (latency >= 150)
                         LOG.warn("FOUND TCP LATENCY OF " + latency + " MS. TASK ID: " + operationPerformed.getRequestId());
                 }
+            }
+
+            if (operationPerformed.getStragglerResubmitted()) {
+                resubmittedStatistics.addValue(operationPerformed.getResultReceivedTime() - operationPerformed.getInvokedAtTime());
+            } else {
+                notResubmittedStatistics.addValue(operationPerformed.getResultReceivedTime() - operationPerformed.getInvokedAtTime());
             }
         }
 
@@ -873,12 +873,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println("Number of Unique NameNodes: " + requestsPerNameNode.size());
 
         System.out.println("\n-- Current HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
-        System.out.println("Latency TCP (ms) [min: " + tcpStatistics.getMin() + ", max: " + tcpStatistics.getMax() +
-                ", avg: " + tcpStatistics.getMean() + ", std dev: " + tcpStatistics.getStandardDeviation() +
-                ", N: " + tcpStatistics.getN() + "]");
-        System.out.println("Latency HTTP (ms) [min: " + httpStatistics.getMin() + ", max: " + httpStatistics.getMax() +
-                ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
-                ", N: " + httpStatistics.getN() + "]");
+        System.out.println("Latency TCP (ms) [min: " + resubmittedStatistics.getMin() + ", max: " + resubmittedStatistics.getMax() +
+                ", avg: " + resubmittedStatistics.getMean() + ", std dev: " + resubmittedStatistics.getStandardDeviation() +
+                ", N: " + resubmittedStatistics.getN() + "]");
+        System.out.println("Latency HTTP (ms) [min: " + notResubmittedStatistics.getMin() + ", max: " + notResubmittedStatistics.getMax() +
+                ", avg: " + notResubmittedStatistics.getMean() + ", std dev: " + notResubmittedStatistics.getStandardDeviation() +
+                ", N: " + notResubmittedStatistics.getN() + "]");
 
         try {
             printHistograms(httpStatistics, tcpStatistics);
@@ -888,6 +888,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
         printLatencyStatisticsDetailed(0);
+
+        System.out.println("\n-- Straggler Mitigation Statistics --------------------------------------------------------------------------------------------------");
+        System.out.println("Latency TCP (ms) [min: " + tcpStatistics.getMin() + ", max: " + tcpStatistics.getMax() +
+                ", avg: " + tcpStatistics.getMean() + ", std dev: " + tcpStatistics.getStandardDeviation() +
+                ", N: " + tcpStatistics.getN() + "]");
+        System.out.println("Latency HTTP (ms) [min: " + httpStatistics.getMin() + ", max: " + httpStatistics.getMax() +
+                ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
+                ", N: " + httpStatistics.getN() + "]");
 
         System.out.println("\n==================================================================");
     }

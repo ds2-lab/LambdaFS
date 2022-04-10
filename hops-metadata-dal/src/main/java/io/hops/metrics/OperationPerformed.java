@@ -163,6 +163,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     public int getDeployment() { return this.deployment; }
 
+    public boolean getStragglerResubmitted() { return this.stragglerResubmitted; }
+
     /**
      * Modify the timestamp at which the serverless function finished executing.
      * This also recomputes this instance's `duration` field.
