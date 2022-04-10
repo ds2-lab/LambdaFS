@@ -1869,7 +1869,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         // file/directory, then we'll just use an HTTP request.
                         try {
                             dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                                    "ping",
+                                    "prewarm",
                                     dfsClient.serverlessEndpoint,
                                     null, // We do not have any additional/non-default arguments to pass to the NN.
                                     new ArgumentContainer(),

@@ -749,6 +749,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("ping", args ->  {
       return null;
     });
+    operations.put("prewarm", args ->  {
+      try {
+        Thread.sleep(500);
+      } catch (Exception ex) {
+        ex.printStackTrace();
+      }
+      return null;
+    });
     operations.put("removeUser", args -> {
       removeUser(args);
       return null;
