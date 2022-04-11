@@ -701,20 +701,20 @@ public class HopsFSUserServer {
 
         String requestId = payload.get("requestId").getAsString();
 
-        if (resultsWithoutFutures.asMap().containsKey(requestId)) {
-            if (LOG.isDebugEnabled()) LOG.debug("Found result for request " + requestId +
-                    "in ResultsWithoutFutures cache. Returning cached result.");
-            JsonObject previouslyReceivedResult = resultsWithoutFutures.asMap().remove(requestId);
-
-            // There could be a race where the cache entry expires after we've checked if it exists, but before
-            // we remove it. So, we check to ensure it is non-null before posting the result.
-            if (previouslyReceivedResult != null)
-                return previouslyReceivedResult;
-        }
-        else if (completedFutures.containsKey(requestId)) {
-            RequestResponseFuture future = completedFutures.get(requestId);
-            if (future.isDone()) return future.get();
-        }
+//        if (resultsWithoutFutures.asMap().containsKey(requestId)) {
+//            if (LOG.isDebugEnabled()) LOG.debug("Found result for request " + requestId +
+//                    "in ResultsWithoutFutures cache. Returning cached result.");
+//            JsonObject previouslyReceivedResult = resultsWithoutFutures.asMap().remove(requestId);
+//
+//            // There could be a race where the cache entry expires after we've checked if it exists, but before
+//            // we remove it. So, we check to ensure it is non-null before posting the result.
+//            if (previouslyReceivedResult != null)
+//                return previouslyReceivedResult;
+//        }
+//        else if (completedFutures.containsKey(requestId)) {
+//            RequestResponseFuture future = completedFutures.get(requestId);
+//            if (future.isDone()) return future.get();
+//        }
 
         long startTime = System.currentTimeMillis();
         RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck,
