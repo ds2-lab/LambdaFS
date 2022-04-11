@@ -106,7 +106,7 @@ public class RedirectedRequestFuture implements Future<Serializable> {
                     return null;
                 }
 
-                if (LOG.isDebugEnabled()) LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": " + result);
+                if (LOG.isTraceEnabled()) LOG.trace("Returning object of type " + result.getClass().getSimpleName() + ": " + result);
                 return result;
             } catch (Exception ex) {
                 LOG.error("Error encountered while extracting result from NameNode response:", ex);

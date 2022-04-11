@@ -722,8 +722,8 @@ public abstract class ServerlessInvokerBase<T> {
                     return null;
                 }
 
-                if (LOG.isDebugEnabled())
-                    LOG.debug("Returning object of type " + result.getClass().getSimpleName() + ": "
+                if (LOG.isTraceEnabled())
+                    LOG.trace("Returning object of type " + result.getClass().getSimpleName() + ": "
                         + result.toString());
                 return result;
             } catch (Exception ex) {
