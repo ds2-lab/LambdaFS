@@ -742,7 +742,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     = new OperationPerformed(operationName, requestId,
                     startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                     deployment, issuedViaHTTP, issuedViaTCP, response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(),
-                    nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation);
+                    nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation,
+                    this.dfsClient.clientName);
             operationsPerformed.put(requestId, operationPerformed);
         } catch (NullPointerException ex) {
             LOG.error("Unexpected NullPointerException encountered while creating OperationPerformed from JSON response:", ex);

@@ -69,6 +69,12 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     private long nameNodeId;
 
     /**
+     * Some sort of unique identifier of the client that issued the operation
+     * (e.g., thread ID or the HopsFS client name variable).
+     */
+    private final String clientId;
+
+    /**
      * Indicates whether the result was ultimately received via HTTP or TCP.
      */
     private String resultReceivedVia;
@@ -133,7 +139,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                               boolean issuedViaTcp, String resultReceivedVia,
                               long nameNodeId, int metadataCacheMisses,
                               int metadataCacheHits, long finishedProcessingAt,
-                              boolean stragglerResubmitted) {
+                              boolean stragglerResubmitted, String clientId) {
         this.operationName = operationName;
         this.requestId = requestId;
         this.invokedAtTime = invokedAtTime;
@@ -153,6 +159,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.resultReceivedVia = resultReceivedVia;
         this.resultFinishedProcessingTime = finishedProcessingAt;
         this.stragglerResubmitted = stragglerResubmitted;
+        this.clientId = clientId;
     }
 
     public void setNameNodeId(long nameNodeId) {
@@ -210,7 +217,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * Return the header for the CSV file.
      */
     public static String getHeader() {
-        return "operation_name,request_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
+        return "operation_name,request_id,client_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
                 "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration," +
                 "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration," +
                 "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses,straggler_resubmitted";
@@ -223,7 +230,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     @Override
     public String toString() {
         String formatString = "%-16s %-38s %-26s %-26s %-26s %-26s %-26s %-26s %-26s %-8s %-3s %-22s %-6s %-5s %-5s";
-        return String.format(formatString, operationName, requestId,
+        return String.format(formatString, operationName, requestId, clientId,
                 Instant.ofEpochMilli(invokedAtTime).toString(),             // Client invokes NN.
                 Instant.ofEpochMilli(serverlessFnStartTime).toString(),     // NN begins executing.
                 Instant.ofEpochMilli(requestEnqueuedAtTime).toString(),     // NN enqueues req. in work queue.
@@ -333,12 +340,12 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         // "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration,preprocessing_duration," +
         // "waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration,serverless_fn_duration," +
         // "endToEndDuration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses"
-        String formatString = "%-16s,%-38s," +                                          // 2
+        String formatString = "%-16s,%-38s,%-16s" +                                     // 3
                               "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s," +      // 8
                               "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +                   // 7
                               "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s";                         // 5
         writer.write(String.format(formatString,
-                operationName, requestId,
+                operationName, requestId, clientId,
                 invokedAtTime,                    // Client invokes NN.
                 serverlessFnStartTime,            // NN begins executing.
                 requestEnqueuedAtTime,            // NN enqueues req. in work queue.
