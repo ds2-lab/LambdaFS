@@ -326,7 +326,6 @@ public class NameNodeResult implements Serializable {
      * @param metadataCacheManager The manager of the in-memory metadata caches so we can get cache hit/miss metrics.
      *
      *                      We do NOT clear the counters on the metadataCache object after extracting them.
-     *                      This is done by the NameNodeWorkerThread when it first starts executing a request.
      * @param operation If non-null, will be included as a top-level entry in the result under the key "op".
      *                  This is used by TCP connections in particular, as TCP messages generally contain an "op"
      *                  field to designate the request as one containing a result or one used for registration.
@@ -428,7 +427,6 @@ public class NameNodeResult implements Serializable {
      * @param metadataCacheManager The manager of the in-memory metadata caches so we can get cache hit/miss metrics.
      *
      *                      We do NOT clear the counters on the metadataCache object after extracting them.
-     *                      This is done by the NameNodeWorkerThread when it first starts executing a request.
      * @param operation If non-null, will be included as a top-level entry in the result under the key "op".
      *                  This is used by TCP connections in particular, as TCP messages generally contain an "op"
      *                  field to designate the request as one containing a result or one used for registration.
@@ -591,62 +589,6 @@ public class NameNodeResult implements Serializable {
      */
     public long getTimeDeliveredBackToClient() {
         return timeDeliveredBackToClient;
-    }
-
-    /**
-     * Merge another instance of {@link NameNodeResult} into this current instance.
-     *
-     * FIELDS THAT WILL NOT BE OVERWRITTEN:
-     * - functionName: The value for this instance will ALWAYS persist.
-     * - requestId: The value for this instance will ALWAYS persist.
-     * - requestMethod: The value for this instance will ALWAYS persist.
-     * - timeDeliveredBackToClient: The value for this instance will ALWAYS persist.
-     * - serverlessFunctionMapping: The value for this instance will ALWAYS persist.
-     * - enqueuedTime: This is set by the main thread, so it should not be overwritten.
-     * - fnStartTime: This is set by the main thread, so it should not be overwritten.
-     *
-     * FIELDS THAT WILL BE UPDATED/CHANGED:
-     * - additionalFields: Will be merged together. Values will be overwritten or not depending on the value
-     *                     of the 'keepOld' parameter.
-     * - exceptions: Will be combined (like a set union operation, where both sets are disjoint).
-     * - hasResult: Will not be overwritten automatically, but will be set to true/false depending on
-     *              whether this instance has a result field after the merge.
-     * - result: Will be overwritten or not depending on the value of the `keepOld` parameter.
-     * - statisticsPackageSerializedAndEncoded: Will be overwritten by the incoming NameNodeResult's transaction statistics.
-     * - dequeuedTime: Overwritten by the incoming result. The worker thread updates this value, not the main thread.
-     * - processingFinishedTime: Overwritten by incoming result.
-     * - txEventsSerializedAndEncoded
-     * - serverlessFunctionMapping: this is created by the NameNodeWorkerThread right before it posts the result back to the HTTP/TCP thread.
-     *
-     * @param other The other instance to merge into this one.
-     * @param keepOld If True, then existing values of this instance will NOT be overwritten with new values from the
-     *                other NameNodeResult. If False, then existing values of this instance will be overwritten by the
-     *                fields of the other instance when applicable.
-     */
-    public void mergeInto(NameNodeResult other, boolean keepOld) {
-        // Merge the additionalFields HashMap. Note that, for a call map1.putAll(map2), the
-        // fields of map2 will be preserved and the values of map1 will be overwritten.
-        for (Map.Entry<String, String> entry : other.additionalFields.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
-
-            if (this.additionalFields.containsKey(key) && keepOld)
-                continue;
-
-            this.additionalFields.put(key, value);
-        }
-
-        this.exceptions.addAll(other.exceptions);
-
-        if (!keepOld && other.hasResult)
-            this.result = other.result;
-
-        this.hasResult = this.result != null;
-        this.statisticsPackageSerializedAndEncoded = other.statisticsPackageSerializedAndEncoded;
-        this.txEventsSerializedAndEncoded = other.txEventsSerializedAndEncoded;
-        this.dequeuedTime = other.dequeuedTime;
-        this.processingFinishedTime = other.processingFinishedTime;
-        this.serverlessFunctionMapping = other.serverlessFunctionMapping;
     }
 
     public long getFnStartTime() {

@@ -419,7 +419,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    * Used to record transaction events that have occurred while processing the current request.
-   * Cleared after each request is processed by the NameNodeWorkerThread.
+   * Cleared after each request is processed.
    */
   private final ThreadLocal<Set<TransactionEvent>> transactionEvents = new ThreadLocal<>();
 
@@ -668,15 +668,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     Path srcPath = new Path(src);
     return (src.length() <= MAX_PATH_LENGTH &&
             srcPath.depth() <= MAX_PATH_DEPTH);
-  }
-
-  /**
-   * Enqueue the given FileSystemTask in the work queue.
-   *
-   * @param task The task to be enqueued.
-   */
-  public void enqueueFileSystemTask(FileSystemTask<Serializable> task) throws InterruptedException {
-    this.executionManager.putWork(task);
   }
 
   public int getTxAckTimeout() {

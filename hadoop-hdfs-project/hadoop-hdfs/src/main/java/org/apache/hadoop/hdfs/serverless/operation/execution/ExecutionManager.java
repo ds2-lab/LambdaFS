@@ -42,21 +42,16 @@ public class ExecutionManager {
     private final ServerlessNameNode serverlessNameNodeInstance;
 
     /**
-     * HTTP and TCP requests will add work to this queue.
-     */
-    private final BlockingQueue<FileSystemTask<Serializable>> workQueue;
-
-    /**
      * All tasks that are currently being executed. For now, we only ever execute one task at a time.
      */
-    private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
-    //private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    //private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
 
     /**
      * All tasks that have been executed by this worker thread.
      */
-    private final ConcurrentHashMap<String, FileSystemTask<Serializable>> completedTasks;
-    //private final Cache<String, FileSystemTask<Serializable>> completedTasks;
+    //private final ConcurrentHashMap<String, FileSystemTask<Serializable>> completedTasks;
+    private final Cache<String, FileSystemTask<Serializable>> completedTasks;
 
     /**
      * Cache of previously-computed results. These results are kept in-memory for a configurable period of time
@@ -69,12 +64,7 @@ public class ExecutionManager {
      *
      * NOTE: This IS thread safe.
      */
-    private final Cache<String, PreviousResult> previousResultCache;
-
-    /**
-     * The ID of the NameNode that this thread is running in.
-     */
-    private final long nameNodeId;
+    //private final Cache<String, PreviousResult> previousResultCache;
 
     /**
      * Threads executing the consistency protocol place the {@link WriteAcknowledgement} objects they created into this
@@ -97,30 +87,28 @@ public class ExecutionManager {
     public ExecutionManager(Configuration conf, ServerlessNameNode serverlessNameNode) {
         LOG.debug("Creating ExecutionManager now.");
 
-        int resultRetainIntervalMilliseconds = conf.getInt(SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS, SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT);
-        int previousResultCacheMaxSize = conf.getInt(SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE, SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE_DEFAULT);
+//        int resultRetainIntervalMilliseconds = conf.getInt(SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS, SERVERLESS_RESULT_CACHE_INTERVAL_MILLISECONDS_DEFAULT);
+//        int previousResultCacheMaxSize = conf.getInt(SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE, SERVERLESS_RESULT_CACHE_MAXIMUM_SIZE_DEFAULT);
 
-        this.workQueue = new LinkedBlockingQueue<>();
-        this.previousResultCache = Caffeine.newBuilder()
-                .maximumSize(previousResultCacheMaxSize)
-                .initialCapacity((int)(previousResultCacheMaxSize * 0.5))
-                .expireAfterWrite(Duration.ofMillis(resultRetainIntervalMilliseconds))
-                .expireAfterAccess(Duration.ofMillis(resultRetainIntervalMilliseconds))
+//        this.previousResultCache = Caffeine.newBuilder()
+//                .maximumSize(previousResultCacheMaxSize)
+//                .initialCapacity((int)(previousResultCacheMaxSize * 0.5))
+//                .expireAfterWrite(Duration.ofMillis(resultRetainIntervalMilliseconds))
+//                .expireAfterAccess(Duration.ofMillis(resultRetainIntervalMilliseconds))
+//                .build();
+
+//        this.currentlyExecutingTasks = new ConcurrentHashMap<>();
+//        this.completedTasks = new ConcurrentHashMap<>();
+        this.currentlyExecutingTasks = Caffeine.newBuilder()
+                .expireAfterWrite(120, TimeUnit.SECONDS)
+                .maximumSize(50_000)
+                .build();
+        this.completedTasks = Caffeine.newBuilder()
+                .expireAfterWrite(120, TimeUnit.SECONDS)
+                .maximumSize(50_000)
                 .build();
 
-        this.currentlyExecutingTasks = new ConcurrentHashMap<>();
-        this.completedTasks = new ConcurrentHashMap<>();
-//        this.currentlyExecutingTasks = Caffeine.newBuilder()
-//                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
-//                .maximumSize(50_000)
-//                .build();
-//        this.completedTasks = Caffeine.newBuilder()
-//                .expireAfterWrite(60, TimeUnit.MILLISECONDS)
-//                .maximumSize(50_000)
-//                .build();
-
         this.serverlessNameNodeInstance = serverlessNameNode;
-        this.nameNodeId = serverlessNameNode.getId();
         this.writeAcknowledgementsToDelete = new LinkedBlockingQueue<>();
         this.writeAcknowledgementsToDeleteLock = new ReentrantReadWriteLock();
 
@@ -146,10 +134,22 @@ public class ExecutionManager {
     public void tryExecuteTask(FileSystemTask<Serializable> task, NameNodeResult workerResult, boolean http) {
         boolean duplicate = isTaskDuplicate(task);
 
-        if (duplicate) {
+        // If this is a duplicate task, and we aren't being forced to redo it, then return it to the client.
+        // They'll have to resubmit it if they need it to get done again.
+        // TODO: Is it necessary to have the client resubmit?
+        //       We previously used to cache results and then return them, but we stopped doing that
+        //       as it was seldom used (and just used up a lot of memory). If we find this is an issue,
+        //       then we can just start using the PreviousResultsCache again. In general, this construct
+        //       just doesn't make sense. We see a duplicate, send it back, and then execute it again if the
+        //       client re-submits. The fact that we're seeing a duplicate probably means the client didn't get it
+        //       though, so this whole process just seems to waste time. (But again, it actually doesn't seem
+        //       relevant as it rarely happens with the current way of handling requests [i.e., no dual HTTP-TCP
+        //       anymore]), so for now, we'll just leave this as is (in the interest of time).
+        if (duplicate && !task.getForceRedo()) {
             // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
             workerResult.setDequeuedTime(System.currentTimeMillis());
-            handleDuplicateTask(task, workerResult);
+            workerResult.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
+            return;
         } else {
             currentlyExecutingTasks.put(task.getTaskId(), task);
         }
@@ -207,7 +207,7 @@ public class ExecutionManager {
         // If there was an error, then may be automatically re-submitted by the client.
         if (success) {
             long s = System.currentTimeMillis();
-            notifyTaskCompleted(task);
+            taskCompleted(task);
             long t = System.currentTimeMillis();
 
             // notifyTaskCompleted() modifies some ConcurrentHashMaps (or possibly Caffeine Cache objects now).
@@ -216,16 +216,16 @@ public class ExecutionManager {
                 LOG.warn("Notifying completion of task " + task.getTaskId() + " took " + (t - s) + " ms.");
         }
 
-        long s = System.currentTimeMillis();
-        // Cache the result for a bit.
-        PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
-        cachePreviousResult(task.getTaskId(), previousResult);
-        long t = System.currentTimeMillis();
-
-        // notifyTaskCompleted() modifies some ConcurrentHashMaps (or possibly Caffeine Cache objects now).
-        // If these operations are taking a long time, then we log a warning about it. They should be fast though.
-        if (t - s > 10)
-            LOG.warn("Caching result of task " + task.getTaskId() + " took " + (t - s) + " ms.");
+//        long s = System.currentTimeMillis();
+//        // Cache the result for a bit.
+//        PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
+//        cachePreviousResult(task.getTaskId(), previousResult);
+//        long t = System.currentTimeMillis();
+//
+//        // notifyTaskCompleted() modifies some ConcurrentHashMaps (or possibly Caffeine Cache objects now).
+//        // If these operations are taking a long time, then we log a warning about it. They should be fast though.
+//        if (t - s > 10)
+//            LOG.warn("Caching result of task " + task.getTaskId() + " took " + (t - s) + " ms.");
     }
 
     /**
@@ -272,9 +272,8 @@ public class ExecutionManager {
      * This was originally performed exclusively in the HTTP handler
      * {@link org.apache.hadoop.hdfs.serverless.OpenWhiskHandler}. We moved it here because, when clients were issuing
      * TCP requests to NameNodes rather than HTTP requests, we would encounter errors as the NNs never retrieved and
-     * processed storage reports and intermediate block reports. Now the NameNodeWorkerThread periodically retrieves
-     * and processes these updates. Seeing as both HTTP and TCP requests go thru the NameNodeWorkerThread, this
-     * prevents the aforementioned issue from occurring.
+     * processed storage reports and intermediate block reports. Now there is a dedicated thread that periodically
+     * retrieves and processes these updates.
      *
      * NOTE: The NameNode keeps track of scheduling these updates. So this function will just return
      * if it is not time for an update. The worker thread does not need to check if it is time to
@@ -290,57 +289,9 @@ public class ExecutionManager {
     }
 
     /**
-     * Add work to the Work Queue. This will block if the queue is full, but presently, the queue has no
-     * capacity constraint, so this should never block.
-     *
-     * @param task {@link FileSystemTask} object encapsulating the work to be performed.
+     * Update internal state that tracks whether a particular task has been completed or not.
      */
-    public void putWork(FileSystemTask<Serializable> task) throws InterruptedException {
-        boolean duplicate = isTaskDuplicate(task);
-
-        if (duplicate) {
-            NameNodeResult result = new NameNodeResult(this.serverlessNameNodeInstance.getDeploymentNumber(),
-                    task.getTaskId(), task.getOperationName(), this.nameNodeId);
-            // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
-            result.setDequeuedTime(System.currentTimeMillis());
-            handleDuplicateTask(task, result);
-        } else {
-            workQueue.put(task);
-        }
-    }
-
-    /**
-     * Attempt to retrieve a FileSystemTask from the Work Queue. This will block for the specified period of time.
-     * If there is no work available by timeout, then this function returns null.
-     *
-     * @param timeout how long to wait before giving up, in units of {@code unit}
-     * @param unit a {@link TimeUnit} determining how to interpret the {@code timeout} parameter
-     */
-    public FileSystemTask<Serializable> getWork(long timeout, TimeUnit unit) throws InterruptedException {
-        FileSystemTask<Serializable> task = this.workQueue.poll(timeout, unit);
-
-        if (task != null)
-            currentlyExecutingTasks.put(task.getTaskId(), task);
-
-        return task;
-    }
-
-    /**
-     * Attempt to retrieve a FileSystemTask from the Work Queue without blocking. If there is no work available,
-     * then this function returns null.
-     */
-    public FileSystemTask<Serializable> getWork() throws InterruptedException {
-        FileSystemTask<Serializable> task = this.workQueue.take();
-
-        currentlyExecutingTasks.put(task.getTaskId(), task);
-
-        return task;
-    }
-
-    /**
-     * Used by {@link NameNodeWorkerThread} objects to notify the ExecutionManager that a task has been completed.
-     */
-    public void notifyTaskCompleted(FileSystemTask<Serializable> task) {
+    public void taskCompleted(FileSystemTask<Serializable> task) {
         if (task == null)
             throw new IllegalArgumentException("The provided FileSystemTask object should not be null.");
 
@@ -351,18 +302,17 @@ public class ExecutionManager {
         // be a race where the task has been removed from 'currently executing tasks' but not yet added to 'completed
         // tasks' yet, which could result in false negatives when checking for duplicates.
         completedTasks.put(taskId, task);
-        //currentlyExecutingTasks.asMap().remove(taskId);
-        currentlyExecutingTasks.remove(taskId);
+        currentlyExecutingTasks.asMap().remove(taskId);
     }
 
-    /**
-     * Store the result {@code previousResult} of the task identified by {@code taskId}.
-     * @param taskId The unique ID of the task whose execution generated the result encapsulated by {@code previousResult}.
-     * @param previousResult The result generated by executing the task whose ID is {@code taskId}.
-     */
-    public synchronized void cachePreviousResult(String taskId, PreviousResult previousResult) {
-        this.previousResultCache.put(taskId, previousResult);
-    }
+//    /**
+//     * Store the result {@code previousResult} of the task identified by {@code taskId}.
+//     * @param taskId The unique ID of the task whose execution generated the result encapsulated by {@code previousResult}.
+//     * @param previousResult The result generated by executing the task whose ID is {@code taskId}.
+//     */
+//    public synchronized void cachePreviousResult(String taskId, PreviousResult previousResult) {
+//        this.previousResultCache.put(taskId, previousResult);
+//    }
 
     /**
      * Check if this task is a duplicate based on its task key. The task key comes from the request ID, which
@@ -383,37 +333,37 @@ public class ExecutionManager {
      * @return true if the task is a duplicate, otherwise false.
      */
     public synchronized boolean isTaskDuplicate(String taskId) {
-        //return currentlyExecutingTasks.asMap().containsKey(taskId) || completedTasks.asMap().containsKey(taskId);
-        return currentlyExecutingTasks.containsKey(taskId) || completedTasks.containsKey(taskId);
+        return currentlyExecutingTasks.asMap().containsKey(taskId) || completedTasks.asMap().containsKey(taskId);
+        //return currentlyExecutingTasks.containsKey(taskId) || completedTasks.containsKey(taskId);
     }
 
-    /**
-     * Handler for when the worker thread encounters a duplicate task.
-     * @param task The task in question.
-     * @param result The NameNodeResult object being used by the worker thread.
-     */
-    private NameNodeResult handleDuplicateTask(FileSystemTask<Serializable> task, NameNodeResult result) {
-        LOG.warn("Encountered duplicate task " + task.getTaskId() + " (operation = " + task.getOperationName() + ").");
-
-        if (task.getForceRedo()) {
-            LOG.warn("Client did not receive the original transmission of the result for "
-                    + task.getTaskId() + ". Checking to see if result is cached...");
-
-            // This IS thread safe.
-            PreviousResult previousResult = previousResultCache.getIfPresent(task.getTaskId());
-            if (previousResult != null) {
-                if (LOG.isDebugEnabled()) LOG.debug("Result for task " + task.getTaskId() + " is still cached. Returning it to the client now.");
-            } else {
-                LOG.warn("Result for task " + task.getTaskId() + " is no longer in the cache.");
-
-                result.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
-
-                // Simply post a DuplicateRequest message. The client-side code will know that this means
-                // that the result is no longer in the cache, and the operation must be restarted.
-            }
-        } else {
-            result.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
-        }
-        return result;
-    }
+//    /**
+//     * Handler for when the worker thread encounters a duplicate task.
+//     * @param task The task in question.
+//     * @param result The NameNodeResult object being used by the worker thread.
+//     */
+//    private boolean handleDuplicateTask(FileSystemTask<Serializable> task, NameNodeResult result) {
+//        LOG.warn("Encountered duplicate task " + task.getTaskId() + " (operation = " + task.getOperationName() + ").");
+//
+//        if (task.getForceRedo()) {
+//            LOG.warn("Client did not receive the original transmission of the result for "
+//                    + task.getTaskId() + ". Checking to see if result is cached...");
+//
+//            // This IS thread safe.
+//            PreviousResult previousResult = previousResultCache.getIfPresent(task.getTaskId());
+//            if (previousResult != null) {
+//                if (LOG.isDebugEnabled()) LOG.debug("Result for task " + task.getTaskId() + " is still cached. Returning it to the client now.");
+//            } else {
+//                LOG.warn("Result for task " + task.getTaskId() + " is no longer in the cache.");
+//
+//                result.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
+//
+//                // Simply post a DuplicateRequest message. The client-side code will know that this means
+//                // that the result is no longer in the cache, and the operation must be restarted.
+//            }
+//        } else {
+//            result.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
+//        }
+//        return result;
+//    }
 }
