@@ -10,7 +10,8 @@ import java.io.Serializable;
  * request and is not the result of the file system operation. (The extra field is also included if the result is
  * NOT an instance of this class; in that case, the field is just set to 'false' rather than 'true'.)
  *
- * See {@link NameNodeResult#toJson(String)}.
+ * TODO: Do we need a whole class for this? Can't there just be a field/flag?
+ *       Not particularly urgent because duplicate requests are quite rare, but still.
  */
 public class DuplicateRequest implements Serializable {
 

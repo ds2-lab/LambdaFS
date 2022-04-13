@@ -50,6 +50,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.*;
 
+import static org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities.serializableToBase64String;
+
 /**
  * A thread per active or standby namenode to perform:
  * <ul>
@@ -720,11 +722,13 @@ class BPServiceActor implements Runnable {
     IntermediateBlockReportDataAccess<IntermediateBlockReport> dataAccess =
             (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
 
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    ObjectOutputStream oos = new ObjectOutputStream( baos );
-    oos.writeObject(receivedAndDeletedBlocks);
-    oos.close();
-    String encoded = Base64.getEncoder().encodeToString(baos.toByteArray());
+//    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//    ObjectOutputStream oos = new ObjectOutputStream( baos );
+//    oos.writeObject(receivedAndDeletedBlocks);
+//    oos.close();
+//    String encoded = Base64.getEncoder().encodeToString(baos.toByteArray());
+
+    String encoded = serializableToBase64String(receivedAndDeletedBlocks);
 
     int reportId = dn.getAndIncrementIntermediateBlockReportCounter();
     LOG.info("Storing intermediate block report " + reportId + " in intermediate storage now...");
