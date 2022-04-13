@@ -550,7 +550,7 @@ public abstract class ServerlessInvokerBase<T> {
         } while (backoffInterval != -1);
 
         throw new IOException("The file system operation could not be completed. " +
-                "Failed to invoke a Serverless NameNode after " + maxHttpRetries + " attempts.");
+                "Failed to invoke Serverless NameNode " + targetDeployment + " after " + maxHttpRetries + " attempts.");
     }
 
     /**
