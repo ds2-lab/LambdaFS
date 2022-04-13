@@ -7,6 +7,7 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.watch.PersistentWatcher;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 
@@ -301,10 +302,11 @@ public class SyncZKClient implements ZKClient {
     public ZooKeeperInvalidation getInvalidation(String path) throws Exception {
         byte[] data = client.getData().watched().forPath(path);
 
-        ByteArrayInputStream bis = new ByteArrayInputStream(data);
-        ObjectInput in = new ObjectInputStream(bis);
-
-        return (ZooKeeperInvalidation)in.readObject();
+        return (ZooKeeperInvalidation)InvokerUtilities.bytesToObject(data);
+//        ByteArrayInputStream bis = new ByteArrayInputStream(data);
+//        ObjectInput in = new ObjectInputStream(bis);
+//
+//        return (ZooKeeperInvalidation)in.readObject();
     }
 
     @Override
@@ -323,7 +325,7 @@ public class SyncZKClient implements ZKClient {
         LOG.debug("Storing invalidation in ZooKeeper cluster under path: '" + path + "'");
 
         // TODO: Should this be persistent or ephemeral?
-        this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
+        this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path, InvokerUtilities.serializableToBytes(invalidation));
 
         // Note. It is technically possible for an event to happen between creating the ZNode and this watch being
         // established, so it is necessary to check for any state changes explicitly despite creating this watch

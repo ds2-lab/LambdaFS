@@ -23,6 +23,7 @@ import org.apache.hadoop.hdfs.server.protocol.StorageReceivedDeletedBlocks;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
+import org.apache.hadoop.hdfs.serverless.zookeeper.ZooKeeperInvalidation;
 import org.nustaq.serialization.FSTConfiguration;
 
 /**
@@ -41,7 +42,7 @@ public class InvokerUtilities {
         conf.registerClass(LocatedBlocks.class, TransactionEvent.class, TransactionAttempt.class, NamespaceInfo.class,
                 LastBlockWithStatus.class, HdfsFileStatus.class, DirectoryListing.class, FsServerDefaults.class,
                 ActiveServerlessNameNodeList.class, ActiveServerlessNameNode.class, StorageReport.class,
-                DatanodeInfo.class, StorageReceivedDeletedBlocks.class);
+                DatanodeInfo.class, StorageReceivedDeletedBlocks.class, ExtendedBlock.class, ZooKeeperInvalidation.class);
     }
 
     /**
@@ -76,13 +77,27 @@ public class InvokerUtilities {
      * @param base64Encoded The object to decode and deserialize.
      * @return The decoded and deserialized object.
      */
-    public static Object base64StringToObject(String base64Encoded) throws IOException, ClassNotFoundException {
+    public static Object base64StringToObject(String base64Encoded) {
         byte[] resultSerialized = org.apache.commons.codec.binary.Base64.decodeBase64(base64Encoded);
-
         return conf.asObject(resultSerialized);
-//        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(resultSerialized);
-//        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-//        return objectInputStream.readObject();
+    }
+
+    /**
+     * Serialize an object.
+     * @param obj the object to be serialized.
+     * @return The object in serialized form as a byte[].
+     */
+    public static byte[] serializableToBytes(Serializable obj) {
+        return conf.asByteArray(obj);
+    }
+
+    /**
+     * Deserialize an object.
+     * @param bytes The serialized object in the form of a byte[].
+     * @return The deserialized object.
+     */
+    public static Object bytesToObject(byte[] bytes) {
+        return conf.asObject(bytes);
     }
 
     /**

@@ -222,6 +222,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * for which we do not actually need any ACKs.
      */
     public int precomputeAcks() throws IOException {
+        LOG.debug("Pre-computing ACKs (before running full consistency protocol).");
         if (this.invalidatedINodes == null) {
             LOG.error("Cannot pre-compute ACKs if set of invalidated INodes is null.");
             return -1;
@@ -391,7 +392,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // We don't care about the set of invalidated INodes during a subtree operation, also. We just don't factor
         // that into things. I think it's the case that there will always be at least one invalidated INode anyway
         // in that of the subtree root.
-        if (invalidatedINodes == null) {
+        if (invalidatedINodes == null && !subtreeOperation) {
             INodeContext transactionINodeContext = (INodeContext) callingThreadINodeContext;
             invalidatedINodes = transactionINodeContext.getInvalidatedINodes();
             int numInvalidated = invalidatedINodes.size();
