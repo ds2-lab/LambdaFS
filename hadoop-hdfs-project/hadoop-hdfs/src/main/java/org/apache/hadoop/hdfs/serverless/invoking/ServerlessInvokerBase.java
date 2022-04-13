@@ -520,7 +520,8 @@ public abstract class ServerlessInvokerBase<T> {
                 currentTime = System.nanoTime();
                 timeElapsed = (currentTime - invokeStart) / 1000000.0;
                 LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke operation " +
-                        requestId + " timed out. Time elapsed: " + timeElapsed + " ms.");
+                        requestId + " targeting deployment " + targetDeployment + " timed out. Time elapsed: " +
+                        timeElapsed + " ms.");
                 LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
