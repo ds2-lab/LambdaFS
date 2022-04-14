@@ -538,7 +538,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           checksumType, conf.getBoolean(DFS_NAMENODE_QUOTA_ENABLED_KEY,
               DFS_NAMENODE_QUOTA_ENABLED_DEFAULT));
 
-      LOG.debug("Quota enabled: " + conf.getBoolean(DFS_NAMENODE_QUOTA_ENABLED_KEY,
+      LOG.info("Quota enabled: " + conf.getBoolean(DFS_NAMENODE_QUOTA_ENABLED_KEY,
               DFS_NAMENODE_QUOTA_ENABLED_DEFAULT));
 
       this.maxFsObjects = conf.getLong(DFS_NAMENODE_MAX_OBJECTS_KEY,

@@ -172,7 +172,7 @@ public class FSDirectory implements Closeable {
         conf.getBoolean(DFSConfigKeys.DFS_NAMENODE_QUOTA_ENABLED_KEY,
             DFSConfigKeys.DFS_NAMENODE_QUOTA_ENABLED_DEFAULT);
 
-    LOG.debug("Quota enabled: " + quotaEnabled);
+    LOG.info("Quota enabled: " + quotaEnabled);
 
     namesystem = ns;
 
