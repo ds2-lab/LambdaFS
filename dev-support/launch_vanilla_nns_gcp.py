@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-n", "--num-vms", type = int, dest = "num_vms", default = 1, help = "Number of VMs to create.")
     parser.add_argument("-s", "--starting-index", type = int, dest = "starting_index", default = 0, help = "Index to start naming the instances at")
-    parser.add_argument("-i", "--image", type = str, default = "vanilla-hopsfs-namenode-v2", help = "Machine image to use for the DataNode VMs")
+    parser.add_argument("-i", "--image", type = str, default = "vanilla-hopsfs-namenode-3", help = "Machine image to use for the DataNode VMs")
     parser.add_argument("-t", "--machine-type", type = str, dest = "machine_type", default = "c2-standard-16", help = "Google Compute Engine machine type to use.")
     parser.add_argument("-o", "--output", type = str, default = "/home/ben/repos/hops/hadoop-dist/target/hadoop-3.2.0.2-RC0/etc/hadoop", help = "Filepath for the config.ini file that gets generated after creating the VMs.")
     parser.add_argument("-k", "--key-file", type = str, help = "Key file for SSH onto newly-created VMs.")
