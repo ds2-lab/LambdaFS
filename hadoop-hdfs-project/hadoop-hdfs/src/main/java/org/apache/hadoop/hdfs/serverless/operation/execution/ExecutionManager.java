@@ -17,6 +17,8 @@ import java.io.Serializable;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -45,13 +47,15 @@ public class ExecutionManager {
      * All tasks that are currently being executed. For now, we only ever execute one task at a time.
      */
     //private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
-    private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    //private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
+    private Set<String> currentlyExecutingTasks;
 
     /**
      * All tasks that have been executed by this worker thread.
      */
     //private final ConcurrentHashMap<String, FileSystemTask<Serializable>> completedTasks;
-    private final Cache<String, FileSystemTask<Serializable>> completedTasks;
+    //private final Cache<String, FileSystemTask<Serializable>> completedTasks;
+    private Set<String> completedTasks;
 
     /**
      * Cache of previously-computed results. These results are kept in-memory for a configurable period of time
@@ -99,14 +103,16 @@ public class ExecutionManager {
 
 //        this.currentlyExecutingTasks = new ConcurrentHashMap<>();
 //        this.completedTasks = new ConcurrentHashMap<>();
-        this.currentlyExecutingTasks = Caffeine.newBuilder()
-                .expireAfterWrite(120, TimeUnit.SECONDS)
-                .maximumSize(50_000)
-                .build();
-        this.completedTasks = Caffeine.newBuilder()
-                .expireAfterWrite(120, TimeUnit.SECONDS)
-                .maximumSize(50_000)
-                .build();
+//        this.currentlyExecutingTasks = Caffeine.newBuilder()
+//                .expireAfterWrite(45, TimeUnit.SECONDS)
+//                .maximumSize(5_000)
+//                .build();
+//        this.completedTasks = Caffeine.newBuilder()
+//                .expireAfterWrite(45, TimeUnit.SECONDS)
+//                .maximumSize(5_000)
+//                .build();
+        this.currentlyExecutingTasks = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        this.completedTasks = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         this.serverlessNameNodeInstance = serverlessNameNode;
         this.writeAcknowledgementsToDelete = new LinkedBlockingQueue<>();
@@ -151,7 +157,8 @@ public class ExecutionManager {
             workerResult.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
             return;
         } else {
-            currentlyExecutingTasks.put(task.getTaskId(), task);
+            // currentlyExecutingTasks.put(task.getTaskId(), task);
+            currentlyExecutingTasks.add(task.getTaskId());
         }
 
         LOG.info("Executing task " + task.getTaskId() + ", operation: " + task.getOperationName() + " now.");
@@ -301,8 +308,10 @@ public class ExecutionManager {
         // we'll correctly return true. If we removed it from 'currently executing tasks' first, then there could
         // be a race where the task has been removed from 'currently executing tasks' but not yet added to 'completed
         // tasks' yet, which could result in false negatives when checking for duplicates.
-        completedTasks.put(taskId, task);
-        currentlyExecutingTasks.asMap().remove(taskId);
+        //completedTasks.put(taskId, task);
+        //currentlyExecutingTasks.asMap().remove(taskId);
+        completedTasks.add(taskId);
+        currentlyExecutingTasks.remove(taskId);
     }
 
 //    /**
@@ -333,8 +342,9 @@ public class ExecutionManager {
      * @return true if the task is a duplicate, otherwise false.
      */
     public synchronized boolean isTaskDuplicate(String taskId) {
-        return currentlyExecutingTasks.asMap().containsKey(taskId) || completedTasks.asMap().containsKey(taskId);
+        //return currentlyExecutingTasks.asMap().containsKey(taskId) || completedTasks.asMap().containsKey(taskId);
         //return currentlyExecutingTasks.containsKey(taskId) || completedTasks.containsKey(taskId);
+        return currentlyExecutingTasks.contains(taskId) || completedTasks.contains(taskId);
     }
 
 //    /**
