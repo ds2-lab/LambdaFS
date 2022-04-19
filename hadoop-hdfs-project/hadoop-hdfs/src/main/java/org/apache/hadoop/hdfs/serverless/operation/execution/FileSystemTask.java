@@ -83,8 +83,8 @@ public class FileSystemTask<T extends Serializable> implements Future<T> {
      *                  the client was dropped before the client received the result.
      * @param requestMethod Indicates whether this task was submitted via HTTP or TCP.
      */
-    public FileSystemTask(String taskId, String operationName, JsonObject operationArguments, boolean forceRedo,
-                          String requestMethod) {
+    public FileSystemTask(String taskId, String operationName, JsonObject operationArguments,
+                          boolean forceRedo, String requestMethod) {
         this.taskId = taskId;
         this.operationName = operationName;
         this.operationArguments = operationArguments;

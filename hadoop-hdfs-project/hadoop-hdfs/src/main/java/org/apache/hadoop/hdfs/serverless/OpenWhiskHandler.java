@@ -323,7 +323,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
-        FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, redoEvenIfDuplicate, "HTTP");
+        // FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, redoEvenIfDuplicate, "HTTP");
 
         result.setFnStartTime(creationStart);
 
@@ -331,7 +331,8 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
-            serverlessNameNode.getExecutionManager().tryExecuteTask(task, result, true);
+            serverlessNameNode.getExecutionManager().tryExecuteTask(
+                    requestId, op, fsArgs, redoEvenIfDuplicate, result, true);
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);

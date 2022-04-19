@@ -31,15 +31,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public abstract class TransactionalRequestHandler extends RequestHandler {
+  private static Random rng = new Random();
+
   public TransactionalRequestHandler(OperationType opType) {
     super(opType);
-    this.operationId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+    this.operationId = rng.nextLong();
   }
 
   /**

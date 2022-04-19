@@ -550,11 +550,13 @@ public class NameNodeTCPClient {
 
         // Create a new task. After this, we assign it to the worker thread and wait for the
         // result to be computed before returning it to the user.
-        FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, false, "TCP");
+        // FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, false, "TCP");
 
         BaseHandler.currentRequestId.set(requestId);
 
-        serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult, false);
+        //serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult, false);
+        serverlessNameNode.getExecutionManager().tryExecuteTask(
+                requestId, op, fsArgs, false, tcpResult, false);
         return tcpResult;
     }
 
