@@ -18,6 +18,8 @@
 package org.apache.hadoop.hdfs.server.namenode;
 
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -243,7 +245,46 @@ public class INodesInPath {
       count++;
     }
 
-    return new INodesInPath(inodes, INode.getPathComponents(components));
+    return new INodesInPath(inodes, components);
+  }
+
+  static INode resolveLastINode(final INodeDirectory startingDir, final String[] components, final boolean resolveLink)
+          throws UnresolvedLinkException, StorageException, TransactionContextException {
+    Preconditions.checkArgument(startingDir.compareTo(components[0]) == 0);
+
+    INode curNode = startingDir;
+    int count = 0;
+    int inodeNum = 0;
+    INode[] inodes = new INode[components.length];
+
+    while (count < components.length && curNode != null) {
+      final boolean lastComp = (count == components.length - 1);
+      inodes[inodeNum++] = curNode;
+      final boolean isDir = curNode.isDirectory();
+      final INodeDirectory dir = isDir ? curNode.asDirectory() : null;
+      if (curNode.isSymlink() && (!lastComp || resolveLink)) {
+        final String path = constructPath(components, 0, components.length);
+        final String preceding = constructPath(components, 0, count);
+        final String remainder = constructPath(components, count + 1, components.length);
+        final String link = components[count];
+        final String target = curNode.asSymlink().getSymlinkString();
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("UnresolvedPathException " + " path: " + path + " preceding: " + preceding + " count: " + count
+                  + " link: " + link + " target: " + target + " remainder: " + remainder);
+        }
+        throw new UnresolvedPathException(path, preceding, remainder, target);
+      }
+      if (lastComp || !isDir) {
+        break;
+      }
+      final String childName = components[count + 1];
+
+      curNode = dir.getChildINode(childName);
+
+      count++;
+    }
+
+    return inodes[inodes.length - 1];
   }
 
   /**
@@ -277,22 +318,38 @@ public class INodesInPath {
     INode[] inodes = new INode[iip.length() + 1];
     System.arraycopy(iip.inodes, 0, inodes, 0, inodes.length - 1);
     inodes[inodes.length - 1] = child;
-    byte[][] path = new byte[iip.path.length + 1][];
-    System.arraycopy(iip.path, 0, path, 0, path.length - 1);
+    byte[][] path = new byte[iip.pathSupplier.get().length + 1][];
+    System.arraycopy(iip.pathSupplier.get(), 0, path, 0, path.length - 1);
     path[path.length - 1] = childName;
     return new INodesInPath(inodes, path);
   }
   
-  private final byte[][] path;
+  private byte[][] path;
+
+  private String[] pathString;
+
   /**
    * Array with the specified number of INodes resolved for a given path.
    */
   private final INode[] inodes;
 
+  /**
+   * There are cases where we create a pathSupplier instance only to never actually use the path field.
+   * The path field can create a lost of objects in memory, which is bad for Serverless NameNodes. So, we lazily
+   * initialize the field using this Supplier. The first time pathSupplier.get() is called, the value is populated.
+   */
+  private final Supplier<byte[][]> pathSupplier = Suppliers.memoize(() -> INode.getPathComponents(pathString));
+
   private INodesInPath(INode[] inodes, byte[][] path) {
     Preconditions.checkArgument(inodes != null && path != null);
     this.inodes = inodes;
     this.path = path;
+  }
+
+  private INodesInPath(INode[] inodes, String[] pathString) {
+    Preconditions.checkArgument(inodes != null && pathString != null);
+    this.inodes = inodes;
+    this.pathString = pathString;
   }
   
   /**
@@ -318,24 +375,24 @@ public class INodesInPath {
   }
 
   byte[] getLastLocalName() {
-    return path[path.length - 1];
+    return pathSupplier.get()[path.length - 1];
   }
   
   public byte[][] getPathComponents() {
-    return path;
+    return pathSupplier.get();
   }
   
   /** @return the full path in string form */
   public String getPath() {
-    return DFSUtil.byteArray2PathString(path);
+    return DFSUtil.byteArray2PathString(pathSupplier.get());
   }
   
   public String getParentPath() {
-    return getPath(path.length - 1);
+    return getPath(pathSupplier.get().length - 1);
   }
 
   public String getPath(int pos) {
-    return DFSUtil.byteArray2PathString(path, 0, pos);
+    return DFSUtil.byteArray2PathString(pathSupplier.get(), 0, pos);
   }
 
   /**
@@ -345,10 +402,10 @@ public class INodesInPath {
    */
   public List<String> getPath(int offset, int length) {
     Preconditions.checkArgument(offset >= 0 && length >= 0 && offset + length
-        <= path.length);
+        <= pathSupplier.get().length);
     ImmutableList.Builder<String> components = ImmutableList.builder();
     for (int i = offset; i < offset + length; i++) {
-      components.add(DFSUtil.bytes2String(path[i]));
+      components.add(DFSUtil.bytes2String(pathSupplier.get()[i]));
     }
     return components.build();
   }
@@ -372,7 +429,7 @@ public class INodesInPath {
     final INode[] anodes = new INode[length];
     final byte[][] apath = new byte[length][];
     System.arraycopy(this.inodes, 0, anodes, 0, length);
-    System.arraycopy(this.path, 0, apath, 0, length);
+    System.arraycopy(this.pathSupplier.get(), 0, apath, 0, length);
     return new INodesInPath(anodes, apath);
   }
 
@@ -399,7 +456,7 @@ public class INodesInPath {
     INode[] existing = new INode[i];
     byte[][] existingPath = new byte[i][];
     System.arraycopy(inodes, 0, existing, 0, i);
-    System.arraycopy(path, 0, existingPath, 0, i);
+    System.arraycopy(pathSupplier.get(), 0, existingPath, 0, i);
     return new INodesInPath(existing, existingPath);
   }
 
@@ -423,7 +480,7 @@ public class INodesInPath {
     }
 
     final StringBuilder b = new StringBuilder(getClass().getSimpleName())
-        .append(": path = ").append(DFSUtil.byteArray2PathString(path))
+        .append(": path = ").append(DFSUtil.byteArray2PathString(pathSupplier.get()))
         .append("\n  inodes = ");
     if (inodes == null) {
       b.append("null");

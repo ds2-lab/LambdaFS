@@ -8800,8 +8800,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           @Override
           public Object performTask() throws IOException {
             FSPermissionChecker pc = getPermissionChecker();
-            byte[][] pathComponents = INode.getPathComponents(path);
-            INodesInPath iip = dir.getExistingPathINodes(pathComponents);
+            // byte[][] pathComponents = INode.getPathComponents(path);
+            INodesInPath iip = dir.getExistingPathINodes(INode.getPathNames(path)); // dir.getExistingPathINodes(pathComponents);
             if (isPermissionEnabled && !pc.isSuperUser()) {
               dir.checkPermission(pc, iip, doCheckOwner, ancestorAccess, parentAccess, access, subAccess, false);
             }
@@ -8838,8 +8838,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
               }
             }
 
-            return new PathInformation(path, pathComponents,
-                iip,isDir, quota, usage, acls);
+            return new PathInformation(path, iip,isDir, quota, usage, acls);
+//            return new PathInformation(path, pathComponents,
+//                iip,isDir, quota, usage, acls);
           }
         };
     return (PathInformation)handler.handle(this);

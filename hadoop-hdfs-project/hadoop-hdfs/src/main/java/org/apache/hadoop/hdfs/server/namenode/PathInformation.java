@@ -16,12 +16,16 @@
 package org.apache.hadoop.hdfs.server.namenode;
 
 import java.util.List;
+
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import org.apache.hadoop.fs.permission.AclEntry;
 
 public class PathInformation {
 
   private String path;
-  private byte[][] pathComponents;
+  //private byte[][] pathComponents;
+  private Supplier<byte[][]> pathComponentsSupplier;
   private INodesInPath IIP;
   private boolean dir;
   private QuotaCounts usage;
@@ -29,11 +33,10 @@ public class PathInformation {
   
   private final List<AclEntry>[] pathInodeAcls;
 
-  public PathInformation(String path,
-      byte[][] pathComponents, INodesInPath IIP,
+  public PathInformation(String path, INodesInPath IIP,
       boolean dir, QuotaCounts quota, QuotaCounts usage, List<AclEntry>[] pathInodeAcls) {
     this.path = path;
-    this.pathComponents = pathComponents;
+    this.pathComponentsSupplier = Suppliers.memoize(() -> INode.getPathComponents(path));
     this.IIP = IIP;
     this.dir = dir;
     this.quota = quota;
@@ -46,7 +49,7 @@ public class PathInformation {
   }
 
   public byte[][] getPathComponents() {
-    return pathComponents;
+    return pathComponentsSupplier.get();
   }
 
   public boolean isDir() {
