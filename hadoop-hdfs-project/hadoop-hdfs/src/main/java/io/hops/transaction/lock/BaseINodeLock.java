@@ -19,6 +19,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import io.hops.common.INodeResolver;
+import io.hops.common.INodeStringResolver;
 import io.hops.common.INodeUtil;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
@@ -781,22 +782,23 @@ public abstract class BaseINodeLock extends Lock {
       return inodes;
     }
 
-    protected void resolveRestOfThePath(final TransactionLockTypes.INodeLockType lockType, String path,
-        List<INode> inodes, boolean resolveLink)
+    protected void resolveRestOfThePath(
+            final TransactionLockTypes.INodeLockType lockType,
+            String path,
+            List<INode> inodes, boolean resolveLink)
         throws StorageException, TransactionContextException,
         UnresolvedPathException {
-      byte[][] components = INode.getPathComponents(path);
+      // byte[][] components = INode.getPathComponents(path);
+      String[] components = INode.getPathNames(path);
       INode currentINode = inodes.get(inodes.size() - 1);
 
       boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
               lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
 
-//      LOG.debug("Resolving rest of path for path '" + path + "', INodes: " +
-//              StringUtils.join(", ", inodes) + ", LockType: " + lockType.name() +
-//              ", CanUseMetadataCache: " + canUseInMemoryMetadataCache);
-
-      INodeResolver resolver = new INodeResolver(components, currentINode, resolveLink, true,
-          inodes.size() - 1, canUseInMemoryMetadataCache);
+//      INodeResolver resolver = new INodeResolver(components, currentINode, resolveLink, true,
+//          inodes.size() - 1, canUseInMemoryMetadataCache);
+      INodeStringResolver resolver = new INodeStringResolver(INode.getPathNames(path), currentINode, resolveLink,
+              true, inodes.size() - 1, canUseInMemoryMetadataCache);
       while (resolver.hasNext()) {
         TransactionLockTypes.INodeLockType currentINodeLock = identifyLockType(lockType, resolver.getCount() + 1,
             components);
@@ -808,6 +810,20 @@ public abstract class BaseINodeLock extends Lock {
         }
       }
     }
+  }
+
+  protected TransactionLockTypes.INodeLockType identifyLockType(final TransactionLockTypes.INodeLockType lockType,
+                                                                int count,
+                                                                String[] components) {
+    TransactionLockTypes.INodeLockType lkType;
+    if (isTarget(count, components)) {
+      lkType = lockType;
+    } else if (isParent(count, components) && TransactionLockTypes.impliesParentWriteLock(lockType)) {
+      lkType = TransactionLockTypes.INodeLockType.WRITE;
+    } else {
+      lkType = getDefaultInodeLockType();
+    }
+    return lkType;
   }
 
   protected TransactionLockTypes.INodeLockType identifyLockType(final TransactionLockTypes.INodeLockType lockType,
@@ -828,7 +844,15 @@ public abstract class BaseINodeLock extends Lock {
     return count == components.length - 1;
   }
 
+  protected boolean isTarget(int count, String[] components) {
+    return count == components.length - 1;
+  }
+
   protected boolean isParent(int count, byte[][] components) {
+    return count == components.length - 2;
+  }
+
+  protected boolean isParent(int count, String[] components) {
     return count == components.length - 2;
   }
 

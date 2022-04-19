@@ -695,6 +695,20 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
     return StringUtils.split(path, Path.SEPARATOR_CHAR);
   }
 
+  public static int getNumPathComponents(String path) {
+    if (path == null || !path.startsWith(Path.SEPARATOR)) {
+      throw new AssertionError("Absolute path required");
+    }
+
+    int pathComponents = 0;
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == Path.SEPARATOR_CHAR && i != (path.length() - 1))
+        pathComponents++;
+    }
+
+    return pathComponents;
+  }
+
   /**
    * Splits an absolute path into a list of "full paths", one for each component.
    *
@@ -1011,8 +1025,8 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
     save();
   }
   public static long calculatePartitionId(long parentId, String name, short depth){
-    if(isTreeLevelRandomPartitioned(depth)){
-      return partitionIdHashFunction(parentId,name,depth);
+    if (isTreeLevelRandomPartitioned(depth)) {
+      return partitionIdHashFunction(parentId, name, depth);
     }else{
       return parentId;
     }
@@ -1021,8 +1035,8 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
   private static long partitionIdHashFunction(long parentId, String name, short depth){
     if(depth == INodeDirectory.ROOT_DIR_DEPTH){
       return INodeDirectory.ROOT_DIR_PARTITION_KEY;
-    }else{
-      return (name+parentId).hashCode();
+    } else {
+      return (name + parentId).hashCode();
       //    String partitionid = String.format("%04d%04d",parentId,depth);
       //    return Integer.parseInt(partitionid);
     }

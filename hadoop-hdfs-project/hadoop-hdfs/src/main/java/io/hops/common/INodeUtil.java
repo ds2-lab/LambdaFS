@@ -65,6 +65,17 @@ import static org.apache.hadoop.hdfs.server.namenode.INode.EMPTY_LIST;
 public class INodeUtil {
   private final static Log LOG = LogFactory.getLog(INodeUtil.class);
 
+  public static String constructPath(String[] components, int start, int end) {
+    StringBuilder buf = new StringBuilder();
+    for (int i = start; i < end; i++) {
+      buf.append(components[i]);
+      if (i < end - 1) {
+        buf.append(Path.SEPARATOR);
+      }
+    }
+    return buf.toString();
+  }
+
   public static String constructPath(byte[][] components, int start, int end) {
     StringBuilder buf = new StringBuilder();
     for (int i = start; i < end; i++) {
@@ -84,11 +95,16 @@ public class INodeUtil {
   public static INode getNode(byte[] name, long parentId, long partitionId, boolean transactional, boolean canCheckCache)
           throws StorageException, TransactionContextException {
     String nameString = DFSUtil.bytes2String(name);
+    return getNode(nameString, parentId, partitionId, transactional, canCheckCache);
+  }
+
+  public static INode getNode(String name, long parentId, long partitionId, boolean transactional, boolean canCheckCache)
+          throws StorageException, TransactionContextException {
     if (transactional) {
       return EntityManager
-              .find(INode.Finder.ByNameParentIdAndPartitionId, nameString, parentId, partitionId, null, canCheckCache);
+              .find(INode.Finder.ByNameParentIdAndPartitionId, name, parentId, partitionId, null, canCheckCache);
     } else {
-      return findINodeWithNoTransaction(nameString, parentId, partitionId);
+      return findINodeWithNoTransaction(name, parentId, partitionId);
     }
   }
 
@@ -143,7 +159,7 @@ public class INodeUtil {
         preTxResolvedINodes.add(curNode);
       }
     }
-    return  preTxResolvedINodes.size() == components.length;
+    return preTxResolvedINodes.size() == components.length;
   }
 
   public static void findPathINodesById(long inodeId, boolean inTree,

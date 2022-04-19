@@ -144,7 +144,9 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
     <module>hadoop-client-modules</module>
     <module>hadoop-build-tools</module>
       <module>textplots</module>
-      <!--    <module>hadoop-cloud-storage-project</module>-->
+      <module>random-testing</module>
+    <module>testing</module>
+    <!--    <module>hadoop-cloud-storage-project</module>-->
   </modules>
 
   <build>
