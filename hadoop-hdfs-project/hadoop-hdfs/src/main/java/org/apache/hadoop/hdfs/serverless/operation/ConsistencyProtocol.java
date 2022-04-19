@@ -14,6 +14,7 @@ import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.EntityManager;
 import io.hops.transaction.context.EntityContext;
 import io.hops.transaction.context.INodeContext;
+import io.hops.transaction.handler.TransactionalRequestHandler;
 import io.hops.transaction.lock.HdfsTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
 import io.hops.transaction.lock.TransactionLocks;
@@ -274,10 +275,16 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // This is sort of a dummy ID.
         long transactionId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
         long txStartTime = System.currentTimeMillis();
-        TransactionAttempt txAttempt = new TransactionAttempt(0);
-        TransactionEvent txEvent = new TransactionEvent(transactionId);
-        txEvent.setTransactionStartTime(txStartTime);
-        txEvent.addAttempt(txAttempt);
+
+        TransactionAttempt txAttempt = null;
+        TransactionEvent txEvent = null;
+        if (TransactionalRequestHandler.TX_EVENTS_ENABLED) {
+            txAttempt = new TransactionAttempt(0);
+            txEvent = new TransactionEvent(transactionId);
+            txEvent.setTransactionStartTime(txStartTime);
+            txEvent.addAttempt(txAttempt);
+        }
+
         ConsistencyProtocol subtreeConsistencyProtocol = new ConsistencyProtocol(
                 null, associatedDeployments, txAttempt, txEvent,
                 txStartTime, true, true, src, null);
@@ -293,8 +300,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
 
         long txEndTime = System.currentTimeMillis();
-        txEvent.setTransactionEndTime(txEndTime);
         long txDurationMilliseconds = txEndTime - txStartTime;
+        if (TransactionalRequestHandler.TX_EVENTS_ENABLED && txEvent != null) {
+            txEvent.setTransactionEndTime(txEndTime);
+        }
 
         if (!subtreeConsistencyProtocol.getCanProceed() || interruptedExceptionOccurred) {
             LOG.error("Subtree Consistency Protocol failed to execute properly. Time elapsed: " +
@@ -416,7 +425,8 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     "Somehow a Transaction is occurring when the static ServerlessNameNode instance is null.");
 
         // transactionEvent.setRequestId(serverlessNameNodeInstance.getRequestCurrentlyProcessing());
-        transactionEvent.setRequestId("UNKNOWN");
+        if (TransactionalRequestHandler.TX_EVENTS_ENABLED)
+            transactionEvent.setRequestId("UNKNOWN");
 
         // NOTE: The local deployment will NOT always be involved now that the subtree protocol uses this same code.
         //       Before the subtree protocol used this code, the only NNs that could modify an INode were those from
@@ -434,7 +444,8 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 + serverlessNameNodeInstance.getActiveNameNodes().getActiveNodes().toString() + ".");
 
         long preprocessingEndTime = System.currentTimeMillis();
-        transactionAttempt.setConsistencyPreprocessingTimes(startTime, preprocessingEndTime);
+        if (TransactionalRequestHandler.TX_EVENTS_ENABLED)
+            transactionAttempt.setConsistencyPreprocessingTimes(startTime, preprocessingEndTime);
 
         // ======================================
         // === EXECUTING CONSISTENCY PROTOCOL ===
@@ -463,7 +474,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
 
         long computeAckRecordsEndTime = System.currentTimeMillis();
-        transactionAttempt.setConsistencyComputeAckRecordTimes(preprocessingEndTime, computeAckRecordsEndTime);
+
+        if (TransactionalRequestHandler.TX_EVENTS_ENABLED)
+            transactionAttempt.setConsistencyComputeAckRecordTimes(preprocessingEndTime, computeAckRecordsEndTime);
+
         if (LOG.isDebugEnabled()) LOG.debug("Created ACK records in " + (computeAckRecordsEndTime - preprocessingEndTime) + " ms.");
 
         // =============== STEP 1 ===============
@@ -482,7 +496,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             // joinOtherDeploymentsAsGuest();
 
             long joinDeploymentsEndTime = System.currentTimeMillis();
-            transactionAttempt.setConsistencyJoinDeploymentsTimes(computeAckRecordsEndTime, joinDeploymentsEndTime);
+
+            if (TransactionalRequestHandler.TX_EVENTS_ENABLED)
+                transactionAttempt.setConsistencyJoinDeploymentsTimes(computeAckRecordsEndTime, joinDeploymentsEndTime);
 
             try {
                 // Since there's at least 1 ACK record, we subscribe to ACK events.
@@ -491,7 +507,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     subscribeToAckEvents(); // We only do this for NDB. Not when using ZooKeeper.
 
                 long subscribeToEventsEndTime = System.currentTimeMillis();
-                transactionAttempt.setConsistencySubscribeToAckEventsTimes(joinDeploymentsEndTime, subscribeToEventsEndTime);
+
+                if (TransactionalRequestHandler.TX_EVENTS_ENABLED)
+                    transactionAttempt.setConsistencySubscribeToAckEventsTimes(joinDeploymentsEndTime, subscribeToEventsEndTime);
             } catch (InterruptedException | StorageException e) {
                 LOG.error("Encountered error while waiting on event manager to create event subscription:", e);
                 exceptions.add(e);
@@ -509,7 +527,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     long invStartTime = System.currentTimeMillis();
                     issueInvalidationsZooKeeper(invalidatedINodes);
                     long invEndTime = System.currentTimeMillis();
-                    transactionAttempt.setConsistencyIssueInvalidationsTimes(invStartTime, invEndTime);
+
+                    if (TransactionalRequestHandler.TX_EVENTS_ENABLED)
+                        transactionAttempt.setConsistencyIssueInvalidationsTimes(invStartTime, invEndTime);
                 } catch (Exception ex) {
                     LOG.error("Encountered exception while storing INVs in ZooKeeper:", ex);
                     exceptions.add(ex);
@@ -552,7 +572,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 }
 
                 long writeAcksToStorageEndTime = System.currentTimeMillis();
-                transactionAttempt.setConsistencyWriteAcksToStorageTimes(writeAcksToStorageStartTime, writeAcksToStorageEndTime);
+
+                if (TransactionalRequestHandler.TX_EVENTS_ENABLED)
+                    transactionAttempt.setConsistencyWriteAcksToStorageTimes(writeAcksToStorageStartTime, writeAcksToStorageEndTime);
 
                 // =============== STEP 3 ===============
                 try {
@@ -576,8 +598,11 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     return;
                 }
 
-                long issueInvalidationsEndTime = System.currentTimeMillis();
-                transactionAttempt.setConsistencyIssueInvalidationsTimes(writeAcksToStorageEndTime, issueInvalidationsEndTime);
+
+                if (TransactionalRequestHandler.TX_EVENTS_ENABLED) {
+                    long issueInvalidationsEndTime = System.currentTimeMillis();
+                    transactionAttempt.setConsistencyIssueInvalidationsTimes(writeAcksToStorageEndTime, issueInvalidationsEndTime);
+                }
             }
 
             long waitForAcksStartTime = System.currentTimeMillis();
@@ -585,8 +610,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 // =============== STEPS 4 & 5 ===============
                 waitForAcks();
 
-                long waitForAcksEndTime = System.currentTimeMillis();
-                transactionAttempt.setConsistencyWaitForAcksTimes(waitForAcksStartTime, waitForAcksEndTime);
+                if (TransactionalRequestHandler.TX_EVENTS_ENABLED) {
+                    long waitForAcksEndTime = System.currentTimeMillis();
+                    transactionAttempt.setConsistencyWaitForAcksTimes(waitForAcksStartTime, waitForAcksEndTime);
+                }
             } catch (Exception ex) {
                 LOG.error("Exception encountered on Step 4 and 5 of consistency protocol (waiting for ACKs).");
                 LOG.error("We're still waiting on " + waitingForAcks.size() +
@@ -605,8 +632,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     LOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
                 }
 
-                long cleanUpEndTime = System.currentTimeMillis();
-                transactionAttempt.setConsistencyCleanUpTimes(cleanUpStartTime, cleanUpEndTime);
+                if (TransactionalRequestHandler.TX_EVENTS_ENABLED) {
+                    long cleanUpEndTime = System.currentTimeMillis();
+                    transactionAttempt.setConsistencyCleanUpTimes(cleanUpStartTime, cleanUpEndTime);
+                }
 
                 LOG.error("Exception encountered while waiting for ACKs (" + ex.getMessage() + "): ", ex);
                 exceptions.add(ex);
@@ -632,8 +661,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             LOG.error("Encountered error while cleaning up after the consistency protocol: ", e);
         }
 
-        long cleanUpEndTime = System.currentTimeMillis();
-        transactionAttempt.setConsistencyCleanUpTimes(cleanUpStartTime, cleanUpEndTime);
+        if (TransactionalRequestHandler.TX_EVENTS_ENABLED) {
+            long cleanUpEndTime = System.currentTimeMillis();
+            transactionAttempt.setConsistencyCleanUpTimes(cleanUpStartTime, cleanUpEndTime);
+        }
 
         // Steps 6 and 7 happen automatically. We can return from this function to perform the writes.
         this.canProceed = true;

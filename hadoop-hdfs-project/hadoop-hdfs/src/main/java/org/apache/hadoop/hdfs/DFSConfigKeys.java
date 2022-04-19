@@ -93,6 +93,9 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT = "serverless.straggler.mitigation.timeout.min";
   public static final int SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT_DEFAULT = 50;
 
+  public static final String SERVERLESS_TX_EVENTS_ENABLED = "serverless.tx.events.enabled";
+  public static final boolean SERVERLESS_TX_EVENTS_ENABLED_DEFAULT = true;
+
   /**
    * If true, then we'll pass an argument to the NNs indicating that they should print their
    * debug output from the underlying NDB C++ library (libndbclient.so).

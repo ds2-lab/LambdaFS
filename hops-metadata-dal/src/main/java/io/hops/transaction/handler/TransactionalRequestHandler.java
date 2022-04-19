@@ -54,6 +54,11 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
   protected boolean printSuccessMessage = false;
 
   /**
+   * If False, we do not bother with creating TX events.
+   */
+  public static boolean TX_EVENTS_ENABLED = true;
+
+  /**
    * Override this function to implement a serverless consistency protocol. This will get called
    * AFTER local, in-memory processing occurs but (immediately) before the changes are committed
    * to NDB.
@@ -80,13 +85,18 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
     Object txRetValue = null;
     List<Throwable> exceptions = new ArrayList<>();
 
-    // Record timings of the various stages in the event.
-    transactionEvent = new TransactionEvent(operationId);
-    transactionEvent.setTransactionStartTime(System.currentTimeMillis());
+    if (TX_EVENTS_ENABLED) {
+      // Record timings of the various stages in the event.
+      transactionEvent = new TransactionEvent(operationId);
+      transactionEvent.setTransactionStartTime(System.currentTimeMillis());
+    }
 
+    TransactionAttempt transactionAttempt = null;
     while (tryCount <= RETRY_COUNT) {
-      TransactionAttempt transactionAttempt = new TransactionAttempt(tryCount);
-      transactionEvent.addAttempt(transactionAttempt);
+      if (TX_EVENTS_ENABLED) {
+        transactionAttempt = new TransactionAttempt(tryCount);
+        transactionEvent.addAttempt(transactionAttempt);
+      }
 
       long expWaitTime = exponentialBackoff();
       long txStartTime = System.currentTimeMillis();
@@ -116,9 +126,9 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         //sometimes in setup we call light weight request handler that messes up with the NDC
         removeNDC();
         setNDC(info);
-        setupTime = (System.currentTimeMillis() - oldTime);
-        oldTime = System.currentTimeMillis();
-        transactionAttempt.setAcquireLocksStart(System.currentTimeMillis());
+        long lockAcquireStartTime = System.currentTimeMillis();
+        setupTime = (lockAcquireStartTime - oldTime);
+
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("Pre-transaction phase finished. Time " + setupTime + " ms");
         }
@@ -138,10 +148,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         // This actually acquires the locks and reads the metadata into memory from intermediate storage.
         locksAcquirer.acquire();
 
-        acquireLockTime = (System.currentTimeMillis() - oldTime);
-        transactionAttempt.setAcquireLocksEnd(System.currentTimeMillis());
-        transactionAttempt.setProcessingStart(System.currentTimeMillis());
-        oldTime = System.currentTimeMillis();
+        long inMemoryStart = System.currentTimeMillis();
+        acquireLockTime = (inMemoryStart - oldTime);
         if(requestHandlerLOG.isTraceEnabled()){
           requestHandlerLOG.debug("All Locks Acquired. Time " + acquireLockTime + " ms");
         }
@@ -159,9 +167,9 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
             ignoredException = e;
           }
         }
-        inMemoryProcessingTime = (System.currentTimeMillis() - oldTime);
-        transactionAttempt.setProcessingEnd(System.currentTimeMillis());
-        transactionAttempt.setConsistencyProtocolStart(System.currentTimeMillis());
+        long consistencyStartTime = System.currentTimeMillis();
+        inMemoryProcessingTime = (consistencyStartTime - inMemoryStart);
+
         oldTime = System.currentTimeMillis();
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("In Memory Processing Finished. Time " + inMemoryProcessingTime + " ms");
@@ -173,17 +181,25 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
 
         boolean canProceed = consistencyProtocol(txStartTime, transactionAttempt);
 
-        consistencyProtocolTime = (System.currentTimeMillis() - oldTime);
-        transactionAttempt.setConsistencyProtocolEnd(System.currentTimeMillis());
-        transactionAttempt.setConsistencyProtocolSucceeded(canProceed);
-        transactionAttempt.setCommitStart(System.currentTimeMillis());
+        long commitStart = System.currentTimeMillis();
+        consistencyProtocolTime = (commitStart - oldTime);
         oldTime = System.currentTimeMillis();
 
         if (canProceed) {
           if (printSuccessMessage)
             requestHandlerLOG.debug("Consistency protocol for TX " + operationId + " succeeded after " + consistencyProtocolTime + " ms");
         } else {
-          transactionAttempt.setCommitEnd(System.currentTimeMillis());
+          if (TX_EVENTS_ENABLED && transactionAttempt != null) {
+            transactionAttempt.setCommitEnd(System.currentTimeMillis());
+            transactionAttempt.setAcquireLocksStart(lockAcquireStartTime);
+            transactionAttempt.setAcquireLocksEnd(inMemoryStart);
+            transactionAttempt.setProcessingStart(inMemoryStart);
+            transactionAttempt.setProcessingEnd(consistencyStartTime);
+            transactionAttempt.setConsistencyProtocolStart(consistencyStartTime);
+            transactionAttempt.setConsistencyProtocolEnd(commitStart);
+            transactionAttempt.setConsistencyProtocolSucceeded(false);
+            transactionAttempt.setCommitStart(commitStart);
+          }
           throw new IOException("Consistency protocol for TX " + operationId + " FAILED after " +
                   consistencyProtocolTime + " ms.");
         }
@@ -202,11 +218,21 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         EntityManager.commit(transactionLocks);
         committed = true;
         commitTime = (System.currentTimeMillis() - oldTime);
-        transactionAttempt.setCommitEnd(System.currentTimeMillis());
+
+        if (TX_EVENTS_ENABLED && transactionAttempt != null) {
+          transactionAttempt.setCommitEnd(System.currentTimeMillis());
+          transactionAttempt.setAcquireLocksStart(lockAcquireStartTime);
+          transactionAttempt.setAcquireLocksEnd(inMemoryStart);
+          transactionAttempt.setProcessingStart(inMemoryStart);
+          transactionAttempt.setProcessingEnd(consistencyStartTime);
+          transactionAttempt.setConsistencyProtocolStart(consistencyStartTime);
+          transactionAttempt.setConsistencyProtocolEnd(commitStart);
+          transactionAttempt.setConsistencyProtocolSucceeded(canProceed);
+          transactionAttempt.setCommitStart(commitStart);
+        }
+
         if(stat != null)
           stat.setTimes(acquireLockTime, inMemoryProcessingTime, commitTime);
-//        else
-//          requestHandlerLOG.debug("Transaction statistics are NOT being collected...");
 
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("TX committed. Time " + commitTime + " ms");
@@ -233,9 +259,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
       catch (Throwable t) {
         // If the commit start time is set, then we've entered the commit phase.
         // Since we encountered an exception, we should end the commit phase here.
-        if (transactionAttempt.getCommitStart() > 0) {
+        if (TX_EVENTS_ENABLED && transactionAttempt != null && transactionAttempt.getCommitStart() > 0)
           transactionAttempt.setCommitEnd(System.currentTimeMillis());
-        }
 
         boolean suppressException = suppressFailureMsg(t, tryCount);
         if (!suppressException ) {
