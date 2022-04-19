@@ -127,7 +127,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.trace("TX Started");
         }
-        beginTxTime = (System.currentTimeMillis() - oldTime);
+        //beginTxTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
         
         locksAcquirer = newLockAcquirer();
