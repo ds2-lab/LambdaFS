@@ -392,7 +392,7 @@ public class NameNodeResult implements Serializable {
         json.put(ServerlessNameNodeKeys.REQUEST_ID, requestId);
         json.put(ServerlessNameNodeKeys.REQUEST_METHOD, requestMethod);
         json.put(ServerlessNameNodeKeys.CANCELLED, false);
-        json.put(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
+        json.put(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, "N/A"); //System.getenv("__OW_ACTIVATION_ID"));
         int totalCacheHits = metadataCache.getNumCacheHitsCurrentRequest(); // + replicaCacheManager.getThreadLocalCacheHits();
         int totalCacheMisses = metadataCache.getNumCacheMissesCurrentRequest(); // + replicaCacheManager.getThreadLocalCacheMisses();
         json.put(ServerlessNameNodeKeys.CACHE_HITS, totalCacheHits);
