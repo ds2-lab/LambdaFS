@@ -82,6 +82,25 @@ public class INodesInPath {
   }
 
   /**
+   * Given some components, create a path name.
+   *
+   * @param components The path components
+   * @param start index
+   * @param end index
+   * @return concatenated path
+   */
+  private static String constructPath(String[] components, int start, int end) {
+    StringBuilder buf = new StringBuilder();
+    for (int i = start; i < end; i++) {
+      buf.append(components[i]);
+      if (i < end - 1) {
+        buf.append(Path.SEPARATOR);
+      }
+    }
+    return buf.toString();
+  }
+
+  /**
    * Retrieve existing INodes from a path. For non-snapshot path,
    * the number of INodes is equal to the number of path components. For
    * snapshot path (e.g., /foo/.snapshot/s1/bar), the number of INodes is
@@ -188,6 +207,45 @@ public class INodesInPath {
     return new INodesInPath(inodes, components);
   }
 
+  static INodesInPath resolve(final INodeDirectory startingDir, final String[] components, final boolean resolveLink)
+          throws UnresolvedLinkException, StorageException, TransactionContextException {
+    Preconditions.checkArgument(startingDir.compareTo(components[0]) == 0);
+
+    INode curNode = startingDir;
+    int count = 0;
+    int inodeNum = 0;
+    INode[] inodes = new INode[components.length];
+
+    while (count < components.length && curNode != null) {
+      final boolean lastComp = (count == components.length - 1);
+      inodes[inodeNum++] = curNode;
+      final boolean isDir = curNode.isDirectory();
+      final INodeDirectory dir = isDir ? curNode.asDirectory() : null;
+      if (curNode.isSymlink() && (!lastComp || resolveLink)) {
+        final String path = constructPath(components, 0, components.length);
+        final String preceding = constructPath(components, 0, count);
+        final String remainder = constructPath(components, count + 1, components.length);
+        final String link = components[count];
+        final String target = curNode.asSymlink().getSymlinkString();
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("UnresolvedPathException " + " path: " + path + " preceding: " + preceding + " count: " + count
+                  + " link: " + link + " target: " + target + " remainder: " + remainder);
+        }
+        throw new UnresolvedPathException(path, preceding, remainder, target);
+      }
+      if (lastComp || !isDir) {
+        break;
+      }
+      final String childName = components[count + 1];
+
+      curNode = dir.getChildINode(childName);
+
+      count++;
+    }
+
+    return new INodesInPath(inodes, INode.getPathComponents(components));
+  }
+
   /**
    * Replace an inode of the given INodesInPath in the given position. We do a
    * deep copy of the INode array.
@@ -207,7 +265,7 @@ public class INodesInPath {
     return new INodesInPath(inodes, iip.path);
   }
 
-    /**
+  /**
    * Extend a given INodesInPath with a child INode. The child INode will be
    * appended to the end of the new INodesInPath.
    */

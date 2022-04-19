@@ -16,6 +16,7 @@
 package io.hops.transaction.lock;
 
 import io.hops.common.INodeResolver;
+import io.hops.common.INodeStringResolver;
 import io.hops.common.INodeUtil;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
@@ -286,7 +287,8 @@ public class INodeLock extends BaseINodeLock {
           checkSubtreeLock(iNode);
         }
       }
-      handleLockUpgrade(resolvedINodes, INode.getPathComponents(path), path);
+      //handleLockUpgrade(resolvedINodes, INode.getPathComponents(path), path);
+      handleLockUpgrade(resolvedINodes, INode.getNumPathComponents(path), path);
     } else {
       //if (LOG.isDebugEnabled()) LOG.debug("Failed to resolve any INodes via INode Hint Cache.");
     }
@@ -297,7 +299,8 @@ public class INodeLock extends BaseINodeLock {
   private List<INode> acquireINodeLockByPath(String path)
           throws IOException {
     List<INode> resolvedINodes = new ArrayList<>();
-    byte[][] components = INode.getPathComponents(path);
+    //byte[][] components = INode.getPathComponents(path);
+    String[] components = INode.getPathNames(path);
 
     INode currentINode;
     if (isRootTarget(components)) {
@@ -311,12 +314,14 @@ public class INodeLock extends BaseINodeLock {
     }
     resolvedINodes.add(currentINode);
 
-    INodeResolver resolver;
+    INodeStringResolver resolver;
 
     if (lockType == TransactionLockTypes.INodeLockType.WRITE || lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT) {
-      resolver = new INodeResolver(components, currentINode, resolveLink, true, false);
+      //resolver = new INodeResolver(components, currentINode, resolveLink, true, false);
+      resolver = new INodeStringResolver(components, currentINode, resolveLink, true, false);
     } else {
-      resolver = new INodeResolver(components, currentINode, resolveLink, true, true);
+      //resolver = new INodeResolver(components, currentINode, resolveLink, true, true);
+      resolver = new INodeStringResolver(components, currentINode, resolveLink, true, true);
     }
 
     while (resolver.hasNext()) {
@@ -331,7 +336,7 @@ public class INodeLock extends BaseINodeLock {
       }
     }
 
-    handleLockUpgrade(resolvedINodes, components, path);
+    handleLockUpgrade(resolvedINodes, components.length, path);
     return resolvedINodes;
   }
 
@@ -339,7 +344,15 @@ public class INodeLock extends BaseINodeLock {
     return isTarget(0, components);
   }
 
+  private boolean isRootTarget(String[] components) {
+    return isTarget(0, components);
+  }
+
   private boolean isRootParent(byte[][] components) {
+    return isParent(0, components);
+  }
+
+  private boolean isRootParent(String[] components) {
     return isParent(0, components);
   }
 
@@ -395,6 +408,42 @@ public class INodeLock extends BaseINodeLock {
   }
 
   private void handleLockUpgrade(List<INode> resolvedINodes,
+                                 int numPathComponents, String path)
+          throws StorageException, UnresolvedPathException,
+          TransactionContextException {
+    // TODO Handle the case that predecessor nodes get deleted before locking
+    // lock upgrade if the path was not fully resolved
+    if (resolvedINodes.size() != numPathComponents) {
+      // path was not fully resolved
+      INode inodeToReread = null;
+      if (lockType ==
+              TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT) {
+        if (resolvedINodes.size() <= numPathComponents - 2) {
+          inodeToReread = resolvedINodes.get(resolvedINodes.size() - 1);
+        }
+      } else if (lockType == TransactionLockTypes.INodeLockType.WRITE) {
+        inodeToReread = resolvedINodes.get(resolvedINodes.size() - 1);
+      }
+
+      if (inodeToReread != null) {
+        long partitionIdOfINodeToBeReRead = INode.calculatePartitionId(inodeToReread.getParentId(), inodeToReread
+                .getLocalName(), inodeToReread.myDepth());
+        INode inode = find(lockType, inodeToReread.getLocalName(),
+                inodeToReread.getParentId(), partitionIdOfINodeToBeReRead);
+        if (inode != null) {
+          // re-read after taking write lock to make sure that no one has created the same inode.
+          addLockedINodes(inode, lockType);
+          String existingPath = buildPath(path, resolvedINodes.size());
+          List<INode> rest =
+                  acquireLockOnRestOfPath(lockType, inode, path, existingPath,
+                          false);
+          resolvedINodes.addAll(rest);
+        }
+      }
+    }
+  }
+
+  private void handleLockUpgrade(List<INode> resolvedINodes,
       byte[][] components, String path)
       throws StorageException, UnresolvedPathException,
       TransactionContextException {
@@ -436,11 +485,12 @@ public class INodeLock extends BaseINodeLock {
       throws StorageException, UnresolvedPathException,
       TransactionContextException {
     List<INode> resolved = new ArrayList<>();
-    byte[][] fullComps = INode.getPathComponents(fullPath);
-    byte[][] prefixComps = INode.getPathComponents(prefix);
-    INodeResolver resolver =
-        new INodeResolver(fullComps, baseInode, resolveLink, true,
-            prefixComps.length - 1);
+//    byte[][] fullComps = INode.getPathComponents(fullPath);
+//    byte[][] prefixComps = INode.getPathComponents(prefix);
+    String[] fullComps = INode.getPathNames(fullPath);
+    String[] prefixComps = INode.getPathNames(prefix);
+    //INodeResolver resolver = new INodeResolver(fullComps, baseInode, resolveLink, true, prefixComps.length - 1);
+    INodeStringResolver resolver = new INodeStringResolver(fullComps, baseInode, resolveLink, true, prefixComps.length - 1);
     while (resolver.hasNext()) {
       setINodeLockType(lock);
       INode current = resolver.next();
@@ -497,7 +547,8 @@ public class INodeLock extends BaseINodeLock {
 
   private String buildPath(String path, int size) {
     StringBuilder builder = new StringBuilder();
-    byte[][] components = INode.getPathComponents(path);
+    //byte[][] components = INode.getPathComponents(path);
+    String[] components = INode.getPathNames(path);
 
     for (int i = 0; i < Math.min(components.length, size); i++) {
       if (i == 0) {
@@ -506,7 +557,7 @@ public class INodeLock extends BaseINodeLock {
         if (i != 1) {
           builder.append("/");
         }
-        builder.append(DFSUtil.bytes2String(components[i]));
+        builder.append(components[i]);
       }
     }
 

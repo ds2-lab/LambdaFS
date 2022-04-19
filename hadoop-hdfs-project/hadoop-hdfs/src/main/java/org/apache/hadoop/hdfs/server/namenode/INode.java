@@ -793,6 +793,11 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
     return SignedBytes.lexicographicalComparator().compare(left, right);
   }
 
+  public final int compareTo(String otherName) {
+    final String name = getLocalName();
+    return name.compareTo(otherName);
+  }
+
   @Override
   public final boolean equals(Object that) {
     if (this == that) {

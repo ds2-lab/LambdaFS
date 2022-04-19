@@ -143,7 +143,8 @@ public class INodeUtil {
       TransactionContextException {
     preTxResolvedINodes.clear();
 
-    byte[][] components = INode.getPathComponents(path);
+    // byte[][] components = INode.getPathComponents(path);
+    String[] components = INode.getPathNames(path);
     INode curNode = getRoot();
     preTxResolvedINodes.add(curNode);
 
@@ -151,8 +152,8 @@ public class INodeUtil {
       return false;
     }
 
-    INodeResolver resolver =
-        new INodeResolver(components, curNode, resolveLink, false);
+    //INodeResolver resolver = new INodeResolver(components, curNode, resolveLink, false);
+    INodeStringResolver resolver = new INodeStringResolver(components, curNode, resolveLink, false);
     while (resolver.hasNext()) {
       curNode = resolver.next();
       if (curNode != null) {
