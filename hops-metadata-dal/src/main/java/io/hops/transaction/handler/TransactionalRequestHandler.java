@@ -82,7 +82,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
 
     // Record timings of the various stages in the event.
     transactionEvent = new TransactionEvent(operationId);
-    transactionEvent.setTransactionStartTime(getUtcTime());
+    transactionEvent.setTransactionStartTime(System.currentTimeMillis());
 
     while (tryCount <= RETRY_COUNT) {
       TransactionAttempt transactionAttempt = new TransactionAttempt(tryCount);
@@ -118,7 +118,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         setNDC(info);
         setupTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
-        transactionAttempt.setAcquireLocksStart(getUtcTime());
+        transactionAttempt.setAcquireLocksStart(System.currentTimeMillis());
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("Pre-transaction phase finished. Time " + setupTime + " ms");
         }
@@ -139,8 +139,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         locksAcquirer.acquire();
 
         acquireLockTime = (System.currentTimeMillis() - oldTime);
-        transactionAttempt.setAcquireLocksEnd(getUtcTime());
-        transactionAttempt.setProcessingStart(getUtcTime());
+        transactionAttempt.setAcquireLocksEnd(System.currentTimeMillis());
+        transactionAttempt.setProcessingStart(System.currentTimeMillis());
         oldTime = System.currentTimeMillis();
         if(requestHandlerLOG.isTraceEnabled()){
           requestHandlerLOG.debug("All Locks Acquired. Time " + acquireLockTime + " ms");
@@ -160,8 +160,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
           }
         }
         inMemoryProcessingTime = (System.currentTimeMillis() - oldTime);
-        transactionAttempt.setProcessingEnd(getUtcTime());
-        transactionAttempt.setConsistencyProtocolStart(getUtcTime());
+        transactionAttempt.setProcessingEnd(System.currentTimeMillis());
+        transactionAttempt.setConsistencyProtocolStart(System.currentTimeMillis());
         oldTime = System.currentTimeMillis();
         if(requestHandlerLOG.isTraceEnabled()) {
           requestHandlerLOG.debug("In Memory Processing Finished. Time " + inMemoryProcessingTime + " ms");
@@ -174,16 +174,16 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         boolean canProceed = consistencyProtocol(txStartTime, transactionAttempt);
 
         consistencyProtocolTime = (System.currentTimeMillis() - oldTime);
-        transactionAttempt.setConsistencyProtocolEnd(getUtcTime());
+        transactionAttempt.setConsistencyProtocolEnd(System.currentTimeMillis());
         transactionAttempt.setConsistencyProtocolSucceeded(canProceed);
-        transactionAttempt.setCommitStart(getUtcTime());
+        transactionAttempt.setCommitStart(System.currentTimeMillis());
         oldTime = System.currentTimeMillis();
 
         if (canProceed) {
           if (printSuccessMessage)
             requestHandlerLOG.debug("Consistency protocol for TX " + operationId + " succeeded after " + consistencyProtocolTime + " ms");
         } else {
-          transactionAttempt.setCommitEnd(getUtcTime());
+          transactionAttempt.setCommitEnd(System.currentTimeMillis());
           throw new IOException("Consistency protocol for TX " + operationId + " FAILED after " +
                   consistencyProtocolTime + " ms.");
         }
@@ -202,7 +202,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         EntityManager.commit(transactionLocks);
         committed = true;
         commitTime = (System.currentTimeMillis() - oldTime);
-        transactionAttempt.setCommitEnd(getUtcTime());
+        transactionAttempt.setCommitEnd(System.currentTimeMillis());
         if(stat != null)
           stat.setTimes(acquireLockTime, inMemoryProcessingTime, commitTime);
 //        else
@@ -234,7 +234,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         // If the commit start time is set, then we've entered the commit phase.
         // Since we encountered an exception, we should end the commit phase here.
         if (transactionAttempt.getCommitStart() > 0) {
-          transactionAttempt.setCommitEnd(getUtcTime());
+          transactionAttempt.setCommitEnd(System.currentTimeMillis());
         }
 
         boolean suppressException = suppressFailureMsg(t, tryCount);
@@ -279,7 +279,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         commitEvents();
       }
 
-      transactionEvent.setTransactionEndTime(getUtcTime());
+      transactionEvent.setTransactionEndTime(System.currentTimeMillis());
       transactionEvent.setSuccess(success);
 
       commitEvents();
