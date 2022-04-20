@@ -119,6 +119,12 @@ public class ExecutionManager {
      */
     private volatile boolean gcTriggeredDuringThisIdleInterval = false;
 
+    /**
+     * We only want to perform NDB updates roughly every heartbeat interval. The update thread wakes up more
+     * often than that to check for System.GC() calls, though. So, we use this to avoid checking NDB too often.
+     */
+    private long lastNdbUpdateTimestamp = 0L;
+
     public ExecutionManager(Configuration conf, ServerlessNameNode serverlessNameNode) {
         LOG.debug("Creating ExecutionManager now.");
 
@@ -153,44 +159,56 @@ public class ExecutionManager {
         this.writeAcknowledgementsToDeleteLock = new ReentrantReadWriteLock();
 
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-        executor.scheduleAtFixedRate(() -> {
+        executor.scheduleAtFixedRate(this::updateThread, 0, idleGcThreshold, TimeUnit.MILLISECONDS);
+        //}, 0, serverlessNameNode.getHeartBeatInterval(), TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Called by the 'update thread'. Performs work such as fetching storage reports from NDB, clearing
+     * ACKs from consistency protocol operations, and checking if we should manually trigger a GC.
+     */
+    private void updateThread() {
+        if (System.currentTimeMillis() - lastNdbUpdateTimestamp > serverlessNameNodeInstance.getHeartBeatInterval()) {
             tryUpdateFromIntermediateStorage();
 
-            try {
-                removeWriteAcknowledgements();
-            } catch (StorageException ex) {
-                LOG.error("StorageException encountered while trying to delete old WriteAcknowledgement instances:", ex);
+            // COMMENTED OUT: We use ZooKeeper for ACKs now, so we don't need to bother checking with NDB.
+//            try {
+//                removeWriteAcknowledgements();
+//            } catch (StorageException ex) {
+//                LOG.error("StorageException encountered while trying to delete old WriteAcknowledgement instances:", ex);
+//            }
+
+            lastNdbUpdateTimestamp = System.currentTimeMillis();
+        }
+
+        // We're going to check if we've been idle for long enough to want to trigger a GC.
+        long lastTaskExecutedTs = lastTaskExecutedTimestamp.get();
+
+        // If `lastTaskExecutedTimestampCopy` is not equal to lastTaskExecutedTimestamp, then we're in a different
+        // idle interval than we were before (since we've executed a task since the last time we checked). Thus, we
+        // set gcTriggeredDuringThisIdleInterval to false.
+        if (lastTaskExecutedTs != lastTaskExecutedTimestampCopy) {
+            // If debug logging is enabled, then we might print a message about resetting the value of the
+            // `gcTriggeredDuringThisIdleInterval` flag. We only print a message if the flag is currently set
+            // to true, and thus we're actually changing its value by setting it to false. If it is already
+            // set to false, then we do not need to print a message.
+            if (LOG.isDebugEnabled()) {
+                if (gcTriggeredDuringThisIdleInterval)
+                    LOG.debug("Resetting the value of 'gcTriggeredDuringThisIdleInterval'.");
             }
 
-            // We're going to check if we've been idle for long enough to want to trigger a GC.
-            long lastTaskExecutedTs = lastTaskExecutedTimestamp.get();
+            gcTriggeredDuringThisIdleInterval = false;
+        }
 
-            // If `lastTaskExecutedTimestampCopy` is not equal to lastTaskExecutedTimestamp, then we're in a different
-            // idle interval than we were before (since we've executed a task since the last time we checked). Thus, we
-            // set gcTriggeredDuringThisIdleInterval to false.
-            if (lastTaskExecutedTs != lastTaskExecutedTimestampCopy) {
-                // If debug logging is enabled, then we might print a message about resetting the value of the
-                // `gcTriggeredDuringThisIdleInterval` flag. We only print a message if the flag is currently set
-                // to true, and thus we're actually changing its value by setting it to false. If it is already
-                // set to false, then we do not need to print a message.
-                if (LOG.isDebugEnabled()) {
-                    if (gcTriggeredDuringThisIdleInterval)
-                        LOG.debug("Resetting the value of 'gcTriggeredDuringThisIdleInterval'.");
-                }
+        // Have we been idle long enough to warrant a GC? If so, then trigger one,
+        // assuming we haven't already triggered a GC in this same idle interval.
+        if (System.currentTimeMillis() - lastTaskExecutedTs > idleGcThreshold && !gcTriggeredDuringThisIdleInterval) {
+            LOG.debug("Manually triggering garbage collection!");
+            System.gc();
+            gcTriggeredDuringThisIdleInterval = true;
+        }
 
-                gcTriggeredDuringThisIdleInterval = false;
-            }
-
-            // Have we been idle long enough to warrant a GC? If so, then trigger one,
-            // assuming we haven't already triggered a GC in this same idle interval.
-            if (System.currentTimeMillis() - lastTaskExecutedTs > idleGcThreshold && !gcTriggeredDuringThisIdleInterval) {
-                LOG.debug("Manually triggering garbage collection!");
-                System.gc();
-                gcTriggeredDuringThisIdleInterval = true;
-            }
-
-            lastTaskExecutedTimestampCopy = lastTaskExecutedTs;
-        }, 0, serverlessNameNode.getHeartBeatInterval() / 2, TimeUnit.MILLISECONDS);
+        lastTaskExecutedTimestampCopy = lastTaskExecutedTs;
     }
 
     /**
