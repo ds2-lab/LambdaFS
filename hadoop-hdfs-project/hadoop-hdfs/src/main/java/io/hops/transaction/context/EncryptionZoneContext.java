@@ -172,7 +172,7 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
       results = getAll(pks);
       hit(finder, results, "pks", pks, "results", results);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Retrieving EncryptionZones from intermediate storage for INodes: " + StringUtils.join(", ", pks));
+      if (LOG.isTraceEnabled()) LOG.trace("Retrieving EncryptionZones from intermediate storage for INodes: " + StringUtils.join(", ", pks));
       aboutToAccessStorage(finder, params);
       results = dataAccess.getEncryptionZoneByInodeIdBatch(pks);
       gotFromDB(pks, results);

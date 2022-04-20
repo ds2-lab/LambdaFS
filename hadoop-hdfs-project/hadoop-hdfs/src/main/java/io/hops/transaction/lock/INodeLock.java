@@ -113,11 +113,11 @@ public class INodeLock extends BaseINodeLock {
        */
       Arrays.sort(paths);
 
-      if (LOG.isDebugEnabled()) LOG.debug("Acquiring INode locks on the following paths: " + StringUtils.join(", ", paths));
+      if (LOG.isTraceEnabled()) LOG.trace("Acquiring INode locks on the following paths: " + StringUtils.join(", ", paths));
 
       acquirePathsINodeLocks();
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Acquiring INode lock on INode with ID=" + inodeId);
+      if (LOG.isTraceEnabled()) LOG.trace("Acquiring INode lock on INode with ID=" + inodeId);
 
       acquireInodeIdInodeLock();
     }

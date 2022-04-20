@@ -92,7 +92,7 @@ class UsersGroupsCache {
           = new CacheLoader<String, List<String>>() {
     @Override
     public List<String> load(String userName) throws Exception {
-      LOG.debug("Get groups from DB for user: " + userName);
+      // LOG.debug("Get groups from DB for user: " + userName);
       List<Group> groups = getUserGroupsFromDB(userName, getUserId(userName));
       if (groups == null || groups.isEmpty()) {
         throw new GroupsNotFoundForUserException("No groups found for user (" + userName + ")");
@@ -112,8 +112,8 @@ class UsersGroupsCache {
           = new RemovalListener<String, List<String>>() {
     @Override
     public void onRemoval(RemovalNotification<String, List<String>> rn) {
-      LOG.debug("User's groups removal notification for " + rn.toString()
-              + "(" + rn.getCause() + ")");
+      //LOG.debug("User's groups removal notification for " + rn.toString()
+      //        + "(" + rn.getCause() + ")");
     }
   };
 
@@ -186,7 +186,7 @@ class UsersGroupsCache {
   private CacheLoader<String, Integer> groupToIdsLoader = new CacheLoader<String, Integer>() {
     @Override
     public Integer load(String groupName) throws Exception {
-      LOG.debug("Get group from DB by name: " + groupName);
+      //LOG.debug("Get group from DB by name: " + groupName);
       Group group = getGroupFromDB(groupName, null);
       if (group != null) {
         idToGroupCache.put(group.getId(), groupName);
