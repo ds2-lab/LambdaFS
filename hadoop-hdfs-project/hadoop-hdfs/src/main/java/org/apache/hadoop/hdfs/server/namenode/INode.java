@@ -804,6 +804,8 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
 
   private static final byte[] EMPTY_BYTES = {};
 
+  private static final String EMPTY_STRING = "";
+
   @Override
   public final int compareTo(byte[] bytes) {
     final byte[] name = getLocalNameBytes();
@@ -813,7 +815,9 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
   }
 
   public final int compareTo(String otherName) {
-    final String name = getLocalName();
+    String name = getLocalName();
+    if (name == null) name = EMPTY_STRING;
+    if (otherName == null) otherName = EMPTY_STRING;
     return name.compareTo(otherName);
   }
 
