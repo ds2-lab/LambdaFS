@@ -276,6 +276,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   /**
    * The namespace tree.
    */
+
   FSDirectory dir;
   private final BlockManager blockManager;
   private final CacheManager cacheManager;
