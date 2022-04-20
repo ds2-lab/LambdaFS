@@ -147,8 +147,6 @@ public class ZKMonitor implements Runnable {
         }
         Collections.sort(children);
 
-        long utcNow = Time.getUtcTime();
-
         printLock.lock();
         try {
             LOG.debug("==================================================");

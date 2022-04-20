@@ -553,7 +553,7 @@ public class NameNodeResult implements Serializable {
                     Instant.ofEpochMilli(timeDeliveredBackToClient).atZone(ZoneOffset.UTC) + ".");
         }
 
-        long newTimestamp = Time.getUtcTime();
+        long newTimestamp = System.currentTimeMillis();
         String oldTimeFormatted = Instant.ofEpochMilli(timeDeliveredBackToClient).atZone(ZoneOffset.UTC).toString();
         String newTimeFormatted = Instant.ofEpochMilli(newTimestamp).atZone(ZoneOffset.UTC).toString();
 

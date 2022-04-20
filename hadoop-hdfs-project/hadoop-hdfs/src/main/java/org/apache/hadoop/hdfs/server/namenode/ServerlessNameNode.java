@@ -565,7 +565,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     retrieveAndProcessStorageReports(dataNodes);
     getAndProcessIntermediateBlockReports();
 
-    lastIntermediateStorageUpdate = Time.getUtcTime();
+    lastIntermediateStorageUpdate = System.currentTimeMillis();
   }
 
   /**
@@ -933,7 +933,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // This is because the worker thread performs the updates now. So the worker thread just checks for updates
     // every heartbeat interval.
 
-    long now = Time.getUtcTime();
+    long now = System.currentTimeMillis();
 
     List<io.hops.metadata.hdfs.entity.StorageReport> storageReports
         = dataAccess.getStorageReportsAfterGroupId(lastStorageReportGroupId, datanodeUuid);
@@ -1112,7 +1112,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Keep track of the DNs whose intermediate block reports we process.
     // We'll update the timestamp after this loop.
-    long now = Time.getUtcTime();
+    long now = System.currentTimeMillis();
     ArrayList<String> processedReports = new ArrayList<>();
     for (Map.Entry<String, Long> entry : lastIntermediateBlockReportTimestamp.entrySet()) {
       String datanodeUuid = entry.getKey();
@@ -1288,7 +1288,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     if (excludeNodes != null) {
       excludedNodesSet = new HashSet<>(excludeNodes.length);
-      excludedNodesSet.addAll(Arrays.asList(excludeNodes));
+      excludedNodesSet.addAll((Collection<? extends Node>) Arrays.asList(excludeNodes));
     }
     List<String> favoredNodesList = null;
     if (favoredNodes != null)
@@ -2605,10 +2605,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               functionName + "'");
 
     if (LOG.isDebugEnabled()) LOG.debug("We are function '" + this.functionName + "' from deployment #" + this.deploymentNumber + ".");
-    // Subtract five seconds (i.e., 6000 milliseconds) to account for invocation overheads and other start-up times.
+    // Subtract six seconds (i.e., 6000 milliseconds) to account for invocation overheads and other start-up times.
     // The default DN heartbeat interval (and therefore, StorageReport interval) is three seconds, so this should
     // ensure that the NN finds at least 1-2 storage reports, which can be used to bootstrap the DN storages.
-    this.creationTime = Time.getUtcTime() - 6000;
+    this.creationTime = System.currentTimeMillis() - 6000;
     this.tracer = new Tracer.Builder("NameNode").
       conf(TraceUtils.wrapHadoopConf(NAMENODE_HTRACE_PREFIX, conf)).
       build();
@@ -2861,7 +2861,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Hard-coding the replica ID for now as it is essentially a place-holder.
     ServerlessNameNodeMeta serverlessNameNodeMeta =
-            new ServerlessNameNodeMeta(getId(), functionName, "Replica1", Time.getUtcTime());
+            new ServerlessNameNodeMeta(getId(), functionName, "Replica1", System.currentTimeMillis());
 
     dataAccess.replaceServerlessNameNode(serverlessNameNodeMeta);
   }

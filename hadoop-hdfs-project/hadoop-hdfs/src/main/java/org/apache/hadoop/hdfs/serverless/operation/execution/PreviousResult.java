@@ -58,14 +58,14 @@ public class PreviousResult implements Comparable<PreviousResult> {
      * @param value The result of a particular file system operation.
      */
     public PreviousResult(Serializable value, String operationName, String requestId) {
-        this(value, operationName, requestId, Time.getUtcTime());
+        this(value, operationName, requestId, System.currentTimeMillis());
     }
 
     /**
      * Get the time elapsed, in milliseconds, since this PreviousResult instance was created.
      */
     public long getTimeElapsedMilliseconds() {
-        long now = Time.getUtcTime();
+        long now = System.currentTimeMillis();
         return now - timestamp;
     }
 
@@ -75,7 +75,7 @@ public class PreviousResult implements Comparable<PreviousResult> {
      * the counter on when this result will be purged from memory.
      */
     public void updateTimestamp() {
-        this.timestamp = Time.getUtcTime();
+        this.timestamp = System.currentTimeMillis();
     }
 
     @Override
