@@ -35,7 +35,7 @@ public class PathTest {
         System.out.println("\t" + getNumPathComponents(pathModerate2));
         System.out.println(Arrays.toString(split(path, SEPARATOR_CHAR)));
         System.out.println("\t" + getNumPathComponents(path));
-        System.out.println(Arrays.toString(split(pathRoot, SEPARATOR_CHAR)));
+        System.out.println(pathRoot + " (" + split(pathRoot, SEPARATOR_CHAR).length + ") : " + Arrays.toString(split(pathRoot, SEPARATOR_CHAR)));
         System.out.println("\t" + getNumPathComponents(pathRoot));
 
         int numTrials = 1;

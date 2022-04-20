@@ -1650,10 +1650,13 @@ public class FSDirectory implements Closeable {
       TransactionContextException {
     // In this new strategy, we first check for INodes in our local cache.
     // We retrieve any missing INodes from intermediate storage.
+    LOG.debug("Getting path names for path: '" + path + "'");
     String[] paths = INode.getPathNames(path);
+    LOG.debug("Paths: '" + Arrays.toString(paths) + "'");
 
-    // final byte[][] components = INode.getPathComponents(paths);
-    INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), paths, resolveLink);
+    final byte[][] components = INode.getPathComponents(paths);
+    LOG.debug("Components: " + Arrays.toString(components));
+    INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), components, resolveLink);
 
     return pathINodes;
   }
