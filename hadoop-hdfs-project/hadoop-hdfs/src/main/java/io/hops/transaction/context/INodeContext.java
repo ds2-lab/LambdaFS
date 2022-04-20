@@ -413,7 +413,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         hit(inodeFinder, result, "id", inodeId);
       }
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Retrieving INode ID=" + inodeId + " from intermediate storage.");
+      if (LOG.isTraceEnabled()) LOG.trace("Retrieving INode ID=" + inodeId + " from intermediate storage.");
       aboutToAccessStorage(inodeFinder, params);
       result = dataAccess.findInodeByIdFTIS(inodeId);
       gotFromDB(inodeId, result);
