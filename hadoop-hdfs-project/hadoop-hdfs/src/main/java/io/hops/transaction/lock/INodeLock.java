@@ -300,7 +300,7 @@ public class INodeLock extends BaseINodeLock {
           throws IOException {
     List<INode> resolvedINodes = new ArrayList<>();
     //byte[][] components = INode.getPathComponents(path);
-    String[] components = INode.getPathNames(path);
+    String[] components = INode.getComponentsAsStringArray(path);
 
     INode currentINode;
     if (isRootTarget(components)) {
@@ -487,8 +487,8 @@ public class INodeLock extends BaseINodeLock {
     List<INode> resolved = new ArrayList<>();
 //    byte[][] fullComps = INode.getPathComponents(fullPath);
 //    byte[][] prefixComps = INode.getPathComponents(prefix);
-    String[] fullComps = INode.getPathNames(fullPath);
-    String[] prefixComps = INode.getPathNames(prefix);
+    String[] fullComps = INode.getComponentsAsStringArray(fullPath);
+    String[] prefixComps = INode.getComponentsAsStringArray(prefix);
     //INodeResolver resolver = new INodeResolver(fullComps, baseInode, resolveLink, true, prefixComps.length - 1);
     INodeStringResolver resolver = new INodeStringResolver(fullComps, baseInode, resolveLink, true, prefixComps.length - 1);
     while (resolver.hasNext()) {
@@ -548,7 +548,7 @@ public class INodeLock extends BaseINodeLock {
   private String buildPath(String path, int size) {
     StringBuilder builder = new StringBuilder();
     //byte[][] components = INode.getPathComponents(path);
-    String[] components = INode.getPathNames(path);
+    String[] components = INode.getComponentsAsStringArray(path);
 
     for (int i = 0; i < Math.min(components.length, size); i++) {
       if (i == 0) {

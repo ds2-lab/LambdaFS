@@ -789,7 +789,7 @@ public abstract class BaseINodeLock extends Lock {
         throws StorageException, TransactionContextException,
         UnresolvedPathException {
       // byte[][] components = INode.getPathComponents(path);
-      String[] components = INode.getPathNames(path);
+      String[] components = INode.getComponentsAsStringArray(path);
       INode currentINode = inodes.get(inodes.size() - 1);
 
       boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||

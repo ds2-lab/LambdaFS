@@ -144,7 +144,7 @@ public class INodeUtil {
     preTxResolvedINodes.clear();
 
     // byte[][] components = INode.getPathComponents(path);
-    String[] components = INode.getPathNames(path);
+    String[] components = INode.getComponentsAsStringArray(path);
     INode curNode = getRoot();
     preTxResolvedINodes.add(curNode);
 

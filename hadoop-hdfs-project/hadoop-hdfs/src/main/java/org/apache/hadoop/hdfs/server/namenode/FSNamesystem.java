@@ -8802,7 +8802,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           public Object performTask() throws IOException {
             FSPermissionChecker pc = getPermissionChecker();
             // byte[][] pathComponents = INode.getPathComponents(path);
-            INodesInPath iip = dir.getExistingPathINodes(INode.getPathNames(path)); // dir.getExistingPathINodes(pathComponents);
+            INodesInPath iip = dir.getExistingPathINodes(INode.getComponentsAsStringArray(path)); // dir.getExistingPathINodes(pathComponents);
             if (isPermissionEnabled && !pc.isSuperUser()) {
               dir.checkPermission(pc, iip, doCheckOwner, ancestorAccess, parentAccess, access, subAccess, false);
             }
