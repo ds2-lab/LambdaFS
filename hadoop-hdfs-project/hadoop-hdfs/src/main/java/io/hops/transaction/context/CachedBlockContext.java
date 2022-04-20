@@ -105,7 +105,7 @@ public class CachedBlockContext extends BaseReplicaContext<BlockPK.CachedBlockPK
       result = get(pk);
       hit(iFinder, result, "id", pk);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for CachedBlock instance with PK=" + pk);
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for CachedBlock instance with PK=" + pk);
       aboutToAccessStorage(iFinder, params);
       result = dataAccess.find(pk.getBlockId(), pk.getInodeId(), pk.getDatanodeId());
       gotFromDB(pk, result);
@@ -124,7 +124,7 @@ public class CachedBlockContext extends BaseReplicaContext<BlockPK.CachedBlockPK
       results = getByBlock(blockId);
       hit(iFinder, results, "bid", blockId);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for CachedBlock instance with INodeID=" + inodeId + ", BlockID=" + blockId);
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for CachedBlock instance with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findCachedBlockById(blockId);
       gotFromDB(new BlockPK.CachedBlockPK(blockId, inodeId), results);
@@ -141,7 +141,7 @@ public class CachedBlockContext extends BaseReplicaContext<BlockPK.CachedBlockPK
       results = getByINode(inodeId);
       hit(iFinder, results, "inodeid", inodeId);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for CachedBlock instance with INodeID=" + inodeId);
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for CachedBlock instance with INodeID=" + inodeId);
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findCachedBlockByINodeId(inodeId);
       gotFromDB(new BlockPK.CachedBlockPK(inodeId), results);
@@ -153,7 +153,7 @@ public class CachedBlockContext extends BaseReplicaContext<BlockPK.CachedBlockPK
   private List<CachedBlock> findByINodeIds(CachedBlock.Finder iFinder, Object[] params) throws
       StorageCallPreventedException, StorageException {
     long[] ids = (long[]) params[0];
-    if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for CachedBlock instance with INodeIDs=" +
+    if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for CachedBlock instance with INodeIDs=" +
                     StringUtils.join(", ", Arrays.stream(ids).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(iFinder, params);
     List<CachedBlock> results = dataAccess.findCachedBlockByINodeIds(ids);
@@ -168,7 +168,7 @@ public class CachedBlockContext extends BaseReplicaContext<BlockPK.CachedBlockPK
     final long[] blockIds = (long[]) params[0];
     final long[] inodeIds = (long[]) params[1];
     final DatanodeID datanodeId = (DatanodeID) params[2];
-    if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for CachedBlock instance with various INodeIDs, BlockIDs, and DN IDs.");
+    if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for CachedBlock instance with various INodeIDs, BlockIDs, and DN IDs.");
     aboutToAccessStorage(bFinder, params);
     result = dataAccess.findByIds(blockIds, inodeIds, datanodeId.getDatanodeUuid());
     miss(bFinder, result, "BlockIds", Arrays.toString(blockIds), "InodeIds",
@@ -193,7 +193,7 @@ public class CachedBlockContext extends BaseReplicaContext<BlockPK.CachedBlockPK
       results = getByDatanode(datanodeId.getDatanodeUuid());
       hit(iFinder, results, "datanodeId", datanodeId);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for CachedBlock instance with DataNodeID=" + datanodeId);
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for CachedBlock instance with DataNodeID=" + datanodeId);
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findCachedBlockByDatanodeId(datanodeId.getDatanodeUuid());
       gotFromDB(new BlockPK.CachedBlockPK(datanodeId.getDatanodeUuid()), results);
@@ -211,7 +211,7 @@ public class CachedBlockContext extends BaseReplicaContext<BlockPK.CachedBlockPK
       results = getAll();
       hit(iFinder, results, "all");
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for ALL CachedBlock instances.");
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for ALL CachedBlock instances.");
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findAll();
       hasAll=true;

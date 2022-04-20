@@ -208,7 +208,7 @@ public class UnderReplicatedBlockContext
       }
       hit(urFinder, result, "bid", blockId, "inodeid", inodeId);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for UnderReplicatedBlock instances with INodeID=" + inodeId + ", BlockID=" + blockId);
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for UnderReplicatedBlock instances with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(urFinder, params);
       result = dataAccess.findByPk(blockId, inodeId);
       gotFromDB(new BlockPK(blockId, inodeId), result);
@@ -230,7 +230,7 @@ public class UnderReplicatedBlockContext
       result = getByINode(inodeId);
       hit(urFinder, result, "inodeid", inodeId);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for UnderReplicatedBlock instances with INodeID=" + inodeId);
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for UnderReplicatedBlock instances with INodeID=" + inodeId);
       aboutToAccessStorage(urFinder, params);
       result = dataAccess.findByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
@@ -245,7 +245,7 @@ public class UnderReplicatedBlockContext
       throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
     List<UnderReplicatedBlock> result = null;
-    if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for UnderReplicatedBlock instances with INodeIDs=" +
+    if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for UnderReplicatedBlock instances with INodeIDs=" +
             StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(urFinder, params);
     result = dataAccess.findByINodeIds(inodeIds);

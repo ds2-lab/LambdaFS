@@ -199,7 +199,7 @@ public class ExcessReplicaContext
       result = get(key);
       hit(eFinder, result, "bid", blockId, "uuid", storageId);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for ExcessReplica instances with INodeID=" + inodeId + ", BlockID=" + blockId +
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for ExcessReplica instances with INodeID=" + inodeId + ", BlockID=" + blockId +
               ", StorageID=" + storageId);
       aboutToAccessStorage(eFinder, params);
       result = dataAccess.findByPK(blockId, storageId, inodeId);
@@ -224,7 +224,7 @@ public class ExcessReplicaContext
       result = getByBlock(blockId);
       hit(eFinder, result, "bid", blockId, "inodeId", inodeId);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for ExcessReplica instances with INodeID=" + inodeId + ", BlockID=" + blockId);
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for ExcessReplica instances with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(eFinder, params);
       result = dataAccess.findExcessReplicaByBlockId(blockId, inodeId);
       Collections.sort(result);
@@ -246,7 +246,7 @@ public class ExcessReplicaContext
       result = getByINode(inodeId);
       hit(eFinder, result, "inodeId", inodeId);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for ExcessReplica instances with INodeID=" + inodeId);
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for ExcessReplica instances with INodeID=" + inodeId);
       aboutToAccessStorage(eFinder, params);
       result = dataAccess.findExcessReplicaByINodeId(inodeId);
       gotFromDB(new BlockPK(null, inodeId), result);
@@ -259,7 +259,7 @@ public class ExcessReplicaContext
   private List<ExcessReplica> findByINodeIds(ExcessReplica.Finder eFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
-    if (LOG.isDebugEnabled()) LOG.debug("Going to NDB for ExcessReplica instances with INodeIDs=" +
+    if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for ExcessReplica instances with INodeIDs=" +
             StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(eFinder, params);
     List<ExcessReplica> result =
