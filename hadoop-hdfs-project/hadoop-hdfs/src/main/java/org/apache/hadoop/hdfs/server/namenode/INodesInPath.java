@@ -179,6 +179,8 @@ public class INodesInPath {
     int inodeNum = 0;
     INode[] inodes = new INode[components.length];
 
+    LOG.debug("Current INode: " + curNode);
+
     while (count < components.length && curNode != null) {
       final boolean lastComp = (count == components.length - 1);
       inodes[inodeNum++] = curNode;
@@ -202,6 +204,8 @@ public class INodesInPath {
       final byte[] childName = components[count + 1];
 
       curNode = dir.getChildINode(childName);
+
+      LOG.debug("Current INode: " + curNode);
 
       count++;
     }

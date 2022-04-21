@@ -48,7 +48,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   /**
    * Endpoint to use when local mode is enabled.
    */
-  public static final String SERVERLESS_ENDPOINT_LOCAL = "serverless.endpoint.local";
+  public static final String SERVERLESS_ENDPOINT_LOCAL = "serverless.localmode.endpoint";
   public static final String SERVERLESS_ENDPOINT_LOCAL_DEFAULT = "http://localhost:8080/run";
 
   /**
