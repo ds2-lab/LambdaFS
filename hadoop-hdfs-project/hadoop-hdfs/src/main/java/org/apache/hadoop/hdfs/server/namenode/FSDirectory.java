@@ -1654,9 +1654,10 @@ public class FSDirectory implements Closeable {
     String[] paths = INode.getComponentsAsStringArray(path);
     //LOG.debug("Paths: '" + Arrays.toString(paths) + "'");
 
-    //final byte[][] components = INode.getPathComponents(paths);
+    final byte[][] components = INode.getPathComponents(paths);
     //LOG.debug("Components: " + Arrays.toString(components));
-    INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), paths, resolveLink);
+    //INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), paths, resolveLink);
+    INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), components, resolveLink);
 
     return pathINodes;
   }
@@ -1664,8 +1665,8 @@ public class FSDirectory implements Closeable {
   /** @return the last inode in the path. */
   INode getINode(String path, boolean resolveLink)
           throws UnresolvedLinkException, StorageException, TransactionContextException {
-    //return getINodesInPath(path, resolveLink).getLastINode();
-    return resolveLastINode(path, resolveLink);
+    return getINodesInPath(path, resolveLink).getLastINode();
+    // return resolveLastINode(path, resolveLink);
   }
 
   /**
