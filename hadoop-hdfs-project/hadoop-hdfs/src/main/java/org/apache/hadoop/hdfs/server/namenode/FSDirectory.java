@@ -1654,7 +1654,8 @@ public class FSDirectory implements Closeable {
     String[] paths = INode.getComponentsAsStringArray(path);
     LOG.debug("Paths: '" + Arrays.toString(paths) + "'");
 
-    final byte[][] components = INode.getPathComponents(paths);
+    String[] pathNames = INode.getPathNames(path);
+    final byte[][] components = INode.getPathComponents(pathNames);
     LOG.debug("Components: " + Arrays.toString(components));
     //INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), paths, resolveLink);
     INodesInPath pathINodes = INodesInPath.resolve(getRootDir(), components, resolveLink);

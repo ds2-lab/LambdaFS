@@ -203,9 +203,14 @@ public class INodesInPath {
       }
       final byte[] childName = components[count + 1];
 
+      LOG.debug("Trying to find child " + DFSUtil.bytes2String(childName) + " of current INode " + curNode);
+
       curNode = dir.getChildINode(childName);
 
-      LOG.debug("Current INode: " + curNode);
+      if (curNode == null)
+        LOG.warn("Failed to find child " + DFSUtil.bytes2String(childName) + " of current INode " + curNode);
+      else
+        LOG.debug("Successfully located child INode: " + curNode);
 
       count++;
     }
