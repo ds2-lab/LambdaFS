@@ -65,7 +65,7 @@ public class InMemoryINodeCache {
      * Mapping between keys of the form [PARENT_ID][LOCAL_NAME], which is how some INodes are
      * cached/stored by HopsFS during transactions, to the fully-qualified paths of the INode.
      */
-    private final ConcurrentHashMap<Integer, String> parentIdPlusLocalNameToFullPathMapping;
+    private final ConcurrentHashMap<String, String> parentIdPlusLocalNameToFullPathMapping;
 
     private final ThreadLocal<Integer> threadLocalCacheHits = ThreadLocal.withInitial(() -> 0);
     private final ThreadLocal<Integer> threadLocalCacheMisses = ThreadLocal.withInitial(() -> 0);
@@ -189,8 +189,8 @@ public class InMemoryINodeCache {
 //                (System.currentTimeMillis() - s) + " ms.");
         try {
 
-            // String parentIdPlusLocalName = parentId + localName;
-            int parentIdPlusLocalName = computeParentIdLocalNameHash(parentId, localName);
+            String parentIdPlusLocalName = parentId + localName;
+            // int parentIdPlusLocalName = computeParentIdLocalNameHash(parentId, localName);
             String key = parentIdPlusLocalNameToFullPathMapping.getOrDefault(parentIdPlusLocalName, null);
 
             if (key != null)
@@ -263,8 +263,8 @@ public class InMemoryINodeCache {
                     (t - s) + " ms.");
         }
 
-        //String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
-        int parentIdPlusLocalName = computeParentIdLocalNameHash(value.getParentId(), value.getLocalName());
+        String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
+        // int parentIdPlusLocalName = computeParentIdLocalNameHash(value.getParentId(), value.getLocalName());
         parentIdPlusLocalNameToFullPathMapping.put(parentIdPlusLocalName, key);
 
         // Create a mapping between the INode ID and the path.
