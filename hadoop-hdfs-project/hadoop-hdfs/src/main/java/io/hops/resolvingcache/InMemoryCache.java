@@ -31,7 +31,8 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 
 public class InMemoryCache extends Cache {
 
-  private ConcurrentLinkedHashMap<Integer, Long> pathCache;
+  //private ConcurrentLinkedHashMap<Integer, Long> pathCache;
+  private ConcurrentLinkedHashMap<String, Long> pathCache;
   //store INodeIdentifier instead of INode to save memory and avoid risk of modifying the INode object by accident
   private ConcurrentLinkedHashMap<Long, INodeIdentifier> inodeIdCache; 
   private int CACHE_MAXIMUM_SIZE;
@@ -59,8 +60,8 @@ public class InMemoryCache extends Cache {
   protected void setInternal(String path, List<INode> inodes) {
     for (INode inode : inodes) {
       if (inode != null) {
-        //pathCache.put(inode.nameParentKey(), inode.getId());
-        pathCache.put(INode.nameParentKeyHash(inode.getParentId(), inode.getLocalName()), inode.getId());
+        pathCache.put(inode.nameParentKey(), inode.getId());
+        //pathCache.put(INode.nameParentKeyHash(inode.getParentId(), inode.getLocalName()), inode.getId());
         inodeIdCache.put(inode.getId(), new INodeIdentifier(inode.getId(), inode.getParentId(), inode.getLocalName(),
             inode.getPartitionId()));
       }
@@ -84,8 +85,8 @@ public class InMemoryCache extends Cache {
     int index = 0;
     while(index <pathComponents.length){
       String cmp = pathComponents[index];
-      //Long inodeId = pathCache.get(INode.nameParentKey(parentId, cmp));
-      Long inodeId = pathCache.get(INode.nameParentKeyHash(parentId, cmp));
+      Long inodeId = pathCache.get(INode.nameParentKey(parentId, cmp));
+      //Long inodeId = pathCache.get(INode.nameParentKeyHash(parentId, cmp));
       if(inodeId != null){
         parentId = inodeId;
         inodeIds[index] = inodeId;
@@ -114,8 +115,8 @@ public class InMemoryCache extends Cache {
 
   @Override
   protected void deleteInternal(INode inode) {
-    //pathCache.remove(inode.nameParentKey());
-    pathCache.remove(INode.nameParentKeyHash(inode.getParentId(), inode.getLocalName()));
+    pathCache.remove(inode.nameParentKey());
+    //pathCache.remove(INode.nameParentKeyHash(inode.getParentId(), inode.getLocalName()));
     inodeIdCache.remove(inode.getId());
   }
   
