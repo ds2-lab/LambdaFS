@@ -61,7 +61,6 @@ public class InMemoryCache extends Cache {
     for (INode inode : inodes) {
       if (inode != null) {
         pathCache.put(inode.nameParentKey(), inode.getId());
-        //pathCache.put(INode.nameParentKeyHash(inode.getParentId(), inode.getLocalName()), inode.getId());
         inodeIdCache.put(inode.getId(), new INodeIdentifier(inode.getId(), inode.getParentId(), inode.getLocalName(),
             inode.getPartitionId()));
       }
@@ -86,7 +85,6 @@ public class InMemoryCache extends Cache {
     while(index <pathComponents.length){
       String cmp = pathComponents[index];
       Long inodeId = pathCache.get(INode.nameParentKey(parentId, cmp));
-      //Long inodeId = pathCache.get(INode.nameParentKeyHash(parentId, cmp));
       if(inodeId != null){
         parentId = inodeId;
         inodeIds[index] = inodeId;

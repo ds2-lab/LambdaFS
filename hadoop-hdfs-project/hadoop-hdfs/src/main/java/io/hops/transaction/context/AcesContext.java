@@ -116,7 +116,7 @@ public class AcesContext extends BaseEntityContext<Ace.PrimaryKey, Ace> {
     List<Ace> result = checkCache(inodeId, aceIds);
 
     if (result != null) {
-      if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved all Ace instances from local cache for INode ID=" + inodeId + ".");
+      if (LOG.isDebugEnabled()) LOG.trace("Successfully retrieved all Ace instances from local cache for INode ID=" + inodeId + ".");
       return result;
     }
 
@@ -124,7 +124,7 @@ public class AcesContext extends BaseEntityContext<Ace.PrimaryKey, Ace> {
       result = inodeAces.get(inodeId);
       hit(aceFinder, result, "inodeId", inodeId);
     } else {
-      if (LOG.isDebugEnabled()) LOG.debug("Retrieving Aces from intermediate storage for INode ID=" + inodeId);
+      if (LOG.isTraceEnabled()) LOG.trace("Retrieving Aces from intermediate storage for INode ID=" + inodeId);
       aboutToAccessStorage(aceFinder, params);
       result = dataAccess.getAcesByPKBatched(inodeId, aceIds);
       inodeAces.put(inodeId, result);

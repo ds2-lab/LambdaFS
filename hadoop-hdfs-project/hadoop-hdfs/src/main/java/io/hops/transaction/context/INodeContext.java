@@ -136,6 +136,25 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     }
   }
 
+  /**
+   * Add an INode to the cache, if it is non-null. If the INode parameter is null, this just returns.
+   *
+   * @param node The INode to add to the cache.
+   * @param localName The local name of the INode. Only used for debugging purposes (i.e., when INode is null).
+   * @param parentId The INode ID of the given INode. Only used for debugging purposes (i.e., when INode is null).
+   */
+  private void updateCache(INode node, String localName, long parentId) throws TransactionContextException, StorageException {
+    if (node == null) {
+      LOG.warn("Attempting to update cache with null value for INode '" + localName + "', parentID=" + parentId + ".");
+      return;
+    }
+
+    InMemoryINodeCache metadataCache = getMetadataCache();
+    if (metadataCache == null) return;
+
+    metadataCache.put(node.getFullPathName(), node.getId(), node);
+  }
+
   private void updateCache(INode node) throws TransactionContextException, StorageException {
     if (node == null) {
       LOG.warn("Attempting to update cache with null INode.");
@@ -465,9 +484,9 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         gotFromDBWithPossibleInodeId(result, possibleInodeId);
         inodesNameParentIndex.put(nameParentKey, result);
         missUpgrade(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
-        updateCache(result);
+        updateCache(result, name, parentId);
       } else {
-        // if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved INode '" + name + "', parentID=" + parentId + " from INode Hint Cache.");
+        if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode '" + name + "', parentID=" + parentId + " from INode Hint Cache.");
         hit(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
       }
     } else {
@@ -486,7 +505,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         inodesNameParentIndex.put(nameParentKey, result);
         miss(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId,
             "possible_inode_id",possibleInodeId);
-        updateCache(result);
+        updateCache(result, name, parentId);
       }
     }
     return result;

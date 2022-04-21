@@ -865,10 +865,6 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
   public String nameParentKey() {
     return nameParentKey(parentId, getLocalName());
   }
-
-  public static int nameParentKeyHash(long parentId, String name) {
-    return (int)(parentId ^ name.hashCode());
-  }
   
   /**
    * Set user
