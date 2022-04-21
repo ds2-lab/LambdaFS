@@ -155,7 +155,13 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     metadataCache.put(node.getFullPathName(), node.getId(), node);
   }
 
-  private void updateCache(INode node) throws TransactionContextException, StorageException {
+  /**
+   * Add an INode to the cache, if it is non-null. If the INode parameter is null, this just returns.
+   *
+   * @param node The INode to add to the cache.
+   * @param inodeId The ID of the INode. Only used for debugging purposes (i.e., when INode is null).
+   */
+  private void updateCache(INode node, long inodeId) throws TransactionContextException, StorageException {
     if (node == null) {
       LOG.warn("Attempting to update cache with null INode.");
       return;
@@ -420,15 +426,22 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     // First, check the local, in-memory metadata cache.
     result = checkCache(inodeId);
     if (result != null) {
+      if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode '" + result.getLocalName() + "' (ID=" +
+              inodeId + ") from local metadata cache.");
       return result;
     }
 
     if (contains(inodeId)) {
       result = get(inodeId);
       if(result!=null) {
+        if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode '" + result.getLocalName() + "' (ID=" +
+                inodeId + ") from transaction context.");
+
         hit(inodeFinder, result, "id", inodeId, "name", result.getLocalName(), "parent_id", result.getParentId(),
             "partition_id", result.getPartitionId());
-      }else{
+      } else{
+        if (LOG.isTraceEnabled()) LOG.trace("INode ID=" +
+                inodeId + " was in transaction context as null...");
         hit(inodeFinder, result, "id", inodeId);
       }
     } else {
@@ -437,11 +450,13 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       result = dataAccess.findInodeByIdFTIS(inodeId);
       gotFromDB(inodeId, result);
       if (result != null) {
+        if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode ID=" + inodeId + " from intermediate storage.");
         inodesNameParentIndex.put(result.nameParentKey(), result);
         miss(inodeFinder, result, "id", inodeId, "name", result.getLocalName(), "parent_id", result.getParentId(),
           "partition_id", result.getPartitionId());
-        updateCache(result);
+        updateCache(result, inodeId);
       } else {
+        if (LOG.isTraceEnabled()) LOG.trace("Failed to retrieve INode ID=" + inodeId + " from intermediate storage.");
         miss(inodeFinder, result, "id");
       }
     }
