@@ -876,6 +876,7 @@ public class HopsFSUserServer {
                 LOG.warn("[TCP SERVER " + tcpPort + "] Received object of unexpected type from remote client " + connection +
                         " at " + connection.getRemoteAddressTCP() + ". Object type: " +
                         object.getClass().getSimpleName() + ".");
+                LOG.warn("Unexpected object: " + object.toString());
             }
         }
 
