@@ -1,9 +1,20 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.esotericsoftware.kryo.Kryo;
+import io.hops.metrics.TransactionAttempt;
+import io.hops.metrics.TransactionEvent;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FsServerDefaults;
+import org.apache.hadoop.hdfs.protocol.DirectoryListing;
+import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
+import org.apache.hadoop.hdfs.protocol.LastBlockWithStatus;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
+import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 
 /**
@@ -39,5 +50,18 @@ public class ServerlessClientServerUtilities {
     public static synchronized void registerClassesToBeTransferred(Kryo kryo) {
         kryo.register(DuplicateRequest.class);
         kryo.register(NullResult.class);
+        kryo.register(NameNodeResult.class);
+        kryo.register(NameNodeResult.ServerlessFunctionMapping.class);
+        kryo.register(TransactionEvent.class);
+        kryo.register(TransactionAttempt.class);
+        kryo.register(LocatedBlocks.class);
+        kryo.register(NamespaceInfo.class);
+        kryo.register(LastBlockWithStatus.class);
+        kryo.register(HdfsFileStatus.class);
+        kryo.register(DirectoryListing.class);
+        kryo.register(FsServerDefaults.class);
+        kryo.register(ActiveServerlessNameNodeList.class);
+        kryo.register(ActiveServerlessNameNode.class);
+        kryo.register(Throwable.class);
     }
 }
