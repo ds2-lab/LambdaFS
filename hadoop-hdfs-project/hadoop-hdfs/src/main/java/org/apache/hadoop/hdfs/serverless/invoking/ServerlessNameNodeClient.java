@@ -7,6 +7,7 @@ import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
+import io.hops.metrics.TransactionEvent;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -30,6 +31,7 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
+import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.HopsFSUserServer;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
@@ -266,6 +268,53 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.latencyWithWindow = new DescriptiveStatistics(latencyWindowSize);
     }
 
+    /**
+     * Extract the result from the NN.
+     *
+     * If the result payload is a JsonObject, then we hand things off to the base invoker class.
+     *
+     * @param resultPayload The payload that was returned by the NameNode to us.
+     *
+     * @return The result object extracted from the payload.
+     */
+    public Object extractResultFromNameNode(Object resultPayload) {
+        if (resultPayload instanceof NameNodeResult) {
+            NameNodeResult result = (NameNodeResult)resultPayload;
+
+            NameNodeResult.ServerlessFunctionMapping functionMapping = result.getServerlessFunctionMapping();
+
+            if (functionMapping != null) {
+                serverlessInvoker.cache.addEntry(
+                        functionMapping.fileOrDirectory,
+                        functionMapping.parentId,
+                        false);
+            }
+
+            ArrayList<Throwable> exceptions = result.getExceptions();
+            if (exceptions != null && exceptions.size() > 0) {
+                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
+                LOG.warn("*** The ServerlessNameNode encountered " + exceptions.size() +
+                        (exceptions.size() == 1 ? " exception. ***" : " exceptions. ***"));
+
+                for (Throwable t : exceptions)
+                    LOG.error(t);
+                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
+            }
+
+            List<TransactionEvent> txEvents = result.getTxEvents();
+            if (txEvents != null) {
+                this.serverlessInvoker.transactionEvents.put(result.getRequestId(), txEvents);
+            }
+
+            return result.getResult();
+        }
+        else if (resultPayload instanceof JsonObject)
+            return serverlessInvoker.extractResultFromJsonResponse((JsonObject) resultPayload);
+        else
+            throw new IllegalStateException("Unexpected result payload type from NN: " +
+                    resultPayload.getClass().getSimpleName());
+    }
+
     public void setConsistencyProtocolEnabled(boolean enabled) {
         this.consistencyProtocolEnabled = enabled;
         this.serverlessInvoker.setConsistencyProtocolEnabled(enabled);
@@ -414,7 +463,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *                             target file or directory.
      * @return The response from the NameNode.
      */
-    private JsonObject issueTCPRequest(String operationName,
+    private Object issueTCPRequest(String operationName,
                                        ArgumentContainer opArguments,
                                        int targetDeployment)
             throws InterruptedException, ExecutionException, IOException {
@@ -442,7 +491,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         int maxRetries = exponentialBackOff.getMaximumRetries();
         while (backoffInterval >= 0) {
             long requestTimeout = calculateRequestTimeout(stragglerResubmissionAlreadyOccurred, backoffInterval);
-            JsonObject response;
 
             long localStart;
             try {
@@ -459,30 +507,38 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 }
                 numOperationsIssuedViaTcp++;
                 numOperationsIssued++;
-                response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload,
+                Object response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, payload,
                         requestTimeout, !stragglerResubmissionAlreadyOccurred);
 
-                // After receiving a response, we need to check if it is a cancellation message or not.
-                // Cancellation messages are posted by the TCP server if the TCP connection is terminated unexpectedly.
-                // If we receive a cancellation message, then we need to fall back to HTTP. To do this, we'll just
-                // throw an IOException here. It will be caught by the 'catch' clause, which will transparently
-                // fall back to HTTP.
-                if (response.has(CANCELLED) && response.get(CANCELLED).getAsBoolean()) {
-                    // We add this argument so that the NameNode knows it must redo the operation,
-                    // even though it has potentially seen it before.
-                    opArguments.addPrimitive(FORCE_REDO, true);
+                if (response instanceof JsonObject) {
+                    JsonObject responseJson = (JsonObject)response;
 
-                    // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
-                    throw new IOException("The TCP future for request " + requestId + " (operation = " + operationName +
-                            ") has been cancelled. Reason: " + response.get(REASON).getAsString() + ".");
+                    // After receiving a response, we need to check if it is a cancellation message or not.
+                    // Cancellation messages are posted by the TCP server if the TCP connection is terminated unexpectedly.
+                    // If we receive a cancellation message, then we need to fall back to HTTP. To do this, we'll just
+                    // throw an IOException here. It will be caught by the 'catch' clause, which will transparently
+                    // fall back to HTTP.
+                    if (responseJson.has(CANCELLED) && responseJson.get(CANCELLED).getAsBoolean()) {
+                        // We add this argument so that the NameNode knows it must redo the operation,
+                        // even though it has potentially seen it before.
+                        opArguments.addPrimitive(FORCE_REDO, true);
+
+                        // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
+                        throw new IOException("The TCP future for request " + requestId + " (operation = " + operationName +
+                                ") has been cancelled. Reason: " + responseJson.get(REASON).getAsString() + ".");
+                    } else {
+                        throw new IllegalStateException("Received JsonObject from TCP request.");
+                    }
                 }
+
+                NameNodeResult result = (NameNodeResult)response;
 
                 // If the NameNode is reporting that this FS operation was a duplicate, then we check to see if
                 // we're actually still waiting on a result for the operation. If we are, then it might have been
                 // lost (e.g., network connection terminated while NN sending result back to us) or something like
                 // that. In that case, we resubmit the FS operation with an additional argument indicating that the
                 // NN should execute the FS operation regardless of whether it is a duplicate.
-                if (response.has(DUPLICATE_REQUEST) && response.get(DUPLICATE_REQUEST).getAsBoolean()) {
+                if (result.isDuplicate()) {
                     LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " +
                             requestId + "...");
 
@@ -498,7 +554,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     } else {
                         // This generally shouldn't happen in practice...
                         LOG.warn("Apparently we are not actually waiting on a result for request " + requestId +
-                              "... Not resubmitting.");
+                                "... Not resubmitting.");
                     }
                 }
 
@@ -508,8 +564,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 addLatency(localEnd - localStart, -1);
 
                 // Collect and save/record metrics.
-                createAndStoreOperationPerformed(response, operationName, requestId, opStart, localEnd,
-                        targetDeployment, true, false, wasResubmittedViaStragglerMitigation);
+                createAndStoreOperationPerformed(result, operationName, requestId, opStart, localEnd,
+                        true, false, wasResubmittedViaStragglerMitigation);
 
                 return response;
             } catch (TimeoutException ex) {
@@ -558,7 +614,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 numOperationsIssued++;
                 numOperationsIssuedViaHttp++;
                 // Issue the HTTP request. This function will handle retries and timeouts.
-                response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                         operationName,
                         dfsClient.serverlessEndpoint,
                         null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -586,7 +642,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     response = response.get("body").getAsJsonObject();
 
                 // Collect and save/record metrics.
-                createAndStoreOperationPerformed(response, operationName, requestId, opStart, opEnd, targetDeployment,
+                createAndStoreOperationPerformed(response, operationName, requestId, opStart, opEnd,
                         true, true, wasResubmittedViaStragglerMitigation);
 
                 return response;
@@ -609,7 +665,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *
      * @return The result of executing the desired FS operation on the NameNode.
      */
-    private JsonObject submitOperationToNameNode(
+    private Object submitOperationToNameNode(
             String operationName,
             String serverlessEndpoint,
             HashMap<String, Object> nameNodeArguments,
@@ -697,7 +753,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (response.has("body"))
             response = response.get("body").getAsJsonObject();
 
-        createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime, mappedFunctionNumber,
+        createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime,
                 false, true, false);
 
         return response;
@@ -711,20 +767,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param requestId The unique ID of the request associated with this file system operation.
      * @param startTime The local timestamp at which this operation began.
      * @param endTime The local timestamp at which this operation completed.
-     * @param mappedFunctionNumber The deployment targeted during this operation.
      * @param issuedViaTCP Indicates whether the associated operation was issued via TCP to a NN.
      * @param issuedViaHTTP Indicates whether the associated operation was issued via HTTP to a NN.
      */
     private void createAndStoreOperationPerformed(JsonObject response, String operationName, String requestId,
-                                                  long startTime, long endTime, int mappedFunctionNumber,
-                                                  boolean issuedViaTCP, boolean issuedViaHTTP,
-                                                  boolean wasResubmittedViaStragglerMitigation) {
+                                                  long startTime, long endTime, boolean issuedViaTCP,
+                                                  boolean issuedViaHTTP, boolean wasResubmittedViaStragglerMitigation) {
         try {
             long nameNodeId = -1;
             if (response.has(ServerlessNameNodeKeys.NAME_NODE_ID))
                 nameNodeId = response.get(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
 
-            int deployment = mappedFunctionNumber;
+            int deployment = -1;
             if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER))
                 deployment = response.get(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
 
@@ -749,6 +803,43 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             LOG.error("Unexpected NullPointerException encountered while creating OperationPerformed from JSON response:", ex);
             LOG.error("Response: " + response);
         }
+    }
+
+    /**
+     * Create and store an {@link OperationPerformed} object using the metrics stored in the response
+     * from the serverless function.
+     * @param result The result from the serverless NameNode.
+     * @param operationName The name of the file system operation that was performed.
+     * @param requestId The unique ID of the request associated with this file system operation.
+     * @param startTime The local timestamp at which this operation began.
+     * @param endTime The local timestamp at which this operation completed.
+     * @param issuedViaTCP Indicates whether the associated operation was issued via TCP to a NN.
+     * @param issuedViaHTTP Indicates whether the associated operation was issued via HTTP to a NN.
+     */
+    private void createAndStoreOperationPerformed(NameNodeResult result, String operationName, String requestId,
+                                                  long startTime, long endTime, boolean issuedViaTCP,
+                                                  boolean issuedViaHTTP, boolean wasResubmittedViaStragglerMitigation) {
+        long nameNodeId = result.getNameNodeId();
+
+        int deployment = result.getDeploymentNumber();
+
+        int cacheHits = result.getMetadataCacheHits();
+        int cacheMisses = result.getMetadataCacheMisses();
+
+        long fnStartTime = result.getFnStartTime();
+        long fnEndTime = result.getFnEndTime();
+
+        long enqueuedAt = result.getEnqueuedTime();
+        long dequeuedAt = result.getDequeuedTime();
+        long finishedProcessingAt = result.getProcessingFinishedTime();
+
+        OperationPerformed operationPerformed
+                = new OperationPerformed(operationName, requestId,
+                startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
+                deployment, issuedViaHTTP, issuedViaTCP, result.getRequestMethod(),
+                nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation,
+                this.dfsClient.clientName);
+        operationsPerformed.put(requestId, operationPerformed);
     }
 
     /**
@@ -1056,9 +1147,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("offset", offset);
         opArguments.put("length", length);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "getBlockLocations",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1068,7 +1159,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getBlockLocations to NameNode.");
         }
 
-        Object result =  serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             locatedBlocks = (LocatedBlocks)result;
 
@@ -1094,9 +1185,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public FsServerDefaults getServerDefaults() throws IOException {
         FsServerDefaults serverDefaults = null;
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "getServerDefaults",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1106,7 +1197,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getServerDefaults to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             serverDefaults = (FsServerDefaults)result;
 
@@ -1151,9 +1242,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             opArguments.put("targetReplication", policy.getTargetReplication());
         }
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "create",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1165,7 +1256,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // Extract the result from the Json response.
         // If there's an exception, then it will be logged by this function.
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             stat = (HdfsFileStatus)result;
 
@@ -1199,9 +1290,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
         opArguments.put(ServerlessNameNodeKeys.FLAG, enumSetBase64);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "append",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1213,7 +1304,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // Extract the result from the Json response.
         // If there's an exception, then it will be logged by this function.
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             stat = (LastBlockWithStatus)result;
 
@@ -1328,9 +1419,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("favoredNodes", favoredNodes);
         opArguments.put("excludeNodes", excludeNodes);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "addBlock",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1340,7 +1431,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation addBlock to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
 
         if (result != null) {
             LocatedBlock locatedBlock = (LocatedBlock) result;
@@ -1371,9 +1462,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("fileId", fileId);
         opArguments.put("data", data);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "complete",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1383,7 +1474,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation complete to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (boolean)result;
 
@@ -1474,9 +1565,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("newLength", newLength);
         opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "truncate",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1486,7 +1577,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation truncate to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (boolean)result;
 
@@ -1500,9 +1591,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("recursive", recursive);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "delete",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1512,7 +1603,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation delete to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (boolean)result;
 
@@ -1527,9 +1618,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("masked", masked);
         opArguments.put("createParent", createParent);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "mkdirs",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1539,7 +1630,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation mkdirs to NameNode.");
         }
 
-        Object res = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object res = extractResultFromNameNode(responseFromNN);
         if (res != null)
             return (boolean)res;
 
@@ -1554,9 +1645,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("startAfter", startAfter);
         opArguments.put("needLocation", needLocation);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "getListing",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1566,7 +1657,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (DirectoryListing)result;
 
@@ -1600,9 +1691,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public long[] getStats() throws IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "getStats",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1612,7 +1703,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (long[])result;
 
@@ -1625,9 +1716,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("type", type.ordinal());
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "getDatanodeReport",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1637,7 +1728,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getListing to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (DatanodeInfo[])result;
 
@@ -1685,9 +1776,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put(ServerlessNameNodeKeys.SRC, src);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "getFileInfo",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1697,7 +1788,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation getFileInfo to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (HdfsFileStatus)result;
 
@@ -1710,9 +1801,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put(ServerlessNameNodeKeys.SRC, src);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "isFileClosed",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1722,7 +1813,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation isFileClosed to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (boolean)result;
 
@@ -1735,9 +1826,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put(ServerlessNameNodeKeys.SRC, src);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "getFileLinkInfo",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1747,7 +1838,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation isFileClosed to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (HdfsFileStatus)result;
 
@@ -1791,9 +1882,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
         opArguments.put("block", block);
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "updateBlockForPipeline",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1803,7 +1894,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation complete to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (LocatedBlock)result;
 
@@ -1924,9 +2015,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public SortedActiveNodeList getActiveNamenodesForClient() throws IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
-        JsonObject responseJson;
+        Object responseFromNN;
         try {
-            responseJson = submitOperationToNameNode(
+            responseFromNN = submitOperationToNameNode(
                     "getActiveNamenodesForClient",
                     dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -1936,7 +2027,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throw new IOException("Exception encountered while submitting operation complete to NameNode.");
         }
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = extractResultFromNameNode(responseFromNN);
         if (result != null)
             return (SortedActiveNodeList)result;
 

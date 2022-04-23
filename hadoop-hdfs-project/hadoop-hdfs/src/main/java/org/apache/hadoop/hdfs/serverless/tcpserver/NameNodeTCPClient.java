@@ -328,7 +328,7 @@ public class NameNodeTCPClient {
                             "[TCP Client] Received object of unexpected type from client " + connection
                                     + ". Object type: " + object.getClass().getSimpleName() + ".");
                     tcpResult = new NameNodeResult(deploymentNumber, "N/A", "TCP",
-                            serverlessNameNode.getId());
+                            serverlessNameNode.getId(), "N/A");
                     tcpResult.addException(ex);
                 }
 
@@ -336,22 +336,22 @@ public class NameNodeTCPClient {
 //                String jsonString = new Gson().toJson(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT,
 //                        serverlessNameNode.getNamesystem().getMetadataCacheManager()));
 
-                ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-                String jsonString = null;
-                try {
-                    jsonString = ow.writeValueAsString(tcpResult.toJsonJackson(
-                            ServerlessClientServerUtilities.OPERATION_RESULT,
-                            serverlessNameNode.getNamesystem().getMetadataCacheManager()));
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
+//                ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+//                String jsonString = null;
+//                try {
+//                    jsonString = ow.writeValueAsString(tcpResult.toJsonJackson(
+//                            ServerlessClientServerUtilities.OPERATION_RESULT,
+//                            serverlessNameNode.getNamesystem().getMetadataCacheManager()));
+//                } catch (JsonProcessingException e) {
+//                    e.printStackTrace();
+//                }
+//
+//                long t = System.currentTimeMillis();
+//
+//                if (t - s > 10)
+//                    LOG.warn("Converting NameNodeResult instance to JSON took " + (t - s) + " ms.");
 
-                long t = System.currentTimeMillis();
-
-                if (t - s > 10)
-                    LOG.warn("Converting NameNodeResult instance to JSON took " + (t - s) + " ms.");
-
-                trySendTcp(connection, jsonString, false);
+                trySendTcp(connection, tcpResult, false);
             }
 
             public void disconnected (Connection connection) {
@@ -438,21 +438,21 @@ public class NameNodeTCPClient {
      *                       that we tried to send but couldn't because the buffer was full). This is just for
      *                       debugging purposes.
      */
-    private void trySendTcp(Connection connection, Object payload, boolean enqueuedResult) {
+    private void trySendTcp(Connection connection, NameNodeResult payload, boolean enqueuedResult) {
         double currentCapacity = ((double) connection.getTcpWriteBufferSize()) / ((double) writeBufferSize);
         if (currentCapacity >= 0.9) {
             LOG.warn("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
                     " is at " + (currentCapacity * 100) + "% capacity! Enqueuing payload to send later...");
             connection.addListener(new TcpIdleSender() {
                 boolean _started = false;
-                Object enqueuedObject = payload;
+                NameNodeResult enqueuedObject = payload;
 
                 @Override
-                protected Object next() {
+                protected NameNodeResult next() {
                     if (LOG.isDebugEnabled())
                         LOG.debug("[TCP Client] Write buffer for connection " +  connection.getRemoteAddressTCP() +
                                 " has reached 'idle' capacity. Sending buffered object now.");
-                    Object toReturn = enqueuedObject;
+                    NameNodeResult toReturn = enqueuedObject;
 
                     // Set this to null before we return so that we cannot get stuck in a loop of returning this
                     // object from this listener. This is just a safeguard; that loop scenario should never occur.
@@ -472,7 +472,7 @@ public class NameNodeTCPClient {
                     connection.removeListener(this);
 
                     // Next, retrieve the enqueued object to send to the client.
-                    Object object = next();
+                    NameNodeResult object = next();
 
                     // If the enqueued object is NOT null, then we will try to send it. This is sort of a recursive
                     // call, since this listener was created within the trySendTcp() function. But we've already
@@ -490,6 +490,7 @@ public class NameNodeTCPClient {
 //            if (LOG.isDebugEnabled())
 //                LOG.debug("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
 //                        " is at " + (currentCapacity * 100) + "% capacity! Sending payload immediately.");
+            payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
             sendTcp(connection, payload);
         }
     }
@@ -541,7 +542,8 @@ public class NameNodeTCPClient {
             ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
         }
 
-        NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP", serverlessNameNode.getId());
+        NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP",
+                serverlessNameNode.getId(), op);
         tcpResult.setFnStartTime(startTime);
 
         if (LOG.isDebugEnabled()) {

@@ -15,7 +15,7 @@ import java.util.concurrent.*;
  *
  * These are used on the client side.
  */
-public class RequestResponseFuture implements Future<JsonObject> {
+public class RequestResponseFuture implements Future<Object> {
     private static final Log LOG = LogFactory.getLog(FileSystemTask.class);
 
     private enum State {WAITING, DONE, CANCELLED, ERROR}
@@ -90,7 +90,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
     }
 
     @Override
-    public JsonObject get() throws InterruptedException, ExecutionException {
+    public Object get() throws InterruptedException, ExecutionException {
         if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
         final Object resultOrNull = this.resultQueue.take();
         if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
@@ -106,7 +106,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
     }
 
     @Override
-    public JsonObject get(long timeout, TimeUnit unit)
+    public Object get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
         final Object resultOrNull = this.resultQueue.poll(timeout, unit);
         if (resultOrNull == null) {
@@ -129,7 +129,7 @@ public class RequestResponseFuture implements Future<JsonObject> {
      *
      * @return True if we were able to insert the result into the queue, otherwise false.
      */
-    public boolean postResultImmediate(JsonObject result) {
+    public boolean postResultImmediate(Object result) {
         try {
             boolean success = resultQueue.offer(result);
 

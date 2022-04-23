@@ -15,6 +15,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
+import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -129,7 +130,7 @@ public class HopsFSUserServer {
      * loop where we keep invoking and then timing out early and then missing the response. So, we hold onto these
      * responses so that, if the result gets re-submitted, we can return a result.
      */
-    private final Cache<String, JsonObject> resultsWithoutFutures;
+    private final Cache<String, NameNodeResult> resultsWithoutFutures;
 
     /**
      * Constructor.
@@ -676,7 +677,7 @@ public class HopsFSUserServer {
      *                                        which the request previously timed-out.
      * @return The response from the NameNode, or null if the request failed for some reason.
      */
-    public JsonObject issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck,
+    public Object issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck,
                                              JsonObject payload, long timeout,
                                              boolean tryToAvoidTargetingSameNameNode)
             throws ExecutionException, InterruptedException, TimeoutException, IOException {
@@ -704,7 +705,7 @@ public class HopsFSUserServer {
         if (resultsWithoutFutures.asMap().containsKey(requestId)) {
             if (LOG.isDebugEnabled()) LOG.debug("Found result for request " + requestId +
                     "in ResultsWithoutFutures cache. Returning cached result.");
-            JsonObject previouslyReceivedResult = resultsWithoutFutures.asMap().remove(requestId);
+            NameNodeResult previouslyReceivedResult = resultsWithoutFutures.asMap().remove(requestId);
 
             // There could be a race where the cache entry expires after we've checked if it exists, but before
             // we remove it. So, we check to ensure it is non-null before posting the result.
@@ -729,6 +730,49 @@ public class HopsFSUserServer {
             return requestResponseFuture.get(timeout, TimeUnit.MILLISECONDS);
         else
             return requestResponseFuture.get();
+    }
+
+    /**
+     * Handle a result received from a remote NameNode.
+     * @param result The result we received from the remote NameNode.
+     * @param connection The connection to the remote NameNode.
+     */
+    private void handleResult(NameNodeResult result, NameNodeConnection connection) {
+        int deploymentNumber = result.getDeploymentNumber();
+        long nameNodeId = result.getNameNodeId();
+        String operation = result.getOperationName();
+        String requestId = result.getRequestId();
+
+        RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
+
+        // If there is no future associated with this operation, then we have no means to return
+        // the result back to the client who issued the file system operation.
+        if (future == null) {
+            // Only cache the future if it hasn't already been completed.
+            if (!completedFutures.containsKey(requestId)) {
+                LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
+                        ", but there is no associated future registered with the server.");
+                resultsWithoutFutures.put(requestId, result);
+            }
+
+            return;
+        }
+
+        boolean success = future.postResultImmediate(result);
+
+        if (!success)
+            throw new IllegalStateException("Failed to post result to future " + future.getRequestId());
+
+        // Update state pertaining to futures.
+        completedFutures.put(requestId, future); // Do this first to prevent races.
+        activeFutures.remove(requestId);
+
+        List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
+        incompleteFutures.remove(future);
+
+        if (LOG.isDebugEnabled())
+            LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId +
+                    " from NN " + nameNodeId + ", deployment " + deploymentNumber + ".");
     }
 
     /**
@@ -780,76 +824,51 @@ public class HopsFSUserServer {
             NameNodeConnection connection = (NameNodeConnection)conn;
 
             // If we received a JsonObject, then add it to the queue for processing.
-            if (object instanceof String) {
-                JsonObject body = new JsonParser().parse((String)object).getAsJsonObject();
-
-                int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
-                long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
-                String operation = body.getAsJsonPrimitive("op").getAsString();
-
-                String requestId = null;
-
-                // There won't be a requestId during registration attempts, just when results are being returned.
-                if (body.has("requestId"))
-                    requestId = body.getAsJsonPrimitive("requestId").getAsString();
-
-                // There are currently two different operations that a NameNode may perform.
-                // The first is registration. This operation results in the connection to the NameNode
-                // being cached locally by the client. The second operation is that of returning a result
-                // of a file system operation back to the user.
-                switch (operation) {
-                    // The NameNode is returning a result (of a file system operation) to the client.
-                    case OPERATION_RESULT:
-                        // If there is no request ID, then we have no idea which operation this result is
-                        // associated with, and thus we cannot do anything with it.
-                        if (requestId == null) {
-                            LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response containing result of FS " +
-                                    "operation, but response did not contain a request ID.");
-                            break;
-                        }
-
-                        RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
-
-                        // If there is no future associated with this operation, then we have no means to return
-                        // the result back to the client who issued the file system operation.
-                        if (future == null) {
-                            // Only cache the future if it hasn't already been completed.
-                            if (!completedFutures.containsKey(requestId)) {
-                                LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
-                                        ", but there is no associated future registered with the server.");
-                                resultsWithoutFutures.put(requestId, body);
-                            }
-
-                            break;
-                        }
-
-                        boolean success = future.postResultImmediate(body);
-
-                        if (!success)
-                            throw new IllegalStateException("Failed to post result to future " + future.getRequestId());
-
-                        // Update state pertaining to futures.
-                        completedFutures.put(requestId, future); // Do this first to prevent races.
-                        activeFutures.remove(requestId);
-
-                        List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
-                        incompleteFutures.remove(future);
-
-                        if (LOG.isDebugEnabled())
-                            LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId +
-                                " from NN " + nameNodeId + ", deployment " + deploymentNumber + ".");
-
-                        break;
-                    // The NameNode is registering with the client (i.e., connecting for the first time,
-                    // or at least they are connecting after having previously lost connection).
-                    case OPERATION_REGISTER:
-                        registerNameNode(connection, deploymentNumber, nameNodeId);
-                        break;
-                    default:
-                        LOG.warn("[TCP SERVER " + tcpPort + "] Unknown operation received from NameNode " + nameNodeId +
-                                ", Deployment #" + deploymentNumber + ": '" + operation + "'");
-                }
+            if (object instanceof NameNodeResult) {
+                NameNodeResult result = (NameNodeResult) object;
+                handleResult(result, connection);
             }
+//            else if (object instanceof String) {
+//                JsonObject body = new JsonParser().parse((String)object).getAsJsonObject();
+//
+//                int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
+//                long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
+//                String operation = body.getAsJsonPrimitive("op").getAsString();
+//
+//                String requestId = null;
+//
+//                // There won't be a requestId during registration attempts, just when results are being returned.
+//                if (body.has("requestId"))
+//                    requestId = body.getAsJsonPrimitive("requestId").getAsString();
+//
+//                // There are currently two different operations that a NameNode may perform.
+//                // The first is registration. This operation results in the connection to the NameNode
+//                // being cached locally by the client. The second operation is that of returning a result
+//                // of a file system operation back to the user.
+//                switch (operation) {
+//                    // The NameNode is returning a result (of a file system operation) to the client.
+//                    case OPERATION_RESULT:
+//                        // If there is no request ID, then we have no idea which operation this result is
+//                        // associated with, and thus we cannot do anything with it.
+//                        if (requestId == null) {
+//                            LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response containing result of FS " +
+//                                    "operation, but response did not contain a request ID.");
+//                            break;
+//                        }
+//
+//                        handleResult(requestId, body);
+//
+//                        break;
+//                    // The NameNode is registering with the client (i.e., connecting for the first time,
+//                    // or at least they are connecting after having previously lost connection).
+//                    case OPERATION_REGISTER:
+//                        registerNameNode(connection, deploymentNumber, nameNodeId);
+//                        break;
+//                    default:
+//                        LOG.warn("[TCP SERVER " + tcpPort + "] Unknown operation received from NameNode " + nameNodeId +
+//                                ", Deployment #" + deploymentNumber + ": '" + operation + "'");
+//                }
+//            }
             else if (object instanceof FrameworkMessage.KeepAlive) {
                 // The server periodically sends KeepAlive objects to prevent client from disconnecting.
             }

@@ -656,9 +656,6 @@ public abstract class ServerlessInvokerBase<T> {
             long parentINodeId = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.PARENT_ID).getAsLong();
             int function = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION).getAsInt();
 
-            if (LOG.isDebugEnabled())
-
-
             cache.addEntry(src, function, false);
         }
 

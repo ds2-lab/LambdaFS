@@ -270,7 +270,7 @@ public class OpenWhiskHandler extends BaseHandler {
                                      String clientName, boolean isClientInvoker, boolean tcpEnabled,
                                      int tcpPort, int actionMemory, boolean localMode, long startTime) {
         NameNodeResult result = new NameNodeResult(ServerlessNameNode.getFunctionNumberFromFunctionName(functionName),
-                requestId, "HTTP", -1);
+                requestId, "HTTP", -1, op);
 
         if (LOG.isDebugEnabled()) LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
 

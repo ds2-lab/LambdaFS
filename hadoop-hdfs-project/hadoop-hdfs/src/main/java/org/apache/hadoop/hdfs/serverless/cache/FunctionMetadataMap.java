@@ -121,7 +121,7 @@ public class FunctionMetadataMap {
      * @param overwriteExisting Overwrite an existing entry.
      * @return `true` if entry was added to the cache, otherwise `false`.
      */
-    public boolean addEntry(String path, int function, boolean overwriteExisting) {
+    public boolean addEntry(String path, long function, boolean overwriteExisting) {
         String pathToCache = getPathToCache(path);
 
         if (LOG.isDebugEnabled())
