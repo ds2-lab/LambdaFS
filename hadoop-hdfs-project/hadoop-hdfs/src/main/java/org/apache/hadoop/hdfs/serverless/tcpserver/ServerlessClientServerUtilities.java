@@ -63,5 +63,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(ActiveServerlessNameNodeList.class);
         kryo.register(ActiveServerlessNameNode.class);
         kryo.register(Throwable.class);
+        kryo.register(java.util.HashMap.class);
+        kryo.register(java.util.ArrayList.class);
     }
 }
