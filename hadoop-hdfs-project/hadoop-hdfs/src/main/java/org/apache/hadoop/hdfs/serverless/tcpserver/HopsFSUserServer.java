@@ -828,47 +828,26 @@ public class HopsFSUserServer {
                 NameNodeResult result = (NameNodeResult) object;
                 handleResult(result, connection);
             }
-//            else if (object instanceof String) {
-//                JsonObject body = new JsonParser().parse((String)object).getAsJsonObject();
-//
-//                int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
-//                long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
-//                String operation = body.getAsJsonPrimitive("op").getAsString();
-//
-//                String requestId = null;
-//
-//                // There won't be a requestId during registration attempts, just when results are being returned.
-//                if (body.has("requestId"))
-//                    requestId = body.getAsJsonPrimitive("requestId").getAsString();
-//
-//                // There are currently two different operations that a NameNode may perform.
-//                // The first is registration. This operation results in the connection to the NameNode
-//                // being cached locally by the client. The second operation is that of returning a result
-//                // of a file system operation back to the user.
-//                switch (operation) {
-//                    // The NameNode is returning a result (of a file system operation) to the client.
-//                    case OPERATION_RESULT:
-//                        // If there is no request ID, then we have no idea which operation this result is
-//                        // associated with, and thus we cannot do anything with it.
-//                        if (requestId == null) {
-//                            LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response containing result of FS " +
-//                                    "operation, but response did not contain a request ID.");
-//                            break;
-//                        }
-//
-//                        handleResult(requestId, body);
-//
-//                        break;
-//                    // The NameNode is registering with the client (i.e., connecting for the first time,
-//                    // or at least they are connecting after having previously lost connection).
-//                    case OPERATION_REGISTER:
-//                        registerNameNode(connection, deploymentNumber, nameNodeId);
-//                        break;
-//                    default:
-//                        LOG.warn("[TCP SERVER " + tcpPort + "] Unknown operation received from NameNode " + nameNodeId +
-//                                ", Deployment #" + deploymentNumber + ": '" + operation + "'");
-//                }
-//            }
+            else if (object instanceof String) {
+                JsonObject body = new JsonParser().parse((String)object).getAsJsonObject();
+
+                int deploymentNumber = body.getAsJsonPrimitive(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER).getAsInt();
+                long nameNodeId = body.getAsJsonPrimitive(ServerlessNameNodeKeys.NAME_NODE_ID).getAsLong();
+                String operation = body.getAsJsonPrimitive("op").getAsString();
+
+                // There are currently two different operations that a NameNode may perform.
+                // The first is registration. This operation results in the connection to the NameNode
+                // being cached locally by the client. The second operation is that of returning a result
+                // of a file system operation back to the user.
+                switch (operation) {
+                    case OPERATION_REGISTER:
+                        registerNameNode(connection, deploymentNumber, nameNodeId);
+                        break;
+                    default:
+                        LOG.warn("[TCP SERVER " + tcpPort + "] Unknown operation received from NameNode " + nameNodeId +
+                                ", Deployment #" + deploymentNumber + ": '" + operation + "'");
+                }
+            }
             else if (object instanceof FrameworkMessage.KeepAlive) {
                 // The server periodically sends KeepAlive objects to prevent client from disconnecting.
             }
