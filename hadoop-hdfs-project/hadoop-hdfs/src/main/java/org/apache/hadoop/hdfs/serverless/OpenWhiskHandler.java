@@ -198,7 +198,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
-                requestId, clientName, isClientInvoker, tcpEnabled, tcpPort, actionMemory, localMode);
+                requestId, clientName, isClientInvoker, tcpEnabled, tcpPort, actionMemory, localMode, startTime);
 
         // isCold is still equal to its original value here, which would be 'true' if this was in fact a cold start.
         result.setColdStart(isCold);
@@ -262,18 +262,19 @@ public class OpenWhiskHandler extends BaseHandler {
      * @param tcpEnabled Flag indicating whether the TCP invocation pathway is enabled. If false, then we do not
      *                   bother trying to establish TCP connections.
      * @param localMode Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
+     * @param startTime Return value from System.currentTimeMillis() called as the VERY first thing the HTTP handler does.
      * @return Result of executing NameNode code/operation/function execution.
      */
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                      String functionName, String clientIPAddress, String requestId,
                                      String clientName, boolean isClientInvoker, boolean tcpEnabled,
-                                     int tcpPort, int actionMemory, boolean localMode) {
+                                     int tcpPort, int actionMemory, boolean localMode, long startTime) {
         NameNodeResult result = new NameNodeResult(ServerlessNameNode.getFunctionNumberFromFunctionName(functionName),
                 requestId, "HTTP", -1);
 
-        long creationStart = System.currentTimeMillis();
         if (LOG.isDebugEnabled()) LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");
 
+        long creationStart = System.currentTimeMillis();
         // The very first step is to obtain a reference to the singleton ServerlessNameNode instance.
         // If this container was cold prior to this invocation, then we'll actually be creating the instance now.
         ServerlessNameNode serverlessNameNode;
@@ -325,7 +326,7 @@ public class OpenWhiskHandler extends BaseHandler {
         // After this, we will simply wait for the result to be completed before returning it to the user.
         // FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, redoEvenIfDuplicate, "HTTP");
 
-        result.setFnStartTime(creationStart);
+        result.setFnStartTime(startTime);
 
         currentRequestId.set(requestId);
 
