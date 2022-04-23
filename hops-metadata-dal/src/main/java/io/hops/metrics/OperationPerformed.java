@@ -340,7 +340,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 // "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration," +
 // "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration," +
 // "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses,straggler_resubmitted";
-        String formatString = "%-16s,%-38s,%-16s" +                                     // 3
+        String formatString = "%-16s,%-38s,%-16s," +                                    // 3
                               "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s," +            // 7
                               "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +              // 8
                               "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s";                         // 6
@@ -363,6 +363,21 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 endToEndDuration,                                           // End-to-end duration of the operation.
                 deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses, stragglerResubmittedToInt()));
         writer.newLine();
+
+        if (serverlessFnStartTime <= 0)
+            System.out.println("[ERROR] OperationPerformed for request " + requestId + " has serverlessFnStartTime field set to " + serverlessFnStartTime);
+        else if (requestEnqueuedAtTime <= 0)
+            System.out.println("[ERROR] OperationPerformed for request " + requestId + " has requestEnqueuedAtTime field set to " + requestEnqueuedAtTime);
+        else if (resultBeganExecutingTime <= 0)
+            System.out.println("[ERROR] OperationPerformed for request " + requestId + " has resultBeganExecutingTime field set to " + resultBeganExecutingTime);
+        else if (resultFinishedProcessingTime <= 0)
+            System.out.println("[ERROR] OperationPerformed for request " + requestId + " has resultFinishedProcessingTime field set to " + resultFinishedProcessingTime);
+        else if (serverlessFnEndTime <= 0)
+            System.out.println("[ERROR] OperationPerformed for request " + requestId + " has serverlessFnEndTime field set to " + serverlessFnEndTime);
+        else if (resultReceivedTime <= 0)
+            System.out.println("[ERROR] OperationPerformed for request " + requestId + " has resultReceivedTime field set to " + resultReceivedTime);
+        else if (invokedAtTime <= 0)
+            System.out.println("[ERROR] OperationPerformed for request " + requestId + " has invokedAtTime field set to " + invokedAtTime);
     }
 
     public String getResultReceivedVia() {
