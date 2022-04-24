@@ -305,6 +305,7 @@ public class NameNodeTCPClient {
              * @param object The object that the client sent to us.
              */
             public void received(Connection connection, Object object) {
+                long receivedAtTime = System.currentTimeMillis();
                 NameNodeResult tcpResult;
                 // If we received a JsonObject, then add it to the queue for processing.
                 if (object instanceof String) {
@@ -315,7 +316,7 @@ public class NameNodeTCPClient {
 //                                        (Runtime.getRuntime().totalMemory() / 1000000.0) +  " MB, free space in heap: " +
 //                                        (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
                     JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
-                    tcpResult = handleWorkAssignment(jsonObject);
+                    tcpResult = handleWorkAssignment(jsonObject, receivedAtTime);
                 }
                 else if (object instanceof FrameworkMessage.KeepAlive) {
                     // The server periodically sends KeepAlive objects to prevent the client from disconnecting
@@ -539,8 +540,7 @@ public class NameNodeTCPClient {
         }
     }
 
-    private NameNodeResult handleWorkAssignment(JsonObject args) {
-        long startTime = System.currentTimeMillis();
+    private NameNodeResult handleWorkAssignment(JsonObject args, long startTime) {
         String requestId = args.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
         String op = args.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
         JsonObject fsArgs = args.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);

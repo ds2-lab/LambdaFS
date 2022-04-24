@@ -366,8 +366,6 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
         if (serverlessFnStartTime <= 0)
             System.out.println("[ERROR] OperationPerformed for request " + requestId + " has serverlessFnStartTime field set to " + serverlessFnStartTime);
-        else if (requestEnqueuedAtTime <= 0)
-            System.out.println("[ERROR] OperationPerformed for request " + requestId + " has requestEnqueuedAtTime field set to " + requestEnqueuedAtTime);
         else if (resultBeganExecutingTime <= 0)
             System.out.println("[ERROR] OperationPerformed for request " + requestId + " has resultBeganExecutingTime field set to " + resultBeganExecutingTime);
         else if (resultFinishedProcessingTime <= 0)
