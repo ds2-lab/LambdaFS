@@ -61,6 +61,8 @@ public class ServerlessClientServerUtilities {
      * @param kryo The Kryo object obtained from a given Kryo TCP client/server via getKryo().
      */
     public static synchronized void registerClassesToBeTransferred(Kryo kryo) {
+        kryo.setReferences(true);
+
         kryo.register(NameNodeResult.class);
         kryo.register(NameNodeResult.ServerlessFunctionMapping.class);
         kryo.register(TransactionEvent.class);
