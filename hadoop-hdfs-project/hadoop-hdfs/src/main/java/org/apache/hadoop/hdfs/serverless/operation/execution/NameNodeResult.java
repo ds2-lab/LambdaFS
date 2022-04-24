@@ -123,14 +123,6 @@ public class NameNodeResult implements Serializable {
     private boolean coldStart = false;
 
     /**
-     * Any extra fields to be added explicitly/directly to the result payload. As of right now,
-     * only strings are supported as additional fields.
-     *
-     * These will be added as a top-level key/value pair to the JSON payload returned to the client.
-     */
-    private final HashMap<String, String> additionalFields;
-
-    /**
      * Request ID associated with this result.
      */
     private final String requestId;
@@ -202,7 +194,6 @@ public class NameNodeResult implements Serializable {
         this.nameNodeId = nameNodeId;
         this.requestId = requestId;
         this.exceptions = new ArrayList<>();
-        this.additionalFields = new HashMap<>();
         this.requestMethod = requestMethod;
         this.operationName = operationName;
     }
@@ -235,22 +226,6 @@ public class NameNodeResult implements Serializable {
      */
     public void addFunctionMapping(String fileOrDirectory, long parentId, int mappedFunctionName) {
         this.serverlessFunctionMapping = new ServerlessFunctionMapping(fileOrDirectory, parentId, mappedFunctionName);
-    }
-
-    /**
-     * Explicitly add an entry as a top-level key/value pair to the payload returned to the client.
-     * This should only be used for entries that are not covered by the rest of the API.
-     * Note that this will overwrite existing values with the same key.
-     *
-     * Deprecated bc it isn't really used now that we send TCP results directly.
-     * We don't really know to extract/check these on the client side.
-     *
-     * @param key The key to use for the entry.
-     * @param value The value to be used for the entry.
-     */
-    @Deprecated
-    public void addExtraString(String key, String value) {
-        this.additionalFields.put(key, value);
     }
 
     public void setColdStart(boolean coldStart) {
@@ -413,15 +388,6 @@ public class NameNodeResult implements Serializable {
             json.set(DEPLOYMENT_MAPPING, functionMapping);
         }
 
-        if (additionalFields.size() > 0) {
-            for (Map.Entry<String, String> entry : additionalFields.entrySet()) {
-                String key = entry.getKey();
-                String value = entry.getValue();
-
-                json.put(key, value);
-            }
-        }
-
         if (operation != null)
             json.put(ServerlessNameNodeKeys.OPERATION, operation);
 
@@ -533,15 +499,6 @@ public class NameNodeResult implements Serializable {
             json.add(DEPLOYMENT_MAPPING, functionMapping);
         }
 
-        if (additionalFields.size() > 0) {
-            for (Map.Entry<String, String> entry : additionalFields.entrySet()) {
-                String key = entry.getKey();
-                String value = entry.getValue();
-
-                json.addProperty(key, value);
-            }
-        }
-
         if (operation != null)
             json.addProperty(ServerlessNameNodeKeys.OPERATION, operation);
 
@@ -613,10 +570,6 @@ public class NameNodeResult implements Serializable {
 
     public boolean isColdStart() {
         return coldStart;
-    }
-
-    public HashMap<String, String> getAdditionalFields() {
-        return additionalFields;
     }
 
     public String getRequestId() {

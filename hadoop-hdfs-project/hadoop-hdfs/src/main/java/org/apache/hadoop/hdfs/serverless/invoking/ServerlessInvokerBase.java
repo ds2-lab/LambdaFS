@@ -240,8 +240,8 @@ public abstract class ServerlessInvokerBase<T> {
             LOG.debug("===========================");
 
             LOG.debug("HTTP Response from function:\n" + httpResponse);
-            LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
-            LOG.debug("HTTP Response Entity Content: " + json);
+//            LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
+//            LOG.debug("HTTP Response Entity Content: " + json);
         }
 
         JsonObject jsonObjectResponse = null;
