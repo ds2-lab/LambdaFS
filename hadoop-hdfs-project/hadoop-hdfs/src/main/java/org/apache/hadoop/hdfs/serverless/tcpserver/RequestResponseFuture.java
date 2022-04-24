@@ -5,6 +5,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
+import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 
 import java.util.concurrent.*;
@@ -98,8 +99,8 @@ public class RequestResponseFuture implements Future<Object> {
         // Check if the NullResult object was placed in the queue, in which case we should return null.
         if (resultOrNull instanceof NullResult)
             return null;
-        else if (resultOrNull instanceof JsonObject)
-            return (JsonObject)resultOrNull;
+        else if (resultOrNull instanceof JsonObject || resultOrNull instanceof NameNodeResult)
+            return resultOrNull;
         else
             throw new IllegalArgumentException("Received invalid object type as response for request " + requestId
                     + ". Object type: " + resultOrNull.getClass().getSimpleName());
@@ -115,8 +116,8 @@ public class RequestResponseFuture implements Future<Object> {
 
         if (resultOrNull instanceof NullResult)
             return null;
-        else if (resultOrNull instanceof JsonObject)
-            return (JsonObject)resultOrNull;
+        else if (resultOrNull instanceof JsonObject || resultOrNull instanceof NameNodeResult)
+            return resultOrNull;
         else
             throw new IllegalArgumentException("Received invalid object type as response for request " + requestId
                     + ". Object type: " + resultOrNull.getClass().getSimpleName());
