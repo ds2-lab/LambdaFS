@@ -7,7 +7,7 @@ import java.io.Serializable;
 /**
  * Encapsulates metric data for a particular attempt of a transaction.
  */
-public class TransactionAttempt implements Serializable {
+public final class TransactionAttempt implements Serializable {
     private static final long serialVersionUID = 1948688753660035738L;
     /**
      * The time at which acquiring the locks and reading data from NDB began.
@@ -57,7 +57,7 @@ public class TransactionAttempt implements Serializable {
     /**
      * Identifies which attempt/retry this transaction attempt corresponds to.
      */
-    private final int attemptNumber;
+    private int attemptNumber;
 
     ///////////////////////////////////////////////
     // Consistency Protocol-specific timestamps. //
@@ -96,6 +96,8 @@ public class TransactionAttempt implements Serializable {
     public TransactionAttempt(int attemptNumber) {
         this.attemptNumber = attemptNumber;
     }
+
+    private TransactionAttempt() { }
 
     public void setConsistencyPreprocessingTimes(long start, long end) {
         consistencyPreprocessingStart = start;

@@ -10,9 +10,9 @@ import java.util.*;
  * {@link TransactionAttempt}, which record the timings for each attempt/retry of a
  * given transaction.
  */
-public class TransactionEvent implements Serializable {
+public final class TransactionEvent implements Serializable {
     private static final long serialVersionUID = 6838852634713013849L;
-    private final List<TransactionAttempt> attempts;
+    private List<TransactionAttempt> attempts;
 
     public static String LOCKING =              "LOCKING";
     public static String PROCESSING =           "IN-MEMORY PROCESSING";
@@ -52,12 +52,14 @@ public class TransactionEvent implements Serializable {
     /**
      * The 'operationId' instance field of the associated transaction.
      */
-    private final long transactionId;
+    private long transactionId;
 
     public TransactionEvent(long transactionId) {
         this.attempts = new ArrayList<>();
         this.transactionId = transactionId;
     }
+
+    private TransactionEvent() {}
 
     public void addAttempt(TransactionAttempt attempt) {
         this.attempts.add(attempt);

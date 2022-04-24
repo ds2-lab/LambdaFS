@@ -50,14 +50,16 @@ public class HdfsFileStatus implements Serializable {
   private String group;
   private long fileId;
   
-  private final FileEncryptionInfo feInfo;
+  private FileEncryptionInfo feInfo;
   
   // Used by dir, not including dot and dotdot. Always zero for a regular file.
   private int childrenNum;
   
-  private final byte storagePolicy;
+  private byte storagePolicy;
 
   public static final byte[] EMPTY_NAME = new byte[0];
+
+  private HdfsFileStatus() { }
 
   /**
    * Constructor

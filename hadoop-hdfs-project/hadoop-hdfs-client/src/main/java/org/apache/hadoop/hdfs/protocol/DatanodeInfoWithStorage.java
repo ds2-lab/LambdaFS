@@ -24,8 +24,12 @@ import org.apache.hadoop.fs.StorageType;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class DatanodeInfoWithStorage extends DatanodeInfo {
-  private final String storageID;
-  private final StorageType storageType;
+  private String storageID;
+  private StorageType storageType;
+
+  protected DatanodeInfoWithStorage() {
+    super();
+  }
 
   public DatanodeInfoWithStorage(DatanodeInfo from, String storageID,
                                  StorageType storageType) {

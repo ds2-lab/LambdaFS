@@ -88,6 +88,10 @@ public class DatanodeInfo extends DatanodeID implements Node {
 
   protected AdminStates adminState;
 
+  protected DatanodeInfo() {
+    super();
+  }
+
   public DatanodeInfo(DatanodeInfo from) {
     super(from);
     this.capacity = from.getCapacity();

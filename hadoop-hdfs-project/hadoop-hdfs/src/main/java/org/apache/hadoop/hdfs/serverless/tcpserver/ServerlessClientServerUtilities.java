@@ -81,7 +81,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(ExtendedBlock.class);
         kryo.register(NamespaceInfo.class);
         kryo.register(LastBlockWithStatus.class);
-        kryo.register(HdfsFileStatus.class);
+        kryo.register(HdfsFileStatus.class);            //
         kryo.register(HdfsFileStatus[].class);
         kryo.register(DirectoryListing.class);
         kryo.register(FsServerDefaults.class);
@@ -97,7 +97,6 @@ public class ServerlessClientServerUtilities {
         kryo.register(CipherSuite.class);
         kryo.register(FsAction.class);
         kryo.register(NullResult.class);
-        kryo.register(PreviousResult.class);
         kryo.register(DuplicateRequest.class);
         kryo.register(FileNotFoundException.class);
         kryo.register(NullPointerException.class);

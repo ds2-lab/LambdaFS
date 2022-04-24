@@ -20,14 +20,16 @@ public class DuplicateRequest implements Serializable {
     /**
      * Should be HTTP or TCP.
      */
-    private final String requestType;
+    private String requestType;
 
     /**
      * Unique ID of the file system task associated with this DuplicateRequest object.
      *
      * Recall that the IDs of tasks are just the request IDs of the associated HTTP/TCP request(s).
      */
-    private final String taskId;
+    private String taskId;
+
+    private DuplicateRequest() { }
 
     public DuplicateRequest(String requestType, String taskId) {
         this.requestType = requestType;

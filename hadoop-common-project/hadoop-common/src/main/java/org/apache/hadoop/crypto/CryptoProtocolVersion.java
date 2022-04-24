@@ -27,8 +27,8 @@ public enum CryptoProtocolVersion {
   UNKNOWN("Unknown", 1),
   ENCRYPTION_ZONES("Encryption zones", 2);
 
-  private final String description;
-  private final int version;
+  private String description;
+  private int version;
   private Integer unknownValue = null;
 
   private static CryptoProtocolVersion[] supported = {ENCRYPTION_ZONES};
@@ -39,6 +39,8 @@ public enum CryptoProtocolVersion {
   public static CryptoProtocolVersion[] supported() {
     return supported;
   }
+
+  private CryptoProtocolVersion() { }
 
   CryptoProtocolVersion(String description, int version) {
     this.description = description;

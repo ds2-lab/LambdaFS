@@ -49,7 +49,7 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
  *
  * This is used on the NameNode side.
  */
-public class NameNodeResult implements Serializable {
+public final class NameNodeResult implements Serializable {
     //private static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
     public static final Logger LOG = LoggerFactory.getLogger(NameNodeResult.class);
     private static final long serialVersionUID = -6018521672360252605L;
@@ -72,7 +72,7 @@ public class NameNodeResult implements Serializable {
     /**
      * Exceptions encountered during the current request's execution.
      */
-    private final ArrayList<Throwable> exceptions;
+    private ArrayList<Throwable> exceptions;
 
     /**
      * The desired result of the current request's execution.
@@ -104,7 +104,7 @@ public class NameNodeResult implements Serializable {
     /**
      * The name of the serverless function all of this is running in/on.
      */
-    private final int deploymentNumber;
+    private int deploymentNumber;
 
     /**
      * The unique ID of the current NameNode instance.
@@ -125,12 +125,12 @@ public class NameNodeResult implements Serializable {
     /**
      * Request ID associated with this result.
      */
-    private final String requestId;
+    private String requestId;
 
     /**
      * HTTP or TCP.
      */
-    private final String requestMethod;
+    private String requestMethod;
 
     /**
      * Time at which the serverless function received the request associated with this result.
@@ -163,7 +163,7 @@ public class NameNodeResult implements Serializable {
     /**
      * Name of the FS operation we performed.
      */
-    private final String operationName;
+    private String operationName;
 
     /**
      * Indicates whether this result corresponds to a duplicate request.
@@ -196,6 +196,11 @@ public class NameNodeResult implements Serializable {
         this.exceptions = new ArrayList<>();
         this.requestMethod = requestMethod;
         this.operationName = operationName;
+    }
+
+    // Empty constructor used for Kryo serialization.
+    private NameNodeResult() {
+
     }
 
     /**

@@ -30,9 +30,11 @@ import java.io.Serializable;
 public class LastBlockWithStatus implements Serializable {
 
   private static final long serialVersionUID = -8355830605775680891L;
-  private final LocatedBlock lastBlock;
+  private LocatedBlock lastBlock;
 
-  private final HdfsFileStatus fileStatus;
+  private HdfsFileStatus fileStatus;
+
+  private LastBlockWithStatus() { }
 
   public LastBlockWithStatus(LocatedBlock lastBlock, HdfsFileStatus fileStatus) {
     this.lastBlock = lastBlock;

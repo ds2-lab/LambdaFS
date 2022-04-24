@@ -51,12 +51,14 @@ public class DatanodeID implements Comparable<DatanodeID>, Serializable {
   private String xferAddr;
   private long creationTime;  // time that the DN was created.
 
+  protected DatanodeID() { }
+
   /**
    * UUID identifying a given datanode. For upgraded DataNodes this is the
    * same as the StorageID that was previously used by this Datanode.
    * For newly formatted DataNodes it is a UUID.
    */
-  private final String datanodeUuid;
+  private String datanodeUuid;
 
   public DatanodeID(DatanodeID from) {
     this(from.getDatanodeUuid(), from);

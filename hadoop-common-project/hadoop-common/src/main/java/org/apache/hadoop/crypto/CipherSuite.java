@@ -30,10 +30,12 @@ public enum CipherSuite {
   UNKNOWN("Unknown", 0),
   AES_CTR_NOPADDING("AES/CTR/NoPadding", 16);
 
-  private final String name;
-  private final int algoBlockSize;
+  private String name;
+  private int algoBlockSize;
 
   private Integer unknownValue = null;
+
+  private CipherSuite() { }
 
   CipherSuite(String name, int algoBlockSize) {
     this.name = name;

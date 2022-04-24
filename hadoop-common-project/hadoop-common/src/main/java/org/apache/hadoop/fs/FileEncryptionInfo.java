@@ -36,12 +36,14 @@ public class FileEncryptionInfo implements Serializable {
 
   private static final long serialVersionUID = 0x156abe03;
 
-  private final CipherSuite cipherSuite;
-  private final CryptoProtocolVersion version;
-  private final byte[] edek;
-  private final byte[] iv;
-  private final String keyName;
-  private final String ezKeyVersionName;
+  private CipherSuite cipherSuite;
+  private CryptoProtocolVersion version;
+  private byte[] edek;
+  private byte[] iv;
+  private String keyName;
+  private String ezKeyVersionName;
+
+  private FileEncryptionInfo() { }
 
   /**
    * Create a FileEncryptionInfo.

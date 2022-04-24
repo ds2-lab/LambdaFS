@@ -29,7 +29,7 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
     /**
      * The active NameNodes partitioned by deployment.
      */
-    private final HashMap<Integer, List<ActiveNode>> activeNodesPerDeployment;
+    private HashMap<Integer, List<ActiveNode>> activeNodesPerDeployment = new HashMap<>();
 
     // Initially unsorted, but gets sorted getSortedActiveNodes() gets called.
     // Becomes unsorted again once refresh() is called.
@@ -38,7 +38,9 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
     /**
      * The number of deployments there are.
      */
-    private final int numDeployments;
+    private int numDeployments;
+
+    private ActiveServerlessNameNodeList() { }
 
     /**
      * Constructor.
@@ -51,7 +53,6 @@ public class ActiveServerlessNameNodeList implements SortedActiveNodeList, Seria
      */
     public ActiveServerlessNameNodeList(ZKClient zkClient, int numDeployments) {
         this.activeNodes = new ArrayList<>();
-        this.activeNodesPerDeployment = new HashMap<>();
         this.numDeployments = numDeployments;
 
         int deploymentNumber = 0;

@@ -10,8 +10,10 @@ import java.net.InetSocketAddress;
  */
 public class ActiveServerlessNameNode implements ActiveNode, Serializable {
     private static final long serialVersionUID = 646982592726977047L;
-    private final long id;
-    private final int deploymentNumber;
+    private long id;
+    private int deploymentNumber;
+
+    private ActiveServerlessNameNode() { }
 
     public ActiveServerlessNameNode(long id) {
         this.id = id;
