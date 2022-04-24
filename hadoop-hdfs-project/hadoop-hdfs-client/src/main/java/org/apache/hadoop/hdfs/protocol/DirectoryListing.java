@@ -32,7 +32,7 @@ public class DirectoryListing implements Serializable {
   private HdfsFileStatus[] partialListing;
   private int remainingEntries;
 
-  private DirectoryListing() {}
+  protected DirectoryListing() { }
 
   /**
    * constructor
