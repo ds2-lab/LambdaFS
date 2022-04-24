@@ -292,6 +292,9 @@ public class NameNodeTCPClient {
             return false;
         }
 
+//        Kryo clientWriteKryo = new Kryo();
+//        ServerlessClientServerUtilities.registerClassesToBeTransferred(clientWriteKryo);
+
         tcpClient.addListener(new Listener.ThreadedListener(new Listener() {
             /**
              * This listener is responsible for handling messages received from HopsFS clients. These messages will
@@ -349,19 +352,19 @@ public class NameNodeTCPClient {
 //                if (t - s > 10)
 //                    LOG.warn("Converting NameNodeResult instance to JSON took " + (t - s) + " ms.");
 
-                Kryo kryo = tcpClient.getKryo();
+//                Kryo kryo = tcpClient.getKryo();
+//
+//                LOG.debug("Trying to write the NameNodeResult object for debugging purposes now.");
+//                long start = System.currentTimeMillis();
+//                Output output = new Output(32768, -1);
+//                kryo.writeObject(output, tcpResult);
+//                long end = System.currentTimeMillis();
+//                LOG.debug("Wrote NameNodeResult object to Output in " + (end - start) + " ms.");
 
-                LOG.debug("Trying to write the NameNodeResult object for debugging purposes now.");
-                long start = System.currentTimeMillis();
-                Output output = new Output(32768, -1);
-                kryo.writeObject(output, tcpResult);
-                long end = System.currentTimeMillis();
-                LOG.debug("Wrote NameNodeResult object to Output in " + (end - start) + " ms.");
-
-                Input input = new Input(output.getBuffer(), 0, output.position());
-                NameNodeResult tcpResult2 = kryo.readObject(input, NameNodeResult.class);
-                LOG.debug("Read TCP result back in " + (System.currentTimeMillis() - end) +
-                        " ms. TcpResult: " + tcpResult2);
+//                Input input = new Input(output.getBuffer(), 0, output.position());
+//                NameNodeResult tcpResult2 = kryo.readObject(input, NameNodeResult.class);
+//                LOG.debug("Read TCP result back in " + (System.currentTimeMillis() - end) +
+//                        " ms. TcpResult: " + tcpResult2);
 
                 trySendTcp(connection, tcpResult);
             }
