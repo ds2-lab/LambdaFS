@@ -1,15 +1,14 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.util.TcpIdleSender;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import com.github.benmanes.caffeine.cache.*;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.commons.logging.Log;
@@ -20,12 +19,11 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
-import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.log4j.LogManager;
 
 import java.io.IOException;
-import java.io.Serializable;
+import java.io.ObjectOutputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -351,7 +349,21 @@ public class NameNodeTCPClient {
 //                if (t - s > 10)
 //                    LOG.warn("Converting NameNodeResult instance to JSON took " + (t - s) + " ms.");
 
-                trySendTcp(connection, tcpResult, false);
+                Kryo kryo = tcpClient.getKryo();
+
+                LOG.debug("Trying to write the NameNodeResult object for debugging purposes now.");
+                long start = System.currentTimeMillis();
+                Output output = new Output(32768, -1);
+                kryo.writeObject(output, tcpResult);
+                long end = System.currentTimeMillis();
+                LOG.debug("Wrote NameNodeResult object to Output in " + (end - start) + " ms.");
+
+                Input input = new Input(output.getBuffer(), 0, output.position());
+                NameNodeResult tcpResult2 = kryo.readObject(input, NameNodeResult.class);
+                LOG.debug("Read TCP result back in " + (System.currentTimeMillis() - end) +
+                        " ms. TcpResult: " + tcpResult2);
+
+                trySendTcp(connection, tcpResult);
             }
 
             public void disconnected (Connection connection) {
@@ -434,11 +446,8 @@ public class NameNodeTCPClient {
      *
      * @param connection The connection over which we're sending an object.
      * @param payload The object to send.
-     * @param enqueuedResult Indicates whether we're trying to send a previously-enqueued result (i.e., a result
-     *                       that we tried to send but couldn't because the buffer was full). This is just for
-     *                       debugging purposes.
      */
-    private void trySendTcp(Connection connection, NameNodeResult payload, boolean enqueuedResult) {
+    private void trySendTcp(Connection connection, NameNodeResult payload) {
         double currentCapacity = ((double) connection.getTcpWriteBufferSize()) / ((double) writeBufferSize);
         if (currentCapacity >= 0.9) {
             LOG.warn("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
@@ -481,7 +490,7 @@ public class NameNodeTCPClient {
                     // still clear. So, we try again. If it fails again, then at least this object gets enqueued,
                     // so it should eventually make it to the client.
                     if (object != null) {
-                        trySendTcp(connection, object, true);
+                        trySendTcp(connection, object);
                     }
                 }
             });

@@ -598,6 +598,11 @@ public final class NameNodeResult implements Serializable {
         }
     }
 
+    @Override
+    public String toString() {
+        return "NameNodeResult(RequestID=" + requestId + ", OperationName=" + operationName + ")";
+    }
+
     /**
      * Mark this result as being delivered back to the client. This does not indicate that the delivery was successful
      * (i.e., that the client actually received the result). Instead, it just means that the NN attempted to deliver it.
