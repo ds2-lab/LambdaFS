@@ -6,6 +6,8 @@ import io.hops.metrics.TransactionEvent;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FsServerDefaults;
+import org.apache.hadoop.fs.permission.FsAction;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.protocol.DirectoryListing;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LastBlockWithStatus;
@@ -66,5 +68,8 @@ public class ServerlessClientServerUtilities {
         kryo.register(Throwable.class);
         kryo.register(java.util.HashMap.class);
         kryo.register(java.util.ArrayList.class);
+        kryo.register(byte[].class);
+        kryo.register(FsPermission.class);
+        kryo.register(FsAction.class);
     }
 }
