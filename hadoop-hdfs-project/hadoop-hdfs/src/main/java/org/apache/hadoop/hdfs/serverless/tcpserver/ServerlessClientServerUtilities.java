@@ -1,6 +1,8 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.esotericsoftware.kryo.Kryo;
+import io.hops.exception.TransientDeadLockException;
+import io.hops.exception.TransientStorageException;
 import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
 import org.apache.commons.logging.Log;
@@ -24,6 +26,7 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.PreviousResult;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenRenewer;
 
+import java.io.FileNotFoundException;
 import java.util.Collections;
 import java.util.EnumSet;
 
@@ -58,8 +61,6 @@ public class ServerlessClientServerUtilities {
      * @param kryo The Kryo object obtained from a given Kryo TCP client/server via getKryo().
      */
     public static synchronized void registerClassesToBeTransferred(Kryo kryo) {
-        kryo.register(DuplicateRequest.class);
-        kryo.register(NullResult.class);
         kryo.register(NameNodeResult.class);
         kryo.register(NameNodeResult.ServerlessFunctionMapping.class);
         kryo.register(TransactionEvent.class);
@@ -96,6 +97,10 @@ public class ServerlessClientServerUtilities {
         kryo.register(NullResult.class);
         kryo.register(PreviousResult.class);
         kryo.register(DuplicateRequest.class);
+        kryo.register(FileNotFoundException.class);
+        kryo.register(NullPointerException.class);
+        kryo.register(TransientDeadLockException.class);
+        kryo.register(TransientStorageException.class);
         kryo.register(Collections.EMPTY_LIST.getClass());
     }
 }
