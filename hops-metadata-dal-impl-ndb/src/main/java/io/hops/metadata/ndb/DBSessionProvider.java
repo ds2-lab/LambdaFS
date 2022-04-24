@@ -78,7 +78,7 @@ public class DBSessionProvider implements Runnable {
 
     int retries = 1;
 
-    while (retries >= 0) {
+    while (true) {
       try {
         if (sessionFactory != null) {
           LOG.debug("HopsSessionFactory instance is already instantiated. Reusing existing object.");
@@ -86,12 +86,15 @@ public class DBSessionProvider implements Runnable {
           LOG.debug("Instantiation HopsSessionFactory object now...");
           sessionFactory = new HopsSessionFactory(ClusterJHelper.getSessionFactory(conf));
           LOG.debug("Instantiation of HopsSessionFactory was successful!");
+          break;
         }
       } catch (ClusterJException ex) {
         LOG.error("Exception encountered while instantiation HopsSessionFactory instance: ", ex);
 
+        retries -= 1;
+
         // Only throw the exception if we aren't going to try again.
-        if (--retries < 0)
+        if (retries < 0)
           throw HopsExceptionHelper.wrap(ex);
       }
     }
