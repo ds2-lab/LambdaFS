@@ -62,6 +62,7 @@ public class ServerlessClientServerUtilities {
      */
     public static synchronized void registerClassesToBeTransferred(Kryo kryo) {
         kryo.setReferences(true);
+        kryo.setRegistrationRequired(false);
 
         kryo.register(NameNodeResult.class);
         kryo.register(NameNodeResult.ServerlessFunctionMapping.class);
@@ -81,7 +82,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(ExtendedBlock.class);
         kryo.register(NamespaceInfo.class);
         kryo.register(LastBlockWithStatus.class);
-        kryo.register(HdfsFileStatus.class);            //
+        kryo.register(HdfsFileStatus.class);
         kryo.register(HdfsFileStatus[].class);
         kryo.register(DirectoryListing.class);
         kryo.register(FsServerDefaults.class);
