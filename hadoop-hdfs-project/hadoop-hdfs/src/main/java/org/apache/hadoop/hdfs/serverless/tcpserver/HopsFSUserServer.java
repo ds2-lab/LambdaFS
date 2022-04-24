@@ -201,7 +201,9 @@ public class HopsFSUserServer {
     public void stop() {
         LOG.debug("HopsFSUserServer " + tcpPort + " stopping now...");
         this.server.removeListener(serverListener);
+        LOG.debug("HopsFSUserServer " + tcpPort + " removed listener.");
         this.server.stop();
+        LOG.debug("HopsFSUserServer " + tcpPort + " stopped successfully.");
     }
 
     /**
