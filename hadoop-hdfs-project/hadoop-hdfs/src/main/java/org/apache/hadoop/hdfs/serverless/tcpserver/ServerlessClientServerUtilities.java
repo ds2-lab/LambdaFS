@@ -92,6 +92,6 @@ public class ServerlessClientServerUtilities {
         kryo.register(CryptoProtocolVersion.class);
         kryo.register(CipherSuite.class);
         kryo.register(FsAction.class);
-        kryo.register(java.util.Collections.EmptyList.class);
+        kryo.register(Collections.EMPTY_LIST.getClass());
     }
 }
