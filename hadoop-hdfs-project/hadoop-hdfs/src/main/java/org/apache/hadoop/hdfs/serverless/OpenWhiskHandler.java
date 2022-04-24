@@ -453,7 +453,10 @@ public class OpenWhiskHandler extends BaseHandler {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Contents of result to be returned to the client: ");
             for (String key : resultJson.keySet())
-                LOG.debug(key + ": " + resultJson.get(key).toString());
+                if (key.equals(RESULT))
+                    LOG.debug("Result: <Content Omitted>");
+                else
+                    LOG.debug(key + ": " + resultJson.get(key).toString());
         }
 
         return response;

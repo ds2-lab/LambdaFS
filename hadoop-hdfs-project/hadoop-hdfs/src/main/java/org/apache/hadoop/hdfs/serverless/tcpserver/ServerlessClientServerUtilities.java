@@ -5,19 +5,26 @@ import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.crypto.CipherSuite;
+import org.apache.hadoop.crypto.CryptoProtocolVersion;
+import org.apache.hadoop.fs.FileEncryptionInfo;
 import org.apache.hadoop.fs.FsServerDefaults;
 import org.apache.hadoop.fs.permission.FsAction;
+import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.hdfs.protocol.DirectoryListing;
-import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
-import org.apache.hadoop.hdfs.protocol.LastBlockWithStatus;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.protocol.*;
+import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
+import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.security.token.TokenRenewer;
+
+import java.util.Collections;
+import java.util.EnumSet;
 
 /**
  * Utility functions exposed by both TCP clients and servers.
@@ -57,6 +64,17 @@ public class ServerlessClientServerUtilities {
         kryo.register(TransactionEvent.class);
         kryo.register(TransactionAttempt.class);
         kryo.register(LocatedBlocks.class);
+        kryo.register(LocatedBlock.class);
+        kryo.register(Token.class);
+        kryo.register(TokenRenewer.class);
+        kryo.register(BlockTokenIdentifier.class);
+        kryo.register(BlockTokenIdentifier.AccessMode.class);
+        kryo.register(EnumSet.class);
+        kryo.register(Block.class);
+        kryo.register(DatanodeInfoWithStorage.class);
+        kryo.register(DatanodeInfoWithStorage[].class);
+        kryo.register(StorageType.class);
+        kryo.register(ExtendedBlock.class);
         kryo.register(NamespaceInfo.class);
         kryo.register(LastBlockWithStatus.class);
         kryo.register(HdfsFileStatus.class);
@@ -70,6 +88,10 @@ public class ServerlessClientServerUtilities {
         kryo.register(java.util.ArrayList.class);
         kryo.register(byte[].class);
         kryo.register(FsPermission.class);
+        kryo.register(FileEncryptionInfo.class);
+        kryo.register(CryptoProtocolVersion.class);
+        kryo.register(CipherSuite.class);
         kryo.register(FsAction.class);
+        kryo.register(java.util.Collections.EmptyList.class);
     }
 }

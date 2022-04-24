@@ -114,6 +114,10 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>commons-lang3</artifactId>
       <scope>compile</scope>
     </dependency>
+      <dependency>
+          <groupId>io.hops</groupId>
+          <artifactId>hadoop-common</artifactId>
+      </dependency>
   </dependencies>
 
   <build>
