@@ -101,6 +101,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(NullPointerException.class);
         kryo.register(TransientDeadLockException.class);
         kryo.register(TransientStorageException.class);
+        kryo.register(org.apache.hadoop.fs.FileAlreadyExistsException.class);
         kryo.register(Collections.EMPTY_LIST.getClass());
     }
 }
