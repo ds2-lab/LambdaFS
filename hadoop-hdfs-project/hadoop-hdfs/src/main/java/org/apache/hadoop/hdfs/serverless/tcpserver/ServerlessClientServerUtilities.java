@@ -20,6 +20,7 @@ import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.PreviousResult;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenRenewer;
 
@@ -92,6 +93,9 @@ public class ServerlessClientServerUtilities {
         kryo.register(CryptoProtocolVersion.class);
         kryo.register(CipherSuite.class);
         kryo.register(FsAction.class);
+        kryo.register(NullResult.class);
+        kryo.register(PreviousResult.class);
+        kryo.register(DuplicateRequest.class);
         kryo.register(Collections.EMPTY_LIST.getClass());
     }
 }
