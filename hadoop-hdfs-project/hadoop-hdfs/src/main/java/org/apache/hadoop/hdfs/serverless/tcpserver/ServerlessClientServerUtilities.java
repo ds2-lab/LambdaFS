@@ -85,6 +85,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(HdfsFileStatus.class);
         kryo.register(HdfsFileStatus[].class);
         kryo.register(DirectoryListing.class);
+        kryo.register(Boolean.class);
         kryo.register(FsServerDefaults.class);
         kryo.register(ActiveServerlessNameNodeList.class);
         kryo.register(ActiveServerlessNameNode.class);

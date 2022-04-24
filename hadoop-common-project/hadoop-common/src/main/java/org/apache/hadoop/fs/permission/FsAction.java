@@ -40,7 +40,9 @@ public enum FsAction {
   private final static FsAction[] vals = values();
 
   /** Symbolic representation */
-  public final String SYMBOL;
+  public String SYMBOL;
+
+  private FsAction() { }
 
   private FsAction(String s) {
     SYMBOL = s;
