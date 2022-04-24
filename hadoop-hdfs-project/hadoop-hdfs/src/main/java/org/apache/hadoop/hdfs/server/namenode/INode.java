@@ -670,7 +670,7 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
    * Convert strings to byte arrays for path components.
    */
   public static byte[][] getPathComponents(String[] strings) {
-    if (strings.length == 0) {
+    if (strings == null || strings.length == 0) {
       return new byte[][]{null};
     }
     byte[][] bytes = new byte[strings.length][];

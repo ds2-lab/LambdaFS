@@ -328,8 +328,8 @@ public class INodesInPath {
     INode[] inodes = new INode[iip.length() + 1];
     System.arraycopy(iip.inodes, 0, inodes, 0, inodes.length - 1);
     inodes[inodes.length - 1] = child;
-    byte[][] path = new byte[iip.pathSupplier.get().length + 1][];
-    System.arraycopy(iip.pathSupplier.get(), 0, path, 0, path.length - 1);
+    byte[][] path = new byte[iip.getPathBytes().length + 1][];
+    System.arraycopy(iip.getPathBytes(), 0, path, 0, path.length - 1);
     path[path.length - 1] = childName;
     return new INodesInPath(inodes, path);
   }
@@ -361,6 +361,18 @@ public class INodesInPath {
     this.inodes = inodes;
     this.pathString = pathString;
   }
+
+  /**
+   * First, try the instance variable. If that's unavailable, then try to use the supplier to get the byte[][] path.
+   */
+  private byte[][] getPathBytes() {
+    if (this.path != null)
+      return this.path;
+    else if (this.pathString != null)
+      return pathSupplier.get();
+
+    throw new IllegalStateException("The path instance variable is null and the pathString instance variable is null. Cannot return or create byte[][] path.");
+  }
   
   /**
    * @return the inodes array excluding the null elements.
@@ -385,24 +397,24 @@ public class INodesInPath {
   }
 
   byte[] getLastLocalName() {
-    return pathSupplier.get()[path.length - 1];
+    return this.getPathBytes()[path.length - 1];
   }
   
   public byte[][] getPathComponents() {
-    return pathSupplier.get();
+    return this.getPathBytes();
   }
   
   /** @return the full path in string form */
   public String getPath() {
-    return DFSUtil.byteArray2PathString(pathSupplier.get());
+    return DFSUtil.byteArray2PathString(this.getPathBytes());
   }
   
   public String getParentPath() {
-    return getPath(pathSupplier.get().length - 1);
+    return getPath(this.getPathBytes().length - 1);
   }
 
   public String getPath(int pos) {
-    return DFSUtil.byteArray2PathString(pathSupplier.get(), 0, pos);
+    return DFSUtil.byteArray2PathString(this.getPathBytes(), 0, pos);
   }
 
   /**
@@ -412,10 +424,10 @@ public class INodesInPath {
    */
   public List<String> getPath(int offset, int length) {
     Preconditions.checkArgument(offset >= 0 && length >= 0 && offset + length
-        <= pathSupplier.get().length);
+        <= this.getPathBytes().length);
     ImmutableList.Builder<String> components = ImmutableList.builder();
     for (int i = offset; i < offset + length; i++) {
-      components.add(DFSUtil.bytes2String(pathSupplier.get()[i]));
+      components.add(DFSUtil.bytes2String(this.getPathBytes()[i]));
     }
     return components.build();
   }
@@ -439,7 +451,7 @@ public class INodesInPath {
     final INode[] anodes = new INode[length];
     final byte[][] apath = new byte[length][];
     System.arraycopy(this.inodes, 0, anodes, 0, length);
-    System.arraycopy(this.pathSupplier.get(), 0, apath, 0, length);
+    System.arraycopy(this.getPathBytes(), 0, apath, 0, length);
     return new INodesInPath(anodes, apath);
   }
 
@@ -466,7 +478,7 @@ public class INodesInPath {
     INode[] existing = new INode[i];
     byte[][] existingPath = new byte[i][];
     System.arraycopy(inodes, 0, existing, 0, i);
-    System.arraycopy(pathSupplier.get(), 0, existingPath, 0, i);
+    System.arraycopy(this.getPathBytes(), 0, existingPath, 0, i);
     return new INodesInPath(existing, existingPath);
   }
 
@@ -490,7 +502,7 @@ public class INodesInPath {
     }
 
     final StringBuilder b = new StringBuilder(getClass().getSimpleName())
-        .append(": path = ").append(DFSUtil.byteArray2PathString(pathSupplier.get()))
+        .append(": path = ").append(DFSUtil.byteArray2PathString(this.getPathBytes()))
         .append("\n  inodes = ");
     if (inodes == null) {
       b.append("null");
