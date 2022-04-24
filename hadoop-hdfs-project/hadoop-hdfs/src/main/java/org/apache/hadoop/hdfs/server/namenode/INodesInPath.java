@@ -397,7 +397,7 @@ public class INodesInPath {
   }
 
   byte[] getLastLocalName() {
-    return this.getPathBytes()[path.length - 1];
+    return this.getPathBytes()[this.getPathBytes().length - 1];
   }
   
   public byte[][] getPathComponents() {
