@@ -465,7 +465,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
             long postprocessingTime = sums.get(POSTPROCESSING_TIME);
             long returningToUser = sums.get(RETURNING_TO_USER);
 
-            if (op.serverlessFnStartTime - op.invokedAtTime > 0) {
+            if (op.serverlessFnStartTime - op.invokedAtTime > 0 && op.serverlessFnStartTime - op.invokedAtTime < 1e6) {
                 sums.put(INVOCATION_TIME, invocationTime + (op.serverlessFnStartTime - op.invokedAtTime));
                 counts.merge(INVOCATION_TIME, 1, Integer::sum); // If no value exists, put 1. Otherwise, add 1 to existing value.
             }
