@@ -44,6 +44,9 @@ public class ServerlessNameNodeKeys {
     public static final String ENQUEUED_TIME = "ENQUEUED_TIME";
     public static final String DEQUEUED_TIME = "DEQUEUED_TIME";
 
+    public static final String NUMBER_OF_GCs =  "NUM_GCs";
+    public static final String GC_TIME =        "GC_TIME";
+
     public static final String PROCESSING_FINISHED_TIME = "PROCESSING_FINISHED_TIME";
 
     /**

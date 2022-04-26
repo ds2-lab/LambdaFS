@@ -792,12 +792,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             long dequeuedAt = response.get(ServerlessNameNodeKeys.DEQUEUED_TIME).getAsLong();
             long finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
 
+            long numGarbageCollections = response.get(NUMBER_OF_GCs).getAsLong();
+            long garbageCollectionTime = response.get(GC_TIME).getAsLong();
+
             OperationPerformed operationPerformed
                     = new OperationPerformed(operationName, requestId,
                     startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                     deployment, issuedViaHTTP, issuedViaTCP, response.get(ServerlessNameNodeKeys.REQUEST_METHOD).getAsString(),
                     nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation,
-                    this.dfsClient.clientName);
+                    this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime);
             operationsPerformed.put(requestId, operationPerformed);
         } catch (NullPointerException ex) {
             LOG.error("Unexpected NullPointerException encountered while creating OperationPerformed from JSON response:", ex);
@@ -833,12 +836,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         long dequeuedAt = result.getDequeuedTime();
         long finishedProcessingAt = result.getProcessingFinishedTime();
 
+        long garbageCollectionTime = result.getGarbageCollectionTime();
+        long numGarbageCollections = result.getNumGarbageCollections();
+
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
                 startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                 deployment, issuedViaHTTP, issuedViaTCP, result.getRequestMethod(),
                 nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation,
-                this.dfsClient.clientName);
+                this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime);
         operationsPerformed.put(requestId, operationPerformed);
     }
 

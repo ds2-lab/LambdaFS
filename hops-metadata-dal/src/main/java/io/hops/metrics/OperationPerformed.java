@@ -131,6 +131,25 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      */
     private boolean stragglerResubmitted;
 
+    /**
+     * The approximate number of collections that occurred while the NN was executing the task associated with this
+     * OperationPerformed instance.
+     *
+     * This initially set to the number of GCs that have occurred up until the point at which the NN begins
+     * executing the task associated with this OperationPerformed instance. This value is then used to compute the
+     * number of collections that have occurred while the NN executed the associated task.
+     */
+    private long numGarbageCollections;
+
+    /**
+     * The approximate time, in milliseconds, that has elapsed during collections while the NN executed this task.
+     *
+     * This initially set to the elapsed time until the point at which the NN begins executing the task associated with
+     * this NameNodeResult instance. This value is then used to compute the elapsed time during collections while the
+     * NN executed the associated task.
+     */
+    private long garbageCollectionTime;
+
     public OperationPerformed(String operationName, String requestId,
                               long invokedAtTime, long resultReceivedTime,
                               long enqueuedTime, long dequeuedTime,
@@ -139,7 +158,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                               boolean issuedViaTcp, String resultReceivedVia,
                               long nameNodeId, int metadataCacheMisses,
                               int metadataCacheHits, long finishedProcessingAt,
-                              boolean stragglerResubmitted, String clientId) {
+                              boolean stragglerResubmitted, String clientId,
+                              long numGarbageCollections, long garbageCollectionTime) {
         this.operationName = operationName;
         this.requestId = requestId;
         this.invokedAtTime = invokedAtTime;
@@ -160,6 +180,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.resultFinishedProcessingTime = finishedProcessingAt;
         this.stragglerResubmitted = stragglerResubmitted;
         this.clientId = clientId;
+        this.numGarbageCollections = numGarbageCollections;
+        this.garbageCollectionTime = garbageCollectionTime;
     }
 
     public void setNameNodeId(long nameNodeId) {
@@ -220,7 +242,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         return "operation_name,request_id,client_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
                 "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration," +
                 "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration," +
-                "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses,straggler_resubmitted";
+                "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type," +
+                "metadata_cache_hits,metadata_cache_misses,straggler_resubmitted,num_gcs,gc_time";
     }
 
     public static String getToStringHeader() {
@@ -336,14 +359,15 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * Write this instance to a file in CSV format (using tabs to separate).
      */
     public void write(BufferedWriter writer) throws IOException {
-// "operation_name,request_id,client_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
-// "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration," +
-// "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration," +
-// "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type,metadata_cache_hits,metadata_cache_misses,straggler_resubmitted";
+//  "operation_name,request_id,client_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time,"
+//  "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration,"
+//  "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration,"
+//  "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type,"
+//  "metadata_cache_hits,metadata_cache_misses,straggler_resubmitted,num_gcs,gc_time";
         String formatString = "%-16s,%-38s,%-16s," +                                    // 3
                               "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s," +            // 7
                               "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +              // 8
-                              "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s";                         // 6
+                              "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s,%-5s,%-5s";               // 8
         writer.write(String.format(formatString,
                 operationName, requestId, clientId,
                 invokedAtTime,                    // Client invokes NN.
@@ -361,7 +385,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 resultReceivedTime - serverlessFnEndTime,                   // Returning to user.
                 serverlessFunctionDuration,                                 // Total duration of the serverless func.
                 endToEndDuration,                                           // End-to-end duration of the operation.
-                deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses, stragglerResubmittedToInt()));
+                deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses,
+                stragglerResubmittedToInt(), numGarbageCollections, garbageCollectionTime));
         writer.newLine();
 
         if (serverlessFnStartTime <= 0)

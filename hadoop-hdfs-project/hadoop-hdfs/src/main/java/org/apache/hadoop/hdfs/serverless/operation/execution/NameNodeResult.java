@@ -30,6 +30,8 @@ import org.nustaq.serialization.FSTConfiguration;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -189,6 +191,25 @@ public final class NameNodeResult implements Serializable {
      */
     private long timeDeliveredBackToClient = -1L;
 
+    /**
+     * The approximate number of collections that occurred while the NN was executing the task associated with this
+     * NameNodeResult instance.
+     *
+     * This initially set to the number of GCs that have occurred up until the point at which the NN begins
+     * executing the task associated with this NameNodeResult instance. This value is then used to compute the
+     * number of collections that have occurred while the NN executed the associated task.
+     */
+    private long numGarbageCollections;
+
+    /**
+     * The approximate time, in milliseconds, that has elapsed during collections while the NN executed this task.
+     *
+     * This initially set to the elapsed time until the point at which the NN begins executing the task associated with
+     * this NameNodeResult instance. This value is then used to compute the elapsed time during collections while the
+     * NN executed the associated task.
+     */
+    private long garbageCollectionTime;
+
     public NameNodeResult(int deploymentNumber, String requestId, String requestMethod, long nameNodeId, String operationName) {
         this.deploymentNumber = deploymentNumber;
         this.nameNodeId = nameNodeId;
@@ -196,12 +217,28 @@ public final class NameNodeResult implements Serializable {
         this.exceptions = new ArrayList<>();
         this.requestMethod = requestMethod;
         this.operationName = operationName;
+
+        List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+        for (GarbageCollectorMXBean mxBean : mxBeans) {
+            long count = mxBean.getCollectionCount();
+            long time  = mxBean.getCollectionTime();
+
+            if (count > 0)
+                this.numGarbageCollections += count;
+
+            if (time > 0)
+                this.garbageCollectionTime += time;
+        }
     }
 
     // Empty constructor used for Kryo serialization.
     private NameNodeResult() {
 
     }
+
+    public long getNumGarbageCollections() { return numGarbageCollections; }
+
+    public long getGarbageCollectionTime() { return garbageCollectionTime; }
 
     /**
      * Update the result field of this request's execution.
@@ -396,6 +433,23 @@ public final class NameNodeResult implements Serializable {
         if (operation != null)
             json.put(ServerlessNameNodeKeys.OPERATION, operation);
 
+        long numGarbageCollectionsNow = 0L;
+        long garbageCollectionTimeNow = 0L;
+        List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+        for (GarbageCollectorMXBean mxBean : mxBeans) {
+            long count = mxBean.getCollectionCount();
+            long time  = mxBean.getCollectionTime();
+
+            if (count > 0)
+                numGarbageCollectionsNow += count;
+
+            if (time > 0)
+                garbageCollectionTimeNow += time;
+        }
+
+        numGarbageCollections = numGarbageCollectionsNow - numGarbageCollections;
+        garbageCollectionTime = garbageCollectionTimeNow - garbageCollectionTime;
+
         json.put(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
         json.put(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER, deploymentNumber);
         json.put(ServerlessNameNodeKeys.REQUEST_ID, requestId);
@@ -411,6 +465,8 @@ public final class NameNodeResult implements Serializable {
         json.put(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
         json.put(ServerlessNameNodeKeys.PROCESSING_FINISHED_TIME, processingFinishedTime);
         json.put(COLD_START, coldStart);
+        json.put(NUMBER_OF_GCs, numGarbageCollections);
+        json.put(GC_TIME, garbageCollectionTime);
 
         if (statisticsPackageSerializedAndEncoded != null)
             json.put(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
@@ -441,6 +497,23 @@ public final class NameNodeResult implements Serializable {
 
         metadataCache.resetCacheHitMissCounters();
         replicaCacheManager.resetCacheHitMissCounters();
+
+        long numGarbageCollectionsNow = 0L;
+        long garbageCollectionTimeNow = 0L;
+        List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+        for (GarbageCollectorMXBean mxBean : mxBeans) {
+            long count = mxBean.getCollectionCount();
+            long time  = mxBean.getCollectionTime();
+
+            if (count > 0)
+                numGarbageCollectionsNow += count;
+
+            if (time > 0)
+                garbageCollectionTimeNow += time;
+        }
+
+        numGarbageCollections = numGarbageCollectionsNow - numGarbageCollections;
+        garbageCollectionTime = garbageCollectionTimeNow - garbageCollectionTime;
 
         fnEndTime = System.currentTimeMillis();
     }
