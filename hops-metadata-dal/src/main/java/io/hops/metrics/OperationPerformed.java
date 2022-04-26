@@ -184,6 +184,10 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.garbageCollectionTime = garbageCollectionTime;
     }
 
+    public long getNumGarbageCollections() { return this.numGarbageCollections; }
+
+    public long getGarbageCollectionTime() { return this.garbageCollectionTime; }
+
     public void setNameNodeId(long nameNodeId) {
         this.nameNodeId = nameNodeId;
     }

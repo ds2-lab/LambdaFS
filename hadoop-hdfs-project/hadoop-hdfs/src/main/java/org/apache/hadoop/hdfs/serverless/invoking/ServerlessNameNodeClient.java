@@ -899,6 +899,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         DescriptiveStatistics resubmittedStatistics = new DescriptiveStatistics();
         DescriptiveStatistics notResubmittedStatistics = new DescriptiveStatistics();
 
+        DescriptiveStatistics numGcStatistics = new DescriptiveStatistics();
+        DescriptiveStatistics gcTimeStatistics = new DescriptiveStatistics();
+
         for (OperationPerformed operationPerformed : opsPerformedList) {
             if (operationPerformed.getIssuedViaHttp()) {
                 double latency = operationPerformed.getLatency();
@@ -924,6 +927,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             } else {
                 notResubmittedStatistics.addValue(operationPerformed.getResultReceivedTime() - operationPerformed.getInvokedAtTime());
             }
+
+            numGcStatistics.addValue(operationPerformed.getNumGarbageCollections());
+            gcTimeStatistics.addValue(operationPerformed.getGarbageCollectionTime());
         }
 
         System.out.println("\n-- SUMS ----------------------------------------------------------------------------------------------------------------------");
@@ -983,6 +989,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         } catch (NotStrictlyPositiveException ex) {
             LOG.error("Encountered 'NotStrictlyPositiveException' while trying to generate latency histograms.");
         }
+
+        System.out.println("\n-- Garbage Collection Statistics -----------------------------------------------------------------------------------------------------");
+        System.out.println("Total number of GCs: " + numGcStatistics.getSum());
+        System.out.println("Total time spent GC-ing: " + gcTimeStatistics.getSum() + " ms");
+        System.out.println("Average number of GCs per task: " + numGcStatistics.getMean());
+        System.out.println("Average time spent GC-ing per task: " + gcTimeStatistics.getMean() + " ms");
+        System.out.println("Largest number of GCs for a single task: " + numGcStatistics.getMax());
+        System.out.println("Longest time spent GC-ing for a single task: " + gcTimeStatistics.getMax() + " ms");
 
         System.out.println("\n-- Lifetime HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
         printLatencyStatisticsDetailed(0);
