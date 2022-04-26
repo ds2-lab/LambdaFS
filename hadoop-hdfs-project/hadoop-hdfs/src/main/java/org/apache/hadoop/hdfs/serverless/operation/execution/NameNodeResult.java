@@ -397,7 +397,7 @@ public final class NameNodeResult implements Serializable {
         // a duplicate request and leave it at that.
         if (result instanceof DuplicateRequest) {
             // Add a flag indicating whether this is just a duplicate result.
-            json.put(ServerlessNameNodeKeys.DUPLICATE_REQUEST, true);
+            json.put(DUPLICATE_REQUEST, true);
         } else {
             if (result != null && LOG.isDebugEnabled())
                 LOG.debug("Returning result of type " + result.getClass().getSimpleName()
@@ -406,8 +406,8 @@ public final class NameNodeResult implements Serializable {
             String resultSerializedAndEncoded = serializeAndEncode(result);
 
             if (resultSerializedAndEncoded != null)
-                json.put(ServerlessNameNodeKeys.RESULT, resultSerializedAndEncoded);
-            json.put(ServerlessNameNodeKeys.DUPLICATE_REQUEST, false);
+                json.put(RESULT, resultSerializedAndEncoded);
+            json.put(DUPLICATE_REQUEST, false);
         }
 
         if (exceptions.size() > 0) {
@@ -417,7 +417,7 @@ public final class NameNodeResult implements Serializable {
                 exceptionsJson.add(t.toString());
             }
 
-            json.set(ServerlessNameNodeKeys.EXCEPTIONS, exceptionsJson);
+            json.set(EXCEPTIONS, exceptionsJson);
         }
 
         if (serverlessFunctionMapping != null) {
@@ -431,7 +431,7 @@ public final class NameNodeResult implements Serializable {
         }
 
         if (operation != null)
-            json.put(ServerlessNameNodeKeys.OPERATION, operation);
+            json.put(OPERATION, operation);
 
         long numGarbageCollectionsNow = 0L;
         long garbageCollectionTimeNow = 0L;
@@ -450,35 +450,35 @@ public final class NameNodeResult implements Serializable {
         numGarbageCollections = numGarbageCollectionsNow - numGarbageCollections;
         garbageCollectionTime = garbageCollectionTimeNow - garbageCollectionTime;
 
-        json.put(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
-        json.put(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER, deploymentNumber);
-        json.put(ServerlessNameNodeKeys.REQUEST_ID, requestId);
-        json.put(ServerlessNameNodeKeys.REQUEST_METHOD, requestMethod);
-        json.put(ServerlessNameNodeKeys.CANCELLED, false);
-        json.put(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, "N/A"); //System.getenv("__OW_ACTIVATION_ID"));
+        json.put(NAME_NODE_ID, nameNodeId);
+        json.put(DEPLOYMENT_NUMBER, deploymentNumber);
+        json.put(REQUEST_ID, requestId);
+        json.put(REQUEST_METHOD, requestMethod);
+        json.put(CANCELLED, false);
+        json.put(OPENWHISK_ACTIVATION_ID, "N/A"); //System.getenv("__OW_ACTIVATION_ID"));
         int totalCacheHits = metadataCache.getNumCacheHitsCurrentRequest(); // + replicaCacheManager.getThreadLocalCacheHits();
         int totalCacheMisses = metadataCache.getNumCacheMissesCurrentRequest(); // + replicaCacheManager.getThreadLocalCacheMisses();
-        json.put(ServerlessNameNodeKeys.CACHE_HITS, totalCacheHits);
-        json.put(ServerlessNameNodeKeys.CACHE_MISSES, totalCacheMisses);
-        json.put(ServerlessNameNodeKeys.FN_START_TIME, fnStartTime);
-        json.put(ServerlessNameNodeKeys.ENQUEUED_TIME, enqueuedTime);
-        json.put(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
-        json.put(ServerlessNameNodeKeys.PROCESSING_FINISHED_TIME, processingFinishedTime);
+        json.put(CACHE_HITS, totalCacheHits);
+        json.put(CACHE_MISSES, totalCacheMisses);
+        json.put(FN_START_TIME, fnStartTime);
+        json.put(ENQUEUED_TIME, enqueuedTime);
+        json.put(DEQUEUED_TIME, dequeuedTime);
+        json.put(PROCESSING_FINISHED_TIME, processingFinishedTime);
         json.put(COLD_START, coldStart);
         json.put(NUMBER_OF_GCs, numGarbageCollections);
         json.put(GC_TIME, garbageCollectionTime);
 
         if (statisticsPackageSerializedAndEncoded != null)
-            json.put(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
+            json.put(STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
 
         if (txEventsSerializedAndEncoded != null)
-            json.put(ServerlessNameNodeKeys.TRANSACTION_EVENTS, txEventsSerializedAndEncoded);
+            json.put(TRANSACTION_EVENTS, txEventsSerializedAndEncoded);
 
         // Reset these in-case this thread gets re-used in the future for another request.
         metadataCache.resetCacheHitMissCounters();
         replicaCacheManager.resetCacheHitMissCounters();
 
-        json.put(ServerlessNameNodeKeys.FN_END_TIME, System.currentTimeMillis());
+        json.put(FN_END_TIME, System.currentTimeMillis());
         return json;
     }
 
@@ -544,7 +544,7 @@ public final class NameNodeResult implements Serializable {
         // a duplicate request and leave it at that.
         if (result instanceof DuplicateRequest) {
             // Add a flag indicating whether this is just a duplicate result.
-            json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, true);
+            json.addProperty(DUPLICATE_REQUEST, true);
         } else {
             if (result != null && LOG.isDebugEnabled())
                 LOG.debug("Returning result of type " + result.getClass().getSimpleName()
@@ -553,8 +553,8 @@ public final class NameNodeResult implements Serializable {
             String resultSerializedAndEncoded = serializeAndEncode(result);
 
             if (resultSerializedAndEncoded != null)
-                json.addProperty(ServerlessNameNodeKeys.RESULT, resultSerializedAndEncoded);
-            json.addProperty(ServerlessNameNodeKeys.DUPLICATE_REQUEST, false);
+                json.addProperty(RESULT, resultSerializedAndEncoded);
+            json.addProperty(DUPLICATE_REQUEST, false);
         }
 
         if (exceptions.size() > 0) {
@@ -564,7 +564,7 @@ public final class NameNodeResult implements Serializable {
                 exceptionsJson.add(t.toString());
             }
 
-            json.add(ServerlessNameNodeKeys.EXCEPTIONS, exceptionsJson);
+            json.add(EXCEPTIONS, exceptionsJson);
         }
 
         if (serverlessFunctionMapping != null) {
@@ -578,35 +578,54 @@ public final class NameNodeResult implements Serializable {
         }
 
         if (operation != null)
-            json.addProperty(ServerlessNameNodeKeys.OPERATION, operation);
+            json.addProperty(OPERATION, operation);
 
-        json.addProperty(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
-        json.addProperty(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER, deploymentNumber);
-        json.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
-        json.addProperty(ServerlessNameNodeKeys.REQUEST_METHOD, requestMethod);
-        json.addProperty(ServerlessNameNodeKeys.CANCELLED, false);
-        json.addProperty(ServerlessNameNodeKeys.OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
+        long numGarbageCollectionsNow = 0L;
+        long garbageCollectionTimeNow = 0L;
+        List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+        for (GarbageCollectorMXBean mxBean : mxBeans) {
+            long count = mxBean.getCollectionCount();
+            long time  = mxBean.getCollectionTime();
+
+            if (count > 0)
+                numGarbageCollectionsNow += count;
+
+            if (time > 0)
+                garbageCollectionTimeNow += time;
+        }
+
+        numGarbageCollections = numGarbageCollectionsNow - numGarbageCollections;
+        garbageCollectionTime = garbageCollectionTimeNow - garbageCollectionTime;
+        
+        json.addProperty(NAME_NODE_ID, nameNodeId);
+        json.addProperty(DEPLOYMENT_NUMBER, deploymentNumber);
+        json.addProperty(REQUEST_ID, requestId);
+        json.addProperty(REQUEST_METHOD, requestMethod);
+        json.addProperty(CANCELLED, false);
+        json.addProperty(OPENWHISK_ACTIVATION_ID, System.getenv("__OW_ACTIVATION_ID"));
         int totalCacheHits = metadataCache.getNumCacheHitsCurrentRequest(); // + replicaCacheManager.getThreadLocalCacheHits();
         int totalCacheMisses = metadataCache.getNumCacheMissesCurrentRequest(); // + replicaCacheManager.getThreadLocalCacheMisses();
-        json.addProperty(ServerlessNameNodeKeys.CACHE_HITS, totalCacheHits);
-        json.addProperty(ServerlessNameNodeKeys.CACHE_MISSES, totalCacheMisses);
-        json.addProperty(ServerlessNameNodeKeys.FN_START_TIME, fnStartTime);
-        json.addProperty(ServerlessNameNodeKeys.ENQUEUED_TIME, enqueuedTime);
-        json.addProperty(ServerlessNameNodeKeys.DEQUEUED_TIME, dequeuedTime);
-        json.addProperty(ServerlessNameNodeKeys.PROCESSING_FINISHED_TIME, processingFinishedTime);
+        json.addProperty(CACHE_HITS, totalCacheHits);
+        json.addProperty(CACHE_MISSES, totalCacheMisses);
+        json.addProperty(FN_START_TIME, fnStartTime);
+        json.addProperty(ENQUEUED_TIME, enqueuedTime);
+        json.addProperty(DEQUEUED_TIME, dequeuedTime);
+        json.addProperty(PROCESSING_FINISHED_TIME, processingFinishedTime);
         json.addProperty(COLD_START, coldStart);
+        json.addProperty(NUMBER_OF_GCs, numGarbageCollections);
+        json.addProperty(GC_TIME, garbageCollectionTime);
 
         if (statisticsPackageSerializedAndEncoded != null)
-            json.addProperty(ServerlessNameNodeKeys.STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
+            json.addProperty(STATISTICS_PACKAGE, statisticsPackageSerializedAndEncoded);
 
         if (txEventsSerializedAndEncoded != null)
-            json.addProperty(ServerlessNameNodeKeys.TRANSACTION_EVENTS, txEventsSerializedAndEncoded);
+            json.addProperty(TRANSACTION_EVENTS, txEventsSerializedAndEncoded);
 
         // Reset these in-case this thread gets re-used in the future for another request.
         metadataCache.resetCacheHitMissCounters();
         replicaCacheManager.resetCacheHitMissCounters();
 
-        json.addProperty(ServerlessNameNodeKeys.FN_END_TIME, System.currentTimeMillis());
+        json.addProperty(FN_END_TIME, System.currentTimeMillis());
         return json;
     }
 
