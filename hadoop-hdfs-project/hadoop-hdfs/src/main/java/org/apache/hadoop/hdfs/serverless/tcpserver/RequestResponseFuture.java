@@ -39,14 +39,20 @@ public class RequestResponseFuture implements Future<Object> {
     private final long createdAt;
 
     /**
+     * The NameNodeID of the NN this request was sent to.
+     */
+    private long targetNameNodeId;
+
+    /**
      * This is used to receive the result of the future from the worker thread.
      */
     private final BlockingQueue<Object> resultQueue = new ArrayBlockingQueue<>(1);
 
-    public RequestResponseFuture(String requestId, String operationName) {
+    public RequestResponseFuture(String requestId, String operationName, long targetNameNodeId) {
         this.requestId = requestId;
         this.operationName = operationName;
         this.createdAt = System.nanoTime();
+        this.targetNameNodeId = targetNameNodeId;
     }
 
     /**
@@ -147,6 +153,10 @@ public class RequestResponseFuture implements Future<Object> {
         }
 
         return false;
+    }
+    
+    public long getTargetNameNodeId() {
+        return this.targetNameNodeId;
     }
 
     /**

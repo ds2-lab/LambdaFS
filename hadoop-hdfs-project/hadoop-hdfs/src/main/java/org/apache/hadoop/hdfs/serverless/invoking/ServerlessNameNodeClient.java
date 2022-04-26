@@ -871,6 +871,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             operationsPerformed.put(op.getRequestId(), op);
     }
 
+    public void addOperationPerformeds(OperationPerformed[] operationPerformeds) {
+        for (OperationPerformed op : operationPerformeds)
+            operationsPerformed.put(op.getRequestId(), op);
+    }
+
     /**
      * Allows for dynamically changing the latency threshold at runtime.
      * @param threshold New latency threshold.

@@ -189,6 +189,10 @@ public class DistributedFileSystem extends FileSystem {
     this.dfs.addOperationPerformeds(operationPerformeds);
   }
 
+  public void addOperationPerformeds(OperationPerformed[] operationPerformeds) {
+    this.dfs.addOperationPerformeds(operationPerformeds);
+  }
+
   // Added for debugging serverless NN.
   public void printOperationsPerformed() {
     this.dfs.printOperationsPerformed();

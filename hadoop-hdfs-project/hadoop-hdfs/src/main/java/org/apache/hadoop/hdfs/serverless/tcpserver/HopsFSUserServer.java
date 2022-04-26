@@ -540,16 +540,17 @@ public class HopsFSUserServer {
      *
      * @param requestId The ID of the request associated with the future.
      * @param operationName The name of the operation being performed.
+     * @param nnId The NameNodeID of the target NN.
      *
      * @return A new {@link RequestResponseFuture} object if one does not already exist.
      * Otherwise, returns the existing RequestResponseFuture object.
      */
-    public RequestResponseFuture registerRequestResponseFuture(String requestId, String operationName) {
+    public RequestResponseFuture registerRequestResponseFuture(String requestId, String operationName, long nnId) {
         RequestResponseFuture requestResponseFuture = activeFutures.getOrDefault(requestId, null);
 
         // TODO: Previously, this function also checked completedFutures before registering. Do we need to do this?
         if (requestResponseFuture == null) {
-            requestResponseFuture = new RequestResponseFuture(requestId, operationName);
+            requestResponseFuture = new RequestResponseFuture(requestId, operationName, nnId);
             activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
         }
 
@@ -608,7 +609,6 @@ public class HopsFSUserServer {
         // a response from the NameNode, should the client deliver one to us.
         String requestId = payload.get("requestId").getAsString();
         String opName = payload.get("op").getAsString();
-        RequestResponseFuture requestResponseFuture = registerRequestResponseFuture(requestId, opName);
 
         // Send the TCP request to the NameNode.
         NameNodeConnection tcpConnection;
@@ -647,6 +647,8 @@ public class HopsFSUserServer {
             return null;
         }
 
+        RequestResponseFuture requestResponseFuture = registerRequestResponseFuture(requestId, opName, tcpConnection.name);
+
         // Make note of this future as being incomplete.
         List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(
                 tcpConnection.name, k -> new ArrayList<>());
@@ -654,7 +656,7 @@ public class HopsFSUserServer {
         incompleteFutures.add(requestResponseFuture);
         futureToNameNodeMapping.put(requestId, tcpConnection);
 
-        int bytesSent = tcpConnection.sendTCP(payload.toString());
+        tcpConnection.sendTCP(payload.toString());
 
         return requestResponseFuture;
     }
@@ -722,7 +724,13 @@ public class HopsFSUserServer {
         long startTime = System.currentTimeMillis();
         RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck,
                                                                       payload, tryToAvoidTargetingSameNameNode);
-        if (LOG.isTraceEnabled())
+
+        long tcpSendDuration = (System.currentTimeMillis() - startTime);
+        if (tcpSendDuration > 50) {
+            LOG.warn("TCP request " + requestId + " to NN " + requestResponseFuture.getTargetNameNodeId() +
+                    "(deployment=" + deploymentNumber + ") took " + tcpSendDuration + " ms to send.");
+        }
+        else if (LOG.isTraceEnabled())
             LOG.trace("Issued TCP request in " + (System.currentTimeMillis() - startTime) + " ms.");
 
         if (requestResponseFuture == null)
