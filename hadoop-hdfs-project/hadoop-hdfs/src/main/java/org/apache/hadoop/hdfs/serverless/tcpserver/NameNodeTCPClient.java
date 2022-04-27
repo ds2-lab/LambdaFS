@@ -7,7 +7,6 @@ import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.util.TcpIdleSender;
 import com.github.benmanes.caffeine.cache.*;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -16,8 +15,7 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
-import org.apache.hadoop.hdfs.serverless.operation.execution.HashMapTaskArguments;
-import org.apache.hadoop.hdfs.serverless.operation.execution.TaskArguments;
+import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.HashMapTaskArguments;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.log4j.LogManager;
@@ -31,8 +29,6 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromString;
-import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.CONSISTENCY_PROTOCOL_ENABLED;
-import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.LOG_LEVEL;
 
 /**
  * Encapsulates a Kryonet TCP client. Used to communicate directly with Serverless HopsFS clients.

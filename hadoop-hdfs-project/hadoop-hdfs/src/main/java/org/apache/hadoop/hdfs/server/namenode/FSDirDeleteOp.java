@@ -327,7 +327,7 @@ class FSDirDeleteOp {
                 ArgumentContainer argumentContainer = new ArgumentContainer();
                 argumentContainer.addPrimitive("subtreeRootId", subTreeRootID);
                 argumentContainer.addPrimitive("leaderNameNodeID", instance.getId());
-                argumentContainer.addNonByteArray("pathsJson", batch);
+                argumentContainer.addNonByteArray("paths", batch);
 
                 int targetDeployment = -1;
 

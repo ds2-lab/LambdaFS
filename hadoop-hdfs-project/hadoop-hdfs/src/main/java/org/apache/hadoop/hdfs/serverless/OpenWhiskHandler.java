@@ -8,8 +8,8 @@ import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
-import org.apache.hadoop.hdfs.serverless.operation.execution.JsonTaskArguments;
-import org.apache.hadoop.hdfs.serverless.operation.execution.TaskArguments;
+import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.JsonTaskArguments;
+import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.TaskArguments;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
@@ -394,7 +394,8 @@ public class OpenWhiskHandler extends BaseHandler {
         // identified by the `src` parameter. This is the file/directory that should be hashed to a particular
         // serverless function. We calculate this here and include the information for the client in our response.
         if (fsArgs != null && fsArgs.contains(ServerlessNameNodeKeys.SRC)) {
-            String src = fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.SRC).getAsString();
+            //String src = fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.SRC).getAsString();
+            String src = fsArgs.getString(SRC);
 
             INode inode = null;
             try {
