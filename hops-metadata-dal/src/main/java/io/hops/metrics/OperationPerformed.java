@@ -150,6 +150,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      */
     private long garbageCollectionTime;
 
+    private OperationPerformed() { }
+
     public OperationPerformed(String operationName, String requestId,
                               long invokedAtTime, long resultReceivedTime,
                               long enqueuedTime, long dequeuedTime,
