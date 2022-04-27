@@ -50,9 +50,9 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
 
     private static final long serialVersionUID = -3094538262184661023L;
 
-    private final String operationName;
+    private String operationName;
 
-    private final String requestId;
+    private String requestId;
 
     /**
      * The duration of the serverless function itself, not including
@@ -60,11 +60,11 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      */
     private long serverlessFunctionDuration;
 
-    private final int deployment;
+    private int deployment;
 
-    private final boolean issuedViaTcp;
+    private boolean issuedViaTcp;
 
-    private final boolean issuedViaHttp;
+    private boolean issuedViaHttp;
 
     private long nameNodeId;
 
@@ -72,7 +72,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * Some sort of unique identifier of the client that issued the operation
      * (e.g., thread ID or the HopsFS client name variable).
      */
-    private final String clientId;
+    private String clientId;
 
     /**
      * Indicates whether the result was ultimately received via HTTP or TCP.
