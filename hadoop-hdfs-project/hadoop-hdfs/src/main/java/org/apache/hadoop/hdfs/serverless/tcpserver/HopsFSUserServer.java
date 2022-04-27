@@ -15,7 +15,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
-import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -27,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
-import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_RESULT;
 
 /**
  * Clients of Serverless HopsFS expose a TCP server that serverless NameNodes can connect to.
@@ -591,24 +591,22 @@ public class HopsFSUserServer {
      * @param deploymentNumber The NameNode to issue a request to.
      * @param bypassCheck Do not check if the connection exists.
      * @param payload The payload to send to the NameNode in the TCP request.
+     * @param requestId The unique ID of the task/request.
+     * @param operationName The name of the FS operation we're performing.
      * @param tryToAvoidTargetingSameNameNode If true, then we try to avoid resubmitting this request to the same
      *                                        NameNode as before. This would only be set to 'true' when
      *                                        resubmitting a request that timed-out. We want to avoid sending it
      *                                        to the same NN at which the request previously timed-out.
      * @return A Future representing the eventual response from the NameNode.
      */
-    public RequestResponseFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck,
-                                                 JsonObject payload, boolean tryToAvoidTargetingSameNameNode) {
+    public RequestResponseFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck, String requestId,
+                                                 String operationName, TcpRequestPayload payload,
+                                                 boolean tryToAvoidTargetingSameNameNode) {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
             LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue TCP request to NameNode deployment " +
                     deploymentNumber + ", but connection no longer exists...");
             return null;
         }
-
-        // Create and register a future to keep track of this request and provide a means for the client to obtain
-        // a response from the NameNode, should the client deliver one to us.
-        String requestId = payload.get("requestId").getAsString();
-        String opName = payload.get("op").getAsString();
 
         // Send the TCP request to the NameNode.
         NameNodeConnection tcpConnection;
@@ -647,7 +645,8 @@ public class HopsFSUserServer {
             return null;
         }
 
-        RequestResponseFuture requestResponseFuture = registerRequestResponseFuture(requestId, opName, tcpConnection.name);
+        RequestResponseFuture requestResponseFuture = registerRequestResponseFuture(
+                requestId, operationName, tcpConnection.name);
 
         // Make note of this future as being incomplete.
         List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(
@@ -671,6 +670,8 @@ public class HopsFSUserServer {
      * @param deploymentNumber The NameNode to issue a request to. If this is -1, then the TCP server will randomly
      *                         select a target deployment/NameNode from among all available, active connections.
      * @param bypassCheck Do not check if the connection exists.
+     * @param requestId The unique ID of the task/request.
+     * @param operationName The name of the FS operation we're performing.
      * @param payload The payload to send to the NameNode in the TCP request.
      * @param timeout If positive, then wait for future to resolve with a timeout.
      *                If zero, then this will return immediately if the future is not available.
@@ -681,9 +682,9 @@ public class HopsFSUserServer {
      *                                        which the request previously timed-out.
      * @return The response from the NameNode, or null if the request failed for some reason.
      */
-    public Object issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck,
-                                             JsonObject payload, long timeout,
-                                             boolean tryToAvoidTargetingSameNameNode)
+    public Object issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, String requestId,
+                                         String operationName, TcpRequestPayload payload, long timeout,
+                                         boolean tryToAvoidTargetingSameNameNode)
             throws ExecutionException, InterruptedException, TimeoutException, IOException {
         if (deploymentNumber == -1) {
             // Randomly select an available connection. This is implemented using existing constructs, so it
@@ -704,8 +705,6 @@ public class HopsFSUserServer {
             deploymentNumber = nameNodeIdToDeploymentMapping.get(nameNodeId);
         }
 
-        String requestId = payload.get("requestId").getAsString();
-
         if (resultsWithoutFutures.asMap().containsKey(requestId)) {
             if (LOG.isDebugEnabled()) LOG.debug("Found result for request " + requestId +
                     "in ResultsWithoutFutures cache. Returning cached result.");
@@ -722,8 +721,8 @@ public class HopsFSUserServer {
         }
 
         long startTime = System.currentTimeMillis();
-        RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck,
-                                                                      payload, tryToAvoidTargetingSameNameNode);
+        RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck, requestId,
+                operationName, payload, tryToAvoidTargetingSameNameNode);
 
         long tcpSendDuration = (System.currentTimeMillis() - startTime);
         if (tcpSendDuration > 50) {
@@ -748,9 +747,6 @@ public class HopsFSUserServer {
      * @param connection The connection to the remote NameNode.
      */
     private void handleResult(NameNodeResult result, NameNodeConnection connection) {
-        int deploymentNumber = result.getDeploymentNumber();
-        long nameNodeId = result.getNameNodeId();
-        String operation = result.getOperationName();
         String requestId = result.getRequestId();
 
         RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
@@ -780,9 +776,17 @@ public class HopsFSUserServer {
         List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
         incompleteFutures.remove(future);
 
-        if (LOG.isDebugEnabled())
-            LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId +
-                    " from NN " + nameNodeId + ", deployment " + deploymentNumber + ".");
+        if (LOG.isDebugEnabled()) {
+            if (result instanceof NameNodeResultWithMetrics) {
+                NameNodeResultWithMetrics resultWithMetrics = (NameNodeResultWithMetrics)result;
+                int deploymentNumber = resultWithMetrics.getDeploymentNumber();
+                long nameNodeId = resultWithMetrics.getNameNodeId();
+                LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId +
+                        " from NN " + nameNodeId + ", deployment " + deploymentNumber + ".");
+            } else {
+                LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId + ".");
+            }
+        }
     }
 
     /**

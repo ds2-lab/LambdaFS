@@ -21,6 +21,8 @@ public class ServerlessNameNodeKeys {
     public static final String REDIRECTED_WRITE = "REDIRECTED_WRITE";
     public static final String FLAG = "flag";
 
+    public static final String BENCHMARK_MODE = "BENCHMARK_MODE";
+
     public static final String ACTION_MEMORY = "actionMemory";
     public static final String REQUEST_METHOD = "requestMethod";
     public static final String CANCELLED = "cancelled";

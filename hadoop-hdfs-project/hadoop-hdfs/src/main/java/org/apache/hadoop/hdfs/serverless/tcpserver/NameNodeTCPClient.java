@@ -1,8 +1,5 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
@@ -19,14 +16,17 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
-import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.HashMapTaskArguments;
+import org.apache.hadoop.hdfs.serverless.operation.execution.TaskArguments;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.log4j.LogManager;
 
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -265,10 +265,8 @@ public class NameNodeTCPClient {
      * @throws IOException If the connection to the new client times out.
      */
     public boolean addClient(ServerlessHopsFSClient newClient) throws IOException {
-        if (tcpClients.asMap().containsKey(newClient)) {
-            LOG.warn("NameNodeTCPClient already has a connection to client " + newClient);
+        if (tcpClients.asMap().containsKey(newClient))
             return false;
-        }
 
         // We pass the writeBuffer and objectBuffer arguments to the Client constructor.
         // Objects are serialized to the write buffer where the bytes are queued until they can
@@ -287,13 +285,8 @@ public class NameNodeTCPClient {
         // Add an entry to the TCP Clients map now so that we do not try to connect again while we're
         // in the process of connecting.
         Client existingClient = tcpClients.asMap().putIfAbsent(newClient, tcpClient);
-        if (existingClient != null) {
-            LOG.warn("Actually, NameNodeTCPClient already has a connection to client " + newClient);
+        if (existingClient != null)
             return false;
-        }
-
-//        Kryo clientWriteKryo = new Kryo();
-//        ServerlessClientServerUtilities.registerClassesToBeTransferred(clientWriteKryo);
 
         tcpClient.addListener(new Listener.ThreadedListener(new Listener() {
             /**
@@ -308,15 +301,16 @@ public class NameNodeTCPClient {
                 long receivedAtTime = System.currentTimeMillis();
                 NameNodeResult tcpResult;
                 // If we received a JsonObject, then add it to the queue for processing.
-                if (object instanceof String) {
+//                if (object instanceof String) {
+//                    if (LOG.isDebugEnabled())
+//                        LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " + connection.getRemoteAddressTCP() + ".");
+//                    JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
+//                    tcpResult = handleWorkAssignment(jsonObject, receivedAtTime);
+//                }
+                if (object instanceof TcpRequestPayload) {
                     if (LOG.isDebugEnabled())
                         LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " + connection.getRemoteAddressTCP() + ".");
-//                        LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " +
-//                                        connection.getRemoteAddressTCP() + ". current heap size: " +
-//                                        (Runtime.getRuntime().totalMemory() / 1000000.0) +  " MB, free space in heap: " +
-//                                        (Runtime.getRuntime().freeMemory() / 1000000.0) + " MB.");
-                    JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
-                    tcpResult = handleWorkAssignment(jsonObject, receivedAtTime);
+                    tcpResult = handleWorkAssignment((TcpRequestPayload)object, receivedAtTime);
                 }
                 else if (object instanceof FrameworkMessage.KeepAlive) {
                     // The server periodically sends KeepAlive objects to prevent the client from disconnecting
@@ -329,43 +323,10 @@ public class NameNodeTCPClient {
                     IllegalArgumentException ex = new IllegalArgumentException(
                             "[TCP Client] Received object of unexpected type from client " + connection
                                     + ". Object type: " + object.getClass().getSimpleName() + ".");
-                    tcpResult = new NameNodeResult(deploymentNumber, "N/A", "TCP",
+                    tcpResult = new NameNodeResultWithMetrics(deploymentNumber, "N/A", "TCP",
                             serverlessNameNode.getId(), "N/A");
                     tcpResult.addException(ex);
                 }
-
-                long s = System.currentTimeMillis();
-//                String jsonString = new Gson().toJson(tcpResult.toJson(ServerlessClientServerUtilities.OPERATION_RESULT,
-//                        serverlessNameNode.getNamesystem().getMetadataCacheManager()));
-
-//                ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-//                String jsonString = null;
-//                try {
-//                    jsonString = ow.writeValueAsString(tcpResult.toJsonJackson(
-//                            ServerlessClientServerUtilities.OPERATION_RESULT,
-//                            serverlessNameNode.getNamesystem().getMetadataCacheManager()));
-//                } catch (JsonProcessingException e) {
-//                    e.printStackTrace();
-//                }
-//
-//                long t = System.currentTimeMillis();
-//
-//                if (t - s > 10)
-//                    LOG.warn("Converting NameNodeResult instance to JSON took " + (t - s) + " ms.");
-
-//                Kryo kryo = tcpClient.getKryo();
-//
-//                LOG.debug("Trying to write the NameNodeResult object for debugging purposes now.");
-//                long start = System.currentTimeMillis();
-//                Output output = new Output(32768, -1);
-//                kryo.writeObject(output, tcpResult);
-//                long end = System.currentTimeMillis();
-//                LOG.debug("Wrote NameNodeResult object to Output in " + (end - start) + " ms.");
-
-//                Input input = new Input(output.getBuffer(), 0, output.position());
-//                NameNodeResult tcpResult2 = kryo.readObject(input, NameNodeResult.class);
-//                LOG.debug("Read TCP result back in " + (System.currentTimeMillis() - end) +
-//                        " ms. TcpResult: " + tcpResult2);
 
                 trySendTcp(connection, tcpResult);
             }
@@ -540,39 +501,66 @@ public class NameNodeTCPClient {
         }
     }
 
-    private NameNodeResult handleWorkAssignment(JsonObject args, long startTime) {
-        String requestId = args.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
-        String op = args.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
-        JsonObject fsArgs = args.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
-
-        if (args.has(LOG_LEVEL)) {
-            String logLevel = args.get(LOG_LEVEL).getAsString();
-            LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
-        }
-
-        if (args.has(CONSISTENCY_PROTOCOL_ENABLED)) {
-            ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
-        }
-
-        NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP",
-                serverlessNameNode.getId(), op);
-        tcpResult.setFnStartTime(startTime);
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Received TCP Message. RequestID=" + requestId + ", OpName: " + op);
-        }
-
-        // Create a new task. After this, we assign it to the worker thread and wait for the
-        // result to be computed before returning it to the user.
-        // FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, false, "TCP");
-
+    private NameNodeResult handleWorkAssignment(TcpRequestPayload args, long startTime) {
+        String requestId = args.getRequestId();
         BaseHandler.currentRequestId.set(requestId);
 
-        //serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult, false);
-        serverlessNameNode.getExecutionManager().tryExecuteTask(
-                requestId, op, fsArgs, false, tcpResult, false);
-        return tcpResult;
+        String op = args.getOperationName();
+        HashMap<String, Object> fsArgs = args.getFsOperationArguments();
+        ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.isConsistencyProtocolEnabled();
+
+        String logLevel = args.getServerlessFunctionLogLevel();
+        if (logLevel != null)
+            LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
+
+        boolean benchmarkingModeEnabled = args.isBenchmarkingModeEnabled();
+        if (benchmarkingModeEnabled) {
+            NameNodeResultWithMetrics tcpResult = new NameNodeResultWithMetrics(deploymentNumber, requestId,
+                    "TCP", serverlessNameNode.getId(), op);
+            tcpResult.setFnStartTime(startTime);
+            serverlessNameNode.getExecutionManager().tryExecuteTask(
+                    requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
+            return tcpResult;
+        } else {
+            NameNodeResult tcpResult = new NameNodeResult(requestId, op);
+            serverlessNameNode.getExecutionManager().tryExecuteTask(
+                    requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
+            return tcpResult;
+        }
     }
+
+//    private NameNodeResult handleWorkAssignment(JsonObject args, long startTime) {
+//        String requestId = args.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
+//        String op = args.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
+//        JsonObject fsArgs = args.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
+//
+//        if (args.has(LOG_LEVEL)) {
+//            String logLevel = args.get(LOG_LEVEL).getAsString();
+//            LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
+//        }
+//
+//        if (args.has(CONSISTENCY_PROTOCOL_ENABLED)) {
+//            ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
+//        }
+//
+//        NameNodeResult tcpResult = new NameNodeResult(deploymentNumber, requestId, "TCP", serverlessNameNode.getId(), op);
+//        tcpResult.setFnStartTime(startTime);
+//
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("Received TCP Message. RequestID=" + requestId + ", OpName: " + op);
+//        }
+//
+//        // Create a new task. After this, we assign it to the worker thread and wait for the
+//        // result to be computed before returning it to the user.
+//        // FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, false, "TCP");
+//
+//        BaseHandler.currentRequestId.set(requestId);
+//
+//        //serverlessNameNode.getExecutionManager().tryExecuteTask(task, tcpResult, false);
+//        serverlessNameNode.getExecutionManager().tryExecuteTask(
+//                requestId, op, fsArgs, false, tcpResult, false);
+//        return tcpResult;
+//    }
 
     /**
      * Complete the registration phase with the client's TCP server.

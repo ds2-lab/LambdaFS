@@ -204,6 +204,11 @@ public abstract class ServerlessInvokerBase<T> {
     protected boolean consistencyProtocolEnabled = true;
 
     /**
+     * Turns off metric collection to save time, network transfer, and memory.
+     */
+    protected boolean benchmarkModeEnabled = false;
+
+    /**
      * Return the INode-NN mapping cache entry for the given file or directory.
      *
      * This function returns -1 if no such entry exists.
@@ -840,6 +845,7 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArgumentsJson.addProperty(DEBUG_NDB, debugEnabledNdb);
         nameNodeArgumentsJson.addProperty(DEBUG_STRING_NDB, debugStringNdb);
         nameNodeArgumentsJson.addProperty(TCP_PORT, tcpPort);
+        nameNodeArgumentsJson.addProperty(BENCHMARK_MODE, benchmarkModeEnabled);
 
         // If we aren't a client invoker (e.g., DataNode, other NameNode, etc.), then don't populate the internal IP field.
         nameNodeArgumentsJson.addProperty(CLIENT_INTERNAL_IP, (isClientInvoker ? InvokerUtilities.getInternalIpAddress() : "0.0.0.0"));

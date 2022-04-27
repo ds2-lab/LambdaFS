@@ -380,6 +380,13 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     this.serverlessInvoker.setTransactionEvents(merged);
   }
 
+  public void setBenchmarkModeEnabled(boolean benchmarkModeEnabled) {
+    if (this.namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient) this.namenode;
+      client.setBenchmarkModeEnabled(benchmarkModeEnabled);
+    }
+  }
+
   /**
    * Return the statistics packages from the invoker.
    */

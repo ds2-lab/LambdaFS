@@ -20,9 +20,10 @@ import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
-import org.apache.hadoop.hdfs.serverless.operation.execution.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
-import org.apache.hadoop.hdfs.serverless.operation.execution.PreviousResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.ServerlessFunctionMapping;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenRenewer;
 
@@ -65,7 +66,9 @@ public class ServerlessClientServerUtilities {
         kryo.setRegistrationRequired(false);
 
         kryo.register(NameNodeResult.class);
-        kryo.register(NameNodeResult.ServerlessFunctionMapping.class);
+        kryo.register(ServerlessFunctionMapping.class);
+        kryo.register(TcpRequestPayload.class);
+        kryo.register(NameNodeResultWithMetrics.class);
         kryo.register(TransactionEvent.class);
         kryo.register(TransactionAttempt.class);
         kryo.register(LocatedBlocks.class);

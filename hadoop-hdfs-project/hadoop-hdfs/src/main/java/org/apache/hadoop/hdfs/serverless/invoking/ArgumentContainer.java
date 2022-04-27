@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.tcpserver.TcpRequestPayload;
 import org.apache.kerby.util.Base64;
 
 import java.io.IOException;
@@ -44,6 +45,12 @@ public class ArgumentContainer {
     private final HashMap<String, Serializable> objectArguments;
 
     /**
+     * We maintain this HashMap so that we can just include it directly in the {@link TcpRequestPayload} object,
+     * rather than having to build it up at the end.
+     */
+    private final HashMap<String, Object> allArguments;
+
+    /**
      * Constructor. Initializes the internal fields used to keep track of arguments prior to packaging them up into
      * a format usable in the invocation request.
      */
@@ -52,7 +59,11 @@ public class ArgumentContainer {
         byteArrayArguments = new HashMap<>();
         nonByteArrayArguments = new HashMap<>();
         objectArguments = new HashMap<>();
+
+        allArguments = new HashMap<>();
     }
+
+    public HashMap<String, Object> getAllArguments() { return this.allArguments; }
 
     /**
      * Return the parameter associated with the given key, or null if no such parameter exists.
@@ -118,6 +129,7 @@ public class ArgumentContainer {
      */
     public void addByteArray(String key, byte[] value) {
         byteArrayArguments.put(key, value);
+        allArguments.put(key, value);
     }
 
     /**
@@ -133,6 +145,7 @@ public class ArgumentContainer {
         }
 
         nonByteArrayArguments.put(key, value);
+        allArguments.put(key, value);
     }
 
     /**
@@ -146,6 +159,7 @@ public class ArgumentContainer {
     public <T> void addPrimitive(String key, T value) {
         assert(value.getClass().isPrimitive() || value instanceof String);
         primitiveArguments.put(key, value);
+        allArguments.put(key, value);
     }
 
     /**
@@ -162,6 +176,7 @@ public class ArgumentContainer {
         }
 
         objectArguments.put(key, value);
+        allArguments.put(key, value);
     }
 
     /**

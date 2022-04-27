@@ -203,7 +203,10 @@ public class DistributedFileSystem extends FileSystem {
     this.dfs.printDebugInformation();
   }
 
-  
+  public void setBenchmarkModeEnabled(boolean benchmarkModeEnabled) {
+    dfs.setBenchmarkModeEnabled(benchmarkModeEnabled);
+  }
+
   @Override
   public void initialize(URI uri, Configuration conf) throws IOException {
     super.initialize(uri, conf);

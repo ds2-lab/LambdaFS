@@ -79,7 +79,7 @@ import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.execution.ExecutionManager;
-import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
@@ -197,6 +197,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   static {
     HdfsConfiguration.init();
   }
+
+  /**
+   * Determines whether we use an instance of {@link NameNodeResult}
+   * or {@link NameNodeResult.NameNodeResultWithoutMetrics}.
+   */
+  public static ThreadLocal<Boolean> benchmarkingModeEnabled = new ThreadLocal<>();
 
   /**
    * The singleton ServerlessNameNode instance associated with this container. There can only be one!

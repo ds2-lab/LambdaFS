@@ -1,7 +1,5 @@
 package org.apache.hadoop.hdfs.serverless.operation.execution;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.gson.JsonObject;
 import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
@@ -10,12 +8,13 @@ import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -221,8 +220,8 @@ public class ExecutionManager {
      * @param workerResult Encapsulates all the information we will eventually return to the client.
      * @param http If true, we were invoked via HTTP. If false, then we were "invoked" via TCP.
      */
-    public void tryExecuteTask(String taskId, String operationName, JsonObject taskArguments, boolean forceRedo,
-                               NameNodeResult workerResult, boolean http) {
+    public void tryExecuteTask(String taskId, String operationName, TaskArguments taskArguments, boolean forceRedo,
+                               NameNodeResultWithMetrics workerResult, boolean http) {
         boolean duplicate = isTaskDuplicate(taskId);
 
         if (duplicate && forceRedo) {
@@ -302,61 +301,47 @@ public class ExecutionManager {
     /**
      * Attempt to execute the file system operation submitted with the current request.
      *
-     * @param task The task we're executing.
-     * @param workerResult The result object to be returned to the client.
-     * @param http True if this request was issued via HTTP. If false, then request was issued via TCP.
+     * @param taskId The unique ID of the request/task that we're executing.
+     * @param operationName The name of the file system operation that we're executing.
+     * @param taskArguments The arguments for the file system operation.
+     * @param forceRedo If True, we should re-execute the task, even if we've executed it before.
+     * @param workerResult Encapsulates all the information we will eventually return to the client.
+     * @param http If true, we were invoked via HTTP. If false, then we were "invoked" via TCP.
      */
-    @Deprecated
-    public void tryExecuteTask(FileSystemTask<Serializable> task, NameNodeResult workerResult, boolean http) {
-        boolean duplicate = isTaskDuplicate(task);
+    public void tryExecuteTask(String taskId, String operationName, TaskArguments taskArguments, boolean forceRedo,
+                               NameNodeResult workerResult, boolean http) {
+        boolean duplicate = isTaskDuplicate(taskId);
 
-        // If this is a duplicate task, and we aren't being forced to redo it, then return it to the client.
-        // They'll have to resubmit it if they need it to get done again.
-        // TODO: Is it necessary to have the client resubmit?
-        //       We previously used to cache results and then return them, but we stopped doing that
-        //       as it was seldom used (and just used up a lot of memory). If we find this is an issue,
-        //       then we can just start using the PreviousResultsCache again. In general, this construct
-        //       just doesn't make sense. We see a duplicate, send it back, and then execute it again if the
-        //       client re-submits. The fact that we're seeing a duplicate probably means the client didn't get it
-        //       though, so this whole process just seems to waste time. (But again, it actually doesn't seem
-        //       relevant as it rarely happens with the current way of handling requests [i.e., no dual HTTP-TCP
-        //       anymore]), so for now, we'll just leave this as is (in the interest of time).
-        if (duplicate && !task.getForceRedo()) {
+        if (duplicate && forceRedo) {
             // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
-            workerResult.setDequeuedTime(System.currentTimeMillis());
-            workerResult.addResult(new DuplicateRequest("TCP", task.getTaskId()), true);
+            workerResult.addResult(new DuplicateRequest("TCP", taskId), true);
             return;
         } else {
-            // currentlyExecutingTasks.put(task.getTaskId(), task);
-            currentlyExecutingTasks.add(task.getTaskId());
+            // currentlyExecutingTasks.put(taskId, task);
+            currentlyExecutingTasks.add(taskId);
         }
 
-        LOG.info("Executing task " + task.getTaskId() + ", operation: " + task.getOperationName() + " now.");
-
-        workerResult.setDequeuedTime(System.currentTimeMillis());
+        LOG.info("Executing task " + taskId + ", operation: " + operationName + " now.");
 
         Serializable result = null;
         boolean success = false;
         try {
-            result = serverlessNameNodeInstance.performOperation(task.getOperationName(), task.getOperationArguments());
+            result = serverlessNameNodeInstance.performOperation(operationName, taskArguments);
 
             if (result == null)
                 workerResult.addResult(NullResult.getInstance(), true);
             else
                 workerResult.addResult(result, true);
 
-            workerResult.setProcessingFinishedTime(System.currentTimeMillis());
             success = true;
         } catch (Exception ex) {
-            LOG.error("Encountered exception while executing file system operation " + task.getOperationName() +
-                    " for task " + task.getTaskId() + ".", ex);
+            LOG.error("Encountered exception while executing file system operation " + operationName +
+                    " for task " + taskId + ".", ex);
             workerResult.addException(ex);
-            workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         } catch (Throwable t) {
-            LOG.error("Encountered throwable while executing file system operation " + task.getOperationName() +
-                    " for task " + task.getTaskId() + ".", t);
+            LOG.error("Encountered throwable while executing file system operation " + operationName +
+                    " for task " + taskId + ".", t);
             workerResult.addThrowable(t);
-            workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         }
 
         // If this task was submitted via HTTP, then attempt to create a deployment mapping.
@@ -364,46 +349,35 @@ public class ExecutionManager {
             try {
                 long start = System.currentTimeMillis();
                 // Check if a function mapping should be created and returned to the client.
-                OpenWhiskHandler.tryCreateDeploymentMapping(workerResult, task.getOperationArguments(), serverlessNameNodeInstance);
+                OpenWhiskHandler.tryCreateDeploymentMapping(workerResult, taskArguments, serverlessNameNodeInstance);
                 long end = System.currentTimeMillis();
 
                 if (LOG.isDebugEnabled())
-                    LOG.debug("Created function mapping for request " + task.getTaskId() + " in " + (end - start) + " ms.");
+                    LOG.debug("Created function mapping for request " + taskId + " in " + (end - start) + " ms.");
             } catch (IOException ex) {
                 LOG.error("Encountered IOException while trying to create function mapping for task " +
-                        task.getTaskId() + ":", ex);
+                        taskId + ":", ex);
                 workerResult.addException(ex);
             }
         }
 
         // The TX events are ThreadLocal, so we'll only get events generated by our thread.
-        workerResult.commitTransactionEvents(serverlessNameNodeInstance.getTransactionEvents());
         serverlessNameNodeInstance.clearTransactionEvents();
 
         // We only add the task to the `completedTasks` mapping if we executed it successfully.
         // If there was an error, then may be automatically re-submitted by the client.
         if (success) {
             long s = System.currentTimeMillis();
-            taskCompleted(task);
+            taskCompleted(taskId);
             long t = System.currentTimeMillis();
 
             // notifyTaskCompleted() modifies some ConcurrentHashMaps (or possibly Caffeine Cache objects now).
             // If these operations are taking a long time, then we log a warning about it. They should be fast though.
             if (t - s > 10)
-                LOG.warn("Notifying completion of task " + task.getTaskId() + " took " + (t - s) + " ms.");
+                LOG.warn("Notifying completion of task " + taskId + " took " + (t - s) + " ms.");
         }
-
-//        long s = System.currentTimeMillis();
-//        // Cache the result for a bit.
-//        PreviousResult previousResult = new PreviousResult(result, task.getOperationName(), task.getTaskId());
-//        cachePreviousResult(task.getTaskId(), previousResult);
-//        long t = System.currentTimeMillis();
-//
-//        // notifyTaskCompleted() modifies some ConcurrentHashMaps (or possibly Caffeine Cache objects now).
-//        // If these operations are taking a long time, then we log a warning about it. They should be fast though.
-//        if (t - s > 10)
-//            LOG.warn("Caching result of task " + task.getTaskId() + " took " + (t - s) + " ms.");
     }
+
 
     /**
      * Schedule all of the {@link WriteAcknowledgement} instances in {@code acksToDelete} to be removed from
