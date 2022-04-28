@@ -39,9 +39,9 @@ public class TcpRequestPayload implements Serializable {
             this.fsOperationArguments = new HashMap<>();
     }
 
-    public HashMap<String, Object> getFsOperationArguments() { return this.fsOperationArguments; }
-
     private TcpRequestPayload() { }
+
+    public HashMap<String, Object> getFsOperationArguments() { return this.fsOperationArguments; }
 
     public String getRequestId() {
         return requestId;

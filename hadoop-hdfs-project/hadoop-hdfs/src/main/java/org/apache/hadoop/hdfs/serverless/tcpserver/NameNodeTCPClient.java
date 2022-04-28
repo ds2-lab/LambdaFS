@@ -314,6 +314,8 @@ public class NameNodeTCPClient {
                     return; // Make sure to return, or else we'll send an empty message to the client.
                 }
                 else {
+                    LOG.error("[TCP Client] Received object of unexpected type from client " + connection
+                                    + ". Object type: " + object.getClass().getSimpleName() + ".");
                     // Create and log the exception to be returned to the client,
                     // so they know they sent the wrong thing.
                     IllegalArgumentException ex = new IllegalArgumentException(
@@ -571,9 +573,7 @@ public class NameNodeTCPClient {
 
         if (LOG.isDebugEnabled())
             LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP() + " now...");
-        int bytesSent = tcpClient.sendTCP(registration.toString());
-        //LOG.debug("Sent " + bytesSent + " bytes to HopsFS client at " +  tcpClient.getRemoteAddressTCP() +
-        //        " during registration.");
+        tcpClient.sendTCP(registration.toString());
     }
 
     /**

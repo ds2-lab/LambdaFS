@@ -8,11 +8,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JsonTaskArguments implements TaskArguments {
-    private final JsonObject taskArguments;
+    private static final long serialVersionUID = -7372353152738283764L;
+
+    private JsonObject taskArguments;
 
     public JsonTaskArguments(JsonObject taskArguments) {
         this.taskArguments = taskArguments;
     }
+
+    private JsonTaskArguments() { }
 
     @Override
     public boolean contains(String key) {
