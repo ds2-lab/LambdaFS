@@ -183,6 +183,7 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.info("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
             LOG.debug("Top-level OpenWhisk arguments: " + args);
             LOG.debug("User-passed OpenWhisk arguments: " + userArguments);
+            LOG.debug("Benchmarking Mode: " + (benchmarkModeEnabled ? "ENABLED" : "DISABLED"));
             LOG.debug("Action memory: " + actionMemory + "MB");
             LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
             LOG.debug("Client's name: " + clientName);
@@ -268,11 +269,13 @@ public class OpenWhiskHandler extends BaseHandler {
                                          boolean benchmarkModeEnabled) {
         NameNodeResult result;
 
-        if (!benchmarkModeEnabled) {
+        if (benchmarkModeEnabled) {
+            LOG.debug("Creating instance of NameNodeResult (i.e., NO metrics).");
+            result = new NameNodeResult(requestId, op);
+        } else {
+            LOG.debug("Creating instance of NameNodeResultWithMetrics.");
             result = new NameNodeResultWithMetrics(ServerlessNameNode.getFunctionNumberFromFunctionName(functionName),
                     requestId, "HTTP", -1, op);
-        } else {
-            result = new NameNodeResult(requestId, op);
         }
 
         if (LOG.isDebugEnabled()) LOG.debug("======== Getting or Creating Serverless NameNode Instance ========");

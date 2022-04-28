@@ -321,8 +321,7 @@ public class NameNodeTCPClient {
                     IllegalArgumentException ex = new IllegalArgumentException(
                             "[TCP Client] Received object of unexpected type from client " + connection
                                     + ". Object type: " + object.getClass().getSimpleName() + ": " + object);
-                    tcpResult = new NameNodeResultWithMetrics(deploymentNumber, "N/A", "TCP",
-                            serverlessNameNode.getId(), "N/A");
+                    tcpResult = new NameNodeResult("N/A", "N/A");
                     tcpResult.addException(ex);
                 }
 
@@ -513,14 +512,14 @@ public class NameNodeTCPClient {
 
         boolean benchmarkingModeEnabled = args.isBenchmarkingModeEnabled();
         if (benchmarkingModeEnabled) {
-            NameNodeResultWithMetrics tcpResult = new NameNodeResultWithMetrics(deploymentNumber, requestId,
-                    "TCP", serverlessNameNode.getId(), op);
-            tcpResult.setFnStartTime(startTime);
+            NameNodeResult tcpResult = new NameNodeResult(requestId, op);
             serverlessNameNode.getExecutionManager().tryExecuteTask(
                     requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
             return tcpResult;
         } else {
-            NameNodeResult tcpResult = new NameNodeResult(requestId, op);
+            NameNodeResultWithMetrics tcpResult = new NameNodeResultWithMetrics(deploymentNumber, requestId,
+                    "TCP", serverlessNameNode.getId(), op);
+            tcpResult.setFnStartTime(startTime);
             serverlessNameNode.getExecutionManager().tryExecuteTask(
                     requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
             return tcpResult;
