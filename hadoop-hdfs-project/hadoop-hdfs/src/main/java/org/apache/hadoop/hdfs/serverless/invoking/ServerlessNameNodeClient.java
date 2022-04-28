@@ -1274,7 +1274,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("masked", masked.toShort());
         opArguments.put(ServerlessNameNodeKeys.CLIENT_NAME, dfsClient.clientName);
 
-        // Convert this argument (to the 'create' function) to a String so we can send it over JSON.
+        // Convert this argument (to the 'create' function) to a String so that we can send it over JSON.
         DataOutputBuffer out = new DataOutputBuffer();
         ObjectWritable.writeObject(out, flag, flag.getClass(), null);
         byte[] objectBytes = out.getData();

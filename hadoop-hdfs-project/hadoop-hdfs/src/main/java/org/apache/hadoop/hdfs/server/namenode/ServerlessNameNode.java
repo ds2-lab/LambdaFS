@@ -1661,13 +1661,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     FsPermission masked = new FsPermission(permissionAsShort);
     String clientName = fsArgs.getString("clientName"); // fsArgs.getAsJsonPrimitive("clientName").getAsString();
 
-//    byte[] enumSetSerialized = Base64.decodeBase64(fsArgs.getAsJsonPrimitive("enumSetBase64").getAsString());
-//
-//    DataInputBuffer dataInput = new DataInputBuffer();
-//    dataInput.reset(enumSetSerialized, enumSetSerialized.length);
-//    EnumSet<CreateFlag> flag = ((EnumSetWritable<CreateFlag>) ObjectWritable.readObject(dataInput, null)).get();
+    //byte[] enumSetSerialized = Base64.decodeBase64(fsArgs.getAsJsonPrimitive("enumSetBase64").getAsString());
+    byte[] enumSetSerialized = Base64.decodeBase64(fsArgs.getString("enumSetBase64"));
 
-    EnumSet<CreateFlag> flag = fsArgs.getObject("enumSetBase64");
+    DataInputBuffer dataInput = new DataInputBuffer();
+    dataInput.reset(enumSetSerialized, enumSetSerialized.length);
+    EnumSet<CreateFlag> flag = ((EnumSetWritable<CreateFlag>) ObjectWritable.readObject(dataInput, null)).get();
 
     boolean createParent = fsArgs.getBoolean("createParent"); // fsArgs.getAsJsonPrimitive("createParent").getAsBoolean();
     short replication = fsArgs.getShort("replication"); // fsArgs.getAsJsonPrimitive("replication").getAsShort();
