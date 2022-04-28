@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 
 public class HashMapTaskArguments implements TaskArguments {
-    private static final long serialVersionUID = -8937668880767586967L;
     private HashMap<String, Object> taskArguments;
 
     public HashMapTaskArguments(HashMap<String, Object> taskArguments) {

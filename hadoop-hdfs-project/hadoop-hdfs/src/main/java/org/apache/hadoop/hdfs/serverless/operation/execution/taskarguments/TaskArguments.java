@@ -7,7 +7,7 @@ import java.util.List;
  * Interface that enables us to transparently use {@link com.google.gson.JsonObject} and {@link java.util.HashMap}
  * objects to deliver the arguments to the file system operations.
  */
-public interface TaskArguments extends Serializable {
+public interface TaskArguments {
     boolean contains(String key);
 
     String getString(String key);

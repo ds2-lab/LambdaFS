@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JsonTaskArguments implements TaskArguments {
-    private static final long serialVersionUID = -7372353152738283764L;
-
     private JsonObject taskArguments;
 
     public JsonTaskArguments(JsonObject taskArguments) {

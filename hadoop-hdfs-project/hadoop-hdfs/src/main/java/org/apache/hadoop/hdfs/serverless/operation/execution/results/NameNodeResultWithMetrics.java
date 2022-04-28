@@ -135,7 +135,7 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
     private long numGarbageCollections;
 
     /**
-     * The approximate time, in milliseconds, that has elapsed during collections while the NN executed this task.
+     * The approximate time, in milliseconds, that has elapsed during GCs while the NN executed this task.
      *
      * This initially set to the elapsed time until the point at which the NN begins executing the task associated with
      * this NameNodeResult instance. This value is then used to compute the elapsed time during collections while the

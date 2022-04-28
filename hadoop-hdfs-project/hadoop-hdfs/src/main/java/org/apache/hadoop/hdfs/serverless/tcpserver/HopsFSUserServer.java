@@ -655,7 +655,7 @@ public class HopsFSUserServer {
         incompleteFutures.add(requestResponseFuture);
         futureToNameNodeMapping.put(requestId, tcpConnection);
 
-        tcpConnection.sendTCP(payload.toString());
+        tcpConnection.sendTCP(payload);
 
         return requestResponseFuture;
     }
