@@ -315,12 +315,12 @@ public class NameNodeTCPClient {
                 }
                 else {
                     LOG.error("[TCP Client] Received object of unexpected type from client " + connection
-                                    + ". Object type: " + object.getClass().getSimpleName() + ".");
+                                    + ". Object type: " + object.getClass().getSimpleName() + ": " + object);
                     // Create and log the exception to be returned to the client,
                     // so they know they sent the wrong thing.
                     IllegalArgumentException ex = new IllegalArgumentException(
                             "[TCP Client] Received object of unexpected type from client " + connection
-                                    + ". Object type: " + object.getClass().getSimpleName() + ".");
+                                    + ". Object type: " + object.getClass().getSimpleName() + ": " + object);
                     tcpResult = new NameNodeResultWithMetrics(deploymentNumber, "N/A", "TCP",
                             serverlessNameNode.getId(), "N/A");
                     tcpResult.addException(ex);
