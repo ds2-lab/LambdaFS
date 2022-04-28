@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 
 import java.util.ArrayList;
@@ -33,6 +34,12 @@ public class JsonTaskArguments implements TaskArguments {
 
         String base64Encoded = taskArguments.getAsJsonPrimitive(key).getAsString();
         return (T) InvokerUtilities.base64StringToObject(base64Encoded);
+    }
+
+    @Override
+    public byte[] getByteArray(String key) {
+        String base64Encoded = taskArguments.getAsJsonPrimitive(key).getAsString();
+        return Base64.decodeBase64(base64Encoded);
     }
 
     @Override

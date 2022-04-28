@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments;
 
 import com.google.gson.JsonArray;
+import org.apache.commons.codec.binary.Base64;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,12 +27,17 @@ public class HashMapTaskArguments implements TaskArguments {
 
     @Override
     public <T> T[] getObjectArray(String key) {
-        return (T[])taskArguments.get(key);
+        return getObject(key);
     }
 
     @Override
     public <T> T getObject(String key) {
         return (T)taskArguments.get(key);
+    }
+
+    @Override
+    public byte[] getByteArray(String key) {
+        return getObject(key);
     }
 
     @Override
@@ -41,7 +47,7 @@ public class HashMapTaskArguments implements TaskArguments {
 
     @Override
     public <T> List<T> getList(String key) {
-        return (List<T>)taskArguments.get(key);
+        return getObject(key);
     }
 
     @Override

@@ -22,6 +22,8 @@ public interface TaskArguments {
 
     String[] getStringArray(String key);
 
+    byte[] getByteArray(String key);
+
     int getInt(String key);
 
     short getShort(String key);
