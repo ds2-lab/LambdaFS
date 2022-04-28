@@ -7,8 +7,6 @@ import java.util.List;
  * objects to deliver the arguments to the file system operations.
  */
 public interface TaskArguments {
-    Object get(String key);
-
     boolean contains(String key);
 
     String getString(String key);
@@ -19,9 +17,13 @@ public interface TaskArguments {
 
     <T> List<T> getList(String key);
 
-    <T> T[] getArray(String key);
+    <T> T[] getObjectArray(String key);
+
+    String[] getStringArray(String key);
 
     int getInt(String key);
+
+    short getShort(String key);
 
     boolean getBoolean(String key);
 }

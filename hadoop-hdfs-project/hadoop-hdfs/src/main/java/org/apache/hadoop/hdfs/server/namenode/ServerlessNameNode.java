@@ -1257,7 +1257,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     long fileId = fsArgs.getLong("fileId"); // fsArgs.getAsJsonPrimitive("fileId").getAsLong();
 
-    String[] favoredNodes = fsArgs.getArray("favoredNodes");
+    String[] favoredNodes = fsArgs.getStringArray("favoredNodes");
 
 //    if (fsArgs.contains("favoredNodes")) {
 //      JsonArray favoredNodesJsonArray = fsArgs.getAsJsonArray("favoredNodes");
@@ -1277,7 +1277,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //      previous = fsArgs.getObject("previous");;
 //    }
 
-    DatanodeInfo[] excludeNodes = fsArgs.getArray("excludedNodes");
+    DatanodeInfo[] excludeNodes = fsArgs.getObjectArray("excludedNodes");
 //    if (fsArgs.contains("excludeNodes")) {
 //      // Decode and deserialize the DatanodeInfo[].
 ////      JsonArray excludedNodesJsonArray = fsArgs.getAsJsonArray("excludeNodes");
@@ -1554,7 +1554,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //      srcs[i] = src;
 //    }
 
-    String[] srcs = fsArgs.getArray("srcsArr");
+    String[] srcs = fsArgs.getStringArray("srcsArr");
 
     namesystem.concat(trg, srcs);
   }
@@ -1655,7 +1655,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     //LOG.info("Unpacking arguments for the CREATE operation now...");
 
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
-    short permissionAsShort = fsArgs.getObject("masked"); // fsArgs.getAsJsonPrimitive("masked").getAsShort();
+    short permissionAsShort = fsArgs.getShort("masked"); // fsArgs.getAsJsonPrimitive("masked").getAsShort();
     FsPermission masked = new FsPermission(permissionAsShort);
     String clientName = fsArgs.getString("clientName"); // fsArgs.getAsJsonPrimitive("clientName").getAsString();
 
@@ -1665,10 +1665,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //    dataInput.reset(enumSetSerialized, enumSetSerialized.length);
 //    EnumSet<CreateFlag> flag = ((EnumSetWritable<CreateFlag>) ObjectWritable.readObject(dataInput, null)).get();
 
-    EnumSetWritable<CreateFlag> flag = fsArgs.getObject(enumSetBase64);
+    EnumSet<CreateFlag> flag = fsArgs.getObject("enumSetBase64");
 
     boolean createParent = fsArgs.getBoolean("createParent"); // fsArgs.getAsJsonPrimitive("createParent").getAsBoolean();
-    short replication = fsArgs.getObject("replication"); // fsArgs.getAsJsonPrimitive("replication").getAsShort();
+    short replication = fsArgs.getShort("replication"); // fsArgs.getAsJsonPrimitive("replication").getAsShort();
     long blockSize = fsArgs.getLong("blockSize"); // fsArgs.getAsJsonPrimitive("blockSize").getAsLong();
     CryptoProtocolVersion[] supportedVersions = CryptoProtocolVersion.supported();
 
@@ -1676,7 +1676,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     boolean policyExists = fsArgs.getBoolean("policyExists"); // fsArgs.getAsJsonPrimitive("policyExists").getAsBoolean();
     if (policyExists) {
       String codec = fsArgs.getString("codec"); // fsArgs.getAsJsonPrimitive("codec").getAsString();
-      short targetReplication = fsArgs.getObject("targetReplication"); // fsArgs.getAsJsonPrimitive("targetReplication").getAsShort();
+      short targetReplication = fsArgs.getShort("targetReplication"); // fsArgs.getAsJsonPrimitive("targetReplication").getAsShort();
       policy = new EncodingPolicy(codec, targetReplication);
     }
 
@@ -1694,7 +1694,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
             src, new PermissionStatus(getRemoteUser().getShortUserName(), null, masked),
             clientName, clientMachine, flag, createParent, replication, blockSize, supportedVersions);
 
-    // Currently impossible to pass null for EncodingPolicy, but pretending it's possible for now...
+    // Currently, it is impossible to pass null for EncodingPolicy, but pretending it's possible for now...
     if (policy != null) {
       if (!namesystem.isErasureCodingEnabled()) {
         throw new IOException("Requesting encoding although erasure coding was disabled");
@@ -1779,7 +1779,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     String dst = fsArgs.getString("dst"); // fsArgs.getAsJsonPrimitive("dst").getAsString();
 
-    org.apache.hadoop.fs.Options.Rename[] options = fsArgs.getArray("options");
+    org.apache.hadoop.fs.Options.Rename[] options = fsArgs.getObjectArray("options");
 //    JsonArray optionsArr = fsArgs.getAsJsonArray("options");
 //
 //    org.apache.hadoop.fs.Options.Rename[] options = new org.apache.hadoop.fs.Options.Rename[optionsArr.size()];
@@ -3504,13 +3504,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     EntityManager.toggleLocalMetadataCache(false);
     String clientName = fsArgs.getString(CLIENT_NAME); // fsArgs.getAsJsonPrimitive(CLIENT_NAME).getAsString();
 
-    ExtendedBlock block = null;
-    if (fsArgs.contains("block")) {
-//      String blockBase64 = fsArgs.getAsJsonPrimitive("block").getAsString();
-//      block = (ExtendedBlock) InvokerUtilities.base64StringToObject(blockBase64);
-
-      block = fsArgs.getObject("block");
-    }
+    ExtendedBlock block = fsArgs.getObject("block");
+//    if (fsArgs.contains("block")) {
+////      String blockBase64 = fsArgs.getAsJsonPrimitive("block").getAsString();
+////      block = (ExtendedBlock) InvokerUtilities.base64StringToObject(blockBase64);
+//
+//      block =
+//    }
 
     return namesystem.updateBlockForPipeline(block, clientName);
   }
@@ -3537,7 +3537,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //      newBlock = fsArgs.getObject("newBlock");
 //    }
 
-    DatanodeID[] newNodes = fsArgs.getArray("newNodes"); //ServerlessUtilities.<DatanodeID>deserializeArgumentArray("newNodes", fsArgs);
+    DatanodeID[] newNodes = fsArgs.getObjectArray("newNodes"); //ServerlessUtilities.<DatanodeID>deserializeArgumentArray("newNodes", fsArgs);
 //    if (fsArgs.contains("newNodes")) {
 //      // Decode and deserialize the DatanodeInfo[].
 //      JsonArray newNodesJsonArray = fsArgs.getAsJsonArray("newNodes");
