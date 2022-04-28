@@ -1286,7 +1286,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put("replication", 1);
         opArguments.put("blockSize", blockSize);
 
-        // Include a flag to indicate whether or not the policy is non-null.
+        // Include a flag to indicate whether the policy is non-null.
         opArguments.put("policyExists", policy != null);
 
         // Only include these if the policy is non-null.

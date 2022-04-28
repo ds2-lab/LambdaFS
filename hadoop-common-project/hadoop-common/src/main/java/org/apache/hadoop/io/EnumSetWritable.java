@@ -21,6 +21,7 @@ package org.apache.hadoop.io;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.AbstractCollection;
@@ -34,8 +35,9 @@ import org.apache.hadoop.conf.Configuration;
 @InterfaceAudience.Public
 @InterfaceStability.Stable
 public class EnumSetWritable<E extends Enum<E>> extends AbstractCollection<E>
-  implements Writable, Configurable  {
+  implements Writable, Configurable, Serializable {
 
+  private static final long serialVersionUID = 192845453880805910L;
   private EnumSet<E> value;
 
   private transient Class<E> elementType;
