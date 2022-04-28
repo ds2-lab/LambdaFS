@@ -487,7 +487,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String requestId = UUID.randomUUID().toString();
 
         TcpRequestPayload tcpRequestPayload = new TcpRequestPayload(requestId, operationName,
-                consistencyProtocolEnabled, serverlessFunctionLogLevel, opArguments.getAllArguments());
+                consistencyProtocolEnabled, serverlessFunctionLogLevel, opArguments.getAllArguments(),
+                benchmarkModeEnabled);
 
 //        JsonObject payload = new JsonObject();
 //        payload.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
