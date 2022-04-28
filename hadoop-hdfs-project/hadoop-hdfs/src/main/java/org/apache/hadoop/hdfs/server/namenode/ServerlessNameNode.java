@@ -1427,8 +1427,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     boolean needLocation = fsArgs.getBoolean("needLocation"); // fsArgs.getAsJsonPrimitive("needLocation").getAsBoolean();
 
-    String startAfterBase64 = fsArgs.getString("startAfter"); // fsArgs.getAsJsonPrimitive("startAfter").getAsString();
-    byte[] startAfter = Base64.decodeBase64(startAfterBase64);
+//    String startAfterBase64 = fsArgs.getString("startAfter"); // fsArgs.getAsJsonPrimitive("startAfter").getAsString();
+//    byte[] startAfter = Base64.decodeBase64(startAfterBase64);
+
+    byte[] startAfter = fsArgs.getObject("startAfter");
 
     DirectoryListing files =
             namesystem.getListing(src, startAfter, needLocation);

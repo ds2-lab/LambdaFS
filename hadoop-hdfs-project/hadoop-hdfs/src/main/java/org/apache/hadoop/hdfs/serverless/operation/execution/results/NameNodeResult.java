@@ -21,6 +21,7 @@ import org.apache.hadoop.hdfs.serverless.cache.ReplicaCacheManager;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
+import org.checkerframework.checker.units.qual.A;
 import org.checkerframework.common.returnsreceiver.qual.This;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,6 +102,7 @@ public class NameNodeResult implements Serializable {
     public NameNodeResult(String requestId, String operationName) {
         this.requestId = requestId;
         this.operationName = operationName;
+        this.exceptions = new ArrayList<>();
     }
 
     protected NameNodeResult() { }
