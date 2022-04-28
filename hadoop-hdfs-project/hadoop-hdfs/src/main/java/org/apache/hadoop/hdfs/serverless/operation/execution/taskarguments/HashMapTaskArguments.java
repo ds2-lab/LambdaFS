@@ -23,7 +23,7 @@ public class HashMapTaskArguments implements TaskArguments {
     }
 
     @Override
-    public <T> T[] getArray(String key) {
+    public <T> T[] getObjectArray(String key) {
         return (T[])taskArguments.get(key);
     }
 
