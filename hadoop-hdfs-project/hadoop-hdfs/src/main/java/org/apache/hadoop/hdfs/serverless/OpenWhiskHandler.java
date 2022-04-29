@@ -154,10 +154,10 @@ public class OpenWhiskHandler extends BaseHandler {
         JsonObject fsArgs = userArguments.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
         
         if (userArguments.has(LOG_LEVEL)) {
-            String logLevel = userArguments.get(LOG_LEVEL).getAsString();
+            int logLevel = userArguments.get(LOG_LEVEL).getAsInt();
             // LOG.debug("Setting log4j log level to: " + logLevel + ".");
 
-            LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
+            LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
         }
 
         if (userArguments.has(CONSISTENCY_PROTOCOL_ENABLED)) {
@@ -379,6 +379,46 @@ public class OpenWhiskHandler extends BaseHandler {
 
        LOG.error("Unknown log level specified: '" + level + "'. Defaulting to 'debug'.");
        return Level.DEBUG;
+    }
+
+    public static org.apache.log4j.Level getLogLevelFromInteger(int level) {
+        if (level == 0)
+            return Level.INFO;
+        else if (level == 1)
+            return Level.DEBUG;
+        else if (level == 2)
+            return Level.WARN;
+        else if (level == 3)
+            return Level.ERROR;
+        else if (level == 4)
+            return Level.TRACE;
+        else if (level == 5)
+            return Level.FATAL;
+        else if (level == 6)
+            return Level.ALL;
+
+        LOG.error("Unknown log level specified: '" + level + "'. Defaulting to 'debug'.");
+        return Level.DEBUG;
+    }
+
+    public static int getLogLevelIntFromString(String level) {
+        if (level.equalsIgnoreCase("info"))
+            return 0;
+        else if (level.equalsIgnoreCase("debug"))
+            return 1;
+        else if (level.equalsIgnoreCase("warn"))
+            return 2;
+        else if (level.equalsIgnoreCase("error"))
+            return 3;
+        else if (level.equalsIgnoreCase("trace"))
+            return 4;
+        else if (level.equalsIgnoreCase("fatal"))
+            return 5;
+        else if (level.equalsIgnoreCase("all"))
+            return 6;
+
+        LOG.error("Unknown log level specified: '" + level + "'. Defaulting to 'debug'.");
+        return 1;
     }
 
     /**

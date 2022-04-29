@@ -1,5 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
+import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
+
 import java.io.Serializable;
 import java.util.HashMap;
 
@@ -20,12 +22,12 @@ public class TcpRequestPayload implements Serializable {
 
     private boolean consistencyProtocolEnabled;
 
-    private String serverlessFunctionLogLevel;
+    private int serverlessFunctionLogLevel;
 
     private boolean benchmarkingModeEnabled;
 
     public TcpRequestPayload(String requestId, String operationName, boolean consistencyProtocolEnabled,
-                             String serverlessFunctionLogLevel, HashMap<String, Object> fsOperationArguments,
+                             int serverlessFunctionLogLevel, HashMap<String, Object> fsOperationArguments,
                              boolean benchmarkingModeEnabled) {
         this.requestId = requestId;
         this.operationName = operationName;
@@ -55,7 +57,7 @@ public class TcpRequestPayload implements Serializable {
         return consistencyProtocolEnabled;
     }
 
-    public String getServerlessFunctionLogLevel() {
+    public int getServerlessFunctionLogLevel() {
         return serverlessFunctionLogLevel;
     }
 

@@ -151,6 +151,8 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
         this.requestMethod = requestMethod;
 
         List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+        this.numGarbageCollections = 0L;
+        this.garbageCollectionTime = 0L;
         for (GarbageCollectorMXBean mxBean : mxBeans) {
             long count = mxBean.getCollectionCount();
             long time  = mxBean.getCollectionTime();

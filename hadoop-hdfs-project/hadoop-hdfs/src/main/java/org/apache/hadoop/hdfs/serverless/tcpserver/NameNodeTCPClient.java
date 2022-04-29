@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 
+import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromInteger;
 import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromString;
 
 /**
@@ -506,9 +507,8 @@ public class NameNodeTCPClient {
         HashMap<String, Object> fsArgs = args.getFsOperationArguments();
         ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.isConsistencyProtocolEnabled();
 
-        String logLevel = args.getServerlessFunctionLogLevel();
-        if (logLevel != null)
-            LogManager.getRootLogger().setLevel(getLogLevelFromString(logLevel));
+        int logLevel = args.getServerlessFunctionLogLevel();
+        LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
 
         boolean benchmarkingModeEnabled = args.isBenchmarkingModeEnabled();
         if (benchmarkingModeEnabled) {

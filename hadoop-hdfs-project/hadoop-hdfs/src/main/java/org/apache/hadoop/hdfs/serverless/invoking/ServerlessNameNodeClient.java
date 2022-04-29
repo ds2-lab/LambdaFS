@@ -29,6 +29,7 @@ import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifie
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
+import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
@@ -487,8 +488,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String requestId = UUID.randomUUID().toString();
 
         TcpRequestPayload tcpRequestPayload = new TcpRequestPayload(requestId, operationName,
-                consistencyProtocolEnabled, serverlessFunctionLogLevel, opArguments.getAllArguments(),
-                benchmarkModeEnabled);
+                consistencyProtocolEnabled, OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel),
+                opArguments.getAllArguments(), benchmarkModeEnabled);
 
 //        JsonObject payload = new JsonObject();
 //        payload.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);

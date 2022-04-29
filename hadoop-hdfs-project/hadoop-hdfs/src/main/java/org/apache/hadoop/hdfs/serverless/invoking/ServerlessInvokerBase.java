@@ -8,6 +8,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
@@ -853,7 +854,7 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArgumentsJson.addProperty(TCP_ENABLED, tcpEnabled);
         nameNodeArgumentsJson.addProperty(LOCAL_MODE, localMode);
         nameNodeArgumentsJson.addProperty(CONSISTENCY_PROTOCOL_ENABLED, consistencyProtocolEnabled);
-        nameNodeArgumentsJson.addProperty(LOG_LEVEL, serverlessFunctionLogLevel);
+        nameNodeArgumentsJson.addProperty(LOG_LEVEL, OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel));
     }
 
     ///////////////////////
