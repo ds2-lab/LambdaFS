@@ -411,60 +411,62 @@ public class NameNodeTCPClient {
      * @param payload The object to send.
      */
     private void trySendTcp(Connection connection, NameNodeResult payload) {
-        double currentCapacity = ((double) connection.getTcpWriteBufferSize()) / ((double) writeBufferSize);
-        if (currentCapacity >= 0.9) {
-            LOG.warn("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
-                    " is at " + (currentCapacity * 100) + "% capacity! Enqueuing payload to send later...");
-            connection.addListener(new TcpIdleSender() {
-                boolean _started = false;
-                NameNodeResult enqueuedObject = payload;
-
-                @Override
-                protected NameNodeResult next() {
-                    if (LOG.isDebugEnabled())
-                        LOG.debug("[TCP Client] Write buffer for connection " +  connection.getRemoteAddressTCP() +
-                                " has reached 'idle' capacity. Sending buffered object now.");
-                    NameNodeResult toReturn = enqueuedObject;
-
-                    // Set this to null before we return so that we cannot get stuck in a loop of returning this
-                    // object from this listener. This is just a safeguard; that loop scenario should never occur.
-                    enqueuedObject = null;
-                    return toReturn;
-                }
-
-                @Override
-                public void idle(Connection connection) {
-                    if (!_started) {    // This part is just from the original idle() method that I'm overloading.
-                                        // I'm really not sure what it does or why it exists, as the start()
-                                        // function doesn't actually do anything...
-                        _started = true;
-                        start();
-                    }
-                    // So, first we remove this listener from the connection so that it never activates again.
-                    connection.removeListener(this);
-
-                    // Next, retrieve the enqueued object to send to the client.
-                    NameNodeResult object = next();
-
-                    // If the enqueued object is NOT null, then we will try to send it. This is sort of a recursive
-                    // call, since this listener was created within the trySendTcp() function. But we've already
-                    // removed this listener from the connection, so we'll effectively go away once this idle()
-                    // function exits. We just don't want to send the object without making sure the buffer is
-                    // still clear. So, we try again. If it fails again, then at least this object gets enqueued,
-                    // so it should eventually make it to the client.
-                    if (object != null) {
-                        trySendTcp(connection, object);
-                    }
-                }
-            });
-        }
-        else {
-//            if (LOG.isDebugEnabled())
-//                LOG.debug("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
-//                        " is at " + (currentCapacity * 100) + "% capacity! Sending payload immediately.");
-            payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
-            sendTcp(connection, payload);
-        }
+//        double currentCapacity = ((double) connection.getTcpWriteBufferSize()) / ((double) writeBufferSize);
+//        if (currentCapacity >= 0.9) {
+//            LOG.warn("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
+//                    " is at " + (currentCapacity * 100) + "% capacity! Enqueuing payload to send later...");
+//            connection.addListener(new TcpIdleSender() {
+//                boolean _started = false;
+//                NameNodeResult enqueuedObject = payload;
+//
+//                @Override
+//                protected NameNodeResult next() {
+//                    if (LOG.isDebugEnabled())
+//                        LOG.debug("[TCP Client] Write buffer for connection " +  connection.getRemoteAddressTCP() +
+//                                " has reached 'idle' capacity. Sending buffered object now.");
+//                    NameNodeResult toReturn = enqueuedObject;
+//
+//                    // Set this to null before we return so that we cannot get stuck in a loop of returning this
+//                    // object from this listener. This is just a safeguard; that loop scenario should never occur.
+//                    enqueuedObject = null;
+//                    return toReturn;
+//                }
+//
+//                @Override
+//                public void idle(Connection connection) {
+//                    if (!_started) {    // This part is just from the original idle() method that I'm overloading.
+//                                        // I'm really not sure what it does or why it exists, as the start()
+//                                        // function doesn't actually do anything...
+//                        _started = true;
+//                        start();
+//                    }
+//                    // So, first we remove this listener from the connection so that it never activates again.
+//                    connection.removeListener(this);
+//
+//                    // Next, retrieve the enqueued object to send to the client.
+//                    NameNodeResult object = next();
+//
+//                    // If the enqueued object is NOT null, then we will try to send it. This is sort of a recursive
+//                    // call, since this listener was created within the trySendTcp() function. But we've already
+//                    // removed this listener from the connection, so we'll effectively go away once this idle()
+//                    // function exits. We just don't want to send the object without making sure the buffer is
+//                    // still clear. So, we try again. If it fails again, then at least this object gets enqueued,
+//                    // so it should eventually make it to the client.
+//                    if (object != null) {
+//                        trySendTcp(connection, object);
+//                    }
+//                }
+//            });
+//        }
+//        else {
+////            if (LOG.isDebugEnabled())
+////                LOG.debug("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
+////                        " is at " + (currentCapacity * 100) + "% capacity! Sending payload immediately.");
+//            payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
+//            sendTcp(connection, payload);
+//        }
+        payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
+        sendTcp(connection, payload);
     }
 
     /**
