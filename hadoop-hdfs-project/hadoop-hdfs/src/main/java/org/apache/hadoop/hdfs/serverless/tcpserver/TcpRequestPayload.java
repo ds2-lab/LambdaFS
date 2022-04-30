@@ -16,15 +16,37 @@ public class TcpRequestPayload implements Serializable {
      */
     private HashMap<String, Object> fsOperationArguments;
 
+    /**
+     * Unique ID of the request/task associated with this instance.
+     */
     private String requestId;
 
+    /**
+     * The name of the FS operation to be performed.
+     */
     private String operationName;
 
+    /**
+     * Controls whether the NN performs the consistency protocol or not.
+     */
     private boolean consistencyProtocolEnabled;
 
+    /**
+     * Sets the log4j log-level in the NameNode.
+     */
     private int serverlessFunctionLogLevel;
 
+    /**
+     * Controls whether the NameNode collects metric data or not.
+     */
     private boolean benchmarkingModeEnabled;
+
+    /**
+     * Indicates whether the operation has been cancelled.
+     *
+     * This is transient because it is only used client-side and thus does not need to be serialized.
+     */
+    private transient boolean cancelled = false;
 
     public TcpRequestPayload(String requestId, String operationName, boolean consistencyProtocolEnabled,
                              int serverlessFunctionLogLevel, HashMap<String, Object> fsOperationArguments,
@@ -62,6 +84,10 @@ public class TcpRequestPayload implements Serializable {
     }
 
     public boolean isBenchmarkingModeEnabled() { return benchmarkingModeEnabled; }
+
+    public boolean isCancelled() { return cancelled; }
+
+    public void setCancelled(boolean cancelled) { this.cancelled = cancelled; }
 
     @Override
     public String toString() {

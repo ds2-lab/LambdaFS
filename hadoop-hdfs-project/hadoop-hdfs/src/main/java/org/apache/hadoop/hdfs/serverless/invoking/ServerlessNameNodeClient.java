@@ -487,16 +487,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         long opStart = System.currentTimeMillis();
         String requestId = UUID.randomUUID().toString();
 
+        // This contains the file system operation arguments (and everything else) that will be submitted to the NN.
         TcpRequestPayload tcpRequestPayload = new TcpRequestPayload(requestId, operationName,
                 consistencyProtocolEnabled, OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel),
                 opArguments.getAllArguments(), benchmarkModeEnabled);
-
-//        JsonObject payload = new JsonObject();
-//        payload.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
-//        payload.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
-//        payload.addProperty(CONSISTENCY_PROTOCOL_ENABLED, consistencyProtocolEnabled);
-//        payload.addProperty(LOG_LEVEL, serverlessFunctionLogLevel);
-//        payload.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, opArguments.convertToJsonObject());
 
         boolean stragglerResubmissionAlreadyOccurred = false;
         boolean wasResubmittedViaStragglerMitigation = false;
