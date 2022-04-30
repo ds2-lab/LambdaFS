@@ -44,19 +44,24 @@ public class ExecutionManager {
      */
     private final ServerlessNameNode serverlessNameNodeInstance;
 
-    /**
-     * All tasks that are currently being executed. For now, we only ever execute one task at a time.
-     */
+//    /**
+//     * All tasks that are currently being executed. For now, we only ever execute one task at a time.
+//     */
     //private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
     //private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
-    private Set<String> currentlyExecutingTasks;
+    //private Set<String> currentlyExecutingTasks;
 
-    /**
-     * All tasks that have been executed by this worker thread.
-     */
+//    /**
+//     * All tasks that have been executed by this worker thread.
+//     */
     //private final ConcurrentHashMap<String, FileSystemTask<Serializable>> completedTasks;
     //private final Cache<String, FileSystemTask<Serializable>> completedTasks;
-    private Set<String> completedTasks;
+    //private Set<String> completedTasks;
+
+    /**
+     * All the tasks we're either executing or have successfully executed.
+     */
+    private Set<String> seenTasks;
 
     /**
      * Cache of previously-computed results. These results are kept in-memory for a configurable period of time
@@ -150,8 +155,9 @@ public class ExecutionManager {
 //                .expireAfterWrite(45, TimeUnit.SECONDS)
 //                .maximumSize(5_000)
 //                .build();
-        this.currentlyExecutingTasks = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        this.completedTasks = Collections.newSetFromMap(new ConcurrentHashMap<>());
+//        this.currentlyExecutingTasks = Collections.newSetFromMap(new ConcurrentHashMap<>());
+//        this.completedTasks = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        this.seenTasks = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         this.serverlessNameNodeInstance = serverlessNameNode;
         this.writeAcknowledgementsToDelete = new LinkedBlockingQueue<>();
@@ -231,7 +237,8 @@ public class ExecutionManager {
             return;
         } else {
             // currentlyExecutingTasks.put(taskId, task);
-            currentlyExecutingTasks.add(taskId);
+            // currentlyExecutingTasks.add(taskId);
+            seenTasks.add(taskId);
         }
 
         LOG.info("Executing task " + taskId + ", operation: " + operationName + " now.");
@@ -287,14 +294,15 @@ public class ExecutionManager {
         // We only add the task to the `completedTasks` mapping if we executed it successfully.
         // If there was an error, then may be automatically re-submitted by the client.
         if (success) {
-            long s = System.currentTimeMillis();
-            taskCompleted(taskId);
-            long t = System.currentTimeMillis();
-
-            // notifyTaskCompleted() modifies some ConcurrentHashMaps (or possibly Caffeine Cache objects now).
-            // If these operations are taking a long time, then we log a warning about it. They should be fast though.
-            if (t - s > 10)
-                LOG.warn("Notifying completion of task " + taskId + " took " + (t - s) + " ms.");
+            lastTaskExecutedTimestamp.set(System.currentTimeMillis());
+//            long s = System.currentTimeMillis();
+//            taskCompleted(taskId);
+//            long t = System.currentTimeMillis();
+//
+//            // notifyTaskCompleted() modifies some ConcurrentHashMaps (or possibly Caffeine Cache objects now).
+//            // If these operations are taking a long time, then we log a warning about it. They should be fast though.
+//            if (t - s > 10)
+//                LOG.warn("Notifying completion of task " + taskId + " took " + (t - s) + " ms.");
         }
     }
 
@@ -318,7 +326,8 @@ public class ExecutionManager {
             return;
         } else {
             // currentlyExecutingTasks.put(taskId, task);
-            currentlyExecutingTasks.add(taskId);
+            // currentlyExecutingTasks.add(taskId);
+            seenTasks.add(taskId);
         }
 
         LOG.info("Executing task " + taskId + ", operation: " + operationName + " now.");
@@ -369,9 +378,10 @@ public class ExecutionManager {
         // We only add the task to the `completedTasks` mapping if we executed it successfully.
         // If there was an error, then may be automatically re-submitted by the client.
         if (success) {
-            s = System.nanoTime();
-            taskCompleted(taskId);
-            LOG.info("Performed task-completed duties in " + (System.nanoTime() - s) / 1.0e6 + " ms.");
+            lastTaskExecutedTimestamp.set(System.currentTimeMillis());
+//            s = System.nanoTime();
+//            taskCompleted(taskId);
+//            LOG.info("Performed task-completed duties in " + (System.nanoTime() - s) / 1.0e6 + " ms.");
         }
     }
 
@@ -436,34 +446,34 @@ public class ExecutionManager {
         }
     }
 
-    /**
-     * Update internal state that tracks whether a particular task has been completed or not.
-     *
-     * @param task The {@link FileSystemTask} instance that we are marking as completed.
-     */
-    public void taskCompleted(FileSystemTask<Serializable> task) {
-        taskCompleted(task.getTaskId());
-    }
-
-    /**
-     * Update internal state that tracks whether a particular task has been completed or not.
-     *
-     * @param taskId The unique ID of the {@link FileSystemTask} instance that we are marking as completed.
-     */
-    public void taskCompleted(String taskId) {
-        if (taskId == null)
-            throw new IllegalArgumentException("The provided FileSystemTask ID should not be null.");
-
-        // Put it in 'completed tasks' first so that, if we check for duplicate while modifying all this state,
-        // we'll correctly return true. If we removed it from 'currently executing tasks' first, then there could
-        // be a race where the task has been removed from 'currently executing tasks' but not yet added to 'completed
-        // tasks' yet, which could result in false negatives when checking for duplicates.
-        //completedTasks.put(taskId, task);
-        //currentlyExecutingTasks.asMap().remove(taskId);
-        completedTasks.add(taskId);
-        currentlyExecutingTasks.remove(taskId);
-        lastTaskExecutedTimestamp.set(System.currentTimeMillis()); // Update the time at which we last executed a task.
-    }
+//    /**
+//     * Update internal state that tracks whether a particular task has been completed or not.
+//     *
+//     * @param task The {@link FileSystemTask} instance that we are marking as completed.
+//     */
+//    public void taskCompleted(FileSystemTask<Serializable> task) {
+//        taskCompleted(task.getTaskId());
+//    }
+//
+//    /**
+//     * Update internal state that tracks whether a particular task has been completed or not.
+//     *
+//     * @param taskId The unique ID of the {@link FileSystemTask} instance that we are marking as completed.
+//     */
+//    public void taskCompleted(String taskId) {
+//        if (taskId == null)
+//            throw new IllegalArgumentException("The provided FileSystemTask ID should not be null.");
+//
+//        // Put it in 'completed tasks' first so that, if we check for duplicate while modifying all this state,
+//        // we'll correctly return true. If we removed it from 'currently executing tasks' first, then there could
+//        // be a race where the task has been removed from 'currently executing tasks' but not yet added to 'completed
+//        // tasks' yet, which could result in false negatives when checking for duplicates.
+//        //completedTasks.put(taskId, task);
+//        //currentlyExecutingTasks.asMap().remove(taskId);
+//        //completedTasks.add(taskId);
+//        //currentlyExecutingTasks.remove(taskId);
+//        lastTaskExecutedTimestamp.set(System.currentTimeMillis()); // Update the time at which we last executed a task.
+//    }
 
 //    /**
 //     * Store the result {@code previousResult} of the task identified by {@code taskId}.
@@ -495,7 +505,8 @@ public class ExecutionManager {
     public synchronized boolean isTaskDuplicate(String taskId) {
         //return currentlyExecutingTasks.asMap().containsKey(taskId) || completedTasks.asMap().containsKey(taskId);
         //return currentlyExecutingTasks.containsKey(taskId) || completedTasks.containsKey(taskId);
-        return currentlyExecutingTasks.contains(taskId) || completedTasks.contains(taskId);
+        // return currentlyExecutingTasks.contains(taskId) || completedTasks.contains(taskId);
+        return seenTasks.contains(taskId);
     }
 
 //    /**

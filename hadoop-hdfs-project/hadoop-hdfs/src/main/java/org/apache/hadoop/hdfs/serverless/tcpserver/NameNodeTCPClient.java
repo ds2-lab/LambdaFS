@@ -465,9 +465,9 @@ public class NameNodeTCPClient {
 //            payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
 //            sendTcp(connection, payload);
 //        }
-        long s = System.nanoTime();
+        //long s = System.nanoTime();
         payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
-        LOG.info("Prepared result for transmission in " + ((System.nanoTime() - s) / 1.0e6) + " ms.");
+        //LOG.info("Prepared result for transmission in " + ((System.nanoTime() - s) / 1.0e6) + " ms.");
         sendTcp(connection, payload);
     }
 
