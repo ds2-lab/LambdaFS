@@ -69,8 +69,6 @@ public class TcpTaskFuture implements Future<Object> {
      *
      * @param reason The reason for cancellation.
      * @param shouldRetry If True, then whoever is waiting on this future should resubmit.
-     *
-     * @throws InterruptedException
      */
     public void cancel(String reason, boolean shouldRetry) throws InterruptedException {
         state = State.CANCELLED;

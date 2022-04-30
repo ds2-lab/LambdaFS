@@ -543,6 +543,20 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return new ArrayList<>(localTxEvents);
   }
 
+  public List<TransactionEvent> getAndClearTransactionEvents() {
+    Set<TransactionEvent> localTxEvents = transactionEvents.get();
+
+    if (localTxEvents == null) {
+      localTxEvents = new HashSet<>();
+      transactionEvents.set(localTxEvents);
+    } else {
+      // If they were previously null, then we don't need to call clear.
+      localTxEvents.clear();
+    }
+
+    return new ArrayList<>(localTxEvents);
+  }
+
   public void clearTransactionEvents() {
     Set<TransactionEvent> localTxEvents = transactionEvents.get();
 
