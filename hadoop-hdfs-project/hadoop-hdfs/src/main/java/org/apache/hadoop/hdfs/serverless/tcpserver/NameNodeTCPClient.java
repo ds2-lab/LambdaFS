@@ -465,7 +465,9 @@ public class NameNodeTCPClient {
 //            payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
 //            sendTcp(connection, payload);
 //        }
+        long s = System.nanoTime();
         payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
+        LOG.info("Prepared result for transmission in " + ((System.nanoTime() - s) / 1.0e6) + " ms.");
         sendTcp(connection, payload);
     }
 
@@ -501,6 +503,13 @@ public class NameNodeTCPClient {
         }
     }
 
+    /**
+     * Execute a file system operation request from a client.
+     * @param args The arguments for the function.
+     * @param startTime The time at which we received the request.
+     * @return The result object that we'll ultimately send back to the client. This contains the result of the
+     * FS operation as well as some metric information.
+     */
     private NameNodeResult handleWorkAssignment(TcpRequestPayload args, long startTime) {
         String requestId = args.getRequestId();
         BaseHandler.currentRequestId.set(requestId);
