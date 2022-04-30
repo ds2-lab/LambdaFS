@@ -939,7 +939,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         for (OperationPerformed operationPerformed : opsPerformedList) {
             if (operationPerformed.getIssuedViaHttp()) {
                 double latency = operationPerformed.getLatency();
-                if (latency > 0) {
+                if (latency > 0 && latency < 1e6) {
                     httpStatistics.addValue(latency);
 
                     if (latency >= 150)
@@ -948,7 +948,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             }
             if (operationPerformed.getIssuedViaTcp()) {
                 double latency = operationPerformed.getLatency();
-                if (latency > 0) {
+                if (latency > 0 && latency < 1e6) {
                     tcpStatistics.addValue(latency);
 
                     if (latency >= 150)

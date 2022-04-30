@@ -151,18 +151,18 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
         this.requestMethod = requestMethod;
 
         List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
-        this.numGarbageCollections = 0L;
-        this.garbageCollectionTime = 0L;
-        for (GarbageCollectorMXBean mxBean : mxBeans) {
-            long count = mxBean.getCollectionCount();
-            long time  = mxBean.getCollectionTime();
-
-            if (count > 0)
-                this.numGarbageCollections += count;
-
-            if (time > 0)
-                this.garbageCollectionTime += time;
-        }
+//        this.numGarbageCollections = 0L;
+//        this.garbageCollectionTime = 0L;
+//        for (GarbageCollectorMXBean mxBean : mxBeans) {
+//            long count = mxBean.getCollectionCount();
+//            long time  = mxBean.getCollectionTime();
+//
+//            if (count > 0)
+//                this.numGarbageCollections += count;
+//
+//            if (time > 0)
+//                this.garbageCollectionTime += time;
+//        }
     }
 
     // Empty constructor used for Kryo serialization.
@@ -358,22 +358,22 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
         metadataCache.resetCacheHitMissCounters();
         replicaCacheManager.resetCacheHitMissCounters();
 
-        long numGarbageCollectionsNow = 0L;
-        long garbageCollectionTimeNow = 0L;
-        List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
-        for (GarbageCollectorMXBean mxBean : mxBeans) {
-            long count = mxBean.getCollectionCount();
-            long time  = mxBean.getCollectionTime();
-
-            if (count > 0)
-                numGarbageCollectionsNow += count;
-
-            if (time > 0)
-                garbageCollectionTimeNow += time;
-        }
-
-        numGarbageCollections = numGarbageCollectionsNow - numGarbageCollections;
-        garbageCollectionTime = garbageCollectionTimeNow - garbageCollectionTime;
+//        long numGarbageCollectionsNow = 0L;
+//        long garbageCollectionTimeNow = 0L;
+//        List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+//        for (GarbageCollectorMXBean mxBean : mxBeans) {
+//            long count = mxBean.getCollectionCount();
+//            long time  = mxBean.getCollectionTime();
+//
+//            if (count > 0)
+//                numGarbageCollectionsNow += count;
+//
+//            if (time > 0)
+//                garbageCollectionTimeNow += time;
+//        }
+//
+//        numGarbageCollections = numGarbageCollectionsNow - numGarbageCollections;
+//        garbageCollectionTime = garbageCollectionTimeNow - garbageCollectionTime;
 
         fnEndTime = System.currentTimeMillis();
     }
@@ -435,22 +435,22 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
             json.add(DEPLOYMENT_MAPPING, functionMapping);
         }
 
-        long numGarbageCollectionsNow = 0L;
-        long garbageCollectionTimeNow = 0L;
-        List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
-        for (GarbageCollectorMXBean mxBean : mxBeans) {
-            long count = mxBean.getCollectionCount();
-            long time  = mxBean.getCollectionTime();
-
-            if (count > 0)
-                numGarbageCollectionsNow += count;
-
-            if (time > 0)
-                garbageCollectionTimeNow += time;
-        }
-
-        numGarbageCollections = numGarbageCollectionsNow - numGarbageCollections;
-        garbageCollectionTime = garbageCollectionTimeNow - garbageCollectionTime;
+//        long numGarbageCollectionsNow = 0L;
+//        long garbageCollectionTimeNow = 0L;
+//        List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+//        for (GarbageCollectorMXBean mxBean : mxBeans) {
+//            long count = mxBean.getCollectionCount();
+//            long time  = mxBean.getCollectionTime();
+//
+//            if (count > 0)
+//                numGarbageCollectionsNow += count;
+//
+//            if (time > 0)
+//                garbageCollectionTimeNow += time;
+//        }
+//
+//        numGarbageCollections = numGarbageCollectionsNow - numGarbageCollections;
+//        garbageCollectionTime = garbageCollectionTimeNow - garbageCollectionTime;
 
         json.addProperty(NAME_NODE_ID, nameNodeId);
         json.addProperty(DEPLOYMENT_NUMBER, deploymentNumber);

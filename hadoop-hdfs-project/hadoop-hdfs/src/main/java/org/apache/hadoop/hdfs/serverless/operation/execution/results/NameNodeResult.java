@@ -133,7 +133,7 @@ public class NameNodeResult implements Serializable {
         if (result == null || forceOverwrite) {
             this.result = result;
             this.hasResult = true;
-
+            
             return true;
         } else {
             LOG.warn("Cannot overwrite existing result of type " + result.getClass().getSimpleName() + ".");
@@ -255,13 +255,13 @@ public class NameNodeResult implements Serializable {
      * This should NOT be called by any derived classes, as we reset the hit/miss counters.
      */
     public void prepare(MetadataCacheManager metadataCacheManager) {
-        //InMemoryINodeCache metadataCache = metadataCacheManager.getINodeCache();
-        //ReplicaCacheManager replicaCacheManager = metadataCacheManager.getReplicaCacheManager();
+        InMemoryINodeCache metadataCache = metadataCacheManager.getINodeCache();
+        ReplicaCacheManager replicaCacheManager = metadataCacheManager.getReplicaCacheManager();
 
         if (result instanceof DuplicateRequest)
             isDuplicate = true;
 
-        //metadataCache.resetCacheHitMissCounters();
-        //replicaCacheManager.resetCacheHitMissCounters();
+        metadataCache.resetCacheHitMissCounters();
+        replicaCacheManager.resetCacheHitMissCounters();
     }
 }
