@@ -48,6 +48,21 @@ public class TcpRequestPayload implements Serializable {
      */
     private transient boolean cancelled = false;
 
+    /**
+     * Used when cancelling this task. Indicates whether the task should be re-submitted to the NN.
+     *
+     * This is transient because it is only used client-side and thus does not need to be serialized.
+     */
+    private transient boolean shouldRetry = false;
+
+    /**
+     * Reason that this request has been cancelled. Only used if cancelled is set to true (i.e., when the
+     * request gets cancelled).
+     *
+     * This is transient because it is only used client-side and thus does not need to be serialized.
+     */
+    private transient String cancellationReason = null;
+
     public TcpRequestPayload(String requestId, String operationName, boolean consistencyProtocolEnabled,
                              int serverlessFunctionLogLevel, HashMap<String, Object> fsOperationArguments,
                              boolean benchmarkingModeEnabled) {
@@ -87,7 +102,19 @@ public class TcpRequestPayload implements Serializable {
 
     public boolean isCancelled() { return cancelled; }
 
+    public boolean shouldRetry() { return shouldRetry; }
+
+    public String getCancellationReason() { return cancellationReason; }
+
+    /**
+     * Used to mark this request as cancelled. Used when the TCP connection via which this payload was submitted
+     * is disconnected before a result is received.
+     */
     public void setCancelled(boolean cancelled) { this.cancelled = cancelled; }
+
+    public void setShouldRetry(boolean shouldRetry) { this.shouldRetry = shouldRetry; }
+
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
 
     @Override
     public String toString() {

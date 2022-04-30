@@ -37,6 +37,7 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeRes
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.ServerlessFunctionMapping;
 import org.apache.hadoop.hdfs.serverless.tcpserver.HopsFSUserServer;
 import org.apache.hadoop.hdfs.serverless.tcpserver.TcpRequestPayload;
+import org.apache.hadoop.hdfs.serverless.tcpserver.TcpTaskFuture;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
@@ -219,7 +220,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * Minimum length of timeout when using straggler mitigation. If it is too short, then we'll thrash (responses
      * will come back but only after we've prematurely timed out, and this will turn into a cycle). There is a
      * mechanism in-place to prevent this thrashing (the TCP server holds onto results it receives that do not have
-     * an associated {@link org.apache.hadoop.hdfs.serverless.tcpserver.RequestResponseFuture}, but still.
+     * an associated {@link TcpTaskFuture}, but still.
      */
     protected int minimumStragglerMitigationTimeout;
 
@@ -525,25 +526,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 Object response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
                         operationName, tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
 
-                if (response instanceof JsonObject) {
-                    JsonObject responseJson = (JsonObject)response;
+                // This only ever happens when the request is cancelled.
+                if (response instanceof TcpRequestPayload) {
+                    TcpRequestPayload requestPayload = (TcpRequestPayload)response;
 
-                    // After receiving a response, we need to check if it is a cancellation message or not.
-                    // Cancellation messages are posted by the TCP server if the TCP connection is terminated unexpectedly.
-                    // If we receive a cancellation message, then we need to fall back to HTTP. To do this, we'll just
-                    // throw an IOException here. It will be caught by the 'catch' clause, which will transparently
-                    // fall back to HTTP.
-                    if (responseJson.has(CANCELLED) && responseJson.get(CANCELLED).getAsBoolean()) {
-                        // We add this argument so that the NameNode knows it must redo the operation,
-                        // even though it has potentially seen it before.
-                        opArguments.addPrimitive(FORCE_REDO, true);
+                    if (!requestPayload.isCancelled())
+                        throw new IllegalStateException("Obtained TcpRequestPayload as response from TCP request '" +
+                                requestId + "', but payload is not marked as cancelled...");
 
-                        // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
-                        throw new IOException("The TCP future for request " + requestId + " (operation = " + operationName +
-                                ") has been cancelled. Reason: " + responseJson.get(REASON).getAsString() + ".");
-                    } else {
-                        throw new IllegalStateException("Received JsonObject from TCP request.");
-                    }
+                    opArguments.addPrimitive(FORCE_REDO, true);
+                    // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
+                    throw new IOException("The TCP future for request " + requestId + " (operation = " + operationName +
+                            ") has been cancelled. Reason: " + requestPayload.getCancellationReason() + ".");
                 }
 
                 NameNodeResult result = (NameNodeResult)response;

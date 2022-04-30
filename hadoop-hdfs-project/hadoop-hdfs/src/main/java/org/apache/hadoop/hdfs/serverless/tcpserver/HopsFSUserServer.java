@@ -69,7 +69,7 @@ public class HopsFSUserServer {
      * The TCP Server maintains a collection of Futures for clients that are awaiting a response from
      * the NameNode to which they issued a request.
      */
-    private final ConcurrentHashMap<String, RequestResponseFuture> activeFutures;
+    private final ConcurrentHashMap<String, TcpTaskFuture> activeFutures;
 
     /**
      * We also map the unique IDs of NameNodes to their deployments. This is used for debugging/logging and for
@@ -81,7 +81,7 @@ public class HopsFSUserServer {
      * A collection of all the futures that we've completed in one way or another (either they
      * were cancelled or we received a result for them).
      */
-    private final ConcurrentHashMap<String, RequestResponseFuture> completedFutures;
+    private final Cache<String, TcpTaskFuture> completedFutures;
 
     /**
      * Associate with each connection the list of futures that have been submitted and NOT completed.
@@ -89,7 +89,7 @@ public class HopsFSUserServer {
      *
      * If the connection is lost, then these futures must be re-submitted via HTTP.
      */
-    private final ConcurrentHashMap<Long, List<RequestResponseFuture>> submittedFutures;
+    private final ConcurrentHashMap<Long, List<TcpTaskFuture>> submittedFutures;
 
     /**
      * Mapping of task/request ID to the NameNode to which the task/request was submitted.
@@ -142,12 +142,16 @@ public class HopsFSUserServer {
         this.allActiveConnections = new ConcurrentHashMap<>();
         this.submittedFutures = new ConcurrentHashMap<>();
         this.activeFutures = new ConcurrentHashMap<>();
-        this.completedFutures = new ConcurrentHashMap<>();
         this.futureToNameNodeMapping = new ConcurrentHashMap<>();
         this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
         this.activeConnectionsPerDeployment = new ConcurrentHashMap<>();
+        //this.completedFutures = new ConcurrentHashMap<>();
+        this.completedFutures = Caffeine.newBuilder()
+                .maximumSize(2_500)
+                .expireAfterWrite(60, TimeUnit.SECONDS)
+                .build();
         this.resultsWithoutFutures = Caffeine.newBuilder()
-                .maximumSize(10_000)
+                .maximumSize(1_000)
                 .expireAfterWrite(60, TimeUnit.SECONDS)
                 .build();
         this.client = client;
@@ -421,7 +425,7 @@ public class HopsFSUserServer {
                     // Remove the list of futures associated with this connection.
                     // TODO: Should we resubmit these via HTTP? Or just drop them, effectively?
                     //       Currently, we're just dropping them.
-                    List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
+                    List<TcpTaskFuture> incompleteFutures = submittedFutures.get(connection.name);
                     if (incompleteFutures.size() > 0) {
                         LOG.warn("Connection to NameNode " + nameNodeId + " has " + incompleteFutures.size() +
                                 " incomplete futures associated with it, yet we're deleting the connection...");
@@ -528,7 +532,7 @@ public class HopsFSUserServer {
         }
         LOG.debug("FUTURES:");
         LOG.debug("     Number of active futures: " + activeFutures.size());
-        LOG.debug("     Number of completed futures: " + completedFutures.size());
+        LOG.debug("     Number of completed futures: " + completedFutures.asMap().size());
         LOG.debug("==================================================");
     }
 
@@ -538,19 +542,18 @@ public class HopsFSUserServer {
      *
      * Checks for duplicate futures before registering it.
      *
-     * @param requestId The ID of the request associated with the future.
-     * @param operationName The name of the operation being performed.
+     * @param associatedPayload The payload that we will be sending via TCP to the target NameNode.
      * @param nnId The NameNodeID of the target NN.
      *
-     * @return A new {@link RequestResponseFuture} object if one does not already exist.
+     * @return A new {@link TcpTaskFuture} object if one does not already exist.
      * Otherwise, returns the existing RequestResponseFuture object.
      */
-    public RequestResponseFuture registerRequestResponseFuture(String requestId, String operationName, long nnId) {
-        RequestResponseFuture requestResponseFuture = activeFutures.getOrDefault(requestId, null);
+    public TcpTaskFuture registerRequestResponseFuture(TcpRequestPayload associatedPayload, long nnId) {
+        TcpTaskFuture requestResponseFuture = activeFutures.getOrDefault(associatedPayload.getRequestId(), null);
 
         // TODO: Previously, this function also checked completedFutures before registering. Do we need to do this?
         if (requestResponseFuture == null) {
-            requestResponseFuture = new RequestResponseFuture(requestId, operationName, nnId);
+            requestResponseFuture = new TcpTaskFuture(associatedPayload, nnId);
             activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
         }
 
@@ -563,7 +566,7 @@ public class HopsFSUserServer {
      * @param requestId The ID of the request/task that was resolved via TCP.
      */
     public boolean deactivateFuture(String requestId) {
-        RequestResponseFuture future = activeFutures.remove(requestId);
+        TcpTaskFuture future = activeFutures.remove(requestId);
 
         if (future != null) {
             completedFutures.put(requestId, future);
@@ -574,7 +577,7 @@ public class HopsFSUserServer {
                 // Remove this future from the submitted futures list associated with the connection,
                 // if it exists.
                 if (connection != null && submittedFutures.containsKey(connection.name)) {
-                    List<RequestResponseFuture> futures = submittedFutures.get(connection.name);
+                    List<TcpTaskFuture> futures = submittedFutures.get(connection.name);
                     futures.remove(future);
                 }
             }
@@ -599,9 +602,9 @@ public class HopsFSUserServer {
      *                                        to the same NN at which the request previously timed-out.
      * @return A Future representing the eventual response from the NameNode.
      */
-    public RequestResponseFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck, String requestId,
-                                                 String operationName, TcpRequestPayload payload,
-                                                 boolean tryToAvoidTargetingSameNameNode) {
+    public TcpTaskFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck, String requestId,
+                                         String operationName, TcpRequestPayload payload,
+                                         boolean tryToAvoidTargetingSameNameNode) {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
             LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue TCP request to NameNode deployment " +
                     deploymentNumber + ", but connection no longer exists...");
@@ -645,11 +648,10 @@ public class HopsFSUserServer {
             return null;
         }
 
-        RequestResponseFuture requestResponseFuture = registerRequestResponseFuture(
-                requestId, operationName, tcpConnection.name);
+        TcpTaskFuture requestResponseFuture = registerRequestResponseFuture(payload, tcpConnection.name);
 
         // Make note of this future as being incomplete.
-        List<RequestResponseFuture> incompleteFutures = submittedFutures.computeIfAbsent(
+        List<TcpTaskFuture> incompleteFutures = submittedFutures.computeIfAbsent(
                 tcpConnection.name, k -> new ArrayList<>());
 
         incompleteFutures.add(requestResponseFuture);
@@ -715,13 +717,13 @@ public class HopsFSUserServer {
             if (previouslyReceivedResult != null)
                 return previouslyReceivedResult;
         }
-        else if (completedFutures.containsKey(requestId)) {
-            RequestResponseFuture future = completedFutures.get(requestId);
+        else if (completedFutures.asMap().containsKey(requestId)) {
+            TcpTaskFuture future = completedFutures.getIfPresent(requestId);
             if (future.isDone()) return future.get();
         }
 
         long startTime = System.currentTimeMillis();
-        RequestResponseFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck, requestId,
+        TcpTaskFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck, requestId,
                 operationName, payload, tryToAvoidTargetingSameNameNode);
 
         long tcpSendDuration = (System.currentTimeMillis() - startTime);
@@ -749,13 +751,13 @@ public class HopsFSUserServer {
     private void handleResult(NameNodeResult result, NameNodeConnection connection) {
         String requestId = result.getRequestId();
 
-        RequestResponseFuture future = activeFutures.getOrDefault(requestId, null);
+        TcpTaskFuture future = activeFutures.getOrDefault(requestId, null);
 
         // If there is no future associated with this operation, then we have no means to return
         // the result back to the client who issued the file system operation.
         if (future == null) {
             // Only cache the future if it hasn't already been completed.
-            if (!completedFutures.containsKey(requestId)) {
+            if (!completedFutures.asMap().containsKey(requestId)) {
                 LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
                         ", but there is no associated future registered with the server.");
                 resultsWithoutFutures.put(requestId, result);
@@ -773,7 +775,7 @@ public class HopsFSUserServer {
         completedFutures.put(requestId, future); // Do this first to prevent races.
         activeFutures.remove(requestId);
 
-        List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
+        List<TcpTaskFuture> incompleteFutures = submittedFutures.get(connection.name);
         incompleteFutures.remove(future);
 
         if (LOG.isDebugEnabled()) {
@@ -891,32 +893,44 @@ public class HopsFSUserServer {
                         activeConnectionsPerDeployment.get(mappedDeploymentNumber);
                 deploymentConnections.remove(connection.name);
 
-                List<RequestResponseFuture> incompleteFutures = submittedFutures.get(connection.name);
-
-                if (incompleteFutures == null) {
-                    if (LOG.isDebugEnabled()) LOG.debug("[TCP SERVER " + tcpPort + "] There were no futures associated with now-closed connection " + connection.name);
-                    return;
-                }
-
-                LOG.warn("[TCP SERVER " + tcpPort + "] There were " + incompleteFutures.size()
-                        + " incomplete future(s) associated with now-terminated connection " + connection.name);
-
-                // Cancel each of the futures.
-                for (RequestResponseFuture future : incompleteFutures) {
-                    if (LOG.isDebugEnabled()) LOG.debug("    [TCP SERVER " + tcpPort + "] Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
-                    try {
-                        future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
-                    } catch (InterruptedException ex) {
-                        LOG.error("Error encountered while cancelling future " + future.getRequestId()
-                                + " for operation " + future.getOperationName() + ":", ex);
-                    }
-                }
+                cancelRequests(connection.name);
             } else {
                 InetSocketAddress address = conn.getRemoteAddressTCP();
                 if (address == null)
                     LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to unregistered NameNode.");
                 else
                     LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to unregistered NameNode at " + address);
+            }
+        }
+
+        /**
+         * Cancel the requests associated with a particular NameNode.
+         *
+         * This is used when the TCP connection to that NameNode is disconnected.
+         *
+         * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
+         */
+        private void cancelRequests(long nameNodeId) {
+            List<TcpTaskFuture> incompleteFutures = submittedFutures.get(nameNodeId);
+
+            if (incompleteFutures == null) {
+                if (LOG.isDebugEnabled()) LOG.debug("[TCP SERVER " + tcpPort +
+                        "] There were no futures associated with now-closed connection to NN " + nameNodeId);
+                return;
+            }
+
+            LOG.warn("[TCP SERVER " + tcpPort + "] There were " + incompleteFutures.size()
+                    + " incomplete future(s) associated with now-terminated connection to NN " + nameNodeId);
+
+            // Cancel each of the futures.
+            for (TcpTaskFuture future : incompleteFutures) {
+                if (LOG.isDebugEnabled()) LOG.debug("    [TCP SERVER " + tcpPort + "] Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
+                try {
+                    future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
+                } catch (InterruptedException ex) {
+                    LOG.error("Error encountered while cancelling future " + future.getRequestId()
+                            + " for operation " + future.getOperationName() + ":", ex);
+                }
             }
         }
     }

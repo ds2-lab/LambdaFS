@@ -16,7 +16,7 @@ import java.util.concurrent.*;
  *
  * These are used on the client side.
  */
-public class RequestResponseFuture implements Future<Object> {
+public class TcpTaskFuture implements Future<Object> {
     private static final Log LOG = LogFactory.getLog(FileSystemTask.class);
 
     private enum State {WAITING, DONE, CANCELLED, ERROR}
@@ -44,15 +44,21 @@ public class RequestResponseFuture implements Future<Object> {
     private long targetNameNodeId;
 
     /**
+     * The payload that was submitted for this request.
+     */
+    private TcpRequestPayload associatedPayload;
+
+    /**
      * This is used to receive the result of the future from the worker thread.
      */
     private final BlockingQueue<Object> resultQueue = new ArrayBlockingQueue<>(1);
 
-    public RequestResponseFuture(String requestId, String operationName, long targetNameNodeId) {
-        this.requestId = requestId;
-        this.operationName = operationName;
+    public TcpTaskFuture(TcpRequestPayload associatedPayload, long targetNameNodeId) {
+        this.requestId = associatedPayload.getRequestId();
+        this.operationName = associatedPayload.getOperationName();
         this.createdAt = System.nanoTime();
         this.targetNameNodeId = targetNameNodeId;
+        this.associatedPayload = associatedPayload;
     }
 
     /**
@@ -68,16 +74,23 @@ public class RequestResponseFuture implements Future<Object> {
      */
     public void cancel(String reason, boolean shouldRetry) throws InterruptedException {
         state = State.CANCELLED;
-        JsonObject cancellationMessage = new JsonObject();
-        cancellationMessage.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
-        cancellationMessage.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
-        cancellationMessage.addProperty(ServerlessNameNodeKeys.CANCELLED, true);
-        cancellationMessage.addProperty(ServerlessNameNodeKeys.REASON, reason);
-        cancellationMessage.addProperty(ServerlessNameNodeKeys.SHOULD_RETRY, shouldRetry);
+        associatedPayload.setCancelled(true);
+        associatedPayload.setShouldRetry(shouldRetry);
+        associatedPayload.setCancellationReason(reason);
+        resultQueue.put(associatedPayload);
+        if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " +
+                operationName + ". Reason: " + reason);
 
-        if (LOG.isDebugEnabled()) LOG.debug("About to cancel future " + requestId + " now. Size of result queue: " + resultQueue.size());
-        resultQueue.put(cancellationMessage);
-        if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " + operationName + ". Reason: " + reason);
+//        JsonObject cancellationMessage = new JsonObject();
+//        cancellationMessage.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
+//        cancellationMessage.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
+//        cancellationMessage.addProperty(ServerlessNameNodeKeys.CANCELLED, true);
+//        cancellationMessage.addProperty(ServerlessNameNodeKeys.REASON, reason);
+//        cancellationMessage.addProperty(ServerlessNameNodeKeys.SHOULD_RETRY, shouldRetry);
+//
+//        if (LOG.isDebugEnabled()) LOG.debug("About to cancel future " + requestId + " now. Size of result queue: " + resultQueue.size());
+//        resultQueue.put(cancellationMessage);
+//        if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " + operationName + ". Reason: " + reason);
     }
 
     @Override
@@ -213,10 +226,10 @@ public class RequestResponseFuture implements Future<Object> {
         if (this == obj)
             return true;
 
-        if (!(obj instanceof RequestResponseFuture))
+        if (!(obj instanceof TcpTaskFuture))
             return false;
 
-        RequestResponseFuture other = (RequestResponseFuture)obj;
+        TcpTaskFuture other = (TcpTaskFuture)obj;
 
         return this.requestId.equals(other.requestId);
     }
