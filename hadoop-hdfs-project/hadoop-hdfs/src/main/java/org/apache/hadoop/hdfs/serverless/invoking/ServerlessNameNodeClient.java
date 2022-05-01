@@ -576,7 +576,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 if (!benchmarkModeEnabled)
                     // Collect and save/record metrics.
                     createAndStoreOperationPerformed((NameNodeResultWithMetrics)result, operationName, requestId,
-                            opStart, localEnd, true, false, wasResubmittedViaStragglerMitigation);
+                            localStart, localEnd, true, false, wasResubmittedViaStragglerMitigation);
 
                 return response;
             } catch (TimeoutException ex) {
@@ -655,7 +655,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 if (!benchmarkModeEnabled)
                     // Collect and save/record metrics.
-                    createAndStoreOperationPerformed(response, operationName, requestId, opStart, opEnd,
+                    createAndStoreOperationPerformed(response, operationName, requestId, startTime, opEnd,
                             true, true, wasResubmittedViaStragglerMitigation);
 
                 return response;
