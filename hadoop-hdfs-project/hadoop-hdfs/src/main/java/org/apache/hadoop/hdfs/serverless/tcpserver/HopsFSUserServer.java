@@ -664,9 +664,9 @@ public class HopsFSUserServer {
         if (LOG.isDebugEnabled()) {
             double sendDurationMs = ((sendEnd - sendStart) / 1.0e6);
             if (sendDurationMs < 10)
-                LOG.debug("Sent TCP request " + requestId + " in " + " ms.");
+                LOG.debug("Sent TCP request " + requestId + " in " + sendDurationMs + " ms.");
             else
-                LOG.warn("Sent TCP request " + requestId + " in " + " ms!");
+                LOG.warn("Sent TCP request " + requestId + " in " + sendDurationMs + " ms!");
         }
 
         return requestResponseFuture;
