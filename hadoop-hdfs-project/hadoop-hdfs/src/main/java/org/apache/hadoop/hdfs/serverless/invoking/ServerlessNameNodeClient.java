@@ -688,7 +688,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         Object srcArgument = opArguments.get(ServerlessNameNodeKeys.SRC);
 
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
-        if (tcpEnabled && srcArgument instanceof String) {
+        if (tcpEnabled && srcArgument != null) {
             String sourceFileOrDirectory = (String)srcArgument;
 
             // Next, let's see if we have an entry in our cache for this file/directory.

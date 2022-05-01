@@ -116,7 +116,9 @@ public class TcpTaskFuture implements Future<Object> {
         // Check if the NullResult object was placed in the queue, in which case we should return null.
         if (resultOrNull instanceof NullResult)
             return null;
-        else if (resultOrNull instanceof JsonObject || resultOrNull instanceof NameNodeResult)
+        else if (resultOrNull instanceof JsonObject ||      // Probably shouldn't happen anymore?
+                resultOrNull instanceof NameNodeResult ||   // Standard result.
+                resultOrNull instanceof TcpRequestPayload)  // Request got cancelled.
             return resultOrNull;
         else
             throw new IllegalArgumentException("Received invalid object type as response for request " + requestId
@@ -133,7 +135,9 @@ public class TcpTaskFuture implements Future<Object> {
 
         if (resultOrNull instanceof NullResult)
             return null;
-        else if (resultOrNull instanceof JsonObject || resultOrNull instanceof NameNodeResult)
+        else if (resultOrNull instanceof JsonObject ||      // Probably shouldn't happen anymore?
+                resultOrNull instanceof NameNodeResult ||   // Standard result.
+                resultOrNull instanceof TcpRequestPayload)  // Request got cancelled.
             return resultOrNull;
         else
             throw new IllegalArgumentException("Received invalid object type as response for request " + requestId
