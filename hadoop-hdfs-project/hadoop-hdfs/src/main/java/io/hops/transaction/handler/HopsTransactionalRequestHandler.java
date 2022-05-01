@@ -65,6 +65,8 @@ public abstract class HopsTransactionalRequestHandler
 
   @Override
   public void commitEvents() {
+    if (ServerlessNameNode.benchmarkingModeEnabled.get()) return;
+
     // If the local `serverlessNameNodeInstance` variable is null, then we try to grab the static instance
     // from the ServerlessNameNode class directly. It is possible that both will be null, however.
     ServerlessNameNode instance = (serverlessNameNodeInstance == null) ?

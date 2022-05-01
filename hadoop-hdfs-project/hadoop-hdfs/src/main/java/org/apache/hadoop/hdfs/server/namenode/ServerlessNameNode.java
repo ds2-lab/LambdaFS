@@ -204,7 +204,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Determines whether we use an instance of {@link NameNodeResult}
    * or {@link org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics}.
    */
-  public static ThreadLocal<Boolean> benchmarkingModeEnabled = new ThreadLocal<>();
+  public static ThreadLocal<Boolean> benchmarkingModeEnabled = ThreadLocal.withInitial(() -> false);
 
   /**
    * The singleton ServerlessNameNode instance associated with this container. There can only be one!

@@ -522,6 +522,7 @@ public class NameNodeTCPClient {
         LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
 
         boolean benchmarkingModeEnabled = args.isBenchmarkingModeEnabled();
+        ServerlessNameNode.benchmarkingModeEnabled.set(benchmarkingModeEnabled);
         if (benchmarkingModeEnabled) {
             NameNodeResult tcpResult = new NameNodeResult(requestId, op);
             serverlessNameNode.getExecutionManager().tryExecuteTask(
