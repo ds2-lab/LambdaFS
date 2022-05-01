@@ -307,7 +307,7 @@ public class ExecutionManager {
                                boolean forceRedo, NameNodeResult workerResult, boolean http) {
         boolean duplicate = isTaskDuplicate(taskId);
 
-        if (duplicate && forceRedo) {
+        if (duplicate && !forceRedo) {
             // TODO: Just mark the request as duplicate using a boolean flag.
             workerResult.addResult(new DuplicateRequest("TCP", taskId), true);
             return;
