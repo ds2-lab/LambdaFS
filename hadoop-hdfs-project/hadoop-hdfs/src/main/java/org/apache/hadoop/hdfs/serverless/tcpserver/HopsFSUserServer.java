@@ -657,10 +657,17 @@ public class HopsFSUserServer {
         incompleteFutures.add(requestResponseFuture);
         futureToNameNodeMapping.put(requestId, tcpConnection);
 
+        long sendStart = System.nanoTime();
         tcpConnection.sendTCP(payload);
+        long sendEnd = System.nanoTime();
 
-        if (LOG.isDebugEnabled())
-            LOG.debug("Sent TCP request " + requestId + ".");
+        if (LOG.isDebugEnabled()) {
+            double sendDurationMs = ((sendEnd - sendStart) / 1.0e6);
+            if (sendDurationMs < 10)
+                LOG.debug("Sent TCP request " + requestId + " in " + " ms.");
+            else
+                LOG.warn("Sent TCP request " + requestId + " in " + " ms!");
+        }
 
         return requestResponseFuture;
     }
