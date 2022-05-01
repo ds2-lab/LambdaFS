@@ -514,13 +514,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
+                            requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
+                            ".");
+                } else if (LOG.isTraceEnabled()) {
+                    LOG.trace("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
                             requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() +
-                                    (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
+                            (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
                             ". Time elapsed so far: " + (System.currentTimeMillis() - opStart) + " ms. Timeout: " +
                             requestTimeout + " ms. " + (stragglerResubmissionAlreadyOccurred ?
                             "Straggler resubmission has already occurred." :
                             "Straggler resubmission has NOT already occurred."));
                 }
+
                 numOperationsIssuedViaTcp++;
                 numOperationsIssued++;
                 Object response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, requestId,

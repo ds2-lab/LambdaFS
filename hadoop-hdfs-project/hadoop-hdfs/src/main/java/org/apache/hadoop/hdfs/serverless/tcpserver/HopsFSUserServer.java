@@ -659,6 +659,9 @@ public class HopsFSUserServer {
 
         tcpConnection.sendTCP(payload);
 
+        if (LOG.isDebugEnabled())
+            LOG.debug("Sent TCP request " + requestId + ".");
+
         return requestResponseFuture;
     }
 
