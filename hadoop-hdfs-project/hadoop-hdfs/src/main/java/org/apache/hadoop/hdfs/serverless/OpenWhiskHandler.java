@@ -306,16 +306,16 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Check if we need to redo this operation. This can occur if the TCP connection that was supposed
         // to deliver the result back to the client was dropped before the client received the result.
-        boolean redoEvenIfDuplicate = fsArgs.has(FORCE_REDO) && fsArgs.get(FORCE_REDO).getAsBoolean();
-
-        // Check to see if this is a duplicate request, in which case we should return a message indicating as such.
-        if (!redoEvenIfDuplicate && serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
-            LOG.warn("This request (" + requestId + ") has already been received. Exiting now...");
-            result.addResult(new DuplicateRequest("HTTP", requestId), true);
-            return result;
-        } else if (redoEvenIfDuplicate) {
-            LOG.warn("Apparently, request " + requestId + " must be re-executed...");
-        }
+//        boolean redoEvenIfDuplicate = fsArgs.has(FORCE_REDO) && fsArgs.get(FORCE_REDO).getAsBoolean();
+//
+//        // Check to see if this is a duplicate request, in which case we should return a message indicating as such.
+//        if (!redoEvenIfDuplicate && serverlessNameNode.checkIfRequestProcessedAlready(requestId)) {
+//            LOG.warn("This request (" + requestId + ") has already been received. Exiting now...");
+//            result.addResult(new DuplicateRequest("HTTP", requestId), true);
+//            return result;
+//        } else if (redoEvenIfDuplicate) {
+//            LOG.warn("Apparently, request " + requestId + " must be re-executed...");
+//        }
 
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
@@ -326,7 +326,7 @@ public class OpenWhiskHandler extends BaseHandler {
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
             serverlessNameNode.getExecutionManager().tryExecuteTask(
-                    requestId, op, new JsonTaskArguments(fsArgs), redoEvenIfDuplicate, result, true);
+                    requestId, op, new JsonTaskArguments(fsArgs), true, result, true);
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);
