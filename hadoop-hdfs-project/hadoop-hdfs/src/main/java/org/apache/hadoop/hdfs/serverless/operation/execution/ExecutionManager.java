@@ -232,8 +232,8 @@ public class ExecutionManager {
 
         if (duplicate && !forceRedo) {
             // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
-            workerResult.setDequeuedTime(System.currentTimeMillis());
             workerResult.addResult(new DuplicateRequest("TCP", taskId), true);
+            workerResult.setDequeuedTime(System.currentTimeMillis());
             return;
         } else {
             // currentlyExecutingTasks.put(taskId, task);

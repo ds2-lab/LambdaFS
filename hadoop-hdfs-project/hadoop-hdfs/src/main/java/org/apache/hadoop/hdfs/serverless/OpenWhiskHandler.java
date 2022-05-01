@@ -54,7 +54,7 @@ public class OpenWhiskHandler extends BaseHandler {
      * OpenWhisk handler.
      */
     public static JsonObject main(JsonObject args) {
-        long startTime = System.nanoTime();
+        long startTime = System.currentTimeMillis();
         String functionName = platformSpecificInitialization();
 
         LOG.info("============================================================");
@@ -203,7 +203,7 @@ public class OpenWhiskHandler extends BaseHandler {
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
 
-        long endTime = System.nanoTime();
+        long endTime = System.currentTimeMillis();
         double timeElapsed = (endTime - startTime) / 1000000.0;
 
         if (LOG.isDebugEnabled()) {
@@ -316,8 +316,12 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
         try {
-            serverlessNameNode.getExecutionManager().tryExecuteTask(
-                    requestId, op, new JsonTaskArguments(fsArgs), redoEvenIfDuplicate, result, true);
+            if (result instanceof NameNodeResultWithMetrics)
+                serverlessNameNode.getExecutionManager().tryExecuteTask(
+                        requestId, op, new JsonTaskArguments(fsArgs), redoEvenIfDuplicate, (NameNodeResultWithMetrics)result, true);
+            else
+                serverlessNameNode.getExecutionManager().tryExecuteTask(
+                        requestId, op, new JsonTaskArguments(fsArgs), redoEvenIfDuplicate, result, true);
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);
