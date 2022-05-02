@@ -164,9 +164,7 @@ public abstract class EntityContext<T> {
 
   private static void log(String opName, CacheHitState state,
       Object... params) {
-    if (!LOG.isTraceEnabled()) {
-      return;
-    }
+    if (!LOG.isTraceEnabled()) return;
     StringBuilder message = new StringBuilder();
     if (state == CacheHitState.HIT) {
       message.append(ANSI_GREEN).append(opName).append(" ").append("hit")
@@ -212,6 +210,7 @@ public abstract class EntityContext<T> {
 
   public static void log(FinderType finderType, CacheHitState state,
       Object... params) {
+    if (!LOG.isTraceEnabled()) return;
     log(getOperationMessage(finderType), state, params);
   }
 
