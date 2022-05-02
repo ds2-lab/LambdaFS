@@ -3,6 +3,7 @@ package io.hops.metrics;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.management.ManagementFactory;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Comparator;
@@ -150,6 +151,22 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      */
     private long garbageCollectionTime;
 
+    /**
+     * Identifies the JVM from which this OperationPerformed instance originated. It is of the form PID@HOSTNAME.
+     */
+    private String originJvmIdentifier;
+
+    /**
+     * An identifier for the JVM from which this OperationPerformed instance originated.
+     *
+     * It is of the form PID@HOSTNAME.
+     */
+    private static final String localJvmName;
+
+    static {
+        localJvmName = ManagementFactory.getRuntimeMXBean().getName();
+    }
+
     private OperationPerformed() { }
 
     public OperationPerformed(String operationName, String requestId,
@@ -184,6 +201,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.clientId = clientId;
         this.numGarbageCollections = numGarbageCollections;
         this.garbageCollectionTime = garbageCollectionTime;
+        this.originJvmIdentifier = localJvmName;
     }
 
     public long getNumGarbageCollections() { return this.numGarbageCollections; }
@@ -245,7 +263,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * Return the header for the CSV file.
      */
     public static String getHeader() {
-        return "operation_name,request_id,client_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
+        return "operation_name,request_id,client_id,origin_jvm,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time," +
                 "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration," +
                 "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration," +
                 "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type," +
@@ -365,17 +383,17 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
      * Write this instance to a file in CSV format (using tabs to separate).
      */
     public void write(BufferedWriter writer) throws IOException {
-//  "operation_name,request_id,client_id,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time,"
+//  "operation_name,request_id,client_id,origin_jvm,invoked_at_time,serverless_fn_start_time,enqueued_at_time,began_executing_time,"
 //  "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration,"
 //  "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration,"
 //  "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type,"
 //  "metadata_cache_hits,metadata_cache_misses,straggler_resubmitted,num_gcs,gc_time";
-        String formatString = "%-16s,%-38s,%-16s," +                                    // 3
+        String formatString = "%-16s,%-38s,%-16s,%-22s," +                              // 4
                               "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s," +            // 7
                               "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +              // 8
                               "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s,%-5s,%-5s";               // 8
         writer.write(String.format(formatString,
-                operationName, requestId, clientId,
+                operationName, requestId, clientId, originJvmIdentifier,
                 invokedAtTime,                    // Client invokes NN.
                 serverlessFnStartTime,            // NN begins executing.
                 requestEnqueuedAtTime,            // NN enqueues req. in work queue.
