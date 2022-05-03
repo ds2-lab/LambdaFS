@@ -149,11 +149,22 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * Clients can then use TCP requests to communicate with NameNodes.
    */
   public static final String SERVERLESS_TCP_SERVER_PORT = "serverless.tcp.port";
-
   public static final int SERVERLESS_TCP_SERVER_PORT_DEFAULT = 6000;
+
+  /**
+   * Port to use for UDP server.
+   */
+  public static final String SERVERLESS_UDP_SERVER_PORT = "serverless.udp.port";
+  public static final int SERVERLESS_UDP_SERVER_PORT_DEFAULT = 7000;
 
   public static final String SERVERLESS_TCP_REQUESTS_ENABLED = "serverless.tcp.enabled";
   public static final boolean SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT = true;
+
+  /**
+   * Use UDP instead of TCP.
+   */
+  public static final String SERVERLESS_USE_UDP = "serverless.udb.enabled";
+  public static final boolean SERVERLESS_USE_UDP_DEFAULT = false;
 
   public static final String SERVERLESS_HTTP_RETRY_MAX = "serverless.http.maxretries";
   public static final int SERVERLESS_HTTP_RETRY_MAX_DEFAULT = 3;

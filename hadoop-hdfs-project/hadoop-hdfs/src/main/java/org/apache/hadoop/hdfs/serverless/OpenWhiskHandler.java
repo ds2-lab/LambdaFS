@@ -7,12 +7,11 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
-import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
 import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.JsonTaskArguments;
 import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.TaskArguments;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
-import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
+import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTcpUdpClient;
 import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -170,6 +169,10 @@ public class OpenWhiskHandler extends BaseHandler {
         if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT))
             tcpPort = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_PORT).getAsInt();
 
+        int udpPort = -1;
+        if (userArguments.has(ServerlessNameNodeKeys.UDP_PORT))
+            udpPort = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.UDP_PORT).getAsInt();
+
         // Flag that indicates whether this action was invoked by a client or a DataNode.
         boolean isClientInvoker = userArguments.getAsJsonPrimitive(
                 ServerlessNameNodeKeys.IS_CLIENT_INVOKER).getAsBoolean();
@@ -197,8 +200,8 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
-                requestId, clientName, isClientInvoker, tcpEnabled, tcpPort, actionMemory, localMode, startTime,
-                benchmarkModeEnabled);
+                requestId, clientName, isClientInvoker, tcpEnabled, tcpPort, udpPort, actionMemory, localMode,
+                startTime, benchmarkModeEnabled);
 
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
@@ -265,8 +268,8 @@ public class OpenWhiskHandler extends BaseHandler {
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                          String functionName, String clientIPAddress, String requestId,
                                          String clientName, boolean isClientInvoker, boolean tcpEnabled,
-                                         int tcpPort, int actionMemory, boolean localMode, long startTime,
-                                         boolean benchmarkModeEnabled) {
+                                         int tcpPort, int udpPort, int actionMemory, boolean localMode,
+                                         long startTime, boolean benchmarkModeEnabled) {
         NameNodeResult result;
 
         if (benchmarkModeEnabled) {
@@ -331,9 +334,9 @@ public class OpenWhiskHandler extends BaseHandler {
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker && tcpEnabled) {
             ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
-                    clientName, clientIPAddress, tcpPort);
+                    clientName, clientIPAddress, tcpPort, udpPort);
 
-            final NameNodeTCPClient tcpClient = serverlessNameNode.getNameNodeTcpClient();
+            final NameNodeTcpUdpClient tcpClient = serverlessNameNode.getNameNodeTcpClient();
             // Do this in a separate thread so that we can return the result back to the user immediately.
             new Thread(() -> {
                 try {

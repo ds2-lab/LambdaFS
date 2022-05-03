@@ -4,7 +4,6 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
-import com.esotericsoftware.kryonet.util.TcpIdleSender;
 import com.github.benmanes.caffeine.cache.*;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
@@ -29,7 +28,6 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromInteger;
-import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromString;
 
 /**
  * Encapsulates a Kryonet TCP client. Used to communicate directly with Serverless HopsFS clients.
@@ -47,8 +45,8 @@ import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFrom
  *
  * This is used on the NameNode side.
  */
-public class NameNodeTCPClient {
-    private static final Log LOG = LogFactory.getLog(NameNodeTCPClient.class);
+public class NameNodeTcpUdpClient {
+    private static final Log LOG = LogFactory.getLog(NameNodeTcpUdpClient.class);
 
     /**
      * This is the maximum amount of time a call to connect() will block. Calls to connect() occur when
@@ -57,14 +55,14 @@ public class NameNodeTCPClient {
     private static final int CONNECTION_TIMEOUT = 8000;
 
     /**
-     * Mapping from instances of ServerlessHopsFSClient to their associated TCP client object. Recall that each
+     * Mapping from instances of ServerlessHopsFSClient to their associated TCP/UDP client object. Recall that each
      * ServerlessHopsFSClient represents a particular client of HopsFS that the NameNode is talking to. We map
-     * each of these "HopsFS client" representations to the TCP Client associated with them.
+     * each of these "HopsFS client" representations to the TCP/UDP Client associated with them.
      */
-    private final Cache<ServerlessHopsFSClient, Client> tcpClients;
+    private final Cache<ServerlessHopsFSClient, Client> clients;
 
     /**
-     * The fraction of main memory reserved for TCP connection buffers.
+     * The fraction of main memory reserved for TCP/UDP connection buffers.
      */
     private static final float memoryFractionReservedForTcpBuffers = 0.13f;
 
@@ -141,6 +139,11 @@ public class NameNodeTCPClient {
     private final BlockingQueue<Client> disconnectedClients;
 
     /**
+     * Use UDP instead of TCP.
+     */
+    private final boolean useUDP;
+
+    /**
      * Constructor.
      *
      * @param conf Configuration passed to the serverless NameNode.
@@ -152,30 +155,32 @@ public class NameNodeTCPClient {
      *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
      *                     connections at once, then it might crash due to OOM errors.
      */
-    public NameNodeTCPClient(Configuration conf, ServerlessNameNode serverlessNameNode,
-                             long nameNodeId, int deploymentNumber, int actionMemory) {
+    public NameNodeTcpUdpClient(Configuration conf, ServerlessNameNode serverlessNameNode,
+                                long nameNodeId, int deploymentNumber, int actionMemory) {
         this.serverlessNameNode = serverlessNameNode;
         this.nameNodeId = nameNodeId;
         this.deploymentNumber = deploymentNumber;
         this.actionMemory = actionMemory;
+        this.useUDP = conf.getBoolean(DFSConfigKeys.SERVERLESS_USE_UDP, DFSConfigKeys.SERVERLESS_USE_UDP_DEFAULT);
 
         if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
                 DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT)) {
-            LOG.debug("TCP Debug logging is ENABLED.");
+            LOG.debug("TCP/UDP Debug logging is ENABLED.");
             com.esotericsoftware.minlog.Log.set(com.esotericsoftware.minlog.Log.LEVEL_TRACE);
         }
-        LOG.debug("TCP Debug logging is DISABLED.");
+        LOG.debug("TCP/UDP Debug logging is DISABLED.");
 
         this.writeBufferSize = defaultWriteBufferSizeBytes;
         this.objectBufferSize = defaultObjectBufferSizeBytes;
 
         this.maximumConnections = calculateMaxNumberTcpConnections();
 
-        this.tcpClients = Caffeine.newBuilder()
+        this.clients = Caffeine.newBuilder()
                 .maximumSize(maximumConnections)
                 .initialCapacity(maximumConnections)
                 // Close TCP clients when they are removed.
-                .evictionListener((RemovalListener<ServerlessHopsFSClient, Client>) (serverlessHopsFSClient, client, removalCause) -> {
+                .evictionListener((RemovalListener<ServerlessHopsFSClient, Client>)
+                        (serverlessHopsFSClient, client, removalCause) -> {
                     if (client == null)
                         return;
 
@@ -189,7 +194,7 @@ public class NameNodeTCPClient {
 
         this.disconnectedClients = new ArrayBlockingQueue<>(maximumConnections);
 
-        LOG.debug("Created NameNodeTCPClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
+        LOG.debug("Created NameNodeTcpUdpClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
                 ", writeBufferSize=" + writeBufferSize + " bytes, objectBufferSize=" + objectBufferSize +
                 " bytes, maximumConnections=" + maximumConnections + ").");
     }
@@ -234,7 +239,7 @@ public class NameNodeTCPClient {
     public synchronized void checkThatClientsAreAllConnected() {
         ArrayList<ServerlessHopsFSClient> toRemove = new ArrayList<>();
 
-        for (Map.Entry<ServerlessHopsFSClient, Client> entry : tcpClients.asMap().entrySet()) {
+        for (Map.Entry<ServerlessHopsFSClient, Client> entry : clients.asMap().entrySet()) {
             ServerlessHopsFSClient serverlessHopsFSClient = entry.getKey();
             Client tcpClient = entry.getValue();
 
@@ -247,12 +252,12 @@ public class NameNodeTCPClient {
             LOG.warn("Found " + toRemove.size() + "ServerlessHopsFSClient instance(s) that were disconnected.");
 
             for (ServerlessHopsFSClient hopsFSClient : toRemove)
-                tcpClients.asMap().remove(hopsFSClient);
+                clients.asMap().remove(hopsFSClient);
         }
     }
 
     /**
-     * Register a new Serverless HopsFS client with the NameNode and establish a TCP connection with the new client.
+     * Register a new Serverless HopsFS client with the NameNode and establish a TCP/UDP connection.
      *
      * This function is thread safe.
      *
@@ -262,7 +267,7 @@ public class NameNodeTCPClient {
      * @throws IOException If the connection to the new client times out.
      */
     public boolean addClient(ServerlessHopsFSClient newClient) throws IOException {
-        if (tcpClients.asMap().containsKey(newClient))
+        if (clients.asMap().containsKey(newClient))
             return false;
 
         // We pass the writeBuffer and objectBuffer arguments to the Client constructor.
@@ -276,16 +281,16 @@ public class NameNodeTCPClient {
         // the bytes for a single object graph until it can be sent over the network or deserialized.
         // In short, the object buffers should be sized at least as large as the largest object that will be
         // sent or received.
-        Client tcpClient = new Client(writeBufferSize, objectBufferSize);
-        tcpClient.setIdleThreshold(0.25f);
+        Client client = new Client(writeBufferSize, objectBufferSize);
+        client.setIdleThreshold(0.25f);
 
         // Add an entry to the TCP Clients map now so that we do not try to connect again while we're
         // in the process of connecting.
-        Client existingClient = tcpClients.asMap().putIfAbsent(newClient, tcpClient);
+        Client existingClient = clients.asMap().putIfAbsent(newClient, client);
         if (existingClient != null)
             return false;
 
-        tcpClient.addListener(new Listener.ThreadedListener(new Listener() {
+        client.addListener(new Listener.ThreadedListener(new Listener() {
             /**
              * This listener is responsible for handling messages received from HopsFS clients. These messages will
              * generally be file system operation requests/directions. We will extract the information about the
@@ -296,18 +301,13 @@ public class NameNodeTCPClient {
              */
             public void received(Connection connection, Object object) {
                 long receivedAtTime = System.currentTimeMillis();
-                NameNodeResult tcpResult;
-                // If we received a JsonObject, then add it to the queue for processing.
-//                if (object instanceof String) {
-//                    if (LOG.isDebugEnabled())
-//                        LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " + connection.getRemoteAddressTCP() + ".");
-//                    JsonObject jsonObject = new JsonParser().parse((String)object).getAsJsonObject();
-//                    tcpResult = handleWorkAssignment(jsonObject, receivedAtTime);
-//                }
+                NameNodeResult result;
+
                 if (object instanceof TcpRequestPayload) {
                     if (LOG.isDebugEnabled())
-                        LOG.debug("[TCP Client] NN " + nameNodeId + " Received work assignment from " + connection.getRemoteAddressTCP() + ".");
-                    tcpResult = handleWorkAssignment((TcpRequestPayload)object, receivedAtTime);
+                        LOG.debug("[TCP/UDP Client] NN " + nameNodeId + " Received work assignment from " +
+                                connection.getRemoteAddressTCP() + ".");
+                    result = handleWorkAssignment((TcpRequestPayload)object, receivedAtTime);
                 }
                 else if (object instanceof FrameworkMessage.KeepAlive) {
                     // The server periodically sends KeepAlive objects to prevent the client from disconnecting
@@ -315,26 +315,27 @@ public class NameNodeTCPClient {
                     return; // Make sure to return, or else we'll send an empty message to the client.
                 }
                 else {
-                    LOG.error("[TCP Client] Received object of unexpected type from client " + connection
+                    LOG.error("[TCP/UDP Client] Received object of unexpected type from client " + connection
                                     + ". Object type: " + object.getClass().getSimpleName() + ": " + object);
                     // Create and log the exception to be returned to the client,
                     // so they know they sent the wrong thing.
                     IllegalArgumentException ex = new IllegalArgumentException(
-                            "[TCP Client] Received object of unexpected type from client " + connection
+                            "[TCP/UDP Client] Received object of unexpected type from client " + connection
                                     + ". Object type: " + object.getClass().getSimpleName() + ": " + object);
-                    tcpResult = new NameNodeResult("N/A", "N/A");
-                    tcpResult.addException(ex);
+                    result = new NameNodeResult("N/A", "N/A");
+                    result.addException(ex);
                 }
 
-                trySendTcp(connection, tcpResult);
+                result.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
+                sendData(connection, result);
             }
 
             public void disconnected (Connection connection) {
-                tcpClients.invalidate(newClient);           // Remove the client from the cache.
+                clients.invalidate(newClient);           // Remove the client from the cache.
 
-                LOG.warn("[TCP Client] Disconnected from HopsFS client " + newClient.getClientId() +
-                        " at " + newClient.getClientIp() + ":" + newClient.getClientPort() +
-                        ". Active TCP connections: " + tcpClients.estimatedSize() + "/" + maximumConnections);
+                LOG.warn("[TCP/UDP Client] Disconnected from HopsFS client " + newClient.getClientId() +
+                        " at " + newClient.getClientIp() + ":" + newClient.getTcpPort() +
+                        ". Active TCP connections: " + clients.estimatedSize() + "/" + maximumConnections);
 
                 // When we detect that we have disconnected, we add ourselves to the queue of disconnected clients.
                 // The worker thread will periodically go through and call .stop() on the contents of this queue so
@@ -345,24 +346,25 @@ public class NameNodeTCPClient {
                 // going to dispose of it anyway.
                 // disconnectedClients.add(tcpClient);
 
-                tcpClient.stop();
+                client.stop();
             }
         }));
 
         // We time how long it takes to establish the TCP connection for debugging/metric-collection purposes.
         Instant connectStart = Instant.now();
         Thread connectThread
-                = new Thread("Thread-ConnectTo" + newClient.getClientIp() + ":" + newClient.getClientPort()) {
+                = new Thread("Thread-ConnectTo" + newClient.getClientIp() + ":" + newClient.getTcpPort()) {
             public void run() {
-                tcpClient.start();
+                client.start();
                 try {
                     // We need to register whatever classes will be serialized BEFORE any network activity is performed.
-                    ServerlessClientServerUtilities.registerClassesToBeTransferred(tcpClient.getKryo());
+                    ServerlessClientServerUtilities.registerClassesToBeTransferred(client.getKryo());
 
                     // The call to connect() may produce an IOException if it times out.
-                    tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getClientPort());
+                    client.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getTcpPort(),
+                            newClient.getUdpPort());
                 } catch (IOException ex) {
-                    LOG.warn("IOException encountered while trying to connect to HopsFS Client via TCP:", ex);
+                    LOG.warn("IOException encountered while trying to connect to HopsFS Client via TCP/UDP:", ex);
                 }
             }
         };
@@ -370,7 +372,7 @@ public class NameNodeTCPClient {
         try {
             connectThread.join();
         } catch (InterruptedException ex) {
-            LOG.warn("InterruptedException encountered while trying to connect to HopsFS Client via TCP:", ex);
+            LOG.warn("InterruptedException encountered while trying to connect to HopsFS Client via TCP/UDP:", ex);
         }
         Instant connectEnd = Instant.now();
 
@@ -380,95 +382,27 @@ public class NameNodeTCPClient {
         double connectMilliseconds = TimeUnit.NANOSECONDS.toMillis(connectDuration.getNano()) +
                 TimeUnit.SECONDS.toMillis(connectDuration.getSeconds());
 
-        if (tcpClient.isConnected()) {
+        if (client.isConnected()) {
             if (LOG.isDebugEnabled())
                 LOG.debug("Successfully established connection with client " + newClient.getClientId()
                         + " in " + connectMilliseconds + " milliseconds!");
 
-            tcpClient.setKeepAliveTCP(6000);
+            client.setKeepAliveTCP(6000);
 
             // Now that we've registered the classes to be transferred, we can register with the server.
-            registerWithClient(tcpClient);
+            registerWithClient(client);
 
             if (LOG.isDebugEnabled())
-                LOG.debug("[TCP Client] Successfully added new TCP client.");
+                LOG.debug("[TCP/UDP Client] Successfully added new TCP client.");
 
             return true;
         } else {
             // Remove the entry that we added from the TCP client mapping. The connection establishment failed,
             // so we need to remove the record so that we may try again in the future.
-            tcpClients.invalidate(newClient);
+            clients.invalidate(newClient);
             throw new IOException("Failed to connect to client at " + newClient.getClientIp() + ":" +
-                    newClient.getClientPort());
+                    newClient.getTcpPort());
         }
-    }
-
-    /**
-     * Try to send an object over a connection via TCP. This will fail of the TCP buffer is 90% full or more.
-     * If this fails, then it enqueues the object to be sent when the buffer is not as full.
-     *
-     * @param connection The connection over which we're sending an object.
-     * @param payload The object to send.
-     */
-    private void trySendTcp(Connection connection, NameNodeResult payload) {
-//        double currentCapacity = ((double) connection.getTcpWriteBufferSize()) / ((double) writeBufferSize);
-//        if (currentCapacity >= 0.9) {
-//            LOG.warn("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
-//                    " is at " + (currentCapacity * 100) + "% capacity! Enqueuing payload to send later...");
-//            connection.addListener(new TcpIdleSender() {
-//                boolean _started = false;
-//                NameNodeResult enqueuedObject = payload;
-//
-//                @Override
-//                protected NameNodeResult next() {
-//                    if (LOG.isDebugEnabled())
-//                        LOG.debug("[TCP Client] Write buffer for connection " +  connection.getRemoteAddressTCP() +
-//                                " has reached 'idle' capacity. Sending buffered object now.");
-//                    NameNodeResult toReturn = enqueuedObject;
-//
-//                    // Set this to null before we return so that we cannot get stuck in a loop of returning this
-//                    // object from this listener. This is just a safeguard; that loop scenario should never occur.
-//                    enqueuedObject = null;
-//                    return toReturn;
-//                }
-//
-//                @Override
-//                public void idle(Connection connection) {
-//                    if (!_started) {    // This part is just from the original idle() method that I'm overloading.
-//                                        // I'm really not sure what it does or why it exists, as the start()
-//                                        // function doesn't actually do anything...
-//                        _started = true;
-//                        start();
-//                    }
-//                    // So, first we remove this listener from the connection so that it never activates again.
-//                    connection.removeListener(this);
-//
-//                    // Next, retrieve the enqueued object to send to the client.
-//                    NameNodeResult object = next();
-//
-//                    // If the enqueued object is NOT null, then we will try to send it. This is sort of a recursive
-//                    // call, since this listener was created within the trySendTcp() function. But we've already
-//                    // removed this listener from the connection, so we'll effectively go away once this idle()
-//                    // function exits. We just don't want to send the object without making sure the buffer is
-//                    // still clear. So, we try again. If it fails again, then at least this object gets enqueued,
-//                    // so it should eventually make it to the client.
-//                    if (object != null) {
-//                        trySendTcp(connection, object);
-//                    }
-//                }
-//            });
-//        }
-//        else {
-////            if (LOG.isDebugEnabled())
-////                LOG.debug("[TCP Client] Write buffer for connection " + connection.getRemoteAddressTCP() +
-////                        " is at " + (currentCapacity * 100) + "% capacity! Sending payload immediately.");
-//            payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
-//            sendTcp(connection, payload);
-//        }
-        //long s = System.nanoTime();
-        payload.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
-        //LOG.info("Prepared result for transmission in " + ((System.nanoTime() - s) / 1.0e6) + " ms.");
-        sendTcp(connection, payload);
     }
 
     /**
@@ -476,16 +410,21 @@ public class NameNodeTCPClient {
      * @param connection The connection over which we're sending an object.
      * @param payload The object to send.
      */
-    private void sendTcp(Connection connection, Object payload) {
-        int bytesSent = connection.sendTCP(payload);
+    private void sendData(Connection connection, Object payload) {
+        int bytesSent;
+
+        if (useUDP)
+            bytesSent = connection.sendUDP(payload);
+        else
+            bytesSent = connection.sendTCP(payload);
 
         if (LOG.isDebugEnabled())
-            LOG.debug("[TCP Client] Sent " + bytesSent + " bytes to HopsFS client at " +
+            LOG.debug("[TCP/UDP Client] Sent " + bytesSent + " bytes to HopsFS client at " +
                     connection.getRemoteAddressTCP());
 
         // Increase the buffer size for future TCP connections to hopefully avoid buffer overflows.
         if (bytesSent > objectBufferSize) {
-            LOG.warn("[TCP Client] Sent object of size " + bytesSent
+            LOG.warn("[TCP/UDP Client] Sent object of size " + bytesSent
                     + " bytes when object buffer is only of size " + objectBufferSize + " bytes.");
 
             // Do not go above the max buffer size.
@@ -496,10 +435,12 @@ public class NameNodeTCPClient {
             // we did so. If we were already at the max, then we'll print a warning, but currently
             // we don't do anything about it, so future TCP sends of the same object size will fail.
             if (oldBufferSize < objectBufferSize)
-                if (LOG.isDebugEnabled()) LOG.debug("[TCP Client] Increasing buffer size of future TCP connections to " + objectBufferSize + " bytes.");
+                if (LOG.isDebugEnabled()) LOG.debug(
+                        "[TCP/UDP Client] Increasing buffer size of future TCP connections to " +
+                                objectBufferSize + " bytes.");
             else
                 // TODO: What should we do if this occurs?
-                LOG.warn("[TCP Client] Already at the maximum buffer size for TCP connections...");
+                LOG.warn("[TCP/UDP Client] Already at the maximum buffer size for TCP connections...");
         }
     }
 
@@ -593,7 +534,7 @@ public class NameNodeTCPClient {
      * @return true if unregistered successfully, false if the client was already not registered with the NameNode.
      */
     public boolean removeClient(ServerlessHopsFSClient client) {
-        Client tcpClient = tcpClients.getIfPresent(client);
+        Client tcpClient = clients.getIfPresent(client);
 
         if (tcpClient == null) {
             LOG.warn("No TCP client associated with HopsFS client " + client.toString());
@@ -603,7 +544,7 @@ public class NameNodeTCPClient {
         // Stop the TCP client. This function calls the close() method.
         tcpClient.stop();
 
-        tcpClients.invalidate(client);
+        clients.invalidate(client);
 
         return true;
     }
@@ -612,6 +553,6 @@ public class NameNodeTCPClient {
      * @return The number of active TCP clients connected to the NameNode.
      */
     public int numClients() {
-        return (int)tcpClients.estimatedSize();
+        return (int) clients.estimatedSize();
     }
 }

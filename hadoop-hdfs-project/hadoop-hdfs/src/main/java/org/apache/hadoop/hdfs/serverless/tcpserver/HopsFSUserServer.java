@@ -133,11 +133,21 @@ public class HopsFSUserServer {
     private final Cache<String, NameNodeResult> resultsWithoutFutures;
 
     /**
+     * Use UDP instead of TCP.
+     */
+    private final boolean useUDP;
+
+    private int udpPort;
+
+    /**
      * Constructor.
      */
     public HopsFSUserServer(Configuration conf, ServerlessNameNodeClient client) {
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+        this.useUDP = conf.getBoolean(DFSConfigKeys.SERVERLESS_USE_UDP, DFSConfigKeys.SERVERLESS_USE_UDP_DEFAULT);
+        this.udpPort = conf.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
+                DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT_DEFAULT);
         // Set up state.
         this.allActiveConnections = new ConcurrentHashMap<>();
         this.submittedFutures = new ConcurrentHashMap<>();
@@ -226,26 +236,38 @@ public class HopsFSUserServer {
         // Bind to the specified TCP port so the server listens on that port.
         LOG.debug("[TCP SERVER " + tcpPort + "] HopsFS Client TCP Server binding to port " + tcpPort + " now...");
 
-        int maxPort = tcpPort + 1000;
-        int currentPort = tcpPort;
+        int maxTcpPort = tcpPort + 999;
+        int maxUdpPort = udpPort + 999;
+        int currentTcpPort = tcpPort;
+        int currentUdpPort = udpPort;
         boolean success = false;
-        while (currentPort < maxPort && !success) {
+        while (currentTcpPort < maxTcpPort && !success) {
             try {
-                LOG.debug("[TCP SERVER " + tcpPort + "] Trying to bind to port " + currentPort + ".");
-                server.bind(currentPort);
+                LOG.debug("[TCP SERVER " + tcpPort + "] Trying to bind to port " + currentTcpPort + ".");
 
-                if (tcpPort != currentPort) {
+                if (useUDP)
+                    server.bind(currentTcpPort, currentUdpPort);
+                else
+                    server.bind(currentTcpPort);
+
+                if (tcpPort != currentTcpPort) {
                     LOG.warn("[TCP SERVER " + tcpPort + "] Configuration specified port " + tcpPort +
-                            ", but we were unable to bind to that port. Instead, we are bound to port " + currentPort +
+                            ", but we were unable to bind to that port. Instead, we are bound to port " + currentTcpPort +
                             ".");
-                    this.tcpPort = currentPort;
+                    this.tcpPort = currentTcpPort;
+                }
+
+                if (udpPort != currentUdpPort) {
+                    LOG.warn("[TCP SERVER " + udpPort + "] Configuration specified port " + udpPort +
+                            ", but we were unable to bind to that port. Instead, we are bound to port " +
+                            currentUdpPort + ".");
+                    this.udpPort = currentUdpPort;
                 }
 
                 success = true;
             } catch (BindException ex) {
-//                LOG.error("[TCP SERVER " + tcpPort + "] Failed to bind to port " + currentPort +
-//                        ". Do you already have a server running on that port?");
-                currentPort++;
+                currentTcpPort++;
+                currentUdpPort++;
             }
         }
 
@@ -455,7 +477,8 @@ public class HopsFSUserServer {
                 return true;
             }
         } else {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Cannot remove connection to NN " + nameNodeId + ". No such connection exists!");
+            LOG.warn("[TCP SERVER " + tcpPort + "] Cannot remove connection to NN " + nameNodeId +
+                    ". No such connection exists!");
             return false;
         }
     }
@@ -606,8 +629,8 @@ public class HopsFSUserServer {
                                          String operationName, TcpRequestPayload payload,
                                          boolean tryToAvoidTargetingSameNameNode) {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue TCP request to NameNode deployment " +
-                    deploymentNumber + ", but connection no longer exists...");
+            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue " + (useUDP ? "UDP" : "TCP") +
+                    " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
             return null;
         }
 
@@ -633,14 +656,14 @@ public class HopsFSUserServer {
 
         // Make sure the connection variable is non-null.
         if (tcpConnection == null) {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue TCP request to NameNode deployment " +
-                    deploymentNumber + ", but connection no longer exists...");
+            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue " + (useUDP ? "UDP" : "TCP") +
+                    " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
             return null;
         }
 
         // Make sure the connection is active.
         if (!tcpConnection.isConnected()) {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Selected TCP connection to NameNode " + tcpConnection.name +
+            LOG.warn("[TCP SERVER " + tcpPort + "] Selected connection to NameNode " + tcpConnection.name +
                     " is NOT connected...");
 
             // Delete the connection. If it is active, then we throw an error, as we expect it to not be active.
@@ -658,15 +681,22 @@ public class HopsFSUserServer {
         futureToNameNodeMapping.put(requestId, tcpConnection);
 
         long sendStart = System.nanoTime();
-        tcpConnection.sendTCP(payload);
+
+        if (useUDP)
+            tcpConnection.sendUDP(payload);
+        else
+            tcpConnection.sendTCP(payload);
+
         long sendEnd = System.nanoTime();
 
         if (LOG.isDebugEnabled()) {
             double sendDurationMs = ((sendEnd - sendStart) / 1.0e6);
             if (sendDurationMs < 10)
-                LOG.debug("Sent TCP request " + requestId + " in " + sendDurationMs + " ms.");
+                LOG.debug("Sent " + (useUDP ? "UDP" : "TCP") + " request " + requestId + " in " +
+                        sendDurationMs + " ms.");
             else
-                LOG.warn("Sent TCP request " + requestId + " in " + sendDurationMs + " ms!");
+                LOG.warn("Sent " + (useUDP ? "UDP" : "TCP") + " request " + requestId + " in " +
+                        sendDurationMs + " ms!");
         }
 
         return requestResponseFuture;

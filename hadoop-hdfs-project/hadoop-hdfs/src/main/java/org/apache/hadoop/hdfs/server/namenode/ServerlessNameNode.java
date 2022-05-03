@@ -18,7 +18,6 @@ package org.apache.hadoop.hdfs.server.namenode;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.hops.DalDriver;
 import io.hops.events.EventManager;
@@ -72,16 +71,14 @@ import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgressMetrics;
 import org.apache.hadoop.hdfs.server.protocol.*;
-import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
-import org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.execution.ExecutionManager;
 import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.TaskArguments;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
-import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTCPClient;
+import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTcpUdpClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.io.DataInputBuffer;
@@ -471,7 +468,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Used to communicate with Serverless HopsFS clients via TCP.
    */
-  private NameNodeTCPClient nameNodeTCPClient;
+  private NameNodeTcpUdpClient nameNodeTCPClient;
 
   /**
    * How long to wait for the serverless name node worker thread to process a given task before timing out.
@@ -503,7 +500,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return numDeployments;
   }
 
-  public NameNodeTCPClient getNameNodeTcpClient() {
+  public NameNodeTcpUdpClient getNameNodeTcpClient() {
     return nameNodeTCPClient;
   }
 
@@ -2212,7 +2209,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     this.serverlessInvoker.setIsClientInvoker(false); // We are not a client.
     this.serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 
-    this.nameNodeTCPClient = new NameNodeTCPClient(conf,this, nameNodeID, deploymentNumber, actionMemory);
+    this.nameNodeTCPClient = new NameNodeTcpUdpClient(conf,this, nameNodeID, deploymentNumber, actionMemory);
 
     this.useNdbForConsistencyProtocol = conf.getBoolean(SERVERLESS_CONSISTENCY_USENDB, SERVERLESS_CONSISTENCY_USENDB_DEFAULT);
 
