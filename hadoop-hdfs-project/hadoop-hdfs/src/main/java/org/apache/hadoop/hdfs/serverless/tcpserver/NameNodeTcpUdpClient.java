@@ -141,7 +141,7 @@ public class NameNodeTcpUdpClient {
     /**
      * Use UDP instead of TCP.
      */
-    private final boolean useUDP;
+    private boolean useUDP;
 
     /**
      * Constructor.
@@ -161,7 +161,7 @@ public class NameNodeTcpUdpClient {
         this.nameNodeId = nameNodeId;
         this.deploymentNumber = deploymentNumber;
         this.actionMemory = actionMemory;
-        this.useUDP = conf.getBoolean(DFSConfigKeys.SERVERLESS_USE_UDP, DFSConfigKeys.SERVERLESS_USE_UDP_DEFAULT);
+        // this.useUDP = conf.getBoolean(DFSConfigKeys.SERVERLESS_USE_UDP, DFSConfigKeys.SERVERLESS_USE_UDP_DEFAULT);
 
         if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
                 DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT)) {
@@ -267,6 +267,8 @@ public class NameNodeTcpUdpClient {
      * @throws IOException If the connection to the new client times out.
      */
     public boolean addClient(ServerlessHopsFSClient newClient) throws IOException {
+        useUDP = newClient.getUdpEnabled(); // Set everytime, which is a little annoying.
+
         if (clients.asMap().containsKey(newClient))
             return false;
 
