@@ -398,8 +398,12 @@ public class NameNodeTcpUdpClient {
             // Now that we've registered the classes to be transferred, we can register with the server.
             registerWithClient(client);
 
-            if (LOG.isDebugEnabled())
-                LOG.debug("[TCP/UDP Client] Successfully added new TCP client.");
+            if (LOG.isDebugEnabled()) {
+                if (newClient.getUdpEnabled())
+                    LOG.debug("[TCP/UDP Client] Successfully added new TCP+UDP client.");
+                else
+                    LOG.debug("[TCP/UDP Client] Successfully added new TCP-Only client.");
+            }
 
             return true;
         } else {
