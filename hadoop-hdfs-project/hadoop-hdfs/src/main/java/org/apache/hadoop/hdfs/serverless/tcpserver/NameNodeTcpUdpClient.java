@@ -529,18 +529,31 @@ public class NameNodeTcpUdpClient {
 
     /**
      * Complete the registration phase with the client's TCP server.
-     * @param tcpClient The TCP connection established with the client.
+     * @param client The TCP connection established with the client.
      */
-    private void registerWithClient(Client tcpClient) {
+    private void registerWithClient(Client client) {
         // Complete the registration with the TCP server.
         JsonObject registration = new JsonObject();
         registration.addProperty(ServerlessNameNodeKeys.OPERATION, ServerlessClientServerUtilities.OPERATION_REGISTER);
         registration.addProperty(ServerlessNameNodeKeys.DEPLOYMENT_NUMBER, deploymentNumber);
         registration.addProperty(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
 
-        if (LOG.isDebugEnabled())
-            LOG.debug("Sending registration to HopsFS client @ " + tcpClient.getRemoteAddressTCP() + " now...");
-        tcpClient.sendTCP(registration.toString());
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Sending registration to HopsFS client @ " + client.getRemoteAddressTCP() + " via " +
+                    (useUDP ? "UDP" : "TCP") + " now...");
+        }
+
+        int bytesSent;
+        if (useUDP) {
+            bytesSent = client.sendUDP(registration.toString());
+        } else {
+            bytesSent = client.sendTCP(registration.toString());
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Sent " + bytesSent + " bytes for registration to HopsFS client @ " +
+                    client.getRemoteAddressTCP() + " via " + (useUDP ? "UDP" : "TCP") + " now...");
+        }
     }
 
     /**

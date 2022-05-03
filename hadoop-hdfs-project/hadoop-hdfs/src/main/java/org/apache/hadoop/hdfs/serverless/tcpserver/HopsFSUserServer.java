@@ -693,21 +693,22 @@ public class HopsFSUserServer {
 
         long sendStart = System.nanoTime();
 
+        int bytesSent;
         if (useUDP)
-            tcpConnection.sendUDP(payload);
+            bytesSent = tcpConnection.sendUDP(payload);
         else
-            tcpConnection.sendTCP(payload);
+            bytesSent = tcpConnection.sendTCP(payload);
 
         long sendEnd = System.nanoTime();
 
         if (LOG.isDebugEnabled()) {
             double sendDurationMs = ((sendEnd - sendStart) / 1.0e6);
             if (sendDurationMs < 10)
-                LOG.debug("Sent " + (useUDP ? "UDP" : "TCP") + " request " + requestId + " in " +
-                        sendDurationMs + " ms.");
+                LOG.debug("Sent " + bytesSent + " bytes via " + (useUDP ? "UDP" : "TCP") + " for request " +
+                        requestId + " in " + sendDurationMs + " ms.");
             else
-                LOG.warn("Sent " + (useUDP ? "UDP" : "TCP") + " request " + requestId + " in " +
-                        sendDurationMs + " ms!");
+                LOG.warn("Sent " + bytesSent + " bytes via " + (useUDP ? "UDP" : "TCP") + " for request " +
+                        requestId + " in " + sendDurationMs + " ms!");
         }
 
         return requestResponseFuture;
