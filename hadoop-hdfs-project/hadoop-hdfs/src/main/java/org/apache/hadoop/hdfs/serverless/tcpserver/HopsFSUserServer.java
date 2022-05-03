@@ -228,7 +228,11 @@ public class HopsFSUserServer {
             LOG.warn("TCP Server is NOT enabled. Server will NOT be started.");
             return;
         }
-        LOG.debug("Starting HopsFS Client TCP Server now...");
+
+        if (useUDP)
+            LOG.debug("Starting HopsFS Client TCP Server now. [TCP+UDP Mode]");
+        else
+            LOG.debug("Starting HopsFS Client TCP Server now. [TCP Only Mode]");
 
         // Start the TCP server.
         server.start();
@@ -241,14 +245,16 @@ public class HopsFSUserServer {
         int currentTcpPort = tcpPort;
         int currentUdpPort = udpPort;
         boolean success = false;
-        while (currentTcpPort < maxTcpPort && !success) {
+        while (currentTcpPort < maxTcpPort && currentUdpPort < maxUdpPort && !success) {
             try {
-                LOG.debug("[TCP SERVER " + tcpPort + "] Trying to bind to port " + currentTcpPort + ".");
-
-                if (useUDP)
+                if (useUDP) {
+                    LOG.debug("[TCP SERVER " + tcpPort + "] Trying to bind to TCP port " + currentTcpPort +
+                            " and UDP port " + currentUdpPort + ".");
                     server.bind(currentTcpPort, currentUdpPort);
-                else
+                } else {
+                    LOG.debug("[TCP SERVER " + tcpPort + "] Trying to bind to TCP port " + currentTcpPort + ".");
                     server.bind(currentTcpPort);
+                }
 
                 if (tcpPort != currentTcpPort) {
                     LOG.warn("[TCP SERVER " + tcpPort + "] Configuration specified port " + tcpPort +
@@ -257,7 +263,7 @@ public class HopsFSUserServer {
                     this.tcpPort = currentTcpPort;
                 }
 
-                if (udpPort != currentUdpPort) {
+                if (useUDP && udpPort != currentUdpPort) {
                     LOG.warn("[TCP SERVER " + udpPort + "] Configuration specified port " + udpPort +
                             ", but we were unable to bind to that port. Instead, we are bound to port " +
                             currentUdpPort + ".");
