@@ -353,7 +353,7 @@ public class NameNodeTcpUdpClient {
         // We time how long it takes to establish the TCP connection for debugging/metric-collection purposes.
         Instant connectStart = Instant.now();
         Thread connectThread
-                = new Thread("Thread-ConnectTo" + newClient.getClientIp() + ":" + newClient.getTcpPort()) {
+                = new Thread("T-Conn-" + newClient.getClientIp() + ":" + newClient.getTcpPort() + ":" + newClient.getUdpPort()) {
             public void run() {
                 client.start();
                 try {
@@ -363,12 +363,11 @@ public class NameNodeTcpUdpClient {
                     if (newClient.getUdpEnabled()) {
                         if (LOG.isDebugEnabled()) LOG.debug("Connecting to " + newClient.getClientIp() + ":" + newClient.getTcpPort() + ":" + newClient.getUdpPort() + " via TCP+UDP.");
                         // The call to connect() may produce an IOException if it times out.
-                        client.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getTcpPort());
+                        client.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getTcpPort(), newClient.getUdpPort());
                     } else {
                         if (LOG.isDebugEnabled()) LOG.debug("Connecting to " + newClient.getClientIp() + ":" + newClient.getTcpPort() + " via TCP only.");
                         // The call to connect() may produce an IOException if it times out.
-                        client.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getTcpPort(),
-                                newClient.getUdpPort());
+                        client.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getTcpPort());
                     }
                 } catch (IOException ex) {
                     LOG.warn("IOException encountered while trying to connect to HopsFS Client via TCP/UDP:", ex);
@@ -531,7 +530,7 @@ public class NameNodeTcpUdpClient {
         registration.addProperty(ServerlessNameNodeKeys.NAME_NODE_ID, nameNodeId);
 
         if (LOG.isDebugEnabled())
-            LOG.debug("Registering with HopsFS client at " + tcpClient.getRemoteAddressTCP() + " now...");
+            LOG.debug("Sending registration to HopsFS client @ " + tcpClient.getRemoteAddressTCP() + " now...");
         tcpClient.sendTCP(registration.toString());
     }
 
