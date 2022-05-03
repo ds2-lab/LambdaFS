@@ -362,6 +362,13 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         // CURRENT CONSISTENCY PROTOCOL   //
         //// // // // // // // // // // ////
         //
+        // WARNING:
+        // This description is slightly out-dated, as we now use ZooKeeper to store ACKs and INVs.
+        // The general steps and order of operations remains unchanged, however. Instead of storing ACKs
+        // and INVs as entries in an NDB table, we use ephemeral ZNodes stored in ZooKeeper. Just as each
+        // deployment had its own ACK and INV table in NDB, each deployment has an associated persistent ZNode
+        // for ACKs and another for INVs.
+        //
         // TERMINOLOGY:
         // - Leader NameNode: The NameNode performing the write operation.
         // - Follower NameNode: NameNode instance from the same deployment as the Leader NameNode.
