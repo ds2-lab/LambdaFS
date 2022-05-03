@@ -163,7 +163,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   /**
    * Use UDP instead of TCP.
    */
-  public static final String SERVERLESS_USE_UDP = "serverless.udb.enabled";
+  public static final String SERVERLESS_USE_UDP = "serverless.udp.enabled";
   public static final boolean SERVERLESS_USE_UDP_DEFAULT = false;
 
   public static final String SERVERLESS_HTTP_RETRY_MAX = "serverless.http.maxretries";

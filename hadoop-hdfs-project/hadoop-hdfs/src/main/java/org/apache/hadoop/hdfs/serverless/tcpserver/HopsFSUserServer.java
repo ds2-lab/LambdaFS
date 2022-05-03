@@ -309,6 +309,8 @@ public class HopsFSUserServer {
      * @param deploymentNumber The deployment in which the NameNode is running.
      */
     private void registerNameNode(NameNodeConnection connection, int deploymentNumber, long nameNodeId) {
+        if (LOG.isDebugEnabled()) LOG.debug("Registering connection to NameNode " + nameNodeId + " from deployment "
+                + deploymentNumber);
         connection.name = nameNodeId;
 
         cacheConnection(connection, deploymentNumber, nameNodeId);
@@ -349,7 +351,8 @@ public class HopsFSUserServer {
         } else if (LOG.isDebugEnabled()) {
             // We don't want to print this debug message along with the ones from the if-statement above, so
             // we put it in the else block. It isn't contradictory or anything, but it'd be redundant.
-            LOG.debug("Caching connection to NN " + nameNodeId + " (deployment #" + deploymentNumber + ") now.");
+            LOG.debug(serverPrefix + " Successfully registered connection with NN " + nameNodeId +
+                    " from deployment " + deploymentNumber);
         }
 
         allActiveConnections.put(nameNodeId, connection);
