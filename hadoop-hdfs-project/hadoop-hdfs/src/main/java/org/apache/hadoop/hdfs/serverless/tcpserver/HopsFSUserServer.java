@@ -281,6 +281,7 @@ public class HopsFSUserServer {
             throw new IOException("Failed to start TCP server. Could not successfully bind to any ports.");
 
         client.setTcpServerPort(tcpPort);
+        client.setUdpServerPort(udpPort);
     }
 
     /**

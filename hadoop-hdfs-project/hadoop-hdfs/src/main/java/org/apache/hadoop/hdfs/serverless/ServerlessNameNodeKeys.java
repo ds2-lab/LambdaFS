@@ -65,6 +65,7 @@ public class ServerlessNameNodeKeys {
     public static final String UDP_PORT = "UDP_PORT";
     public static final String CLIENT_INTERNAL_IP = "clientInternalIp";
     public static final String TCP_ENABLED = "tcpEnabled";
+    public static final String UDP_ENABLED = "udpEnabled";
     public static final String LOG_LEVEL = "LOG_LEVEL";
     public static final String CONSISTENCY_PROTOCOL_ENABLED = "CONSISTENCY_PROTOCOL_ENABLED";
 

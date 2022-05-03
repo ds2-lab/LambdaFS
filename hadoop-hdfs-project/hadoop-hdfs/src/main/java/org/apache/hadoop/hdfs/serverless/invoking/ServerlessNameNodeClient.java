@@ -106,6 +106,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * payload so that they know how to connect to us.
      */
     private int tcpServerPort;
+    private int udpServerPort;
 
     /**
      * Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
@@ -2359,7 +2360,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     public void setTcpServerPort(int tcpServerPort) {
         this.tcpServerPort = tcpServerPort;
-
         this.serverlessInvoker.setTcpPort(tcpServerPort);
+    }
+
+    public void setUdpServerPort(int udpServerPort) {
+        this.udpServerPort = udpServerPort;
+        this.serverlessInvoker.setUdpPort(udpServerPort);
     }
 }

@@ -180,12 +180,15 @@ public abstract class ServerlessInvokerBase<T> {
      * If False, then we'll tell the NameNodes not to try connecting to the TCP server.
      */
     protected boolean tcpEnabled;
+    protected boolean udpEnabled;
 
     /**
      * The TCP port that we ultimately bound to. See the comment in 'ServerlessNameNodeClient' for its
      * 'tcpServerPort' instance field for explanation as to why this field exists.
      */
     protected int tcpPort;
+
+    protected int udpPort;
 
     /**
      * The timeout, in milliseconds, for an HTTP request to a NameNode. This specifically
@@ -321,6 +324,14 @@ public abstract class ServerlessInvokerBase<T> {
     }
 
     /**
+     * Update the UDP port being used by this client's UDP server.
+     * @param udpPort The new value for the UDP port.
+     */
+    public void setUdpPort(int udpPort) {
+        this.udpPort = udpPort;
+    }
+
+    /**
      * Default constructor.
      */
     protected ServerlessInvokerBase() {
@@ -340,6 +351,8 @@ public abstract class ServerlessInvokerBase<T> {
                 DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT);
         tcpEnabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+        udpEnabled = conf.getBoolean(SERVERLESS_USE_UDP,
+                SERVERLESS_USE_UDP_DEFAULT);
         httpTimeoutMilliseconds = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT,
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
 
@@ -846,12 +859,14 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArgumentsJson.addProperty(DEBUG_NDB, debugEnabledNdb);
         nameNodeArgumentsJson.addProperty(DEBUG_STRING_NDB, debugStringNdb);
         nameNodeArgumentsJson.addProperty(TCP_PORT, tcpPort);
+        nameNodeArgumentsJson.addProperty(UDP_PORT, udpPort);
         nameNodeArgumentsJson.addProperty(BENCHMARK_MODE, benchmarkModeEnabled);
 
         // If we aren't a client invoker (e.g., DataNode, other NameNode, etc.), then don't populate the internal IP field.
         nameNodeArgumentsJson.addProperty(CLIENT_INTERNAL_IP, (isClientInvoker ? InvokerUtilities.getInternalIpAddress() : "0.0.0.0"));
 
         nameNodeArgumentsJson.addProperty(TCP_ENABLED, tcpEnabled);
+        nameNodeArgumentsJson.addProperty(UDP_ENABLED, udpEnabled);
         nameNodeArgumentsJson.addProperty(LOCAL_MODE, localMode);
         nameNodeArgumentsJson.addProperty(CONSISTENCY_PROTOCOL_ENABLED, consistencyProtocolEnabled);
         nameNodeArgumentsJson.addProperty(LOG_LEVEL, OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel));
