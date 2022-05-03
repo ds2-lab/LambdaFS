@@ -514,12 +514,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 localStart = System.currentTimeMillis();
 
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
+                    LOG.debug("Issuing " + (tcpServer.isUdpEnabled() ? "UDP" : "TCP") +
+                            " request for operation '" + operationName + "' now. Request ID = '" +
                             requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
                             ".");
                 } else if (LOG.isTraceEnabled()) {
-                    LOG.trace("Issuing TCP request for operation '" + operationName + "' now. Request ID = '" +
-                            requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() +
+                    LOG.trace("Issuing " + (tcpServer.isUdpEnabled() ? "UDP" : "TCP") + " request for operation '" +
+                            operationName + "' now. Request ID = '" + requestId + "'. Attempt " +
+                            exponentialBackOff.getNumberOfRetries() +
                             (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
                             ". Time elapsed so far: " + (System.currentTimeMillis() - opStart) + " ms. Timeout: " +
                             requestTimeout + " ms. " + (stragglerResubmissionAlreadyOccurred ?
@@ -592,7 +594,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // the request, then we'll do so now, and we'll only sleep for a small interval of time.
                 if (stragglerMitigationEnabled) {
                     if (stragglerResubmissionAlreadyOccurred) {
-                        LOG.error("Timed out while waiting for TCP response for request " + requestId + ".");
+                        LOG.error("Timed out while waiting for " + (tcpServer.isUdpEnabled() ? "UDP" : "TCP") +
+                                " response for request " + requestId + ".");
                         LOG.error("Already submitted a straggler mitigation request. Counting this as a 'real' timeout.");
                         stragglerResubmissionAlreadyOccurred = false; // Flip this back to false.
                         // Don't continue. We need to exponentially backoff.

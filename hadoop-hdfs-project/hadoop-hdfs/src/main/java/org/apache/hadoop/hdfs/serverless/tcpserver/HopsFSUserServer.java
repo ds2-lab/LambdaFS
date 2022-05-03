@@ -220,6 +220,10 @@ public class HopsFSUserServer {
         LOG.debug("HopsFSUserServer " + tcpPort + " stopped successfully.");
     }
 
+    public boolean isUdpEnabled() {
+        return useUDP;
+    }
+
     /**
      * Start the TCP server.
      */
