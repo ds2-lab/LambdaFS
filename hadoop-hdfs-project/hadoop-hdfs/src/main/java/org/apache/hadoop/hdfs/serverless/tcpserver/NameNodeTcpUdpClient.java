@@ -410,8 +410,13 @@ public class NameNodeTcpUdpClient {
             // Remove the entry that we added from the TCP client mapping. The connection establishment failed,
             // so we need to remove the record so that we may try again in the future.
             clients.invalidate(newClient);
-            throw new IOException("Failed to connect to client at " + newClient.getClientIp() + ":" +
-                    newClient.getTcpPort());
+
+            if (newClient.getUdpEnabled())
+                throw new IOException("Failed to connect to TCP+UDP client at " + newClient.getClientIp() + ":" +
+                        newClient.getTcpPort() + ":" + newClient.getUdpEnabled());
+            else
+                throw new IOException("Failed to connect to TCP-Only client at " + newClient.getClientIp() + ":" +
+                        newClient.getTcpPort());
         }
     }
 
