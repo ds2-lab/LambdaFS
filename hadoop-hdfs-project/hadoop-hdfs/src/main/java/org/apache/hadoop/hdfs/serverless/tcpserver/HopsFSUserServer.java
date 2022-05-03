@@ -140,6 +140,12 @@ public class HopsFSUserServer {
     private int udpPort;
 
     /**
+     * Prefix used on debug messages. Of the form [CLIENT SERVER {TCP_PORT}] when in TCP-only mode and
+     * [CLIENT SERVER {TCP_PORT}-{UDP_PORT}] when in TCP-UDP mode.
+     */
+    private String serverPrefix;
+
+    /**
      * Constructor.
      */
     public HopsFSUserServer(Configuration conf, ServerlessNameNodeClient client) {
@@ -195,7 +201,7 @@ public class HopsFSUserServer {
            */
           @Override
           protected Connection newConnection() {
-            LOG.debug("[TCP SERVER " + tcpPort + "] Creating new NameNodeConnection.");
+            LOG.debug(serverPrefix + " Creating new NameNodeConnection.");
             return new NameNodeConnection();
           }
         };
@@ -234,16 +240,14 @@ public class HopsFSUserServer {
         }
 
         if (useUDP)
-            LOG.debug("Starting HopsFS Client TCP Server now. [TCP+UDP Mode]");
+            LOG.debug("Starting HopsFS Client Server now. [TCP+UDP Mode]");
         else
-            LOG.debug("Starting HopsFS Client TCP Server now. [TCP Only Mode]");
+            LOG.debug("Starting HopsFS Client Server now. [TCP Only Mode]");
 
-        // Start the TCP server.
+        // Start the tcp/udp server.
         server.start();
 
         // Bind to the specified TCP port so the server listens on that port.
-        LOG.debug("[TCP SERVER " + tcpPort + "] HopsFS Client TCP Server binding to port " + tcpPort + " now...");
-
         int maxTcpPort = tcpPort + 999;
         int maxUdpPort = udpPort + 999;
         int currentTcpPort = tcpPort;
@@ -252,26 +256,35 @@ public class HopsFSUserServer {
         while (currentTcpPort < maxTcpPort && currentUdpPort < maxUdpPort && !success) {
             try {
                 if (useUDP) {
-                    LOG.debug("[TCP SERVER " + tcpPort + "] Trying to bind to TCP port " + currentTcpPort +
+                    LOG.debug("[CLIENT SERVER] Trying to bind to TCP port " + currentTcpPort +
                             " and UDP port " + currentUdpPort + ".");
                     server.bind(currentTcpPort, currentUdpPort);
                 } else {
-                    LOG.debug("[TCP SERVER " + tcpPort + "] Trying to bind to TCP port " + currentTcpPort + ".");
+                    LOG.debug("[CLIENT SERVER] Trying to bind to TCP port " + currentTcpPort + ".");
                     server.bind(currentTcpPort);
                 }
 
                 if (tcpPort != currentTcpPort) {
-                    LOG.warn("[TCP SERVER " + tcpPort + "] Configuration specified port " + tcpPort +
+                    LOG.warn("[CLIENT SERVER] Configuration specified port " + tcpPort +
                             ", but we were unable to bind to that port. Instead, we are bound to port " + currentTcpPort +
                             ".");
                     this.tcpPort = currentTcpPort;
                 }
 
                 if (useUDP && udpPort != currentUdpPort) {
-                    LOG.warn("[TCP SERVER " + udpPort + "] Configuration specified port " + udpPort +
+                    LOG.warn("[CLIENT SERVER] Configuration specified port " + udpPort +
                             ", but we were unable to bind to that port. Instead, we are bound to port " +
                             currentUdpPort + ".");
                     this.udpPort = currentUdpPort;
+                }
+
+                if (useUDP) {
+                    if (LOG.isDebugEnabled()) LOG.debug("Successfully bound to TCP port " + tcpPort + ", UDP port " + udpPort + ".");
+
+                    serverPrefix = "[CLIENT SERVER " + tcpPort + "-" + udpPort + "]";
+                } else {
+                    if (LOG.isDebugEnabled()) LOG.debug("Successfully bound to TCP port " + tcpPort + ".");
+                    serverPrefix = "[CLIENT SERVER " + tcpPort + "]";
                 }
 
                 success = true;
@@ -282,7 +295,7 @@ public class HopsFSUserServer {
         }
 
         if (!success)
-            throw new IOException("Failed to start TCP server. Could not successfully bind to any ports.");
+            throw new IOException("Failed to start TCP/UDP server. Could not successfully bind to any ports.");
 
         client.setTcpServerPort(tcpPort);
         client.setUdpServerPort(udpPort);
@@ -321,16 +334,16 @@ public class HopsFSUserServer {
                         ", but we prev. cached its deployment # as " + existingDeploymentNumber);
 
             if (oldConnection.isConnected()) {
-                LOG.warn("[TCP SERVER " + tcpPort + "] Already have an ACTIVE conn to NameNode " + nameNodeId +
+                LOG.warn(serverPrefix + " Already have an ACTIVE conn to NameNode " + nameNodeId +
                         " (deployment #" + deploymentNumber + ".");
-                LOG.warn("[TCP SERVER " + tcpPort + "] Replacing old, ACTIVE conn to NameNode " + nameNodeId +
+                LOG.warn(serverPrefix + " Replacing old, ACTIVE conn to NameNode " + nameNodeId +
                         " (deployment #" + deploymentNumber + ") with a new one...");
 
                 oldConnection.close();
             } else {
-                LOG.error("[TCP SERVER " + tcpPort + "] Already have a conn to NameNode " + nameNodeId + " (deployment #" +
+                LOG.error(serverPrefix + " Already have a conn to NameNode " + nameNodeId + " (deployment #" +
                         deploymentNumber + "), but it is apparently no longer connected...");
-                LOG.warn("[TCP SERVER " + tcpPort + "] Replacing old, now-disconnected conn to NameNode " + nameNodeId +
+                LOG.warn(serverPrefix + " Replacing old, now-disconnected conn to NameNode " + nameNodeId +
                         " (deployment #" + deploymentNumber + ") with the new one...");
             }
         } else if (LOG.isDebugEnabled()) {
@@ -440,7 +453,7 @@ public class HopsFSUserServer {
             if (connection.isConnected()) {
 
                 if (errorIfActive) {
-                    throw new IllegalStateException("[TCP SERVER " + tcpPort + "] Connection to NN " + nameNodeId
+                    throw new IllegalStateException(serverPrefix + " Connection to NN " + nameNodeId
                             + " was found to be active when trying to delete it.");
                 }
 
@@ -466,11 +479,11 @@ public class HopsFSUserServer {
                     submittedFutures.remove(connection.name);
 
                     if (LOG.isDebugEnabled())
-                        LOG.debug("[TCP SERVER " + tcpPort + "] Closed and removed connection to NN " + nameNodeId);
+                        LOG.debug(serverPrefix + " Closed and removed connection to NN " + nameNodeId);
                     return true;
                 } else {
                     if (LOG.isDebugEnabled())
-                        LOG.debug("[TCP SERVER " + tcpPort + "] Cannot remove connection to NN " + nameNodeId
+                        LOG.debug(serverPrefix + " Cannot remove connection to NN " + nameNodeId
                                 + " because it is still active " + "(and the override flag was not set to true).");
                     return false;
                 }
@@ -484,11 +497,11 @@ public class HopsFSUserServer {
                 deploymentConnections.remove(nameNodeId);
 
                 if (LOG.isDebugEnabled())
-                    LOG.debug("[TCP SERVER " + tcpPort + "] Removed already-closed connection to NN " + nameNodeId);
+                    LOG.debug(serverPrefix + " Removed already-closed connection to NN " + nameNodeId);
                 return true;
             }
         } else {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Cannot remove connection to NN " + nameNodeId +
+            LOG.warn(serverPrefix + " Cannot remove connection to NN " + nameNodeId +
                     ". No such connection exists!");
             return false;
         }
@@ -640,7 +653,7 @@ public class HopsFSUserServer {
                                          String operationName, TcpRequestPayload payload,
                                          boolean tryToAvoidTargetingSameNameNode) {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue " + (useUDP ? "UDP" : "TCP") +
+            LOG.warn(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
                     " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
             return null;
         }
@@ -667,14 +680,14 @@ public class HopsFSUserServer {
 
         // Make sure the connection variable is non-null.
         if (tcpConnection == null) {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Was about to issue " + (useUDP ? "UDP" : "TCP") +
+            LOG.warn(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
                     " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
             return null;
         }
 
         // Make sure the connection is active.
         if (!tcpConnection.isConnected()) {
-            LOG.warn("[TCP SERVER " + tcpPort + "] Selected connection to NameNode " + tcpConnection.name +
+            LOG.warn(serverPrefix + " Selected connection to NameNode " + tcpConnection.name +
                     " is NOT connected...");
 
             // Delete the connection. If it is active, then we throw an error, as we expect it to not be active.
@@ -810,7 +823,7 @@ public class HopsFSUserServer {
         if (future == null) {
             // Only cache the future if it hasn't already been completed.
             if (!completedFutures.asMap().containsKey(requestId)) {
-                LOG.error("[TCP SERVER " + tcpPort + "] TCP Server received response for request " + requestId +
+                LOG.error(serverPrefix + " TCP Server received response for request " + requestId +
                         ", but there is no associated future registered with the server.");
                 resultsWithoutFutures.put(requestId, result);
             }
@@ -835,10 +848,10 @@ public class HopsFSUserServer {
                 NameNodeResultWithMetrics resultWithMetrics = (NameNodeResultWithMetrics)result;
                 int deploymentNumber = resultWithMetrics.getDeploymentNumber();
                 long nameNodeId = resultWithMetrics.getNameNodeId();
-                LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId +
+                LOG.debug(serverPrefix + " Obtained result for request " + requestId +
                         " from NN " + nameNodeId + ", deployment " + deploymentNumber + ".");
             } else {
-                LOG.debug("[TCP SERVER " + tcpPort + "] Obtained result for request " + requestId + ".");
+                LOG.debug(serverPrefix + " Obtained result for request " + requestId + ".");
             }
         }
     }
@@ -878,13 +891,13 @@ public class HopsFSUserServer {
          */
         public void connected(Connection conn) {
             if (LOG.isDebugEnabled())
-                LOG.debug("[TCP SERVER " + tcpPort + "] Connection established with remote NameNode at " + conn.getRemoteAddressTCP());
+                LOG.debug(serverPrefix + " Connection established with remote NameNode at " + conn.getRemoteAddressTCP());
             conn.setKeepAliveTCP(6000);
             conn.setTimeout(12000);
         }
 
         /**
-         * This listener handles receiving TCP messages from the name nodes.
+         * This listener handles receiving TCP/UDP messages from the name nodes.
          * @param conn The connection to the name node.
          * @param object The object that was sent by the name node to the client (us).
          */
@@ -912,7 +925,7 @@ public class HopsFSUserServer {
                         registerNameNode(connection, deploymentNumber, nameNodeId);
                         break;
                     default:
-                        LOG.warn("[TCP SERVER " + tcpPort + "] Unknown operation received from NameNode " + nameNodeId +
+                        LOG.warn(serverPrefix + " Unknown operation received from NameNode " + nameNodeId +
                                 ", Deployment #" + deploymentNumber + ": '" + operation + "'");
                 }
             }
@@ -920,7 +933,7 @@ public class HopsFSUserServer {
                 // The server periodically sends KeepAlive objects to prevent client from disconnecting.
             }
             else {
-                LOG.warn("[TCP SERVER " + tcpPort + "] Received object of unexpected type from remote client " + connection +
+                LOG.warn(serverPrefix + " Received object of unexpected type from remote client " + connection +
                         " at " + connection.getRemoteAddressTCP() + ". Object type: " +
                         object.getClass().getSimpleName() + ".");
                 LOG.warn("Unexpected object: " + object.toString());
@@ -937,7 +950,7 @@ public class HopsFSUserServer {
 
             if (connection.name != -1) {
                 int mappedDeploymentNumber = nameNodeIdToDeploymentMapping.get(connection.name);
-                LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to NN " + connection.name +
+                LOG.warn(serverPrefix + " Lost connection to NN " + connection.name +
                         " from deployment #" + mappedDeploymentNumber);
                 allActiveConnections.remove(connection.name);
 
@@ -949,9 +962,9 @@ public class HopsFSUserServer {
             } else {
                 InetSocketAddress address = conn.getRemoteAddressTCP();
                 if (address == null)
-                    LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to unregistered NameNode.");
+                    LOG.warn(serverPrefix + " Lost connection to unregistered NameNode.");
                 else
-                    LOG.warn("[TCP SERVER " + tcpPort + "] Lost connection to unregistered NameNode at " + address);
+                    LOG.warn(serverPrefix + " Lost connection to unregistered NameNode at " + address);
             }
         }
 
@@ -966,17 +979,17 @@ public class HopsFSUserServer {
             List<TcpTaskFuture> incompleteFutures = submittedFutures.get(nameNodeId);
 
             if (incompleteFutures == null) {
-                if (LOG.isDebugEnabled()) LOG.debug("[TCP SERVER " + tcpPort +
+                if (LOG.isDebugEnabled()) LOG.debug("[CLIENT SERVER " + tcpPort +
                         "] There were no futures associated with now-closed connection to NN " + nameNodeId);
                 return;
             }
 
-            LOG.warn("[TCP SERVER " + tcpPort + "] There were " + incompleteFutures.size()
+            LOG.warn(serverPrefix + " There were " + incompleteFutures.size()
                     + " incomplete future(s) associated with now-terminated connection to NN " + nameNodeId);
 
             // Cancel each of the futures.
             for (TcpTaskFuture future : incompleteFutures) {
-                if (LOG.isDebugEnabled()) LOG.debug("    [TCP SERVER " + tcpPort + "] Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
+                if (LOG.isDebugEnabled()) LOG.debug("    [CLIENT SERVER " + tcpPort + "] Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
                 try {
                     future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
                 } catch (InterruptedException ex) {
