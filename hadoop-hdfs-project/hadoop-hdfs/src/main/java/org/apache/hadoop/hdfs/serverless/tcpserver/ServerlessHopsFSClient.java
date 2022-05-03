@@ -38,17 +38,22 @@ public class ServerlessHopsFSClient {
      */
     private final int udpPort;
 
+    private final boolean udpEnabled;
+
     /**
      * Non-default constructor.
      * @param id Unique identifier of this particular client.
      * @param ip External IPv4 address of this client.
      * @param tcpPort The port in use by this client.
+     * @param udpPort The port to use to connect to the UDP server.
+     * @param udpEnabled Indicates whether the server is running in TCP+UDP mode (true) or TCP-only mode (false).
      */
-    public ServerlessHopsFSClient(String id, String ip, int tcpPort, int udpPort) {
-        clientId = id;
-        clientIp = ip;
+    public ServerlessHopsFSClient(String id, String ip, int tcpPort, int udpPort, boolean udpEnabled) {
+        this.clientId = id;
+        this.clientIp = ip;
         this.tcpPort = tcpPort;
         this.udpPort = udpPort;
+        this.udpEnabled = udpEnabled;
     }
 
     public String getClientIp() { return clientIp; }
@@ -58,6 +63,8 @@ public class ServerlessHopsFSClient {
     public int getTcpPort() { return tcpPort; }
 
     public int getUdpPort() { return udpPort; }
+
+    public boolean getUdpEnabled() { return udpEnabled; }
 
     @Override
     public boolean equals(Object obj) {

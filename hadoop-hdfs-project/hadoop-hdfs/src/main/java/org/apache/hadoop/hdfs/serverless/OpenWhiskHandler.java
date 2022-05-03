@@ -86,7 +86,7 @@ public class OpenWhiskHandler extends BaseHandler {
         String clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
 
         boolean tcpEnabled = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_ENABLED).getAsBoolean();
-
+        boolean udpEnabled = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.UDP_ENABLED).getAsBoolean();
         boolean benchmarkModeEnabled = userArguments.getAsJsonPrimitive(BENCHMARK_MODE).getAsBoolean();
 
         Instant start = Instant.now();
@@ -200,8 +200,8 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
-                requestId, clientName, isClientInvoker, tcpEnabled, tcpPort, udpPort, actionMemory, localMode,
-                startTime, benchmarkModeEnabled);
+                requestId, clientName, isClientInvoker, tcpEnabled, udpEnabled, tcpPort, udpPort, actionMemory,
+                localMode, startTime, benchmarkModeEnabled);
 
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
@@ -268,8 +268,8 @@ public class OpenWhiskHandler extends BaseHandler {
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                          String functionName, String clientIPAddress, String requestId,
                                          String clientName, boolean isClientInvoker, boolean tcpEnabled,
-                                         int tcpPort, int udpPort, int actionMemory, boolean localMode,
-                                         long startTime, boolean benchmarkModeEnabled) {
+                                         boolean udpEnabled, int tcpPort, int udpPort, int actionMemory,
+                                         boolean localMode, long startTime, boolean benchmarkModeEnabled) {
         NameNodeResult result;
 
         if (benchmarkModeEnabled) {
@@ -334,13 +334,14 @@ public class OpenWhiskHandler extends BaseHandler {
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker && tcpEnabled) {
             ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
-                    clientName, clientIPAddress, tcpPort, udpPort);
+                    clientName, clientIPAddress, tcpPort, udpPort, udpEnabled);
 
             final NameNodeTcpUdpClient tcpClient = serverlessNameNode.getNameNodeTcpClient();
             // Do this in a separate thread so that we can return the result back to the user immediately.
             new Thread(() -> {
                 try {
-                    if (LOG.isDebugEnabled())LOG.debug("Attempting to connect to client " + serverlessHopsFSClient + " in separate thread.");
+                    if (LOG.isDebugEnabled())LOG.debug("Attempting to connect to client " + serverlessHopsFSClient +
+                            " in separate thread.");
                     tcpClient.addClient(serverlessHopsFSClient);
                 } catch (IOException ex) {
                     LOG.error("Encountered exception while connecting to client " + serverlessHopsFSClient + ":", ex);

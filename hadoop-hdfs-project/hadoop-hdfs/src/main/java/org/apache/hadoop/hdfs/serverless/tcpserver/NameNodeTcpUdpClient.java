@@ -360,9 +360,16 @@ public class NameNodeTcpUdpClient {
                     // We need to register whatever classes will be serialized BEFORE any network activity is performed.
                     ServerlessClientServerUtilities.registerClassesToBeTransferred(client.getKryo());
 
-                    // The call to connect() may produce an IOException if it times out.
-                    client.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getTcpPort(),
-                            newClient.getUdpPort());
+                    if (newClient.getUdpEnabled()) {
+                        if (LOG.isDebugEnabled()) LOG.debug("Connecting to " + newClient.getClientIp() + ":" + newClient.getTcpPort() + ":" + newClient.getUdpPort() + " via TCP+UDP.");
+                        // The call to connect() may produce an IOException if it times out.
+                        client.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getTcpPort());
+                    } else {
+                        if (LOG.isDebugEnabled()) LOG.debug("Connecting to " + newClient.getClientIp() + ":" + newClient.getTcpPort() + " via TCP only.");
+                        // The call to connect() may produce an IOException if it times out.
+                        client.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getTcpPort(),
+                                newClient.getUdpPort());
+                    }
                 } catch (IOException ex) {
                     LOG.warn("IOException encountered while trying to connect to HopsFS Client via TCP/UDP:", ex);
                 }
