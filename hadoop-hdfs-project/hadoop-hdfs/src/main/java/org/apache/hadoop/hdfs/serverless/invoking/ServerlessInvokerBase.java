@@ -365,9 +365,13 @@ public abstract class ServerlessInvokerBase<T> {
         // NDB
         debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);
         debugStringNdb = conf.get(DFSConfigKeys.NDB_DEBUG_STRING, DFSConfigKeys.NDB_DEBUG_STRING_DEFAULT);
-        if (LOG.isDebugEnabled()) LOG.debug("NDB debug enabled: " + debugEnabledNdb);
-        if (debugEnabledNdb && LOG.isDebugEnabled())
-            LOG.debug("NDB debug string: " + debugStringNdb);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("NDB debug enabled: " + debugEnabledNdb);
+            LOG.debug("TCP Enabled: " + tcpEnabled);
+            LOG.debug("UDP Enabled: " + udpEnabled);
+
+            if (debugEnabledNdb) LOG.debug("NDB debug string: " + debugStringNdb);
+        }
 
         try {
             httpClient = getHttpClient();
