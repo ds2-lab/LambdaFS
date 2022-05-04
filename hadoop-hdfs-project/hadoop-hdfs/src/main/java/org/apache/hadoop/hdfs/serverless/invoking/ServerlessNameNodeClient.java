@@ -100,13 +100,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private final boolean tcpEnabled;
 
     /**
-     * The server port defaults to whatever is specified in the configuration. But if multiple threads are used,
-     * then conflicts will arise. So, the threads will try using different ports until one works (incrementing
-     * the one specified in configuration until one works). We communicate this port to NameNodes in the invocation
-     * payload so that they know how to connect to us.
+     * Not really used by this class. Just used for debugging.
      */
-    private int tcpServerPort;
-    private int udpServerPort;
+    private final boolean udpEnabled;
 
     /**
      * Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
@@ -149,25 +145,25 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private final HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
 
-    /**
-     * The number of operations we've issued to a NameNode.
-     * This includes both successful and failed operations.
-     * This does not count individual retries for HTTP, as those are handled by the invoker implementation.
-     */
-    private int numOperationsIssued = 0;
-
-    /**
-     * The number of operations we've issued to a NameNode via HTTP.
-     * This includes both successful and failed operations.
-     * This does not count individual retries, as those are handled by the invoker implementation.
-     */
-    private int numOperationsIssuedViaHttp = 0;
-
-    /**
-     * The number of operations we've issued to a NameNode via TCP.
-     * This includes both successful and failed operations.
-     */
-    private int numOperationsIssuedViaTcp = 0;
+//    /**
+//     * The number of operations we've issued to a NameNode.
+//     * This includes both successful and failed operations.
+//     * This does not count individual retries for HTTP, as those are handled by the invoker implementation.
+//     */
+//    private int numOperationsIssued = 0;
+//
+//    /**
+//     * The number of operations we've issued to a NameNode via HTTP.
+//     * This includes both successful and failed operations.
+//     * This does not count individual retries, as those are handled by the invoker implementation.
+//     */
+//    private int numOperationsIssuedViaHttp = 0;
+//
+//    /**
+//     * The number of operations we've issued to a NameNode via TCP.
+//     * This includes both successful and failed operations.
+//     */
+//    private int numOperationsIssuedViaTcp = 0;
 
     /**
      * Threshold at which we stop targeting specific deployments in an effort to prevent additional pods
@@ -235,6 +231,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         serverlessEndpointBase = dfsClient.serverlessEndpoint;
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
         tcpEnabled = conf.getBoolean(SERVERLESS_TCP_REQUESTS_ENABLED, SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+        udpEnabled = conf.getBoolean(SERVERLESS_USE_UDP, SERVERLESS_USE_UDP_DEFAULT);
         localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         latencyThreshold = conf.getDouble(SERVERLESS_LATENCY_THRESHOLD, SERVERLESS_LATENCY_THRESHOLD_DEFAULT);
         latencyWindowSize = conf.getInt(SERVERLESS_LATENCY_WINDOW_SIZE, SERVERLESS_LATENCY_WINDOW_SIZE_DEFAULT);
@@ -257,6 +254,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LOG.info("Serverless endpoint: " + serverlessEndpointBase);
         LOG.info("Serverless platform: " + serverlessPlatformName);
         LOG.info("TCP requests are " + (tcpEnabled ? "enabled." : "disabled."));
+        LOG.info("UDP requests are " + (udpEnabled ? "enabled." : "disabled."));
         LOG.debug("Straggler mitigation is " + (stragglerMitigationEnabled ? " enabled. " +
                 "Straggler mitigation factor: " + stragglerMitigationThresholdFactor + "." : "disabled."));
         LOG.debug("Latency Window: " + latencyWindowSize + ", Latency Threshold: " + latencyThreshold + " ms.");
@@ -529,8 +527,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                             "Straggler resubmission has NOT already occurred."));
                 }
 
-                numOperationsIssuedViaTcp++;
-                numOperationsIssued++;
+//                numOperationsIssuedViaTcp++;
+//                numOperationsIssued++;
                 Object response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
                         operationName, tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
 
@@ -632,8 +630,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 long startTime = System.currentTimeMillis();
 
-                numOperationsIssued++;
-                numOperationsIssuedViaHttp++;
+//                numOperationsIssued++;
+//                numOperationsIssuedViaHttp++;
                 // Issue the HTTP request. This function will handle retries and timeouts.
                 JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                         operationName,
@@ -748,8 +746,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         long startTime = System.currentTimeMillis();
 
-        numOperationsIssued++;
-        numOperationsIssuedViaHttp++;
+//        numOperationsIssued++;
+//        numOperationsIssuedViaHttp++;
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
         JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
@@ -2354,20 +2352,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         return 0;
     }
 
-    public int getTcpServerPort() {
-        return tcpServerPort;
-    }
-
     /**
-     * IMPORTANT: This function also calls setTcpServerPort() on the ServerlessInvoker instance.
+     * IMPORTANT: This function just calls setTcpServerPort() on the ServerlessInvoker instance.
      */
     public void setTcpServerPort(int tcpServerPort) {
-        this.tcpServerPort = tcpServerPort;
         this.serverlessInvoker.setTcpPort(tcpServerPort);
     }
 
+    /**
+     * IMPORTANT: This function just calls setUdpServerPort() on the ServerlessInvoker instance.
+     */
     public void setUdpServerPort(int udpServerPort) {
-        this.udpServerPort = udpServerPort;
         this.serverlessInvoker.setUdpPort(udpServerPort);
     }
 }

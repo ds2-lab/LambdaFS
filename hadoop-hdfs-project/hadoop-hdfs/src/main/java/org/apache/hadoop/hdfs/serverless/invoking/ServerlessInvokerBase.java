@@ -346,13 +346,12 @@ public abstract class ServerlessInvokerBase<T> {
     public void setConfiguration(Configuration conf, String invokerIdentity) {
         if (LOG.isDebugEnabled()) LOG.debug("Configuring ServerlessInvokerBase now...");
         cache = new FunctionMetadataMap(conf);
-        this.localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
+        localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         maxHttpRetries = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX,
                 DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT);
         tcpEnabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
-        udpEnabled = conf.getBoolean(SERVERLESS_USE_UDP,
-                SERVERLESS_USE_UDP_DEFAULT);
+        udpEnabled = conf.getBoolean(SERVERLESS_USE_UDP, SERVERLESS_USE_UDP_DEFAULT);
         httpTimeoutMilliseconds = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT,
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
 
