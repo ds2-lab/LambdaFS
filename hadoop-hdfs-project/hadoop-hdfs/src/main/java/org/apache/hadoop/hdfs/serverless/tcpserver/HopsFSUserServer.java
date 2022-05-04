@@ -178,15 +178,17 @@ public class HopsFSUserServer {
         totalNumberOfDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
+        LOG.info("User server " + (enabled ? "ENABLED." : "DISABLED.") + " Running in " +
+                (useUDP ? "TCP-UDP mode." : "TCP-only mode."));
+
         // Determine if TCP debug logging should be enabled.
         if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
                 DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT)) {
-            LOG.debug("TCP Debug logging is ENABLED.");
+            LOG.debug("KryoNet Debug logging is ENABLED.");
             Log.set(Log.LEVEL_TRACE);
         }
-        LOG.debug("TCP Debug logging is DISABLED.");
-
-        LOG.info("TCP server " + (enabled ? "ENABLED." : "DISABLED."));
+        else
+            LOG.debug("KryoNet Debug logging is DISABLED.");
 
         // Populate the active connections mapping with default, empty hash maps for each deployment.
         for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {
@@ -240,9 +242,9 @@ public class HopsFSUserServer {
         }
 
         if (useUDP)
-            LOG.debug("Starting HopsFS Client Server now. [TCP+UDP Mode]");
+            LOG.debug("Starting HopsFS USER SERVER now. [TCP+UDP Mode]");
         else
-            LOG.debug("Starting HopsFS Client Server now. [TCP Only Mode]");
+            LOG.debug("Starting HopsFS USER SERVER now. [TCP Only Mode]");
 
         // Start the tcp/udp server.
         server.start();
@@ -256,23 +258,23 @@ public class HopsFSUserServer {
         while (currentTcpPort < maxTcpPort && currentUdpPort < maxUdpPort && !success) {
             try {
                 if (useUDP) {
-                    LOG.debug("[CLIENT SERVER] Trying to bind to TCP port " + currentTcpPort +
+                    LOG.debug("[USER SERVER] Trying to bind to TCP port " + currentTcpPort +
                             " and UDP port " + currentUdpPort + ".");
                     server.bind(currentTcpPort, currentUdpPort);
                 } else {
-                    LOG.debug("[CLIENT SERVER] Trying to bind to TCP port " + currentTcpPort + ".");
+                    LOG.debug("[USER SERVER] Trying to bind to TCP port " + currentTcpPort + ".");
                     server.bind(currentTcpPort);
                 }
 
                 if (tcpPort != currentTcpPort) {
-                    LOG.warn("[CLIENT SERVER] Configuration specified port " + tcpPort +
+                    LOG.warn("[USER SERVER] Configuration specified port " + tcpPort +
                             ", but we were unable to bind to that port. Instead, we are bound to port " + currentTcpPort +
                             ".");
                     this.tcpPort = currentTcpPort;
                 }
 
                 if (useUDP && udpPort != currentUdpPort) {
-                    LOG.warn("[CLIENT SERVER] Configuration specified port " + udpPort +
+                    LOG.warn("[USER SERVER] Configuration specified port " + udpPort +
                             ", but we were unable to bind to that port. Instead, we are bound to port " +
                             currentUdpPort + ".");
                     this.udpPort = currentUdpPort;
@@ -281,10 +283,10 @@ public class HopsFSUserServer {
                 if (useUDP) {
                     if (LOG.isDebugEnabled()) LOG.debug("Successfully bound to TCP port " + tcpPort + ", UDP port " + udpPort + ".");
 
-                    serverPrefix = "[CLIENT SERVER " + tcpPort + "-" + udpPort + "]";
+                    serverPrefix = "[USER SERVER " + tcpPort + "-" + udpPort + "]";
                 } else {
                     if (LOG.isDebugEnabled()) LOG.debug("Successfully bound to TCP port " + tcpPort + ".");
-                    serverPrefix = "[CLIENT SERVER " + tcpPort + "]";
+                    serverPrefix = "[USER SERVER " + tcpPort + "]";
                 }
 
                 success = true;
@@ -982,8 +984,8 @@ public class HopsFSUserServer {
             List<TcpTaskFuture> incompleteFutures = submittedFutures.get(nameNodeId);
 
             if (incompleteFutures == null) {
-                if (LOG.isDebugEnabled()) LOG.debug("[CLIENT SERVER " + tcpPort +
-                        "] There were no futures associated with now-closed connection to NN " + nameNodeId);
+                if (LOG.isDebugEnabled()) LOG.debug(serverPrefix +
+                        " There were no futures associated with now-closed connection to NN " + nameNodeId);
                 return;
             }
 
@@ -992,7 +994,7 @@ public class HopsFSUserServer {
 
             // Cancel each of the futures.
             for (TcpTaskFuture future : incompleteFutures) {
-                if (LOG.isDebugEnabled()) LOG.debug("    [CLIENT SERVER " + tcpPort + "] Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
+                if (LOG.isDebugEnabled()) LOG.debug("    " + serverPrefix + " Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
                 try {
                     future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
                 } catch (InterruptedException ex) {
