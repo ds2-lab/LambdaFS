@@ -187,6 +187,9 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug("Top-level OpenWhisk arguments: " + args);
             LOG.debug("User-passed OpenWhisk arguments: " + userArguments);
             LOG.debug("Benchmarking Mode: " + (benchmarkModeEnabled ? "ENABLED" : "DISABLED"));
+            LOG.debug((tcpEnabled ? "TCP Enabled." : "TCP Disabled."));
+            LOG.debug(udpEnabled ? "UDP Enabled." : "UDP Disabled.");
+            LOG.debug("TCP Port: " + tcpPort + ", UDP Port: " + udpPort);
             LOG.debug("Action memory: " + actionMemory + "MB");
             LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
             LOG.debug("Client's name: " + clientName);
