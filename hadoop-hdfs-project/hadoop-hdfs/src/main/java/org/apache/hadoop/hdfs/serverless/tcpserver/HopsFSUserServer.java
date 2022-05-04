@@ -655,8 +655,7 @@ public class HopsFSUserServer {
      * @return A Future representing the eventual response from the NameNode.
      */
     public TcpTaskFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck, String requestId,
-                                         String operationName, TcpRequestPayload payload,
-                                         boolean tryToAvoidTargetingSameNameNode) {
+                                         TcpRequestPayload payload, boolean tryToAvoidTargetingSameNameNode) {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
             LOG.warn(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
                     " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
@@ -789,20 +788,20 @@ public class HopsFSUserServer {
         }
         else if (completedFutures.asMap().containsKey(requestId)) {
             TcpTaskFuture future = completedFutures.getIfPresent(requestId);
-            if (future.isDone()) return future.get();
+            if (future != null && future.isDone()) return future.get();
         }
 
-        long startTime = System.currentTimeMillis();
-        TcpTaskFuture requestResponseFuture = issueTcpRequest(deploymentNumber, bypassCheck, requestId,
-                operationName, payload, tryToAvoidTargetingSameNameNode);
+        long startTime = System.nanoTime();
+        TcpTaskFuture requestResponseFuture = issueTcpRequest(
+                deploymentNumber, bypassCheck, requestId, payload, tryToAvoidTargetingSameNameNode);
 
-        long tcpSendDuration = (System.currentTimeMillis() - startTime);
+        double tcpSendDuration = (System.nanoTime() - startTime) / 1.0e6;
         if (tcpSendDuration > 50) {
             LOG.warn("TCP request " + requestId + " to NN " + requestResponseFuture.getTargetNameNodeId() +
                     "(deployment=" + deploymentNumber + ") took " + tcpSendDuration + " ms to send.");
         }
         else if (LOG.isTraceEnabled())
-            LOG.trace("Issued TCP request in " + (System.currentTimeMillis() - startTime) + " ms.");
+            LOG.trace("Issued TCP request in " + tcpSendDuration + " ms.");
 
         if (requestResponseFuture == null)
             throw new IOException("Issuing TCP request returned null instead of future. Must have been no connections.");
