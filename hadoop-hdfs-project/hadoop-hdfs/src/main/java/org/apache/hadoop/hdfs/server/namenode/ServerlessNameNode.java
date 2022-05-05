@@ -1480,8 +1480,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private boolean mkdirs(TaskArguments fsArgs) throws IOException, ClassNotFoundException {
     EntityManager.toggleLocalMetadataCache(false);
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
-    String maskedBase64 = fsArgs.getString("masked"); // fsArgs.getAsJsonPrimitive("masked").getAsString();
-    FsPermission masked = (FsPermission) InvokerUtilities.base64StringToObject(maskedBase64);
+    //String maskedBase64 = fsArgs.getString("masked"); // fsArgs.getAsJsonPrimitive("masked").getAsString();
+    //FsPermission masked = (FsPermission) InvokerUtilities.base64StringToObject(maskedBase64);
+    FsPermission masked = fsArgs.getObject("masked");
     boolean createParent = fsArgs.getBoolean("createParent"); // fsArgs.getAsJsonPrimitive("createParent").getAsBoolean();
 
     if (stateChangeLog.isDebugEnabled()) {

@@ -726,9 +726,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             }
             else {
                 if (LOG.isDebugEnabled())
-                    LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " +
-                        mappedFunctionNumber + ". TCP connection exists: " +
-                        tcpServer.connectionExists(mappedFunctionNumber));
+                    LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " + mappedFunctionNumber + ". TCP connection exists: " + tcpServer.connectionExists(mappedFunctionNumber));
             }
         }
 
@@ -768,7 +766,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         addLatency(-1, endTime - startTime);
 
         if (LOG.isDebugEnabled())
-            LOG.debug("Response: " + response.toString());
+            LOG.debug("Response: " + response);
 
         if (response.has("body"))
             response = response.get("body").getAsJsonObject();
