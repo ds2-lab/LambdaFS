@@ -62,12 +62,11 @@ public class OpenWhiskHandler extends BaseHandler {
         LOG.info("Active HTTP requests: " + activeRequests);
         LOG.info("============================================================\n");
 
-        boolean localMode = false;
         int actionMemory;
         JsonObject userArguments;
         if (args.has("LOCAL_MODE")) {
             LOG.debug("LOCAL MODE IS ENABLED.");
-            localMode = true;
+            localModeEnabled = true;
 
             // In this case, the top-level arguments are in-fact the user arguments.
             userArguments = args;
@@ -191,7 +190,7 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug(udpEnabled ? "UDP Enabled." : "UDP Disabled.");
             LOG.debug("TCP Port: " + tcpPort + ", UDP Port: " + udpPort);
             LOG.debug("Action memory: " + actionMemory + "MB");
-            LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
+            LOG.debug("Local mode: " + (localModeEnabled ? "ENABLED" : "DISABLED"));
             LOG.debug("Client's name: " + clientName);
             LOG.debug("Client IP address: " + (clientIpAddress == null ? "N/A" : clientIpAddress));
             LOG.debug("Invoked by: " + invokerIdentity);
@@ -204,7 +203,7 @@ public class OpenWhiskHandler extends BaseHandler {
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
                 requestId, clientName, isClientInvoker, tcpEnabled, udpEnabled, tcpPort, udpPort, actionMemory,
-                localMode, startTime, benchmarkModeEnabled);
+                startTime, benchmarkModeEnabled);
 
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
@@ -272,7 +271,7 @@ public class OpenWhiskHandler extends BaseHandler {
                                          String functionName, String clientIPAddress, String requestId,
                                          String clientName, boolean isClientInvoker, boolean tcpEnabled,
                                          boolean udpEnabled, int tcpPort, int udpPort, int actionMemory,
-                                         boolean localMode, long startTime, boolean benchmarkModeEnabled) {
+                                         long startTime, boolean benchmarkModeEnabled) {
         NameNodeResult result;
 
         if (benchmarkModeEnabled) {
@@ -292,7 +291,7 @@ public class OpenWhiskHandler extends BaseHandler {
         ServerlessNameNode serverlessNameNode;
         try {
             serverlessNameNode = ServerlessNameNode.getOrCreateNameNodeInstance(commandLineArguments, functionName,
-                    actionMemory, localMode, isCold);
+                    actionMemory, isCold);
         }
         catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName()

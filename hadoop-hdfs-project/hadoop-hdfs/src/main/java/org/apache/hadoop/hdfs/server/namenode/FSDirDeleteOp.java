@@ -18,12 +18,7 @@
 package org.apache.hadoop.hdfs.server.namenode;
 
 import com.google.gson.JsonObject;
-import io.hops.exception.StorageException;
-import io.hops.exception.TransactionContextException;
 import io.hops.metadata.hdfs.entity.*;
-import io.hops.metrics.TransactionAttempt;
-import io.hops.metrics.TransactionEvent;
-import io.hops.transaction.EntityManager;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.INodeLock;
@@ -33,13 +28,13 @@ import io.hops.transaction.lock.TransactionLockTypes.INodeLockType;
 import io.hops.transaction.lock.TransactionLockTypes.INodeResolveType;
 import io.hops.transaction.lock.TransactionLockTypes.LockType;
 import io.hops.transaction.lock.TransactionLocks;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
+import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.invoking.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
@@ -50,7 +45,6 @@ import org.apache.hadoop.util.ChunkedArrayList;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.Consumer;
 
 import static org.apache.hadoop.util.Time.now;
 
@@ -314,7 +308,7 @@ class FSDirDeleteOp {
             // It's possible that we could end up with just one batch (or maybe none) if the directory contains
             // a bunch of directories, rather than actual files. So, let's make sure we have multiple batches
             // to process before trying to offload batches to other NNs.
-            if (batches.size() > 1) {
+            if (batches.size() > 1 && !BaseHandler.localModeEnabled) {
               ExecutorService executorService = Executors.newFixedThreadPool(batches.size() - 1);
               ServerlessInvokerBase<JsonObject> serverlessInvoker = instance.getServerlessInvoker();
               // final HashMap<String, Future<Boolean>> futures = new HashMap<>();
@@ -354,7 +348,11 @@ class FSDirDeleteOp {
                 // futures.put(requestId, future);
                 remoteBarrier.add(future);
               }
-            } else {
+            }
+            else if (BaseHandler.localModeEnabled) {
+              LOG.debug("LocalMode is enabled. We cannot offload to other NNs. Must complete operation locally.");
+            }
+            else {
               LOG.warn("We somehow ended up with just one batch. No need to offload deletes to other NNs.");
             }
 
@@ -364,17 +362,14 @@ class FSDirDeleteOp {
             // It is theoretically possible that we end up with zero batches. This could occur if the directory
             // we're processing exclusively contains other directories and no files. So, let's make sure we
             // have at least one batch before trying to process a batch locally.
-            if (batches.size() >= 1) {
-              LOG.debug("Processing local batch now.");
+            for (int i = 0; i < batches.size(); i++) {
+              String[] localBatch = batches.get(i);
               // Process the local batch of deletes.
-              String[] localBatch = batches.get(0);
-              LOG.debug("Finished off-loading batched deletes to other NameNodes. Processing local batch now.");
+              if (LOG.isDebugEnabled()) LOG.debug("Processing local batch " + i+1 + "/" + batches.size() + " now.");
               for (String path : localBatch) {
                 Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
                 barrier.add(f);
               }
-            } else {
-              LOG.warn("In fact, we somehow ended up with zero batches. No need to process deletes locally either.");
             }
           }
 

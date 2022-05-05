@@ -13,6 +13,11 @@ public class BaseHandler {
     public static final Logger LOG = LoggerFactory.getLogger(BaseHandler.class);
 
     /**
+     * Means we're running within a Docker container on some VM (and not in an OpenWhisk cluster).
+     */
+    public static volatile boolean localModeEnabled = false;
+
+    /**
      * Defines the platform we're using. This will eventually just be controlled by a configuration parameter.
      *
      * TODO: Make this so it is exclusively set by the config. The reason it isn't now is that the config is

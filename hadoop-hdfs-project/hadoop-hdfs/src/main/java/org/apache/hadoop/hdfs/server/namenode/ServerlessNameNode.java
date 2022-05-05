@@ -144,6 +144,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_SUPPORT_ALLOW_FO
 import static org.apache.hadoop.hdfs.DFSConfigKeys.HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS;
 import static org.apache.hadoop.hdfs.protocol.HdfsConstants.MAX_PATH_DEPTH;
 import static org.apache.hadoop.hdfs.protocol.HdfsConstants.MAX_PATH_LENGTH;
+import static org.apache.hadoop.hdfs.serverless.BaseHandler.localModeEnabled;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 import static org.apache.hadoop.util.ExitUtil.terminate;
 import static org.apache.hadoop.util.Time.now;
@@ -250,11 +251,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * This is used when hashing parent inode IDs to particular serverless name nodes.
    */
   private int numDeployments;
-
-  /**
-   * Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
-   */
-  private final boolean localMode;
 
   /**
    * List of currently-active NameNodes. This list is based on metadata stored in NDB.
@@ -632,12 +628,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *                     determining the number of active TCP connections that this NameNode can have at once, as
    *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
    *                     connections at once, then it might crash due to OOM errors.
-   * @param localMode Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
    * @param isCold Indicates whether this is a cold start.
    */
   public static synchronized ServerlessNameNode getOrCreateNameNodeInstance(String[] commandLineArguments,
                                                                             String functionName, int actionMemory,
-                                                                            boolean localMode, boolean isCold)
+                                                                            boolean isCold)
           throws Exception {
     if (instance != null) {
       if (LOG.isDebugEnabled()) LOG.debug("Using existing NameNode instance with ID = " + instance.getId());
@@ -647,7 +642,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (!isCold)
       LOG.warn("Container is warm, but there is no existing ServerlessNameNode instance.");
 
-    instance = ServerlessNameNode.startServerlessNameNode(commandLineArguments, functionName, actionMemory, localMode);
+    instance = ServerlessNameNode.startServerlessNameNode(commandLineArguments, functionName, actionMemory);
     instance.populateOperationsMap();
 
     // Next, the NameNode needs to exit safe mode (if it is in safe mode).
@@ -842,11 +837,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
    *                     connections at once, then it might crash due to OOM errors.
    * @param functionName The name of this serverless function.
-   * @param localMode Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
    * @throws Exception
    */
   public static ServerlessNameNode startServerlessNameNode(String[] commandLineArgs, String functionName,
-                                                           int actionMemory, boolean localMode)
+                                                           int actionMemory)
           throws Exception {
     if (DFSUtil.parseHelpArgument(commandLineArgs, ServerlessNameNode.USAGE, System.out, true)) {
       System.exit(0);
@@ -855,7 +849,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     LOG.info("Creating and initializing new instance of Serverless NameNode now...");
 
     try {
-      ServerlessNameNode nameNode = createNameNode(commandLineArgs, null, functionName, actionMemory, localMode, true);
+      ServerlessNameNode nameNode = createNameNode(commandLineArgs, null, functionName, actionMemory, true);
 
       if (nameNode == null) {
         LOG.info("ERROR: NameNode is null. Failed to create and/or initialize the Serverless NameNode.");
@@ -2236,7 +2230,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
     }
 
-    if (localMode)
+    if (localModeEnabled)
       numDeployments = 1;
     else
       numDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
@@ -2610,19 +2604,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *     confirguration
    * @throws IOException
    */
-  public ServerlessNameNode(Configuration conf, String functionName, int actionMemory, boolean localMode)
+  public ServerlessNameNode(Configuration conf, String functionName, int actionMemory)
           throws Exception {
-    this(conf, NamenodeRole.NAMENODE, functionName, actionMemory, localMode);
+    this(conf, NamenodeRole.NAMENODE, functionName, actionMemory);
   }
 
   protected ServerlessNameNode(Configuration conf, NamenodeRole role, String functionName,
-                               int actionMemory, boolean localMode) throws Exception {
+                               int actionMemory) throws Exception {
     this.functionName = functionName;
-    this.localMode = localMode;
 
-    if (LOG.isDebugEnabled())LOG.debug("Local mode: " + (localMode ? "ENABLED" : "DISABLED"));
+    if (LOG.isDebugEnabled())LOG.debug("Local mode: " + (localModeEnabled ? "ENABLED" : "DISABLED"));
 
-    if (this.localMode)
+    if (localModeEnabled)
       this.deploymentNumber = 0;
     else
       this.deploymentNumber = getFunctionNumberFromFunctionName(functionName);
@@ -3048,14 +3041,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *                     determining the number of active TCP connections that this NameNode can have at once, as
    *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
    *                     connections at once, then it might crash due to OOM errors.
-   * @param localMode Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
    * @param asServerless Only true if we're running in a serverless function (or in localMode). If we're being
    *                     called from the proper main method of this class, then the 'asServerless' field is false.
    *                     This prevents us from using the hard-coded config file paths, as they won't work unless
    *                     we're in the Docker image used by serverless functions.
    */
   public static ServerlessNameNode createNameNode(String[] argv, Configuration conf, String functionName,
-                                                  int actionMemory, boolean localMode, boolean asServerless)
+                                                  int actionMemory, boolean asServerless)
           throws Exception {
     LOG.info("createNameNode " + Arrays.asList(argv));
     if (conf == null) {
@@ -3142,7 +3134,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         // DefaultMetricsSystem.initialize("NameNode");
         // Make sure the NameNode does not already exist.
         assert(ServerlessNameNode.tryGetNameNodeInstance(false) == null);
-        return new ServerlessNameNode(conf, functionName, actionMemory, localMode);
+        return new ServerlessNameNode(conf, functionName, actionMemory);
       }
     }
   }
@@ -3223,7 +3215,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     try {
       // StringUtils.startupShutdownMessage(ServerlessNameNode.class, argv, LOG);
-      ServerlessNameNode namenode = createNameNode(argv, null, "LocalVMNameNode0", (int) Runtime.getRuntime().maxMemory(), false, false);
+      ServerlessNameNode namenode = createNameNode(argv, null, "LocalVMNameNode0",
+              (int) Runtime.getRuntime().maxMemory(), false);
       if (namenode != null) {
         namenode.join();
       }
