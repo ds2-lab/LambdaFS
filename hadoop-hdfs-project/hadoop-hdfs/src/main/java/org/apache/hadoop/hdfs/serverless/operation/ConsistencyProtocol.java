@@ -692,7 +692,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      *                         "namenode" + deploymentNumber.
      * @param calledManually Indicates that we called this function manually rather than automatically in response
      *                       to a ZooKeeper event. Really just used for debugging.
-     */
+     */ // TODO: Why is this synchronized? Does it need to be?
     private synchronized void checkAndProcessMembershipChanges(int deploymentNumber, boolean calledManually)
             throws Exception {
         String groupName = "namenode" + deploymentNumber;
@@ -704,17 +704,20 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
 
+        long s = System.nanoTime();
         // Get the current members.
         List<String> groupMemberIdsAsStrings = zkClient.getPermanentGroupMembers(groupName);
+
+        if (LOG.isDebugEnabled()) {
+            long t = System.nanoTime();
+            LOG.debug("Retrieved members of deployment " + deploymentNumber + " in " + ((t-s)/1.0e6) + " ms.");
+        }
 
         // Convert from strings to longs.
         List<Long> groupMemberIds = groupMemberIdsAsStrings.stream()
                 .mapToLong(Long::parseLong)
                 .boxed()
                 .collect(Collectors.toList());
-
-        if (LOG.isDebugEnabled()) LOG.debug("Deployment #" + deploymentNumber + " has " + groupMemberIds.size() +
-                " active instance(s): " + StringUtils.join(groupMemberIds, ", "));
 
         // For each NN that we're waiting on, check that it is still a member of the group. If it is not, then remove it.
         List<Long> removeMe = new ArrayList<>();
@@ -726,8 +729,12 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             return;
         }
 
-        if (LOG.isDebugEnabled()) LOG.debug("ACKs required from deployment #" + deploymentNumber + ": " +
-                StringUtils.join(deploymentAcks, ", "));
+        if (LOG.isDebugEnabled()) {
+            if (LOG.isDebugEnabled()) LOG.debug("Deployment #" + deploymentNumber + " has " + groupMemberIds.size() +
+                    " active instance(s): " + StringUtils.join(groupMemberIds, ", "));
+            LOG.debug("ACKs required from deployment #" + deploymentNumber + ": " +
+                    StringUtils.join(deploymentAcks, ", "));
+        }
 
         // Compare the group member IDs to the ACKs from JUST this deployment, not the master list of all ACKs from all
         // deployments. If we were to iterate over the master list of all ACKs (that is not partitioned by deployment),
