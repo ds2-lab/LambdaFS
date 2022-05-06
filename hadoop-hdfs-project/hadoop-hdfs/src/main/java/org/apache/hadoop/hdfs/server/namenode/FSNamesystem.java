@@ -790,7 +790,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       // Add ZooKeeper-based invalidation listener.
       serverlessNameNode.getZooKeeperClient().addInvalidationListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
         // If the ZNode's children changed,
-        if (watchedEvent.getType() == Watcher.Event.EventType.NodeCreated) {
+        if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
           String path = watchedEvent.getPath();
           LOG.debug("Received `NodeCreated` event on path '" + path + "'.");
           try {
@@ -1016,7 +1016,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    *             serialized {@link ZooKeeperInvalidation} object contained within.
    */
   private void invalidationReceivedFromZooKeeper(String path) throws Exception {
-    ZooKeeperInvalidation invalidation = serverlessNameNode.getZooKeeperClient().getInvalidation(path);
+    ZooKeeperInvalidation invalidation;
+    try {
+      invalidation = serverlessNameNode.getZooKeeperClient().getInvalidation(path);
+    } catch (Exception ex) {
+      LOG.warn("Failed to retrieve invalidation for path '" + path + "'. Perhaps an old invalidation was deleted?");
+      LOG.warn(ex);
+      return;
+    }
 
     long localNameNodeId = serverlessNameNode.getId();
 
