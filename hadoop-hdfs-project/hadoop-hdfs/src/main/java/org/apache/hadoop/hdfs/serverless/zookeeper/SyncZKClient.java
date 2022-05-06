@@ -323,13 +323,13 @@ public class SyncZKClient implements ZKClient {
         for (String ack : acks) {
             if (LOG.isDebugEnabled())
                 LOG.debug("Removing ACK '" + ack + "' now...");
-            this.client.delete().forPath(ack);
+            this.client.delete().forPath(ackPath + "/" + ack);
         }
 
         for (String inv : invs) {
             if (LOG.isDebugEnabled())
                 LOG.debug("Removing INV '" + inv + "' now...");
-            this.client.delete().forPath(inv);
+            this.client.delete().forPath(invPath + "/" + inv);
         }
 
         if (LOG.isDebugEnabled()) LOG.debug("Removing invalidation from ZooKeeper cluster under path: '" + invPath + "'");
