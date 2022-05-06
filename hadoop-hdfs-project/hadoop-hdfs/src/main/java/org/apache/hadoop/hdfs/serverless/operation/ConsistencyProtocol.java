@@ -695,6 +695,13 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      */ // TODO: Why is this synchronized? Does it need to be?
     private synchronized void checkAndProcessMembershipChanges(int deploymentNumber, boolean calledManually)
             throws Exception {
+        Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(deploymentNumber);
+        if (deploymentAcks == null) {
+            if (LOG.isDebugEnabled()) LOG.debug("We do not require any ACKs from deployment #" + deploymentNumber + ".");
+            return;
+        }
+
+
         String groupName = "namenode" + deploymentNumber;
 
         if (calledManually)
@@ -721,13 +728,6 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         // For each NN that we're waiting on, check that it is still a member of the group. If it is not, then remove it.
         List<Long> removeMe = new ArrayList<>();
-
-        Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(deploymentNumber);
-
-        if (deploymentAcks == null) {
-            if (LOG.isDebugEnabled()) LOG.debug("We do not require any ACKs from deployment #" + deploymentNumber + ".");
-            return;
-        }
 
         if (LOG.isDebugEnabled()) {
             if (LOG.isDebugEnabled()) LOG.debug("Deployment #" + deploymentNumber + " has " + groupMemberIds.size() +
