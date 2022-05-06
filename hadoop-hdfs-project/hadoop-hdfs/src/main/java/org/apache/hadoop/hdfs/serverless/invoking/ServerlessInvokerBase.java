@@ -231,27 +231,27 @@ public abstract class ServerlessInvokerBase<T> {
         String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
         Gson gson = new Gson();
 
-        int responseCode = httpResponse.getStatusLine().getStatusCode();
-        String reasonPhrase = httpResponse.getStatusLine().getReasonPhrase();
-        String protocolVersion = httpResponse.getStatusLine().getProtocolVersion().toString();
-
-        Header contentType = httpResponse.getEntity().getContentType();
-        long contentLength = httpResponse.getEntity().getContentLength();
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("====== HTTP RESPONSE ======");
-            LOG.debug(protocolVersion + " - " + responseCode);
-            LOG.debug(reasonPhrase);
-            LOG.debug("---------------------------");
-            if (contentType != null)
-                LOG.debug(contentType.getName() + ": " + contentType.getValue());
-            LOG.debug("Content-length: " + contentLength);
-            LOG.debug("===========================");
-
-            LOG.debug("HTTP Response from function:\n" + httpResponse);
-//            LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
-//            LOG.debug("HTTP Response Entity Content: " + json);
-        }
+//        int responseCode = httpResponse.getStatusLine().getStatusCode();
+//        String reasonPhrase = httpResponse.getStatusLine().getReasonPhrase();
+//        String protocolVersion = httpResponse.getStatusLine().getProtocolVersion().toString();
+//
+//        Header contentType = httpResponse.getEntity().getContentType();
+//        long contentLength = httpResponse.getEntity().getContentLength();
+//
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("====== HTTP RESPONSE ======");
+//            LOG.debug(protocolVersion + " - " + responseCode);
+//            LOG.debug(reasonPhrase);
+//            LOG.debug("---------------------------");
+//            if (contentType != null)
+//                LOG.debug(contentType.getName() + ": " + contentType.getValue());
+//            LOG.debug("Content-length: " + contentLength);
+//            LOG.debug("===========================");
+//
+//            LOG.debug("HTTP Response from function:\n" + httpResponse);
+////            LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
+////            LOG.debug("HTTP Response Entity Content: " + json);
+//        }
 
         JsonObject jsonObjectResponse = null;
         JsonPrimitive jsonPrimitiveResponse = null;
