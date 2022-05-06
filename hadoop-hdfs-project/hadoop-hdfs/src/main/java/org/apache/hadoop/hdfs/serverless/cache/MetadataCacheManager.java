@@ -81,7 +81,6 @@ public class MetadataCacheManager {
             long inodeId = node.getId();
             invalidateAces(inodeId);
             encryptionZoneCache.invalidate(inodeId);
-            //encryptionZoneCache.remove(inodeId);
         }
 
         return prefixedINodes.size();

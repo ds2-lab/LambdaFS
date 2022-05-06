@@ -457,24 +457,28 @@ public class InMemoryINodeCache {
      */
     protected Collection<INode> invalidateKeysByPrefix(String prefix) {
         long s = System.currentTimeMillis();
-        if (LOG.isDebugEnabled()) LOG.debug("Invalidating all cached INodes contained within the file subtree rooted at '" + prefix + "'.");
+        if (LOG.isDebugEnabled()) LOG.debug("Invalidating all INodes prefixed by '" + prefix + "'.");
 
         _mutex.writeLock().lock();
+        List<INode> invalidatedEntries = new ArrayList<>();
 
         try {
             SortedMap<String, INode> prefixedEntries = prefixMetadataCache.prefixMap(prefix);
             int numInvalidated = 0;
 
-            for (String path : prefixedEntries.keySet()) {
+            for (Map.Entry<String, INode> entry : prefixedEntries.entrySet()) {
+                String path = entry.getKey();
                 // This if-statement invalidates the key. If we were caching the key, then the call
                 // to invalidateKey() returns true, in which case we increment 'numInvalidated'.
-                if (invalidateKey(path, false))
+                if (invalidateKey(path, false)) {
                     numInvalidated++;
+                    invalidatedEntries.add(entry.getValue());
+                }
             }
 
             if (LOG.isDebugEnabled()) LOG.debug("Invalidated " + numInvalidated + "/" + prefixedEntries.size() + " of the nodes in the prefix map.");
 
-            return prefixedEntries.values();
+            return invalidatedEntries;
         } finally {
             _mutex.writeLock().unlock();
             if (LOG.isDebugEnabled()) LOG.debug("Invalidated all keys prefixed by '" + prefix +

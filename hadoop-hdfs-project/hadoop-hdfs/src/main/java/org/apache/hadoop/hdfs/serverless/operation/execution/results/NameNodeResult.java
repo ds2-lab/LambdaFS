@@ -67,7 +67,7 @@ public class NameNodeResult implements Serializable {
     /**
      * Exceptions encountered during the current request's execution.
      */
-    protected ArrayList<Throwable> exceptions;
+    protected ArrayList<Throwable> exceptions = new ArrayList<>();
 
     /**
      * Name of the FS operation we performed.
@@ -102,7 +102,6 @@ public class NameNodeResult implements Serializable {
     public NameNodeResult(String requestId, String operationName) {
         this.requestId = requestId;
         this.operationName = operationName;
-        this.exceptions = new ArrayList<>();
     }
 
     protected NameNodeResult() { }

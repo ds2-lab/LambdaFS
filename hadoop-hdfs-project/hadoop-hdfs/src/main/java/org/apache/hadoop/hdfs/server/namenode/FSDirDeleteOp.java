@@ -365,7 +365,7 @@ class FSDirDeleteOp {
             for (int i = 0; i < batches.size(); i++) {
               String[] localBatch = batches.get(i);
               // Process the local batch of deletes.
-              if (LOG.isDebugEnabled()) LOG.debug("Processing local batch " + i+1 + "/" + batches.size() + " now.");
+              if (LOG.isDebugEnabled()) LOG.debug("Processing local batch " + (i+1) + "/" + batches.size() + " now.");
               for (String path : localBatch) {
                 Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
                 barrier.add(f);
