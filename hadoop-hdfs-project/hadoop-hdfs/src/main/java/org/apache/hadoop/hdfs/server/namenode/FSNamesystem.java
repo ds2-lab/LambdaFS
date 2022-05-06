@@ -768,11 +768,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       leaseManager.startMonitor();
       startSecretManagerIfNecessary();
 
-      LOG.warn("NOT starting ResourceMonitor thread.");
-      //ResourceMonitor required only at ActiveNN. See HDFS-2914
-      // this.nnrmthread = new Daemon(new NameNodeResourceMonitor());
-      // nnrmthread.start();
-
       if(isRetryCacheEnabled) {
         this.retryCacheCleanerThread = new Daemon(new RetryCacheCleaner());
         this.retryCacheCleanerThread.setName("Retry Cache Cleaner");
@@ -786,6 +781,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       if (cacheManager != null) {
         cacheManager.startMonitorThread();
       }
+
+      LOG.debug("Creating ZooKeeper invalidation listener for '/" + serverlessNameNode.getFunctionName() + "/'");
 
       // Add ZooKeeper-based invalidation listener.
       serverlessNameNode.getZooKeeperClient().addInvalidationListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
@@ -803,7 +800,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         }
       });
 
-      LOG.debug("Added invalidation listener for '/" + serverlessNameNode.getFunctionName() + "/'");
+      LOG.debug("Added ZooKeeper invalidation listener for '/" + serverlessNameNode.getFunctionName() + "/'");
 
     } finally {
       startingActiveService = false;
