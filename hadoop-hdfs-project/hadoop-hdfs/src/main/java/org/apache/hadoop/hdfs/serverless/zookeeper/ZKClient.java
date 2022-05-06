@@ -162,7 +162,17 @@ public interface ZKClient {
      * @param path The path of the INV that we're acknowledging.
      * @param localNameNodeId The unique ID of the local NameNode instance.
      */
+    @Deprecated
     void acknowledge(String path, long localNameNodeId) throws Exception;
+
+    /**
+     * Acknowledge the invalidation we received.
+     *
+     * @param deploymentNumber The deployment that was targeted by the INV.
+     * @param operationId The unique ID of the write operation.
+     * @param localNameNodeId The ID of the NameNode performing the ACK.
+     */
+    void acknowledge(int deploymentNumber, long operationId, long localNameNodeId) throws Exception;
 
     /**
      * Add a listener to the Watch for the INV ZNode of the specified group.

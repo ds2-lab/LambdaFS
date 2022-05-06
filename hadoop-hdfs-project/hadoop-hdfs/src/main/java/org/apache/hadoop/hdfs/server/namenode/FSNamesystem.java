@@ -787,11 +787,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       // Add ZooKeeper-based invalidation listener.
       serverlessNameNode.getZooKeeperClient().addInvalidationListener(serverlessNameNode.getFunctionName(), watchedEvent -> {
         // If the ZNode's children changed,
-        LOG.debug("Received ZooKeeper event '" + watchedEvent.getType().name() + " on path '" +
-                watchedEvent.getPath() + "'");
         if (watchedEvent.getType() == Watcher.Event.EventType.NodeCreated) {
           String path = watchedEvent.getPath();
-          LOG.debug("Received `NodeChildrenChanged` event on path '" + path + "'.");
+          LOG.debug("Received `NodeCreated` event on path '" + path + "'.");
           try {
             invalidationReceivedFromZooKeeper(path);
           } catch (Exception e) {
@@ -1044,14 +1042,15 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     }
 
     // TODO: Add support for subtree operations.
-    serverlessNameNode.getZooKeeperClient().acknowledge(path, localNameNodeId);
+    // TODO: Was the above TODO just referring to being able to invalidate by prefix? If so, then that's done.
+    // serverlessNameNode.getZooKeeperClient().acknowledge(path, localNameNodeId);
+    serverlessNameNode.getZooKeeperClient().acknowledge(
+            serverlessNameNode.getDeploymentNumber(), operationId, localNameNodeId);
     if (isSubtreeInvalidation) {
-      // metadataCache.invalidateKeysByPrefix(subtreeRoot);
       metadataCacheManager.invalidateINodesByPrefix(subtreeRoot);
     } else {
       for (long id : invalidatedINodes) {
         LOG.debug("Attempting to invalidate INode " + id + " (if we have it cached).");
-        // metadataCache.invalidateKey(id);
         metadataCacheManager.invalidateINode(id);
       }
     }

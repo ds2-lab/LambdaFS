@@ -314,33 +314,49 @@ public class SyncZKClient implements ZKClient {
 
     @Override
     public void removeInvalidation(long operationId, String groupName) throws Exception {
-        String path = getInvPath(groupName) + "/" + operationId;
+        String invPath = getInvPath(groupName) + "/" + operationId;
+        String ackPath = getAckPath(groupName) + "/" + operationId;
 
-        LOG.debug("Removing invalidation from ZooKeeper cluster under path: '" + path + "'");
-        this.client.delete().forPath(path);
+        LOG.debug("Removing invalidation from ZooKeeper cluster under path: '" + invPath + "'");
+        this.client.delete().forPath(invPath);
+
+        LOG.debug("Removing ACK root from ZooKeeper cluster under path: '" + ackPath + "'");
+        this.client.delete().forPath(ackPath);
     }
 
     @Override
     public void putInvalidation(ZooKeeperInvalidation invalidation, String groupName, Watcher watcher)
             throws Exception {
-        String path = getInvPath(groupName) + "/" + invalidation.getOperationId();
+        String invPath = getInvPath(groupName) + "/" + invalidation.getOperationId();
+        String ackPath = getAckPath(groupName) + "/" + invalidation.getOperationId();
 
-        LOG.debug("Storing invalidation in ZooKeeper cluster under path: '" + path + "'");
+        LOG.debug("Creating ACK root in ZooKeeper cluster under path: '" + ackPath + "'");
 
-        // TODO: Should this be persistent or ephemeral?
-        this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path, InvokerUtilities.serializableToBytes(invalidation));
+        // First, create the entry under which the other NNs will ACK.
+        // Must be persistent, as we will be creating child nodes on it.
+        this.client.create().withMode(CreateMode.PERSISTENT).forPath(ackPath);
 
-        // Note. It is technically possible for an event to happen between creating the ZNode and this watch being
-        // established, so it is necessary to check for any state changes explicitly despite creating this watch
+        // Add the listener before issuing the actual INV.
         if (watcher != null)
-            addListenerToPath(path, watcher, true);
+            addListenerToPath(ackPath, watcher, true);
+
+        // Then create the invalidation so they start ACKing.
+        LOG.debug("Creating invalidation in ZooKeeper cluster under path: '" + invPath + "'");
+        this.client.create().withMode(CreateMode.EPHEMERAL).forPath(invPath, InvokerUtilities.serializableToBytes(invalidation));
     }
 
     // This is called from within a Watcher, so we're given the exact path to the INV that we're acknowledging.
-    @Override
+    @Override @Deprecated
     public void acknowledge(String path, long localNameNodeId) throws Exception {
         path += "/" + localNameNodeId;
         this.client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
+    }
+
+    @Override
+    public void acknowledge(int deploymentNumber, long operationId, long localNameNodeId) throws Exception {
+        String ackPath =
+                getAckPath("namenode" + deploymentNumber) + "/" + operationId + "/" + localNameNodeId;
+        this.client.create().withMode(CreateMode.EPHEMERAL).forPath(ackPath);
     }
 
     // Listen for INVs directed at a particular deployment.
@@ -454,6 +470,13 @@ public class SyncZKClient implements ZKClient {
      */
     private String getPath(String groupName, String memberId, boolean permanent) {
         return "/" + groupName + (permanent ? PERMANENT_DIR : GUEST_DIR) + (memberId != null ? "/" + memberId : "");
+    }
+
+    /**
+     * Return the path to the ACK ZNode directory for the given deployment.
+     */
+    private String getAckPath(String groupName) {
+        return "/" + groupName + "/ACK";
     }
 
     /**
