@@ -207,6 +207,11 @@ public interface ZKClient {
     /**
      * Remove the ZNode associated with the given invalidation.
      *
+     * This will first try to remove the child nodes of the specified invalidation.
+     *
+     * This also removes the associated ACK root (and any ACKs) by the same process (i.e., delete children
+     * of ACK root first, then delete ACK root itself).
+     *
      * @param operationId The unique ID of the operation associated with the invalidation to be removed.
      * @param groupName Essentially the deployment for which the INV was issued and for which we'll delete the INV.
      */
