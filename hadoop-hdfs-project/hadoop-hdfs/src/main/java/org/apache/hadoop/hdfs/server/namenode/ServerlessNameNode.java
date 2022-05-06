@@ -3236,9 +3236,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   private void startActiveServicesInternal() throws IOException {
     try {
+      this.zooKeeperClient.createAndJoinGroup(this.functionName, String.valueOf(this.nameNodeID), namesystem);
       namesystem.startActiveServices();
       startTrashEmptier(conf);
-      this.zooKeeperClient.createAndJoinGroup(this.functionName, String.valueOf(this.nameNodeID), namesystem);
       // eventManagerThread.start();
 
       // Create the thread and tell it to run!
