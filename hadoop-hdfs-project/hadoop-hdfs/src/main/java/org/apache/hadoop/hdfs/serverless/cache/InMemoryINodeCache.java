@@ -141,8 +141,6 @@ public class InMemoryINodeCache {
             long s1 = System.currentTimeMillis();
             INode returnValue = fullPathMetadataCache.get(key);
             long t2 = System.currentTimeMillis();
-            if (LOG.isDebugEnabled() && (t2 - s1 > 10)) LOG.debug("Accessed Full Path Metadata Cache in " +
-                    (t2 - s1) + " ms. Returning value: " + returnValue);
 
             if (returnValue == null)
                 cacheMiss();
@@ -150,14 +148,12 @@ public class InMemoryINodeCache {
                 cacheHit();
 
             long t3 = System.currentTimeMillis();
-            if (LOG.isDebugEnabled() && (t3 - t2 > 10)) LOG.debug("Updated cache hit/miss counters in " +
-                    (t3 - t2 + " ms."));
 
             return returnValue;
         } finally {
             //_mutex.readLock().unlock();
             long t4 = System.currentTimeMillis();
-            if (LOG.isDebugEnabled() && t4 - s > 10) LOG.debug("Checked cache by path for INode '" + key + "' in " +
+            if (LOG.isTraceEnabled() && t4 - s > 10) LOG.trace("Checked cache by path for INode '" + key + "' in " +
                     (t4 - s) + " ms. [1]");
         }
     }
@@ -201,7 +197,7 @@ public class InMemoryINodeCache {
             //_mutex.readLock().unlock();
 
             long t = System.currentTimeMillis();
-            if (LOG.isDebugEnabled() && t - s > 10) LOG.debug("Checked cache by parent ID and local name for INode '" + localName +
+            if (LOG.isTraceEnabled() && t - s > 10) LOG.trace("Checked cache by parent ID and local name for INode '" + localName +
                     "' in " + (t - s) + " ms.");
         }
     }
@@ -234,7 +230,7 @@ public class InMemoryINodeCache {
 //            _mutex.readLock().unlock();
 
             long t = System.currentTimeMillis();
-            if (LOG.isDebugEnabled() && t - s > 10) LOG.debug("Checked cache by ID for INode " + iNodeId + " in " +
+            if (LOG.isTraceEnabled() && t - s > 10) LOG.trace("Checked cache by ID for INode " + iNodeId + " in " +
                     (System.currentTimeMillis() - s) + " ms.");
         }
     }
@@ -261,7 +257,7 @@ public class InMemoryINodeCache {
         } finally {
             _mutex.writeLock().unlock();
             long t = System.currentTimeMillis();
-            if (LOG.isDebugEnabled() && t - s > 10) LOG.debug("Stored INode '" + key + "' (ID=" + iNodeId + ") in cache in " +
+            if (LOG.isTraceEnabled() && t - s > 10) LOG.trace("Stored INode '" + key + "' (ID=" + iNodeId + ") in cache in " +
                     (t - s) + " ms.");
         }
 
@@ -413,15 +409,13 @@ public class InMemoryINodeCache {
             if (skipCheck || containsKeySkipInvalidCheck(key)) {
                 prefixMetadataCache.remove(key);
                 fullPathMetadataCache.remove(key);
-
-                if (LOG.isDebugEnabled()) LOG.debug("Invalidated key " + key + ".");
                 return true;
             }
 
             return false;
         } finally {
             _mutex.writeLock().unlock();
-            if (LOG.isDebugEnabled()) LOG.debug("Invalidated key '" + key +
+            if (LOG.isTraceEnabled()) LOG.trace("Invalidated key '" + key +
                     "' in " + (System.currentTimeMillis() - s) + " ms.");
         }
     }
@@ -437,7 +431,7 @@ public class InMemoryINodeCache {
             prefixMetadataCache.clear();
         } finally {
             _mutex.writeLock().unlock();
-            if (LOG.isDebugEnabled()) LOG.debug("Invalidated entire cache in " + (System.currentTimeMillis() - s) + " ms.");
+            if (LOG.isTraceEnabled()) LOG.trace("Invalidated entire cache in " + (System.currentTimeMillis() - s) + " ms.");
         }
         idToNameMapping.clear();
         fullPathMetadataCache.clear();
@@ -478,12 +472,12 @@ public class InMemoryINodeCache {
                 }
             }
 
-            if (LOG.isDebugEnabled()) LOG.debug("Invalidated " + numInvalidated + "/" + prefixedEntries.size() + " of the nodes in the prefix map.");
+            if (LOG.isTraceEnabled()) LOG.trace("Invalidated " + numInvalidated + "/" + prefixedEntries.size() + " of the nodes in the prefix map.");
 
             return invalidatedEntries;
         } finally {
             _mutex.writeLock().unlock();
-            if (LOG.isDebugEnabled()) LOG.debug("Invalidated all keys prefixed by '" + prefix +
+            if (LOG.isTraceEnabled()) LOG.trace("Invalidated all cached INodes prefixed by '" + prefix +
                     "' in " + (System.currentTimeMillis() - s) + " ms.");
         }
     }
