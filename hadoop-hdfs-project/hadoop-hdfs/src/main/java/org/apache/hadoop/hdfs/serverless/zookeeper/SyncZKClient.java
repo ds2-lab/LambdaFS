@@ -317,10 +317,25 @@ public class SyncZKClient implements ZKClient {
         String invPath = getInvPath(groupName) + "/" + operationId;
         String ackPath = getAckPath(groupName) + "/" + operationId;
 
-        LOG.debug("Removing invalidation from ZooKeeper cluster under path: '" + invPath + "'");
+        List<String> acks = this.client.getChildren().forPath(ackPath);
+        List<String> invs = this.client.getChildren().forPath(invPath);
+
+        for (String ack : acks) {
+            if (LOG.isDebugEnabled())
+                LOG.debug("Removing ACK '" + ack + "' now...");
+            this.client.delete().forPath(ack);
+        }
+
+        for (String inv : invs) {
+            if (LOG.isDebugEnabled())
+                LOG.debug("Removing INV '" + inv + "' now...");
+            this.client.delete().forPath(inv);
+        }
+
+        if (LOG.isDebugEnabled()) LOG.debug("Removing invalidation from ZooKeeper cluster under path: '" + invPath + "'");
         this.client.delete().forPath(invPath);
 
-        LOG.debug("Removing ACK root from ZooKeeper cluster under path: '" + ackPath + "'");
+        if (LOG.isDebugEnabled()) LOG.debug("Removing ACK root from ZooKeeper cluster under path: '" + ackPath + "'");
         this.client.delete().forPath(ackPath);
     }
 
