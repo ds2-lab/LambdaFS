@@ -289,6 +289,12 @@ class FSDirDeleteOp {
           // I do this manually rather than using the `partition` function from commons.collections or Guava so that
           // we can construct the paths for the various nodes as we go.
           int idx = 0;
+
+          // TODO: Can we potentially optimize this by only iterating over children once?
+          //       We basically do it twice. Once here when creating the batches, and again when deleting them.
+          //       Can we generate the batches in O(1), and then do the extra processing during the O(n) delete
+          //       step? By "extra processing", I mean convert each child to a full path. Just depends on if
+          //       we can split up the `children` set, because it has type Collection<ProjectedINode>.
           for (ProjectedINode node : children) {
             if (node.isDirectory()) continue; // Skip directories like we do when performing the deletes locally.
 
