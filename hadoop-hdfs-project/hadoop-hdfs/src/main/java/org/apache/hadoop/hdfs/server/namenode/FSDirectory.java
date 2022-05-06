@@ -932,7 +932,7 @@ public class FSDirectory implements Closeable {
     if (isQuotaEnabled()) {
       iip.getLastINode().computeQuotaUsage(getBlockStoragePolicySuite(), counts);
     }
-    LOG.debug("Removing last INode. INodes in path: " + iip.toString());
+    // LOG.debug("Removing last INode. INodes in path: " + iip.toString());
     return removeLastINode(iip, false, counts);
   }
   
