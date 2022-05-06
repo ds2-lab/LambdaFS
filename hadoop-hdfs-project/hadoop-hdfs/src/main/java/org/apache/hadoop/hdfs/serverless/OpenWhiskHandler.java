@@ -43,7 +43,7 @@ public class OpenWhiskHandler extends BaseHandler {
      */
     private static boolean isCold = true;
 
-    public static AtomicInteger activeRequestCounter = new AtomicInteger(0);
+    //public static AtomicInteger activeRequestCounter = new AtomicInteger(0);
 
     static {
         System.setProperty("sun.io.serialization.extendedDebugInfo", "true");
@@ -58,8 +58,8 @@ public class OpenWhiskHandler extends BaseHandler {
 
         LOG.info("============================================================");
         LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " received HTTP request.");
-        int activeRequests = activeRequestCounter.incrementAndGet();
-        LOG.info("Active HTTP requests: " + activeRequests);
+        //int activeRequests = activeRequestCounter.incrementAndGet();
+        //LOG.info("Active HTTP requests: " + activeRequests);
         LOG.info("============================================================\n");
 
         int actionMemory;
@@ -208,14 +208,12 @@ public class OpenWhiskHandler extends BaseHandler {
         // Set the `isCold` flag to false given this is now a warm container.
         isCold = false;
 
-        long endTime = System.currentTimeMillis();
-        double timeElapsed = (endTime - startTime) / 1000000.0;
-
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Returning back to client. Time elapsed: " + timeElapsed + " milliseconds.");
+            long endTime = System.currentTimeMillis();
+            LOG.debug("Returning back to client. Time elapsed: " + (endTime - startTime) + " milliseconds.");
             LOG.debug("ServerlessNameNode is exiting now...");
         }
-        activeRequestCounter.decrementAndGet();
+        //activeRequestCounter.decrementAndGet();
         return createJsonResponse(result);
     }
 
