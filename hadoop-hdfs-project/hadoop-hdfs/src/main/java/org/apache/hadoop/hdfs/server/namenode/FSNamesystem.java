@@ -1017,7 +1017,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   private void invalidationReceivedFromZooKeeper(String path) throws Exception {
     ZooKeeperInvalidation invalidation;
     try {
+      long s = System.nanoTime();
       invalidation = serverlessNameNode.getZooKeeperClient().getInvalidation(path);
+      long t = System.nanoTime();
+      if (LOG.isDebugEnabled())
+        LOG.debug("Retrieved INV '" + path + "' from ZK in " + ((s-t) / 1.0e6) + " ms.");
     } catch (Exception ex) {
       LOG.warn("Failed to retrieve invalidation for path '" + path + "'. Perhaps an old invalidation was deleted?");
       LOG.warn(ex);

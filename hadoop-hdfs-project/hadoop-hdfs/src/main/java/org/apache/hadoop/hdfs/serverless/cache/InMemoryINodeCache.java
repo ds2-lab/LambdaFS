@@ -245,6 +245,8 @@ public class InMemoryINodeCache {
      * @param key The fully-qualified path of the desired INode
      * @param iNodeId The INode ID of the given metadata object.
      * @param value The metadata object to cache under the given key.
+     *
+     * @return The previous value associated with key, or null if there was no mapping for key.
      */
     public INode put(String key, long iNodeId, INode value) {
         if (value == null)
