@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hdfs.server.namenode;
 
+import com.ctc.wstx.util.StringUtil;
 import com.google.gson.JsonObject;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.transaction.handler.HDFSOperationType;
@@ -28,6 +29,7 @@ import io.hops.transaction.lock.TransactionLockTypes.INodeLockType;
 import io.hops.transaction.lock.TransactionLockTypes.INodeResolveType;
 import io.hops.transaction.lock.TransactionLockTypes.LockType;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.PathIsNotEmptyDirectoryException;
@@ -233,8 +235,7 @@ class FSDirDeleteOp {
 
   private static boolean deleteTreeLevel(final FSNamesystem fsn, final String subtreeRootPath, final long subTreeRootID,
                                         final AbstractFileTree.FileTree fileTree, int level) throws IOException {
-      LOG.debug("Deleting tree level " + level + " of tree rooted at " + subtreeRootPath + " (ID = " +
-              subTreeRootID + ") now...");
+    if (LOG.isDebugEnabled()) LOG.debug("Deleting tree level " + level + " of tree rooted at " + subtreeRootPath + " (ID = " +subTreeRootID + ") now...");
 
       ArrayList<Future> barrier = new ArrayList<>();
 
@@ -242,10 +243,9 @@ class FSDirDeleteOp {
 
       for (final ProjectedINode dir : fileTree.getDirsByLevel(level)) {
         int numChildren = fileTree.countChildren(dir.getId());
-        LOG.debug("Children in directory (id=" + dir.getId() + "): " + numChildren);
+        if (LOG.isDebugEnabled()) LOG.debug("Children in directory (id=" + dir.getId() + "): " + numChildren);
         if (numChildren <= BIGGEST_DELETABLE_DIR) {
-          LOG.debug("Directory " + dir.getId() + " has less than " + BIGGEST_DELETABLE_DIR
-                  + " children. Can delete it directly.");
+          if (LOG.isDebugEnabled()) LOG.debug("Directory " + dir.getId() + " has less than " + BIGGEST_DELETABLE_DIR + " children. Can delete it directly.");
           final String path = fileTree.createAbsolutePath(subtreeRootPath, dir);
 
           Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
@@ -267,11 +267,10 @@ class FSDirDeleteOp {
             if (instance == null)
               LOG.error("Cannot retrieve singleton ServerlessNameNode instance for batched subtree delete.");
             else
-              LOG.debug("There are not enough files to batch across multiple NNs ("
-                      + "Performing all deletes locally.");
+              if (LOG.isDebugEnabled()) LOG.debug("There are not enough files to batch across multiple NNs (Performing all deletes locally.");
 
             for (final ProjectedINode inode : children) {
-              LOG.debug("    Trying to delete child INode " + inode.getName() + " (id=" + inode.getId() + ").");
+              if (LOG.isDebugEnabled()) LOG.debug("    Trying to delete child INode " + inode.getName() + " (id=" + inode.getId() + ").");
               if (!inode.isDirectory()) {
                 final String path = fileTree.createAbsolutePath(subtreeRootPath, inode);
                 Future f = multiTransactionDeleteInternal(fsn, path, subTreeRootID);
@@ -283,8 +282,7 @@ class FSDirDeleteOp {
             List<String[]> batches = new ArrayList<>();
             String[] currentBatch = new String[SUBTREE_DELETE_BATCH_SIZE];
 
-            LOG.debug("Splitting the " + children.size() + " child files into " +
-                    children.size() / SUBTREE_DELETE_BATCH_SIZE + " batches of size ~" + SUBTREE_DELETE_BATCH_SIZE + ".");
+            if (LOG.isDebugEnabled()) LOG.debug("Splitting the " + children.size() + " child files into " + children.size() / SUBTREE_DELETE_BATCH_SIZE + " batches of size ~" + SUBTREE_DELETE_BATCH_SIZE + ".");
 
             // Create batches of paths of size 'SUBTREE_DELETE_BATCH_SIZE'.
             // We will partition these batches across multiple other NameNodes in order to complete them in-parallel.
@@ -313,7 +311,7 @@ class FSDirDeleteOp {
               ServerlessInvokerBase<JsonObject> serverlessInvoker = instance.getServerlessInvoker();
               // final HashMap<String, Future<Boolean>> futures = new HashMap<>();
               final String serverlessEndpointBase = instance.getServerlessEndpointBase();
-              LOG.debug("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
+              if (LOG.isDebugEnabled()) LOG.debug("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
               for (int i = 1; i < batches.size(); i++) {
                 String[] batch = batches.get(i);
                 String requestId = UUID.randomUUID().toString();
@@ -331,7 +329,7 @@ class FSDirDeleteOp {
                   targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments());
                 }
 
-                LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i + "/" + batches.size());
+                if (LOG.isDebugEnabled()) LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i + "/" + batches.size());
 
                 int finalTargetDeployment = targetDeployment;
                 Future<Boolean> future = executorService.submit(() -> {
@@ -350,13 +348,13 @@ class FSDirDeleteOp {
               }
             }
             else if (BaseHandler.localModeEnabled) {
-              LOG.debug("LocalMode is enabled. We cannot offload to other NNs. Must complete operation locally.");
+              if (LOG.isDebugEnabled()) LOG.debug("LocalMode is enabled. We cannot offload to other NNs. Must complete operation locally.");
             }
             else {
               LOG.warn("We somehow ended up with just one batch. No need to offload deletes to other NNs.");
             }
 
-            // Add all of the futures corresponding to NameNode invocations to the barrier. There could 0 or more.
+            // Add all the futures corresponding to NameNode invocations to the barrier. There could 0 or more.
             barrier.addAll(remoteBarrier);
 
             // It is theoretically possible that we end up with zero batches. This could occur if the directory
@@ -377,12 +375,12 @@ class FSDirDeleteOp {
         }
       }
 
-      LOG.debug("There are " + barrier.size() + " child files to delete next.");
+    if (LOG.isDebugEnabled()) LOG.debug("There are " + barrier.size() + " child files to delete next.");
       boolean success = processResponses(barrier);
       if (!success)
         return false;
 
-      LOG.debug("There are " + emptyDirs.size() + " empty child directories to delete next.");
+    if (LOG.isDebugEnabled()) LOG.debug("There are " + emptyDirs.size() + " empty child directories to delete next.");
 
       //delete the empty Dirs
       for (ProjectedINode dir : emptyDirs) {
@@ -463,10 +461,9 @@ class FSDirDeleteOp {
             final INodesInPath iip = fsd.getINodesInPath4Write(src);
             if (!deleteInternal(fsn, src, iip)) {
               // at this point the delete op is expected to succeed. Apart from DB errors
-              // this can only fail if the quiesce phase in subtree operation failed to
+              // this can only fail if the "quiesce phase" in the subtree operation failed to
               // quiesce the subtree. See TestSubtreeConflicts.testConcurrentSTOandInodeOps
               throw new RetriableException("Unable to Delete path: " + src + "." + " Possible subtree quiesce failure");
-
             }
             return true;
           }
@@ -566,14 +563,15 @@ class FSDirDeleteOp {
     List<INode> removedINodes = new ChunkedArrayList<>();
     
     long mtime = now();
+
     // Unlink the target directory from directory tree
     long filesRemoved = delete(fsd, iip, collectedBlocks, removedINodes, mtime);
-    if (filesRemoved < 0) {
+    if (filesRemoved < 0)
       return false;
-    }
+
     incrDeletedFileCount(filesRemoved);
 
-    LOG.debug("Removed INodes: " + removedINodes.toString());
+    if (LOG.isDebugEnabled()) LOG.debug("Removed INodes: " + StringUtils.join(", ", removedINodes));
     fsn.removeLeasesAndINodes(src, removedINodes);
     fsn.removeBlocks(collectedBlocks); // Incremental deletion of blocks
     collectedBlocks.clear();

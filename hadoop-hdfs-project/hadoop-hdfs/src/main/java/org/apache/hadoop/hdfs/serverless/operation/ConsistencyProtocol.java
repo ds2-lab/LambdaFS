@@ -701,7 +701,6 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             return;
         }
 
-
         String groupName = "namenode" + deploymentNumber;
 
         if (calledManually)
@@ -750,9 +749,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             LOG.warn("Found " + removeMe.size()
                     + " NameNode(s) that we're waiting on, but are no longer active.");
             LOG.warn("IDs of these NameNodes: " + removeMe);
-            removeMe.forEach(s -> {
-                waitingForAcks.remove(s);   // Remove from the set of ACKs we're still waiting on.
-                deploymentAcks.remove(s);   // Remove from the set of ACKs specific to the deployment.
+            removeMe.forEach(id -> {
+                waitingForAcks.remove(id);   // Remove from the set of ACKs we're still waiting on.
+                deploymentAcks.remove(id);   // Remove from the set of ACKs specific to the deployment.
                 countDownLatch.countDown(); // Decrement the count-down latch once for each entry we remove.
             });
         }
