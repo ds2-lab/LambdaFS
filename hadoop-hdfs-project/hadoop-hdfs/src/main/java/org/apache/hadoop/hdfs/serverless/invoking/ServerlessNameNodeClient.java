@@ -1996,6 +1996,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         Thread[] threads = new Thread[numDeployments * numThreadsPerDeployment];
         CountDownLatch startLatch = new CountDownLatch(numDeployments * numThreadsPerDeployment);
 
+        int counter = 0;
         for (int deploymentNumber = 0; deploymentNumber < numDeployments; deploymentNumber++) {
             final int depNum = deploymentNumber;
             for (int j = 0; j < numThreadsPerDeployment; j++) {
@@ -2021,7 +2022,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         }
                     }
                 });
-                threads[deploymentNumber] = thread;
+                threads[counter++] = thread;
             }
         }
 
