@@ -265,12 +265,14 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * should proceed like normal. Otherwise false, which means that the subtree protocol should abort.
      */
     public static boolean runConsistencyProtocolForSubtreeOperation(Set<Integer> associatedDeployments, String src) {
-        if (LOG.isDebugEnabled()) LOG.debug("=============== Subtree Consistency Protocol ===============");
         int numAssociatedDeployments = associatedDeployments.size();
 
-        if (LOG.isDebugEnabled()) LOG.debug("There " + (numAssociatedDeployments == 1 ? "is 1 deployment " : "are " +
-                associatedDeployments.size() + " deployments ") + " associated with subtree rooted at '" + src + "'.");
-        if (LOG.isDebugEnabled()) LOG.debug("Associated deployments: " + StringUtils.join(", ", associatedDeployments));
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("=============== Subtree Consistency Protocol ===============");
+            LOG.debug("There " + (numAssociatedDeployments == 1 ? "is 1 deployment " : "are " +
+                    associatedDeployments.size() + " deployments ") + " associated with subtree rooted at '" + src + "'.");
+            LOG.debug("Associated deployments: " + StringUtils.join(", ", associatedDeployments));
+        }
 
         // This is sort of a dummy ID.
         long transactionId = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
