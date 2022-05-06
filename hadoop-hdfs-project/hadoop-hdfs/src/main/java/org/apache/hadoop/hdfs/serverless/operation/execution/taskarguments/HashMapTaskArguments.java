@@ -51,6 +51,11 @@ public class HashMapTaskArguments implements TaskArguments {
     }
 
     @Override
+    public List<String> getStringList(String key) {
+        return getList(key);
+    }
+
+    @Override
     public int getInt(String key) {
         return (int)taskArguments.get(key);
     }

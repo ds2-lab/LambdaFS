@@ -63,6 +63,16 @@ public class JsonTaskArguments implements TaskArguments {
     }
 
     @Override
+    public List<String> getStringList(String key) {
+        List<String> list = new ArrayList<String>();
+        JsonArray jsonArray = taskArguments.getAsJsonArray(key);
+        for (int i = 0; i < jsonArray.size(); i++)
+            list.add(jsonArray.get(i).getAsString());
+
+        return list;
+    }
+
+    @Override
     public String[] getStringArray(String key) {
         JsonArray jsonArray = taskArguments.getAsJsonArray(key);
         String[] arr = new String[jsonArray.size()];

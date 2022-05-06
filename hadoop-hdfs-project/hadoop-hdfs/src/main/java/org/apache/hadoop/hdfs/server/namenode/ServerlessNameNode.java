@@ -1605,7 +1605,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //    for (int i = 0; i < pathsJson.size(); i++) {
 //      paths.add(pathsJson.get(i).getAsString());
 //    }
-    List<String> paths = args.getList("paths");
+    List<String> paths = args.getStringList("paths");
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("Executed batched subtree operation. Leader NN ID: " + leaderNameNodeID + ".");

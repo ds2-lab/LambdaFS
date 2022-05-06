@@ -29,4 +29,6 @@ public interface TaskArguments {
     short getShort(String key);
 
     boolean getBoolean(String key);
+
+    List<String> getStringList(String key);
 }

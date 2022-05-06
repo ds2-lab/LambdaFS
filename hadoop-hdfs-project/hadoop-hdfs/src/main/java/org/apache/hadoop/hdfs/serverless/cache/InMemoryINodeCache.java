@@ -464,9 +464,11 @@ public class InMemoryINodeCache {
 
         try {
             SortedMap<String, INode> prefixedEntries = prefixMetadataCache.prefixMap(prefix);
-            int numInvalidated = 0;
 
-            for (Map.Entry<String, INode> entry : prefixedEntries.entrySet()) {
+            // Avoid concurrent modification exception.
+            ArrayList<Map.Entry<String, INode>> toInvalidate = new ArrayList<>(prefixedEntries.entrySet());
+            int numInvalidated = 0;
+            for (Map.Entry<String, INode> entry : toInvalidate) {
                 String path = entry.getKey();
                 // This if-statement invalidates the key. If we were caching the key, then the call
                 // to invalidateKey() returns true, in which case we increment 'numInvalidated'.
