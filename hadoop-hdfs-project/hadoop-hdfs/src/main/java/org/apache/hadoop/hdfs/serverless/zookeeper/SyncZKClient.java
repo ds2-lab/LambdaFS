@@ -356,7 +356,14 @@ public class SyncZKClient implements ZKClient {
     public void acknowledge(int deploymentNumber, long operationId, long localNameNodeId) throws Exception {
         String ackPath =
                 getAckPath("namenode" + deploymentNumber) + "/" + operationId + "/" + localNameNodeId;
+
+        long s = System.nanoTime();
         this.client.create().withMode(CreateMode.EPHEMERAL).forPath(ackPath);
+
+        if (LOG.isDebugEnabled()) {
+            long t = System.nanoTime();
+            LOG.debug("Wrote ACK to ZK at path '" + ackPath + "' in " + ((t - s) / 1.0e6) + " ms.");
+        }
     }
 
     // Listen for INVs directed at a particular deployment.
