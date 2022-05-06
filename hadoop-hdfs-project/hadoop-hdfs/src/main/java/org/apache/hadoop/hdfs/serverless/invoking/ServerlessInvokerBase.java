@@ -518,10 +518,10 @@ public abstract class ServerlessInvokerBase<T> {
                 httpResponse = httpClient.execute(request);
                 currentTime = System.nanoTime();
                 timeElapsed = (currentTime - invokeStart) / 1000000.0;
-                if (LOG.isDebugEnabled())
-                    LOG.debug("Received HTTP response for request/task " + requestId + " (op=" + operationName +"). Time elapsed: " + timeElapsed + " milliseconds.");
-
                 int responseCode = httpResponse.getStatusLine().getStatusCode();
+
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Received HTTP " + responseCode + " response for request/task " + requestId + " (op=" + operationName +"). Time elapsed: " + timeElapsed + " milliseconds.");
 
                 // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
                 // generally indicate a client error, but sometimes I receive this error right after
