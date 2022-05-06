@@ -378,7 +378,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param tcpLatencies Latencies from TCP requests.
      * @param httpLatencies Latencies from HTTP requests.
      */
-    public void addLatencies(Collection<Double> tcpLatencies, Collection<Double>  httpLatencies) {
+    public void addLatencies(Collection<Double> tcpLatencies, Collection<Double> httpLatencies) {
         for (double tcpLatency : tcpLatencies) {
             latencyTcp.addValue(tcpLatency);
             latency.addValue(tcpLatency);
@@ -576,7 +576,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 long localEnd = System.currentTimeMillis();
 
-                //addLatency(localEnd - localStart, -1, response.has(COLD_START) && response.get(COLD_START).getAsBoolean());
                 addLatency(localEnd - localStart, -1);
 
                 if (!benchmarkModeEnabled)
@@ -648,21 +647,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                             operationName + ". Time elapsed: " + (System.currentTimeMillis() - startTime) + " ms.");
 
                 long endTime = System.currentTimeMillis();
-
                 addLatency(-1, endTime - startTime);
-
-                long opEnd = System.currentTimeMillis();
 
                 if (LOG.isDebugEnabled())
                     LOG.debug("Received result from NameNode after falling back to HTTP for operation " +
-                        operationName + ". Time elapsed: " + (opEnd - opStart) + ".");
+                        operationName + ". Time elapsed: " + (endTime - opStart) + ".");
 
                 if (response.has("body"))
                     response = response.get("body").getAsJsonObject();
 
                 if (!benchmarkModeEnabled)
                     // Collect and save/record metrics.
-                    createAndStoreOperationPerformed(response, operationName, requestId, startTime, opEnd,
+                    createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime,
                             true, true, wasResubmittedViaStragglerMitigation);
 
                 return response;
@@ -762,7 +758,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         long endTime = System.currentTimeMillis();
 
-        //addLatency(-1, endTime - startTime, response.has(COLD_START) && response.get(COLD_START).getAsBoolean());
         addLatency(-1, endTime - startTime);
 
         if (LOG.isDebugEnabled())
