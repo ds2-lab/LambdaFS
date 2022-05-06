@@ -1192,7 +1192,13 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     private void issueInvalidationsZooKeeper(Collection<INode> invalidatedINodes) throws Exception {
         if (LOG.isDebugEnabled()) LOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations via ZooKeeper =-----=-----=");
 
-        List<Long> invalidatedINodeIDs = invalidatedINodes.stream().map(INode::getId).collect(Collectors.toList());
+        List<Long> invalidatedINodeIDs;
+
+        // Will be null for subtree operations?
+        if (invalidatedINodes != null)
+            invalidatedINodeIDs = invalidatedINodes.stream().map(INode::getId).collect(Collectors.toList());
+        else
+            invalidatedINodeIDs = new ArrayList<>();
 
         ZooKeeperInvalidation invalidation = new ZooKeeperInvalidation(serverlessNameNodeInstance.getId(),
                 operationId, invalidatedINodeIDs, subtreeOperation, subtreeRoot);
