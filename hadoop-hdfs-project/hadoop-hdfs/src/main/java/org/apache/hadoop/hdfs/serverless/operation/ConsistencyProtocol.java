@@ -1122,19 +1122,21 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         for (int deploymentNumber : involvedDeployments) {
             List<WriteAcknowledgement> writeAcknowledgements = new ArrayList<>();
 
-            // TODO: Can we just use what the NameNode already has cached here?
-            // TODO: Consider timing this specific method call to see how much of the `computeAckRecords()` execution
-            //       time is spent performing this call (since it accesses the network).
+            long s = System.nanoTime();
             List<String> groupMemberIds = zkClient.getPermanentGroupMembers("namenode" + deploymentNumber);
+            if (LOG.isDebugEnabled())
+                LOG.debug("Retrieved active NNs in deployment " + deploymentNumber + " in " +
+                        ((System.nanoTime() - s) / 1.0e6) + " ms.");
 
             if (groupMemberIds.size() == 0) {
                 toRemove.add(deploymentNumber);
                 continue;
+            } else if (LOG.isDebugEnabled()) {
+                if (groupMemberIds.size() == 1)
+                    LOG.debug("There is 1 active instance in deployment #" + deploymentNumber + " at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
+                else
+                    LOG.debug("There are " + groupMemberIds.size() + " active instances in deployment #" + deploymentNumber + " at the start of consistency protocol: " + StringUtils.join(groupMemberIds, ", "));
             }
-            else if (groupMemberIds.size() == 1)
-                if (LOG.isDebugEnabled()) LOG.debug("There is 1 active instance in deployment #" + deploymentNumber + " at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
-            else
-                if (LOG.isDebugEnabled()) LOG.debug("There are " + groupMemberIds.size() + " active instances in deployment #" + deploymentNumber + " at the start of consistency protocol: " + StringUtils.join(groupMemberIds, ", "));
 
             Set<Long> acksForCurrentDeployment = waitingForAcksPerDeployment.computeIfAbsent(deploymentNumber, depNum -> new HashSet<Long>());
 
@@ -1161,13 +1163,15 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                 if (!useZooKeeperForACKsAndINVs)
                     // These are just all the WriteAcknowledgement objects that we're going to store in the database.
                     writeAcknowledgements.add(new WriteAcknowledgement(memberId, deploymentNumber, operationId, false, transactionStartTime, serverlessNameNodeInstance.getId()));
+
+                totalNumberOfACKsRequired += 1;
             }
 
             // Creating the mapping from the current deployment (we're iterating over all deployments right now)
             // to the set of write acknowledgements to be stored in intermediate storage for that specific deployment.
             // (Each deployment has its own ACK table in NDB.)
-            writeAcknowledgementsMap.put(deploymentNumber, writeAcknowledgements);
-            totalNumberOfACKsRequired += writeAcknowledgements.size();
+            if (!useZooKeeperForACKsAndINVs)
+                writeAcknowledgementsMap.put(deploymentNumber, writeAcknowledgements);
         }
 
         if (toRemove.size() > 0)
