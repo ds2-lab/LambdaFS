@@ -244,6 +244,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 SERVERLESS_STRAGGLER_MITIGATION_THRESHOLD_FACTOR_DEFAULT);
         minimumStragglerMitigationTimeout = conf.getInt(SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT,
                 SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT_DEFAULT);
+        serverlessFunctionLogLevel = conf.get(
+                SERVERLESS_DEFAULT_LOG_LEVEL, SERVERLESS_DEFAULT_LOG_LEVEL_DEFAULT).toUpperCase();
 
         if (localMode)
             numDeployments = 1;
@@ -255,6 +257,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LOG.info("Serverless platform: " + serverlessPlatformName);
         LOG.info("TCP requests are " + (tcpEnabled ? "enabled." : "disabled."));
         LOG.info("UDP requests are " + (udpEnabled ? "enabled." : "disabled."));
+        LOG.debug("Default serverless log level: " + serverlessFunctionLogLevel);
         LOG.debug("Straggler mitigation is " + (stragglerMitigationEnabled ? " enabled. " +
                 "Straggler mitigation factor: " + stragglerMitigationThresholdFactor + "." : "disabled."));
         LOG.debug("Latency Window: " + latencyWindowSize + ", Latency Threshold: " + latencyThreshold + " ms.");

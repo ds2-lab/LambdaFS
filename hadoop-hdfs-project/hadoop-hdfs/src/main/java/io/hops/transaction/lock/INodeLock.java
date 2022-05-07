@@ -162,11 +162,11 @@ public class INodeLock extends BaseINodeLock {
     if (paths == null)
       throw new IOException("Cannot acquire INode locks along paths because paths is null!");
 
-    //if (LOG.isDebugEnabled()) LOG.debug("Acquiring locks on " + paths.length + " path(s). Lock type: " + lockType.name() +
-    //        ", resolve type: " + resolveType.name());
+    if (LOG.isTraceEnabled()) LOG.trace("Acquiring locks on " + paths.length + " path(s). Lock type: " + lockType.name() +
+            ", resolve type: " + resolveType.name());
 
     for (String path : paths) {
-      //if (LOG.isDebugEnabled()) LOG.debug("Attempting to acquire " + lockType.name() + " lock for path: " + path + "");
+      if (LOG.isTraceEnabled()) LOG.trace("Attempting to acquire " + lockType.name() + " lock for path: " + path + "");
 
       List<INode> resolvedINodes = null;
 

@@ -160,6 +160,9 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_TCP_REQUESTS_ENABLED = "serverless.tcp.enabled";
   public static final boolean SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT = true;
 
+  public static final String SERVERLESS_DEFAULT_LOG_LEVEL = "serverless.default.loglevel";
+  public static final String SERVERLESS_DEFAULT_LOG_LEVEL_DEFAULT = "DEBUG";
+
   /**
    * Use UDP instead of TCP.
    */
