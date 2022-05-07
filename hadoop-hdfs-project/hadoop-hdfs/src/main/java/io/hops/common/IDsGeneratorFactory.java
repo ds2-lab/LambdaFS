@@ -113,7 +113,7 @@ public class IDsGeneratorFactory {
 
   public long getUniqueINodeID() throws StorageException {
     long id = iDsGenerators.get(0).getUniqueID();
-    LOG.debug("Unique INode generated. id="+id);
+    // LOG.debug("Unique INode generated. id="+id);
     return id;
   }
 

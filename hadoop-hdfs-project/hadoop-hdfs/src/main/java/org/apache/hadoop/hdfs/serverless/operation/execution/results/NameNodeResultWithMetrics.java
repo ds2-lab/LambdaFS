@@ -183,6 +183,7 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
         if (!LOG.isDebugEnabled()) return;
 
         LOG.debug("+-+-+-+-+-+-+ Result Debug Information +-+-+-+-+-+-+");
+        LOG.debug("Request ID: " + requestId);
         if (hasResult) {
             LOG.debug("Type: " + result.getClass());
             LOG.debug("Result " + (result instanceof Serializable ? "IS " : "is NOT ") + "serializable.");

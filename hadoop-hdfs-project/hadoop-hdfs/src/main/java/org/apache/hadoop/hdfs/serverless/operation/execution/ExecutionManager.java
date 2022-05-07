@@ -279,8 +279,8 @@ public class ExecutionManager {
                 OpenWhiskHandler.tryCreateDeploymentMapping(workerResult, taskArguments, serverlessNameNodeInstance);
                 long end = System.currentTimeMillis();
 
-                if (LOG.isDebugEnabled())
-                    LOG.debug("Created function mapping for request " + taskId + " in " + (end - start) + " ms.");
+                if (LOG.isTraceEnabled())
+                    LOG.trace("Created function mapping for request " + taskId + " in " + (end - start) + " ms.");
             } catch (IOException ex) {
                 LOG.error("Encountered IOException while trying to create function mapping for task " +
                         taskId + ":", ex);
@@ -349,8 +349,8 @@ public class ExecutionManager {
                 OpenWhiskHandler.tryCreateDeploymentMapping(workerResult, taskArguments, serverlessNameNodeInstance);
                 long end = System.currentTimeMillis();
 
-                if (LOG.isDebugEnabled())
-                    LOG.debug("Created function mapping for request " + taskId + " in " + (end - start) + " ms.");
+                if (LOG.isTraceEnabled())
+                    LOG.trace("Created function mapping for request " + taskId + " in " + (end - start) + " ms.");
             } catch (IOException ex) {
                 LOG.error("Encountered IOException while trying to create function mapping for task " +
                         taskId + ":", ex);

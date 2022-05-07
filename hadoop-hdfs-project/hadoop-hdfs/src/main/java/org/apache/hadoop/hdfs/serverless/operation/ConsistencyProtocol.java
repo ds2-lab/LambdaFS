@@ -809,12 +809,13 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         long t = System.currentTimeMillis();
 
-        if (LOG.isDebugEnabled()) LOG.debug("Called `checkAndProcessMembershipChanges()` for " + involvedDeployments.size() +
-                " deployment(s) in " + (t - s) + " ms.");
-
-        if (LOG.isDebugEnabled()) LOG.debug("Waiting for the remaining " + waitingForAcks.size() +
-                " ACK(s) now. Will timeout after " + serverlessNameNodeInstance.getTxAckTimeout() + " milliseconds.");
-        if (LOG.isDebugEnabled()) LOG.debug("Count value of CountDownLatch: " + countDownLatch.getCount());
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("Called `checkAndProcessMembershipChanges()` for " + involvedDeployments.size() +
+                    " deployment(s) in " + (t - s) + " ms.");
+            LOG.trace("Waiting for the remaining " + waitingForAcks.size() +
+                    " ACK(s) now. Will timeout after " + serverlessNameNodeInstance.getTxAckTimeout() + " milliseconds.");
+            LOG.trace("Count value of CountDownLatch: " + countDownLatch.getCount());
+        }
 
         s = System.currentTimeMillis();
         // Wait until we're done. If the latch is already at zero, then this will not block.
@@ -827,12 +828,12 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
         t = System.currentTimeMillis();
 
-        if (LOG.isDebugEnabled()) LOG.debug("Spent " + (t - s) + " ms waiting on ACKs.");
+        if (LOG.isTraceEnabled()) LOG.trace("Spent " + (t - s) + " ms waiting on ACKs.");
 
         if (!success) {
             LOG.warn("Timed out while waiting for ACKs from other NNs. Waiting on a total of " +
                     waitingForAcks.size() + " ACK(s): " + StringUtils.join(waitingForAcks, ", "));
-            if (LOG.isDebugEnabled()) LOG.debug("Checking liveliness of NNs that we're still waiting on...");
+            LOG.warn("Checking liveliness of NNs that we're still waiting on...");
 
             // If we timed-out, verify that the NameNodes we're waiting on are still, in fact, alive.
             for (int deployment : involvedDeployments) {
