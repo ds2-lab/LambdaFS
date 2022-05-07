@@ -1019,9 +1019,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     try {
       long s = System.nanoTime();
       invalidation = serverlessNameNode.getZooKeeperClient().getInvalidation(path);
-      if (LOG.isDebugEnabled()) {
+      if (LOG.isTraceEnabled()) {
         long t = System.nanoTime();
-        LOG.debug("Retrieved INV '" + path + "' from ZK in " + ((t - s) / 1.0e6) + " ms.");
+        LOG.trace("Retrieved INV '" + path + "' from ZK in " + ((t - s) / 1.0e6) + " ms.");
       }
     } catch (Exception ex) {
       LOG.warn("Failed to retrieve invalidation for path '" + path + "'. Perhaps an old invalidation was deleted?");

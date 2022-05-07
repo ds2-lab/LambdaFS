@@ -490,14 +490,14 @@ public class OpenWhiskHandler extends BaseHandler {
         response.add("headers", headers);
         response.add("body", resultJson);
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Contents of result to be returned to the client: ");
-            for (String key : resultJson.keySet())
-                if (key.equals(RESULT))
-                    LOG.debug("Result: <Content Omitted>");
-                else
-                    LOG.debug(key + ": " + resultJson.get(key).toString());
-        }
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("Contents of result to be returned to the client: ");
+//            for (String key : resultJson.keySet())
+//                if (key.equals(RESULT))
+//                    LOG.debug("Result: <Content Omitted>");
+//                else
+//                    LOG.debug(key + ": " + resultJson.get(key).toString());
+//        }
 
         return response;
     }

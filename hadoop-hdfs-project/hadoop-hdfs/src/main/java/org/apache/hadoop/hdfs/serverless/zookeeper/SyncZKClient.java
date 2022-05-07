@@ -321,21 +321,21 @@ public class SyncZKClient implements ZKClient {
         List<String> invs = this.client.getChildren().forPath(invPath);
 
         for (String ack : acks) {
-            if (LOG.isDebugEnabled())
-                LOG.debug("Removing ACK '" + ack + "' now...");
+            //if (LOG.isDebugEnabled())
+            //    LOG.debug("Removing ACK '" + ack + "' now...");
             this.client.delete().forPath(ackPath + "/" + ack);
         }
 
         for (String inv : invs) {
-            if (LOG.isDebugEnabled())
-                LOG.debug("Removing INV '" + inv + "' now...");
+            //if (LOG.isDebugEnabled())
+            //    LOG.debug("Removing INV '" + inv + "' now...");
             this.client.delete().forPath(invPath + "/" + inv);
         }
 
-        if (LOG.isDebugEnabled()) LOG.debug("Removing invalidation from ZooKeeper cluster under path: '" + invPath + "'");
+        //if (LOG.isDebugEnabled()) LOG.debug("Removing invalidation from ZooKeeper cluster under path: '" + invPath + "'");
         this.client.delete().forPath(invPath);
 
-        if (LOG.isDebugEnabled()) LOG.debug("Removing ACK root from ZooKeeper cluster under path: '" + ackPath + "'");
+        //if (LOG.isDebugEnabled()) LOG.debug("Removing ACK root from ZooKeeper cluster under path: '" + ackPath + "'");
         this.client.delete().forPath(ackPath);
     }
 
