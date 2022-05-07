@@ -77,6 +77,8 @@ public class MetadataCacheManager {
     public int invalidateINodesByPrefix(String prefix) {
         Collection<INode> prefixedINodes = inodeCache.invalidateKeysByPrefix(prefix);
 
+        if (prefixedINodes == null) return 0;
+
         for (INode node : prefixedINodes) {
             long inodeId = node.getId();
             invalidateAces(inodeId);
