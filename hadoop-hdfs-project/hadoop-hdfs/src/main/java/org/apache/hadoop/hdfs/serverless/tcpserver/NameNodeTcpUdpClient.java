@@ -17,6 +17,7 @@ import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.HashMapTaskArguments;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
+import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 
 import java.io.IOException;
@@ -477,7 +478,8 @@ public class NameNodeTcpUdpClient {
         ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.isConsistencyProtocolEnabled();
 
         int logLevel = args.getServerlessFunctionLogLevel();
-        LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
+        //LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
+        LogManager.getRootLogger().setLevel(Level.TRACE);
 
         boolean benchmarkingModeEnabled = args.isBenchmarkingModeEnabled();
         ServerlessNameNode.benchmarkingModeEnabled.set(benchmarkingModeEnabled);

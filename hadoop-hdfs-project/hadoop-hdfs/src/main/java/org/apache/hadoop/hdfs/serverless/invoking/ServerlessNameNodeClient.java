@@ -112,7 +112,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * The log level argument to be passed to serverless functions.
      */
-    protected String serverlessFunctionLogLevel = "DEBUG";
+    protected String serverlessFunctionLogLevel;
 
     /**
      * Passed to serverless functions. Determines whether they execute the consistency protocol.

@@ -155,7 +155,8 @@ public class OpenWhiskHandler extends BaseHandler {
             int logLevel = userArguments.get(LOG_LEVEL).getAsInt();
             // LOG.debug("Setting log4j log level to: " + logLevel + ".");
 
-            LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
+            LogManager.getRootLogger().setLevel(Level.TRACE);
+            //LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
         }
 
         if (userArguments.has(CONSISTENCY_PROTOCOL_ENABLED)) {
