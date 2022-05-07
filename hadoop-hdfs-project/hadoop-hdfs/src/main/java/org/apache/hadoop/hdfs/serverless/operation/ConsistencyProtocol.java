@@ -646,7 +646,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     transactionAttempt.setConsistencyCleanUpTimes(cleanUpStartTime, cleanUpEndTime);
                 }
 
-                LOG.error("Exception encountered while waiting for ACKs (" + ex.getMessage() + "): ", ex);
+                LOG.error("Exception encountered while waiting for ACKs: ", ex);
                 exceptions.add(ex);
                 canProceed = false;
                 return;
@@ -688,11 +688,13 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * between when the leader NN first checked group membership to create the ACK entries and when the leader begins
      * monitoring explicitly for changes in group membership.
      *
+     * This is synchronized because it modified state and can be called by multiple threads (e.g., event listeners).
+     *
      * @param deploymentNumber The deployment number of the given group. Note that the group name is just
      *                         "namenode" + deploymentNumber.
      * @param calledManually Indicates that we called this function manually rather than automatically in response
      *                       to a ZooKeeper event. Really just used for debugging.
-     */ // TODO: Why is this synchronized? Does it need to be?
+     */
     private synchronized void checkAndProcessMembershipChanges(int deploymentNumber, boolean calledManually)
             throws Exception {
         Set<Long> deploymentAcks = waitingForAcksPerDeployment.get(deploymentNumber);
@@ -703,10 +705,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         String groupName = "namenode" + deploymentNumber;
 
-        if (calledManually)
-            if (LOG.isDebugEnabled()) LOG.debug("ZooKeeper detected membership change for group: " + groupName);
-        else
-            if (LOG.isDebugEnabled()) LOG.debug("Checking for membership changes for deployment #" + deploymentNumber);
+        if (LOG.isDebugEnabled()) {
+            if (calledManually) LOG.debug("ZooKeeper detected membership change for group: " + groupName);
+            else LOG.debug("Checking for membership changes for deployment #" + deploymentNumber);
+        }
 
         ZKClient zkClient = serverlessNameNodeInstance.getZooKeeperClient();
 
@@ -934,7 +936,16 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
     }
 
-    private void handleZooKeeperEvent(String path) {
+    /**
+     * Used as the event handler for NodeCreated events from ZooKeeper.
+     * This is what gets executed when we receive an ACK.
+     *
+     * This method is synchronized because we modify sets from the 'waitingForAcksPerDeployment' map, which
+     * is accessed in other places.
+     *
+     * @param path The path of the ACK that we received.
+     */
+    private synchronized void handleZooKeeperEvent(String path) {
         if (LOG.isDebugEnabled()) LOG.debug("Received ZooKeeper 'NodeCreated' event with path '" + path + "'");
         String[] tokens = path.split("/");
         long followerId = Long.parseLong(tokens[tokens.length - 1]);
@@ -957,8 +968,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         countDownLatch.countDown();
     }
 
+    // Made this synchronized since it modified sets from the 'waitingForAcksPerDeployment' map,
+    // which can be modified by multiple threads via event handlers.
     @Override
-    public void eventReceived(HopsEventOperation eventData, String eventName) {
+    public synchronized void eventReceived(HopsEventOperation eventData, String eventName) {
         if (!eventName.contains(HopsEvent.ACK_EVENT_NAME_BASE)) {
             LOG.error("HopsTransactionalRequestHandler received unexpected event " + eventName + "!");
             return;
