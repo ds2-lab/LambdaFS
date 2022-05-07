@@ -343,8 +343,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
               lock != TransactionLockTypes.INodeLockType.WRITE && lock !=
               TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT) {
             throw new LockUpgradeException(
-                "Trying to remove inode id=" + inode.getId() +
-                    " acquired lock was " + lock);
+                "Trying to remove inode id=" + inode.getId() + " acquired lock was " + lock);
           }
         }
       }

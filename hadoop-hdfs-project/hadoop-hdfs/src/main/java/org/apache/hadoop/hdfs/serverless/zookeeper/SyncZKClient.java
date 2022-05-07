@@ -236,14 +236,14 @@ public class SyncZKClient implements ZKClient {
      */
     private PersistentWatcher getOrCreatePersistentWatcher(String path, boolean recursive) {
         return watchers.computeIfAbsent(path, p -> {
-            if (LOG.isDebugEnabled())
-                LOG.debug("Creating new PersistentWatcher for path '" + p + '"');
+            if (LOG.isTraceEnabled())
+                LOG.trace("Creating new PersistentWatcher for path '" + p + '"');
             PersistentWatcher persistentWatcher = new PersistentWatcher(this.client, p, recursive);
-            if (LOG.isDebugEnabled())
-                LOG.debug("Successfully created PersistentWatcher for path '" + p + "'. Starting watch now.");
+            if (LOG.isTraceEnabled())
+                LOG.trace("Successfully created PersistentWatcher for path '" + p + "'. Starting watch now.");
             persistentWatcher.start();
-            if (LOG.isDebugEnabled())
-                LOG.debug("Successfully started and started PersistentWatcher for path '" + p + "'.");
+            if (LOG.isTraceEnabled())
+                LOG.trace("Successfully started and started PersistentWatcher for path '" + p + "'.");
             return persistentWatcher;
         });
     }
