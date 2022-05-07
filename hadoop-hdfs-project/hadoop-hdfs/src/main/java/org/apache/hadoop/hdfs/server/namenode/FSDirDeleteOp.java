@@ -363,7 +363,9 @@ class FSDirDeleteOp {
           // If "Local Mode" is enabled, then we'll process all the batches locally, one after another.
           // If "Local Mode" is disabled, then we only want to process the 0-th batch locally. The other
           // batches will have been off-loaded to other NameNodes, and thus we do not execute them here.
-          int lastBatchIndexExclusive = (BaseHandler.localModeEnabled ? batches.size() : 1);
+          // Note that we select the minimum between 1 and batches.size() in case there are 0 batches for
+          // some reason. Thus, if batches.size() is 0, then we'll use 0. Otherwise, we'll use 1.
+          int lastBatchIndexExclusive = (BaseHandler.localModeEnabled ? batches.size() : Math.min(1, batches.size()));
 
           // Add all the futures corresponding to NameNode invocations to the barrier. There could 0 or more.
           barrier.addAll(remoteBarrier);
