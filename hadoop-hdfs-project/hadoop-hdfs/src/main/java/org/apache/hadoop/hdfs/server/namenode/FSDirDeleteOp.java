@@ -585,7 +585,7 @@ class FSDirDeleteOp {
 
     incrDeletedFileCount(filesRemoved);
 
-    if (LOG.isDebugEnabled()) LOG.debug("Removed INodes: " + StringUtils.join(", ", removedINodes));
+    if (LOG.isDebugEnabled()) LOG.debug("Removed INodes: " + StringUtils.join(removedINodes, ", "));
     fsn.removeLeasesAndINodes(src, removedINodes);
     fsn.removeBlocks(collectedBlocks); // Incremental deletion of blocks
     collectedBlocks.clear();

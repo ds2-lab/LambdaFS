@@ -25,6 +25,7 @@ import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.OngoingSubTreeOpsDataAccess;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.LightWeightRequestHandler;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INode;
@@ -113,7 +114,7 @@ public class INodeLock extends BaseINodeLock {
        */
       Arrays.sort(paths);
 
-      if (LOG.isTraceEnabled()) LOG.trace("Acquiring INode locks on the following paths: " + StringUtils.join(", ", paths));
+      if (LOG.isTraceEnabled()) LOG.trace("Acquiring INode locks on the following paths: " + StringUtils.join(paths, ", "));
 
       acquirePathsINodeLocks();
     } else {

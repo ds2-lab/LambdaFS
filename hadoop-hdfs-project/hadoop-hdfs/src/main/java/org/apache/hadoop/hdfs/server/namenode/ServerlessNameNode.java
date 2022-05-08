@@ -19,6 +19,7 @@ package org.apache.hadoop.hdfs.server.namenode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
+import com.sun.javafx.runtime.VersionInfo;
 import io.hops.DalDriver;
 import io.hops.events.EventManager;
 import io.hops.exception.StorageException;
@@ -46,6 +47,7 @@ import io.hops.transaction.lock.TransactionLocks;
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.Options;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -1610,7 +1612,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Executed batched subtree operation. Leader NN ID: " + leaderNameNodeID + ".");
       LOG.debug("Subtree root path: '" + subtreeRootId + "', subtree root ID: " + subtreeRootId + ".");
-      LOG.debug("There are " + paths.size() + " paths to delete: " + StringUtils.join(", ", paths));
+      LOG.debug("There are " + paths.size() + " paths to delete: " + StringUtils.join(paths, ", "));
     }
     ArrayList<Future> barrier = new ArrayList<>();
     for (String path : paths) {

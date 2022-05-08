@@ -663,7 +663,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
   private List<INode> syncInodeInstances(List<INode> newInodes) {
     List<INode> finalList = new ArrayList<>(newInodes.size());
 
-    if (LOG.isTraceEnabled()) LOG.trace("Retrieved batch of INodes from NDB: " + StringUtils.join(", ", newInodes));
+    if (LOG.isTraceEnabled()) LOG.trace("Retrieved batch of INodes from NDB: " + StringUtils.join(newInodes, ", "));
     
     for (INode inode : newInodes) {
       if (isRemoved(inode.getId())) {
