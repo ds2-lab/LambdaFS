@@ -37,7 +37,6 @@ import org.apache.hadoop.ipc.RetriableException;
 import java.io.IOException;
 import java.util.*;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
-import org.apache.hadoop.util.StringUtils;
 
 public class INodeLock extends BaseINodeLock {
   

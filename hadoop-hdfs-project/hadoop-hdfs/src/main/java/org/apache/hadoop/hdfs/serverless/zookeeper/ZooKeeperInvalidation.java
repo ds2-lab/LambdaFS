@@ -1,7 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.zookeeper;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.util.StringUtils;
 
 import java.io.Serializable;
 import java.util.List;

@@ -19,7 +19,7 @@ package org.apache.hadoop.hdfs.server.namenode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
-import com.sun.javafx.runtime.VersionInfo;
+import org.apache.hadoop.util.VersionInfo;
 import io.hops.DalDriver;
 import io.hops.events.EventManager;
 import io.hops.exception.StorageException;
