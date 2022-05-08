@@ -1816,7 +1816,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public HdfsFileStatus getFileInfo(String src) throws AccessControlException, FileNotFoundException, UnresolvedLinkException, IOException {
+    public HdfsFileStatus getFileInfo(String src) throws IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put(ServerlessNameNodeKeys.SRC, src);

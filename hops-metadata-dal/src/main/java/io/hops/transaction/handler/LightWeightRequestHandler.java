@@ -58,10 +58,10 @@ public abstract class LightWeightRequestHandler extends RequestHandler {
         commited = true;
         returnSession = true;
         totalTime = System.currentTimeMillis() - totalTime;
-        if(requestHandlerLOG.isTraceEnabled()) {
-          requestHandlerLOG.trace(opType+" TX Finished. Total time taken. Time " +
-              totalTime + " ms");
-        }
+//        if(requestHandlerLOG.isTraceEnabled()) {
+//          requestHandlerLOG.trace(opType+" TX Finished. Total time taken. Time " +
+//              totalTime + " ms");
+//        }
         return ret;
       } catch (Throwable t) {
         if(!commited){
