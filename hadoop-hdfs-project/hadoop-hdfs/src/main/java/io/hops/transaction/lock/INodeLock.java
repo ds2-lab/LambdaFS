@@ -290,8 +290,12 @@ public class INodeLock extends BaseINodeLock {
   private List<INode> acquireINodeLockByPath(String path)
           throws IOException {
     List<INode> resolvedINodes = new ArrayList<>();
-    //byte[][] components = INode.getPathComponents(path);
+    byte[][] componentsBytes = INode.getPathComponents(path);
     String[] components = INode.getComponentsAsStringArray(path);
+
+    if (componentsBytes.length != components.length)
+      throw new IllegalStateException("componentsBytes.length (" + componentsBytes.length +
+              ") != components.length (" + components.length + ")");
 
     INode currentINode;
     if (isRootTarget(components)) {
