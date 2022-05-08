@@ -31,6 +31,8 @@ import io.hops.metadata.hdfs.entity.INodeIdentifier;
 import io.hops.transaction.EntityManager;
 
 import java.io.IOException;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdfs.server.namenode.*;
 
 import java.util.ArrayList;
@@ -350,8 +352,8 @@ public abstract class BaseINodeLock extends Lock {
       return;
     }
 
-    if (LOG.isTraceEnabled()) LOG.trace("Resolved INode " + inode + " (id=" + inode.getId() + ") with lock " +
-            lock.name());
+    if (LOG.isTraceEnabled()) LOG.trace("Resolved INode " + inode.getLocalName() + " (id=" + inode.getId() +
+            ") with lock " + lock.name());
 
     TransactionLockTypes.INodeLockType oldLock = allLockedInodesInTx.get(inode);
     if (oldLock == null || oldLock.compareTo(lock) < 0) {
@@ -755,9 +757,10 @@ public abstract class BaseINodeLock extends Lock {
       boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
                                              lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
 
-//      LOG.debug("Trying to resolve " + names.length + " INodes: " + StringUtils.join(", ", names) +
-//              " using PathResolver. LockType: " + lockType.name() + ", path: '" + path +
-//              "', CanUseMetadataCache: " + canUseInMemoryMetadataCache);
+      if (LOG.isTraceEnabled())
+        LOG.trace("Trying to resolve " + names.length + " INodes: " + StringUtils.join(names, ", ") +
+                " using PathResolver. LockType: " + lockType.name() + ", path: '" + path +
+                "', CanUseMetadataCache: " + canUseInMemoryMetadataCache);
 
       List<INode> inodes = null;
       if (rowsToReadWithDefaultLock > 0) {
@@ -807,6 +810,10 @@ public abstract class BaseINodeLock extends Lock {
         TransactionLockTypes.INodeLockType currentINodeLock = identifyLockType(lockType, resolver.getCount() + 1,
             components);
         setINodeLockType(currentINodeLock);
+        if (LOG.isTraceEnabled()) {
+          if (currentINode != null) LOG.trace("Current INode: " + currentINode.getLocalName() + " (id=" + currentINode.getId() + "). Resolving next component with lock " + currentINodeLock.name() + ".");
+          else LOG.trace("Current INode: null. Resolving next component with lock " + currentINodeLock.name() + ".");
+        }
         currentINode = resolver.next();
         if (currentINode != null) {
           addLockedINodes(currentINode, currentINodeLock);
