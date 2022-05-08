@@ -30,6 +30,8 @@ import io.hops.metadata.hdfs.entity.INodeIdentifier;
 import io.hops.transaction.EntityManager;
 import static io.hops.transaction.lock.Lock.LOG;
 import java.io.IOException;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdfs.server.namenode.*;
 
 import java.util.ArrayList;
@@ -450,6 +452,7 @@ public abstract class BaseINodeLock extends Lock {
     List<INode> fetchINodes(final TransactionLockTypes.INodeLockType lockType, String path, boolean resolveLink) throws
         IOException {
       long[] inodeIds = Cache.getInstance().get(path);
+      if (LOG.isTraceEnabled()) LOG.trace("Resolving INodes along path '" + path + "'. INode IDs: " + StringUtils.join(inodeIds, ", "));
       if (inodeIds != null) {
         final String[] names = INode.getPathNames(path);
         final boolean partial = names.length > inodeIds.length;
@@ -493,6 +496,7 @@ public abstract class BaseINodeLock extends Lock {
     }
 
     INode lockInode(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws IOException {
+      if (LOG.isTraceEnabled()) LOG.trace("Locking INode " + inodeId + " with lock type " + lockType.name() + " now...");
       setINodeLockType(lockType);
       INode targetInode = INodeUtil.getNode(inodeId, true);
       setINodeLockType(getDefaultInodeLockType());
@@ -506,6 +510,7 @@ public abstract class BaseINodeLock extends Lock {
     }
 
     List<INode> lockInodeAndParent(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws IOException {
+      if (LOG.isTraceEnabled()) LOG.trace("Locking INode " + inodeId + " AND its parent with lock type " + lockType.name() + " now...");
       List<INode> inodes = new LinkedList<>();
       INodeIdentifier targetIdentifier = Cache.getInstance().get(inodeId);
       if (targetIdentifier == null) {
@@ -667,6 +672,10 @@ public abstract class BaseINodeLock extends Lock {
 
       rowsToReadWithDefaultLock = Math.min(rowsToReadWithDefaultLock,
           parentIds.length);
+
+      if (LOG.isTraceEnabled())
+        LOG.trace("Trying to resolve " + names.length + " INodes: " + StringUtils.join(names, ", ") +
+                " using PathResolver. LockType: " + lockType.name() + ", path: '" + path + "'");
 
       List<INode> inodes = null;
       if (rowsToReadWithDefaultLock > 0) {
