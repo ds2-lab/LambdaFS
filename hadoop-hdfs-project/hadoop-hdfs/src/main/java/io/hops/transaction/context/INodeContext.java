@@ -20,6 +20,7 @@ package io.hops.transaction.context;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Longs;
+import com.mysql.clusterj.LockMode;
 import io.hops.exception.LockUpgradeException;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
@@ -29,6 +30,7 @@ import io.hops.transaction.lock.BaseINodeLock;
 import io.hops.transaction.lock.Lock;
 import io.hops.transaction.lock.TransactionLockTypes;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
@@ -173,6 +175,13 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     }
     
     dataAccess.prepare(removed, added, modified);
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Transaction will REMOVE the following INodes (" + removed.size() + "): " +
+              StringUtils.join(removed, ", "));
+      LOG.debug("Transaction will MODIFY the following INodes (" + modified.size() + "): " +
+              StringUtils.join(modified, ", "));
+    }
   }
 
   @Override
@@ -224,20 +233,26 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     if (contains(inodeId)) {
       result = get(inodeId);
       if(result!=null) {
+        if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode '" + result.getLocalName() + "' (ID=" +
+                inodeId + ") from transaction context.");
         hit(inodeFinder, result, "id", inodeId, "name", result.getLocalName(), "parent_id", result.getParentId(),
             "partition_id", result.getPartitionId());
       }else{
+        if (LOG.isTraceEnabled()) LOG.trace("INode ID=" + inodeId + " was in transaction context as null...");
         hit(inodeFinder, result, "id", inodeId);
       }
     } else {
+      if (LOG.isTraceEnabled()) LOG.trace("Retrieving INode ID=" + inodeId + " from intermediate storage.");
       aboutToAccessStorage(inodeFinder, params);
       result = dataAccess.findInodeByIdFTIS(inodeId);
       gotFromDB(inodeId, result);
       if (result != null) {
+        if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode ID=" + inodeId + " from intermediate storage.");
         inodesNameParentIndex.put(result.nameParentKey(), result);
         miss(inodeFinder, result, "id", inodeId, "name", result.getLocalName(), "parent_id", result.getParentId(),
           "partition_id", result.getPartitionId());
       }else {
+        if (LOG.isTraceEnabled()) LOG.trace("Failed to retrieve INode ID=" + inodeId + " from intermediate storage.");
         miss(inodeFinder, result, "id");
       }
     }
@@ -261,6 +276,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       result = inodesNameParentIndex.get(nameParentKey);
       if (!preventStorageCalls() &&
           (currentLockMode.get() == LockMode.WRITE_LOCK)) {
+        if (LOG.isTraceEnabled()) LOG.trace("Re-reading INode " + name + " from NDB to upgrade the lock.");
         //trying to upgrade lock. re-read the row from DB
         aboutToAccessStorage(inodeFinder, params);
         result = dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);
@@ -268,6 +284,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         inodesNameParentIndex.put(nameParentKey, result);
         missUpgrade(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
       } else {
+        if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode '" + name + "', parentID=" + parentId + " from INode Hint Cache.");
         hit(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
       }
     } else {
@@ -276,6 +293,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
           result = RootINodeCache.getRootINode();
           LOG.trace("Reading root inode from the cache. "+result);
        } else {
+          if (LOG.isTraceEnabled()) LOG.trace("Cannot resolve INode '" + name + "', parentID=" + parentId +
+                  " from either cache. Reading from NDB instead.");
           aboutToAccessStorage(inodeFinder, params);
           result = dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);
         }
@@ -410,7 +429,9 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
   private List<INode> syncInodeInstances(List<INode> newInodes) {
     List<INode> finalList = new ArrayList<>(newInodes.size());
-    
+
+    if (LOG.isTraceEnabled()) LOG.trace("Retrieved batch of INodes from NDB: " + StringUtils.join(", ", newInodes));
+
     for (INode inode : newInodes) {
       if (isRemoved(inode.getId())) {
         continue;
