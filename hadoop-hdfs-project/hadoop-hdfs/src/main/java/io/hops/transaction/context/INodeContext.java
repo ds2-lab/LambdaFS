@@ -20,7 +20,6 @@ package io.hops.transaction.context;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Longs;
-import com.mysql.clusterj.LockMode;
 import io.hops.exception.LockUpgradeException;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
