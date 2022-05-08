@@ -478,8 +478,8 @@ public class NameNodeTcpUdpClient {
         ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.isConsistencyProtocolEnabled();
 
         int logLevel = args.getServerlessFunctionLogLevel();
-        //LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
-        LogManager.getRootLogger().setLevel(Level.TRACE);
+        LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
+        //LogManager.getRootLogger().setLevel(Level.TRACE);
 
         boolean benchmarkingModeEnabled = args.isBenchmarkingModeEnabled();
         ServerlessNameNode.benchmarkingModeEnabled.set(benchmarkingModeEnabled);
