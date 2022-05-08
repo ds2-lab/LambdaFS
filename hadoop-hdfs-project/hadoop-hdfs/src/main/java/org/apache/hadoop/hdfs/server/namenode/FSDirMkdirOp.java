@@ -221,7 +221,7 @@ class FSDirMkdirOp {
       return null;
     }
 
-        final INode newNode = existing.getLastINode();
+    final INode newNode = existing.getLastINode();
     // Directory creation also count towards FilesCreated
     // to match count of FilesDeleted metric.
     ServerlessNameNode.getNameNodeMetrics().incrFilesCreated();
