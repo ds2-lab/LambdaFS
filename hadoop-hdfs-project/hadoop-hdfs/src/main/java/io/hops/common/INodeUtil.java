@@ -101,6 +101,7 @@ public class INodeUtil {
   public static INode getNode(String name, long parentId, long partitionId, boolean transactional, boolean canCheckCache)
           throws StorageException, TransactionContextException {
     if (transactional) {
+      if (LOG.isTraceEnabled()) LOG.trace("Resolving INode " + name + " via parent ID (" + parentId + ") and partition ID (" + partitionId + ").");
       return EntityManager
               .find(INode.Finder.ByNameParentIdAndPartitionId, name, parentId, partitionId, null, canCheckCache);
     } else {

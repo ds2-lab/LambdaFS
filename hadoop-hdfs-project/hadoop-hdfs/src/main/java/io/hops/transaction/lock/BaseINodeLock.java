@@ -349,6 +349,10 @@ public abstract class BaseINodeLock extends Lock {
     if (inode == null) {
       return;
     }
+
+    if (LOG.isTraceEnabled()) LOG.trace("Resolved INode " + inode + " (id=" + inode.getId() + ") with lock " +
+            lock.name());
+
     TransactionLockTypes.INodeLockType oldLock = allLockedInodesInTx.get(inode);
     if (oldLock == null || oldLock.compareTo(lock) < 0) {
       allLockedInodesInTx.put(inode, lock);

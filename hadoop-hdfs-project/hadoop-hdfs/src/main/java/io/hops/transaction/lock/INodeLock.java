@@ -170,31 +170,14 @@ public class INodeLock extends BaseINodeLock {
 
       List<INode> resolvedINodes = null;
 
-      // We only use our local, in-memory metadata cache for read operations.
-//      if (lockType == TransactionLockTypes.INodeLockType.READ ||
-//              lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
-//        resolvedINodes = resolveUsingServerlessMetadataCache(path, true);
-//
-//        if (resolvedINodes == null)
-//          LOG.debug("Failed to completely resolve the path using the in-memory metadata cache. " +
-//                  "Falling back to INode Hint Cache or recursive resolution.");
-//        else {
-//          LOG.debug("Successfully resolved entirety of path using in-memory metadata cache.");
-//          addPathINodes(path, resolvedINodes);
-//        }
-//      }
-
-      // Added clause 'resolvedINodes == null' as we do not need to bother with the INode Hint Cache
-      // if we fully resolved the path using our local, in-memory metadata cache.
-      //if (resolvedINodes == null && getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
       if (getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
-        //if (LOG.isDebugEnabled()) LOG.debug("Attempting to resolve INodes using INode Hint Cache.");
+        if (LOG.isTraceEnabled()) LOG.trace("Attempting to resolve path '" + path + "' using INode Hint Cache.");
         // Batching only works in READ_COMMITTED mode. If locking is enabled then it can lead to deadlocks.
         resolvedINodes = resolveUsingINodeHintCache(path);
       }
 
       if (resolvedINodes == null) {
-        //if (LOG.isDebugEnabled()) LOG.debug("Path '" + path + "' was either not in INode Hint Cache or we couldn't use the cache.");
+        if (LOG.isTraceEnabled()) LOG.trace("Path '" + path + "' was either not in INode Hint Cache or we couldn't use the cache.");
         // path not found in the cache
         // set random partition key if enabled
         if (setRandomParitionKeyEnabled) {
@@ -328,6 +311,10 @@ public class INodeLock extends BaseINodeLock {
       TransactionLockTypes.INodeLockType currentINodeLock =
           identifyLockType(lockType, resolver.getCount() + 1, components);
       setINodeLockType(currentINodeLock);
+      if (LOG.isTraceEnabled()) {
+        if (currentINode != null) LOG.trace("Current INode: " + currentINode.getLocalName() + " (id=" + currentINode.getId() + "). Resolving next component with lock " + currentINodeLock.name() + ".");
+        else LOG.trace("Current INode: null. Resolving next component with lock " + currentINodeLock.name() + ".");
+      }
       currentINode = resolver.next();
       if (currentINode != null) {
         addLockedINodes(currentINode, currentINodeLock);
@@ -369,7 +356,7 @@ public class INodeLock extends BaseINodeLock {
         // ignore this lock. this is needed for sub operations in a sub tree ops protocol
         locked = false;
       }
-    } else {
+    }// else {
       // TODO: We need to double-check this. But for Serverless HopsFS, if ZooKeeper does not detect that the
       //       NameNode is alive, then we can safely assume that it is dead.
       //LOG.debug("The subtree is supposedly locked, but ZooKeeper has indicated that the owner of the lock is " +
@@ -385,7 +372,7 @@ public class INodeLock extends BaseINodeLock {
 //        LOG.debug("Ignoring subtree lock as more than " + timePassed + " ms has passed.  Max " +
 //                "lock retention time is:" + ServerlessNameNode.getFailedSTOCleanDelay());
 //      }
-    }
+    //}
 
     if (locked) {
       throw new RetriableException("The subtree " + iNode.getLocalName() + " is locked by " +

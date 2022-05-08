@@ -2119,7 +2119,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       EncryptionFaultInjector.getInstance().startFileAfterGenerateKey();
     }
         
-    // Proceed with the create, using the computed cipher suite and 
+    // Proceed with the create operation, using the computed cipher suite and
     // generated EDEK
     stat = (HdfsFileStatus) new HopsTransactionalRequestHandler(
         HDFSOperationType.START_FILE, src) {

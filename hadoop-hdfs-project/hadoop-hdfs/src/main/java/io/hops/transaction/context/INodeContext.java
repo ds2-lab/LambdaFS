@@ -325,7 +325,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
     // if the list is not empty then check for the lock types
     // lock type is checked after when list length is checked
-    // because some times in the tx handler the acquire lock
+    // because sometimes in the tx handler, the 'acquire lock'
     // function is empty and in that case tlm will throw
     // null pointer exceptions
     Collection<INode> removed = getRemoved();
@@ -343,7 +343,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
               lock != TransactionLockTypes.INodeLockType.WRITE && lock !=
               TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT) {
             throw new LockUpgradeException(
-                "Trying to remove inode id=" + inode.getId() + " acquired lock was " + lock);
+                "Trying to remove inode " + inode.getLocalName() + ", id=" + inode.getId() +
+                        " acquired lock was " + lock);
           }
         }
       }
@@ -356,7 +357,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
               lock != TransactionLockTypes.INodeLockType.WRITE && lock !=
               TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT) {
             throw new LockUpgradeException(
-                "Trying to update inode id=" + inode.getId() +
+                "Trying to update inode " + inode.getLocalName() + ", id=" + inode.getId() +
                     " acquired lock was " + lock);
           }
         }
