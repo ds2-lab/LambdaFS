@@ -270,6 +270,14 @@ public class INodeLock extends BaseINodeLock {
           checkSubtreeLock(iNode);
         }
       }
+
+      if (INode.getPathComponents(path).length == INode.getNumPathComponents(path)) {
+        LOG.error("INode.getPathComponents('" + path + "').length does NOT equal INode.getNumPathComponents('" +
+                path + "')...");
+        LOG.error(INode.getPathComponents(path).length + " =/= " + INode.getNumPathComponents(path));
+        throw new IllegalStateException("INode.getNumPathComponents() failed to be correct.");
+      }
+
       //handleLockUpgrade(resolvedINodes, INode.getPathComponents(path), path);
       handleLockUpgrade(resolvedINodes, INode.getNumPathComponents(path), path);
     } else {
@@ -402,7 +410,7 @@ public class INodeLock extends BaseINodeLock {
     // lock upgrade if the path was not fully resolved
     if (resolvedINodes.size() != numPathComponents) {
       if (LOG.isTraceEnabled()) LOG.trace("Path '" + path + "' was not fully resolved. Resolved " +
-              resolvedINodes.size() + "/" + numPathComponents + " path components.");
+              resolvedINodes.size() + "/" + numPathComponents + " path components. [v1]");
       // path was not fully resolved
       INode inodeToReread = null;
       if (lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT) {
@@ -416,20 +424,14 @@ public class INodeLock extends BaseINodeLock {
       if (inodeToReread != null) {
         long partitionIdOfINodeToBeReRead = INode.calculatePartitionId(inodeToReread.getParentId(), inodeToReread
                 .getLocalName(), inodeToReread.myDepth());
-        if (LOG.isTraceEnabled())
-          LOG.trace("Re-reading INode " + inodeToReread.getLocalName() + " (id=" + inodeToReread.getId() +
-                  ") with lock " + lockType.name() + ", partitionId=" + partitionIdOfINodeToBeReRead + ", parentId=" +
-                  inodeToReread.getParentId() + ".");
+        if (LOG.isTraceEnabled()) LOG.trace("Re-reading INode " + inodeToReread.getLocalName() + " (id=" + inodeToReread.getId() + ") with lock " + lockType.name() + ", partitionId=" + partitionIdOfINodeToBeReRead + ", parentId=" + inodeToReread.getParentId() + ".");
         INode inode = find(lockType, inodeToReread.getLocalName(),
                 inodeToReread.getParentId(), partitionIdOfINodeToBeReRead);
         if (inode != null) {
           // re-read after taking write lock to make sure that no one has created the same inode.
           addLockedINodes(inode, lockType);
           String existingPath = buildPath(path, resolvedINodes.size());
-          if (LOG.isTraceEnabled())
-            LOG.trace("Successfully re-read INode " + inode.getLocalName() + " (id=" + inode.getId() +
-                    "). Existing path = '" + existingPath + "'. Acquiring " + lockType.name() +
-                            " lock on rest of path '" + path + "'.");
+          if (LOG.isTraceEnabled()) LOG.trace("Successfully re-read INode " + inode.getLocalName() + " (id=" + inode.getId() + "). Existing path = '" + existingPath + "'. Acquiring " + lockType.name() + " lock on rest of path '" + path + "'.");
           List<INode> rest =
                   acquireLockOnRestOfPath(lockType, inode, path, existingPath,
                           false);
@@ -437,8 +439,7 @@ public class INodeLock extends BaseINodeLock {
         }
       }
     } else if (LOG.isTraceEnabled()) {
-      if (LOG.isTraceEnabled()) LOG.trace("Fully resolved '" + path + "'. Resolved " +
-              resolvedINodes.size() + "/" + numPathComponents + " path components.");
+      if (LOG.isTraceEnabled()) LOG.trace("Fully resolved '" + path + "'. Resolved " + resolvedINodes.size() + "/" + numPathComponents + " path components.");
     }
   }
 
@@ -449,6 +450,8 @@ public class INodeLock extends BaseINodeLock {
     // TODO Handle the case that predecessor nodes get deleted before locking
     // lock upgrade if the path was not fully resolved
     if (resolvedINodes.size() != components.length) {
+      if (LOG.isTraceEnabled()) LOG.trace("Path '" + path + "' was not fully resolved. Resolved " +
+              resolvedINodes.size() + "/" + components.length + " path components. [v2]");
       // path was not fully resolved
       INode inodeToReread = null;
       if (lockType ==
@@ -461,20 +464,21 @@ public class INodeLock extends BaseINodeLock {
       }
 
      if (inodeToReread != null) {
-        long partitionIdOfINodeToBeReRead = INode.calculatePartitionId(inodeToReread.getParentId(), inodeToReread
-        .getLocalName(), inodeToReread.myDepth());
+        long partitionIdOfINodeToBeReRead = INode.calculatePartitionId(inodeToReread.getParentId(), inodeToReread.getLocalName(), inodeToReread.myDepth());
+       if (LOG.isTraceEnabled()) LOG.trace("Re-reading INode " + inodeToReread.getLocalName() + " (id=" + inodeToReread.getId() + ") with lock " + lockType.name() + ", partitionId=" + partitionIdOfINodeToBeReRead + ", parentId=" + inodeToReread.getParentId() + ".");
         INode inode = find(lockType, inodeToReread.getLocalName(),
             inodeToReread.getParentId(), partitionIdOfINodeToBeReRead);
         if (inode != null) {
           // re-read after taking write lock to make sure that no one has created the same inode.
           addLockedINodes(inode, lockType);
           String existingPath = buildPath(path, resolvedINodes.size());
-          List<INode> rest =
-              acquireLockOnRestOfPath(lockType, inode, path, existingPath,
-                  false);
+          if (LOG.isTraceEnabled()) LOG.trace("Successfully re-read INode " + inode.getLocalName() + " (id=" + inode.getId() + "). Existing path = '" + existingPath + "'. Acquiring " + lockType.name() + " lock on rest of path '" + path + "'.");
+          List<INode> rest = acquireLockOnRestOfPath(lockType, inode, path, existingPath, false);
           resolvedINodes.addAll(rest);
         }
-      }
+      } else if (LOG.isTraceEnabled()) {
+       if (LOG.isTraceEnabled()) LOG.trace("Fully resolved '" + path + "'. Resolved " + resolvedINodes.size() + "/" + components.length + " path components.");
+     }
     }
   }
 

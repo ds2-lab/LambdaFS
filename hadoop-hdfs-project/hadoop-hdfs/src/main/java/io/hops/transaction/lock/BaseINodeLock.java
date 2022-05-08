@@ -529,7 +529,7 @@ public abstract class BaseINodeLock extends Lock {
     List<INode> fetchINodes(final TransactionLockTypes.INodeLockType lockType, String path, boolean resolveLink) throws
         IOException {
       long[] inodeIds = Cache.getInstance().get(path);
-      if (LOG.isTraceEnabled()) LOG.trace("Resolving INodes along path '" + path + "'. INode IDs: " + StringUtils.join(inodeIds, ", "));
+      if (LOG.isTraceEnabled()) LOG.trace("Resolving INodes along path '" + path + "'. INode IDs: " + StringUtils.join(inodeIds, ','));
       if (inodeIds != null) {
         final String[] names = INode.getPathNames(path);
         final boolean partial = names.length > inodeIds.length;
