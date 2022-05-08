@@ -24,6 +24,7 @@ import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.OngoingSubTreeOpsDataAccess;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.LightWeightRequestHandler;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INode;
@@ -110,8 +111,10 @@ public class INodeLock extends BaseINodeLock {
        * a dealock situation.
        */
       Arrays.sort(paths);
+      if (LOG.isTraceEnabled()) LOG.trace("Acquiring INode locks on the following paths: " + StringUtils.join(", ", paths));
       acquirePathsINodeLocks();
     } else {
+      if (LOG.isTraceEnabled()) LOG.trace("Acquiring INode lock on INode with ID=" + inodeId);
       acquireInodeIdInodeLock();
     }
     if (!skipReadingQuotaAttr) {
@@ -151,14 +154,20 @@ public class INodeLock extends BaseINodeLock {
       throw new IllegalArgumentException("Unknown type " + resolveType.name());
     }
 
+    if (LOG.isTraceEnabled()) LOG.trace("Acquiring locks on " + paths.length + " path(s). Lock type: " + lockType.name() +
+            ", resolve type: " + resolveType.name());
+
     for (String path : paths) {
+      if (LOG.isTraceEnabled()) LOG.trace("Attempting to acquire " + lockType.name() + " lock for path: " + path + "");
       List<INode> resolvedINodes = null;
       if (getDefaultInodeLockType() == TransactionLockTypes.INodeLockType.READ_COMMITTED) {
+        if (LOG.isTraceEnabled()) LOG.trace("Attempting to resolve path '" + path + "' using INode Hint Cache.");
         //Batching only works in READ_COMITTED mode. If locking is enabled then it can lead to deadlocks.
         resolvedINodes = resolveUsingCache(path);
       }
 
       if (resolvedINodes == null) {
+        if (LOG.isTraceEnabled()) LOG.trace("Path '" + path + "' was either not in INode Hint Cache or we couldn't use the cache.");
         // path not found in the cache
         // set random partition key if enabled
         if (setRandomParitionKeyEnabled) {
@@ -190,6 +199,7 @@ public class INodeLock extends BaseINodeLock {
     }
     List<INode> resolvedINodes = cacheResolver.fetchINodes(lockType, path, resolveLink);
     if (resolvedINodes != null) {
+      if (LOG.isTraceEnabled()) LOG.trace("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
       for (INode iNode : resolvedINodes) {
         if(iNode!=null){
           checkSubtreeLock(iNode);
@@ -223,7 +233,12 @@ public class INodeLock extends BaseINodeLock {
       TransactionLockTypes.INodeLockType currentINodeLock =
           identifyLockType(lockType, resolver.getCount() + 1, components);
       setINodeLockType(currentINodeLock);
+      if (LOG.isTraceEnabled()) {
+        if (currentINode != null) LOG.trace("Current INode: " + currentINode.getLocalName() + " (id=" + currentINode.getId() + "). Resolving next component with lock " + currentINodeLock.name() + ".");
+        else LOG.trace("Current INode: null. Resolving next component with lock " + currentINodeLock.name() + ".");
+      }
       currentINode = resolver.next();
+
       if (currentINode != null) {
         addLockedINodes(currentINode, currentINodeLock);
         checkSubtreeLock(currentINode);
