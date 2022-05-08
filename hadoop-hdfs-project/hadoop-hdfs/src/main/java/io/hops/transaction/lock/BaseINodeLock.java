@@ -530,6 +530,7 @@ public abstract class BaseINodeLock extends Lock {
     List<INode> fetchINodes(final TransactionLockTypes.INodeLockType lockType, String path, boolean resolveLink) throws
         IOException {
       long[] inodeIds = Cache.getInstance().get(path);
+      if (LOG.isTraceEnabled()) LOG.trace("Resolving INodes along path '" + path + "'. INode IDs: " + StringUtils.join(inodeIds, ", "));
       if (inodeIds != null) {
         final String[] names = INode.getPathNames(path);
         final boolean partial = names.length > inodeIds.length;
@@ -573,7 +574,7 @@ public abstract class BaseINodeLock extends Lock {
     }
 
     INode lockInode(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws IOException {
-      //LOG.debug("Locking INode " + inodeId + " with lock type " + lockType.name() + " now...");
+      if (LOG.isTraceEnabled()) LOG.trace("Locking INode " + inodeId + " with lock type " + lockType.name() + " now...");
       setINodeLockType(lockType);
       INode targetInode = INodeUtil.getNode(inodeId, true);
       setINodeLockType(getDefaultInodeLockType());
@@ -587,6 +588,7 @@ public abstract class BaseINodeLock extends Lock {
     }
 
     List<INode> lockInodeAndParent(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws IOException {
+      if (LOG.isTraceEnabled()) LOG.trace("Locking INode " + inodeId + " AND its parent with lock type " + lockType.name() + " now...");
       List<INode> inodes = new LinkedList<>();
       INodeIdentifier targetIdentifier = Cache.getInstance().get(inodeId);
       if (targetIdentifier == null) {
