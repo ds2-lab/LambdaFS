@@ -706,6 +706,10 @@ public abstract class BaseINodeLock extends Lock {
         TransactionLockTypes.INodeLockType currentINodeLock = identifyLockType(lockType, resolver.getCount() + 1,
             components);
         setINodeLockType(currentINodeLock);
+        if (LOG.isTraceEnabled()) {
+          if (currentINode != null) LOG.trace("Current INode: " + currentINode.getLocalName() + " (id=" + currentINode.getId() + "). Resolving next component with lock " + currentINodeLock.name() + ".");
+          else LOG.trace("Current INode: null. Resolving next component with lock " + currentINodeLock.name() + ".");
+        }
         currentINode = resolver.next();
         if (currentINode != null) {
           addLockedINodes(currentINode, currentINodeLock);
