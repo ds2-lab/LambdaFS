@@ -26,6 +26,7 @@ public class PathTest {
         String pathModerate2 = "/home/ben/docs/research/serverlessMDS/eurosys22";
         String path = "/home/ben/docs/research/eval_plan.pdf";
         String pathRoot = "/";
+        String pathBig2 = "/hops-dev-client_c62753fa-eeee-4b04-96f3-f8e92gaga3c7/hops_dir45/hops_dir46/hops_dir37/hops_file_4898";
 
         System.out.println(Arrays.toString(split(pathBig, SEPARATOR_CHAR)));
         System.out.println("\t" + getNumPathComponents(pathBig));
@@ -37,32 +38,34 @@ public class PathTest {
         System.out.println("\t" + getNumPathComponents(path));
         System.out.println(pathRoot + " (" + split(pathRoot, SEPARATOR_CHAR).length + ") : " + Arrays.toString(split(pathRoot, SEPARATOR_CHAR)));
         System.out.println("\t" + getNumPathComponents(pathRoot));
+        System.out.println(pathBig2 + " (" + split(pathBig2, SEPARATOR_CHAR).length + ") : " + Arrays.toString(split(pathBig2, SEPARATOR_CHAR)));
+        System.out.println("\t" + getNumPathComponents(pathBig2));
 
-        int numTrials = 1;
-
-        long start = System.currentTimeMillis();
-        for (int trial = 0; trial < numTrials; trial++) {
-            resolveRestOfThePathBytes(path);
-        }
-        long end = System.currentTimeMillis();
-
-        double durationMilliseconds = (end - start);
-        double avgDurationMilliseconds = durationMilliseconds / numTrials;
-        System.out.println("Results for BYTES");
-        System.out.println("\tAverage duration: " + avgDurationMilliseconds + " ms (n = " + numTrials + ").");
-        System.out.println("\tTotal duration of all trials: " + durationMilliseconds + " ms.");
-
-        start = System.currentTimeMillis();
-        for (int trial = 0; trial < numTrials; trial++) {
-            resolveRestOfThePathStrings(path);
-        }
-        end = System.currentTimeMillis();
-
-        durationMilliseconds = (end - start);
-        avgDurationMilliseconds = durationMilliseconds / numTrials;
-        System.out.println("Results for STRINGS");
-        System.out.println("\tAverage duration: " + avgDurationMilliseconds + " ms (n = " + numTrials + ").");
-        System.out.println("\tTotal duration of all trials: " + durationMilliseconds + " ms.");
+//        int numTrials = 1;
+//
+//        long start = System.currentTimeMillis();
+//        for (int trial = 0; trial < numTrials; trial++) {
+//            resolveRestOfThePathBytes(path);
+//        }
+//        long end = System.currentTimeMillis();
+//
+//        double durationMilliseconds = (end - start);
+//        double avgDurationMilliseconds = durationMilliseconds / numTrials;
+//        System.out.println("Results for BYTES");
+//        System.out.println("\tAverage duration: " + avgDurationMilliseconds + " ms (n = " + numTrials + ").");
+//        System.out.println("\tTotal duration of all trials: " + durationMilliseconds + " ms.");
+//
+//        start = System.currentTimeMillis();
+//        for (int trial = 0; trial < numTrials; trial++) {
+//            resolveRestOfThePathStrings(path);
+//        }
+//        end = System.currentTimeMillis();
+//
+//        durationMilliseconds = (end - start);
+//        avgDurationMilliseconds = durationMilliseconds / numTrials;
+//        System.out.println("Results for STRINGS");
+//        System.out.println("\tAverage duration: " + avgDurationMilliseconds + " ms (n = " + numTrials + ").");
+//        System.out.println("\tTotal duration of all trials: " + durationMilliseconds + " ms.");
     }
 
     public static int getNumPathComponents(String path) {
@@ -70,7 +73,7 @@ public class PathTest {
             throw new AssertionError("Absolute path required");
         }
 
-        int pathComponents = 0;
+        int pathComponents = 1;
         for (int i = 0; i < path.length(); i++) {
             if (path.charAt(i) == SEPARATOR_CHAR && i != (path.length() - 1))
                 pathComponents++;

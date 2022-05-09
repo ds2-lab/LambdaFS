@@ -719,7 +719,7 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
       throw new AssertionError("Absolute path required");
     }
 
-    int pathComponents = 0;
+    int pathComponents = 1;
     for (int i = 0; i < path.length(); i++) {
       if (path.charAt(i) == Path.SEPARATOR_CHAR && i != (path.length() - 1))
         pathComponents++;
