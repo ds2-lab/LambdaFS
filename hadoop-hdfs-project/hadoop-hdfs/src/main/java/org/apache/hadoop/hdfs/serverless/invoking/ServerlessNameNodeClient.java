@@ -6,6 +6,7 @@ import de.davidm.textplots.Plot;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import io.hops.metadata.hdfs.entity.MetaStatus;
 import io.hops.metrics.TransactionEvent;

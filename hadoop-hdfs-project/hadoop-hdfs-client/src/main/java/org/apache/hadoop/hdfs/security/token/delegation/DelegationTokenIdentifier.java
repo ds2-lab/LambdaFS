@@ -28,6 +28,7 @@ import org.apache.hadoop.hdfs.web.WebHdfsConstants;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenIdentifier;
+import org.apache.yetus.audience.InterfaceAudience;
 
 /**
  * A delegation token identifier that is specific to HDFS.
