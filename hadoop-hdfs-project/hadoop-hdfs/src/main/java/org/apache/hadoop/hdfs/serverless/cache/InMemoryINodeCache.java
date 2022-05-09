@@ -1,9 +1,15 @@
 package org.apache.hadoop.hdfs.serverless.cache;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.github.benmanes.caffeine.cache.RemovalListener;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.INode;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,6 +17,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_METADATA_CACHE_CAPACITY;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT;
 
 /**
  *
@@ -52,6 +61,12 @@ public class InMemoryINodeCache {
     private final PatriciaTrie<INode> prefixMetadataCache;
 
     /**
+     * Used to control the size of the trie structure.
+     * When entries are evicted from here, we also evict them from the trie.
+     */
+    private final Cache<String, INode> cache;
+
+    /**
      * Cache that is used when not using a prefix.
      */
     private final ConcurrentHashMap<String, INode> fullPathMetadataCache;
@@ -72,6 +87,8 @@ public class InMemoryINodeCache {
 
     private final boolean enabled;
 
+    private final int cacheCapacity;
+
     /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
      */
@@ -84,6 +101,7 @@ public class InMemoryINodeCache {
      */
     public InMemoryINodeCache(Configuration conf, int capacity, float loadFactor) {
         //this.invalidatedKeys = new HashSet<>();
+        this.cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
         this.idToNameMapping = new ConcurrentHashMap<>(capacity, loadFactor);
         this.fullPathMetadataCache = new ConcurrentHashMap<>(capacity, loadFactor);
         this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(capacity, loadFactor);
@@ -92,6 +110,17 @@ public class InMemoryINodeCache {
          * INode by its full path.
          */
         this.prefixMetadataCache = new PatriciaTrie<>();
+        this.cache = Caffeine.newBuilder()
+                .initialCapacity(cacheCapacity)
+                .evictionListener((RemovalListener<String, INode>) (s, iNode, removalCause) -> {
+                    _mutex.writeLock().lock();
+                    try {
+                        prefixMetadataCache.remove(s);
+                    } finally {
+                        _mutex.writeLock().unlock();
+                    }
+                })
+                .build();
         this.enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED,
                 DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT);
     }

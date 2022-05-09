@@ -186,6 +186,9 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_METADATA_CACHE_ENABLED = "serverless.metadatacache.enabled";
   public static final boolean SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT = true;
 
+  public static final String SERVERLESS_METADATA_CACHE_CAPACITY = "serverless.metadatacache.capacity";
+  public static final int SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT = 10_000;
+
   /**
    * How often, in seconds, the list of active name nodes should be updated.
    */
