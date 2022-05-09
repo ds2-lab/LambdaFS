@@ -6,6 +6,7 @@ import de.davidm.textplots.Plot;
 import io.hops.leader_election.node.SortedActiveNodeList;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
+import io.hops.metadata.hdfs.entity.EncryptionZone;
 import io.hops.metadata.hdfs.entity.MetaStatus;
 import io.hops.metrics.TransactionEvent;
 import org.apache.commons.codec.binary.Base64;
@@ -48,6 +49,7 @@ import org.apache.hadoop.util.ExponentialBackOff;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
@@ -1012,7 +1014,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             printHistograms(httpStatistics, tcpStatistics);
         } catch (NotStrictlyPositiveException ex) {
-            LOG.error("Encountered 'NotStrictlyPositiveException' while trying to generate latency histograms.");
+            LOG.error("Encountered 'NotStrictlyPositiveException' while trying to generate latency histograms:", ex);
+        } catch (Exception ex) {
+            LOG.error("Unexpected error when plotting latency histograms:", ex);
         }
 
         System.out.println("\n-- Garbage Collection Statistics -----------------------------------------------------------------------------------------------------");
