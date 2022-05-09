@@ -32,6 +32,7 @@ public class DelegationTokenIdentifier
     extends AbstractDelegationTokenIdentifier {
   public static final Text MAPREDUCE_DELEGATION_KIND = 
     new Text("MAPREDUCE_DELEGATION_TOKEN");
+  private static final long serialVersionUID = -7042840142637077090L;
 
   /**
    * Create an empty delegation token identifier for reading into.
