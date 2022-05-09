@@ -1014,7 +1014,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             printHistograms(httpStatistics, tcpStatistics);
         } catch (NotStrictlyPositiveException ex) {
-            LOG.error("Encountered 'NotStrictlyPositiveException' while trying to generate latency histograms:", ex);
+            LOG.error("Encountered 'NotStrictlyPositiveException' while trying to generate latency histograms.");
         } catch (Exception ex) {
             LOG.error("Unexpected error when plotting latency histograms:", ex);
         }

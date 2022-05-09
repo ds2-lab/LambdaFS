@@ -949,7 +949,7 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement, Serial
 
   protected void remove(INode node)
       throws IOException {
-    LOG.debug("Removing INode " + node.toString() + " now...");
+    if (LOG.isTraceEnabled()) LOG.trace("Removing INode " + node.toString() + " now...");
     EntityManager.remove(node);
     //if This inode is of type INodeDirectoryWithQuota then also delete the INode Attribute table
     if ((node instanceof INodeDirectory) && ((INodeDirectory) node).isWithQuota()) {

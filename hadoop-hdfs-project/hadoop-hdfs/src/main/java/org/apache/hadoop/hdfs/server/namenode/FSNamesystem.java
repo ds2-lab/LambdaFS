@@ -1055,7 +1055,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       metadataCacheManager.invalidateINodesByPrefix(subtreeRoot);
     } else {
       for (long id : invalidatedINodes) {
-        LOG.debug("Attempting to invalidate INode " + id + " (if we have it cached).");
+        if (LOG.isTraceEnabled()) LOG.trace("Attempting to invalidate INode " + id + " (if we have it cached).");
         metadataCacheManager.invalidateINode(id);
       }
     }
@@ -1117,7 +1117,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       }
     }
 
-    LOG.debug("Discovered " + pendingAcks.size() + (pendingAcks.size() == 1 ? " pending ack" : " pending acks") +
+    if (LOG.isTraceEnabled())
+      LOG.trace("Discovered " + pendingAcks.size() + (pendingAcks.size() == 1 ? " pending ack" : " pending acks") +
             " in intermediate storage: " + org.apache.commons.lang3.StringUtils.join(pendingAcks, ", ") + ".");
 
     exponentialBackOff.reset();
@@ -1127,7 +1128,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       try {
         writeAcknowledgementDataAccess.acknowledge(pendingAcks, localDeploymentNumber);
         success = true;
-        LOG.debug("Successfully ACK'd " + pendingAcks.size() + " pending ack " +
+        if (LOG.isTraceEnabled())
+          LOG.trace("Successfully ACK'd " + pendingAcks.size() + " pending ack " +
                 (pendingAcks.size() == 1 ? "entry" : "entries") + " in intermediate storage.");
       } catch (StorageException e) {
         LOG.error("Encountered exception while trying to acknowledge pending ACKs for NameNode "

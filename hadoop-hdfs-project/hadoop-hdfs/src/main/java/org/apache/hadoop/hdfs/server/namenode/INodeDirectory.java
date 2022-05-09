@@ -251,7 +251,7 @@ public class INodeDirectory extends INodeWithAdditionalFields {
 
   public boolean removeChild(INode node)
       throws IOException {
-    LOG.debug("Removing INode " + node.toString() + " from INodeDirectory " + this.toString() + ".");
+    if (LOG.isTraceEnabled()) LOG.trace("Removing INode " + node.toString() + " from INodeDirectory " + this.toString() + ".");
     INode existingInode = getChildINode(node.getLocalNameBytes());
     if (existingInode != null) {
       remove(existingInode);

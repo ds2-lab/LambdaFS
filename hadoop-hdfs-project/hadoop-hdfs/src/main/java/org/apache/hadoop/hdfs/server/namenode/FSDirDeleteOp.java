@@ -84,7 +84,7 @@ class FSDirDeleteOp {
                                        removedINodes, mtime);
     }
 
-    LOG.debug("Removed " + filesRemoved + " file(s).");
+    if (LOG.isTraceEnabled()) LOG.trace("Removed " + filesRemoved + " file(s).");
     return filesRemoved;
   }
 
@@ -585,7 +585,7 @@ class FSDirDeleteOp {
 
     incrDeletedFileCount(filesRemoved);
 
-    if (LOG.isDebugEnabled()) LOG.debug("Removed INodes: " + StringUtils.join(removedINodes, ", "));
+    if (LOG.isTraceEnabled()) LOG.trace("Removed INodes: " + StringUtils.join(removedINodes, ", "));
     fsn.removeLeasesAndINodes(src, removedINodes);
     fsn.removeBlocks(collectedBlocks); // Incremental deletion of blocks
     collectedBlocks.clear();
