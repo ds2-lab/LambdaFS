@@ -700,7 +700,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String sourceFileOrDirectory = null;
         if (srcArgument != null) {
             sourceFileOrDirectory = (String)srcArgument;
-            serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
+            mappedFunctionNumber = serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
         }
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
         if (tcpEnabled) {

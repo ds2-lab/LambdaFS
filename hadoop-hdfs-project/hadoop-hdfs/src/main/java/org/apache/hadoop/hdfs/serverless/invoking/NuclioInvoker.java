@@ -66,13 +66,13 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
         if (requestId == null) requestId = UUID.randomUUID().toString();
 
         JsonObject fsArgs = fileSystemOperationArguments.convertToJsonObject();
-        HttpPost request = new HttpPost(getFunctionUri(functionUriBase, targetDeployment, fsArgs));
+        HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fsArgs));
 
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
                 fsArgs, requestId, targetDeployment, request);
     }
 
-    private String getFunctionUri(String functionUriBase, int targetDeployment, JsonObject fileSystemOperationArguments) {
+    private String getFunctionUri(int targetDeployment, JsonObject fileSystemOperationArguments) {
         StringBuilder builder = new StringBuilder();
 
         if (!this.localMode) {
@@ -117,7 +117,7 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
     public JsonObject redirectRequest(String operationName, String functionUriBase, JsonObject nameNodeArguments,
                                       JsonObject fileSystemOperationArguments, String requestId, int targetDeployment)
             throws IOException {
-        HttpPost request = new HttpPost(getFunctionUri(functionUriBase, targetDeployment, fileSystemOperationArguments));
+        HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fileSystemOperationArguments));
 
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArguments,
                 fileSystemOperationArguments, requestId, targetDeployment, request);
