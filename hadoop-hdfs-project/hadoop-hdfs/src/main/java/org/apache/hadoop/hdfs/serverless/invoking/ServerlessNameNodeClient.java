@@ -934,7 +934,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         for (OperationPerformed operationPerformed : opsPerformedList) {
             if (operationPerformed.getIssuedViaHttp()) {
                 double latency = operationPerformed.getLatency();
-                if (latency > 0 && latency < 1e6) {
+                if (latency >= 0 && latency < 1e6) {
                     httpStatistics.addValue(latency);
 
                     if (latency >= 150)
@@ -945,7 +945,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             }
             if (operationPerformed.getIssuedViaTcp()) {
                 double latency = operationPerformed.getLatency();
-                if (latency > 0 && latency < 1e6) {
+                if (latency >= 0 && latency < 1e6) {
                     tcpStatistics.addValue(latency);
 
                     if (latency >= 150)
@@ -1056,12 +1056,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private void printHistograms(DescriptiveStatistics httpStatistics, DescriptiveStatistics tcpStatistics) {
         if (httpStatistics != null && httpStatistics.getN() > 1) {
+            DescriptiveStatistics httpStatPosOnly = new DescriptiveStatistics();
+
+            for (double d : httpStatistics.getValues()) {
+                if (d > 0) httpStatPosOnly.addValue(d);
+            }
+
             // Calculating bin width: https://stats.stackexchange.com/questions/798/calculating-optimal-number-of-bins-in-a-histogram
-            double binWidthHttp = 2 * httpStatistics.getPercentile(0.75) - httpStatistics.getPercentile(0.25) * Math.pow(httpStatistics.getN(), -1.0 / 3.0);
-            int numBinsHttp = (int) ((httpStatistics.getMax() - httpStatistics.getMin()) / binWidthHttp);
+            double binWidthHttp = 2 * httpStatPosOnly.getPercentile(0.75) - httpStatPosOnly.getPercentile(0.25) * Math.pow(httpStatPosOnly.getN(), -1.0 / 3.0);
+            int numBinsHttp = (int) ((httpStatPosOnly.getMax() - httpStatPosOnly.getMin()) / binWidthHttp);
             numBinsHttp = Math.min(numBinsHttp, 100);
             Plot currentHttpPlot = new Histogram.HistogramBuilder(
-                    Pair.create("HTTP Latencies", httpStatistics.getValues()))
+                    Pair.create("HTTP Latencies", httpStatPosOnly.getValues()))
                     .setBinNumber(numBinsHttp)
                     .plotObject();
             System.out.println("\nHistogram of HTTP Latencies:");
@@ -1069,11 +1075,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         }
 
         if (tcpStatistics != null && tcpStatistics.getN() > 1) {
-            double binWidthTcp = 2 * tcpStatistics.getPercentile(0.75) - tcpStatistics.getPercentile(0.25) * Math.pow(tcpStatistics.getN(), -1.0 / 3.0);
-            int numBinsTcp = (int) ((tcpStatistics.getMax() - tcpStatistics.getMin()) / binWidthTcp);
+            DescriptiveStatistics tcpStatPosOnly = new DescriptiveStatistics();
+
+            for (double d : tcpStatistics.getValues()) {
+                if (d > 0) tcpStatPosOnly.addValue(d);
+            }
+
+            double binWidthTcp = 2 * tcpStatPosOnly.getPercentile(0.75) - tcpStatPosOnly.getPercentile(0.25) * Math.pow(tcpStatPosOnly.getN(), -1.0 / 3.0);
+            int numBinsTcp = (int) ((tcpStatPosOnly.getMax() - tcpStatPosOnly.getMin()) / binWidthTcp);
             numBinsTcp = Math.min(numBinsTcp, 100);
             Plot currentTcpPlot = new Histogram.HistogramBuilder(
-                    Pair.create("TCP Latencies", tcpStatistics.getValues()))
+                    Pair.create("TCP Latencies", tcpStatPosOnly.getValues()))
                     .setBinNumber(numBinsTcp)
                     .plotObject();
             System.out.println("Histogram of TCP Latencies:");
