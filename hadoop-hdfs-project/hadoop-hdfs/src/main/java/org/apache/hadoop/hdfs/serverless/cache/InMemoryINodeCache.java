@@ -195,10 +195,10 @@ public class InMemoryINodeCache {
             return null;
         } finally {
             //_mutex.readLock().unlock();
-
-            long t = System.currentTimeMillis();
-            if (LOG.isTraceEnabled() && t - s > 10) LOG.trace("Checked cache by parent ID and local name for INode '" + localName +
-                    "' in " + (t - s) + " ms.");
+            if (LOG.isTraceEnabled()) {
+                long t = System.currentTimeMillis();
+                LOG.trace("Checked cache by parent ID and local name for INode '" + localName + "' in " + (t - s) + " ms.");
+            }
         }
     }
 
@@ -215,9 +215,6 @@ public class InMemoryINodeCache {
             return null;
 
         long s = System.currentTimeMillis();
-//        _mutex.readLock().lock();
-//        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
-//                (System.currentTimeMillis() - s) + " ms.");
         try {
             if (idToNameMapping.containsKey(iNodeId)) {
                 String key = idToNameMapping.get(iNodeId);
@@ -227,11 +224,10 @@ public class InMemoryINodeCache {
             cacheMiss();
             return null;
         } finally {
-//            _mutex.readLock().unlock();
-
-            long t = System.currentTimeMillis();
-            if (LOG.isTraceEnabled() && t - s > 10) LOG.trace("Checked cache by ID for INode " + iNodeId + " in " +
-                    (System.currentTimeMillis() - s) + " ms.");
+            if (LOG.isTraceEnabled()) {
+                long t = System.currentTimeMillis();
+                LOG.trace("Checked cache by ID for INode " + iNodeId + " in " + (t - s) + " ms.");
+            }
         }
     }
 
@@ -256,9 +252,10 @@ public class InMemoryINodeCache {
             returnValue = prefixMetadataCache.put(key, value);
         } finally {
             _mutex.writeLock().unlock();
-            long t = System.currentTimeMillis();
-            if (LOG.isTraceEnabled() && t - s > 10) LOG.trace("Stored INode '" + key + "' (ID=" + iNodeId + ") in cache in " +
-                    (t - s) + " ms.");
+            if (LOG.isTraceEnabled()) {
+                long t = System.currentTimeMillis();
+                LOG.trace("Stored INode '" + key + "' (ID=" + iNodeId + ") in cache in " + (t - s) + " ms.");
+            }
         }
 
         String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
