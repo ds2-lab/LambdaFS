@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.RemovalListener;
+import com.google.common.hash.Hashing;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -13,13 +14,15 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_METADATA_CACHE_CAPACITY;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT;
+import static com.google.common.hash.Hashing.consistentHash;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 /**
  *
@@ -92,22 +95,28 @@ public class InMemoryINodeCache {
      */
     private final int cacheCapacity;
 
+    private final int deploymentNumber;
+
+    private final int numDeployments;
+
     /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
      */
-    public InMemoryINodeCache(Configuration conf) {
-        this(conf, DEFAULT_MAX_ENTRIES, DEFAULT_LOAD_FACTOR);
+    public InMemoryINodeCache(Configuration conf, int deploymentNumber) {
+        this(conf, DEFAULT_MAX_ENTRIES, DEFAULT_LOAD_FACTOR, deploymentNumber);
     }
 
     /**
      * Create an LRU Metadata Cache using a specified maximum capacity and load factor.
      */
-    public InMemoryINodeCache(Configuration conf, int capacity, float loadFactor) {
+    public InMemoryINodeCache(Configuration conf, int capacity, float loadFactor, int deploymentNumber) {
         //this.invalidatedKeys = new HashSet<>();
         this.cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
+        this.numDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
         this.idToNameMapping = new ConcurrentHashMap<>(capacity, loadFactor);
         this.fullPathMetadataCache = new ConcurrentHashMap<>(capacity, loadFactor);
         this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(capacity, loadFactor);
+        this.deploymentNumber = deploymentNumber;
         /**
          * This is the main cache, along with the metadataTrie variable. We use this when we want to grab a single
          * INode by its full path.
@@ -263,6 +272,24 @@ public class InMemoryINodeCache {
         }
     }
 
+    private String getPathToCache(String originalPath) {
+        // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
+        // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
+        // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
+        Path parentPath = Paths.get(originalPath).getParent();
+        String pathToCache = null;
+
+        // If there is no parent, then we are caching metadata mapping information for the root.
+        if (parentPath == null) {
+            // assert(originalPath.equals("/") || originalPath.isEmpty());
+            pathToCache = originalPath;
+        } else {
+            pathToCache = parentPath.toString();
+        }
+
+        return pathToCache;
+    }
+
     /**
      * Override `put()` to disallow null values from being added to the cache.
      *
@@ -277,11 +304,21 @@ public class InMemoryINodeCache {
             throw new IllegalArgumentException("INode Metadata Cache does NOT support null values. Associated key: " + key);
         long s = System.currentTimeMillis();
 
+        // Make sure we can cache it.
+        if (consistentHash(Hashing.md5().hashString(getPathToCache(key)), numDeployments) != deploymentNumber) {
+            if (LOG.isTraceEnabled()) {
+                long t = System.currentTimeMillis();
+                LOG.trace("Rejected INode '" + key + "' (ID=" + iNodeId + ") from being cached in " + (t - s) + " ms.");
+            }
+            return null;
+        }
+
         _mutex.writeLock().lock();
         INode returnValue;
         try {
             // Store the metadata in the cache directly.
             returnValue = prefixMetadataCache.put(key, value);
+            cache.put(key, value);
         } finally {
             _mutex.writeLock().unlock();
             if (LOG.isTraceEnabled()) {
@@ -291,7 +328,6 @@ public class InMemoryINodeCache {
         }
 
         String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
-        // int parentIdPlusLocalName = computeParentIdLocalNameHash(value.getParentId(), value.getLocalName());
         parentIdPlusLocalNameToFullPathMapping.put(parentIdPlusLocalName, key);
 
         // Create a mapping between the INode ID and the path.

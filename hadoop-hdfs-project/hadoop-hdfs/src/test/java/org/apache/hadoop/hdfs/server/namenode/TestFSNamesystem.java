@@ -61,7 +61,7 @@ public class TestFSNamesystem {
     Configuration conf = new HdfsConfiguration();
     ServerlessNameNode.initMetrics(conf, NamenodeRole.NAMENODE);
     DFSTestUtil.formatNameNode(conf);
-    FSNamesystem fsn = FSNamesystem.loadFromDisk(conf, null);
+    FSNamesystem fsn = FSNamesystem.loadFromDisk(conf, null, -1);
     LeaseManager leaseMan = fsn.getLeaseManager();
     int leaseCreationLockRows = conf.getInt(DFSConfigKeys.DFS_LEASE_CREATION_LOCKS_COUNT_KEY,
             DFSConfigKeys.DFS_LEASE_CREATION_LOCKS_COUNT_DEFAULT);
@@ -100,7 +100,7 @@ public class TestFSNamesystem {
     DFSTestUtil.formatNameNode(conf);
     ServerlessNameNode serverlessNameNode = Mockito.mock(ServerlessNameNode.class);
     Mockito.doReturn(true).when(serverlessNameNode).isLeader();
-    FSNamesystem fsn = FSNamesystem.loadFromDisk(conf, serverlessNameNode);
+    FSNamesystem fsn = FSNamesystem.loadFromDisk(conf, serverlessNameNode, -1);
 
     fsn.leaveSafeMode();
     assertTrue("After leaving safemode FSNamesystem.isInStartupSafeMode still "
@@ -122,7 +122,7 @@ public class TestFSNamesystem {
     DFSTestUtil.formatNameNode(conf);
     ServerlessNameNode serverlessNameNode = Mockito.mock(ServerlessNameNode.class);
     Mockito.doReturn(true).when(serverlessNameNode).isLeader();
-    FSNamesystem fsNamesystem = FSNamesystem.loadFromDisk(conf, serverlessNameNode);
+    FSNamesystem fsNamesystem = FSNamesystem.loadFromDisk(conf, serverlessNameNode, -1);
     FSNamesystem fsn = Mockito.spy(fsNamesystem);
 
     //Make NameNode.getNameNodeMetrics() not return null
@@ -149,7 +149,7 @@ public class TestFSNamesystem {
     ServerlessNameNode nn = mock(ServerlessNameNode.class);
     when(nn.getActiveNameNodes())
         .thenReturn(new SortedActiveNodeListPBImpl(Collections.EMPTY_LIST));
-    FSNamesystem fsn = new FSNamesystem(conf, nn);
+    FSNamesystem fsn = new FSNamesystem(conf, nn, -1);
     fsn.imageLoadComplete();
     assertTrue(fsn.isImageLoaded());
     fsn.clear();

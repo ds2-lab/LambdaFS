@@ -122,20 +122,6 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     return metadataCache.getByParentINodeIdAndLocalName(parentId, localName);
   }
 
-  private void updateCache(List<INode> nodes) throws TransactionContextException, StorageException {
-    if (nodes == null) {
-      // LOG.warn("Attempting to update cache with null List<INode>.");
-      return;
-    }
-
-    InMemoryINodeCache metadataCache = getMetadataCache();
-    if (metadataCache == null) return;
-
-    for (INode node : nodes) {
-      metadataCache.put(node.getFullPathName(), node.getId(), node);
-    }
-  }
-
   /**
    * Add an INode to the cache, if it is non-null. If the INode parameter is null, this just returns.
    *

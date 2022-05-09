@@ -424,8 +424,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @throws IOException
    *     if loading fails
    */
-  static FSNamesystem loadFromDisk(Configuration conf, ServerlessNameNode namenode) throws IOException {
-
+  static FSNamesystem loadFromDisk(Configuration conf, ServerlessNameNode namenode, int deploymentNumber) throws IOException {
     FSNamesystem namesystem = new FSNamesystem(conf, namenode);
     StartupOption startOpt = ServerlessNameNode.getStartupOption(conf);
     if (startOpt == StartupOption.RECOVER) {
@@ -466,7 +465,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    * @throws IOException
    *      on bad configuration
    */
-  FSNamesystem(Configuration conf, ServerlessNameNode namenode) throws IOException {
+  FSNamesystem(Configuration conf, ServerlessNameNode namenode, int deploymentNumber) throws IOException {
     try {
       provider = DFSUtil.createKeyProviderCryptoExtension(conf);
       if (provider == null) {

@@ -2110,8 +2110,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
         conf.getTrimmed(DFS_NAMENODE_HTTP_ADDRESS_KEY, DFS_NAMENODE_HTTP_ADDRESS_DEFAULT));
   }
 
-  protected void loadNamesystem(Configuration conf) throws IOException {
-    this.namesystem = FSNamesystem.loadFromDisk(conf, this);
+  protected void loadNamesystem(Configuration conf, int deploymentNumber) throws IOException {
+    this.namesystem = FSNamesystem.loadFromDisk(conf, this, deploymentNumber);
   }
 
   NamenodeRegistration getRegistration() {
@@ -2301,7 +2301,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
     }
 
-    loadNamesystem(conf);
+    loadNamesystem(conf, deploymentNumber);
 
     Instant loadNamesystemDone = Instant.now();
     Duration loadNamesystemDuration = Duration.between(intermediateInitDone, loadNamesystemDone);

@@ -78,7 +78,7 @@ public class TestCommitBlockSynchronization {
     Configuration conf = new Configuration();
     DatanodeStorageInfo[] targets = new DatanodeStorageInfo[0];
 
-    FSNamesystem namesystem = new FSNamesystem(conf, cluster.getNameNode());
+    FSNamesystem namesystem = new FSNamesystem(conf, cluster.getNameNode(), -1);
     namesystem.setImageLoaded(true);
 
     // set file's parent as root and put the file to inodeMap, so

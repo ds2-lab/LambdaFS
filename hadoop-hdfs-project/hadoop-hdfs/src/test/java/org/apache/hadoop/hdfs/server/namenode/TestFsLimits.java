@@ -60,7 +60,7 @@ public class TestFsLimits {
     ServerlessNameNode nn = mock(ServerlessNameNode.class);
     when(nn.getActiveNameNodes())
         .thenReturn(new SortedActiveNodeListPBImpl(Collections.EMPTY_LIST));
-    FSNamesystem fsn = new FSNamesystem(conf,nn);
+    FSNamesystem fsn = new FSNamesystem(conf,nn, -1);
     fsn.setImageLoaded(fsIsReady);
     //needed to create the root inode
     FSDirectory fsd = new FSDirectory(fsn, conf);
