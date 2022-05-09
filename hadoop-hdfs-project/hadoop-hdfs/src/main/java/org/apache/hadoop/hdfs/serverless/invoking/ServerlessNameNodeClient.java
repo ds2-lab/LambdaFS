@@ -929,6 +929,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         DescriptiveStatistics numGcStatistics = new DescriptiveStatistics();
         DescriptiveStatistics gcTimeStatistics = new DescriptiveStatistics();
 
+        int numTcpDiscarded = 0;
+        int numHttpDiscarded = 0;
         for (OperationPerformed operationPerformed : opsPerformedList) {
             if (operationPerformed.getIssuedViaHttp()) {
                 double latency = operationPerformed.getLatency();
@@ -937,6 +939,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                     if (latency >= 150)
                         LOG.warn("FOUND HTTP LATENCY OF " + latency + " MS. TASK ID: " + operationPerformed.getRequestId());
+                } else {
+                    numHttpDiscarded++;
                 }
             }
             if (operationPerformed.getIssuedViaTcp()) {
@@ -946,6 +950,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                     if (latency >= 150)
                         LOG.warn("FOUND TCP LATENCY OF " + latency + " MS. TASK ID: " + operationPerformed.getRequestId());
+                } else {
+                    numTcpDiscarded++;
                 }
             }
 
@@ -1010,6 +1016,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println("Latency HTTP (ms) [min: " + httpStatistics.getMin() + ", max: " + httpStatistics.getMax() +
                 ", avg: " + httpStatistics.getMean() + ", std dev: " + httpStatistics.getStandardDeviation() +
                 ", N: " + httpStatistics.getN() + "]");
+        System.out.println("Discarded " + numTcpDiscarded + " TCP request(s) and " + numHttpDiscarded +
+                " HTTP request(s) due to invalid latencies.");
 
         try {
             printHistograms(httpStatistics, tcpStatistics);
