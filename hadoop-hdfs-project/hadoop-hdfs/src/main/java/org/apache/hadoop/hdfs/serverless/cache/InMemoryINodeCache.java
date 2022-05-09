@@ -87,6 +87,9 @@ public class InMemoryINodeCache {
 
     private final boolean enabled;
 
+    /**
+     * Maximum elements in INode cache.
+     */
     private final int cacheCapacity;
 
     /**

@@ -12,6 +12,9 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_METADATA_CACHE_CAPACITY;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT;
+
 /**
  * Controls and manages access to several caches, each of which is responsible for caching a different type of metadata.
  *
@@ -51,16 +54,22 @@ public class MetadataCacheManager {
      */
     private final ReplicaCacheManager replicaCacheManager;
 
+    /**
+     * Maximum elements in INode cache.
+     */
+    private final int cacheCapacity;
+
     public MetadataCacheManager(Configuration configuration) {
+        this.cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
         inodeCache = new InMemoryINodeCache(configuration);
         encryptionZoneCache = Caffeine.newBuilder()
-                .maximumSize(10_000)
+                .maximumSize(cacheCapacity)
                 .build();
         aceCache = Caffeine.newBuilder()
-                .maximumSize(10_000)
+                .maximumSize(cacheCapacity)
                 .build();
         aceCacheByINodeId = Caffeine.newBuilder()
-                .maximumSize(10_000)
+                .maximumSize(cacheCapacity)
                 .build();
 
 //        encryptionZoneCache = new ConcurrentHashMap<>();
