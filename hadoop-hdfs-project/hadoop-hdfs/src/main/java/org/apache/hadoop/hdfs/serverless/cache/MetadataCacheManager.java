@@ -60,7 +60,7 @@ public class MetadataCacheManager {
     private final int cacheCapacity;
 
     public MetadataCacheManager(Configuration configuration) {
-        this.cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
+        this.cacheCapacity = configuration.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
         inodeCache = new InMemoryINodeCache(configuration);
         encryptionZoneCache = Caffeine.newBuilder()
                 .maximumSize(cacheCapacity)
