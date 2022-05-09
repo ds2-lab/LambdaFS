@@ -187,7 +187,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final boolean SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT = true;
 
   public static final String SERVERLESS_METADATA_CACHE_CAPACITY = "serverless.metadatacache.capacity";
-  public static final int SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT = 5_000;
+  public static final int SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT = 825_000; // Each INode is around 1,168 bytes.
 
   /**
    * How often, in seconds, the list of active name nodes should be updated.
