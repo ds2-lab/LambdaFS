@@ -271,7 +271,7 @@ public class INodeLock extends BaseINodeLock {
         }
       }
 
-      if (INode.getPathComponents(path).length == INode.getNumPathComponents(path)) {
+      if (INode.getPathComponents(path).length != INode.getNumPathComponents(path)) {
         LOG.error("INode.getPathComponents('" + path + "').length does NOT equal INode.getNumPathComponents('" +
                 path + "')...");
         LOG.error(INode.getPathComponents(path).length + " =/= " + INode.getNumPathComponents(path));
