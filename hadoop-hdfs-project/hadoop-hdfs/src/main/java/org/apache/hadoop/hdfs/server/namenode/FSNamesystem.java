@@ -425,7 +425,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    *     if loading fails
    */
   static FSNamesystem loadFromDisk(Configuration conf, ServerlessNameNode namenode, int deploymentNumber) throws IOException {
-    FSNamesystem namesystem = new FSNamesystem(conf, namenode);
+    FSNamesystem namesystem = new FSNamesystem(conf, namenode, deploymentNumber);
     StartupOption startOpt = ServerlessNameNode.getStartupOption(conf);
     if (startOpt == StartupOption.RECOVER) {
       namesystem.setSafeMode(SafeModeAction.SAFEMODE_ENTER);
