@@ -695,13 +695,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // potentially be mapped to a serverless function.
         Object srcArgument = opArguments.get(ServerlessNameNodeKeys.SRC);
 
+        // Next, let's see if we have an entry in our cache for this file/directory.
+        int mappedFunctionNumber = -1;
+        String sourceFileOrDirectory = null;
+        if (srcArgument != null) {
+            sourceFileOrDirectory = (String)srcArgument;
+            serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
+        }
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
-        if (tcpEnabled && srcArgument != null) {
-            String sourceFileOrDirectory = (String)srcArgument;
-
-            // Next, let's see if we have an entry in our cache for this file/directory.
-            int mappedFunctionNumber = serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
-
+        if (tcpEnabled) {
             // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
             // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
             if (mappedFunctionNumber != -1 && tcpServer.connectionExists(mappedFunctionNumber)) {
@@ -741,7 +743,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (srcObj != null)
             src = (String)srcObj;
 
-        int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
+//        int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
 
         long startTime = System.currentTimeMillis();
 
