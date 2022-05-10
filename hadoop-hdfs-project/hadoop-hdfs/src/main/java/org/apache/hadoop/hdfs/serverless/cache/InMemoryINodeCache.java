@@ -2,15 +2,12 @@ package org.apache.hadoop.hdfs.serverless.cache;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.RemovalListener;
 import com.google.common.hash.Hashing;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.INode;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,9 +48,16 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 public class InMemoryINodeCache {
     public static final Logger LOG = LoggerFactory.getLogger(InMemoryINodeCache.class);
 
-    private static final int DEFAULT_MAX_ENTRIES = 30_000;         // Default maximum capacity.
-    private static final float DEFAULT_LOAD_FACTOR = 0.75f;         // Default load factor.
+    /**
+     * Default load factor used for the INode ID to full path cache.
+     */
+    private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
+    /**
+     * Used to synchronize access to the PatriciaTrie {@code prefixMetadataCache} variable.
+     * Multiple threads can access the PatriciaTrie concurrently, so we must synchronize access.
+     * We use a RW lock since much of the time, the threads will just be concurrently reading.
+     */
     private final ReadWriteLock _mutex = new ReentrantReadWriteLock(true);
 
     /**
@@ -76,9 +80,9 @@ public class InMemoryINodeCache {
 //    private final ConcurrentHashMap<String, INode> fullPathMetadataCache;
 
     /**
-     * Mapping between INode IDs and their names.
+     * Mapping between INode IDs and their fully-qualified paths.
      */
-    private final ConcurrentHashMap<Long, String> idToNameMapping;
+    private final ConcurrentHashMap<Long, String> idToFullPathMap;
 
     /**
      * Mapping between keys of the form [PARENT_ID][LOCAL_NAME], which is how some INodes are
@@ -112,7 +116,7 @@ public class InMemoryINodeCache {
          */
         int cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
         this.numDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
-        this.idToNameMapping = new ConcurrentHashMap<>(cacheCapacity, loadFactor);
+        this.idToFullPathMap = new ConcurrentHashMap<>(cacheCapacity, loadFactor);
         this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(cacheCapacity, loadFactor);
         this.deploymentNumber = deploymentNumber;
 
@@ -137,7 +141,7 @@ public class InMemoryINodeCache {
 //                        fullPathMetadataCache.remove(fullPath);
 
                     if (iNode != null)
-                        idToNameMapping.remove(iNode.getId());
+                        idToFullPathMap.remove(iNode.getId());
                 })
                 .build();
         this.enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED,
@@ -244,8 +248,8 @@ public class InMemoryINodeCache {
 
         long s = System.currentTimeMillis();
         try {
-            if (idToNameMapping.containsKey(iNodeId)) {
-                String key = idToNameMapping.get(iNodeId);
+            if (idToFullPathMap.containsKey(iNodeId)) {
+                String key = idToFullPathMap.get(iNodeId);
                 return getByPath(key);
             }
 
@@ -320,7 +324,7 @@ public class InMemoryINodeCache {
         cache.put(key, value);
 
         // Create a mapping between the INode ID and the path.
-        idToNameMapping.put(iNodeId, key);
+        idToFullPathMap.put(iNodeId, key);
 
         // Cache by full-path.
         // fullPathMetadataCache.put(key, value);
@@ -343,7 +347,7 @@ public class InMemoryINodeCache {
             } else if (key instanceof Long) {
                 // If the key is a long, we need to check if we've mapped this long to a String key. If so,
                 // then we can get the string version and continue as before.
-                String keyAsStr = idToNameMapping.getOrDefault((Long) key, null);
+                String keyAsStr = idToFullPathMap.getOrDefault((Long) key, null);
                 return keyAsStr != null && prefixMetadataCache.containsKey(keyAsStr);
             }
 
@@ -391,7 +395,7 @@ public class InMemoryINodeCache {
         _mutex.readLock().lock();
         try {
             // If we don't have a mapping for this key, then this will return null, and this function will return false.
-            String keyAsStr = idToNameMapping.getOrDefault(inodeId, null);
+            String keyAsStr = idToFullPathMap.getOrDefault(inodeId, null);
 
             // Returns true if we are able to resolve the NameNode ID to a string-typed key, that key is not
             // invalidated, and we're actively caching the key.
@@ -411,8 +415,8 @@ public class InMemoryINodeCache {
     protected boolean invalidateKey(long inodeId) {
         _mutex.writeLock().lock();
         try  {
-            if (idToNameMapping.containsKey(inodeId)) {
-                String key = idToNameMapping.get(inodeId);
+            if (idToFullPathMap.containsKey(inodeId)) {
+                String key = idToFullPathMap.get(inodeId);
 
                 return invalidateKeyInternal(key, false);
             }
@@ -429,7 +433,7 @@ public class InMemoryINodeCache {
      * This mapping is not guaranteed to be up-to-date (i.e., if cache has been invalidated, then this could be wrong).
      */
     protected String getNameFromId(long inodeId) {
-        return idToNameMapping.get(inodeId);
+        return idToFullPathMap.get(inodeId);
     }
 
     /**
@@ -488,7 +492,7 @@ public class InMemoryINodeCache {
             _mutex.writeLock().unlock();
             if (LOG.isTraceEnabled()) LOG.trace("Invalidated entire cache in " + (System.currentTimeMillis() - s) + " ms.");
         }
-        idToNameMapping.clear();
+        idToFullPathMap.clear();
         parentIdPlusLocalNameToFullPathMapping.clear();
         // fullPathMetadataCache.clear();
     }
