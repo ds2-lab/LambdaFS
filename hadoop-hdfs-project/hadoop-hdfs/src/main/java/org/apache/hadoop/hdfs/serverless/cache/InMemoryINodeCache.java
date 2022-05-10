@@ -90,11 +90,6 @@ public class InMemoryINodeCache {
 
     private final boolean enabled;
 
-    /**
-     * Maximum elements in INode cache.
-     */
-    private final int cacheCapacity;
-
     private final int deploymentNumber;
 
     private final int numDeployments;
@@ -111,7 +106,10 @@ public class InMemoryINodeCache {
      */
     public InMemoryINodeCache(Configuration conf, int capacity, float loadFactor, int deploymentNumber) {
         //this.invalidatedKeys = new HashSet<>();
-        this.cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
+        /**
+         * Maximum elements in INode cache.
+         */
+        int cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
         this.numDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
         this.idToNameMapping = new ConcurrentHashMap<>(capacity, loadFactor);
         this.fullPathMetadataCache = new ConcurrentHashMap<>(capacity, loadFactor);
@@ -124,13 +122,19 @@ public class InMemoryINodeCache {
         this.prefixMetadataCache = new PatriciaTrie<>();
         this.cache = Caffeine.newBuilder()
                 .initialCapacity(cacheCapacity)
-                .evictionListener((RemovalListener<String, INode>) (s, iNode, removalCause) -> {
+                .evictionListener((RemovalListener<String, INode>) (fullPath, iNode, removalCause) -> {
                     _mutex.writeLock().lock();
                     try {
-                        prefixMetadataCache.remove(s);
+                        prefixMetadataCache.remove(fullPath);
                     } finally {
                         _mutex.writeLock().unlock();
                     }
+
+                    if (fullPath != null)
+                        fullPathMetadataCache.remove(fullPath);
+
+                    if (iNode != null)
+                        idToNameMapping.remove(iNode.getId());
                 })
                 .build();
         this.enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_METADATA_CACHE_ENABLED,
@@ -175,35 +179,20 @@ public class InMemoryINodeCache {
 
         long s = System.currentTimeMillis();
 
-        //_mutex.readLock().lock();
-//        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
-//                (System.currentTimeMillis() - s) + " ms.");
         try {
-            long s1 = System.currentTimeMillis();
             INode returnValue = fullPathMetadataCache.get(key);
-            long t2 = System.currentTimeMillis();
 
             if (returnValue == null)
                 cacheMiss();
             else
                 cacheHit();
 
-            long t3 = System.currentTimeMillis();
-
             return returnValue;
         } finally {
-            //_mutex.readLock().unlock();
             long t4 = System.currentTimeMillis();
             if (LOG.isTraceEnabled() && t4 - s > 10) LOG.trace("Checked cache by path for INode '" + key + "' in " +
                     (t4 - s) + " ms. [1]");
         }
-    }
-
-    /**
-     * Generate a unique (hopefully) hash code we can use instead of concatenating Strings together.
-     */
-    private int computeParentIdLocalNameHash(long parentId, String localName) {
-        return (int)(parentId ^ localName.hashCode());
     }
 
     /**
@@ -220,22 +209,16 @@ public class InMemoryINodeCache {
             return null;
 
         long s = System.currentTimeMillis();
-
-//        _mutex.readLock().lock();
-//        if (LOG.isDebugEnabled()) LOG.debug("Acquired metadata cache read lock in " +
-//                (System.currentTimeMillis() - s) + " ms.");
         try {
-
             String parentIdPlusLocalName = parentId + localName;
-            // int parentIdPlusLocalName = computeParentIdLocalNameHash(parentId, localName);
             String key = parentIdPlusLocalNameToFullPathMapping.getOrDefault(parentIdPlusLocalName, null);
 
             if (key != null)
                 return getByPath(key);
+
             cacheMiss();
             return null;
         } finally {
-            //_mutex.readLock().unlock();
             if (LOG.isTraceEnabled()) {
                 long t = System.currentTimeMillis();
                 LOG.trace("Checked cache by parent ID and local name for INode '" + localName + "' in " + (t - s) + " ms.");

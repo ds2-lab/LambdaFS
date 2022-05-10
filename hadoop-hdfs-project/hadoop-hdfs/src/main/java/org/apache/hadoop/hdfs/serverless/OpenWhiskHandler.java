@@ -262,7 +262,6 @@ public class OpenWhiskHandler extends BaseHandler {
      *                     connections at once, then it might crash due to OOM errors.
      * @param tcpEnabled Flag indicating whether the TCP invocation pathway is enabled. If false, then we do not
      *                   bother trying to establish TCP connections.
-     * @param localMode Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
      * @param startTime Return value from System.currentTimeMillis() called as the VERY first thing the HTTP handler does.
      * @return Result of executing NameNode code/operation/function execution.
      */

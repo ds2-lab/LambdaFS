@@ -1217,7 +1217,6 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         HDFSOperationType.GET_BLOCK_LOCATIONS, src) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
-        // long s = System.currentTimeMillis();
         LockFactory lf = getInstance();
         INodeLock il = lf.getINodeLock(lockType, INodeResolveType.PATH, src)
             .setNameNodeID(serverlessNameNode.getId())
