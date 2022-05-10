@@ -55,7 +55,7 @@ public class InvalidatedBlockContext
   }
 
   private InvalidatedBlock checkCache(long inodeId, long blockId, int storageId) {
-    if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
 
     ReplicaCache<BlockPK.ReplicaPK, InvalidatedBlock> cache = getReplicaCache();
     if (cache == null) return null;

@@ -23,7 +23,6 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.ReplicaUnderConstructionDataAccess;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.ReplicaUnderConstruction;
-import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.cache.ReplicaCache;
 import org.apache.hadoop.util.StringUtils;
@@ -55,7 +54,7 @@ public class ReplicaUnderConstructionContext
   }
 
   private ReplicaUnderConstruction checkCache(long inodeId, long blockId, int storageId) {
-    if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
 
     ReplicaCache<BlockPK.ReplicaPK, ReplicaUnderConstruction> cache = getReplicaCache();
     if (cache == null) return null;

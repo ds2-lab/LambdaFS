@@ -170,7 +170,7 @@ public class LockFactory {
                                     TransactionLockTypes.INodeLockType lockType) {
     if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
             lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
-      EntityManager.toggleLocalMetadataCache(false);
+      EntityManager.toggleMetadataCacheReads(false);
 
     return new MultipleINodesLock(inodeIdentifiers, lockType);
   }
@@ -185,7 +185,7 @@ public class LockFactory {
       INodeIdentifier inodeIdentifier, boolean readUpPathInodes) {
     if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
             lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
-      EntityManager.toggleLocalMetadataCache(false);
+      EntityManager.toggleMetadataCacheReads(false);
 
     return new IndividualINodeLock(lockType, inodeIdentifier, readUpPathInodes);
   }
@@ -195,7 +195,7 @@ public class LockFactory {
       INodeIdentifier inodeIdentifier) {
     if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
             lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
-      EntityManager.toggleLocalMetadataCache(false);
+      EntityManager.toggleMetadataCacheReads(false);
 
     return new IndividualINodeLock(lockType, inodeIdentifier);
   }
@@ -203,7 +203,7 @@ public class LockFactory {
   public Lock getINodesLocks(TransactionLockTypes.INodeLockType lockType, List<INodeIdentifier> inodeIdentifiers) {
     if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
             lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
-      EntityManager.toggleLocalMetadataCache(false);
+      EntityManager.toggleMetadataCacheReads(false);
 
     return new INodesLocks(lockType, inodeIdentifiers);
   }
@@ -212,7 +212,7 @@ public class LockFactory {
                                 TransactionLockTypes.INodeResolveType resolveType, String... paths) {
     if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
         lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
-      EntityManager.toggleLocalMetadataCache(false);
+      EntityManager.toggleMetadataCacheReads(false);
 
     return new INodeLock(lockType, resolveType, paths);
   }
@@ -221,7 +221,7 @@ public class LockFactory {
                                 TransactionLockTypes.INodeResolveType resolveType, long inodeId) {
     if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
             lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
-      EntityManager.toggleLocalMetadataCache(false);
+      EntityManager.toggleMetadataCacheReads(false);
 
     return new INodeLock(lockType, resolveType, inodeId);
   }

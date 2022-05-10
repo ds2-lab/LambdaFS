@@ -3393,9 +3393,9 @@ public class BlockManager {
       excessReplicateMap.clear();
     }
     replicationQueuesInitializer = new Daemon() {
-      
       @Override
       public void run() {
+        EntityManager.toggleMetadataCacheWrites(false);
         try {
           processMisReplicatesAsync();
         } catch (InterruptedException ie) {
@@ -3571,17 +3571,18 @@ public class BlockManager {
                 INode inode = EntityManager.find(INode.Finder.ByINodeIdFTIS,
                         inodeIdentifier.getInodeId());
                 if(inode == null){
-                  LOG.info("Process misreplicated blocks File with ID: "+inodeIdentifier.getInodeId()+
-                          " not found. File is overritten or deleted");
+                  LOG.info("Mis-replicated blocks for file with ID: " + inodeIdentifier.getInodeId() +
+                          " not found. File must have been overwritten or deleted.");
                   continue;
                 }
-                if(inode instanceof  INodeSymlink){
+
+                if (inode instanceof INodeSymlink)
                  continue;
-                }
+
                 for (BlockInfoContiguous block : ((INodeFile) inode).getBlocks()) {
                   MisReplicationResult res = processMisReplicatedBlock(block);
                   if (LOG.isTraceEnabled()) {
-                    LOG.trace("block " + block + ": " + res);
+                    LOG.trace("Processed mis-replicated block " + block + ": " + res);
                   }
                   switch (res) {
                     case UNDER_REPLICATED:

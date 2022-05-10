@@ -24,11 +24,9 @@ import io.hops.exception.TransactionContextException;
 import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.AceDataAccess;
 import io.hops.metadata.hdfs.entity.Ace;
-import io.hops.metadata.hdfs.entity.EncryptionZone;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.cache.MetadataCacheManager;
-import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +36,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.swing.text.html.parser.Entity;
 
 public class AcesContext extends BaseEntityContext<Ace.PrimaryKey, Ace> {
   public static final Logger LOG = LoggerFactory.getLogger(AcesContext.class);
@@ -62,7 +59,7 @@ public class AcesContext extends BaseEntityContext<Ace.PrimaryKey, Ace> {
    * Check the metadata cache for the Ace associated with the given INode.
    */
   private List<Ace> checkCache(long inodeId, int[] aceIds) {
-    if (!EntityContext.isLocalMetadataCacheEnabled()) return null;
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
 
     MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
     if (metadataCacheManager == null) {

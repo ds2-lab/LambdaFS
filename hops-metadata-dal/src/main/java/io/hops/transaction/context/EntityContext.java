@@ -56,7 +56,14 @@ public abstract class EntityContext<T> {
   /**
    * We set this to false when performing a write operation and true when performing a read operation.
    */
-  final protected static ThreadLocal<Boolean> localMetadataCachedEnabled = ThreadLocal.withInitial(() -> true);
+  final protected static ThreadLocal<Boolean> metadataCacheReadsEnabled = ThreadLocal.withInitial(() -> true);
+
+  /**
+   * Used to prevent writes/updates to the local metadata cache. We toggle this in the BlockManager, as it
+   * often reads batches of INodes (without their parents) from NDB, and caching an INode requires the full
+   * path, so trying to resolve huge batches of INodes' parents from NDB can cause problems.
+   */
+  final protected static ThreadLocal<Boolean> metadataCacheWritesEnabled = ThreadLocal.withInitial(() -> true);
 
   /**
    * Defines the cache state of the request. This enum is only used for logging
@@ -215,8 +222,7 @@ public abstract class EntityContext<T> {
   }
 
   private static String getOperationMessage(FinderType finder) {
-    return "find-" + finder.getType().getSimpleName().toLowerCase() + "-" +
-        finder.toString();
+    return "find-" + finder.getType().getSimpleName().toLowerCase() + "-" + finder;
   }
 
   public void preventStorageCall(boolean val) {
@@ -234,15 +240,23 @@ public abstract class EntityContext<T> {
   /**
    * Returns true if both localMetadataCachedEnabled is true and the current lock mode is not WRITE LOCK.
    */
-  public static boolean isLocalMetadataCacheEnabled() {
-    return localMetadataCachedEnabled.get() && currentLockMode.get() != LockMode.WRITE_LOCK;
+  public static boolean areMetadataCacheReadsEnabled() {
+    return metadataCacheReadsEnabled.get() && currentLockMode.get() != LockMode.WRITE_LOCK;
+  }
+
+  public static boolean areMetadataCacheWritesEnabled() {
+    return metadataCacheWritesEnabled.get();
   }
 
   /**
    * Pass true to enable; pass false to disable.
    */
-  public static void toggleLocalMetadataCache(boolean enabled) {
-    localMetadataCachedEnabled.set(enabled);
+  public static void toggleMetadataCacheReads(boolean enabled) {
+    metadataCacheReadsEnabled.set(enabled);
+  }
+
+  public static void toggleMetadataCacheWrites(boolean enabled) {
+    metadataCacheWritesEnabled.set(enabled);
   }
 
   protected void aboutToAccessStorage(FinderType finderType)

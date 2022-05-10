@@ -135,12 +135,21 @@ public class EntityManager {
   /**
    * Pass true to enable; pass false to disable.
    */
-  public static void toggleLocalMetadataCache(boolean enabled) {
-    if (enabled) LOG.trace("[ENABLING LOCAL METADATA CACHE]");
-    else LOG.trace("[DISABLING LOCAL METADATA CACHE]");
-    EntityContext.toggleLocalMetadataCache(enabled);
+  public static void toggleMetadataCacheReads(boolean enabled) {
+    if (enabled) LOG.trace("[ENABLING METADATA CACHE READS]");
+    else LOG.trace("[DISABLING METADATA CACHE READS]");
+    EntityContext.toggleMetadataCacheReads(enabled);
   }
 
+
+  /**
+   * Pass true to enable; pass false to disable.
+   */
+  public static void toggleMetadataCacheWrites(boolean enabled) {
+    if (enabled) LOG.trace("[ENABLING METADATA WRITES]");
+    else LOG.trace("[DISABLING METADATA WRITES]");
+    EntityContext.toggleMetadataCacheWrites(enabled);
+  }
   public static void writeLock() throws StorageException {
     LOG.trace("[LOCKING: WRITE]");
     EntityContext.setLockMode(EntityContext.LockMode.WRITE_LOCK);
@@ -182,6 +191,13 @@ public class EntityManager {
             storageMap);
     threadContext.set(context);
     return context;
+  }
+
+  public static boolean getStorageCallsPreventedINode() {
+    if (threadContext.get() == null)
+      return false;
+
+    return context().getStorageCallsPreventedINode();
   }
   
   public static void removeContext() {

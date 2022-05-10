@@ -20,6 +20,7 @@ import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.common.CounterType;
 import io.hops.metadata.common.FinderType;
+import io.hops.metadata.hdfs.entity.INode;
 import io.hops.metadata.hdfs.entity.MetadataLogEntry;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.commons.logging.Log;
@@ -33,8 +34,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class TransactionContext {
-  private static final Log LOG = LogFactory.getLog(TransactionContext.class);
-
   private static String UNKNOWN_TYPE = "Unknown type:";
   private boolean activeTxExpected = false;
   private Map<Class, EntityContext> typeContextMap;
@@ -44,11 +43,12 @@ public class TransactionContext {
   public TransactionContext(StorageConnector connector,
       Map<Class, EntityContext> entityContext) {
     this.typeContextMap = entityContext;
-    for (EntityContext context : entityContext.values()) {
-      if (!contexts.contains(context)) {
-        contexts.add(context);
-      }
-    }
+//    for (EntityContext context : entityContext.values()) {
+//      if (!contexts.contains(context)) {
+//        contexts.add(context);
+//      }
+//    }
+    contexts.addAll(entityContext.values());
     this.connector = connector;
   }
 
@@ -195,5 +195,13 @@ public class TransactionContext {
       }
     }
     return stats;
+  }
+
+  public boolean getStorageCallsPreventedINode() {
+    EntityContext<?> context = typeContextMap.get(INode.class);
+
+    if (context == null) return false;
+
+    return context.storageCallPrevented;
   }
 }

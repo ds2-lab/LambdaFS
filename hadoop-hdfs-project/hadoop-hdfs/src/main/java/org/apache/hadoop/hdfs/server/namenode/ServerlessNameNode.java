@@ -1253,7 +1253,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private LocatedBlock addBlock(TaskArguments fsArgs) throws IOException, ClassNotFoundException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
 
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getString("clientName"); // fsArgs.getAsJsonPrimitive("clientName").getAsString();
@@ -1312,7 +1312,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void addUser(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
 
     String userName = fsArgs.getString("userName"); // fsArgs.getAsJsonPrimitive("userName").getAsString();
 
@@ -1321,7 +1321,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void addGroup(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
 
     String groupName = fsArgs.getString("groupName"); // fsArgs.getAsJsonPrimitive("groupName").getAsString();
 
@@ -1330,7 +1330,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void addUserToGroup(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
 
     String userName = fsArgs.getString("userName"); // fsArgs.getAsJsonPrimitive("userName").getAsString();
     String groupName = fsArgs.getString("groupName"); // fsArgs.getAsJsonPrimitive("groupName").getAsString();
@@ -1340,7 +1340,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public void removeUser(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String userName = fsArgs.getString("userName"); // fsArgs.getAsJsonPrimitive("userName").getAsString();
 
     namesystem.checkSuperuserPrivilege();
@@ -1348,7 +1348,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public void removeGroup(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String groupName = fsArgs.getString("groupName"); // fsArgs.getAsJsonPrimitive("groupName").getAsString();
 
     namesystem.checkSuperuserPrivilege();
@@ -1356,7 +1356,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public void removeUserFromGroup(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String userName = fsArgs.getString("userName"); // fsArgs.getAsJsonPrimitive("userName").getAsString();
     String groupName = fsArgs.getString("groupName"); // fsArgs.getAsJsonPrimitive("groupName").getAsString();
 
@@ -1365,7 +1365,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private LastBlockWithStatus append(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
 
     String src = fsArgs.getString(SRC); // fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.SRC).getAsString();
     String clientName = fsArgs.getString(CLIENT_NAME); // fsArgs.getAsJsonPrimitive(CLIENT_NAME).getAsString();
@@ -1387,7 +1387,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private boolean complete(TaskArguments fsArgs) throws IOException, ClassNotFoundException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
 
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getString("clientName"); // fsArgs.getAsJsonPrimitive("clientName").getAsString();
@@ -1424,7 +1424,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private DirectoryListing getListing(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
     //LOG.info("Unpacking arguments for the GET-LISTING operation now...");
 
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
@@ -1445,7 +1445,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void setMetaStatus(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
 
     int metaStatusOrdinal = fsArgs.getInt("metaStatus"); // fsArgs.getAsJsonPrimitive("metaStatus").getAsInt();
@@ -1455,7 +1455,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void setPermission(TaskArguments fsArgs) throws IOException, ClassNotFoundException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
 //    String permissionBase64 = fsArgs.get("permission"); // fsArgs.getAsJsonArray("permission").getAsString();
 //    FsPermission permission = (FsPermission) InvokerUtilities.base64StringToObject(permissionBase64);
@@ -1465,7 +1465,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void setOwner(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     String username = fsArgs.getString("userName"); // fsArgs.getAsJsonPrimitive("userName").getAsString();
     String groupname = fsArgs.getString("groupName"); // fsArgs.getAsJsonPrimitive("groupName").getAsString();
@@ -1474,7 +1474,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private boolean mkdirs(TaskArguments fsArgs) throws IOException, ClassNotFoundException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     //String maskedBase64 = fsArgs.getString("masked"); // fsArgs.getAsJsonPrimitive("masked").getAsString();
     //FsPermission masked = (FsPermission) InvokerUtilities.base64StringToObject(maskedBase64);
@@ -1496,7 +1496,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private boolean isFileClosed(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
     //LOG.info("Unpacking arguments for the IS-FILE-CLOSED operation now...");
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
 
@@ -1504,7 +1504,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private LocatedBlocks getBlockLocations(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
     //LOG.info("Unpacking arguments for the GET-BLOCK-LOCATIONS operation now...");
 
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
@@ -1523,7 +1523,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void abandonBlock(TaskArguments fsArgs) throws IOException, ClassNotFoundException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
 
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     String holder = fsArgs.getString("holder"); // fsArgs.getAsJsonPrimitive("holder").getAsString();
@@ -1546,7 +1546,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void concat(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
 
     //LOG.info("Unpacking arguments for the CONCAT operation now...");
 
@@ -1566,14 +1566,14 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private HdfsFileStatus getFileInfo(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
 
     return namesystem.getFileInfo(src, true);
   }
 
   private HdfsFileStatus getFileLinkInfo(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
 
     return namesystem.getFileInfo(src, false);
@@ -1593,7 +1593,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private boolean subtreeDeleteSubOperation(TaskArguments args)
           throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
 
     // The INode ID of the INode corresponding to the subtree root.
     long subtreeRootId = args.getLong("subtreeRootId"); // args.getAsJsonPrimitive("subtreeRootId").getAsLong();
@@ -1633,7 +1633,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private NamespaceInfo versionRequest(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
 
     String datanodeUuid = fsArgs.getString("uuid"); // fsArgs.get("uuid").getAsString();
 
@@ -1657,7 +1657,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
 
   private HdfsFileStatus create(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     //LOG.info("Unpacking arguments for the CREATE operation now...");
 
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
@@ -1712,23 +1712,23 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private FsServerDefaults getServerDefaults(TaskArguments fsArgs) {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
     return this.namesystem.getServerDefaults();
   }
 
   private void renewLease(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String clientName = fsArgs.getString("clientName"); // fsArgs.getString("clientName"); // fsArgs.getAsJsonPrimitive("clientName").getAsString();
     this.namesystem.renewLease(clientName);
   }
 
   private long[] getStats(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
     return this.namesystem.getStats();
   }
 
   private DatanodeInfo[] getDatanodeReport(TaskArguments fsArgs) throws AccessControlException {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
     int typeOrdinal = fsArgs.getInt("type"); // fsArgs.getAsJsonPrimitive("type").getAsInt();
     HdfsConstants.DatanodeReportType type = HdfsConstants.DatanodeReportType.values()[typeOrdinal];
 
@@ -1736,7 +1736,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private boolean delete(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     //LOG.info("Unpacking arguments for the DELETE operation now...");
 
     //String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
@@ -1759,7 +1759,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   public boolean truncate(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     String clientName = fsArgs.getString("clientName"); // fsArgs.getAsJsonPrimitive("clientName").getAsString();
     long newLength = fsArgs.getLong("newLength"); // fsArgs.getAsJsonPrimitive("newLength").getAsLong();
@@ -1778,7 +1778,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   private void rename(TaskArguments fsArgs) throws IOException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     //LOG.info("Unpacking arguments for the RENAME operation now...");
 
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
@@ -3497,7 +3497,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * ClientProtocol.
    */
   private SortedActiveNodeList getActiveNamenodesForClient(TaskArguments fsArgs) {
-    EntityManager.toggleLocalMetadataCache(true);
+    EntityManager.toggleMetadataCacheReads(true);
     return this.getActiveNameNodes();
   }
 
@@ -3505,7 +3505,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * ClientProtocol.
    */
   private LocatedBlock updateBlockForPipeline(TaskArguments fsArgs) throws IOException, ClassNotFoundException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String clientName = fsArgs.getString(CLIENT_NAME); // fsArgs.getAsJsonPrimitive(CLIENT_NAME).getAsString();
 
     ExtendedBlock block = fsArgs.getObject("block");
@@ -3523,7 +3523,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * ClientProtocol.
    */
   private void updatePipeline(TaskArguments fsArgs) throws IOException, ClassNotFoundException {
-    EntityManager.toggleLocalMetadataCache(false);
+    EntityManager.toggleMetadataCacheReads(false);
     String clientName = fsArgs.getString(CLIENT_NAME); // fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_NAME).getAsString();
 
     ExtendedBlock oldBlock = null;
