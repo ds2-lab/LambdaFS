@@ -64,15 +64,16 @@ public class InMemoryINodeCache {
     private final PatriciaTrie<INode> prefixMetadataCache;
 
     /**
-     * Used to control the size of the trie structure.
-     * When entries are evicted from here, we also evict them from the trie.
+     * Used to control the size of the trie structure. This has a capacity, and entries are automatically
+     * evicted when we're at-capacity. We can use the eviction listener to then remove those entries
+     * from the trie data structure and the other caches (e.g., ID to full path, parent ID + local name, etc.)
      */
     private final Cache<String, INode> cache;
 
-    /**
-     * Cache that is used when not using a prefix.
-     */
-    private final ConcurrentHashMap<String, INode> fullPathMetadataCache;
+//    /**
+//     * Cache that is used when not using a prefix.
+//     */
+//    private final ConcurrentHashMap<String, INode> fullPathMetadataCache;
 
     /**
      * Mapping between INode IDs and their names.
@@ -98,23 +99,25 @@ public class InMemoryINodeCache {
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
      */
     public InMemoryINodeCache(Configuration conf, int deploymentNumber) {
-        this(conf, DEFAULT_MAX_ENTRIES, DEFAULT_LOAD_FACTOR, deploymentNumber);
+        this(conf, DEFAULT_LOAD_FACTOR, deploymentNumber);
     }
 
     /**
      * Create an LRU Metadata Cache using a specified maximum capacity and load factor.
      */
-    public InMemoryINodeCache(Configuration conf, int capacity, float loadFactor, int deploymentNumber) {
+    public InMemoryINodeCache(Configuration conf, float loadFactor, int deploymentNumber) {
         //this.invalidatedKeys = new HashSet<>();
         /**
          * Maximum elements in INode cache.
          */
         int cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
         this.numDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
-        this.idToNameMapping = new ConcurrentHashMap<>(capacity, loadFactor);
-        this.fullPathMetadataCache = new ConcurrentHashMap<>(capacity, loadFactor);
-        this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(capacity, loadFactor);
+        this.idToNameMapping = new ConcurrentHashMap<>(cacheCapacity, loadFactor);
+        this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(cacheCapacity, loadFactor);
         this.deploymentNumber = deploymentNumber;
+
+        // this.fullPathMetadataCache = new ConcurrentHashMap<>(capacity, loadFactor);
+
         /**
          * This is the main cache, along with the metadataTrie variable. We use this when we want to grab a single
          * INode by its full path.
@@ -130,8 +133,8 @@ public class InMemoryINodeCache {
                         _mutex.writeLock().unlock();
                     }
 
-                    if (fullPath != null)
-                        fullPathMetadataCache.remove(fullPath);
+//                    if (fullPath != null)
+//                        fullPathMetadataCache.remove(fullPath);
 
                     if (iNode != null)
                         idToNameMapping.remove(iNode.getId());
@@ -180,7 +183,8 @@ public class InMemoryINodeCache {
         long s = System.currentTimeMillis();
 
         try {
-            INode returnValue = fullPathMetadataCache.get(key);
+            // INode returnValue = fullPathMetadataCache.get(key);
+            INode returnValue = cache.getIfPresent(key);
 
             if (returnValue == null)
                 cacheMiss();
@@ -301,7 +305,6 @@ public class InMemoryINodeCache {
         try {
             // Store the metadata in the cache directly.
             returnValue = prefixMetadataCache.put(key, value);
-            cache.put(key, value);
         } finally {
             _mutex.writeLock().unlock();
             if (LOG.isTraceEnabled()) {
@@ -313,11 +316,14 @@ public class InMemoryINodeCache {
         String parentIdPlusLocalName = value.getParentId() + value.getLocalName();
         parentIdPlusLocalNameToFullPathMapping.put(parentIdPlusLocalName, key);
 
+        // Put into the Caffeine cache. We use this to implement the LRU policy.
+        cache.put(key, value);
+
         // Create a mapping between the INode ID and the path.
         idToNameMapping.put(iNodeId, key);
 
         // Cache by full-path.
-        fullPathMetadataCache.put(key, value);
+        // fullPathMetadataCache.put(key, value);
 
         return returnValue;
     }
@@ -456,7 +462,8 @@ public class InMemoryINodeCache {
         try {
             if (skipCheck || containsKeySkipInvalidCheck(key)) {
                 prefixMetadataCache.remove(key);
-                fullPathMetadataCache.remove(key);
+                cache.invalidate(key);
+                // fullPathMetadataCache.remove(key);
                 return true;
             }
 
@@ -482,8 +489,8 @@ public class InMemoryINodeCache {
             if (LOG.isTraceEnabled()) LOG.trace("Invalidated entire cache in " + (System.currentTimeMillis() - s) + " ms.");
         }
         idToNameMapping.clear();
-        fullPathMetadataCache.clear();
         parentIdPlusLocalNameToFullPathMapping.clear();
+        // fullPathMetadataCache.clear();
     }
 
     /**
