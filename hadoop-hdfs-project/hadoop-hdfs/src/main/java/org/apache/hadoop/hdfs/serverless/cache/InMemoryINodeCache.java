@@ -19,6 +19,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static com.google.common.hash.Hashing.consistentHash;
+import static io.hops.transaction.context.EntityContext.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 /**
@@ -150,7 +151,9 @@ public class InMemoryINodeCache {
         int currentHits = threadLocalCacheHits.get();
         threadLocalCacheHits.set(currentHits + 1);
 
-        if (LOG.isTraceEnabled()) LOG.trace("[CACHE HIT] INode = '" + path + "'");
+        if (LOG.isTraceEnabled()) {
+            LOG.trace(ANSI_GREEN + "[CACHE HIT]" + ANSI_RESET + " INode = '" + path + "'");
+        }
     }
 
     /**
@@ -160,7 +163,7 @@ public class InMemoryINodeCache {
         int currentMisses = threadLocalCacheMisses.get();
         threadLocalCacheMisses.set(currentMisses + 1);
 
-        if (LOG.isTraceEnabled()) LOG.trace("[CACHE MISS] INode = '" + path + "'");
+        if (LOG.isTraceEnabled()) LOG.trace(ANSI_RED + "[CACHE MISS]" + ANSI_RESET + " INode path = '" + path + "'");
     }
 
     /**
@@ -169,9 +172,8 @@ public class InMemoryINodeCache {
     protected void cacheMiss(String localName, long parentId) {
         int currentMisses = threadLocalCacheMisses.get();
         threadLocalCacheMisses.set(currentMisses + 1);
-
-        if (LOG.isTraceEnabled()) LOG.trace("[CACHE MISS] INode LocalName = '" + localName +
-                "', ParentID = " + parentId);
+        if (LOG.isTraceEnabled()) LOG.trace(ANSI_RED + "[CACHE MISS]" + ANSI_RESET + " INode LocalName = '" +
+                localName + "', ParentID = " + parentId);
     }
 
     /**
@@ -181,7 +183,8 @@ public class InMemoryINodeCache {
         int currentHits = threadLocalCacheHits.get();
         threadLocalCacheHits.set(currentHits + 1);
 
-        if (LOG.isTraceEnabled()) LOG.trace("[CACHE MISS] INode ID = " + id);
+        if (LOG.isTraceEnabled())
+            LOG.trace(ANSI_RED + "[CACHE MISS]" + ANSI_RESET + " INode ID = " + id);
     }
 
     /**
