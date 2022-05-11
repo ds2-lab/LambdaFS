@@ -637,6 +637,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param target The fully-qualified path of the target file or directory.
    */
   private void toggleMetadataCacheWritesForCurrentOp(String target) {
+    if (target == null) {
+      if (LOG.isTraceEnabled()) LOG.trace("Received NULL for target path. Disabling metadata cache updates by default.");
+      EntityManager.toggleMetadataCacheWrites(false);
+      return;
+    }
+
     // Step 1: Extract the parent path.
     String parentOfTargetPath = extractParentPath(target);
 
@@ -853,9 +859,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // Attempt to extract the source argument.
     // If it exists, then we'll enable or disable metadata cache writes accordingly.
-    String src = fsArgs.getString(SRC);
-    if (src != null)
-      toggleMetadataCacheWritesForCurrentOp(src);
+    toggleMetadataCacheWritesForCurrentOp(fsArgs.getString(SRC));
 
     return this.operations.get(op).apply(fsArgs);
   }
