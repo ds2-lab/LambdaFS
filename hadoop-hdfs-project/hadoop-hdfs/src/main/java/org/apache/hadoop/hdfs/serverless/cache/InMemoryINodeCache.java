@@ -22,28 +22,15 @@ import static com.google.common.hash.Hashing.consistentHash;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 /**
- *
- * ** UPDATE**:
- * WE NOW CACHE BY THE FULLY-QUALIFIED PATH OF THE INODE, NOT THE PARENT'S ID.
- *
- * Figure out what the various tables would be called in NDB.
- * The cache (or maybe some other object) will create and maintain ClusterJ Event and EventOperation objects
- * associated with those tables. When event notifications are received, the NameNode will optionally update its
- * cache. May need to add a mechanism for NameNodes to determine if they were the source of the event being fired,
- * as NameNodes should not have to go back to NDB and re-read data that they just wrote.
- *
- * If such a mechanism is not already possible with the current way events are implemented, then events may need
- * to be augmented to somehow relay the identity of the client who last performed the write operation. That may not
- * be feasible, however. In that case, a simpler solution may be to just add a column in the associated tables that
- * denotes the last person to write the data. Then the Event listener can just compare the new value of that column
- * against the local ID, and if they're the same, then the Event listener knows that this NameNode was the source of
- * the Event.
- *
- * In fact, that second solution is probably the best/easiest.
- */
-
-/**
  * Used by Serverless NameNodes to store and retrieve cached metadata.
+ *
+ * We partition the namespace by parent INode ID (and/or possibly the full path to the parent directory).
+ * In this way, we basically map terminal INodes (i.e., files) to particular directories. Single INode operations
+ * targeting these INodes will issue INVs to the deployment responsible for caching that terminal INode (i.e., file).
+ * This will just invalidate that terminal INode, leaving the rest of the path intact.
+ * If a subtree operation is performed, then a subtree/prefix INV will be issued to all NNs responsible for
+ * caching some terminal INode in the subtree. This will invalidate all INodes along the path, ensuring that no
+ * deployments will serve stale metadata.
  */
 public class InMemoryINodeCache {
     public static final Logger LOG = LoggerFactory.getLogger(InMemoryINodeCache.class);
@@ -288,24 +275,6 @@ public class InMemoryINodeCache {
         }
     }
 
-    private String getPathToCache(String originalPath) {
-        // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
-        // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
-        // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
-        Path parentPath = Paths.get(originalPath).getParent();
-        String pathToCache = null;
-
-        // If there is no parent, then we are caching metadata mapping information for the root.
-        if (parentPath == null) {
-            // assert(originalPath.equals("/") || originalPath.isEmpty());
-            pathToCache = originalPath;
-        } else {
-            pathToCache = parentPath.toString();
-        }
-
-        return pathToCache;
-    }
-
     /**
      * Override `put()` to disallow null values from being added to the cache.
      *
@@ -320,14 +289,13 @@ public class InMemoryINodeCache {
             throw new IllegalArgumentException("INode Metadata Cache does NOT support null values. Associated key: " + key);
         long s = System.currentTimeMillis();
 
-        // Make sure we can cache it.
-        if (consistentHash(Hashing.md5().hashString(getPathToCache(key)), numDeployments) != deploymentNumber) {
-            if (LOG.isTraceEnabled()) {
-                long t = System.currentTimeMillis();
-                LOG.trace("Rejected INode '" + key + "' (ID=" + iNodeId + ") from being cached in " + (t - s) + " ms.");
-            }
-            return null;
-        }
+//        if (consistentHash(Hashing.md5().hashString(getPathToCache(key)), numDeployments) != deploymentNumber) {
+//            if (LOG.isTraceEnabled()) {
+//                long t = System.currentTimeMillis();
+//                LOG.trace("Rejected INode '" + key + "' (ID=" + iNodeId + ") from being cached in " + (t - s) + " ms.");
+//            }
+//            return null;
+//        }
 
         _mutex.writeLock().lock();
         INode returnValue;

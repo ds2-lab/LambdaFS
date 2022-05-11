@@ -49,6 +49,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 import static com.google.common.hash.Hashing.consistentHash;
+import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.extractParentPath;
 
 /**
  * Base class of serverless invokers. Defines some concrete state (i.e., instance variables) used by
@@ -215,24 +216,6 @@ public abstract class ServerlessInvokerBase<T> {
      */
     protected boolean benchmarkModeEnabled = false;
 
-    private String getPathToCache(String originalPath) {
-        // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
-        // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
-        // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
-        java.nio.file.Path parentPath = Paths.get(originalPath).getParent();
-        String pathToCache = null;
-
-        // If there is no parent, then we are caching metadata mapping information for the root.
-        if (parentPath == null) {
-            // assert(originalPath.equals("/") || originalPath.isEmpty());
-            pathToCache = originalPath;
-        } else {
-            pathToCache = parentPath.toString();
-        }
-
-        return pathToCache;
-    }
-
     /**
      * Return the INode-NN mapping cache entry for the given file or directory.
      *
@@ -246,7 +229,7 @@ public abstract class ServerlessInvokerBase<T> {
 //            return cache.getFunction(fileOrDirectory);
 //
 //        return -1;
-        return consistentHash(Hashing.md5().hashString(getPathToCache(fileOrDirectory)), numDeployments);
+        return consistentHash(Hashing.md5().hashString(extractParentPath(fileOrDirectory)), numDeployments);
     }
 
     protected JsonObject processHttpResponse(HttpResponse httpResponse) throws IOException {

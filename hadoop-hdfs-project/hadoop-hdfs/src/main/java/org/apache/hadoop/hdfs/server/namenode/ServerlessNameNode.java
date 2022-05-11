@@ -18,6 +18,7 @@ package org.apache.hadoop.hdfs.server.namenode;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
+import com.google.common.hash.Hashing;
 import com.google.gson.JsonObject;
 import org.apache.hadoop.util.VersionInfo;
 import io.hops.DalDriver;
@@ -148,6 +149,7 @@ import static org.apache.hadoop.hdfs.protocol.HdfsConstants.MAX_PATH_DEPTH;
 import static org.apache.hadoop.hdfs.protocol.HdfsConstants.MAX_PATH_LENGTH;
 import static org.apache.hadoop.hdfs.serverless.BaseHandler.localModeEnabled;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
+import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.extractParentPath;
 import static org.apache.hadoop.util.ExitUtil.terminate;
 import static org.apache.hadoop.util.Time.now;
 
@@ -622,6 +624,37 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   }
 
   /**
+   * Check if the in-memory INode cache should be updated during the execution of this operation.
+   *
+   * We partition the namespace by parent INode ID (or possibly the fully-qualified path of the parent INode).
+   * We cache all metadata entries up to the terminal entry on the path.
+   * As such, the metadata cache should only be write-enabled if we're performing an operation on a file or directory
+   * that is mapped to our deployment.
+   *
+   * This function will enable or disable metadata cache updates/writes. That is, it will make a call to
+   * {@link EntityManager#toggleMetadataCacheWrites}.
+   *
+   * @param target The fully-qualified path of the target file or directory.
+   */
+  private void toggleMetadataCacheWritesForCurrentOp(String target) {
+    // Step 1: Extract the parent path.
+    String parentOfTargetPath = extractParentPath(target);
+
+    // Compute the target deployment number via consistent hashing of the parent directory of `target`.
+    int targetDeployment = (consistentHash(Hashing.md5().hashString(parentOfTargetPath), numDeployments));
+
+    boolean enableUpdates = (targetDeployment == deploymentNumber);
+
+    if (LOG.isTraceEnabled())
+      LOG.debug("Target path '" + target + "' has parent '" + parentOfTargetPath +
+              "'. Parent consistently hashed to deployment " + targetDeployment +
+              ". Cache updates will be " + (enableUpdates ? "ENABLED." : "DISABLED."));
+
+    // Enable or disable metadata cache writes based on whether the target deployment num matches our deployment num.
+    EntityManager.toggleMetadataCacheWrites(enableUpdates);
+  }
+
+  /**
    * Returns the singleton ServerlessNameNode instance.
    *
    * @param commandLineArguments The command-line arguments given to the NameNode during initialization.
@@ -817,6 +850,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.info("User did not specify an operation (or specified the default operation " + DEFAULT_OPERATION + ").");
       return null;
     }
+
+    // Attempt to extract the source argument.
+    // If it exists, then we'll enable or disable metadata cache writes accordingly.
+    String src = fsArgs.getString(SRC);
+    if (src != null)
+      toggleMetadataCacheWritesForCurrentOp(src);
 
     return this.operations.get(op).apply(fsArgs);
   }

@@ -7,6 +7,8 @@ import org.apache.hadoop.hdfs.protocol.DatanodeID;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -51,6 +53,31 @@ public class ServerlessUtilities {
         }
 
         throw new NotImplementedException("This function has not yet been implemented.");
+    }
+
+    /**
+     * Given a path to a file or directory "X", extract the path to the parent directory of "X".
+     *
+     * @param originalPath Path to file or directory whose parent's path is desired.
+     *
+     * @return The path to the parent directory of {@code originalPath}.
+     */
+    public static String extractParentPath(String originalPath) {
+        // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
+        // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
+        // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
+        Path parentPath = Paths.get(originalPath).getParent();
+        String pathToCache = null;
+
+        // If there is no parent, then we are caching metadata mapping information for the root.
+        if (parentPath == null) {
+            // assert(originalPath.equals("/") || originalPath.isEmpty());
+            pathToCache = originalPath;
+        } else {
+            pathToCache = parentPath.toString();
+        }
+
+        return pathToCache;
     }
 
     /**

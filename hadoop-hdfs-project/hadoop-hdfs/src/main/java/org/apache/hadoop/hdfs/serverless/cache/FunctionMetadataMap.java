@@ -11,6 +11,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 
+import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.extractParentPath;
+
 /**
  * Maintains a cache that maps files to the particular serverless functions which cache that
  * file's (or directory's) metadata.
@@ -63,7 +65,7 @@ public class FunctionMetadataMap {
      * @return `true` if the cache contains an entry for the given file or directory, otherwise `false`.
      */
     public boolean containsEntry(String path) {
-        String pathToCache = getPathToCache(path);
+        String pathToCache = extractParentPath(path);
 
         try (Jedis jedis = redisPool.getResource()) {
             return jedis.exists(pathToCache);
@@ -76,7 +78,7 @@ public class FunctionMetadataMap {
      *         entry exists in the map for this function yet.
      */
     public int getFunction(String file) {
-        String pathToCache = getPathToCache(file);
+        String pathToCache = extractParentPath(file);
 
         try (Jedis jedis = redisPool.getResource()) {
             if (jedis.exists(pathToCache))
@@ -96,23 +98,7 @@ public class FunctionMetadataMap {
      * @param originalPath The original path to target a file or directory.
      * @return The path that is used by the metadata map/cache.
      */
-    private String getPathToCache(String originalPath) {
-        // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
-        // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
-        // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
-        Path parentPath = Paths.get(originalPath).getParent();
-        String pathToCache = null;
 
-        // If there is no parent, then we are caching metadata mapping information for the root.
-        if (parentPath == null) {
-            // assert(originalPath.equals("/") || originalPath.isEmpty());
-            pathToCache = originalPath;
-        } else {
-            pathToCache = parentPath.toString();
-        }
-
-        return pathToCache;
-    }
 
     /**
      * Add an entry to the cache. Will not overwrite an existing entry unless parameter `overwriteExisting` is true.
@@ -122,7 +108,7 @@ public class FunctionMetadataMap {
      * @return `true` if entry was added to the cache, otherwise `false`.
      */
     public boolean addEntry(String path, long function, boolean overwriteExisting) {
-        String pathToCache = getPathToCache(path);
+        String pathToCache = extractParentPath(path);
 
         if (LOG.isDebugEnabled())
             LOG.debug("Adding cache entry with key '" + pathToCache + "' for target '" + path + "'. Value: " + function + ".");
