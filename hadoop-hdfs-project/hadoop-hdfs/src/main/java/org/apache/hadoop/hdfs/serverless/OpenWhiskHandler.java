@@ -56,11 +56,11 @@ public class OpenWhiskHandler extends BaseHandler {
         long startTime = System.currentTimeMillis();
         String functionName = platformSpecificInitialization();
 
-        LOG.info("============================================================");
+        //LOG.info("============================================================");
         LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " received HTTP request.");
         //int activeRequests = activeRequestCounter.incrementAndGet();
         //LOG.info("Active HTTP requests: " + activeRequests);
-        LOG.info("============================================================\n");
+        //LOG.info("============================================================\n");
 
         int actionMemory;
         JsonObject userArguments;

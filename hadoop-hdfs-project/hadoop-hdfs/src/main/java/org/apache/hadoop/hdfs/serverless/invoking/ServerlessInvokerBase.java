@@ -870,6 +870,11 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArgumentsJson.addProperty(LOCAL_MODE, localMode);
         nameNodeArgumentsJson.addProperty(CONSISTENCY_PROTOCOL_ENABLED, consistencyProtocolEnabled);
         nameNodeArgumentsJson.addProperty(LOG_LEVEL, OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel));
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Current LOG LEVEL: " + serverlessFunctionLogLevel);
+            LOG.debug("Converted to an int: " + OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel));
+        }
     }
 
     ///////////////////////
