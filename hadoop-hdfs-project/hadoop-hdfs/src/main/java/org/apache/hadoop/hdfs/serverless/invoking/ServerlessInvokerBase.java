@@ -428,14 +428,6 @@ public abstract class ServerlessInvokerBase<T> {
             throws IOException, IllegalStateException;
 
     /**
-     * Process the HTTP response returned by the NameNode.
-     *
-     * @param httpResponse The response returned by the NameNode.
-     * @return The result intended for the HopsFS client in the form of a JSON object.
-     */
-    // protected abstract JsonObject processHttpResponse(HttpResponse httpResponse) throws IOException;
-
-    /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient
      * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
      *

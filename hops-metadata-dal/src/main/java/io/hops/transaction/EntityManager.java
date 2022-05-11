@@ -34,6 +34,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import static io.hops.transaction.context.EntityContext.*;
+
 public class EntityManager {
 
   private EntityManager() {
@@ -136,8 +138,8 @@ public class EntityManager {
    * Pass true to enable; pass false to disable.
    */
   public static void toggleMetadataCacheReads(boolean enabled) {
-    if (enabled) LOG.trace("[ENABLING METADATA CACHE READS]");
-    else LOG.trace("[DISABLING METADATA CACHE READS]");
+    if (enabled) LOG.trace(ANSI_GREEN + "[ENABLING METADATA CACHE READS]" + ANSI_RESET);
+    else LOG.trace(ANSI_RED + "[DISABLING METADATA CACHE READS]" + ANSI_RESET);
     EntityContext.toggleMetadataCacheReads(enabled);
   }
 
@@ -146,24 +148,24 @@ public class EntityManager {
    * Pass true to enable; pass false to disable.
    */
   public static void toggleMetadataCacheWrites(boolean enabled) {
-    if (enabled) LOG.trace("[ENABLING METADATA WRITES]");
-    else LOG.trace("[DISABLING METADATA WRITES]");
+    if (enabled) LOG.trace(ANSI_GREEN + "[ENABLING METADATA WRITES]" + ANSI_RESET);
+    else LOG.trace(ANSI_RED + "[DISABLING METADATA WRITES]" + ANSI_RESET);
     EntityContext.toggleMetadataCacheWrites(enabled);
   }
   public static void writeLock() throws StorageException {
-    LOG.trace("[LOCKING: WRITE]");
+    LOG.trace(ANSI_CYAN + "[LOCKING: WRITE]" + ANSI_RESET);
     EntityContext.setLockMode(EntityContext.LockMode.WRITE_LOCK);
     contextInitializers.get(0).getConnector().writeLock();
   }
 
   public static void readLock() throws StorageException {
-    LOG.trace("[LOCKING: READ]");
+    LOG.trace(ANSI_BLUE + "[LOCKING: READ]" + ANSI_RESET);
     EntityContext.setLockMode(EntityContext.LockMode.READ_LOCK);
     contextInitializers.get(0).getConnector().readLock();
   }
 
   public static void readCommited() throws StorageException {
-    LOG.trace("[LOCKING: READ COMMITTED]");
+    LOG.trace(ANSI_PURPLE + "[LOCKING: READ COMMITTED]" + ANSI_RESET);
     EntityContext.setLockMode(EntityContext.LockMode.READ_COMMITTED);
     contextInitializers.get(0).getConnector().readCommitted();
   }
