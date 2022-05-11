@@ -352,6 +352,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     public String getServerlessFunctionLogLevel() {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("ServerlessNameNodeClient LogLevel: " + serverlessFunctionLogLevel);
+            LOG.debug("ServerlessInvokerBase LogLevel: " + serverlessInvoker.serverlessFunctionLogLevel);
+        }
+
         return this.serverlessFunctionLogLevel;
     }
 
