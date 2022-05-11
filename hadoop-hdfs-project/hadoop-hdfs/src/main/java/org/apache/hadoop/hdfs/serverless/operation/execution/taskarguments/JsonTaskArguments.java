@@ -24,7 +24,9 @@ public class JsonTaskArguments implements TaskArguments {
 
     @Override
     public String getString(String key) {
-        return taskArguments.getAsJsonPrimitive(key).getAsString();
+        if (taskArguments.has(key))
+            return taskArguments.getAsJsonPrimitive(key).getAsString();
+        return null;
     }
 
     @Override
@@ -38,22 +40,35 @@ public class JsonTaskArguments implements TaskArguments {
 
     @Override
     public byte[] getByteArray(String key) {
-        String base64Encoded = taskArguments.getAsJsonPrimitive(key).getAsString();
-        return Base64.decodeBase64(base64Encoded);
+        if (taskArguments.has(key)) {
+            String base64Encoded = taskArguments.getAsJsonPrimitive(key).getAsString();
+            return Base64.decodeBase64(base64Encoded);
+        }
+
+        return null;
     }
 
     @Override
     public long getLong(String key) {
-        return taskArguments.getAsJsonPrimitive(key).getAsLong();
+        if (taskArguments.has(key))
+            return taskArguments.getAsJsonPrimitive(key).getAsLong();
+
+        throw new IllegalArgumentException("Task Arguments do not contain entry for key '" + key + "'");
     }
 
     @Override
     public short getShort(String key) {
-        return taskArguments.getAsJsonPrimitive(key).getAsShort();
+        if (taskArguments.has(key))
+            return taskArguments.getAsJsonPrimitive(key).getAsShort();
+
+        throw new IllegalArgumentException("Task Arguments do not contain entry for key '" + key + "'");
     }
 
     @Override
     public <T> List<T> getList(String key) {
+        if (!taskArguments.has(key))
+            return null;
+
         List<T> list = new ArrayList<T>();
         JsonArray jsonArray = taskArguments.getAsJsonArray(key);
         for (int i = 0; i < jsonArray.size(); i++) {
@@ -64,6 +79,9 @@ public class JsonTaskArguments implements TaskArguments {
 
     @Override
     public List<String> getStringList(String key) {
+        if (!taskArguments.has(key))
+            return null;
+
         List<String> list = new ArrayList<String>();
         JsonArray jsonArray = taskArguments.getAsJsonArray(key);
         for (int i = 0; i < jsonArray.size(); i++)
@@ -74,6 +92,9 @@ public class JsonTaskArguments implements TaskArguments {
 
     @Override
     public String[] getStringArray(String key) {
+        if (!taskArguments.has(key))
+            return null;
+
         JsonArray jsonArray = taskArguments.getAsJsonArray(key);
         String[] arr = new String[jsonArray.size()];
         for (int i = 0; i < jsonArray.size(); i++)
@@ -84,6 +105,9 @@ public class JsonTaskArguments implements TaskArguments {
 
     @Override
     public <T> T[] getObjectArray(String key) {
+        if (!taskArguments.has(key))
+            throw new IllegalArgumentException("Task Arguments do not contain entry for key '" + key + "'");
+
         JsonArray jsonArray = taskArguments.getAsJsonArray(key);
         Object[] arr = new Object[jsonArray.size()];
         for (int i = 0; i < jsonArray.size(); i++) {
@@ -95,11 +119,17 @@ public class JsonTaskArguments implements TaskArguments {
 
     @Override
     public int getInt(String key) {
-        return taskArguments.getAsJsonPrimitive(key).getAsInt();
+        if (taskArguments.has(key))
+            return taskArguments.getAsJsonPrimitive(key).getAsInt();
+
+        throw new IllegalArgumentException("Task Arguments do not contain entry for key '" + key + "'");
     }
 
     @Override
     public boolean getBoolean(String key) {
-        return taskArguments.getAsJsonPrimitive(key).getAsBoolean();
+        if (taskArguments.has(key))
+            return taskArguments.getAsJsonPrimitive(key).getAsBoolean();
+
+        throw new IllegalArgumentException("Task Arguments do not contain entry for key '" + key + "'");
     }
 }
