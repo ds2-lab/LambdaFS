@@ -604,7 +604,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
   }
 
   private List<INode> findBatch(INode.Finder inodeFinder, String[] names,
-                                long[] parentIds, long[] partitionIds) throws StorageException {
+                                long[] parentIds, long[] partitionIds) throws StorageException, TransactionContextException {
     INode rootINode = null;
     boolean addCachedRootInode = false;
     if (canReadCachedRootINode(names[0], parentIds[0])) {
@@ -630,7 +630,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     return syncInodeInstances(batch);
   }
 
-  private List<INode> syncInodeInstances(List<INode> newInodes) {
+  private List<INode> syncInodeInstances(List<INode> newInodes) throws TransactionContextException, StorageException {
     List<INode> finalList = new ArrayList<>(newInodes.size());
 
     if (LOG.isTraceEnabled()) LOG.trace("Retrieved batch of INodes from NDB: " + StringUtils.join(newInodes, ", "));
@@ -651,6 +651,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       } else {
         inodesNameParentIndex.put(key, inode);
       }
+
+      tryUpdateCache(inode);
     }
     Collections.sort(finalList, INode.Order.ByName);
     return finalList;
