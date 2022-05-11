@@ -159,17 +159,42 @@ public class InMemoryINodeCache {
     /**
      * Record a cache hit.
      */
-    protected void cacheHit() {
+    protected void cacheHit(String path) {
         int currentHits = threadLocalCacheHits.get();
         threadLocalCacheHits.set(currentHits + 1);
+
+        if (LOG.isTraceEnabled()) LOG.trace("[CACHE HIT] INode = '" + path + "'");
     }
 
     /**
      * Record a cache miss.
      */
-    protected void cacheMiss() {
+    protected void cacheMiss(String path) {
         int currentMisses = threadLocalCacheMisses.get();
         threadLocalCacheMisses.set(currentMisses + 1);
+
+        if (LOG.isTraceEnabled()) LOG.trace("[CACHE MISS] INode = '" + path + "'");
+    }
+
+    /**
+     * Record a cache miss.
+     */
+    protected void cacheMiss(String localName, long parentId) {
+        int currentMisses = threadLocalCacheMisses.get();
+        threadLocalCacheMisses.set(currentMisses + 1);
+
+        if (LOG.isTraceEnabled()) LOG.trace("[CACHE MISS] INode LocalName = '" + localName +
+                "', ParentID = " + parentId);
+    }
+
+    /**
+     * Record a cache hit.
+     */
+    protected void cacheMiss(long id) {
+        int currentHits = threadLocalCacheHits.get();
+        threadLocalCacheHits.set(currentHits + 1);
+
+        if (LOG.isTraceEnabled()) LOG.trace("[CACHE MISS] INode ID = " + id);
     }
 
     /**
@@ -191,9 +216,9 @@ public class InMemoryINodeCache {
             INode returnValue = cache.getIfPresent(key);
 
             if (returnValue == null)
-                cacheMiss();
+                cacheMiss(key);
             else
-                cacheHit();
+                cacheHit(key);
 
             return returnValue;
         } finally {
@@ -224,7 +249,7 @@ public class InMemoryINodeCache {
             if (key != null)
                 return getByPath(key);
 
-            cacheMiss();
+            cacheMiss(localName, parentId);
             return null;
         } finally {
             if (LOG.isTraceEnabled()) {
@@ -253,7 +278,7 @@ public class InMemoryINodeCache {
                 return getByPath(key);
             }
 
-            cacheMiss();
+            cacheMiss(iNodeId);
             return null;
         } finally {
             if (LOG.isTraceEnabled()) {
