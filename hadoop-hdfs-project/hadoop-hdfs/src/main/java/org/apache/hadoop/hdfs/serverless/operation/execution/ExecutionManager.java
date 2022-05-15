@@ -107,7 +107,15 @@ public class ExecutionManager {
      * We only need/want to trigger a GC once during an idle interval.
      * This flag indicates whether we've triggered one or not during an idle interval.
      */
-    private volatile boolean gcTriggeredDuringThisIdleInterval = false;
+    // private volatile boolean gcTriggeredDuringThisIdleInterval = false;
+
+    /**
+     * The number of GCs that have occurred during this idle interval. Occasionally, it seems like one GC
+     * will not always get everything? This usually isn't the case, but I've noticed it while profiling.
+     */
+    private int numGCsTriggeredDuringThisIdleInterval = 0;
+
+    private final int maxGCsDuringSingleIdleInterval = 2;
 
     /**
      * We only want to perform NDB updates roughly every heartbeat interval. The update thread wakes up more
@@ -184,19 +192,24 @@ public class ExecutionManager {
             // to true, and thus we're actually changing its value by setting it to false. If it is already
             // set to false, then we do not need to print a message.
             if (LOG.isDebugEnabled()) {
-                if (gcTriggeredDuringThisIdleInterval)
-                    LOG.debug("Resetting the value of 'gcTriggeredDuringThisIdleInterval'.");
+                // if (gcTriggeredDuringThisIdleInterval)
+                if (numGCsTriggeredDuringThisIdleInterval < maxGCsDuringSingleIdleInterval)
+                    //LOG.debug("Resetting the value of 'gcTriggeredDuringThisIdleInterval'.");
+                    LOG.debug("Resetting the value of 'numGCsTriggeredDuringThisIdleInterval'.");
             }
 
-            gcTriggeredDuringThisIdleInterval = false;
+            // gcTriggeredDuringThisIdleInterval = false;
+            numGCsTriggeredDuringThisIdleInterval = 0;
         }
 
         // Have we been idle long enough to warrant a GC? If so, then trigger one,
         // assuming we haven't already triggered a GC in this same idle interval.
-        if (System.currentTimeMillis() - lastTaskExecutedTs > idleGcThreshold && !gcTriggeredDuringThisIdleInterval) {
+        if (System.currentTimeMillis() - lastTaskExecutedTs > idleGcThreshold &&
+                numGCsTriggeredDuringThisIdleInterval <= maxGCsDuringSingleIdleInterval) {
             LOG.debug("Manually triggering garbage collection!");
             System.gc();
-            gcTriggeredDuringThisIdleInterval = true;
+            numGCsTriggeredDuringThisIdleInterval++;
+            // gcTriggeredDuringThisIdleInterval = true;
         }
 
         lastTaskExecutedTimestampCopy = lastTaskExecutedTs;
