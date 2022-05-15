@@ -511,23 +511,20 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 localStart = System.currentTimeMillis();
 
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("Issuing " + (tcpServer.isUdpEnabled() ? "UDP" : "TCP") +
-                            " request for op '" + operationName + "' now. Request ID = '" +
-                            requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
-                            ". Target: '" + sourceArgument + "'.");
+                    LOG.debug((tcpServer.isUdpEnabled() ? "UDP" : "TCP") +
+                            ". OpName=" + operationName + ". RequestID=" + requestId + ". Attempt " +
+                            exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
+                            ". Target='" + sourceArgument + "'.");
                 } else if (LOG.isTraceEnabled()) {
-                    LOG.trace("Issuing " + (tcpServer.isUdpEnabled() ? "UDP" : "TCP") + " request for operation '" +
-                            operationName + "' now. Request ID = '" + requestId + "'. Attempt " +
-                            exponentialBackOff.getNumberOfRetries() +
+                    LOG.trace((tcpServer.isUdpEnabled() ? "UDP" : "TCP") + ". OpName=" + operationName +
+                            ". RequestID=" + requestId + ". Attempt " + exponentialBackOff.getNumberOfRetries() +
                             (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
-                            ". Target: '" + sourceArgument + "'. Time elapsed so far: " +
-                            (System.currentTimeMillis() - opStart) + " ms. Timeout: " + requestTimeout + " ms. " +
-                            (stragglerResubmissionAlreadyOccurred ? "Straggler resubmission has already occurred." :
-                            "Straggler resubmission has NOT already occurred."));
+                            ". Target='" + sourceArgument + "'. Time elapsed=" +
+                            (System.currentTimeMillis() - opStart) + " ms. Timeout=" + requestTimeout + " ms. " +
+                            (stragglerResubmissionAlreadyOccurred ? "Straggler resubmission occurred." :
+                            "Straggler resubmission NOT occurred."));
                 }
 
-//                numOperationsIssuedViaTcp++;
-//                numOperationsIssued++;
                 Object response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
                         operationName, tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
 
