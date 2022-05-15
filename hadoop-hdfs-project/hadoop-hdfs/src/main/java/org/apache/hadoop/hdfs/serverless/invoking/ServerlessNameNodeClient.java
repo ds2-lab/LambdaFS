@@ -480,9 +480,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *                             target file or directory.
      * @return The response from the NameNode.
      */
-    private Object issueTCPRequest(String operationName,
-                                       ArgumentContainer opArguments,
-                                       int targetDeployment)
+    private Object issueTCPRequest(String operationName, ArgumentContainer opArguments, int targetDeployment)
             throws InterruptedException, ExecutionException, IOException {
         long opStart = System.currentTimeMillis();
         String requestId = UUID.randomUUID().toString();
@@ -494,6 +492,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         boolean stragglerResubmissionAlreadyOccurred = false;
         boolean wasResubmittedViaStragglerMitigation = false;
+        String sourceArgument = opArguments.has(SRC) ? (String) opArguments.get(SRC) : null;
 
         ExponentialBackOff exponentialBackOff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(5)
@@ -515,15 +514,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     LOG.debug("Issuing " + (tcpServer.isUdpEnabled() ? "UDP" : "TCP") +
                             " request for op '" + operationName + "' now. Request ID = '" +
                             requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
-                            ".");
+                            ". Target: '" + sourceArgument + "'.");
                 } else if (LOG.isTraceEnabled()) {
                     LOG.trace("Issuing " + (tcpServer.isUdpEnabled() ? "UDP" : "TCP") + " request for operation '" +
                             operationName + "' now. Request ID = '" + requestId + "'. Attempt " +
                             exponentialBackOff.getNumberOfRetries() +
                             (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
-                            ". Time elapsed so far: " + (System.currentTimeMillis() - opStart) + " ms. Timeout: " +
-                            requestTimeout + " ms. " + (stragglerResubmissionAlreadyOccurred ?
-                            "Straggler resubmission has already occurred." :
+                            ". Target: '" + sourceArgument + "'. Time elapsed so far: " +
+                            (System.currentTimeMillis() - opStart) + " ms. Timeout: " + requestTimeout + " ms. " +
+                            (stragglerResubmissionAlreadyOccurred ? "Straggler resubmission has already occurred." :
                             "Straggler resubmission has NOT already occurred."));
                 }
 
