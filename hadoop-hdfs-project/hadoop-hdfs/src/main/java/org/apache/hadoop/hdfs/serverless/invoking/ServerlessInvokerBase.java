@@ -496,17 +496,21 @@ public abstract class ServerlessInvokerBase<T> {
 
         long backoffInterval = exponentialBackoff.getBackOffInMillis();
 
+        // Used for debugging.
+        String sourceArg = requestArguments.has(SRC) ? requestArguments.get("src").getAsString() : null;
+
         do {
             long currentTime = System.nanoTime();
             if (LOG.isDebugEnabled()) {
                 double timeElapsed = (currentTime - invokeStart) / 1.0e6;
                 LOG.debug("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
                         ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
-                        "/" + maxHttpRetries + ". Time elapsed: " + timeElapsed + " milliseconds.");
+                        "/" + maxHttpRetries + ". Target: '" + sourceArg + "'. Time elapsed: " + timeElapsed +
+                        " milliseconds.");
             } else {
                 LOG.info("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
                         ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
-                        "/" + maxHttpRetries + ".");
+                        "/" + maxHttpRetries + ". Target: '" + sourceArg + "'.");
             }
 
             CloseableHttpResponse httpResponse = null;
@@ -517,8 +521,9 @@ public abstract class ServerlessInvokerBase<T> {
 
                 if (LOG.isDebugEnabled()) {
                     currentTime = System.nanoTime();
-                    double timeElapsed = (currentTime - invokeStart) / 1000000.0;
-                    LOG.debug("Received HTTP " + responseCode + " response for request/task " + requestId + " (op=" + operationName + "). Time elapsed: " + timeElapsed + " milliseconds.");
+                    double timeElapsed = (currentTime - invokeStart) / 1.0e6;
+                    LOG.debug("Received HTTP " + responseCode + " response code for request/task " + requestId +
+                            " (op=" + operationName + "). Time elapsed: " + timeElapsed + " milliseconds.");
                 }
 
                 // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
@@ -538,7 +543,7 @@ public abstract class ServerlessInvokerBase<T> {
                 processedResponse = processHttpResponse(httpResponse);
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
                 currentTime = System.nanoTime();
-                timeElapsed = (currentTime - invokeStart) / 1000000.0;
+                double timeElapsed = (currentTime - invokeStart) / 1000000.0;
                 LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke operation " +
                         requestId + " targeting deployment " + targetDeployment + " timed out. Time elapsed: " +
                         timeElapsed + " ms.");
