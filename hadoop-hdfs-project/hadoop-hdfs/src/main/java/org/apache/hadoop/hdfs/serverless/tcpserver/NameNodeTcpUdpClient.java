@@ -101,7 +101,7 @@ public class NameNodeTcpUdpClient {
      * size of the buffers for future TCP connections to hopefully avoid the problem. This variable sets a hard limit
      * on the maximum size of a buffer.
      */
-    private static final int maxBufferSize = (int)5e5;
+    private static final int maxBufferSize = (int)2.5e5;
 
     /**
      * The current size, in bytes, being used for TCP write buffers. If we notice a buffer overflow,
@@ -130,6 +130,8 @@ public class NameNodeTcpUdpClient {
     private final int maximumConnections;
 
     /**
+     * TODO: Currently unused. I actually call client.stop() in the disconnected handler... Is this bad?
+     *
      * When a client detects that it has disconnected from a remote client, it places itself in this queue so
      * that it may be terminated. This allows its resources to be reclaimed.
      *
@@ -137,7 +139,7 @@ public class NameNodeTcpUdpClient {
      * deadlock. That is, the disconnected() event handler is called by the update thread. Thus, I can't put a call
      * to client.stop() in the disconnected() event handler, as the update() thread would probably deadlock...
      */
-    private final BlockingQueue<Client> disconnectedClients;
+    // private final BlockingQueue<Client> disconnectedClients;
 
     /**
      * Use UDP instead of TCP.
@@ -193,18 +195,9 @@ public class NameNodeTcpUdpClient {
                 })
                 .build();
 
-        this.disconnectedClients = new ArrayBlockingQueue<>(maximumConnections);
-
         LOG.debug("Created NameNodeTcpUdpClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
                 ", writeBufferSize=" + writeBufferSize + " bytes, objectBufferSize=" + objectBufferSize +
                 " bytes, maximumConnections=" + maximumConnections + ").");
-    }
-
-    /**
-     * Return the queue of disconnected clients.
-     */
-    public BlockingQueue<Client> getDisconnectedClients() {
-        return disconnectedClients;
     }
 
     /**

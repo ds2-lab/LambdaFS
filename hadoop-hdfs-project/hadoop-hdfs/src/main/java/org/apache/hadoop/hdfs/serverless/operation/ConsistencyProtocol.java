@@ -23,11 +23,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZooKeeperInvalidation;
 import org.apache.hadoop.util.ExponentialBackOff;
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 
 import java.io.IOException;
@@ -843,7 +841,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                     continue;
 
                 for (long nameNodeId : waitingOnInDeployment) {
-                    boolean isAlive = zkClient.checkForPermanentGroupMember(deployment, Long.toString(nameNodeId));
+                    boolean isAlive = zkClient.checkIfNameNodeIsAlive(deployment, Long.toString(nameNodeId));
 
                     if (!isAlive) {
                         LOG.warn("NN " + nameNodeId + " is no longer alive, yet we're still waiting on them.");

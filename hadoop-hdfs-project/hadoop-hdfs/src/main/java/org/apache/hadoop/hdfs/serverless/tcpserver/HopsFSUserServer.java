@@ -17,6 +17,7 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
+import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -647,7 +648,6 @@ public class HopsFSUserServer {
      * @param bypassCheck Do not check if the connection exists.
      * @param payload The payload to send to the NameNode in the TCP request.
      * @param requestId The unique ID of the task/request.
-     * @param operationName The name of the FS operation we're performing.
      * @param tryToAvoidTargetingSameNameNode If true, then we try to avoid resubmitting this request to the same
      *                                        NameNode as before. This would only be set to 'true' when
      *                                        resubmitting a request that timed-out. We want to avoid sending it
@@ -945,6 +945,24 @@ public class HopsFSUserServer {
         }
 
         /**
+         * For debugging purposes, check the status of a NN (i.e., is it alive or not) to which
+         * an active TCP connection was dropped.
+         * @param nnId The unique identifier of the NameNode.
+         * @param deploymentNumber The NameNode's deployment.
+         */
+        private void checkStatusOfDisconnectedNameNode(long nnId, int deploymentNumber) {
+            // Check the ZooKeeper cluster to determine if the NN to which we lost connection is still active.
+            ZKClient zkClient = client.getZkClient();
+            try {
+                boolean alive = zkClient.checkIfNameNodeIsAlive(deploymentNumber, Long.toString(nnId));
+                LOG.warn("NN " + nnId + " (dep=" + deploymentNumber + ") is " + (alive ? "STILL ALIVE." : "NO LONGER ALIVE."));
+            } catch (Exception ex) {
+                LOG.error("Encountered ZooKeeper exception while checking status of NN " + nnId +
+                        " from deployment " + deploymentNumber + ":", ex);
+            }
+        }
+
+        /**
          * Handle the disconnection of a NameNode from the client.
          *
          * Remove the associated connection from the active connections cache.
@@ -953,16 +971,20 @@ public class HopsFSUserServer {
             NameNodeConnection connection = (NameNodeConnection)conn;
 
             if (connection.name != -1) {
-                int mappedDeploymentNumber = nameNodeIdToDeploymentMapping.get(connection.name);
-                LOG.warn(serverPrefix + " Lost connection to NN " + connection.name +
+                long nnId = connection.name;
+
+                int mappedDeploymentNumber = nameNodeIdToDeploymentMapping.get(nnId);
+                LOG.warn(serverPrefix + " Lost connection to NN " + nnId +
                         " from deployment #" + mappedDeploymentNumber);
-                allActiveConnections.remove(connection.name);
+                allActiveConnections.remove(nnId);
 
                 ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                         activeConnectionsPerDeployment.get(mappedDeploymentNumber);
-                deploymentConnections.remove(connection.name);
+                deploymentConnections.remove(nnId);
 
-                cancelRequests(connection.name);
+                cancelRequests(nnId);
+
+                checkStatusOfDisconnectedNameNode(nnId, mappedDeploymentNumber);
             } else {
                 InetSocketAddress address = conn.getRemoteAddressTCP();
                 if (address == null)

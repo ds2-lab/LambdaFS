@@ -39,6 +39,8 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.results.ServerlessF
 import org.apache.hadoop.hdfs.serverless.tcpserver.HopsFSUserServer;
 import org.apache.hadoop.hdfs.serverless.tcpserver.TcpRequestPayload;
 import org.apache.hadoop.hdfs.serverless.tcpserver.TcpTaskFuture;
+import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
+import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.ObjectWritable;
@@ -147,26 +149,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private final HashMap<String, OperationPerformed> operationsPerformed = new HashMap<>();
 
-//    /**
-//     * The number of operations we've issued to a NameNode.
-//     * This includes both successful and failed operations.
-//     * This does not count individual retries for HTTP, as those are handled by the invoker implementation.
-//     */
-//    private int numOperationsIssued = 0;
-//
-//    /**
-//     * The number of operations we've issued to a NameNode via HTTP.
-//     * This includes both successful and failed operations.
-//     * This does not count individual retries, as those are handled by the invoker implementation.
-//     */
-//    private int numOperationsIssuedViaHttp = 0;
-//
-//    /**
-//     * The number of operations we've issued to a NameNode via TCP.
-//     * This includes both successful and failed operations.
-//     */
-//    private int numOperationsIssuedViaTcp = 0;
-
     /**
      * Threshold at which we stop targeting specific deployments in an effort to prevent additional pods
      * from being scheduled. This is useful when we're constraining the available vCPU to the serverless
@@ -228,6 +210,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     protected boolean benchmarkModeEnabled = false;
 
+    /**
+     * Added for debugging purposes. When a TCP connection to a given NameNode is lost, the client
+     * uses ZooKeeper to see if that NameNode is still alive. This is being done in an attempt to figure
+     * out why the connection is lost (e.g., did the NN crash/did the pod get terminated?).
+     */
+    private final ZKClient zkClient;
+
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
         serverlessEndpointBase = dfsClient.serverlessEndpoint;
@@ -248,6 +237,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT_DEFAULT);
         serverlessFunctionLogLevel = conf.get(
                 SERVERLESS_DEFAULT_LOG_LEVEL, SERVERLESS_DEFAULT_LOG_LEVEL_DEFAULT).toUpperCase();
+        zkClient = new SyncZKClient(conf);
 
         if (localMode)
             numDeployments = 1;
@@ -286,6 +276,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.benchmarkModeEnabled = benchmarkModeEnabled;
         this.serverlessInvoker.benchmarkModeEnabled = benchmarkModeEnabled;
     }
+
+    /**
+     * Return the ZooKeeper client.
+     */
+    public ZKClient getZkClient() { return this.zkClient; }
 
     /**
      * Extract the result from the NN.
@@ -518,7 +513,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Issuing " + (tcpServer.isUdpEnabled() ? "UDP" : "TCP") +
-                            " request for operation '" + operationName + "' now. Request ID = '" +
+                            " request for op '" + operationName + "' now. Request ID = '" +
                             requestId + "'. Attempt " + exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
                             ".");
                 } else if (LOG.isTraceEnabled()) {
@@ -559,8 +554,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // that. In that case, we resubmit the FS operation with an additional argument indicating that the
                 // NN should execute the FS operation regardless of whether it is a duplicate.
                 if (result.isDuplicate()) {
-                    LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " +
-                            requestId + "...");
+                    LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " + requestId + "...");
 
                     if (tcpServer.isFutureActive(requestId)) {
                         LOG.error("Request " + requestId +

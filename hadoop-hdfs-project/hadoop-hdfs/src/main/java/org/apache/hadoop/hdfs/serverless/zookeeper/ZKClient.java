@@ -56,12 +56,13 @@ public interface ZKClient {
 
     /**
      * Check if the NameNode identified by the given ID exists in the specified group.
+     *
      * @param groupName The group in which we're checking for membership.
      * @param memberId The NameNode in question.
      *
      * @return True if the NN exists/is a member, otherwise false.
      */
-    boolean checkForPermanentGroupMember(String groupName, String memberId) throws Exception;
+    boolean checkIfNameNodeIsAlive(String groupName, String memberId) throws Exception;
 
     /**
      * Check if the NameNode identified by the given ID exists in the specified deployment.
@@ -73,7 +74,7 @@ public interface ZKClient {
      *
      * @return True if the NN exists/is a member, otherwise false.
      */
-    boolean checkForPermanentGroupMember(int deploymentNumber, String memberId) throws Exception;
+    boolean checkIfNameNodeIsAlive(int deploymentNumber, String memberId) throws Exception;
 
     /**
      * Join an existing ZooKeeper group/directory by creating an ephemeral child node under

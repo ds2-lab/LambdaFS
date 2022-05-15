@@ -435,7 +435,7 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public boolean checkForPermanentGroupMember(String groupName, String memberId) throws Exception {
+    public boolean checkIfNameNodeIsAlive(String groupName, String memberId) throws Exception {
         if (groupName == null)
             throw new IllegalArgumentException("Group name argument cannot be null.");
 
@@ -448,7 +448,7 @@ public class SyncZKClient implements ZKClient {
     }
 
     @Override
-    public boolean checkForPermanentGroupMember(int deploymentNumber, String memberId) throws Exception {
+    public boolean checkIfNameNodeIsAlive(int deploymentNumber, String memberId) throws Exception {
         if (memberId == null)
             throw new IllegalArgumentException("Member ID argument cannot be null.");
 

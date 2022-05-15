@@ -498,13 +498,13 @@ public abstract class ServerlessInvokerBase<T> {
 
         do {
             long currentTime = System.nanoTime();
-            double timeElapsed = (currentTime - invokeStart) / 1000000.0;
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Invoking NameNode " + targetDeployment + " (op=" + operationName +
+                double timeElapsed = (currentTime - invokeStart) / 1.0e6;
+                LOG.debug("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
                         ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
                         "/" + maxHttpRetries + ". Time elapsed: " + timeElapsed + " milliseconds.");
             } else {
-                LOG.info("Invoking NameNode " + targetDeployment + " (op=" + operationName +
+                LOG.info("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
                         ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
                         "/" + maxHttpRetries + ".");
             }
@@ -513,12 +513,13 @@ public abstract class ServerlessInvokerBase<T> {
             JsonObject processedResponse;
             try {
                 httpResponse = httpClient.execute(request);
-                currentTime = System.nanoTime();
-                timeElapsed = (currentTime - invokeStart) / 1000000.0;
                 int responseCode = httpResponse.getStatusLine().getStatusCode();
 
-                if (LOG.isDebugEnabled())
-                    LOG.debug("Received HTTP " + responseCode + " response for request/task " + requestId + " (op=" + operationName +"). Time elapsed: " + timeElapsed + " milliseconds.");
+                if (LOG.isDebugEnabled()) {
+                    currentTime = System.nanoTime();
+                    double timeElapsed = (currentTime - invokeStart) / 1000000.0;
+                    LOG.debug("Received HTTP " + responseCode + " response for request/task " + requestId + " (op=" + operationName + "). Time elapsed: " + timeElapsed + " milliseconds.");
+                }
 
                 // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
                 // generally indicate a client error, but sometimes I receive this error right after

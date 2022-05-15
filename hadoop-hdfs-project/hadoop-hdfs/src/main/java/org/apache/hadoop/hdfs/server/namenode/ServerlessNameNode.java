@@ -471,11 +471,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private NameNodeTcpUdpClient nameNodeTCPClient;
 
   /**
-   * How long to wait for the serverless name node worker thread to process a given task before timing out.
-   */
-  private int workerThreadTimeoutMilliseconds;
-
-  /**
    * How long we should wait for ACKs during a transaction in which we're serving as the Leader.
    *
    * At some point, we need to stop waiting so reads/writes aren't blocked indefinitely.
@@ -2280,9 +2275,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     else
       numDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
-    workerThreadTimeoutMilliseconds = conf.getInt(SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS,
-            SERVERLESS_WORKER_THREAD_TIMEOUT_MILLISECONDS_DEFAULT);
-
     if (LOG.isDebugEnabled()) LOG.debug("Number of unique serverless name nodes: " + numDeployments);
 
     int baseWaitTime = conf.getInt(DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_KEY,
@@ -2459,10 +2451,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   protected NameNodeRpcServer createRpcServer(Configuration conf)
       throws IOException {
     return new NameNodeRpcServer(conf, this);
-  }
-
-  public int getWorkerThreadTimeoutMs() {
-    return workerThreadTimeoutMilliseconds;
   }
 
   /**
@@ -3483,7 +3471,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     for (int i = 0; i < numDeployments; i++) {
       try {
-        boolean alive = zkClient.checkForPermanentGroupMember(i, String.valueOf(namenodeId));
+        boolean alive = zkClient.checkIfNameNodeIsAlive(i, String.valueOf(namenodeId));
 
         if (alive) {
           if (LOG.isDebugEnabled()) LOG.debug("NameNode " + namenodeId + " IS alive in deployment #" + i + " according to ZooKeeper.");
