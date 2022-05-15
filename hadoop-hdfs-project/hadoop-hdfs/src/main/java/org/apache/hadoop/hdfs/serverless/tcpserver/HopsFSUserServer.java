@@ -23,10 +23,7 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
 
@@ -984,7 +981,14 @@ public class HopsFSUserServer {
 
                 cancelRequests(nnId);
 
-                checkStatusOfDisconnectedNameNode(nnId, mappedDeploymentNumber);
+                // Check the status of the NN whom we lost connection to in the future.
+                // At the time of writing this, ZooKeeper is configured with a tick time of 1,000ms.
+                // Sessions expire after two tick times, which is 2,000ms. Thus, we wait to check on
+                // the status of the NameNode until after ZooKeeper would've detected that it stopped.
+                ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+                scheduler.schedule(() -> {
+                    checkStatusOfDisconnectedNameNode(nnId, mappedDeploymentNumber);
+                }, 2500, TimeUnit.MILLISECONDS);
             } else {
                 InetSocketAddress address = conn.getRemoteAddressTCP();
                 if (address == null)
