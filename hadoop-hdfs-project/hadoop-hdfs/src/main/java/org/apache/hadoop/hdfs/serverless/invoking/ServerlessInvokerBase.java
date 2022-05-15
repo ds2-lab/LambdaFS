@@ -497,7 +497,7 @@ public abstract class ServerlessInvokerBase<T> {
         long backoffInterval = exponentialBackoff.getBackOffInMillis();
 
         // Used for debugging.
-        String sourceArg = requestArguments.has(SRC) ? requestArguments.get("src").getAsString() : null;
+        String sourceArg = fileSystemOperationArguments.has(SRC) ? fileSystemOperationArguments.get("src").getAsString() : null;
 
         do {
             long currentTime = System.nanoTime();

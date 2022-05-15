@@ -44,24 +44,10 @@ public class ExecutionManager {
      */
     private final ServerlessNameNode serverlessNameNodeInstance;
 
-//    /**
-//     * All tasks that are currently being executed. For now, we only ever execute one task at a time.
-//     */
-    //private final ConcurrentHashMap<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
-    //private final Cache<String, FileSystemTask<Serializable>> currentlyExecutingTasks;
-    //private Set<String> currentlyExecutingTasks;
-
-//    /**
-//     * All tasks that have been executed by this worker thread.
-//     */
-    //private final ConcurrentHashMap<String, FileSystemTask<Serializable>> completedTasks;
-    //private final Cache<String, FileSystemTask<Serializable>> completedTasks;
-    //private Set<String> completedTasks;
-
     /**
      * All the tasks we're either executing or have successfully executed.
      */
-    private Set<String> seenTasks;
+    private final Set<String> seenTasks;
 
     /**
      * Cache of previously-computed results. These results are kept in-memory for a configurable period of time
