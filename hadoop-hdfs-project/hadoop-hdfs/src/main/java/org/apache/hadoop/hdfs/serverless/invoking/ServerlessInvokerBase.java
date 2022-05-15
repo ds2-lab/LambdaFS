@@ -488,7 +488,7 @@ public abstract class ServerlessInvokerBase<T> {
 
         ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(maxHttpRetries)
-                .setInitialIntervalMillis(1000)
+                .setInitialIntervalMillis(10000)
                 .setMaximumIntervalMillis(30000)
                 .setMultiplier(2.25)
                 .setRandomizationFactor(0.5)

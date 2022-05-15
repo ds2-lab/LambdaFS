@@ -497,7 +497,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         ExponentialBackOff exponentialBackOff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(5)
                 .setInitialIntervalMillis(1000)
-                .setMaximumIntervalMillis(5000)
+                .setMaximumIntervalMillis(3500)
                 .setRandomizationFactor(0.50)
                 .setMultiplier(2.0)
                 .build();

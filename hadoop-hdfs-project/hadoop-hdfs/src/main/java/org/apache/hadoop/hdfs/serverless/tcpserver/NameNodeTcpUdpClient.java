@@ -65,7 +65,7 @@ public class NameNodeTcpUdpClient {
     /**
      * The fraction of main memory reserved for TCP/UDP connection buffers.
      */
-    private static final float memoryFractionReservedForTcpBuffers = 0.13f;
+    private static final float memoryFractionReservedForTcpBuffers = 0.11f;
 
     /**
      * The deployment number of the local serverless name node instance.
@@ -85,14 +85,20 @@ public class NameNodeTcpUdpClient {
     /**
      * The size, in bytes, used for the write buffer of new TCP connections. Objects are serialized to
      * the write buffer where the bytes are queued until they can be written to the TCP socket.
+     *
+     * With 7.5GB of RAM and 11% memory reserved for TCP buffers, this should allow for approximately
+     * simultaneous 2,062 TCP connections.
      */
-    private static final int defaultWriteBufferSizeBytes = (int)2.5e5;
+    private static final int defaultWriteBufferSizeBytes = (int)2e5;
 
     /**
      * The size, in bytes, used for the object buffer of new TCP connections. Object buffers are used
      * to hold the bytes for a single object graph until it can be sent over the network or deserialized.
+     *
+     * With 7.5GB of RAM and 11% memory reserved for TCP buffers, this should allow for approximately
+     * simultaneous 2,062 TCP connections.
      */
-    private static final int defaultObjectBufferSizeBytes = (int)2.5e5;
+    private static final int defaultObjectBufferSizeBytes = (int)2e5;
 
     /**
      * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
@@ -100,8 +106,11 @@ public class NameNodeTcpUdpClient {
      * If we find that we're trying to write data that is larger than the buffer(s), then we change the
      * size of the buffers for future TCP connections to hopefully avoid the problem. This variable sets a hard limit
      * on the maximum size of a buffer.
+     *
+     * With 7.5GB of RAM and 11% memory reserved for TCP buffers, this should allow for approximately
+     * simultaneous 2,062 TCP connections.
      */
-    private static final int maxBufferSize = (int)2.5e5;
+    private static final int maxBufferSize = (int)2e5;
 
     /**
      * The current size, in bytes, being used for TCP write buffers. If we notice a buffer overflow,
@@ -164,7 +173,6 @@ public class NameNodeTcpUdpClient {
         this.nameNodeId = nameNodeId;
         this.deploymentNumber = deploymentNumber;
         this.actionMemory = actionMemory;
-        // this.useUDP = conf.getBoolean(DFSConfigKeys.SERVERLESS_USE_UDP, DFSConfigKeys.SERVERLESS_USE_UDP_DEFAULT);
 
         if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
                 DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT)) {
@@ -195,7 +203,7 @@ public class NameNodeTcpUdpClient {
                 })
                 .build();
 
-        LOG.debug("Created NameNodeTcpUdpClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
+        LOG.info("Created NameNodeTcpUdpClient(NN ID=" + nameNodeId + ", deployment#=" + deploymentNumber +
                 ", writeBufferSize=" + writeBufferSize + " bytes, objectBufferSize=" + objectBufferSize +
                 " bytes, maximumConnections=" + maximumConnections + ").");
     }
@@ -215,11 +223,10 @@ public class NameNodeTcpUdpClient {
     private int calculateMaxNumberTcpConnections() {
         int combinedBufferSize = maxBufferSize * 2;
 
-        // For now, we reserve 65% of the function's RAM for TCP connection buffers.
         // We multiply by 1e6 to convert to bytes, as the actionMemory variable is in MB.
         int memoryAvailableForConnections = (int) Math.floor(memoryFractionReservedForTcpBuffers * actionMemory * 1000000);
 
-        LOG.debug("There is " + memoryAvailableForConnections + " bytes available for TCP connections.");
+        LOG.debug("There are " + memoryAvailableForConnections + " bytes available for TCP connections.");
 
         return Math.floorDiv(memoryAvailableForConnections, combinedBufferSize);
     }
@@ -301,7 +308,7 @@ public class NameNodeTcpUdpClient {
 
                 if (object instanceof TcpRequestPayload) {
                     if (LOG.isDebugEnabled())
-                        LOG.debug("[TCP/UDP Client] NN " + nameNodeId + " Received work assignment from " +
+                        LOG.debug("[TCP/UDP Client] NN " + nameNodeId + " Received work from " +
                                 connection.getRemoteAddressTCP() + ".");
                     result = handleWorkAssignment((TcpRequestPayload)object, receivedAtTime);
                 }
