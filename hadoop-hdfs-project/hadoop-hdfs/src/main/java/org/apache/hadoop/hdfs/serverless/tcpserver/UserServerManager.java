@@ -156,6 +156,11 @@ public class UserServerManager {
             // Grab existing server and return it.
             assignedServer = tcpPortToServerMapping.get(assignedPort);
             serverClientCounts.put(assignedPort, oldNumClients + 1);
+
+            // Make sure to set the client's TCP/UDP port values, since this step
+            // doesn't happen automatically when we're using an existing server.
+            client.setTcpServerPort(assignedServer.getTcpPort());
+            client.setUdpServerPort(assignedServer.getUdpPort());
         }
 
         return assignedServer;
