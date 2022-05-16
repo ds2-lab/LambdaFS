@@ -12,7 +12,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_CLIENTS_PER_TCP_SE
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT;
 
 public class UserServerManager {
-    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(UserTcpUdpServer.class);
+    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(UserServerManager.class);
 
     /**
      * Maximum number of clients allowed to use a single TCP server.
@@ -144,7 +144,7 @@ public class UserServerManager {
 
         if (oldNumClients == -1 && assignedPort == -1) {
             // Create new TCP server.
-            LOG.debug("Creating new TCP server...");
+            LOG.debug("Creating new user server...");
             assignedServer = new UserTcpUdpServer(conf, client);
             int tcpPort = assignedServer.startServer();
 

@@ -91,6 +91,7 @@ public class Hdfs extends AbstractFileSystem {
     }
 
     this.dfs = new DFSClient(theUri, conf, getStatistics());
+    this.dfs.initialize();
   }
 
   @Override

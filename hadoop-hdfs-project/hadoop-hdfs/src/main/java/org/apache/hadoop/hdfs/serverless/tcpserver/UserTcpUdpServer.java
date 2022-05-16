@@ -203,7 +203,7 @@ public class UserTcpUdpServer {
         }
 
         LOG.info("User server will be used by at-most " + maxNumClients +
-                (maxNumClients == 1 ? "client." : "clients.") + " Base buffer size: " + baseBufferSize +
+                (maxNumClients == 1 ? " client." : " clients.") + " Base buffer size: " + baseBufferSize +
                 " bytes. Total buffer size: " + actualBufferSize + " bytes each (there are 2 buffers).");
 
         // Read some options from config file.

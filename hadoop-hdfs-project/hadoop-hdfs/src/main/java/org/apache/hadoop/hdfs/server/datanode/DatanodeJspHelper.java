@@ -36,7 +36,9 @@ public class DatanodeJspHelper {
     return user.doAs(new PrivilegedExceptionAction<DFSClient>() {
       @Override
       public DFSClient run() throws IOException {
-        return new DFSClient(NetUtils.createSocketAddr(addr), conf);
+        DFSClient client = new DFSClient(NetUtils.createSocketAddr(addr), conf);
+        client.initialize();
+        return client;
       }
     });
   }

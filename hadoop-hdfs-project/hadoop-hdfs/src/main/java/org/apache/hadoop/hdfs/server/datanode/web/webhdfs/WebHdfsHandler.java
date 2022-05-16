@@ -294,7 +294,9 @@ public class WebHdfsHandler extends SimpleChannelInboundHandler<HttpRequest> {
   private static DFSClient newDfsClient
     (String nnId, Configuration conf) throws IOException, URISyntaxException {
     URI uri = URI.create(HDFS_URI_SCHEME + "://" + nnId);
-    return new DFSClient(uri, conf);
+    DFSClient dfs = new DFSClient(uri, conf);
+    dfs.initialize();
+    return dfs;
   }
 
   protected void injectToken() throws IOException {

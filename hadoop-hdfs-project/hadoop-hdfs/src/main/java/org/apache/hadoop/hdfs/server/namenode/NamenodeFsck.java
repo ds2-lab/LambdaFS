@@ -854,6 +854,7 @@ public class NamenodeFsck implements DataEncryptionKeyFactory {
   private void copyBlocksToLostFound(String parent, HdfsFileStatus file,
       LocatedBlocks blocks) throws IOException {
     final DFSClient dfs = new DFSClient(ServerlessNameNode.getAddress(conf), conf);
+    dfs.initialize();
     final String fullName = file.getFullName(parent);
     OutputStream fos = null;
     try {

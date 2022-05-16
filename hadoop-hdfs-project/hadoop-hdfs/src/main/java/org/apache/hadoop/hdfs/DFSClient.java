@@ -541,6 +541,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
   /**
    * Same as this(nameNodeUri, null, conf, stats);
+   *
+   * Need to call the {@link DFSClient#initialize()} function before use.
    */
   public DFSClient(URI nameNodeUri, Configuration conf,
                    FileSystem.Statistics stats)
@@ -603,9 +605,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     // Create the ServerlessNameNodeClient instance and call then registerAndStartTcpServer()
     // so that it gets assigned a TCP/UDP server.
-    ServerlessNameNodeClient client = new ServerlessNameNodeClient(conf, this);
-    client.registerAndStartTcpServer();
-    this.namenode = client;
+    this.namenode = new ServerlessNameNodeClient(conf, this);
 
     // this.namenode = new ServerlessNameNodeClient(conf, this);
 
@@ -678,6 +678,13 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     this.saslClient = new SaslDataTransferClient(
             conf, DataTransferSaslUtil.getSaslPropertiesResolver(conf),
             TrustedChannelResolver.getInstance(conf), nnFallbackToSimpleAuth);
+  }
+
+  public void initialize() throws IOException {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
+      client.registerAndStartTcpServer();
+    }
   }
 
   /**
