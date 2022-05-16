@@ -57,6 +57,9 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_ADDITIONAL_LIBS_PATH = "serverless.additional.libs.folder";
   public static final String SERVERLESS_ADDITIONAL_LIBS_PATH_DEFAULT = null;
 
+  public static final String SERVERLESS_CLIENTS_PER_TCP_SERVER = "serverless.tcpserver.numclients";
+  public static final int SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT = 16;
+
   /**
    * Location of the hdfs-site.xml and core-site.xml configuration files.
    */

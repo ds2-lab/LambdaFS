@@ -36,7 +36,7 @@ import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.ServerlessFunctionMapping;
-import org.apache.hadoop.hdfs.serverless.tcpserver.HopsFSUserServer;
+import org.apache.hadoop.hdfs.serverless.tcpserver.UserTcpUdpServer;
 import org.apache.hadoop.hdfs.serverless.tcpserver.TcpRequestPayload;
 import org.apache.hadoop.hdfs.serverless.tcpserver.TcpTaskFuture;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
@@ -91,7 +91,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     private final DFSClient dfsClient;
 
-    private final HopsFSUserServer tcpServer;
+    private final UserTcpUdpServer tcpServer;
 
     /**
      * Number of unique deployments.
@@ -264,7 +264,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         this.dfsClient = dfsClient;
 
-        this.tcpServer = new HopsFSUserServer(conf, this);
+        this.tcpServer = new UserTcpUdpServer(conf, this);
         this.tcpServer.startServer();
 
         this.latency = new DescriptiveStatistics();

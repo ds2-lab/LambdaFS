@@ -90,7 +90,7 @@ public class NameNodeTcpUdpClient {
      * With 7.5GB of RAM and 11% memory reserved for TCP buffers, this should allow for approximately
      * simultaneous 2,062 TCP connections.
      */
-    private static final int defaultWriteBufferSizeBytes = 10_000; // (int)2e5;
+    private static final int defaultWriteBufferSizeBytes = 500; // (int)2e5;
 
     /**
      * The size, in bytes, used for the object buffer of new TCP connections. Object buffers are used
@@ -99,7 +99,7 @@ public class NameNodeTcpUdpClient {
      * With 7.5GB of RAM and 11% memory reserved for TCP buffers, this should allow for approximately
      * simultaneous 2,062 TCP connections.
      */
-    private static final int defaultObjectBufferSizeBytes = 10_000; // (int)2e5;
+    private static final int defaultObjectBufferSizeBytes = 500; // (int)2e5;
 
     /**
      * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
@@ -111,7 +111,7 @@ public class NameNodeTcpUdpClient {
      * With 7.5GB of RAM and 11% memory reserved for TCP buffers, this should allow for approximately
      * simultaneous 2,062 TCP connections.
      */
-    private static final int maxBufferSize = 10_000; // (int)2e5;
+    private static final int maxBufferSize = 500; // (int)2e5;
 
     /**
      * The current size, in bytes, being used for TCP write buffers. If we notice a buffer overflow,

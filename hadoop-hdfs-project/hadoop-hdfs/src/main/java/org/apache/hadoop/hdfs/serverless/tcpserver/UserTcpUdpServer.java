@@ -34,8 +34,8 @@ import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServer
  *
  * This is used on the client side (i.e., NOT on the NameNode side).
  */
-public class HopsFSUserServer {
-    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(HopsFSUserServer.class);
+public class UserTcpUdpServer {
+    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(UserTcpUdpServer.class);
 
     /**
      * The KryoNet server object. This is the actual server itself.
@@ -146,7 +146,7 @@ public class HopsFSUserServer {
     /**
      * Constructor.
      */
-    public HopsFSUserServer(Configuration conf, ServerlessNameNodeClient client) {
+    public UserTcpUdpServer(Configuration conf, ServerlessNameNodeClient client) {
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
         this.useUDP = conf.getBoolean(DFSConfigKeys.SERVERLESS_USE_UDP, DFSConfigKeys.SERVERLESS_USE_UDP_DEFAULT);
@@ -232,11 +232,13 @@ public class HopsFSUserServer {
 
     /**
      * Start the TCP server.
+     *
+     * @return The TCP port used by the server.
      */
-    public void startServer() throws IOException {
+    public int startServer() throws IOException {
         if (!enabled) {
             LOG.warn("TCP Server is NOT enabled. Server will NOT be started.");
-            return;
+            return -1;
         }
 
         if (useUDP)
@@ -299,6 +301,8 @@ public class HopsFSUserServer {
 
         client.setTcpServerPort(tcpPort);
         client.setUdpServerPort(udpPort);
+
+        return tcpPort;
     }
 
     /**
