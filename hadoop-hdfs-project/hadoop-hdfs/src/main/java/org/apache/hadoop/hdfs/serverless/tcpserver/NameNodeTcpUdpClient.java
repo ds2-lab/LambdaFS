@@ -324,8 +324,10 @@ public class NameNodeTcpUdpClient {
         //    return false;
 
         Client tcpClient = addClientIfNew(newClient);
-        if (tcpClient == null)
+        if (tcpClient == null) {
+            LOG.debug("Already have connection with client " + newClient);
             return false;
+        }
 
         tcpClient.addListener(new Listener.ThreadedListener(new Listener() {
             /**
