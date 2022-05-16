@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.tcpserver;
 
+import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
@@ -89,7 +90,7 @@ public class NameNodeTcpUdpClient {
      * With 7.5GB of RAM and 11% memory reserved for TCP buffers, this should allow for approximately
      * simultaneous 2,062 TCP connections.
      */
-    private static final int defaultWriteBufferSizeBytes = (int)2e5;
+    private static final int defaultWriteBufferSizeBytes = 10_000; // (int)2e5;
 
     /**
      * The size, in bytes, used for the object buffer of new TCP connections. Object buffers are used
@@ -98,7 +99,7 @@ public class NameNodeTcpUdpClient {
      * With 7.5GB of RAM and 11% memory reserved for TCP buffers, this should allow for approximately
      * simultaneous 2,062 TCP connections.
      */
-    private static final int defaultObjectBufferSizeBytes = (int)2e5;
+    private static final int defaultObjectBufferSizeBytes = 10_000; // (int)2e5;
 
     /**
      * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
@@ -110,7 +111,7 @@ public class NameNodeTcpUdpClient {
      * With 7.5GB of RAM and 11% memory reserved for TCP buffers, this should allow for approximately
      * simultaneous 2,062 TCP connections.
      */
-    private static final int maxBufferSize = (int)2e5;
+    private static final int maxBufferSize = 10_000; // (int)2e5;
 
     /**
      * The current size, in bytes, being used for TCP write buffers. If we notice a buffer overflow,
@@ -329,6 +330,9 @@ public class NameNodeTcpUdpClient {
                     result.addException(ex);
                 }
 
+                Kryo kryo = client.getKryo();
+                kryo.writeObject();
+
                 result.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
                 sendData(connection, result);
             }
@@ -424,12 +428,34 @@ public class NameNodeTcpUdpClient {
     }
 
     /**
+     * Send a series of bytes via TCP. Chunk the bytes into pieces if necessary.
+     *
+     * @param connection The TCP connection used to send the bytes.
+     * @param payload The bytes we're sending.
+     */
+    private void sendBytes(Connection connection, byte[] payload) {
+
+    }
+
+    /**
      * Send an object over a connection via TCP.
      * @param connection The connection over which we're sending an object.
      * @param payload The object to send.
      */
     private void sendData(Connection connection, Object payload) {
         int bytesSent;
+
+        // TODO: We may want to serialize the object BEFORE calling connection.sendTCP().
+        //       Then, we can check if the bytes are larger than the buffer size. If they
+        //       are, then we can send the object in pieces, and it can be reconstructed
+        //       at the client. This reconstruction can occur within the TCP server. That is,
+        //       the TCP server can determine if it has received a chunk of an object or the
+        //       full payload. If it received a chunk, then it waits until all chunks are
+        //       received before handing it off to whoever is waiting on it.
+        // TODO: (continued) This issue is that we want to use small buffer sizes, as many operations,
+        //       such as file reads/writes, require a very small amount of data to be sent. But operations
+        //       such as listing the contents of a directory with a large number of files will require
+        //       more (e.g., a directory with ~1000 files requires just over 60,000 bytes).
 
         if (useUDP)
             bytesSent = connection.sendUDP(payload);
