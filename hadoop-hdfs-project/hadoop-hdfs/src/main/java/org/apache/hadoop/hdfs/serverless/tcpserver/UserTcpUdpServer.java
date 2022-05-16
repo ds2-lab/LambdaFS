@@ -25,6 +25,7 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
 
 /**
@@ -105,6 +106,12 @@ public class UserTcpUdpServer {
     private final boolean enabled;
 
     /**
+     * Indicates that the server has been started. Used to prevent multiple calls to the
+     * {@link UserTcpUdpServer#startServer()} function from causing errors.
+     */
+    private boolean started;
+
+    /**
      * Number of unique deployments.
      */
     private final int totalNumberOfDeployments;
@@ -117,9 +124,12 @@ public class UserTcpUdpServer {
     private final ServerlessNameNodeClient client;
 
     /**
-     * Sizes to use for TCP server buffers.
+     * Base buffer size. This is multiplied by {@code maxNumClients} to calculate the value of
+     * {@code actualBufferSize}, which denotes the actual size of the buffers.
      */
-    private static final int bufferSizes = (int)12e6;
+    private final int baseBufferSize;
+
+    private final int actualBufferSize;
 
     /**
      * If we're using straggler mitigation, then we may receive a response from a NN after our straggler
@@ -144,11 +154,22 @@ public class UserTcpUdpServer {
     private String serverPrefix;
 
     /**
+     * The maximum number of clients that may use this TCP server to submit FS operations to NameNodes.
+     *
+     * We use this value to determine how big to make the buffers.
+     * Specifically, we multiply the base buffer size by this value.
+     */
+    private final int maxNumClients;
+
+    /**
      * Constructor.
      */
     public UserTcpUdpServer(Configuration conf, ServerlessNameNodeClient client) {
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+        this.maxNumClients = conf.getInt(SERVERLESS_CLIENTS_PER_TCP_SERVER,
+                SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT);
+        this.baseBufferSize = conf.getInt(SERVERLESS_TCP_BASE_BUFFER_SIZE, SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT);
         this.useUDP = conf.getBoolean(DFSConfigKeys.SERVERLESS_USE_UDP, DFSConfigKeys.SERVERLESS_USE_UDP_DEFAULT);
         this.udpPort = conf.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT_DEFAULT);
@@ -169,6 +190,12 @@ public class UserTcpUdpServer {
                 .expireAfterWrite(60, TimeUnit.SECONDS)
                 .build();
         this.client = client;
+
+        this.actualBufferSize = maxNumClients * baseBufferSize;
+
+        LOG.info("User server will be used by at-most " + maxNumClients +
+                (maxNumClients == 1 ? "client." : "clients.") + " Base buffer size: " + baseBufferSize +
+                " bytes. Total buffer size: " + actualBufferSize + " bytes each (there are 2 buffers).");
 
         // Read some options from config file.
         enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
@@ -194,7 +221,7 @@ public class UserTcpUdpServer {
         }
 
         // Create the TCP server.
-        server = new Server(bufferSizes, bufferSizes) {
+        server = new Server(actualBufferSize, actualBufferSize) {
           /**
            * By providing our own connection implementation, we can store per-connection state
            * without a connection ID to perform state look-up.
@@ -235,10 +262,15 @@ public class UserTcpUdpServer {
      *
      * @return The TCP port used by the server.
      */
-    public int startServer() throws IOException {
+    public synchronized int startServer() throws IOException {
         if (!enabled) {
             LOG.warn("TCP Server is NOT enabled. Server will NOT be started.");
             return -1;
+        }
+
+        if (started) {
+            LOG.warn("TCP Server has already been started.");
+            return tcpPort;
         }
 
         if (useUDP)
@@ -301,6 +333,8 @@ public class UserTcpUdpServer {
 
         client.setTcpServerPort(tcpPort);
         client.setUdpServerPort(udpPort);
+
+        this.started = true;
 
         return tcpPort;
     }
@@ -400,6 +434,34 @@ public class UserTcpUdpServer {
             return values[0];
 
         return values[(rng.nextInt(values.length))];
+    }
+
+    /**
+     * Return the TCP port being used by the server.
+     * This should only be called after {@link UserTcpUdpServer#startServer()} has been called.
+     * Otherwise, an IllegalStateException will be thrown.
+     *
+     * @throws IllegalStateException When the server has not yet been started.
+     */
+    public int getTcpPort() {
+        if (!started)
+            throw new IllegalStateException("User server has not been started yet. TCP port has not been assigned.");
+
+        return this.tcpPort;
+    }
+
+    /**
+     * Return the UDP port being used by the server.
+     * This should only be called after {@link UserTcpUdpServer#startServer()} has been called.
+     * Otherwise, an IllegalStateException will be thrown.
+     *
+     * @throws IllegalStateException When the server has not yet been started.
+     */
+    public int getUdpPort() {
+        if (!started)
+            throw new IllegalStateException("User server has not been started yet. UDP port has not been assigned.");
+
+        return this.udpPort;
     }
 
     /**

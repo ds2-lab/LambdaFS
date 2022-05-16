@@ -36,6 +36,7 @@ import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.ServerlessFunctionMapping;
+import org.apache.hadoop.hdfs.serverless.tcpserver.UserServerManager;
 import org.apache.hadoop.hdfs.serverless.tcpserver.UserTcpUdpServer;
 import org.apache.hadoop.hdfs.serverless.tcpserver.TcpRequestPayload;
 import org.apache.hadoop.hdfs.serverless.tcpserver.TcpTaskFuture;
@@ -91,7 +92,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     private final DFSClient dfsClient;
 
-    private final UserTcpUdpServer tcpServer;
+    /**
+     * The TCP/UDP server used to submit FS operations to remote NameNodes.
+     */
+    private UserTcpUdpServer tcpServer;
 
     /**
      * Number of unique deployments.
@@ -107,11 +111,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * Not really used by this class. Just used for debugging.
      */
     private final boolean udpEnabled;
-
-    /**
-     * Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
-     */
-    private final boolean localMode;
 
     /**
      * The log level argument to be passed to serverless functions.
@@ -169,7 +168,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * We use a rolling window when computing the average latency. This is the size of that rolling window.
      */
-    private int latencyWindowSize;
+    private final int latencyWindowSize;
+
+    /**
+     * The singleton {@link UserServerManager} instance. Used to register this client with a TCP server.
+     */
+    private final UserServerManager userServerManager;
 
     /**
      * If enabled, then the client will randomly issue an HTTP request, even when TCP is available. The
@@ -177,13 +181,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * so that the platform can still auto-scale to some degree. There is a separate parameter that
      * controls the chance that an HTTP request is issued in place of a TCP request.
      */
-    protected boolean randomHttpEnabled = false;
+    protected boolean randomHttpEnabled;
 
     /**
      * The percentage chance that a given TCP request will be replaced with an HTTP request.
      * This is only used when the {@code randomHttpEnabled} parameter is set to `true`.
      */
-    protected double randomHttpChance = 0.05f;
+    protected double randomHttpChance;
 
     /**
      * When straggler mitigation is enabled, this is the factor X such that a request
@@ -217,13 +221,26 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private final ZKClient zkClient;
 
+    /**
+     * Create a new instance of {@link ServerlessNameNodeClient}.
+     *
+     * IMPORTANT: The {@link ServerlessNameNodeClient#registerAndStartTcpServer()} function must be called after
+     * instantiating an instance of this class.
+     *
+     * @param conf The configuration used for the client. This also gets passed to the {@link UserServerManager} and
+     *             subsequently the {@link UserTcpUdpServer} instances.
+     * @param dfsClient The {@link DFSClient} instance instantiating us.
+     */
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
         serverlessEndpointBase = dfsClient.serverlessEndpoint;
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
         tcpEnabled = conf.getBoolean(SERVERLESS_TCP_REQUESTS_ENABLED, SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
         udpEnabled = conf.getBoolean(SERVERLESS_USE_UDP, SERVERLESS_USE_UDP_DEFAULT);
-        localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
+        /**
+         * Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
+         */
+        boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         latencyThreshold = conf.getDouble(SERVERLESS_LATENCY_THRESHOLD, SERVERLESS_LATENCY_THRESHOLD_DEFAULT);
         latencyWindowSize = conf.getInt(SERVERLESS_LATENCY_WINDOW_SIZE, SERVERLESS_LATENCY_WINDOW_SIZE_DEFAULT);
         randomHttpEnabled = conf.getBoolean(SERVERLESS_INVOKER_RANDOM_HTTP, SERVERLESS_INVOKER_RANDOM_HTTP_DEFAULT);
@@ -264,8 +281,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         this.dfsClient = dfsClient;
 
-        this.tcpServer = new UserTcpUdpServer(conf, this);
-        this.tcpServer.startServer();
+        userServerManager = UserServerManager.getInstance();
+        userServerManager.setConfiguration(conf);
+
+        // COMMENTED OUT:
+        // This is now performed in the `startServer()` function.
+        // this.tcpServer = new UserTcpUdpServer(conf, this);
+        // this.tcpServer.startServer();
 
         this.latency = new DescriptiveStatistics();
         this.latencyTcp = new DescriptiveStatistics();
@@ -331,6 +353,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         else
             throw new IllegalStateException("Unexpected result payload type from NN: " +
                     resultPayload.getClass().getSimpleName());
+    }
+
+    /**
+     * Register with the {@link UserServerManager} instance. Gets the TCP server this client will be using.
+     *
+     * This should be called outside this class' constructor. Specifically, whoever instantiates an instance of
+     * {@link ServerlessNameNodeClient} must call this function after instantiating the instance.
+     */
+    public void registerAndStartTcpServer() throws IOException {
+        // This function calls start on the server if necessary, so we don't need to do anything.
+        this.tcpServer = userServerManager.registerWithTcpServer(this);
     }
 
     public void setConsistencyProtocolEnabled(boolean enabled) {
@@ -1190,11 +1223,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void stop() {
         if (LOG.isDebugEnabled())
             LOG.debug("ServerlessNameNodeClient stopping now...");
-        this.tcpServer.stop();
+
+        if (this.tcpServer != null)
+            this.userServerManager.unregisterClient(this.tcpServer.getTcpPort());
+        // this.tcpServer.stop();
     }
 
     @Override
-    public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id) throws SQLException, IOException {
+    public JsonObject latencyBenchmark(String connectionUrl, String dataSource, String query, int id)
+            throws SQLException, IOException {
         throw new UnsupportedOperationException("Function has not yet been implemented.");
     }
 

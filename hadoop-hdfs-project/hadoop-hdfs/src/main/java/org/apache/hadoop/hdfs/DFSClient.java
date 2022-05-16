@@ -601,7 +601,13 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
               nnFallbackToSimpleAuth);
     }
 
-    this.namenode = new ServerlessNameNodeClient(conf, this);
+    // Create the ServerlessNameNodeClient instance and call then registerAndStartTcpServer()
+    // so that it gets assigned a TCP/UDP server.
+    ServerlessNameNodeClient client = new ServerlessNameNodeClient(conf, this);
+    client.registerAndStartTcpServer();
+    this.namenode = client;
+
+    // this.namenode = new ServerlessNameNodeClient(conf, this);
 
     LOG.warn("Skipping the set-up of namenode and leaderNN variables...");
     /*if (proxyInfo != null) {

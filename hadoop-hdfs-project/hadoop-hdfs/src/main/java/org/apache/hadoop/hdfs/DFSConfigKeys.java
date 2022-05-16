@@ -57,9 +57,6 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_ADDITIONAL_LIBS_PATH = "serverless.additional.libs.folder";
   public static final String SERVERLESS_ADDITIONAL_LIBS_PATH_DEFAULT = null;
 
-  public static final String SERVERLESS_CLIENTS_PER_TCP_SERVER = "serverless.tcpserver.numclients";
-  public static final int SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT = 16;
-
   /**
    * Location of the hdfs-site.xml and core-site.xml configuration files.
    */
@@ -153,6 +150,19 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    */
   public static final String SERVERLESS_TCP_SERVER_PORT = "serverless.tcp.port";
   public static final int SERVERLESS_TCP_SERVER_PORT_DEFAULT = 6000;
+
+  /**
+   * The number of clients thread that will use the same TCP server to send and receive requests.
+   */
+  public static final String SERVERLESS_CLIENTS_PER_TCP_SERVER = "serverless.tcp.clients-per-server";
+  public static final int SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT = 16;
+
+  /**
+   * The number of bytes allocated per client for the TCP server's buffers. This is multiplied
+   * by the number of clients per server to obtain the final buffer size used by the server.
+   */
+  public static final String SERVERLESS_TCP_BASE_BUFFER_SIZE = "serverless.tcp.base-buffer-size";
+  public static final int SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT = (int)12e6;
 
   /**
    * Port to use for UDP server.
