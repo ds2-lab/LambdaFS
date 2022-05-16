@@ -205,7 +205,7 @@ public class ExecutionManager {
         // Have we been idle long enough to warrant a GC? If so, then trigger one,
         // assuming we haven't already triggered a GC in this same idle interval.
         if (System.currentTimeMillis() - lastTaskExecutedTs > idleGcThreshold &&
-                numGCsTriggeredDuringThisIdleInterval <= maxGCsDuringSingleIdleInterval) {
+                numGCsTriggeredDuringThisIdleInterval < maxGCsDuringSingleIdleInterval) {
             LOG.debug("Manually triggering garbage collection!");
             System.gc();
             numGCsTriggeredDuringThisIdleInterval++;
