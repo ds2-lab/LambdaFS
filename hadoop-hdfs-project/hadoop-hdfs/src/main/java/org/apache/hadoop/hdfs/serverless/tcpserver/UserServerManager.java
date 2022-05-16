@@ -73,6 +73,11 @@ public class UserServerManager {
         this.maxClientsPerServer = configuration.getInt(SERVERLESS_CLIENTS_PER_TCP_SERVER,
                 SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT);
 
+        // If the user has specified a value <= 0, then all clients on the same VM will share the same server.
+        if (this.maxClientsPerServer <= 0) {
+            this.maxClientsPerServer = Integer.MAX_VALUE;
+        }
+
         this.conf = configuration;
         this.configured = true;
     }

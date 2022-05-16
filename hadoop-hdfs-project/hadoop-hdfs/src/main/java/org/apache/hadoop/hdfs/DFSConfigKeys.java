@@ -153,16 +153,25 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
 
   /**
    * The number of clients thread that will use the same TCP server to send and receive requests.
+   *
+   * A value <= 0 will make it so all clients on the same VM use the same TCP server.
    */
   public static final String SERVERLESS_CLIENTS_PER_TCP_SERVER = "serverless.tcp.clients-per-server";
-  public static final int SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT = 16;
+  public static final int SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT = -1;
+
+  /**
+   * The maximum size we should allocate for the TCP buffers,
+   * regardless of the number of clients per TCP server.
+   */
+  public static final String SERVERLESS_TCP_MAX_BUFFER_SIZE = "serverless.tcp.max-buffer-size";
+  public static final int SERVERLESS_TCP_MAX_BUFFER_SIZE_DEFAULT = (int)1e9;
 
   /**
    * The number of bytes allocated per client for the TCP server's buffers. This is multiplied
    * by the number of clients per server to obtain the final buffer size used by the server.
    */
   public static final String SERVERLESS_TCP_BASE_BUFFER_SIZE = "serverless.tcp.base-buffer-size";
-  public static final int SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT = (int)12e6;
+  public static final int SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT = (int)8e6;
 
   /**
    * Port to use for UDP server.

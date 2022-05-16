@@ -159,7 +159,7 @@ public class UserTcpUdpServer {
      * We use this value to determine how big to make the buffers.
      * Specifically, we multiply the base buffer size by this value.
      */
-    private final int maxNumClients;
+    // private final int maxNumClients;
 
     /**
      * Constructor.
@@ -167,8 +167,6 @@ public class UserTcpUdpServer {
     public UserTcpUdpServer(Configuration conf, ServerlessNameNodeClient client) {
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
-        this.maxNumClients = conf.getInt(SERVERLESS_CLIENTS_PER_TCP_SERVER,
-                SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT);
         this.baseBufferSize = conf.getInt(SERVERLESS_TCP_BASE_BUFFER_SIZE, SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT);
         this.useUDP = conf.getBoolean(DFSConfigKeys.SERVERLESS_USE_UDP, DFSConfigKeys.SERVERLESS_USE_UDP_DEFAULT);
         this.udpPort = conf.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
@@ -191,7 +189,18 @@ public class UserTcpUdpServer {
                 .build();
         this.client = client;
 
-        this.actualBufferSize = maxNumClients * baseBufferSize;
+        int maxNumClients = conf.getInt(SERVERLESS_CLIENTS_PER_TCP_SERVER,
+                SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT);
+        int maxBufferSize = conf.getInt(SERVERLESS_TCP_MAX_BUFFER_SIZE, SERVERLESS_TCP_MAX_BUFFER_SIZE_DEFAULT);
+
+        // If the configuration specifies a value <= 0, then all clients on this VM will use the same TCP server.
+        // In this case, we just set the buffer size to the max size for both the "write buffer" and "object buffer".
+        if (maxNumClients <= 0) {
+            maxNumClients = Integer.MAX_VALUE;
+            this.actualBufferSize = maxBufferSize;
+        } else {
+            this.actualBufferSize = Math.min(maxBufferSize, maxNumClients * baseBufferSize);
+        }
 
         LOG.info("User server will be used by at-most " + maxNumClients +
                 (maxNumClients == 1 ? "client." : "clients.") + " Base buffer size: " + baseBufferSize +

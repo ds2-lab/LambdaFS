@@ -304,7 +304,7 @@ public class NameNodeTcpUdpClient {
         //     return false;
 
         // We pass the writeBuffer and objectBuffer arguments to the Client constructor.
-        // Objects are serialized to the write buffer where the bytes are queued until they can
+        // Objects are serialized to the "Write Buffer" where the bytes are queued until they can
         // be written to the TCP socket. Normally the socket is writable and the bytes are written
         // immediately. If the socket cannot be written to and enough serialized objects are queued
         // to overflow the buffer, then the connection will be closed.
@@ -428,7 +428,8 @@ public class NameNodeTcpUdpClient {
         if (tcpClient.isConnected()) {
             if (LOG.isDebugEnabled())
                 LOG.debug("Successfully established connection with client " + newClient.getClientId()
-                        + " in " + connectMilliseconds + " milliseconds!");
+                        + " in " + connectMilliseconds + " milliseconds! There are now approximately " +
+                        clients.estimatedSize() + " active connections.");
 
             tcpClient.setKeepAliveTCP(6000);
 
