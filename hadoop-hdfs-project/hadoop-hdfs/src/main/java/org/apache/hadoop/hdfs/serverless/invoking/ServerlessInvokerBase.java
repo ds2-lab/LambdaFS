@@ -861,6 +861,9 @@ public abstract class ServerlessInvokerBase<T> {
         if (!nameNodeArgumentsJson.has(COMMAND_LINE_ARGS));
             nameNodeArgumentsJson.addProperty(COMMAND_LINE_ARGS, "-regular");
 
+        if (this.tcpEnabled && this.tcpPort == 0)
+            throw new IllegalStateException("TCP Port has not been initialized to correct value.");
+
         nameNodeArgumentsJson.addProperty(REQUEST_ID, requestId);
         nameNodeArgumentsJson.addProperty(DEBUG_NDB, debugEnabledNdb);
         nameNodeArgumentsJson.addProperty(DEBUG_STRING_NDB, debugStringNdb);
