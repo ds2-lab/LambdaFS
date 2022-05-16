@@ -148,9 +148,11 @@ public class UserServerManager {
             assignedServer = new UserTcpUdpServer(conf, client);
             int tcpPort = assignedServer.startServer();
 
-            LOG.debug("Created new TCP server with TCP port " + tcpPort + ".");
             serverClientCounts.put(tcpPort, 1);
             tcpPortToServerMapping.put(tcpPort, assignedServer);
+
+            LOG.debug("Created new TCP server with TCP port " + tcpPort + ". There are now " +
+                    tcpPortToServerMapping.size() + " unique TCP server(s).");
         } else {
             LOG.debug("Retrieving existing TCP server with TCP port " + assignedPort + ".");
             // Grab existing server and return it.
