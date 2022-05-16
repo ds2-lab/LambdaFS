@@ -330,9 +330,6 @@ public class NameNodeTcpUdpClient {
                     result.addException(ex);
                 }
 
-                Kryo kryo = client.getKryo();
-                kryo.writeObject();
-
                 result.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());
                 sendData(connection, result);
             }
