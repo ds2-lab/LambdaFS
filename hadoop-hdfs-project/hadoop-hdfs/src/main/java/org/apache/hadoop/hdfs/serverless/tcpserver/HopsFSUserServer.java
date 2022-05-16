@@ -985,10 +985,10 @@ public class HopsFSUserServer {
                 // At the time of writing this, ZooKeeper is configured with a tick time of 1,000ms.
                 // Sessions expire after two tick times, which is 2,000ms. Thus, we wait to check on
                 // the status of the NameNode until after ZooKeeper would've detected that it stopped.
-                ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-                scheduler.schedule(() -> {
-                    checkStatusOfDisconnectedNameNode(nnId, mappedDeploymentNumber);
-                }, 2500, TimeUnit.MILLISECONDS);
+//                ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+//                scheduler.schedule(() -> {
+//                    checkStatusOfDisconnectedNameNode(nnId, mappedDeploymentNumber);
+//                }, 2500, TimeUnit.MILLISECONDS);
             } else {
                 InetSocketAddress address = conn.getRemoteAddressTCP();
                 if (address == null)

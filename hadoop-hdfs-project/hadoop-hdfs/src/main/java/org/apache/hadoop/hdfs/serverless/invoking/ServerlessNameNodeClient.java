@@ -238,7 +238,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         serverlessFunctionLogLevel = conf.get(
                 SERVERLESS_DEFAULT_LOG_LEVEL, SERVERLESS_DEFAULT_LOG_LEVEL_DEFAULT).toUpperCase();
         zkClient = new SyncZKClient(conf);
-        zkClient.connect();
+        // zkClient.connect();
 
         if (localMode)
             numDeployments = 1;
