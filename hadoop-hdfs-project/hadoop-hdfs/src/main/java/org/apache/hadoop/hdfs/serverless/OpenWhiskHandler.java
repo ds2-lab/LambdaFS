@@ -340,8 +340,6 @@ public class OpenWhiskHandler extends BaseHandler {
             // Do this in a separate thread so that we can return the result back to the user immediately.
             new Thread(() -> {
                 try {
-                    if (LOG.isDebugEnabled())LOG.debug("Attempting to connect to client " + serverlessHopsFSClient +
-                            " in separate thread.");
                     tcpClient.addClient(serverlessHopsFSClient);
                 } catch (IOException ex) {
                     LOG.error("Encountered exception while connecting to client " + serverlessHopsFSClient + ":", ex);

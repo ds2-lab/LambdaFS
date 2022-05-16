@@ -37,9 +37,9 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeRes
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.ServerlessFunctionMapping;
 import org.apache.hadoop.hdfs.serverless.tcpserver.UserServerManager;
-import org.apache.hadoop.hdfs.serverless.tcpserver.UserTcpUdpServer;
-import org.apache.hadoop.hdfs.serverless.tcpserver.TcpRequestPayload;
-import org.apache.hadoop.hdfs.serverless.tcpserver.TcpTaskFuture;
+import org.apache.hadoop.hdfs.serverless.tcpserver.UserServer;
+import org.apache.hadoop.hdfs.serverless.tcpserver.TcpUdpRequestPayload;
+import org.apache.hadoop.hdfs.serverless.tcpserver.TcpUdpTaskFuture;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -95,7 +95,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * The TCP/UDP server used to submit FS operations to remote NameNodes.
      */
-    private UserTcpUdpServer tcpServer;
+    private UserServer tcpServer;
 
     /**
      * Number of unique deployments.
@@ -205,7 +205,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * Minimum length of timeout when using straggler mitigation. If it is too short, then we'll thrash (responses
      * will come back but only after we've prematurely timed out, and this will turn into a cycle). There is a
      * mechanism in-place to prevent this thrashing (the TCP server holds onto results it receives that do not have
-     * an associated {@link TcpTaskFuture}, but still.
+     * an associated {@link TcpUdpTaskFuture}, but still.
      */
     protected int minimumStragglerMitigationTimeout;
 
@@ -228,7 +228,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * instantiating an instance of this class.
      *
      * @param conf The configuration used for the client. This also gets passed to the {@link UserServerManager} and
-     *             subsequently the {@link UserTcpUdpServer} instances.
+     *             subsequently the {@link UserServer} instances.
      * @param dfsClient The {@link DFSClient} instance instantiating us.
      */
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
@@ -520,7 +520,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String requestId = UUID.randomUUID().toString();
 
         // This contains the file system operation arguments (and everything else) that will be submitted to the NN.
-        TcpRequestPayload tcpRequestPayload = new TcpRequestPayload(requestId, operationName,
+        TcpUdpRequestPayload tcpRequestPayload = new TcpUdpRequestPayload(requestId, operationName,
                 consistencyProtocolEnabled, OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel),
                 opArguments.getAllArguments(), benchmarkModeEnabled);
 
@@ -563,8 +563,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         operationName, tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
 
                 // This only ever happens when the request is cancelled.
-                if (response instanceof TcpRequestPayload) {
-                    TcpRequestPayload requestPayload = (TcpRequestPayload)response;
+                if (response instanceof TcpUdpRequestPayload) {
+                    TcpUdpRequestPayload requestPayload = (TcpUdpRequestPayload)response;
 
                     if (!requestPayload.isCancelled())
                         throw new IllegalStateException("Obtained TcpRequestPayload as response from TCP request '" +

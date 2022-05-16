@@ -8,7 +8,7 @@ import java.util.HashMap;
 /**
  * Sent directly to NameNodes by clients rather than using the JSON representation.
  */
-public class TcpRequestPayload implements Serializable {
+public class TcpUdpRequestPayload implements Serializable {
     private static final long serialVersionUID = -7628398756895387675L;
 
     /**
@@ -63,9 +63,9 @@ public class TcpRequestPayload implements Serializable {
      */
     private transient String cancellationReason = null;
 
-    public TcpRequestPayload(String requestId, String operationName, boolean consistencyProtocolEnabled,
-                             int serverlessFunctionLogLevel, HashMap<String, Object> fsOperationArguments,
-                             boolean benchmarkingModeEnabled) {
+    public TcpUdpRequestPayload(String requestId, String operationName, boolean consistencyProtocolEnabled,
+                                int serverlessFunctionLogLevel, HashMap<String, Object> fsOperationArguments,
+                                boolean benchmarkingModeEnabled) {
         this.requestId = requestId;
         this.operationName = operationName;
         this.consistencyProtocolEnabled = consistencyProtocolEnabled;
@@ -78,7 +78,7 @@ public class TcpRequestPayload implements Serializable {
             this.fsOperationArguments = new HashMap<>();
     }
 
-    private TcpRequestPayload() { }
+    private TcpUdpRequestPayload() { }
 
     public HashMap<String, Object> getFsOperationArguments() { return this.fsOperationArguments; }
 

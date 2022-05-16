@@ -67,7 +67,7 @@ public class ServerlessClientServerUtilities {
 
         kryo.register(NameNodeResult.class);
         kryo.register(ServerlessFunctionMapping.class);
-        kryo.register(TcpRequestPayload.class);
+        kryo.register(TcpUdpRequestPayload.class);
         kryo.register(NameNodeResultWithMetrics.class);
         kryo.register(TransactionEvent.class);
         kryo.register(TransactionAttempt.class);

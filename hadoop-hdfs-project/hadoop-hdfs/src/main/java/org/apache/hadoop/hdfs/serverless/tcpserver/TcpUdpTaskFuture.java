@@ -3,7 +3,6 @@ package org.apache.hadoop.hdfs.serverless.tcpserver;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
@@ -16,7 +15,7 @@ import java.util.concurrent.*;
  *
  * These are used on the client side.
  */
-public class TcpTaskFuture implements Future<Object> {
+public class TcpUdpTaskFuture implements Future<Object> {
     private static final Log LOG = LogFactory.getLog(FileSystemTask.class);
 
     private enum State {WAITING, DONE, CANCELLED, ERROR}
@@ -46,14 +45,14 @@ public class TcpTaskFuture implements Future<Object> {
     /**
      * The payload that was submitted for this request.
      */
-    private TcpRequestPayload associatedPayload;
+    private TcpUdpRequestPayload associatedPayload;
 
     /**
      * This is used to receive the result of the future from the worker thread.
      */
     private final BlockingQueue<Object> resultQueue = new ArrayBlockingQueue<>(1);
 
-    public TcpTaskFuture(TcpRequestPayload associatedPayload, long targetNameNodeId) {
+    public TcpUdpTaskFuture(TcpUdpRequestPayload associatedPayload, long targetNameNodeId) {
         this.requestId = associatedPayload.getRequestId();
         this.operationName = associatedPayload.getOperationName();
         this.createdAt = System.nanoTime();
@@ -118,7 +117,7 @@ public class TcpTaskFuture implements Future<Object> {
             return null;
         else if (resultOrNull instanceof JsonObject ||      // Probably shouldn't happen anymore?
                 resultOrNull instanceof NameNodeResult ||   // Standard result.
-                resultOrNull instanceof TcpRequestPayload)  // Request got cancelled.
+                resultOrNull instanceof TcpUdpRequestPayload)  // Request got cancelled.
             return resultOrNull;
         else
             throw new IllegalArgumentException("Received invalid object type as response for request " + requestId
@@ -137,7 +136,7 @@ public class TcpTaskFuture implements Future<Object> {
             return null;
         else if (resultOrNull instanceof JsonObject ||      // Probably shouldn't happen anymore?
                 resultOrNull instanceof NameNodeResult ||   // Standard result.
-                resultOrNull instanceof TcpRequestPayload)  // Request got cancelled.
+                resultOrNull instanceof TcpUdpRequestPayload)  // Request got cancelled.
             return resultOrNull;
         else
             throw new IllegalArgumentException("Received invalid object type as response for request " + requestId
@@ -228,10 +227,10 @@ public class TcpTaskFuture implements Future<Object> {
         if (this == obj)
             return true;
 
-        if (!(obj instanceof TcpTaskFuture))
+        if (!(obj instanceof TcpUdpTaskFuture))
             return false;
 
-        TcpTaskFuture other = (TcpTaskFuture)obj;
+        TcpUdpTaskFuture other = (TcpUdpTaskFuture)obj;
 
         return this.requestId.equals(other.requestId);
     }

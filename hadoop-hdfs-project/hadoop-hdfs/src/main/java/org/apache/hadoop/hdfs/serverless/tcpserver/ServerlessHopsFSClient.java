@@ -66,6 +66,8 @@ public class ServerlessHopsFSClient {
 
     public boolean getUdpEnabled() { return udpEnabled; }
 
+    public String getTcpString() { return clientIp + ":" + tcpPort; }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == null)

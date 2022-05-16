@@ -22,9 +22,9 @@ public class UserServerManager {
     private static UserServerManager instance;
 
     /**
-     * Map from server TCP port to the associated {@link UserTcpUdpServer} instance.
+     * Map from server TCP port to the associated {@link UserServer} instance.
      */
-    private final ConcurrentHashMap<Integer, UserTcpUdpServer> tcpPortToServerMapping;
+    private final ConcurrentHashMap<Integer, UserServer> tcpPortToServerMapping;
 
     /**
      * Map from server TCP port to the number of clients it has assigned to it.
@@ -33,7 +33,7 @@ public class UserServerManager {
 
     /**
      * The configuration that was used to configure this instance. This will
-     * also be passed to the constructor of each {@link UserTcpUdpServer} that
+     * also be passed to the constructor of each {@link UserServer} that
      * gets created.
      */
     private volatile Configuration conf;
@@ -65,7 +65,7 @@ public class UserServerManager {
      * Set the configuration of the UserServerManager instance. If the instance has
      * already been configured by another thread, then this function returns immediately.
      * @param configuration Configuration to be applied to both this instance and every
-     *                      {@link UserTcpUdpServer} that gets created.
+     *                      {@link UserServer} that gets created.
      */
     public synchronized void setConfiguration(Configuration configuration) {
         if (configured) return;
@@ -113,7 +113,7 @@ public class UserServerManager {
      * Register a client with a TCP server. All that actually happens here is that
      * the client gets the TCP server that it will use for communicating with NameNodes.
      *
-     * NOTE: If this function has to create a new TCP server, then it will call {@link UserTcpUdpServer#startServer()}
+     * NOTE: If this function has to create a new TCP server, then it will call {@link UserServer#startServer()}
      * automatically, so that function does not need to be called again.
      *
      * @param client The client registering with us. The {@link ServerlessNameNodeClient} should call this
@@ -121,9 +121,9 @@ public class UserServerManager {
      *
      * @return The TCP server that this particular client should use.
      */
-    public synchronized UserTcpUdpServer registerWithTcpServer(ServerlessNameNodeClient client)
+    public synchronized UserServer registerWithTcpServer(ServerlessNameNodeClient client)
             throws IOException {
-        UserTcpUdpServer assignedServer;
+        UserServer assignedServer;
         int oldNumClients = -1;
         int assignedPort = -1;
 
@@ -145,7 +145,7 @@ public class UserServerManager {
         if (oldNumClients == -1 && assignedPort == -1) {
             // Create new TCP server.
             LOG.debug("Creating new user server...");
-            assignedServer = new UserTcpUdpServer(conf, client);
+            assignedServer = new UserServer(conf, client);
             int tcpPort = assignedServer.startServer();
 
             serverClientCounts.put(tcpPort, 1);

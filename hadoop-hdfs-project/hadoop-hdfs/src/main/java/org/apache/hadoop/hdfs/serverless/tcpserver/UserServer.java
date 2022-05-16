@@ -35,8 +35,8 @@ import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServer
  *
  * This is used on the client side (i.e., NOT on the NameNode side).
  */
-public class UserTcpUdpServer {
-    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(UserTcpUdpServer.class);
+public class UserServer {
+    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(UserServer.class);
 
     /**
      * The KryoNet server object. This is the actual server itself.
@@ -68,7 +68,7 @@ public class UserTcpUdpServer {
      * The TCP Server maintains a collection of Futures for clients that are awaiting a response from
      * the NameNode to which they issued a request.
      */
-    private final ConcurrentHashMap<String, TcpTaskFuture> activeFutures;
+    private final ConcurrentHashMap<String, TcpUdpTaskFuture> activeFutures;
 
     /**
      * We also map the unique IDs of NameNodes to their deployments. This is used for debugging/logging and for
@@ -80,7 +80,7 @@ public class UserTcpUdpServer {
      * A collection of all the futures that we've completed in one way or another (either they
      * were cancelled or we received a result for them).
      */
-    private final Cache<String, TcpTaskFuture> completedFutures;
+    private final Cache<String, TcpUdpTaskFuture> completedFutures;
 
     /**
      * Associate with each connection the list of futures that have been submitted and NOT completed.
@@ -88,7 +88,7 @@ public class UserTcpUdpServer {
      *
      * If the connection is lost, then these futures must be re-submitted via HTTP.
      */
-    private final ConcurrentHashMap<Long, List<TcpTaskFuture>> submittedFutures;
+    private final ConcurrentHashMap<Long, List<TcpUdpTaskFuture>> submittedFutures;
 
     /**
      * Mapping of task/request ID to the NameNode to which the task/request was submitted.
@@ -107,7 +107,7 @@ public class UserTcpUdpServer {
 
     /**
      * Indicates that the server has been started. Used to prevent multiple calls to the
-     * {@link UserTcpUdpServer#startServer()} function from causing errors.
+     * {@link UserServer#startServer()} function from causing errors.
      */
     private boolean started;
 
@@ -164,7 +164,7 @@ public class UserTcpUdpServer {
     /**
      * Constructor.
      */
-    public UserTcpUdpServer(Configuration conf, ServerlessNameNodeClient client) {
+    public UserServer(Configuration conf, ServerlessNameNodeClient client) {
         this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
         this.baseBufferSize = conf.getInt(SERVERLESS_TCP_BASE_BUFFER_SIZE, SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT);
@@ -385,10 +385,14 @@ public class UserTcpUdpServer {
             if (oldConnection.isConnected()) {
                 LOG.warn(serverPrefix + " Already have an ACTIVE conn to NameNode " + nameNodeId +
                         " (deployment #" + deploymentNumber + ".");
-                LOG.warn(serverPrefix + " Replacing old, ACTIVE conn to NameNode " + nameNodeId +
-                        " (deployment #" + deploymentNumber + ") with a new one...");
+                //LOG.warn(serverPrefix + " Replacing old, ACTIVE conn to NameNode " + nameNodeId +
+                //        " (deployment #" + deploymentNumber + ") with a new one...");
 
-                oldConnection.close();
+                //oldConnection.close();
+
+                // Keep old connection until it gets closed.
+                connection.close();
+                return;
             } else {
                 LOG.error(serverPrefix + " Already have a conn to NameNode " + nameNodeId + " (deployment #" +
                         deploymentNumber + "), but it is apparently no longer connected...");
@@ -447,7 +451,7 @@ public class UserTcpUdpServer {
 
     /**
      * Return the TCP port being used by the server.
-     * This should only be called after {@link UserTcpUdpServer#startServer()} has been called.
+     * This should only be called after {@link UserServer#startServer()} has been called.
      * Otherwise, an IllegalStateException will be thrown.
      *
      * @throws IllegalStateException When the server has not yet been started.
@@ -461,7 +465,7 @@ public class UserTcpUdpServer {
 
     /**
      * Return the UDP port being used by the server.
-     * This should only be called after {@link UserTcpUdpServer#startServer()} has been called.
+     * This should only be called after {@link UserServer#startServer()} has been called.
      * Otherwise, an IllegalStateException will be thrown.
      *
      * @throws IllegalStateException When the server has not yet been started.
@@ -549,7 +553,7 @@ public class UserTcpUdpServer {
                     // Remove the list of futures associated with this connection.
                     // TODO: Should we resubmit these via HTTP? Or just drop them, effectively?
                     //       Currently, we're just dropping them.
-                    List<TcpTaskFuture> incompleteFutures = submittedFutures.get(connection.name);
+                    List<TcpUdpTaskFuture> incompleteFutures = submittedFutures.get(connection.name);
                     if (incompleteFutures.size() > 0) {
                         LOG.warn("Connection to NameNode " + nameNodeId + " has " + incompleteFutures.size() +
                                 " incomplete futures associated with it, yet we're deleting the connection...");
@@ -670,15 +674,15 @@ public class UserTcpUdpServer {
      * @param associatedPayload The payload that we will be sending via TCP to the target NameNode.
      * @param nnId The NameNodeID of the target NN.
      *
-     * @return A new {@link TcpTaskFuture} object if one does not already exist.
+     * @return A new {@link TcpUdpTaskFuture} object if one does not already exist.
      * Otherwise, returns the existing RequestResponseFuture object.
      */
-    public TcpTaskFuture registerRequestResponseFuture(TcpRequestPayload associatedPayload, long nnId) {
-        TcpTaskFuture requestResponseFuture = activeFutures.getOrDefault(associatedPayload.getRequestId(), null);
+    public TcpUdpTaskFuture registerRequestResponseFuture(TcpUdpRequestPayload associatedPayload, long nnId) {
+        TcpUdpTaskFuture requestResponseFuture = activeFutures.getOrDefault(associatedPayload.getRequestId(), null);
 
         // TODO: Previously, this function also checked completedFutures before registering. Do we need to do this?
         if (requestResponseFuture == null) {
-            requestResponseFuture = new TcpTaskFuture(associatedPayload, nnId);
+            requestResponseFuture = new TcpUdpTaskFuture(associatedPayload, nnId);
             activeFutures.put(requestResponseFuture.getRequestId(), requestResponseFuture);
         }
 
@@ -691,7 +695,7 @@ public class UserTcpUdpServer {
      * @param requestId The ID of the request/task that was resolved via TCP.
      */
     public boolean deactivateFuture(String requestId) {
-        TcpTaskFuture future = activeFutures.remove(requestId);
+        TcpUdpTaskFuture future = activeFutures.remove(requestId);
 
         if (future != null) {
             completedFutures.put(requestId, future);
@@ -702,7 +706,7 @@ public class UserTcpUdpServer {
                 // Remove this future from the submitted futures list associated with the connection,
                 // if it exists.
                 if (connection != null && submittedFutures.containsKey(connection.name)) {
-                    List<TcpTaskFuture> futures = submittedFutures.get(connection.name);
+                    List<TcpUdpTaskFuture> futures = submittedFutures.get(connection.name);
                     futures.remove(future);
                 }
             }
@@ -726,8 +730,8 @@ public class UserTcpUdpServer {
      *                                        to the same NN at which the request previously timed-out.
      * @return A Future representing the eventual response from the NameNode.
      */
-    public TcpTaskFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck, String requestId,
-                                         TcpRequestPayload payload, boolean tryToAvoidTargetingSameNameNode) {
+    public TcpUdpTaskFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck, String requestId,
+                                            TcpUdpRequestPayload payload, boolean tryToAvoidTargetingSameNameNode) {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
             LOG.warn(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
                     " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
@@ -771,10 +775,10 @@ public class UserTcpUdpServer {
             return null;
         }
 
-        TcpTaskFuture requestResponseFuture = registerRequestResponseFuture(payload, tcpConnection.name);
+        TcpUdpTaskFuture requestResponseFuture = registerRequestResponseFuture(payload, tcpConnection.name);
 
         // Make note of this future as being incomplete.
-        List<TcpTaskFuture> incompleteFutures = submittedFutures.computeIfAbsent(
+        List<TcpUdpTaskFuture> incompleteFutures = submittedFutures.computeIfAbsent(
                 tcpConnection.name, k -> new ArrayList<>());
 
         incompleteFutures.add(requestResponseFuture);
@@ -826,7 +830,7 @@ public class UserTcpUdpServer {
      * @return The response from the NameNode, or null if the request failed for some reason.
      */
     public Object issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, String requestId,
-                                         String operationName, TcpRequestPayload payload, long timeout,
+                                         String operationName, TcpUdpRequestPayload payload, long timeout,
                                          boolean tryToAvoidTargetingSameNameNode)
             throws ExecutionException, InterruptedException, TimeoutException, IOException {
         if (deploymentNumber == -1) {
@@ -859,12 +863,12 @@ public class UserTcpUdpServer {
                 return previouslyReceivedResult;
         }
         else if (completedFutures.asMap().containsKey(requestId)) {
-            TcpTaskFuture future = completedFutures.getIfPresent(requestId);
+            TcpUdpTaskFuture future = completedFutures.getIfPresent(requestId);
             if (future != null && future.isDone()) return future.get();
         }
 
         long startTime = System.nanoTime();
-        TcpTaskFuture requestResponseFuture = issueTcpRequest(
+        TcpUdpTaskFuture requestResponseFuture = issueTcpRequest(
                 deploymentNumber, bypassCheck, requestId, payload, tryToAvoidTargetingSameNameNode);
 
         double tcpSendDuration = (System.nanoTime() - startTime) / 1.0e6;
@@ -892,7 +896,7 @@ public class UserTcpUdpServer {
     private void handleResult(NameNodeResult result, NameNodeConnection connection) {
         String requestId = result.getRequestId();
 
-        TcpTaskFuture future = activeFutures.getOrDefault(requestId, null);
+        TcpUdpTaskFuture future = activeFutures.getOrDefault(requestId, null);
 
         // If there is no future associated with this operation, then we have no means to return
         // the result back to the client who issued the file system operation.
@@ -916,7 +920,7 @@ public class UserTcpUdpServer {
         completedFutures.put(requestId, future); // Do this first to prevent races.
         activeFutures.remove(requestId);
 
-        List<TcpTaskFuture> incompleteFutures = submittedFutures.get(connection.name);
+        List<TcpUdpTaskFuture> incompleteFutures = submittedFutures.get(connection.name);
         incompleteFutures.remove(future);
 
         if (LOG.isDebugEnabled()) {
@@ -1081,7 +1085,7 @@ public class UserTcpUdpServer {
          * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
          */
         private void cancelRequests(long nameNodeId) {
-            List<TcpTaskFuture> incompleteFutures = submittedFutures.get(nameNodeId);
+            List<TcpUdpTaskFuture> incompleteFutures = submittedFutures.get(nameNodeId);
 
             if (incompleteFutures == null) {
                 if (LOG.isDebugEnabled()) LOG.debug(serverPrefix +
@@ -1093,7 +1097,7 @@ public class UserTcpUdpServer {
                     + " incomplete future(s) associated with now-terminated connection to NN " + nameNodeId);
 
             // Cancel each of the futures.
-            for (TcpTaskFuture future : incompleteFutures) {
+            for (TcpUdpTaskFuture future : incompleteFutures) {
                 if (LOG.isDebugEnabled()) LOG.debug("    " + serverPrefix + " Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
                 try {
                     future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);

@@ -3,7 +3,7 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hdfs.serverless.tcpserver.TcpRequestPayload;
+import org.apache.hadoop.hdfs.serverless.tcpserver.TcpUdpRequestPayload;
 import org.apache.kerby.util.Base64;
 
 import java.io.IOException;
@@ -45,7 +45,7 @@ public class ArgumentContainer {
     private final HashMap<String, Serializable> objectArguments;
 
     /**
-     * We maintain this HashMap so that we can just include it directly in the {@link TcpRequestPayload} object,
+     * We maintain this HashMap so that we can just include it directly in the {@link TcpUdpRequestPayload} object,
      * rather than having to build it up at the end.
      */
     private final HashMap<String, Object> allArguments;
