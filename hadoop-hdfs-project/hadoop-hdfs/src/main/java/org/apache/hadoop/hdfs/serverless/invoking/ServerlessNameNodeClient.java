@@ -285,7 +285,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         userServerManager.setConfiguration(conf);
 
         // COMMENTED OUT:
-        // This is now performed in the `startServer()` function.
+        // This is now performed in the `registerAndStartTcpServer()` function.
         // this.tcpServer = new UserTcpUdpServer(conf, this);
         // this.tcpServer.startServer();
 
