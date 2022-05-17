@@ -109,6 +109,8 @@ public abstract class ServerlessInvokerBase<T> {
      */
     protected boolean localMode;
 
+    private CloseableHttpPipeliningClient pipelineHttpClient;
+
     /**
      * The maximum amount of time to wait before issuing another HTTP request after the previous request failed.
      *
@@ -349,7 +351,8 @@ public abstract class ServerlessInvokerBase<T> {
     }
 
     private void processOutgoingRequests() {
-        CloseableHttpPipeliningClient httpclient = HttpAsyncClients.createPipelining();
+        if (outgoingRequests.size() == 0) return;
+
         String suffix;
         HttpHost targetHost;
         if (localMode) {
@@ -363,6 +366,13 @@ public abstract class ServerlessInvokerBase<T> {
 
         Map<Integer, List<OutgoingRequest>> requestsPerDeployment = new HashMap<>();
 
+        if (LOG.isDebugEnabled()) {
+            if (outgoingRequests.size() == 1)
+                LOG.debug("There is " + outgoingRequests.size() + " request in the queue.");
+            else
+                LOG.debug("There are " + outgoingRequests.size() + " requests in the queue.");
+        }
+
         int numRequestsProcessed = 0;
         while (outgoingRequests.size() > 0 && numRequestsProcessed < 100) {
             OutgoingRequest request = outgoingRequests.poll();
@@ -374,6 +384,8 @@ public abstract class ServerlessInvokerBase<T> {
             deploymentRequests.add(request);
             numRequestsProcessed++;
         }
+
+        LOG.debug("Preparing " + numRequestsProcessed + " request(s) for execution.");
 
         for (Map.Entry<Integer, List<OutgoingRequest>> entry : requestsPerDeployment.entrySet()) {
             List<OutgoingRequest> outgoingRequestsForDeployment = entry.getValue();
@@ -417,9 +429,9 @@ public abstract class ServerlessInvokerBase<T> {
             }
         }
 
-        LOG.debug("There are " + requests.size() + " requests to send.");
+        LOG.debug("There are " + requests.size() + " requests ready to send.");
 
-        httpclient.execute(targetHost, requests,
+        pipelineHttpClient.execute(targetHost, requests,
                 new FutureCallback<List<HttpResponse>>() {
             @Override
             public void completed(final List<HttpResponse> responses) {
@@ -453,6 +465,8 @@ public abstract class ServerlessInvokerBase<T> {
                 LOG.error("HTTP future was cancelled.");
             }
         });
+
+        LOG.debug("Sent " + requests.size() + " requests.");
     }
 
     /**
@@ -500,6 +514,8 @@ public abstract class ServerlessInvokerBase<T> {
             LOG.debug("NDB debug enabled: " + debugEnabledNdb);
             LOG.debug("TCP Enabled: " + tcpEnabled);
             LOG.debug("UDP Enabled: " + udpEnabled);
+            LOG.debug("Batch size: " + batchSize);
+            LOG.debug("Send interval: " + sendInterval);
 
             if (debugEnabledNdb) LOG.debug("NDB debug string: " + debugStringNdb);
         }
@@ -510,6 +526,8 @@ public abstract class ServerlessInvokerBase<T> {
             e.printStackTrace();
             return;
         }
+
+        pipelineHttpClient = HttpAsyncClients.createPipelining();
 
         outgoingRequests = new LinkedBlockingQueue<>();
 
