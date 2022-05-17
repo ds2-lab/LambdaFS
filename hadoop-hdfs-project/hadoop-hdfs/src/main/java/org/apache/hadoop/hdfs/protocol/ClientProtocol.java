@@ -69,6 +69,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+
 import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.io.retry.AtMostOnce;
 
@@ -1377,7 +1379,7 @@ public interface ClientProtocol {
    * @param targetDeployment The deployment from which a NameNode will be invoked.
    */
   @Idempotent
-  public void ping(int targetDeployment) throws IOException, InterruptedException;
+  public void ping(int targetDeployment) throws IOException, InterruptedException, ExecutionException;
 
   /**
    * Attempt to pre-warm the NameNodes by pinging each deployment the specified number of times.

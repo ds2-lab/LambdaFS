@@ -21,6 +21,7 @@ import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -1062,7 +1063,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * Ping a particular serverless NameNode deployment (i.e., invoke a NameNode from the specified deployment).
    * @param targetDeployment The deployment from which a NameNode will be invoked.
    */
-  public void ping(int targetDeployment) throws IOException, InterruptedException {
+  public void ping(int targetDeployment) throws IOException, InterruptedException, ExecutionException {
     this.namenode.ping(targetDeployment);
   }
 

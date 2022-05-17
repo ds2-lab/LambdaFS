@@ -93,6 +93,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
@@ -153,7 +154,7 @@ public class DistributedFileSystem extends FileSystem {
    * Ping a particular serverless NameNode deployment (i.e., invoke a NameNode from the specified deployment).
    * @param targetDeployment The deployment from which a NameNode will be invoked.
    */
-  public void ping(int targetDeployment) throws IOException, InterruptedException {
+  public void ping(int targetDeployment) throws IOException, InterruptedException, ExecutionException {
     Instant start = Instant.now();
     dfs.ping(targetDeployment);
     Instant end = Instant.now();
