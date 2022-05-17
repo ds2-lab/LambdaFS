@@ -1754,15 +1754,17 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   }
 
   // Added for debugging serverless NN.
-  public void printDebugInformation() {
+  public int printDebugInformation() {
     if (namenode instanceof ServerlessNameNodeClient) {
       ServerlessNameNodeClient client = (ServerlessNameNodeClient)namenode;
-      client.printDebugInformation();
+      return client.printDebugInformation();
     } else {
       // The type of the `namenode` variable for Serverless HopsFS should be 'ServerlessNameNodeClient'.
       // If it isn't, then none of the Serverless-specific APIs will work.
       throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
     }
+
+    return 0;
   }
 
   /**

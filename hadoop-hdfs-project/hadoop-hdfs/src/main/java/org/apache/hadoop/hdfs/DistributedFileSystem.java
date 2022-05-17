@@ -199,8 +199,8 @@ public class DistributedFileSystem extends FileSystem {
   }
 
   // Added for debugging serverless NN.
-  public void printDebugInformation() {
-    this.dfs.printDebugInformation();
+  public int printDebugInformation() {
+    return this.dfs.printDebugInformation();
   }
 
   public void setBenchmarkModeEnabled(boolean benchmarkModeEnabled) {

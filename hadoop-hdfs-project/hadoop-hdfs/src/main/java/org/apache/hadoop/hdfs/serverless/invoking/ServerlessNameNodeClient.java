@@ -384,8 +384,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         return this.serverlessFunctionLogLevel;
     }
 
-    public void printDebugInformation() {
-        this.tcpServer.printDebugInformation();
+    public int printDebugInformation() {
+        return this.tcpServer.printDebugInformation();
     }
 
     /**
