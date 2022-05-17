@@ -153,7 +153,7 @@ public class DistributedFileSystem extends FileSystem {
    * Ping a particular serverless NameNode deployment (i.e., invoke a NameNode from the specified deployment).
    * @param targetDeployment The deployment from which a NameNode will be invoked.
    */
-  public void ping(int targetDeployment) throws IOException {
+  public void ping(int targetDeployment) throws IOException, InterruptedException {
     Instant start = Instant.now();
     dfs.ping(targetDeployment);
     Instant end = Instant.now();

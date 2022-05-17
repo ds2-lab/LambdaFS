@@ -186,6 +186,8 @@ class BPServiceActor implements Runnable {
       } catch (IOException e) {  // namenode is not available
         LOG.warn("IOException encountered while performing serverless NN handshake.", e);
         //LOG.warn("Problem connecting to server: " + nnAddr);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
       }
 
       // try again in a second

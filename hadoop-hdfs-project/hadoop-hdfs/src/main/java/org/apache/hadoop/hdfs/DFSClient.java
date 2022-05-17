@@ -1078,7 +1078,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * Ping a particular serverless NameNode deployment (i.e., invoke a NameNode from the specified deployment).
    * @param targetDeployment The deployment from which a NameNode will be invoked.
    */
-  public void ping(int targetDeployment) throws IOException {
+  public void ping(int targetDeployment) throws IOException, InterruptedException {
     this.namenode.ping(targetDeployment);
   }
 

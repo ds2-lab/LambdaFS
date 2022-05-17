@@ -15,10 +15,7 @@ import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.UserServerManager;
 import org.apache.hadoop.util.ExponentialBackOff;
-import org.apache.http.Header;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
-import org.apache.http.NoHttpResponseException;
+import org.apache.http.*;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -33,6 +30,8 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.impl.nio.client.CloseableHttpPipeliningClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.util.EntityUtils;
 
 import javax.net.ssl.*;
@@ -45,9 +44,7 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
@@ -225,7 +222,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Outgoing requests are placed in this list and sent in batches
      * (of a configurable size) on a configurable interval.
      */
-    private LinkedBlockingQueue[] outgoingRequests;
+    private LinkedBlockingQueue<OutgoingRequest> outgoingRequests;
 
     /**
      * We batch individual requests together to reduce per-request overhead.
@@ -341,6 +338,64 @@ public abstract class ServerlessInvokerBase<T> {
         transactionEvents = new HashMap<>();
     }
 
+    private void processOutgoingRequests() {
+        CloseableHttpPipeliningClient httpclient = HttpAsyncClients.createPipelining();
+        String suffix = "/api/v1/web/whisk.system/default/namenode";
+        HttpHost targetHost = new HttpHost("https://34.86.224.47", 444);
+        List<HttpRequest> requests = new ArrayList<>();
+
+        Map<Integer, List<OutgoingRequest>> requestsPerDeployment = new HashMap<>();
+
+        int numRequestsProcessed = 0;
+        while (outgoingRequests.size() > 0 && numRequestsProcessed < 100) {
+            OutgoingRequest request = outgoingRequests.poll();
+
+            if (request == null) break;
+
+            List<OutgoingRequest> deploymentRequests = requestsPerDeployment.computeIfAbsent(
+                    request.targetDeployment, targetDeployment -> new ArrayList<>());
+            deploymentRequests.add(request);
+            numRequestsProcessed++;
+        }
+
+        for (Map.Entry<Integer, List<OutgoingRequest>> entry : requestsPerDeployment.entrySet()) {
+            List<OutgoingRequest> outgoingRequestsForDeployment = entry.getValue();
+            LOG.debug("We have " + outgoingRequestsForDeployment.size() + " requests for deployment " +
+                    entry.getKey());
+
+            if (outgoingRequestsForDeployment.size() == 0)
+                continue;
+
+            JsonObject top = new JsonObject();
+            JsonArray batchOfRequestsForOneNN = new JsonArray();
+            for (OutgoingRequest req : outgoingRequestsForDeployment) {
+                batchOfRequestsForOneNN.add(req.arguments);
+
+                if (batchOfRequestsForOneNN.size() == batchSize) {
+                    top.add("requests", batchOfRequestsForOneNN);
+                    batchOfRequestsForOneNN = new JsonArray();
+
+                    HttpPost request = new HttpPost(suffix + req.targetDeployment);
+                    request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + req.authorizationString);
+
+                    try {
+                        StringEntity parameters = new StringEntity(top.toString());
+                        request.setEntity(parameters);
+                        request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+
+                        requests.add(request);
+                    } catch (UnsupportedEncodingException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+        LOG.debug("There are " + requests.size() + " requests to send.");
+
+        Future<List<HttpResponse>> future = httpclient.execute(targetHost, requests, null);
+    }
+
     /**
      * Set parameters of the invoker specified in the HopsFS configuration.
      */
@@ -386,11 +441,10 @@ public abstract class ServerlessInvokerBase<T> {
             return;
         }
 
-        outgoingRequests = new LinkedBlockingQueue[numDeployments];
+        outgoingRequests = new LinkedBlockingQueue<>();
 
-        for (int i = 0; i < numDeployments; i++) {
-            outgoingRequests[i] = new LinkedBlockingQueue<JsonObject>();
-        }
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        executor.scheduleAtFixedRate(this::processOutgoingRequests, sendInterval, sendInterval, TimeUnit.MILLISECONDS);
 
         configured = true;
     }
@@ -433,7 +487,7 @@ public abstract class ServerlessInvokerBase<T> {
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
-            throws IOException, IllegalStateException;
+            throws IOException, IllegalStateException, InterruptedException;
 
     /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient
@@ -459,8 +513,8 @@ public abstract class ServerlessInvokerBase<T> {
                                                        JsonObject nameNodeArguments,
                                                        JsonObject fileSystemOperationArguments,
                                                        String requestId, int targetDeployment,
-                                                       HttpPost request)
-            throws IOException, IllegalStateException {
+                                                       HttpPost request, String authorizationString)
+            throws IOException, IllegalStateException, InterruptedException {
         long invokeStart = System.nanoTime();
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
@@ -482,6 +536,8 @@ public abstract class ServerlessInvokerBase<T> {
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
         // within the HTTP POST request. They should be included with the key "value".
         requestArguments.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
+
+        outgoingRequests.put(new OutgoingRequest(targetDeployment, requestArguments, request.getURI().toURL().toString(), authorizationString));
 
         // Prepare the HTTP POST request.
         StringEntity parameters = new StringEntity(requestArguments.toString());
@@ -794,7 +850,7 @@ public abstract class ServerlessInvokerBase<T> {
      */
     public abstract T redirectRequest(String operationName, String functionUriBase,
                                       JsonObject nameNodeArguments, JsonObject fileSystemOperationArguments,
-                                      String requestId, int targetDeployment) throws IOException;
+                                      String requestId, int targetDeployment) throws IOException, InterruptedException;
 
     /**
      * Set the name of the client using this invoker (e.g., the `clientName` field of the DFSClient class).

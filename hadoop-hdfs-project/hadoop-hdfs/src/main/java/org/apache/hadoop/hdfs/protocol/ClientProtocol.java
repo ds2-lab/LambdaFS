@@ -1377,7 +1377,7 @@ public interface ClientProtocol {
    * @param targetDeployment The deployment from which a NameNode will be invoked.
    */
   @Idempotent
-  public void ping(int targetDeployment) throws IOException;
+  public void ping(int targetDeployment) throws IOException, InterruptedException;
 
   /**
    * Attempt to pre-warm the NameNodes by pinging each deployment the specified number of times.

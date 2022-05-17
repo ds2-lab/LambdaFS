@@ -11,8 +11,8 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 import java.io.Serializable;
 import java.util.concurrent.*;
 
-public class RedirectedRequestFuture implements Future<Serializable> {
-    private static final Log LOG = LogFactory.getLog(RedirectedRequestFuture.class);
+public class HttpRequestFuture implements Future<Serializable> {
+    private static final Log LOG = LogFactory.getLog(HttpRequestFuture.class);
 
     private enum State {WAITING, DONE, CANCELLED, ERROR}
 
@@ -36,7 +36,7 @@ public class RedirectedRequestFuture implements Future<Serializable> {
      */
     private final Future<JsonObject> requestFuture;
 
-    public RedirectedRequestFuture(String requestId, String operationName, Future<JsonObject> requestFuture) {
+    public HttpRequestFuture(String requestId, String operationName, Future<JsonObject> requestFuture) {
         this.requestId = requestId;
         this.operationName = operationName;
         this.createdAt = System.nanoTime();
@@ -146,10 +146,10 @@ public class RedirectedRequestFuture implements Future<Serializable> {
         if (this == obj)
             return true;
 
-        if (!(obj instanceof RedirectedRequestFuture))
+        if (!(obj instanceof HttpRequestFuture))
             return false;
 
-        RedirectedRequestFuture other = (RedirectedRequestFuture)obj;
+        HttpRequestFuture other = (HttpRequestFuture)obj;
 
         return this.requestId.equals(other.requestId);
     }

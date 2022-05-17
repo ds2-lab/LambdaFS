@@ -125,13 +125,13 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     @Override
     public JsonObject redirectRequest(String operationName, String functionUriBase,
                                       JsonObject nameNodeArguments, JsonObject fileSystemOperationArguments,
-                                      String requestId, int targetDeployment) throws IOException {
+                                      String requestId, int targetDeployment) throws IOException, InterruptedException {
         HttpPost request = new HttpPost(getFunctionUri(functionUriBase, targetDeployment, fileSystemOperationArguments));
         request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
         // Just hand everything off to the internal HTTP invoke method.
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArguments,
-                fileSystemOperationArguments, requestId, targetDeployment, request);
+                fileSystemOperationArguments, requestId, targetDeployment, request, authorizationString);
     }
 
     private String getFunctionUri(String functionUriBase, int targetDeployment, JsonObject fileSystemOperationArguments) {
@@ -198,7 +198,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
-            throws IOException, IllegalStateException {
+            throws IOException, IllegalStateException, InterruptedException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
         // would like to perform (e.g., create, delete, append, etc.).
@@ -216,7 +216,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-                fsArgs, requestId, targetDeployment, request);
+                fsArgs, requestId, targetDeployment, request, authorizationString);
     }
 
     /**

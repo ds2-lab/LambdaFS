@@ -2074,7 +2074,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                     new ArgumentContainer(),
                                     requestId,
                                     depNum);
-                        } catch (IOException e) {
+                        } catch (IOException | InterruptedException e) {
                             e.printStackTrace();
                         }
                     }
@@ -2097,7 +2097,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public void ping(int targetDeployment) throws IOException {
+    public void ping(int targetDeployment) throws IOException, InterruptedException {
         String requestId = UUID.randomUUID().toString();
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
