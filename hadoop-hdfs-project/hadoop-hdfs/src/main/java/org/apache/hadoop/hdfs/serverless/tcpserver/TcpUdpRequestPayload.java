@@ -4,6 +4,7 @@ import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Sent directly to NameNodes by clients rather than using the JSON representation.
@@ -63,14 +64,27 @@ public class TcpUdpRequestPayload implements Serializable {
      */
     private transient String cancellationReason = null;
 
+    /**
+     * All the actively-used TCP ports on our VM. The NN uses these to connect to the other servers.
+     */
+    private List<Integer> activeTcpPorts;
+
+    /**
+     * All the actively-used TCP ports on our VM. The NN uses these to connect to the other servers.
+     */
+    private List<Integer> activeUdpPorts;
+
     public TcpUdpRequestPayload(String requestId, String operationName, boolean consistencyProtocolEnabled,
                                 int serverlessFunctionLogLevel, HashMap<String, Object> fsOperationArguments,
-                                boolean benchmarkingModeEnabled) {
+                                boolean benchmarkingModeEnabled, List<Integer> activeTcpPorts,
+                                List<Integer> activeUdpPorts) {
         this.requestId = requestId;
         this.operationName = operationName;
         this.consistencyProtocolEnabled = consistencyProtocolEnabled;
         this.serverlessFunctionLogLevel = serverlessFunctionLogLevel;
         this.benchmarkingModeEnabled = benchmarkingModeEnabled;
+        this.activeTcpPorts = activeTcpPorts;
+        this.activeUdpPorts = activeUdpPorts;
 
         if (fsOperationArguments != null)
             this.fsOperationArguments = fsOperationArguments;
@@ -104,6 +118,10 @@ public class TcpUdpRequestPayload implements Serializable {
 
     public boolean shouldRetry() { return shouldRetry; }
 
+    public List<Integer> getActiveTcpPorts() { return this.activeTcpPorts; }
+
+    public List<Integer> getActiveUdpPorts() { return this.activeUdpPorts; }
+
     public String getCancellationReason() { return cancellationReason; }
 
     /**
@@ -119,7 +137,7 @@ public class TcpUdpRequestPayload implements Serializable {
     @Override
     public String toString() {
         return String.format(
-                "TcpRequestPayload(requestId=%s, operationName=%s, consistProtoEnabled=%b, logLevel=%s, numFsArgs=%d",
+                "TcpRequestPayload(requestId=%s, operationName=%s, consistProtoEnabled=%b, logLevel=%s, numFsArgs=%d)",
                 requestId, operationName, consistencyProtocolEnabled, serverlessFunctionLogLevel, fsOperationArguments.size());
     }
 }

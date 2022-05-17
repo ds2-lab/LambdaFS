@@ -873,12 +873,12 @@ public abstract class ServerlessInvokerBase<T> {
             throw new IllegalStateException("TCP Port has not been initialized to correct value.");
 
         JsonArray tcpPortsJson = new JsonArray();
-        Set<Integer> tcpPorts = UserServerManager.getInstance().getActiveTcpPorts();
+        List<Integer> tcpPorts = UserServerManager.getInstance().getActiveTcpPorts();
         for (int tcpPort : tcpPorts)
             tcpPortsJson.add(tcpPort);
 
         JsonArray udpPortsJson = new JsonArray();
-        Set<Integer> udpPorts = UserServerManager.getInstance().getActiveUdpPorts();
+        List<Integer> udpPorts = udpEnabled ? UserServerManager.getInstance().getActiveUdpPorts() : new ArrayList<>();
         for (int udpPort : udpPorts)
             udpPortsJson.add(udpPort);
 

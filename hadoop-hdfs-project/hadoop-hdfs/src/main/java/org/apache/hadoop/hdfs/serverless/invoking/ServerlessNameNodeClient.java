@@ -544,7 +544,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // This contains the file system operation arguments (and everything else) that will be submitted to the NN.
         TcpUdpRequestPayload tcpRequestPayload = new TcpUdpRequestPayload(requestId, operationName,
                 consistencyProtocolEnabled, OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel),
-                opArguments.getAllArguments(), benchmarkModeEnabled);
+                opArguments.getAllArguments(), benchmarkModeEnabled, userServerManager.getActiveTcpPorts(),
+                udpEnabled ? userServerManager.getActiveUdpPorts() : null);
 
         boolean stragglerResubmissionAlreadyOccurred = false;
         boolean wasResubmittedViaStragglerMitigation = false;

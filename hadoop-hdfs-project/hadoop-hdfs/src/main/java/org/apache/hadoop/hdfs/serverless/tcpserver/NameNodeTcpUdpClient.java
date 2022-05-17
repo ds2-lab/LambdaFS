@@ -12,6 +12,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
+import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.HashMapTaskArguments;
@@ -326,7 +327,7 @@ public class NameNodeTcpUdpClient {
                     if (LOG.isDebugEnabled())
                         LOG.debug("[TCP/UDP Client] NN " + nameNodeId + " Received work from " +
                                 connection.getRemoteAddressTCP() + ".");
-                    result = handleWorkAssignment((TcpUdpRequestPayload)object, receivedAtTime);
+                    result = handleWorkAssignment((TcpUdpRequestPayload)object, receivedAtTime, newClient);
                 }
                 else if (object instanceof FrameworkMessage.KeepAlive) {
                     // The server periodically sends KeepAlive objects to prevent the client from disconnecting
@@ -499,7 +500,7 @@ public class NameNodeTcpUdpClient {
      * @return The result object that we'll ultimately send back to the client. This contains the result of the
      * FS operation as well as some metric information.
      */
-    private NameNodeResult handleWorkAssignment(TcpUdpRequestPayload args, long startTime) {
+    private NameNodeResult handleWorkAssignment(TcpUdpRequestPayload args, long startTime, ServerlessHopsFSClient newClient) {
         String requestId = args.getRequestId();
         BaseHandler.currentRequestId.set(requestId);
 
@@ -517,6 +518,17 @@ public class NameNodeTcpUdpClient {
             NameNodeResult tcpResult = new NameNodeResult(requestId, op);
             serverlessNameNode.getExecutionManager().tryExecuteTask(
                     requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
+
+            long s = System.nanoTime();
+            // TODO: Determine how this impacts performance.
+            OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
+                    args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
+                    newClient.getClientId(), useUDP);
+            if (LOG.isDebugEnabled()) {
+                long t = System.nanoTime();
+                LOG.debug("Attempted additional connections in " + ((t-s) / 1.0e6) + " ms.");
+            }
+
             return tcpResult;
         } else {
             NameNodeResultWithMetrics tcpResult = new NameNodeResultWithMetrics(deploymentNumber, requestId,
@@ -524,6 +536,17 @@ public class NameNodeTcpUdpClient {
             tcpResult.setFnStartTime(startTime);
             serverlessNameNode.getExecutionManager().tryExecuteTask(
                     requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
+
+            long s = System.nanoTime();
+            // TODO: Determine how this impacts performance.
+            OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
+                    args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
+                    newClient.getClientId(), useUDP);
+            if (LOG.isDebugEnabled()) {
+                long t = System.nanoTime();
+                LOG.debug("Attempted additional connections in " + ((t-s) / 1.0e6) + " ms.");
+            }
+
             return tcpResult;
         }
     }

@@ -355,26 +355,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker && tcpEnabled) {
-            final NameNodeTcpUdpClient tcpClient = serverlessNameNode.getNameNodeTcpClient();
-
-            for (int i = 0; i < tcpPorts.size(); i++) {
-                int tcpPort = tcpPorts.get(i);
-
-                if (tcpClient.connectionExists(clientIPAddress, tcpPort))
-                    continue;
-
-                ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
-                        clientName, clientIPAddress, tcpPort, udpPorts.get(i), udpEnabled);
-
-                // Do this in a separate thread so that we can return the result back to the user immediately.
-                new Thread(() -> {
-                    try {
-                        tcpClient.addClient(serverlessHopsFSClient);
-                    } catch (IOException ex) {
-                        LOG.error("Encountered exception while connecting to client " + serverlessHopsFSClient + ":", ex);
-                    }
-                }).start();
-            }
+            attemptToConnectToClient(serverlessNameNode, tcpPorts, udpPorts, clientIPAddress, clientName, udpEnabled);
         }
 
         if (!benchmarkModeEnabled) {
@@ -386,6 +367,41 @@ public class OpenWhiskHandler extends BaseHandler {
             resultWithMetrics.logResultDebugInformation(op);
         }
         return result;
+    }
+
+    /**
+     * Attempt to establish a TCP/UDP connection to a HopsFS client.
+     *
+     * @param serverlessNameNode The {@link ServerlessNameNode} instance.
+     * @param tcpPorts TCP ports in-use on the client's VM.
+     * @param udpPorts UDP ports in-use on the client's VM.
+     * @param clientIPAddress IP address of the client.
+     * @param clientName Unique name/identifier of the client.
+     * @param udpEnabled Indicates whether UDP connections are enabled.
+     */
+    public static void attemptToConnectToClient(ServerlessNameNode serverlessNameNode,
+                                         List<Integer> tcpPorts, List<Integer> udpPorts,
+                                         String clientIPAddress, String clientName, boolean udpEnabled) {
+        final NameNodeTcpUdpClient tcpClient = serverlessNameNode.getNameNodeTcpClient();
+
+        for (int i = 0; i < tcpPorts.size(); i++) {
+            int tcpPort = tcpPorts.get(i);
+
+            if (tcpClient.connectionExists(clientIPAddress, tcpPort))
+                continue;
+
+            ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
+                    clientName, clientIPAddress, tcpPort, udpEnabled ? udpPorts.get(i) : -1, udpEnabled);
+
+            // Do this in a separate thread so that we can return the result back to the user immediately.
+            new Thread(() -> {
+                try {
+                    tcpClient.addClient(serverlessHopsFSClient);
+                } catch (IOException ex) {
+                    LOG.error("Encountered exception while connecting to client " + serverlessHopsFSClient + ":", ex);
+                }
+            }).start();
+        }
     }
 
     public static org.apache.log4j.Level getLogLevelFromString(String level) {

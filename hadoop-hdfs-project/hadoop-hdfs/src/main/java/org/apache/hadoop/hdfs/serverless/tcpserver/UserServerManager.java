@@ -6,10 +6,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -195,15 +192,15 @@ public class UserServerManager {
     /**
      * Return a copy of the set of all actively in-use TCP ports.
      */
-    public Set<Integer> getActiveTcpPorts() {
-        return new HashSet<>(activeTcpPorts);
+    public List<Integer> getActiveTcpPorts() {
+        return new ArrayList<>(activeTcpPorts);
     }
 
     /**
      * Return a copy of the set of all actively in-use UDP ports.
      */
-    public Set<Integer> getActiveUdpPorts() {
-        return new HashSet<>(activeUdpPorts);
+    public List<Integer> getActiveUdpPorts() {
+        return new ArrayList<>(activeUdpPorts);
     }
 
     /**
