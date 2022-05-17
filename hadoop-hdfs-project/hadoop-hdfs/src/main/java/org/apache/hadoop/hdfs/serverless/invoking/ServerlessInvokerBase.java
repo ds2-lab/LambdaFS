@@ -438,7 +438,7 @@ public abstract class ServerlessInvokerBase<T> {
 
         LOG.debug("There are " + requests.size() + " requests ready to send.");
 
-        LOG.debug("Target host: " + targetHost + ".");
+        LOG.debug("Target host: " + targetHost);
 
         pipelineHttpClient.execute(targetHost, requests,
                 new FutureCallback<List<HttpResponse>>() {
