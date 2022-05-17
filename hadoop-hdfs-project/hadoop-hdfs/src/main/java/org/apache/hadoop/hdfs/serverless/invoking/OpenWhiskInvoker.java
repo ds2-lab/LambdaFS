@@ -237,6 +237,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      */
     @Override
     public void terminate() {
-        cache.terminate();
+        if (cache != null)
+            cache.terminate();
     }
 }
