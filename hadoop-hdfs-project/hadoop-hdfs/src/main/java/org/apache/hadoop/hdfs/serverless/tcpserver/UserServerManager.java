@@ -84,7 +84,7 @@ public class UserServerManager {
                 SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT);
 
         this.nextTcpPort = configuration.getInt(SERVERLESS_TCP_SERVER_PORT, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
-        this.nextUdpPort = conf.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
+        this.nextUdpPort = configuration.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT_DEFAULT);
 
         // If the user has specified a value <= 0, then all clients on the same VM will share the same server.
