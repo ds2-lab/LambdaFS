@@ -214,7 +214,7 @@ public class NameNodeTcpUdpClient {
         int combinedBufferSize = maxBufferSize * 2;
 
         // We multiply by 1e6 to convert to bytes, as the actionMemory variable is in MB.
-        int memoryAvailableForConnections = (int) Math.floor(memoryFractionReservedForTcpBuffers * actionMemory * 1000000);
+        int memoryAvailableForConnections = (int) Math.floor(memoryFractionReservedForTcpBuffers * actionMemory * 1.0e6);
 
         LOG.debug("There are " + memoryAvailableForConnections + " bytes available for TCP connections.");
 

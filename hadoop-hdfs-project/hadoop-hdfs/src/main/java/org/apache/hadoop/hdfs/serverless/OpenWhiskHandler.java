@@ -83,7 +83,7 @@ public class OpenWhiskHandler extends BaseHandler {
             // TODO: This may be included or not depending on the platform. If it is Nuclio, then
             //       we'll probably set it as an environment variable going forward. Just going to
             //       hard-code it for now, though.
-            actionMemory = 1280; // args.get(ServerlessNameNodeKeys.ACTION_MEMORY).getAsInt();
+            actionMemory = args.get(ServerlessNameNodeKeys.ACTION_MEMORY).getAsInt();
             userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
         }
 
