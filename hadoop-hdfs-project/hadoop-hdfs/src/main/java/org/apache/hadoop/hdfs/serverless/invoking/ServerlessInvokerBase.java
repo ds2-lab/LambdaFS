@@ -397,10 +397,13 @@ public abstract class ServerlessInvokerBase<T> {
 
             JsonObject top = new JsonObject();
             JsonArray batchOfRequestsForOneNN = new JsonArray();
-            for (OutgoingRequest req : outgoingRequestsForDeployment) {
+            for (int i = 0 ; i < outgoingRequestsForDeployment.size(); i++) {
+                OutgoingRequest req = outgoingRequestsForDeployment.get(i);
                 batchOfRequestsForOneNN.add(req.arguments);
 
-                if (batchOfRequestsForOneNN.size() == batchSize) {
+                // If we've reached the batch size or this is the last request we're processing,
+                // then prepare the batch for execution.
+                if (batchOfRequestsForOneNN.size() == batchSize || (i == outgoingRequestsForDeployment.size() - 1)) {
                     top.add("requests", batchOfRequestsForOneNN);
                     batchOfRequestsForOneNN = new JsonArray();
 
