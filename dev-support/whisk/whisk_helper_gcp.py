@@ -102,10 +102,12 @@ if __name__ == "__main__":
         logger.error("At least one of -n and --ending-index should be passed.")
         exit(1)
 
+    num_functions_to_create = ending_index - starting_index
+
     if do_update:
-        logger.debug("Updating %d functions, beginning with %s%d and ending with %s%d." % (prefix, starting_index, prefix, ending_index - 1))
+        logger.debug("Updating %d functions, beginning with %s%d and ending with %s%d." % (num_functions_to_create, prefix, starting_index, prefix, ending_index - 1))
     elif do_create:
-        logger.debug("Creating %d functions, beginning with %s%d and ending with %s%d." % (prefix, starting_index, prefix, ending_index - 1))
+        logger.debug("Creating %d functions, beginning with %s%d and ending with %s%d." % (num_functions_to_create, prefix, starting_index, prefix, ending_index - 1))
 
     # Only one of `do_create` and `do_update` should be true.
     if (do_create and do_update):
@@ -119,7 +121,6 @@ if __name__ == "__main__":
         logger.error("The starting index (%d) cannot be greater than the ending index (%d)." % (starting_index, ending_index))
         exit(1)
 
-    num_functions_to_create = ending_index - starting_index
     logger.debug("Number of functions to create: %d" % num_functions_to_create)
     logger.debug("Function prefix: \"%s\"" % prefix)
     logger.debug("Docker image: \"%s\"" % docker_image)
