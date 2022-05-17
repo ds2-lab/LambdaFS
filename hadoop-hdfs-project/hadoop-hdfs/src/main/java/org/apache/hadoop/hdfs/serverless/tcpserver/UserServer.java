@@ -651,28 +651,40 @@ public class UserServer {
         return false;
     }
 
-    public void printDebugInformation() {
-        LOG.debug("========== TCP Server Debug Information ==========");
-        LOG.debug("CONNECTIONS:");
-        LOG.debug("     Number of active connections: " + allActiveConnections.size());
-        LOG.debug("     Connected to:");
+    /**
+     * Print debug information about TCP server.
+     * @return Number of active TCP connections.
+     */
+    public int printDebugInformation() {
+        int numActiveConnections = allActiveConnections.size();
+        StringBuilder msg = new StringBuilder("Num Active Connections: " + numActiveConnections + ", Active Futures: " +
+                activeFutures.size() + ", Completed Futures: " + completedFutures.asMap().size() + ". ");
+
+//        LOG.debug("========== TCP Server Debug Information ==========");
+//        LOG.debug("CONNECTIONS:");
+//        LOG.debug("     Number of active connections: " + allActiveConnections.size());
+//        LOG.debug("     Connected to:");
         for (Map.Entry<Integer, ConcurrentHashMap<Long, NameNodeConnection>> entry : activeConnectionsPerDeployment.entrySet()) {
             int deploymentNumber = entry.getKey();
             ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = entry.getValue();
-            LOG.debug("     Deployment #" + deploymentNumber + ": ");
-
-            if (deploymentConnections.size() == 0) {
-                LOG.debug("               No connections established");
-                continue;
-            }
-
-            ConcurrentHashMap.KeySetView<Long, NameNodeConnection> keySetView = deploymentConnections.keySet();
-            keySetView.forEach(funcName -> LOG.debug("               " + funcName));
+            msg.append("D ").append(deploymentNumber).append(": ").append(deploymentConnections.size()).append(", ");
+//            LOG.debug("     Deployment #" + deploymentNumber + ": ");
+//
+//            if (deploymentConnections.size() == 0) {
+//                LOG.debug("               No connections established");
+//                continue;
+//            }
+//
+//            ConcurrentHashMap.KeySetView<Long, NameNodeConnection> keySetView = deploymentConnections.keySet();
+//            keySetView.forEach(funcName -> LOG.debug("               " + funcName));
         }
-        LOG.debug("FUTURES:");
-        LOG.debug("     Number of active futures: " + activeFutures.size());
-        LOG.debug("     Number of completed futures: " + completedFutures.asMap().size());
-        LOG.debug("==================================================");
+//        LOG.debug("FUTURES:");
+//        LOG.debug("     Number of active futures: " + activeFutures.size());
+//        LOG.debug("     Number of completed futures: " + completedFutures.asMap().size());
+//        LOG.debug("==================================================");
+
+        LOG.info(msg);
+        return numActiveConnections;
     }
 
     /**
