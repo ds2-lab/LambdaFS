@@ -45,6 +45,8 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
@@ -223,7 +225,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Outgoing requests are placed in this list and sent in batches
      * (of a configurable size) on a configurable interval.
      */
-    private List<List<JsonObject>> outgoingRequests;
+    private LinkedBlockingQueue[] outgoingRequests;
 
     /**
      * We batch individual requests together to reduce per-request overhead.
@@ -384,10 +386,10 @@ public abstract class ServerlessInvokerBase<T> {
             return;
         }
 
-        outgoingRequests = new ArrayList<>(numDeployments);
+        outgoingRequests = new LinkedBlockingQueue[numDeployments];
 
         for (int i = 0; i < numDeployments; i++) {
-            outgoingRequests.add(new ArrayList<JsonObject>());
+            outgoingRequests[i] = new LinkedBlockingQueue<JsonObject>();
         }
 
         configured = true;

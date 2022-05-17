@@ -72,7 +72,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
     private static OpenWhiskInvoker instance;
 
-    public static synchronized ServerlessInvokerBase getInstance()
+    public static synchronized OpenWhiskInvoker getInstance()
             throws NoSuchAlgorithmException, KeyManagementException {
         if (instance == null)
             instance = new OpenWhiskInvoker();
@@ -84,7 +84,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * Because invokers are generally created via the {@link ServerlessInvokerFactory} class, this constructor
      * will not be used directly.
      */
-    private OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
+    protected OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
         super();
     }
 
