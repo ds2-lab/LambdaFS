@@ -180,7 +180,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         List<Integer> tcpPorts = null;
         if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT)) {
-            JsonArray tcpPortsJson = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_PORT).getAsJsonArray();
+            JsonArray tcpPortsJson = userArguments.getAsJsonArray(ServerlessNameNodeKeys.TCP_PORT);
             tcpPorts = new ArrayList<>();
             for (int i = 0; i < tcpPortsJson.size(); i++)
                 tcpPorts.add(tcpPortsJson.get(i).getAsInt());
@@ -188,7 +188,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         List<Integer> udpPorts = null;
         if (userArguments.has(ServerlessNameNodeKeys.UDP_PORT)) {
-            JsonArray udpPortsJson = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.UDP_PORT).getAsJsonArray();
+            JsonArray udpPortsJson = userArguments.getAsJsonArray(ServerlessNameNodeKeys.UDP_PORT);
             udpPorts = new ArrayList<>();
             for (int i = 0; i < udpPortsJson.size(); i++)
                 udpPorts.add(udpPortsJson.get(i).getAsInt());
