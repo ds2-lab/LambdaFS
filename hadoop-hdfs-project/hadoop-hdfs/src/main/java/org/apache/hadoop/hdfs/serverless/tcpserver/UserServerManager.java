@@ -127,13 +127,13 @@ public class UserServerManager {
         int oldNumClients = -1;
         int assignedPort = -1;
 
-        // Search for
+        // Search for server with empty slots.
         for (Map.Entry<Integer, Integer> entry : serverClientCounts.entrySet()) {
             int tcpPort = entry.getKey();
             int numClients = entry.getValue();
 
             if (numClients < maxClientsPerServer) {
-                LOG.debug("Assigning client to TCP Server " + tcpPort + ", which will now have " +
+                LOG.info("Assigning client to TCP Server " + tcpPort + ", which will now have " +
                         (numClients + 1) + " clients assigned to it.");
 
                 oldNumClients = numClients;
@@ -144,17 +144,17 @@ public class UserServerManager {
 
         if (oldNumClients == -1 && assignedPort == -1) {
             // Create new TCP server.
-            LOG.debug("Creating new user server...");
+            LOG.info("Creating new user server...");
             assignedServer = new UserServer(conf, client);
             int tcpPort = assignedServer.startServer();
 
             serverClientCounts.put(tcpPort, 1);
             tcpPortToServerMapping.put(tcpPort, assignedServer);
 
-            LOG.debug("Created new TCP server with TCP port " + tcpPort + ". There are now " +
+            LOG.info("Created new TCP server with TCP port " + tcpPort + ". There are now " +
                     tcpPortToServerMapping.size() + " unique TCP server(s).");
         } else {
-            LOG.debug("Retrieving existing TCP server with TCP port " + assignedPort + ".");
+            LOG.info("Retrieving existing TCP server with TCP port " + assignedPort + ".");
             // Grab existing server and return it.
             assignedServer = tcpPortToServerMapping.get(assignedPort);
             serverClientCounts.put(assignedPort, oldNumClients + 1);
