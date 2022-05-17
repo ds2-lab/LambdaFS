@@ -350,7 +350,7 @@ public abstract class ServerlessInvokerBase<T> {
      */
     public void setConfiguration(Configuration conf, String invokerIdentity) {
         if (LOG.isDebugEnabled()) LOG.debug("Configuring ServerlessInvokerBase now...");
-        cache = new FunctionMetadataMap(conf);
+        // cache = new FunctionMetadataMap(conf);
         localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         maxHttpRetries = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX,
                 DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT);
@@ -681,7 +681,7 @@ public abstract class ServerlessInvokerBase<T> {
             long parentINodeId = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.PARENT_ID).getAsLong();
             int function = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION).getAsInt();
 
-            cache.addEntry(src, function, false);
+            // cache.addEntry(src, function, false);
         }
 
         // Print any exceptions that were encountered first.
@@ -800,7 +800,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Calls the `terminate()` function of the "INode mapping" cache.
      */
     public void terminate() {
-        cache.terminate();
+        // cache.terminate();
     }
 
     /**

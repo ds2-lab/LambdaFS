@@ -45,7 +45,7 @@ public class FunctionMetadataMap {
 
         LOG.debug("Creating Redis client for host " + host + ", port " + port);
 
-        // redisPool = new JedisPool(host, port);
+        redisPool = new JedisPool(host, port);
     }
 
     public FunctionMetadataMap() {
