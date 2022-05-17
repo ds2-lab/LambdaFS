@@ -655,7 +655,7 @@ public class UserServer {
      * Print debug information about TCP server.
      * @return Number of active TCP connections.
      */
-    public int printDebugInformation() {
+    public int printDebugInformation(Set<Long> nnIds) {
         int numActiveConnections = allActiveConnections.size();
         StringBuilder msg = new StringBuilder("Num Active Connections: " + numActiveConnections + ", Active Futures: " +
                 activeFutures.size() + ", Completed Futures: " + completedFutures.asMap().size() + ". ");
@@ -667,6 +667,7 @@ public class UserServer {
         for (Map.Entry<Integer, ConcurrentHashMap<Long, NameNodeConnection>> entry : activeConnectionsPerDeployment.entrySet()) {
             int deploymentNumber = entry.getKey();
             ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = entry.getValue();
+            nnIds.addAll(deploymentConnections.keySet());
             msg.append("D ").append(deploymentNumber).append(": ").append(deploymentConnections.size()).append(", ");
 //            LOG.debug("     Deployment #" + deploymentNumber + ": ");
 //

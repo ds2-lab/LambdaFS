@@ -139,14 +139,17 @@ public class UserServerManager {
     }
 
     /**
-     * Call {@link UserServer#printDebugInformation()} on each of our servers.
+     * Call {@link UserServer#printDebugInformation(Set)} )} on each of our servers.
      * @return The total number of active TCP connections across all servers.
      */
     public synchronized int printDebugInformation() {
+        LOG.debug("There are " + tcpPortToServerMapping.values().size() + " TCP servers.");
         int numActiveConnections = 0;
+        Set<Long> nnIds = new HashSet<Long>();
         for (UserServer server : tcpPortToServerMapping.values())
-            numActiveConnections += server.printDebugInformation();
+            numActiveConnections += server.printDebugInformation(nnIds);
 
+        LOG.debug("Clients in this JVM are connected to a total of " + nnIds.size() + " unique NNs.");
         return numActiveConnections;
     }
 
