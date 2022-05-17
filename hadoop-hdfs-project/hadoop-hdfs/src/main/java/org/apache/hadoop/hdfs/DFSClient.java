@@ -1763,8 +1763,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       // If it isn't, then none of the Serverless-specific APIs will work.
       throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
     }
-
-    return 0;
   }
 
   /**
