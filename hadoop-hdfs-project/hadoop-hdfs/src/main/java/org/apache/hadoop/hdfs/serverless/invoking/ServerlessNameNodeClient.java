@@ -83,7 +83,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * an actual function. This is because functions are named as PREFIX1, PREFIX2, ..., where
      * PREFIX is user-specified/user-configured.
      */
-    public final String serverlessEndpointBase;
+    public String serverlessEndpointBase;
 
     /**
      * The name of the serverless platform being used for the Serverless NameNodes.
@@ -233,7 +233,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
-
+        serverlessEndpointBase = dfsClient.serverlessEndpoint;
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
         tcpEnabled = conf.getBoolean(SERVERLESS_TCP_REQUESTS_ENABLED, SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
         udpEnabled = conf.getBoolean(SERVERLESS_USE_UDP, SERVERLESS_USE_UDP_DEFAULT);
@@ -241,12 +241,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
          * Indicates whether we're being executed in a local container for testing/profiling/debugging purposes.
          */
         boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
-
-        if (localMode)
-            serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT_LOCAL, SERVERLESS_ENDPOINT_LOCAL_DEFAULT);
-        else
-            serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
-
         latencyThreshold = conf.getDouble(SERVERLESS_LATENCY_THRESHOLD, SERVERLESS_LATENCY_THRESHOLD_DEFAULT);
         latencyWindowSize = conf.getInt(SERVERLESS_LATENCY_WINDOW_SIZE, SERVERLESS_LATENCY_WINDOW_SIZE_DEFAULT);
         randomHttpEnabled = conf.getBoolean(SERVERLESS_INVOKER_RANDOM_HTTP, SERVERLESS_INVOKER_RANDOM_HTTP_DEFAULT);
@@ -669,7 +663,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // Issue the HTTP request. This function will handle retries and timeouts.
                 JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                         operationName,
-                        serverlessEndpointBase,
+                        dfsClient.serverlessEndpoint,
                         null, // We do not have any additional/non-default arguments to pass to the NN.
                         opArguments,
                         requestId,
@@ -783,7 +777,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // file/directory, then we'll just use an HTTP request.
         JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 operationName,
-                serverlessEndpointBase,
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments,
                 requestId,
@@ -1256,7 +1250,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "getBlockLocations",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1294,7 +1288,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "getServerDefaults",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     new ArgumentContainer());
         } catch (ExecutionException | InterruptedException ex) {
@@ -1351,7 +1345,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "create",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1399,7 +1393,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "append",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1446,7 +1440,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "setMetaStatus",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1464,7 +1458,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "setPermission",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1483,7 +1477,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "setOwner",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1503,7 +1497,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "abandonBlock",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1528,7 +1522,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "addBlock",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1571,7 +1565,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "complete",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1607,7 +1601,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "rename",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1628,7 +1622,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "concat",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1654,7 +1648,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "rename", // Not rename2, we just map 'rename' to 'renameTo' or 'rename2' or whatever
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1674,7 +1668,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "truncate",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1700,7 +1694,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "delete",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1727,7 +1721,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "mkdirs",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1754,7 +1748,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "getListing",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1778,7 +1772,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "renewLease",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1800,7 +1794,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "getStats",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1825,7 +1819,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "getDatanodeReport",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1885,7 +1879,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "getFileInfo",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1910,7 +1904,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "isFileClosed",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1935,7 +1929,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "getFileLinkInfo",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -1991,7 +1985,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "updateBlockForPipeline",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -2020,7 +2014,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "updatePipeline",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -2075,12 +2069,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         try {
                             dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                                     "prewarm",
-                                    serverlessEndpointBase,
+                                    dfsClient.serverlessEndpoint,
                                     null, // We do not have any additional/non-default arguments to pass to the NN.
                                     new ArgumentContainer(),
                                     requestId,
                                     depNum);
-                        } catch (IOException | InterruptedException | ExecutionException e) {
+                        } catch (IOException e) {
                             e.printStackTrace();
                         }
                     }
@@ -2102,19 +2096,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         }
     }
 
-    public String getServerlessEndpoint() {
-        return this.serverlessEndpointBase;
-    }
-
     @Override
-    public void ping(int targetDeployment) throws IOException, InterruptedException, ExecutionException {
+    public void ping(int targetDeployment) throws IOException {
         String requestId = UUID.randomUUID().toString();
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
         dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 "ping",
-                serverlessEndpointBase,
+                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 new ArgumentContainer(),
                 requestId,
@@ -2129,7 +2119,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             responseFromNN = submitOperationToNameNode(
                     "getActiveNamenodesForClient",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -2292,7 +2282,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "addUser",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -2309,7 +2299,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "addGroup",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -2327,7 +2317,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "addUserToGroup",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -2344,7 +2334,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "removeUser",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -2361,7 +2351,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "removeGroup",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
@@ -2379,7 +2369,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         try {
             submitOperationToNameNode(
                     "removeUserFromGroup",
-                    serverlessEndpointBase,
+                    dfsClient.serverlessEndpoint,
                     null, // We do not have any additional/non-default arguments to pass to the NN.
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {

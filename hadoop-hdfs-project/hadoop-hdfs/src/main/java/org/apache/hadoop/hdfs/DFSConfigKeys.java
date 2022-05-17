@@ -49,11 +49,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * Endpoint to use when local mode is enabled.
    */
   public static final String SERVERLESS_ENDPOINT_LOCAL = "serverless.localmode.endpoint";
-  public static final String SERVERLESS_ENDPOINT_LOCAL_DEFAULT = "http://localhost";
-  // public static final String SERVERLESS_ENDPOINT_LOCAL_DEFAULT = "http://localhost:8080/run";
-
-  public static final String SERVERLESS_LOCALMODE_PORT = "serverless.localmode.port";
-  public static final int SERVERLESS_LOCALMODE_PORT_DEFAULT = 8080;
+  public static final String SERVERLESS_ENDPOINT_LOCAL_DEFAULT = "http://localhost:8080/run";
 
   /**
    * If non-null, then we add the folder specified by this configuration parameter to the CLASSPATH.
@@ -173,8 +169,6 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   /**
    * We batch individual requests together to reduce per-request overhead.
    * This is the number of requests per batch.
-   *
-   * If this is set to a value <= 0, then the batch size is unbounded.
    */
   public static final String SERVERLESS_HTTP_BATCH_SIZE = "serverless.http.batch-size";
   public static final int SERVERLESS_HTTP_BATCH_SIZE_DEFAULT = 4;

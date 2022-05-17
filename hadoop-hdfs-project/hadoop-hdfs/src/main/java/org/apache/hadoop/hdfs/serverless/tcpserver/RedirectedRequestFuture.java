@@ -1,17 +1,20 @@
-package org.apache.hadoop.hdfs.serverless.invoking;
+package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import com.google.gson.JsonObject;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 
 import java.io.Serializable;
 import java.util.concurrent.*;
 
-public class HttpRequestFuture implements Future<JsonObject> {
-    private static final Log LOG = LogFactory.getLog(HttpRequestFuture.class);
+public class RedirectedRequestFuture implements Future<Serializable> {
+    private static final Log LOG = LogFactory.getLog(RedirectedRequestFuture.class);
+
+    private enum State {WAITING, DONE, CANCELLED, ERROR}
 
     /**
      * The unique ID identifying this future.
@@ -29,28 +32,15 @@ public class HttpRequestFuture implements Future<JsonObject> {
     private final long createdAt;
 
     /**
-     * This is used to receive the result of the future from the worker thread.
+     * We wrap this future, which is returned by issuing an HTTP request to a NameNode.
      */
-    private final BlockingQueue<JsonObject> resultQueue = new ArrayBlockingQueue<>(1);
+    private final Future<JsonObject> requestFuture;
 
-    public HttpRequestFuture(String requestId, String operationName) {
+    public RedirectedRequestFuture(String requestId, String operationName, Future<JsonObject> requestFuture) {
         this.requestId = requestId;
         this.operationName = operationName;
         this.createdAt = System.nanoTime();
-    }
-
-    /**
-     * Post future that was created when the request was invoked.
-     */
-    public boolean postResult(JsonObject result) {
-        try {
-            return resultQueue.offer(result);
-        }
-        catch (Exception ex) {
-            LOG.error("Exception encountered while attempting to post result to TCP future: ", ex);
-        }
-
-        return false;
+        this.requestFuture = requestFuture;
     }
 
     @Override
@@ -70,27 +60,29 @@ public class HttpRequestFuture implements Future<JsonObject> {
     }
 
     @Override
-    public JsonObject get() throws InterruptedException, ExecutionException {
+    public Serializable get() throws InterruptedException, ExecutionException {
         if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
-        final JsonObject resultOrNull = resultQueue.take();
+        final JsonObject resultOrNull = requestFuture.get();
         if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
 
-        return resultOrNull;
+        if (resultOrNull != null)
+            return extractResult(resultOrNull);
+        else
+            throw new IllegalArgumentException("Received null result from redirected request " + requestId +
+                    ", op = " + operationName + ".");
     }
 
     @Override
-    public JsonObject get(long timeout, TimeUnit unit)
+    public Serializable get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
         if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
-        final JsonObject resultOrNull = resultQueue.poll(timeout, unit);
-
+        final JsonObject resultOrNull = requestFuture.get(timeout, unit);
+        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
         if (resultOrNull == null) {
             throw new TimeoutException();
         }
 
-        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
-
-        return resultOrNull;
+        return extractResult(resultOrNull);
     }
 
     /**
@@ -154,10 +146,10 @@ public class HttpRequestFuture implements Future<JsonObject> {
         if (this == obj)
             return true;
 
-        if (!(obj instanceof HttpRequestFuture))
+        if (!(obj instanceof RedirectedRequestFuture))
             return false;
 
-        HttpRequestFuture other = (HttpRequestFuture)obj;
+        RedirectedRequestFuture other = (RedirectedRequestFuture)obj;
 
         return this.requestId.equals(other.requestId);
     }

@@ -31,7 +31,6 @@ import org.apache.http.util.EntityUtils;
 import java.net.SocketTimeoutException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -126,19 +125,16 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     @Override
     public JsonObject redirectRequest(String operationName, String functionUriBase,
                                       JsonObject nameNodeArguments, JsonObject fileSystemOperationArguments,
-                                      String requestId, int targetDeployment) throws IOException, InterruptedException, ExecutionException {
-//        HttpPost request = new HttpPost(getFunctionUri(functionUriBase, targetDeployment, fileSystemOperationArguments));
-//        request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
+                                      String requestId, int targetDeployment) throws IOException {
+        HttpPost request = new HttpPost(getFunctionUri(functionUriBase, targetDeployment, fileSystemOperationArguments));
+        request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
         // Just hand everything off to the internal HTTP invoke method.
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArguments,
-                fileSystemOperationArguments, requestId, targetDeployment, authorizationString);
-//        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArguments,
-//                fileSystemOperationArguments, requestId, targetDeployment, request, authorizationString);
+                fileSystemOperationArguments, requestId, targetDeployment, request);
     }
 
-    private String getFunctionUri(String functionUriBase, int targetDeployment,
-                                  JsonObject fileSystemOperationArguments) {
+    private String getFunctionUri(String functionUriBase, int targetDeployment, JsonObject fileSystemOperationArguments) {
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);
 
@@ -202,7 +198,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
-            throws IOException, IllegalStateException, InterruptedException, ExecutionException {
+            throws IOException, IllegalStateException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
         // would like to perform (e.g., create, delete, append, etc.).
@@ -220,9 +216,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-                fsArgs, requestId, targetDeployment, authorizationString);
-//        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-//                fsArgs, requestId, targetDeployment, request, authorizationString);
+                fsArgs, requestId, targetDeployment, request);
     }
 
     /**

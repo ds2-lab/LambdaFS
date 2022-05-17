@@ -14,10 +14,14 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 import org.apache.hadoop.hdfs.serverless.tcpserver.UserServerManager;
-import org.apache.http.*;
+import org.apache.hadoop.util.ExponentialBackOff;
+import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
+import org.apache.http.HttpResponse;
+import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
@@ -29,19 +33,21 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.impl.nio.client.CloseableHttpPipeliningClient;
-import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.util.EntityUtils;
 
 import javax.net.ssl.*;
 import java.io.*;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
@@ -108,8 +114,6 @@ public abstract class ServerlessInvokerBase<T> {
      * This is only used for debugging/profiling/testing.
      */
     protected boolean localMode;
-
-    private CloseableHttpPipeliningClient pipelineHttpClient;
 
     /**
      * The maximum amount of time to wait before issuing another HTTP request after the previous request failed.
@@ -221,7 +225,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Outgoing requests are placed in this list and sent in batches
      * (of a configurable size) on a configurable interval.
      */
-    private LinkedBlockingQueue<OutgoingRequest> outgoingRequests;
+    private LinkedBlockingQueue[] outgoingRequests;
 
     /**
      * We batch individual requests together to reduce per-request overhead.
@@ -233,19 +237,6 @@ public abstract class ServerlessInvokerBase<T> {
      * The interval, in milliseconds, that HTTP requests are issued.
      */
     protected int sendInterval;
-
-    /**
-     * Issue HTTP requests to this to invoke serverless functions.
-     *
-     * This is the BASE endpoint, meaning we must append a number to the end of it to reach
-     * an actual function. This is because functions are named as PREFIX1, PREFIX2, ..., where
-     * PREFIX is user-specified/user-configured.
-     */
-    protected String serverlessEndpointBase;
-
-    protected int localModePort;
-
-    protected ConcurrentHashMap<String, HttpRequestFuture> futures = new ConcurrentHashMap<>();
 
     /**
      * Return the INode-NN mapping cache entry for the given file or directory.
@@ -350,134 +341,6 @@ public abstract class ServerlessInvokerBase<T> {
         transactionEvents = new HashMap<>();
     }
 
-    private void processOutgoingRequests() {
-        if (outgoingRequests.size() == 0) return;
-
-        String suffix;
-        HttpHost targetHost;
-        if (localMode) {
-            targetHost = new HttpHost(serverlessEndpointBase, localModePort);
-            suffix = "/run";
-        } else {
-            targetHost = new HttpHost(serverlessEndpointBase, 444);
-            suffix = "/api/v1/web/whisk.system/default/namenode";
-        }
-        List<HttpRequest> requests = new ArrayList<>();
-
-        Map<Integer, List<OutgoingRequest>> requestsPerDeployment = new HashMap<>();
-
-        if (LOG.isDebugEnabled()) {
-            if (outgoingRequests.size() == 1)
-                LOG.debug("There is " + outgoingRequests.size() + " request in the queue.");
-            else
-                LOG.debug("There are " + outgoingRequests.size() + " requests in the queue.");
-        }
-
-        int numRequestsProcessed = 0;
-        while (outgoingRequests.size() > 0 && numRequestsProcessed < 100) {
-            OutgoingRequest request = outgoingRequests.poll();
-
-            if (request == null) break;
-
-            List<OutgoingRequest> deploymentRequests = requestsPerDeployment.computeIfAbsent(
-                    request.targetDeployment, targetDeployment -> new ArrayList<>());
-            deploymentRequests.add(request);
-            numRequestsProcessed++;
-        }
-
-        LOG.debug("Preparing " + numRequestsProcessed + " request(s) for execution.");
-
-        for (Map.Entry<Integer, List<OutgoingRequest>> entry : requestsPerDeployment.entrySet()) {
-            List<OutgoingRequest> outgoingRequestsForDeployment = entry.getValue();
-            LOG.debug("We have " + outgoingRequestsForDeployment.size() + " requests for deployment " +
-                    entry.getKey());
-
-            if (outgoingRequestsForDeployment.size() == 0)
-                continue;
-
-            JsonObject top = new JsonObject();
-            JsonArray batchOfRequestsForOneNN = new JsonArray();
-            for (int i = 0 ; i < outgoingRequestsForDeployment.size(); i++) {
-                OutgoingRequest req = outgoingRequestsForDeployment.get(i);
-                batchOfRequestsForOneNN.add(req.arguments);
-
-                // If we've reached the batch size or this is the last request we're processing,
-                // then prepare the batch for execution.
-                if (batchOfRequestsForOneNN.size() == batchSize || (i == outgoingRequestsForDeployment.size() - 1)) {
-                    top.add("requests", batchOfRequestsForOneNN);
-                    batchOfRequestsForOneNN = new JsonArray();
-
-                    HttpPost request;
-                    String requestEndpoint;
-                    if (localMode)
-                        requestEndpoint = suffix;
-                    else
-                        // The '?blocking=true' is specific to OpenWhisk.
-                        // TODO: Make the suffix a config parameter and pass stuff up thru OpenWhiskInvoker.
-                        requestEndpoint = suffix + req.targetDeployment + "?blocking=true";
-
-                    LOG.debug("Request will target '" + requestEndpoint + "'");
-                    request = new HttpPost(requestEndpoint);
-
-                    request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + req.authorizationString);
-
-                    try {
-                        StringEntity parameters = new StringEntity(top.toString());
-                        request.setEntity(parameters);
-                        request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
-
-                        requests.add(request);
-
-                        top = new JsonObject();
-                    } catch (UnsupportedEncodingException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-
-        LOG.debug("There are " + requests.size() + " requests ready to send.");
-
-        LOG.debug("Target host: " + targetHost + ".");
-
-        pipelineHttpClient.execute(targetHost, requests,
-                new FutureCallback<List<HttpResponse>>() {
-            @Override
-            public void completed(final List<HttpResponse> responses) {
-                for (HttpResponse response : responses) {
-                    try {
-                        JsonObject processResponse = processHttpResponse(response);
-                        for (String key : processResponse.keySet()) {
-                            LOG.debug("Got response for request " + key);
-                            HttpRequestFuture requestFuture = futures.get(key);
-
-                            if (requestFuture == null) {
-                                LOG.error("No HttpRequestFuture for request " + key);
-                                continue;
-                            }
-
-                            requestFuture.postResult(processResponse.get(key).getAsJsonObject());
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-            @Override
-            public void failed(final Exception e) {
-                LOG.error("HTTP future failed:", e);
-            }
-
-            @Override
-            public void cancelled() {
-                LOG.error("HTTP future was cancelled.");
-            }
-        });
-
-        LOG.debug("Sent " + requests.size() + " requests.");
-    }
-
     /**
      * Set parameters of the invoker specified in the HopsFS configuration.
      */
@@ -496,17 +359,6 @@ public abstract class ServerlessInvokerBase<T> {
         httpTimeoutMilliseconds = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT,
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
         batchSize = conf.getInt(SERVERLESS_HTTP_BATCH_SIZE, SERVERLESS_HTTP_BATCH_SIZE_DEFAULT);
-
-        if (localMode)
-            serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT_LOCAL, SERVERLESS_ENDPOINT_LOCAL_DEFAULT);
-        else
-            serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
-
-        localModePort = conf.getInt(SERVERLESS_LOCALMODE_PORT, SERVERLESS_LOCALMODE_PORT_DEFAULT);
-
-        if (batchSize <= 0)
-            batchSize = Integer.MAX_VALUE;
-
         sendInterval = conf.getInt(SERVERLESS_HTTP_SEND_INTERVAL, SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT);
 
         if (this.localMode)
@@ -523,8 +375,6 @@ public abstract class ServerlessInvokerBase<T> {
             LOG.debug("NDB debug enabled: " + debugEnabledNdb);
             LOG.debug("TCP Enabled: " + tcpEnabled);
             LOG.debug("UDP Enabled: " + udpEnabled);
-            LOG.debug("Batch size: " + batchSize);
-            LOG.debug("Send interval: " + sendInterval);
 
             if (debugEnabledNdb) LOG.debug("NDB debug string: " + debugStringNdb);
         }
@@ -536,12 +386,11 @@ public abstract class ServerlessInvokerBase<T> {
             return;
         }
 
-        pipelineHttpClient = HttpAsyncClients.createPipelining();
+        outgoingRequests = new LinkedBlockingQueue[numDeployments];
 
-        outgoingRequests = new LinkedBlockingQueue<>();
-
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-        executor.scheduleAtFixedRate(this::processOutgoingRequests, sendInterval, sendInterval, TimeUnit.MILLISECONDS);
+        for (int i = 0; i < numDeployments; i++) {
+            outgoingRequests[i] = new LinkedBlockingQueue<JsonObject>();
+        }
 
         configured = true;
     }
@@ -584,7 +433,7 @@ public abstract class ServerlessInvokerBase<T> {
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
-            throws IOException, IllegalStateException, InterruptedException, ExecutionException;
+            throws IOException, IllegalStateException;
 
     /**
      * This performs all the logic. The public versions of this function accept parameters that are convenient
@@ -610,8 +459,8 @@ public abstract class ServerlessInvokerBase<T> {
                                                        JsonObject nameNodeArguments,
                                                        JsonObject fileSystemOperationArguments,
                                                        String requestId, int targetDeployment,
-                                                       String authorizationString)
-            throws IOException, IllegalStateException, InterruptedException, ExecutionException {
+                                                       HttpPost request)
+            throws IOException, IllegalStateException {
         long invokeStart = System.nanoTime();
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
@@ -634,114 +483,108 @@ public abstract class ServerlessInvokerBase<T> {
         // within the HTTP POST request. They should be included with the key "value".
         requestArguments.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
 
-        outgoingRequests.put(new OutgoingRequest(requestId, targetDeployment, requestArguments, functionUriBase, authorizationString));
-
-        HttpRequestFuture future = new HttpRequestFuture(requestId, operationName);
-        futures.put(requestId, future);
-
-        return future.get();
         // Prepare the HTTP POST request.
-//        StringEntity parameters = new StringEntity(requestArguments.toString());
-//        request.setEntity(parameters);
-//        request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
-//
-//        if (LOG.isDebugEnabled()) {
-//            LOG.debug("Invoking the OpenWhisk serverless NameNode function for operation " + operationName +
-//                    " now (requestID = " + requestId + ")");
-//            LOG.debug("Request URI/URL: " + request.getURI().toURL());
-//        }
+        StringEntity parameters = new StringEntity(requestArguments.toString());
+        request.setEntity(parameters);
+        request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
-//        ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
-//                .setMaximumRetries(maxHttpRetries)
-//                .setInitialIntervalMillis(10000)
-//                .setMaximumIntervalMillis(30000)
-//                .setMultiplier(2.25)
-//                .setRandomizationFactor(0.5)
-//                .build();
-//
-//        long backoffInterval = exponentialBackoff.getBackOffInMillis();
-//
-//        // Used for debugging.
-//        String sourceArg = fileSystemOperationArguments.has(SRC) ? fileSystemOperationArguments.get("src").getAsString() : null;
-//
-//        do {
-//            long currentTime = System.nanoTime();
-//            if (LOG.isDebugEnabled()) {
-//                double timeElapsed = (currentTime - invokeStart) / 1.0e6;
-//                LOG.debug("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
-//                        ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
-//                        "/" + maxHttpRetries + ". Target: '" + sourceArg + "'. Time elapsed: " + timeElapsed +
-//                        " milliseconds.");
-//            } else {
-//                LOG.info("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
-//                        ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
-//                        "/" + maxHttpRetries + ". Target: '" + sourceArg + "'.");
-//            }
-//
-//            CloseableHttpResponse httpResponse = null;
-//            JsonObject processedResponse;
-//            try {
-//                httpResponse = httpClient.execute(request);
-//                int responseCode = httpResponse.getStatusLine().getStatusCode();
-//
-//                if (LOG.isDebugEnabled()) {
-//                    currentTime = System.nanoTime();
-//                    double timeElapsed = (currentTime - invokeStart) / 1.0e6;
-//                    LOG.debug("Received HTTP " + responseCode + " response code for request/task " + requestId +
-//                            " (op=" + operationName + "). Time elapsed: " + timeElapsed + " milliseconds.");
-//                }
-//
-//                // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
-//                // generally indicate a client error, but sometimes I receive this error right after
-//                // updating the NameNodes. OpenWhisk complains that the function hasn't been initialized
-//                // yet, but if you try again a few seconds later, then the request will get through.
-//                if (responseCode >= 400 && responseCode <= 599) {
-//                    LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-//                            (exponentialBackoff.getNumberOfRetries()) + "/" + maxHttpRetries + ".");
-//                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-//                    doSleep(backoffInterval);
-//                    backoffInterval = exponentialBackoff.getBackOffInMillis();
-//                    httpResponse.close();
-//                    continue;
-//                }
-//
-//                processedResponse = processHttpResponse(httpResponse);
-//            } catch (NoHttpResponseException | SocketTimeoutException ex) {
-//                currentTime = System.nanoTime();
-//                double timeElapsed = (currentTime - invokeStart) / 1000000.0;
-//                LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke operation " +
-//                        requestId + " targeting deployment " + targetDeployment + " timed out. Time elapsed: " +
-//                        timeElapsed + " ms.");
-//                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-//                doSleep(backoffInterval);
-//                backoffInterval = exponentialBackoff.getBackOffInMillis();
-//                continue;
-//            } catch (IOException ex) {
-//                LOG.error("Encountered IOException while invoking NN via HTTP:", ex);
-//                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-//                doSleep(backoffInterval);
-//                backoffInterval = exponentialBackoff.getBackOffInMillis();
-//                continue;
-//            } catch (Exception ex) {
-//                LOG.error("Unexpected error encountered while invoking NN via HTTP:", ex);
-//                throw new IOException("The file system operation could not be completed. "
-//                        + "Encountered unexpected " + ex.getClass().getSimpleName() + " while invoking NN.");
-//            } finally {
-//                // Make the request reusable.
-//                request.releaseConnection();
-//
-//                if (httpResponse != null)
-//                    httpResponse.close();
-//            }
-//
-//            long invokeEnd = System.nanoTime();
-//            double duration = (invokeEnd - invokeStart) / 1000000.0;
-//            if (LOG.isDebugEnabled()) LOG.debug("Returning result to client after " + duration + " milliseconds.");
-//            return processedResponse;
-//        } while (backoffInterval != -1);
-//
-//        throw new IOException("The file system operation could not be completed. " +
-//                "Failed to invoke Serverless NameNode " + targetDeployment + " after " + maxHttpRetries + " attempts.");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Invoking the OpenWhisk serverless NameNode function for operation " + operationName +
+                    " now (requestID = " + requestId + ")");
+            LOG.debug("Request URI/URL: " + request.getURI().toURL());
+        }
+
+        ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
+                .setMaximumRetries(maxHttpRetries)
+                .setInitialIntervalMillis(10000)
+                .setMaximumIntervalMillis(30000)
+                .setMultiplier(2.25)
+                .setRandomizationFactor(0.5)
+                .build();
+
+        long backoffInterval = exponentialBackoff.getBackOffInMillis();
+
+        // Used for debugging.
+        String sourceArg = fileSystemOperationArguments.has(SRC) ? fileSystemOperationArguments.get("src").getAsString() : null;
+
+        do {
+            long currentTime = System.nanoTime();
+            if (LOG.isDebugEnabled()) {
+                double timeElapsed = (currentTime - invokeStart) / 1.0e6;
+                LOG.debug("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
+                        ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
+                        "/" + maxHttpRetries + ". Target: '" + sourceArg + "'. Time elapsed: " + timeElapsed +
+                        " milliseconds.");
+            } else {
+                LOG.info("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
+                        ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
+                        "/" + maxHttpRetries + ". Target: '" + sourceArg + "'.");
+            }
+
+            CloseableHttpResponse httpResponse = null;
+            JsonObject processedResponse;
+            try {
+                httpResponse = httpClient.execute(request);
+                int responseCode = httpResponse.getStatusLine().getStatusCode();
+
+                if (LOG.isDebugEnabled()) {
+                    currentTime = System.nanoTime();
+                    double timeElapsed = (currentTime - invokeStart) / 1.0e6;
+                    LOG.debug("Received HTTP " + responseCode + " response code for request/task " + requestId +
+                            " (op=" + operationName + "). Time elapsed: " + timeElapsed + " milliseconds.");
+                }
+
+                // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
+                // generally indicate a client error, but sometimes I receive this error right after
+                // updating the NameNodes. OpenWhisk complains that the function hasn't been initialized
+                // yet, but if you try again a few seconds later, then the request will get through.
+                if (responseCode >= 400 && responseCode <= 599) {
+                    LOG.error("Received HTTP response code " + responseCode + " on attempt " +
+                            (exponentialBackoff.getNumberOfRetries()) + "/" + maxHttpRetries + ".");
+                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                    doSleep(backoffInterval);
+                    backoffInterval = exponentialBackoff.getBackOffInMillis();
+                    httpResponse.close();
+                    continue;
+                }
+
+                processedResponse = processHttpResponse(httpResponse);
+            } catch (NoHttpResponseException | SocketTimeoutException ex) {
+                currentTime = System.nanoTime();
+                double timeElapsed = (currentTime - invokeStart) / 1000000.0;
+                LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke operation " +
+                        requestId + " targeting deployment " + targetDeployment + " timed out. Time elapsed: " +
+                        timeElapsed + " ms.");
+                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                doSleep(backoffInterval);
+                backoffInterval = exponentialBackoff.getBackOffInMillis();
+                continue;
+            } catch (IOException ex) {
+                LOG.error("Encountered IOException while invoking NN via HTTP:", ex);
+                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                doSleep(backoffInterval);
+                backoffInterval = exponentialBackoff.getBackOffInMillis();
+                continue;
+            } catch (Exception ex) {
+                LOG.error("Unexpected error encountered while invoking NN via HTTP:", ex);
+                throw new IOException("The file system operation could not be completed. "
+                        + "Encountered unexpected " + ex.getClass().getSimpleName() + " while invoking NN.");
+            } finally {
+                // Make the request reusable.
+                request.releaseConnection();
+
+                if (httpResponse != null)
+                    httpResponse.close();
+            }
+
+            long invokeEnd = System.nanoTime();
+            double duration = (invokeEnd - invokeStart) / 1000000.0;
+            if (LOG.isDebugEnabled()) LOG.debug("Returning result to client after " + duration + " milliseconds.");
+            return processedResponse;
+        } while (backoffInterval != -1);
+
+        throw new IOException("The file system operation could not be completed. " +
+                "Failed to invoke Serverless NameNode " + targetDeployment + " after " + maxHttpRetries + " attempts.");
     }
 
     /**
@@ -951,7 +794,7 @@ public abstract class ServerlessInvokerBase<T> {
      */
     public abstract T redirectRequest(String operationName, String functionUriBase,
                                       JsonObject nameNodeArguments, JsonObject fileSystemOperationArguments,
-                                      String requestId, int targetDeployment) throws IOException, InterruptedException, ExecutionException;
+                                      String requestId, int targetDeployment) throws IOException;
 
     /**
      * Set the name of the client using this invoker (e.g., the `clientName` field of the DFSClient class).

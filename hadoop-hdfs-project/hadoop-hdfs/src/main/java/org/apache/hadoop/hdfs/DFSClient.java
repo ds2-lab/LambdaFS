@@ -21,7 +21,6 @@ import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -189,6 +188,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * Responsible for invoking the Serverless NameNode(s).
    */
   public ServerlessInvokerBase<JsonObject> serverlessInvoker;
+
+  /**
+   * Issue HTTP requests to this to invoke serverless functions.
+   */
+  public String serverlessEndpoint;
 
   /**
    * The name of the serverless platform being used for the Serverless NameNodes.
@@ -547,8 +551,14 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
+    if (localMode)
+      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT_LOCAL, SERVERLESS_ENDPOINT_LOCAL_DEFAULT);
+    else
+      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
+
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
+    LOG.info("Serverless endpoint: " + serverlessEndpoint);
     LOG.info("Serverless platform: " + serverlessPlatformName);
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
@@ -701,8 +711,13 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
+    if (localMode)
+      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT_LOCAL, SERVERLESS_ENDPOINT_LOCAL_DEFAULT);
+    else
+      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
+    LOG.info("Serverless endpoint: " + serverlessEndpoint);
     LOG.info("Serverless platform: " + serverlessPlatformName);
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
@@ -1063,7 +1078,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * Ping a particular serverless NameNode deployment (i.e., invoke a NameNode from the specified deployment).
    * @param targetDeployment The deployment from which a NameNode will be invoked.
    */
-  public void ping(int targetDeployment) throws IOException, InterruptedException, ExecutionException {
+  public void ping(int targetDeployment) throws IOException {
     this.namenode.ping(targetDeployment);
   }
 

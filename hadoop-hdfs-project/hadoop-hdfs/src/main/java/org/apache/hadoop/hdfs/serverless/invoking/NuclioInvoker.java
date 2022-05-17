@@ -15,7 +15,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.HashMap;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_NUCLIO_ENDPOINTS;
@@ -54,7 +53,7 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
-            throws IOException, IllegalStateException, InterruptedException, ExecutionException {
+            throws IOException, IllegalStateException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
         // would like to perform (e.g., create, delete, append, etc.).
@@ -67,12 +66,10 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
         if (requestId == null) requestId = UUID.randomUUID().toString();
 
         JsonObject fsArgs = fileSystemOperationArguments.convertToJsonObject();
-        // HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fsArgs));
+        HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fsArgs));
 
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-                fsArgs, requestId, targetDeployment, null);
-//        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-//                fsArgs, requestId, targetDeployment, request, null);
+                fsArgs, requestId, targetDeployment, request);
     }
 
     private String getFunctionUri(int targetDeployment, JsonObject fileSystemOperationArguments) {
@@ -119,12 +116,10 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
     @Override
     public JsonObject redirectRequest(String operationName, String functionUriBase, JsonObject nameNodeArguments,
                                       JsonObject fileSystemOperationArguments, String requestId, int targetDeployment)
-            throws IOException, InterruptedException, ExecutionException {
-        // HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fileSystemOperationArguments));
+            throws IOException {
+        HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fileSystemOperationArguments));
 
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArguments,
-                fileSystemOperationArguments, requestId, targetDeployment, null);
-//        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArguments,
-//                fileSystemOperationArguments, requestId, targetDeployment, request, null);
+                fileSystemOperationArguments, requestId, targetDeployment, request);
     }
 }
