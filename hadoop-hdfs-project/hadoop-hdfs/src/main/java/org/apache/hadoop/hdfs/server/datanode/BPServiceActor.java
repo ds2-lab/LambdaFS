@@ -49,6 +49,7 @@ import org.apache.hadoop.util.VersionUtil;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 import static org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities.serializableToBase64String;
 
@@ -186,7 +187,7 @@ class BPServiceActor implements Runnable {
       } catch (IOException e) {  // namenode is not available
         LOG.warn("IOException encountered while performing serverless NN handshake.", e);
         //LOG.warn("Problem connecting to server: " + nnAddr);
-      } catch (InterruptedException e) {
+      } catch (InterruptedException | ExecutionException e) {
         e.printStackTrace();
       }
 
