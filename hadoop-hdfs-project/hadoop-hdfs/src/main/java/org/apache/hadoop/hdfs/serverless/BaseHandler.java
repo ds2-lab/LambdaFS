@@ -12,6 +12,8 @@ public class BaseHandler {
     // public static final io.nuclio.Logger LOG = NuclioHandler.NUCLIO_LOGGER;
     public static final Logger LOG = LoggerFactory.getLogger(BaseHandler.class);
 
+    private static volatile boolean platformSpecificInitializationPerformed;
+
     /**
      * Means we're running within a Docker container on some VM (and not in an OpenWhisk cluster).
      */

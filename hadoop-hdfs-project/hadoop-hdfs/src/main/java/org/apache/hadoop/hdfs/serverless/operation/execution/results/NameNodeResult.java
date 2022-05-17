@@ -239,6 +239,7 @@ public class NameNodeResult implements Serializable {
         }
 
         json.addProperty(OPERATION, operationName);
+        json.addProperty(REQUEST_ID, requestId);
 
         // Reset these in-case this thread gets re-used in the future for another request.
         metadataCache.resetCacheHitMissCounters();

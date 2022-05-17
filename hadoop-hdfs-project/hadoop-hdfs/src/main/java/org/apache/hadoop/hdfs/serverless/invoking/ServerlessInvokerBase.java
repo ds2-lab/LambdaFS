@@ -360,7 +360,6 @@ public abstract class ServerlessInvokerBase<T> {
             suffix = "/api/v1/web/whisk.system/default/namenode";
         }
         List<HttpRequest> requests = new ArrayList<>();
-        List<List<String>> requestIdsPerBatch = new ArrayList<>();
 
         Map<Integer, List<OutgoingRequest>> requestsPerDeployment = new HashMap<>();
 
@@ -386,10 +385,8 @@ public abstract class ServerlessInvokerBase<T> {
 
             JsonObject top = new JsonObject();
             JsonArray batchOfRequestsForOneNN = new JsonArray();
-            List<String> requestIdsForThisBatch = new ArrayList<>();
             for (OutgoingRequest req : outgoingRequestsForDeployment) {
                 batchOfRequestsForOneNN.add(req.arguments);
-                requestIdsForThisBatch.add(req.requestId);
 
                 if (batchOfRequestsForOneNN.size() == batchSize) {
                     top.add("requests", batchOfRequestsForOneNN);
@@ -411,8 +408,8 @@ public abstract class ServerlessInvokerBase<T> {
                         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
                         requests.add(request);
-                        requestIdsPerBatch.add(requestIdsForThisBatch);
-                        requestIdsForThisBatch = new ArrayList<>();
+
+                        top = new JsonObject();
                     } catch (UnsupportedEncodingException e) {
                         e.printStackTrace();
                     }

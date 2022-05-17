@@ -23,10 +23,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 
@@ -58,15 +55,28 @@ public class OpenWhiskHandler extends BaseHandler {
      * OpenWhisk handler.
      */
     public static JsonObject main(JsonObject args) {
-        long startTime = System.currentTimeMillis();
         String functionName = platformSpecificInitialization();
-
-        //LOG.info("============================================================");
         LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " received HTTP request.");
-        //int activeRequests = activeRequestCounter.incrementAndGet();
-        //LOG.info("Active HTTP requests: " + activeRequests);
-        //LOG.info("============================================================\n");
+        LOG.info(args.toString());
 
+        JsonArray requests = args.get("requests").getAsJsonArray();
+
+        LOG.debug("Received batch of " + requests + " request(s).");
+
+        JsonObject result = new JsonObject();
+
+        for (int i = 0; i < requests.size(); i++) {
+            LOG.debug("Processing request " + i + "/" + requests.size());
+            JsonObject subResult = processRequest(requests.get(i).getAsJsonObject(), functionName);
+            result.add(subResult.get(REQUEST_ID).getAsString(), subResult);
+            LOG.debug("Processed request " + i + "/" + requests.size());
+        }
+
+        return result;
+    }
+
+    private static JsonObject processRequest(JsonObject args, String functionName) {
+        long startTime = System.currentTimeMillis();
         int actionMemory;
         JsonObject userArguments;
         if (args.has("LOCAL_MODE")) {
@@ -155,7 +165,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // The arguments to the file system operation.
         JsonObject fsArgs = userArguments.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
-        
+
         if (userArguments.has(LOG_LEVEL)) {
             int logLevel = userArguments.get(LOG_LEVEL).getAsInt();
             // LOG.debug("Setting log4j log level to: " + logLevel + ".");
@@ -224,7 +234,7 @@ public class OpenWhiskHandler extends BaseHandler {
         LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
-        NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
+        NameNodeResult result = processRequestInternal(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
                 requestId, clientName, isClientInvoker, tcpEnabled, udpEnabled, tcpPorts, udpPorts, actionMemory,
                 startTime, benchmarkModeEnabled);
 
@@ -236,8 +246,9 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug("Returning back to client. Time elapsed: " + (endTime - startTime) + " milliseconds.");
             LOG.debug("ServerlessNameNode is exiting now...");
         }
-        //activeRequestCounter.decrementAndGet();
-        return createJsonResponse(result);
+
+        return result.toJson(ServerlessNameNode.tryGetNameNodeInstance(true).getNamesystem().getMetadataCacheManager());
+        // return createJsonResponse(result, requestId);
     }
 
     /**
@@ -287,11 +298,11 @@ public class OpenWhiskHandler extends BaseHandler {
      * @param startTime Return value from System.currentTimeMillis() called as the VERY first thing the HTTP handler does.
      * @return Result of executing NameNode code/operation/function execution.
      */
-    private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
-                                         String functionName, String clientIPAddress, String requestId,
-                                         String clientName, boolean isClientInvoker, boolean tcpEnabled,
-                                         boolean udpEnabled, List<Integer> tcpPorts, List<Integer> udpPorts,
-                                         int actionMemory, long startTime, boolean benchmarkModeEnabled) {
+    private static NameNodeResult processRequestInternal(String op, JsonObject fsArgs, String[] commandLineArguments,
+                                                         String functionName, String clientIPAddress, String requestId,
+                                                         String clientName, boolean isClientInvoker, boolean tcpEnabled,
+                                                         boolean udpEnabled, List<Integer> tcpPorts, List<Integer> udpPorts,
+                                                         int actionMemory, long startTime, boolean benchmarkModeEnabled) {
         NameNodeResult result;
 
         if (benchmarkModeEnabled) {
@@ -497,7 +508,7 @@ public class OpenWhiskHandler extends BaseHandler {
      * @param result The result returned from by `driver()`.
      * @return JsonObject to return as result of this OpenWhisk activation (i.e., serverless function execution).
      */
-    private static JsonObject createJsonResponse(NameNodeResult result) {
+    private static JsonObject createJsonResponse(NameNodeResult result, String requestId) {
         JsonObject resultJson = result.toJson(ServerlessNameNode.
                 tryGetNameNodeInstance(true).getNamesystem().getMetadataCacheManager());
 
@@ -517,6 +528,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         response.add("headers", headers);
         response.add("body", resultJson);
+        response.addProperty(REQUEST_ID, requestId);
 
 //        if (LOG.isDebugEnabled()) {
 //            LOG.debug("Contents of result to be returned to the client: ");
