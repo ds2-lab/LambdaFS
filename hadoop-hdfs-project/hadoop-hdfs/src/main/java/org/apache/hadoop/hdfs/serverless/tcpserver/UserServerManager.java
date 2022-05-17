@@ -2,14 +2,14 @@ package org.apache.hadoop.hdfs.serverless.tcpserver;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_CLIENTS_PER_TCP_SERVER;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 public class UserServerManager {
     private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(UserServerManager.class);
@@ -45,6 +45,16 @@ public class UserServerManager {
     private volatile boolean configured = false;
 
     /**
+     * Next TCP port to use when creating a TCP server.
+     */
+    private volatile int nextTcpPort;
+
+    /**
+     * Next TCP port to use when creating a TCP server.
+     */
+    private volatile int nextUdpPort;
+
+    /**
      * Retrieve the singleton instance, or create it if it does not exist.
      *
      * IMPORTANT: You must call {@link UserServerManager#setConfiguration(Configuration)} on the instance
@@ -72,6 +82,10 @@ public class UserServerManager {
 
         this.maxClientsPerServer = configuration.getInt(SERVERLESS_CLIENTS_PER_TCP_SERVER,
                 SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT);
+
+        this.nextTcpPort = configuration.getInt(SERVERLESS_TCP_SERVER_PORT, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+        this.nextUdpPort = conf.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
+                DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT_DEFAULT);
 
         // If the user has specified a value <= 0, then all clients on the same VM will share the same server.
         if (this.maxClientsPerServer <= 0) {
@@ -144,12 +158,15 @@ public class UserServerManager {
 
         if (oldNumClients == -1 && assignedPort == -1) {
             // Create new TCP server.
-            LOG.info("Creating new user server...");
-            assignedServer = new UserServer(conf, client);
+            LOG.info("Creating new user server. Attempting to use TCP port " + nextTcpPort + ", UDP port " +
+                    nextUdpPort);
+            assignedServer = new UserServer(conf, client, nextTcpPort, nextUdpPort);
             int tcpPort = assignedServer.startServer();
 
             serverClientCounts.put(tcpPort, 1);
             tcpPortToServerMapping.put(tcpPort, assignedServer);
+            nextTcpPort++;
+            nextUdpPort++;
 
             LOG.info("Created new TCP server with TCP port " + tcpPort + ". There are now " +
                     tcpPortToServerMapping.size() + " unique TCP server(s).");

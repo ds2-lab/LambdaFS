@@ -163,14 +163,24 @@ public class UserServer {
 
     /**
      * Constructor.
+     *
+     * @param conf HopsFS configuration.
+     * @param client The client using this TCP server.
+     * @param tcpPort The TCP port to attempt to bind to.
+     *                If this doesn't work, we'll try new ports by adding 1 to this value repeatedly until success.
+     * @param udpPort The UDP port to attempt to bind to. Same situation as the {@code tcpPort} parameter.
      */
-    public UserServer(Configuration conf, ServerlessNameNodeClient client) {
-        this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
-                DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+    public UserServer(Configuration conf, ServerlessNameNodeClient client, int tcpPort, int udpPort) {
+        // COMMENTED OUT:
+        // The TCP port is read from the config in the UserServerManager class and passed in.
+        //this.tcpPort = conf.getInt(DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT,
+        //        DFSConfigKeys.SERVERLESS_TCP_SERVER_PORT_DEFAULT);
+        //this.udpPort = conf.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
+        //        DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT_DEFAULT);
+        this.tcpPort = tcpPort;
+        this.udpPort = udpPort;
         this.baseBufferSize = conf.getInt(SERVERLESS_TCP_BASE_BUFFER_SIZE, SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT);
         this.useUDP = conf.getBoolean(DFSConfigKeys.SERVERLESS_USE_UDP, DFSConfigKeys.SERVERLESS_USE_UDP_DEFAULT);
-        this.udpPort = conf.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
-                DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT_DEFAULT);
         // Set up state.
         this.allActiveConnections = new ConcurrentHashMap<>();
         this.submittedFutures = new ConcurrentHashMap<>();
