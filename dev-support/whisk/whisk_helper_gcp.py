@@ -24,8 +24,20 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--num-functions",
         dest = "num_functions",
         type = int,
-        default = 5,
+        default = -1,
         help = "The number of serverless functions to create. Default: 5")
+
+    parser.add_argument("-s", "--starting-index",
+        dest = "starting_index",
+        type = int,
+        default = 0,
+        help = "Index of first function to create or update. If --ending-index is specified, then we create NNs from [starting_index, ending_index). If n is specified, then we create n total functions, beginning with starting_index. If both are specified, we just use n.")
+
+    parser.add_argument("-e", "--ending-index",
+        dest = "ending_index",
+        type = int,
+        default = -1,
+        help = "Index of last function to create or update. If --ending-index is specified, then we create NNs from [starting_index, ending_index). If n is specified, then we create n total functions, beginning with starting_index. If both are specified, we just use n.")
 
     parser.add_argument("-p", "--prefix",
         dest = "prefix",
@@ -75,6 +87,25 @@ if __name__ == "__main__":
     memory = arguments.memory
     #tag = parser.tag
     kind = arguments.kind
+    starting_index = arguments.starting_index
+    ending_index = arguments.ending_index
+
+    # If -n was specified, we use that value to determine the number of functions we're creating,
+    # even if --ending-index was also specified.
+    if num_functions != -1:
+        if ending_index != -1:
+            logger.warn("Ignoring value of --ending-index (%d) because -n (%d) was also specified." % (ending_index, num_functions))
+
+        ending_index = starting_index + num_functions
+    # num_functions was -1. If ending_index is also -1, then error.
+    elif ending_index == -1:
+        logger.error("At least one of -n and --ending-index should be passed.")
+        exit(1)
+
+    if do_update:
+        logger.debug("Updating %d functions, beginning with %s%d and ending with %s%d." % (prefix, starting_index, prefix, ending_index - 1))
+    elif do_create:
+        logger.debug("Creating %d functions, beginning with %s%d and ending with %s%d." % (prefix, starting_index, prefix, ending_index - 1))
 
     # Only one of `do_create` and `do_update` should be true.
     if (do_create and do_update):
@@ -84,11 +115,16 @@ if __name__ == "__main__":
         logger.error("Exactly one of `create` and `update` must be true.")
         exit(1)
 
-    logger.debug("Number of functions to create: %d" % num_functions)
+    if (starting_index > ending_index):
+        logger.error("The starting index (%d) cannot be greater than the ending index (%d)." % (starting_index, ending_index))
+        exit(1)
+
+    num_functions_to_create = ending_index - starting_index
+    logger.debug("Number of functions to create: %d" % num_functions_to_create)
     logger.debug("Function prefix: \"%s\"" % prefix)
     logger.debug("Docker image: \"%s\"" % docker_image)
 
-    for i in range(num_functions):
+    for i in range(starting_index, ending_index):
         function_name = "%s%d" % (prefix, i)
 
         if do_create:
