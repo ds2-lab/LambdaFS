@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.serverless;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mysql.clusterj.ClusterJHelper;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
@@ -21,6 +22,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
@@ -165,13 +170,29 @@ public class OpenWhiskHandler extends BaseHandler {
 //                    (ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
         }
 
-        int tcpPort = -1;
-        if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT))
-            tcpPort = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_PORT).getAsInt();
+//        int tcpPort = -1;
+//        if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT))
+//            tcpPort = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_PORT).getAsInt();
+//
+//        int udpPort = -1;
+//        if (userArguments.has(ServerlessNameNodeKeys.UDP_PORT))
+//            udpPort = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.UDP_PORT).getAsInt();
 
-        int udpPort = -1;
-        if (userArguments.has(ServerlessNameNodeKeys.UDP_PORT))
-            udpPort = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.UDP_PORT).getAsInt();
+        List<Integer> tcpPorts = null;
+        if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT)) {
+            JsonArray tcpPortsJson = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_PORT).getAsJsonArray();
+            tcpPorts = new ArrayList<>();
+            for (int i = 0; i < tcpPortsJson.size(); i++)
+                tcpPorts.add(tcpPortsJson.get(i).getAsInt());
+        }
+
+        List<Integer> udpPorts = null;
+        if (userArguments.has(ServerlessNameNodeKeys.UDP_PORT)) {
+            JsonArray udpPortsJson = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.UDP_PORT).getAsJsonArray();
+            udpPorts = new ArrayList<>();
+            for (int i = 0; i < udpPortsJson.size(); i++)
+                udpPorts.add(udpPortsJson.get(i).getAsInt());
+        }
 
         // Flag that indicates whether this action was invoked by a client or a DataNode.
         boolean isClientInvoker = userArguments.getAsJsonPrimitive(
@@ -189,7 +210,8 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug("Benchmarking Mode: " + (benchmarkModeEnabled ? "ENABLED" : "DISABLED"));
             LOG.debug((tcpEnabled ? "TCP Enabled." : "TCP Disabled."));
             LOG.debug(udpEnabled ? "UDP Enabled." : "UDP Disabled.");
-            LOG.debug("TCP Port: " + tcpPort + ", UDP Port: " + udpPort);
+            LOG.debug("TCP Ports: " + StringUtils.join(tcpPorts, ",") +
+                    ", UDP Ports: " + StringUtils.join(udpPorts, ","));
             LOG.debug("Action memory: " + actionMemory + "MB");
             LOG.debug("Local mode: " + (localModeEnabled ? "ENABLED" : "DISABLED"));
             LOG.debug("Client's name: " + clientName);
@@ -203,7 +225,7 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // Execute the desired operation. Capture the result to be packaged and returned to the user.
         NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
-                requestId, clientName, isClientInvoker, tcpEnabled, udpEnabled, tcpPort, udpPort, actionMemory,
+                requestId, clientName, isClientInvoker, tcpEnabled, udpEnabled, tcpPorts, udpPorts, actionMemory,
                 startTime, benchmarkModeEnabled);
 
         // Set the `isCold` flag to false given this is now a warm container.
@@ -253,7 +275,7 @@ public class OpenWhiskHandler extends BaseHandler {
      *                  requests from being processed.
      * @param clientName The name of the client who invoked this OpenWhisk action. Comes from the DFSClient class.
      * @param isClientInvoker Flag which indicates whether this activation was invoked by a client or a DataNode.
-     * @param tcpPort The TCP port that the client who invoked us is using for their TCP server.
+     * @param tcpPorts The TCP port that the client who invoked us is using for their TCP server.
      *                If the client is using multiple HopsFS client threads at the same time, then there will
      *                presumably be multiple TCP servers, each listening on a different TCP port.
      * @param actionMemory The amount of RAM (in megabytes) that this function has been allocated. Used when
@@ -268,8 +290,8 @@ public class OpenWhiskHandler extends BaseHandler {
     private static NameNodeResult driver(String op, JsonObject fsArgs, String[] commandLineArguments,
                                          String functionName, String clientIPAddress, String requestId,
                                          String clientName, boolean isClientInvoker, boolean tcpEnabled,
-                                         boolean udpEnabled, int tcpPort, int udpPort, int actionMemory,
-                                         long startTime, boolean benchmarkModeEnabled) {
+                                         boolean udpEnabled, List<Integer> tcpPorts, List<Integer> udpPorts,
+                                         int actionMemory, long startTime, boolean benchmarkModeEnabled) {
         NameNodeResult result;
 
         if (benchmarkModeEnabled) {
@@ -333,18 +355,26 @@ public class OpenWhiskHandler extends BaseHandler {
 
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker && tcpEnabled) {
-            ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
-                    clientName, clientIPAddress, tcpPort, udpPort, udpEnabled);
-
             final NameNodeTcpUdpClient tcpClient = serverlessNameNode.getNameNodeTcpClient();
-            // Do this in a separate thread so that we can return the result back to the user immediately.
-            new Thread(() -> {
-                try {
-                    tcpClient.addClient(serverlessHopsFSClient);
-                } catch (IOException ex) {
-                    LOG.error("Encountered exception while connecting to client " + serverlessHopsFSClient + ":", ex);
-                }
-            }).start();
+
+            for (int i = 0; i < tcpPorts.size(); i++) {
+                int tcpPort = tcpPorts.get(i);
+
+                if (tcpClient.connectionExists(clientIPAddress, tcpPort))
+                    continue;
+
+                ServerlessHopsFSClient serverlessHopsFSClient = new ServerlessHopsFSClient(
+                        clientName, clientIPAddress, tcpPort, udpPorts.get(i), udpEnabled);
+
+                // Do this in a separate thread so that we can return the result back to the user immediately.
+                new Thread(() -> {
+                    try {
+                        tcpClient.addClient(serverlessHopsFSClient);
+                    } catch (IOException ex) {
+                        LOG.error("Encountered exception while connecting to client " + serverlessHopsFSClient + ":", ex);
+                    }
+                }).start();
+            }
         }
 
         if (!benchmarkModeEnabled) {

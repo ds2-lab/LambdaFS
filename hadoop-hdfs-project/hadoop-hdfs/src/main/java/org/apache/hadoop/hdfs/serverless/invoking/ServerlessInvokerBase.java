@@ -13,6 +13,7 @@ import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
+import org.apache.hadoop.hdfs.serverless.tcpserver.UserServerManager;
 import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
@@ -123,13 +124,13 @@ public abstract class ServerlessInvokerBase<T> {
      * Flag indicated whether the invoker has been configured.
      * The invoker must be configured via `setConfiguration` before it can be used.
      */
-    protected boolean configured = false;
-
+    protected volatile boolean configured = false;
 
     /**
      * HTTPClient used to invoke serverless functions.
      */
     protected CloseableHttpClient httpClient;
+
     /**
      * Maintains a mapping of files and directories to the serverless functions responsible for caching the
      * metadata of the file/directory in question.
@@ -216,6 +217,25 @@ public abstract class ServerlessInvokerBase<T> {
      */
     protected boolean benchmarkModeEnabled = false;
 
+    private static ServerlessInvokerBase<JsonObject> instance;
+
+    /**
+     * Outgoing requests are placed in this list and sent in batches
+     * (of a configurable size) on a configurable interval.
+     */
+    private List<List<JsonObject>> outgoingRequests;
+
+    /**
+     * We batch individual requests together to reduce per-request overhead.
+     * This is the number of requests per batch.
+     */
+    protected int batchSize;
+
+    /**
+     * The interval, in milliseconds, that HTTP requests are issued.
+     */
+    protected int sendInterval;
+
     /**
      * Return the INode-NN mapping cache entry for the given file or directory.
      *
@@ -225,38 +245,12 @@ public abstract class ServerlessInvokerBase<T> {
      * entry exists, then -1 is returned.
      */
     public int getFunctionNumberForFileOrDirectory(String fileOrDirectory) {
-//        if (cache.containsEntry(fileOrDirectory))
-//            return cache.getFunction(fileOrDirectory);
-//
-//        return -1;
         return consistentHash(Hashing.md5().hashString(extractParentPath(fileOrDirectory)), numDeployments);
     }
 
     protected JsonObject processHttpResponse(HttpResponse httpResponse) throws IOException {
         String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
         Gson gson = new Gson();
-
-//        int responseCode = httpResponse.getStatusLine().getStatusCode();
-//        String reasonPhrase = httpResponse.getStatusLine().getReasonPhrase();
-//        String protocolVersion = httpResponse.getStatusLine().getProtocolVersion().toString();
-//
-//        Header contentType = httpResponse.getEntity().getContentType();
-//        long contentLength = httpResponse.getEntity().getContentLength();
-//
-//        if (LOG.isDebugEnabled()) {
-//            LOG.debug("====== HTTP RESPONSE ======");
-//            LOG.debug(protocolVersion + " - " + responseCode);
-//            LOG.debug(reasonPhrase);
-//            LOG.debug("---------------------------");
-//            if (contentType != null)
-//                LOG.debug(contentType.getName() + ": " + contentType.getValue());
-//            LOG.debug("Content-length: " + contentLength);
-//            LOG.debug("===========================");
-//
-//            LOG.debug("HTTP Response from function:\n" + httpResponse);
-////            LOG.debug("HTTP Response Entity: " + httpResponse.getEntity());
-////            LOG.debug("HTTP Response Entity Content: " + json);
-//        }
 
         JsonObject jsonObjectResponse = null;
         JsonPrimitive jsonPrimitiveResponse = null;
@@ -349,7 +343,10 @@ public abstract class ServerlessInvokerBase<T> {
      * Set parameters of the invoker specified in the HopsFS configuration.
      */
     public void setConfiguration(Configuration conf, String invokerIdentity) {
+        if (configured) return;
+
         if (LOG.isDebugEnabled()) LOG.debug("Configuring ServerlessInvokerBase now...");
+
         // cache = new FunctionMetadataMap(conf);
         localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
         maxHttpRetries = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX,
@@ -359,6 +356,8 @@ public abstract class ServerlessInvokerBase<T> {
         udpEnabled = conf.getBoolean(SERVERLESS_USE_UDP, SERVERLESS_USE_UDP_DEFAULT);
         httpTimeoutMilliseconds = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT,
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
+        batchSize = conf.getInt(SERVERLESS_HTTP_BATCH_SIZE, SERVERLESS_HTTP_BATCH_SIZE_DEFAULT);
+        sendInterval = conf.getInt(SERVERLESS_HTTP_SEND_INTERVAL, SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT);
 
         if (this.localMode)
             numDeployments = 1;
@@ -384,6 +383,13 @@ public abstract class ServerlessInvokerBase<T> {
             e.printStackTrace();
             return;
         }
+
+        outgoingRequests = new ArrayList<>(numDeployments);
+
+        for (int i = 0; i < numDeployments; i++) {
+            outgoingRequests.add(new ArrayList<JsonObject>());
+        }
+
         configured = true;
     }
 
@@ -864,11 +870,23 @@ public abstract class ServerlessInvokerBase<T> {
         if (this.tcpEnabled && this.tcpPort == 0)
             throw new IllegalStateException("TCP Port has not been initialized to correct value.");
 
+        JsonArray tcpPortsJson = new JsonArray();
+        Set<Integer> tcpPorts = UserServerManager.getInstance().getActiveTcpPorts();
+        for (int tcpPort : tcpPorts)
+            tcpPortsJson.add(tcpPort);
+
+        JsonArray udpPortsJson = new JsonArray();
+        Set<Integer> udpPorts = UserServerManager.getInstance().getActiveUdpPorts();
+        for (int udpPort : udpPorts)
+            udpPortsJson.add(udpPort);
+
         nameNodeArgumentsJson.addProperty(REQUEST_ID, requestId);
         nameNodeArgumentsJson.addProperty(DEBUG_NDB, debugEnabledNdb);
         nameNodeArgumentsJson.addProperty(DEBUG_STRING_NDB, debugStringNdb);
-        nameNodeArgumentsJson.addProperty(TCP_PORT, tcpPort);
-        nameNodeArgumentsJson.addProperty(UDP_PORT, udpPort);
+        //nameNodeArgumentsJson.addProperty(TCP_PORT, tcpPort);
+        //nameNodeArgumentsJson.addProperty(UDP_PORT, udpPort);
+        nameNodeArgumentsJson.add(TCP_PORT, tcpPortsJson);
+        nameNodeArgumentsJson.add(UDP_PORT, udpPortsJson);
         nameNodeArgumentsJson.addProperty(BENCHMARK_MODE, benchmarkModeEnabled);
 
         // If we aren't a client invoker (e.g., DataNode, other NameNode, etc.), then don't populate the internal IP field.

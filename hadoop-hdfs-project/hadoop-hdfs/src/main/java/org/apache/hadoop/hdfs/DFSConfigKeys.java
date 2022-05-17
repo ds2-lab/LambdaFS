@@ -167,6 +167,19 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_TCP_MAX_BUFFER_SIZE_DEFAULT = (int)1e9;
 
   /**
+   * We batch individual requests together to reduce per-request overhead.
+   * This is the number of requests per batch.
+   */
+  public static final String SERVERLESS_HTTP_BATCH_SIZE = "serverless.http.batch-size";
+  public static final int SERVERLESS_HTTP_BATCH_SIZE_DEFAULT = 4;
+
+  /**
+   * The interval, in milliseconds, that HTTP requests are issued.
+   */
+  public static final String SERVERLESS_HTTP_SEND_INTERVAL = "serverless.http.send-interval";
+  public static final int SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT = 5;
+
+  /**
    * The number of bytes allocated per client for the TCP server's buffers. This is multiplied
    * by the number of clients per server to obtain the final buffer size used by the server.
    */

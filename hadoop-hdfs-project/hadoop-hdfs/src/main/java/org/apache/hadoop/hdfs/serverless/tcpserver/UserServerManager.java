@@ -6,7 +6,10 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
@@ -24,12 +27,22 @@ public class UserServerManager {
     /**
      * Map from server TCP port to the associated {@link UserServer} instance.
      */
-    private final ConcurrentHashMap<Integer, UserServer> tcpPortToServerMapping;
+    private final HashMap<Integer, UserServer> tcpPortToServerMapping;
 
     /**
      * Map from server TCP port to the number of clients it has assigned to it.
      */
-    private final ConcurrentHashMap<Integer, Integer> serverClientCounts;
+    private final HashMap<Integer, Integer> serverClientCounts;
+
+    /**
+     * Set of all TCP ports actively in-use by a server running within this JVM.
+     */
+    private Set<Integer> activeTcpPorts;
+
+    /**
+     * Set of all TCP ports actively in-use by a server running within this JVM.
+     */
+    private Set<Integer> activeUdpPorts;
 
     /**
      * The configuration that was used to configure this instance. This will
@@ -97,8 +110,10 @@ public class UserServerManager {
     }
 
     private UserServerManager() {
-        tcpPortToServerMapping = new ConcurrentHashMap<>();
-        serverClientCounts = new ConcurrentHashMap<>();
+        tcpPortToServerMapping = new HashMap<>();
+        serverClientCounts = new HashMap<>();
+        activeTcpPorts = new HashSet<>();
+        activeUdpPorts = new HashSet<>();
     }
 
     /**
@@ -133,6 +148,20 @@ public class UserServerManager {
             numActiveConnections += server.printDebugInformation();
 
         return numActiveConnections;
+    }
+
+    /**
+     * Return a copy of the set of all actively in-use TCP ports.
+     */
+    public Set<Integer> getActiveTcpPorts() {
+        return new HashSet<>(activeTcpPorts);
+    }
+
+    /**
+     * Return a copy of the set of all actively in-use UDP ports.
+     */
+    public Set<Integer> getActiveUdpPorts() {
+        return new HashSet<>(activeUdpPorts);
     }
 
     /**
@@ -174,6 +203,9 @@ public class UserServerManager {
                     nextUdpPort);
             assignedServer = new UserServer(conf, client, nextTcpPort, nextUdpPort);
             int tcpPort = assignedServer.startServer();
+
+            activeTcpPorts.add(tcpPort);
+            activeUdpPorts.add(assignedServer.getUdpPort());
 
             serverClientCounts.put(tcpPort, 1);
             tcpPortToServerMapping.put(tcpPort, assignedServer);

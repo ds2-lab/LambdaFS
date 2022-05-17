@@ -70,16 +70,26 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      */
     private String authorizationString;
 
+    private static OpenWhiskInvoker instance;
+
+    public static synchronized ServerlessInvokerBase getInstance()
+            throws NoSuchAlgorithmException, KeyManagementException {
+        if (instance == null)
+            instance = new OpenWhiskInvoker();
+
+        return instance;
+    }
+
     /**
      * Because invokers are generally created via the {@link ServerlessInvokerFactory} class, this constructor
      * will not be used directly.
      */
-    protected OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
+    private OpenWhiskInvoker() throws NoSuchAlgorithmException, KeyManagementException {
         super();
     }
 
     @Override
-    public void setConfiguration(Configuration conf, String invokerIdentity) {
+    public synchronized void setConfiguration(Configuration conf, String invokerIdentity) {
         super.setConfiguration(conf, invokerIdentity);
 
         authorizationString = conf.get(DFSConfigKeys.SERVERLESS_OPENWHISK_AUTH,
@@ -134,7 +144,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                 if (fileSystemOperationArguments != null && fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
                     String sourceFileOrDirectory =
                             fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
-                    targetDeployment = cache.getFunction(sourceFileOrDirectory);
+                    targetDeployment = getFunctionNumberForFileOrDirectory(sourceFileOrDirectory); // cache.getFunction(sourceFileOrDirectory);
                 } else {
                     if (LOG.isDebugEnabled()) LOG.debug("No `src` property found in file system arguments... " + "skipping the checking of INode cache...");
                 }

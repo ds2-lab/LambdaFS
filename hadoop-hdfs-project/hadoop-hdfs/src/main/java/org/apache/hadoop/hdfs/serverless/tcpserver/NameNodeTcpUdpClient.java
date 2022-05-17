@@ -224,6 +224,10 @@ public class NameNodeTcpUdpClient {
         return clients.asMap().containsKey(client.getTcpString());
     }
 
+    public synchronized boolean connectionExists(String host, int tcpPort) {
+        return clients.asMap().containsKey(host + ":" + tcpPort);
+    }
+
     /**
      * Atomically check if a connection exists to the HopsFS client represented by the provided
      * {@link ServerlessHopsFSClient} instance.
