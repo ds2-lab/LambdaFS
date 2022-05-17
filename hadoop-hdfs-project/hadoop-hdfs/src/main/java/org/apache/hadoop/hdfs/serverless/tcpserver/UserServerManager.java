@@ -124,6 +124,18 @@ public class UserServerManager {
     }
 
     /**
+     * Call {@link UserServer#printDebugInformation()} on each of our servers.
+     * @return The total number of active TCP connections across all servers.
+     */
+    public synchronized int printDebugInformation() {
+        int numActiveConnections = 0;
+        for (UserServer server : tcpPortToServerMapping.values())
+            numActiveConnections += server.printDebugInformation();
+
+        return numActiveConnections;
+    }
+
+    /**
      * Register a client with a TCP server. All that actually happens here is that
      * the client gets the TCP server that it will use for communicating with NameNodes.
      *

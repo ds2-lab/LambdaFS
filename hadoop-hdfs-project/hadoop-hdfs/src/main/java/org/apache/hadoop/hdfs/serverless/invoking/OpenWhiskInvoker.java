@@ -63,7 +63,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     /**
      * This is appended to the end of the serverlessEndpointBase AFTER the number is added.
      */
-    private final String blockingParameter = "?blocking=true";
+    private static final String blockingParameter = "?blocking=true";
 
     /**
      * OpenWhisk uses an authorization string when issuing HTTP requests (and also when using the CLI).
