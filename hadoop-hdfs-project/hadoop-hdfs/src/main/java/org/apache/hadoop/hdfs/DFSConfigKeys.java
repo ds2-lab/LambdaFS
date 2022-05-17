@@ -88,6 +88,22 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final boolean SERVERLESS_STRAGGLER_MITIGATION_DEFAULT = false;
 
   /**
+   * When enabled, clients using a newly-created TCP server can piggy-back off of existing connections of other
+   * TCP servers running within the same VM. This prevents too many HTTP requests from being issued all-at-once.
+   */
+  public static final String SERVERLESS_CONNECTION_SHARING = "serverless.tcp.connection-sharing-enabled";
+  public static final boolean SERVERLESS_CONNECTION_SHARING_DEFAULT = true;
+
+  /**
+   * The likelihood that connection sharing occurs when one's own TCP server does not have an active connection
+   * to a NameNode in the target deployment. The alternative to connection sharing is to simply fall back to HTTP.
+   *
+   * This is the probability that it DOES occur.
+   */
+  public static final String SERVERLESS_CONNECTION_SHARING_CHANCE = "serverless.tcp.connection-sharing-chance";
+  public static final double SERVERLESS_CONNECTION_SHARING_CHANCE_DEFAULT = 0.85;
+
+  /**
    * Minimum timeout when using straggler mitigation.
    */
   public static final String SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT = "serverless.straggler.mitigation.timeout.min";

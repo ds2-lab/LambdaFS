@@ -11,6 +11,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
@@ -67,6 +69,8 @@ public class UserServerManager {
      */
     private volatile int nextUdpPort;
 
+    private ReadWriteLock mutex = new ReentrantReadWriteLock();
+
     /**
      * Retrieve the singleton instance, or create it if it does not exist.
      *
@@ -117,6 +121,28 @@ public class UserServerManager {
     }
 
     /**
+     * Find and return a {@link UserServer} that has an active TCP/UDP connection to the specified deployment, or null
+     * if no such server exists.
+     *
+     * @param targetDeployment The deployment to which the returned server should have an active TCP/UDP connection.
+     * @return A {@link UserServer} with an active TCP/UDP connection to the target deployment, or null if no such
+     * servers exist.
+     */
+    public UserServer findServerWithActiveConnectionToDeployment(int targetDeployment) {
+        mutex.readLock().lock();
+        try {
+            for (UserServer userServer : tcpPortToServerMapping.values()) {
+                if (userServer.connectionExists(targetDeployment))
+                    return userServer;
+            }
+
+            return null;
+        } finally {
+            mutex.readLock().unlock();
+        }
+    }
+
+    /**
      * Unregister a client with the TCP server identified by the given TCP port.
      * Basically just decrements the count associated with the server.
      *
@@ -125,32 +151,45 @@ public class UserServerManager {
      * @throws IllegalArgumentException If there is no count mapping for a server with the given TCP port.
      * @throws IllegalStateException If the user server with the given TCP port has a current count of 0.
      */
+    // synchronized so multiple calls to this function cannot overlap.
+    // we also use locking so that the `findServerWithActiveConnectionToDeployment()` can execute concurrently,
+    // although this probably shouldn't happen due to when these synchronized functions are called in a workload.
     public synchronized void unregisterClient(int tcpPort) {
-        if (!serverClientCounts.containsKey(tcpPort))
-            throw new IllegalArgumentException("There is presently no client count mapping for a TCP server with TCP port " + tcpPort);
+        mutex.writeLock().lock();
+        try {
+            if (!serverClientCounts.containsKey(tcpPort))
+                throw new IllegalArgumentException("There is presently no client count mapping for a TCP server with TCP port " + tcpPort);
 
-        int currentCount = serverClientCounts.get(tcpPort);
+            int currentCount = serverClientCounts.get(tcpPort);
 
-        if (currentCount == 0)
-            throw new IllegalStateException("The current client count for the User Server with TCP port " +
-                    tcpPort + " is 0. Cannot unregister client.");
+            if (currentCount == 0)
+                throw new IllegalStateException("The current client count for the User Server with TCP port " +
+                        tcpPort + " is 0. Cannot unregister client.");
 
-        serverClientCounts.put(tcpPort, currentCount - 1);
+            serverClientCounts.put(tcpPort, currentCount - 1);
+        } finally {
+            mutex.writeLock().unlock();
+        }
     }
 
     /**
      * Call {@link UserServer#printDebugInformation(Set)} )} on each of our servers.
      * @return The total number of active TCP connections across all servers.
      */
-    public synchronized int printDebugInformation() {
-        LOG.debug("There are " + tcpPortToServerMapping.values().size() + " TCP servers.");
-        int numActiveConnections = 0;
-        Set<Long> nnIds = new HashSet<Long>();
-        for (UserServer server : tcpPortToServerMapping.values())
-            numActiveConnections += server.printDebugInformation(nnIds);
+    public int printDebugInformation() {
+        mutex.readLock().lock();
+        try {
+            LOG.debug("There are " + tcpPortToServerMapping.values().size() + " TCP servers.");
+            int numActiveConnections = 0;
+            Set<Long> nnIds = new HashSet<Long>();
+            for (UserServer server : tcpPortToServerMapping.values())
+                numActiveConnections += server.printDebugInformation(nnIds);
 
-        LOG.debug("Clients in this JVM are connected to a total of " + nnIds.size() + " unique NNs.");
-        return numActiveConnections;
+            LOG.debug("Clients in this JVM are connected to a total of " + nnIds.size() + " unique NNs.");
+            return numActiveConnections;
+        } finally {
+            mutex.readLock().unlock();
+        }
     }
 
     /**
@@ -179,54 +218,62 @@ public class UserServerManager {
      *
      * @return The TCP server that this particular client should use.
      */
+    // synchronized so multiple calls to this function cannot overlap.
+    // we also use locking so that the `findServerWithActiveConnectionToDeployment()` can execute concurrently,
+    // although this probably shouldn't happen due to when these synchronized functions are called in a workload.
     public synchronized UserServer registerWithTcpServer(ServerlessNameNodeClient client)
             throws IOException {
         UserServer assignedServer;
         int oldNumClients = -1;
         int assignedPort = -1;
 
-        // Search for server with empty slots.
-        for (Map.Entry<Integer, Integer> entry : serverClientCounts.entrySet()) {
-            int tcpPort = entry.getKey();
-            int numClients = entry.getValue();
+        mutex.writeLock().lock();
+        try {
+            // Search for server with empty slots.
+            for (Map.Entry<Integer, Integer> entry : serverClientCounts.entrySet()) {
+                int tcpPort = entry.getKey();
+                int numClients = entry.getValue();
 
-            if (numClients < maxClientsPerServer) {
-                LOG.info("Assigning client to TCP Server " + tcpPort + ", which will now have " +
-                        (numClients + 1) + " clients assigned to it.");
+                if (numClients < maxClientsPerServer) {
+                    LOG.info("Assigning client to TCP Server " + tcpPort + ", which will now have " +
+                            (numClients + 1) + " clients assigned to it.");
 
-                oldNumClients = numClients;
-                assignedPort = tcpPort;
-                break;
+                    oldNumClients = numClients;
+                    assignedPort = tcpPort;
+                    break;
+                }
             }
-        }
 
-        if (oldNumClients == -1 && assignedPort == -1) {
-            // Create new TCP server.
-            LOG.info("Creating new user server. Attempting to use TCP port " + nextTcpPort + ", UDP port " +
-                    nextUdpPort);
-            assignedServer = new UserServer(conf, client, nextTcpPort, nextUdpPort);
-            int tcpPort = assignedServer.startServer();
+            if (oldNumClients == -1 && assignedPort == -1) {
+                // Create new TCP server.
+                LOG.info("Creating new user server. Attempting to use TCP port " + nextTcpPort + ", UDP port " +
+                        nextUdpPort);
+                assignedServer = new UserServer(conf, client, nextTcpPort, nextUdpPort);
+                int tcpPort = assignedServer.startServer();
 
-            activeTcpPorts.add(tcpPort);
-            activeUdpPorts.add(assignedServer.getUdpPort());
+                activeTcpPorts.add(tcpPort);
+                activeUdpPorts.add(assignedServer.getUdpPort());
 
-            serverClientCounts.put(tcpPort, 1);
-            tcpPortToServerMapping.put(tcpPort, assignedServer);
-            nextTcpPort++;
-            nextUdpPort++;
+                serverClientCounts.put(tcpPort, 1);
+                tcpPortToServerMapping.put(tcpPort, assignedServer);
+                nextTcpPort++;
+                nextUdpPort++;
 
-            LOG.info("Created new TCP server with TCP port " + tcpPort + ". There are now " +
-                    tcpPortToServerMapping.size() + " unique TCP server(s).");
-        } else {
-            LOG.info("Retrieving existing TCP server with TCP port " + assignedPort + ".");
-            // Grab existing server and return it.
-            assignedServer = tcpPortToServerMapping.get(assignedPort);
-            serverClientCounts.put(assignedPort, oldNumClients + 1);
+                LOG.info("Created new TCP server with TCP port " + tcpPort + ". There are now " +
+                        tcpPortToServerMapping.size() + " unique TCP server(s).");
+            } else {
+                LOG.info("Retrieving existing TCP server with TCP port " + assignedPort + ".");
+                // Grab existing server and return it.
+                assignedServer = tcpPortToServerMapping.get(assignedPort);
+                serverClientCounts.put(assignedPort, oldNumClients + 1);
 
-            // Make sure to set the client's TCP/UDP port values, since this step
-            // doesn't happen automatically when we're using an existing server.
-            client.setTcpServerPort(assignedServer.getTcpPort());
-            client.setUdpServerPort(assignedServer.getUdpPort());
+                // Make sure to set the client's TCP/UDP port values, since this step
+                // doesn't happen automatically when we're using an existing server.
+                client.setTcpServerPort(assignedServer.getTcpPort());
+                client.setUdpServerPort(assignedServer.getUdpPort());
+            }
+        } finally {
+            mutex.writeLock().unlock();
         }
 
         return assignedServer;

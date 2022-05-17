@@ -222,6 +222,20 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private final ZKClient zkClient;
 
     /**
+     * When enabled, clients using a newly-created TCP server can piggy-back off of existing connections of other
+     * TCP servers running within the same VM. This prevents too many HTTP requests from being issued all-at-once.
+     */
+    private boolean connectionSharingEnabled;
+
+    /**
+     * The likelihood that connection sharing occurs when one's own TCP server does not have an active connection
+     * to a NameNode in the target deployment. The alternative to connection sharing is to simply fall back to HTTP.
+     *
+     * This is the probability that it DOES occur.
+     */
+    private double connectionSharingProbability;
+
+    /**
      * Create a new instance of {@link ServerlessNameNodeClient}.
      *
      * IMPORTANT: The {@link ServerlessNameNodeClient#registerAndStartTcpServer()} function must be called after
@@ -254,6 +268,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT_DEFAULT);
         serverlessFunctionLogLevel = conf.get(
                 SERVERLESS_DEFAULT_LOG_LEVEL, SERVERLESS_DEFAULT_LOG_LEVEL_DEFAULT).toUpperCase();
+        connectionSharingEnabled = conf.getBoolean(SERVERLESS_CONNECTION_SHARING,
+                SERVERLESS_CONNECTION_SHARING_DEFAULT);
+        connectionSharingProbability = conf.getDouble(SERVERLESS_CONNECTION_SHARING_CHANCE,
+                SERVERLESS_CONNECTION_SHARING_CHANCE_DEFAULT);
+
         zkClient = new SyncZKClient(conf);
         // zkClient.connect();
 
@@ -511,10 +530,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param operationName The name of the FS operation that the NameNode should perform.
      * @param opArguments The arguments to be passed to the specified file system operation.
      * @param targetDeployment The deployment number of the serverless NameNode deployment associated with the
-     *                             target file or directory.
+     *                         target file or directory.
+     * @param userServer The server with which to issue the TCP request. This will almost always be the request.
+     *
      * @return The response from the NameNode.
      */
-    private Object issueTCPRequest(String operationName, ArgumentContainer opArguments, int targetDeployment)
+    private Object issueTCPRequest(String operationName, ArgumentContainer opArguments,
+                                   int targetDeployment, UserServer userServer)
             throws InterruptedException, ExecutionException, IOException {
         long opStart = System.currentTimeMillis();
         String requestId = UUID.randomUUID().toString();
@@ -545,12 +567,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 localStart = System.currentTimeMillis();
 
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug((tcpServer.isUdpEnabled() ? "UDP" : "TCP") +
+                    LOG.debug((userServer.isUdpEnabled() ? "UDP" : "TCP") +
                             ". OpName=" + operationName + ". RequestID=" + requestId + ". Attempt " +
                             exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
                             ". Target='" + sourceArgument + "'.");
                 } else if (LOG.isTraceEnabled()) {
-                    LOG.trace((tcpServer.isUdpEnabled() ? "UDP" : "TCP") + ". OpName=" + operationName +
+                    LOG.trace((userServer.isUdpEnabled() ? "UDP" : "TCP") + ". OpName=" + operationName +
                             ". RequestID=" + requestId + ". Attempt " + exponentialBackOff.getNumberOfRetries() +
                             (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
                             ". Target='" + sourceArgument + "'. Time elapsed=" +
@@ -559,7 +581,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                             "Straggler resubmission NOT occurred."));
                 }
 
-                Object response = tcpServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
+                Object response = userServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
                         operationName, tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
 
                 // This only ever happens when the request is cancelled.
@@ -586,7 +608,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 if (result.isDuplicate()) {
                     LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " + requestId + "...");
 
-                    if (tcpServer.isFutureActive(requestId)) {
+                    if (userServer.isFutureActive(requestId)) {
                         LOG.error("Request " + requestId +
                                 " is still active, yet we received a 'DUPLICATE REQUEST' notification for it.");
                         LOG.warn("Resubmitting request " + requestId + " with FORCE_REDO...");
@@ -620,7 +642,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // the request, then we'll do so now, and we'll only sleep for a small interval of time.
                 if (stragglerMitigationEnabled) {
                     if (stragglerResubmissionAlreadyOccurred) {
-                        LOG.error("Timed out while waiting for " + (tcpServer.isUdpEnabled() ? "UDP" : "TCP") +
+                        LOG.error("Timed out while waiting for " + (userServer.isUdpEnabled() ? "UDP" : "TCP") +
                                 " response for request " + requestId + ".");
                         LOG.error("Already submitted a straggler mitigation request. Counting this as a 'real' timeout.");
                         stragglerResubmissionAlreadyOccurred = false; // Flip this back to false.
@@ -720,17 +742,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         Object srcArgument = opArguments.get(ServerlessNameNodeKeys.SRC);
 
         // Next, let's see if we have an entry in our cache for this file/directory.
-        int mappedFunctionNumber = -1;
+        int targetDeployment = -1;
         String sourceFileOrDirectory = null;
         if (srcArgument != null) {
             sourceFileOrDirectory = (String)srcArgument;
-            mappedFunctionNumber = serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
+            targetDeployment = serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
         }
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
         if (tcpEnabled) {
             // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
             // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
-            if (mappedFunctionNumber != -1 && tcpServer.connectionExists(mappedFunctionNumber)) {
+            if (targetDeployment != -1 && tcpServer.connectionExists(targetDeployment)) {
                 // If random HTTP is disabled, then just issue a TCP request.
                 // Alternatively, if random HTTP is enabled, then we generate a random number between 0 and 1.
                 // If this number is strictly greater than the `randomHttpChance` threshold, then we still issue
@@ -740,7 +762,26 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // [0.0, 0.05] to issue an HTTP request. If we generate a number in the interval (0.05, 1], then we
                 // would just issue a TCP request.
                 if (!randomHttpEnabled || Math.random() > randomHttpChance)
-                    return issueTCPRequest(operationName, opArguments, mappedFunctionNumber);
+                    return issueTCPRequest(operationName, opArguments, targetDeployment, tcpServer);
+            }
+            // If connection sharing is enabled, then RNG to see if we should perform connection
+            // sharing. If we don't, then we'll just fall back to HTTP.
+            else if (connectionSharingEnabled && Math.random() > (1.0 - connectionSharingProbability)) {
+                if (LOG.isDebugEnabled()) LOG.debug("Attempting to perform Connection Sharing now...");
+
+                UserServer otherServer = userServerManager.findServerWithActiveConnectionToDeployment(targetDeployment);
+                if (otherServer != null) {
+                    if (LOG.isDebugEnabled())
+                        LOG.debug("Found another server with active connection to target deployment " +
+                                targetDeployment);
+
+                    return issueTCPRequest(operationName, opArguments, targetDeployment, otherServer);
+                } else {
+                    if (LOG.isDebugEnabled())
+                        LOG.debug(
+                                "Failed to find another server with active connection to target deployment " +
+                                        targetDeployment);
+                }
             }
             else if (antiThrashingModeEnabled && tcpServer.getNumActiveConnections() > 0) {
                 // If anti-thrashing mode is enabled, then we'll just try to use ANY available TCP connections.
@@ -749,11 +790,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // entering the body of this if-else statement. We wouldn't want to bother trying to issue a TCP
                 // request if we already know there are no available TCP connections. That being said, if we lose
                 // all TCP connections prior to issuing the request, then we'll just fall back to HTTP.
-                return issueTCPRequest(operationName, opArguments, -1);
+                return issueTCPRequest(operationName, opArguments, -1, tcpServer);
             }
             else {
                 if (LOG.isDebugEnabled())
-                    LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " + mappedFunctionNumber + ". TCP connection exists: " + tcpServer.connectionExists(mappedFunctionNumber));
+                    LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " + targetDeployment + ". TCP connection exists: " + tcpServer.connectionExists(targetDeployment));
             }
         }
 
@@ -781,7 +822,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments,
                 requestId,
-                mappedFunctionNumber);
+                targetDeployment);
 
         if (response == null)
             throw new IOException("Received null response from NameNode for Request " + requestId + ", op=" +
