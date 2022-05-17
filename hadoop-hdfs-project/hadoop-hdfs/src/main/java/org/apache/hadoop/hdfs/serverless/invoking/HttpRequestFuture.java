@@ -1,20 +1,17 @@
-package org.apache.hadoop.hdfs.serverless.tcpserver;
+package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
-import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 
 import java.io.Serializable;
 import java.util.concurrent.*;
 
-public class HttpRequestFuture implements Future<Serializable> {
+public class HttpRequestFuture implements Future<JsonObject> {
     private static final Log LOG = LogFactory.getLog(HttpRequestFuture.class);
-
-    private enum State {WAITING, DONE, CANCELLED, ERROR}
 
     /**
      * The unique ID identifying this future.
@@ -32,15 +29,28 @@ public class HttpRequestFuture implements Future<Serializable> {
     private final long createdAt;
 
     /**
-     * We wrap this future, which is returned by issuing an HTTP request to a NameNode.
+     * This is used to receive the result of the future from the worker thread.
      */
-    private final Future<JsonObject> requestFuture;
+    private final BlockingQueue<JsonObject> resultQueue = new ArrayBlockingQueue<>(1);
 
-    public HttpRequestFuture(String requestId, String operationName, Future<JsonObject> requestFuture) {
+    public HttpRequestFuture(String requestId, String operationName) {
         this.requestId = requestId;
         this.operationName = operationName;
         this.createdAt = System.nanoTime();
-        this.requestFuture = requestFuture;
+    }
+
+    /**
+     * Post future that was created when the request was invoked.
+     */
+    public boolean postResult(JsonObject result) {
+        try {
+            return resultQueue.offer(result);
+        }
+        catch (Exception ex) {
+            LOG.error("Exception encountered while attempting to post result to TCP future: ", ex);
+        }
+
+        return false;
     }
 
     @Override
@@ -60,29 +70,27 @@ public class HttpRequestFuture implements Future<Serializable> {
     }
 
     @Override
-    public Serializable get() throws InterruptedException, ExecutionException {
+    public JsonObject get() throws InterruptedException, ExecutionException {
         if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
-        final JsonObject resultOrNull = requestFuture.get();
+        final JsonObject resultOrNull = resultQueue.take();
         if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
 
-        if (resultOrNull != null)
-            return extractResult(resultOrNull);
-        else
-            throw new IllegalArgumentException("Received null result from redirected request " + requestId +
-                    ", op = " + operationName + ".");
+        return resultOrNull;
     }
 
     @Override
-    public Serializable get(long timeout, TimeUnit unit)
+    public JsonObject get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
         if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
-        final JsonObject resultOrNull = requestFuture.get(timeout, unit);
-        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
+        final JsonObject resultOrNull = resultQueue.poll(timeout, unit);
+
         if (resultOrNull == null) {
             throw new TimeoutException();
         }
 
-        return extractResult(resultOrNull);
+        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
+
+        return resultOrNull;
     }
 
     /**

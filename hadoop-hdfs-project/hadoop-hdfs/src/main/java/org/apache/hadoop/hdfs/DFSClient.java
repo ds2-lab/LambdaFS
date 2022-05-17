@@ -190,11 +190,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   public ServerlessInvokerBase<JsonObject> serverlessInvoker;
 
   /**
-   * Issue HTTP requests to this to invoke serverless functions.
-   */
-  public String serverlessEndpoint;
-
-  /**
    * The name of the serverless platform being used for the Serverless NameNodes.
    */
   public String serverlessPlatformName;
@@ -551,14 +546,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
-    if (localMode)
-      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT_LOCAL, SERVERLESS_ENDPOINT_LOCAL_DEFAULT);
-    else
-      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
-
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
-    LOG.info("Serverless endpoint: " + serverlessEndpoint);
     LOG.info("Serverless platform: " + serverlessPlatformName);
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
@@ -711,13 +700,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     boolean localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
 
-    if (localMode)
-      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT_LOCAL, SERVERLESS_ENDPOINT_LOCAL_DEFAULT);
-    else
-      serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
-    LOG.info("Serverless endpoint: " + serverlessEndpoint);
     LOG.info("Serverless platform: " + serverlessPlatformName);
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
