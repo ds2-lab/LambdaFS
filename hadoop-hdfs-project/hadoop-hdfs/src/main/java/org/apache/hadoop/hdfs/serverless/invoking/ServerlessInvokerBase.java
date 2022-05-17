@@ -408,12 +408,16 @@ public abstract class ServerlessInvokerBase<T> {
                     batchOfRequestsForOneNN = new JsonArray();
 
                     HttpPost request;
+                    String requestEndpoint;
                     if (localMode)
-                        request = new HttpPost(suffix);
+                        requestEndpoint = suffix;
                     else
                         // The '?blocking=true' is specific to OpenWhisk.
                         // TODO: Make the suffix a config parameter and pass stuff up thru OpenWhiskInvoker.
-                        request = new HttpPost(suffix + req.targetDeployment + "?blocking=true");
+                        requestEndpoint = suffix + req.targetDeployment + "?blocking=true";
+
+                    LOG.debug("Request will target '" + requestEndpoint + "'");
+                    request = new HttpPost(requestEndpoint);
 
                     request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + req.authorizationString);
 
@@ -433,6 +437,8 @@ public abstract class ServerlessInvokerBase<T> {
         }
 
         LOG.debug("There are " + requests.size() + " requests ready to send.");
+
+        LOG.debug("Target host: " + targetHost + ".");
 
         pipelineHttpClient.execute(targetHost, requests,
                 new FutureCallback<List<HttpResponse>>() {
