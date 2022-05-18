@@ -205,16 +205,17 @@ public class UserServer {
 
         // If the configuration specifies a value <= 0, then all clients on this VM will use the same TCP server.
         // In this case, we just set the buffer size to the max size for both the "write buffer" and "object buffer".
-        if (maxNumClients <= 0) {
-            maxNumClients = Integer.MAX_VALUE;
-            this.actualBufferSize = maxBufferSize;
-        } else {
-            this.actualBufferSize = Math.min(maxBufferSize, maxNumClients * baseBufferSize);
-        }
+//        if (maxNumClients <= 0) {
+//            maxNumClients = Integer.MAX_VALUE;
+//            this.actualBufferSize = maxBufferSize;
+//        } else {
+//            this.actualBufferSize = Math.min(maxBufferSize, maxNumClients * baseBufferSize);
+//        }
+        this.actualBufferSize = Math.min(maxBufferSize, baseBufferSize);
 
         LOG.info("User server will be used by at-most " + maxNumClients +
-                (maxNumClients == 1 ? " client." : " clients.") + " Base buffer size: " + baseBufferSize +
-                " bytes. Total buffer size: " + actualBufferSize + " bytes each (there are 2 buffers).");
+                (maxNumClients == 1 ? " client." : " clients.") + " Buffer size: " + actualBufferSize +
+                " bytes each (there are 2 buffers).");
 
         // Read some options from config file.
         enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,

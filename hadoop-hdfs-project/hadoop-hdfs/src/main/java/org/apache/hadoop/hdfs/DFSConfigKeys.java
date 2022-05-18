@@ -196,11 +196,10 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT = 5;
 
   /**
-   * The number of bytes allocated per client for the TCP server's buffers. This is multiplied
-   * by the number of clients per server to obtain the final buffer size used by the server.
+   * The number of bytes allocated per client for the TCP server's buffers.
    */
   public static final String SERVERLESS_TCP_BASE_BUFFER_SIZE = "serverless.tcp.base-buffer-size";
-  public static final int SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT = (int)8e6;
+  public static final int SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT = (int)2.5e5;
 
   /**
    * Port to use for UDP server.
