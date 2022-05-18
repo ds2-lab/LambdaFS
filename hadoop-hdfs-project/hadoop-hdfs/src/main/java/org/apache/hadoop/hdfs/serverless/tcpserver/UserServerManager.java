@@ -193,14 +193,24 @@ public class UserServerManager {
      * Return a copy of the set of all actively in-use TCP ports.
      */
     public List<Integer> getActiveTcpPorts() {
-        return new ArrayList<>(activeTcpPorts);
+        mutex.readLock().lock();
+        try{
+            return new ArrayList<>(activeTcpPorts);
+        } finally {
+            mutex.readLock().unlock();
+        }
     }
 
     /**
      * Return a copy of the set of all actively in-use UDP ports.
      */
     public List<Integer> getActiveUdpPorts() {
-        return new ArrayList<>(activeUdpPorts);
+        mutex.readLock().lock();
+        try{
+            return new ArrayList<>(activeUdpPorts);
+        } finally {
+            mutex.readLock().unlock();
+        }
     }
 
     /**
