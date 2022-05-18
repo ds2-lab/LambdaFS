@@ -176,13 +176,13 @@ public class UserServerManager {
     public int printDebugInformation() {
         mutex.readLock().lock();
         try {
-            LOG.debug("There are " + tcpPortToServerMapping.values().size() + " TCP servers.");
+            LOG.info("There are " + tcpPortToServerMapping.values().size() + " TCP servers.");
             int numActiveConnections = 0;
             Set<Long> nnIds = new HashSet<Long>();
             for (UserServer server : tcpPortToServerMapping.values())
                 numActiveConnections += server.printDebugInformation(nnIds);
 
-            LOG.debug("Clients in this JVM are connected to a total of " + nnIds.size() + " unique NNs.");
+            LOG.info("Clients in this JVM are connected to a total of " + nnIds.size() + " unique NNs.");
             return numActiveConnections;
         } finally {
             mutex.readLock().unlock();
