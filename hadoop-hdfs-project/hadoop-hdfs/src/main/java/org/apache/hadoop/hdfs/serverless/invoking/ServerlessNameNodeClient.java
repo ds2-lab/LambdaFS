@@ -533,14 +533,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param targetDeployment The deployment number of the serverless NameNode deployment associated with the
      *                         target file or directory.
      * @param userServer The server with which to issue the TCP request. This will almost always be the request.
+     * @param requestId The unique ID of this request. If we end up falling back to HTTP, then the HTTP request
+     *                  will use the same request ID.
      *
      * @return The response from the NameNode.
      */
     private Object issueTCPRequest(String operationName, ArgumentContainer opArguments,
-                                   int targetDeployment, UserServer userServer)
+                                   int targetDeployment, UserServer userServer, String requestId)
             throws InterruptedException, ExecutionException, IOException, TcpRequestCancelledException {
         long opStart = System.currentTimeMillis();
-        String requestId = UUID.randomUUID().toString();
 
         // This contains the file system operation arguments (and everything else) that will be submitted to the NN.
         TcpUdpRequestPayload tcpRequestPayload = new TcpUdpRequestPayload(requestId, operationName,
@@ -754,6 +755,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // If we successfully issue a TCP request, then its value will still be 0.
         int numTcpRequestsAttempted = 0;
 
+        // Unique identifier of the request.
+        String requestId = UUID.randomUUID().toString();
+
         String sourceFileOrDirectory;
         if (srcArgument != null) {
             sourceFileOrDirectory = (String)srcArgument;
@@ -797,7 +801,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 if (targetServer != null) {
                     try {
-                        return issueTCPRequest(operationName, opArguments, targetDeploymentTcp, targetServer);
+                        return issueTCPRequest(operationName, opArguments, targetDeploymentTcp, targetServer, requestId);
                     } catch (IOException ex) {
                         // There are two reasons an IOException may occur for which we can handle things "cleanly".
                         //
@@ -809,20 +813,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         // receive a response from the NameNode for the request.
                         //
                         // In either scenario, we simply fall back to HTTP.
-                        LOG.error("Encountered IOException while trying to issue TCP request #" +
-                                (++numTcpRequestsAttempted) + " for operation " + operationName + ":", ex);
+                        LOG.error("Encountered IOException on TCP request attempt #" + (++numTcpRequestsAttempted) +
+                                " for operation " + operationName + ":", ex);
                         tcpTriedAndFailed = true;
                     }
                 } else {
-                    if (LOG.isTraceEnabled()) LOG.trace("Unable to find viable TCP server. Falling back to HTTP instead.");
+                    if (LOG.isTraceEnabled()) LOG.trace("Unable to find viable TCP server for request " + requestId + ". Falling back to HTTP instead.");
                     break;
                 }
             }
         }
 
-        if (LOG.isTraceEnabled()) LOG.trace("Issuing HTTP request for operation " + operationName);
-
-        String requestId = UUID.randomUUID().toString();
+        if (LOG.isTraceEnabled()) LOG.trace("Issuing HTTP request for request " + requestId + "(op=" + operationName + ")");
 
         long startTime = System.currentTimeMillis();
 
