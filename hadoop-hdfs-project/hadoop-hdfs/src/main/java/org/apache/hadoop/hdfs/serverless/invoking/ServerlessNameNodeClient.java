@@ -742,18 +742,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // Next, let's see if we have an entry in our cache for this file/directory.
         int targetDeployment = -1;
 
-        // In some cases, TCP functions will target a random deployment (by specifying -1).
-        // So, if we have to fall back to HTTP, we just use the targetDeployment variable. TCP
-        // may modify this variable to be -1, so we have a separate value for it.
-        int targetDeploymentTcp = -1;
-
         // Indicates whether a TCP request was submitted and subsequently got cancelled or otherwise failed.
         // Used for metrics and debugging.
         boolean tcpTriedAndFailed = false;
-
-        // Used for metrics and debugging. This only gets updated when a request fails.
-        // If we successfully issue a TCP request, then its value will still be 0.
-        int numTcpRequestsAttempted = 0;
 
         // Unique identifier of the request.
         String requestId = UUID.randomUUID().toString();
@@ -762,11 +753,19 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (srcArgument != null) {
             sourceFileOrDirectory = (String)srcArgument;
             targetDeployment = serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
-            targetDeploymentTcp = targetDeployment;
         }
 
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
         if (tcpEnabled) {
+            // In some cases, TCP functions will target a random deployment (by specifying -1).
+            // So, if we have to fall back to HTTP, we just use the targetDeployment variable. TCP
+            // may modify this variable to be -1, so we have a separate value for it.
+            int targetDeploymentTcp = targetDeployment;
+
+            // Used for metrics and debugging. This only gets updated when a request fails.
+            // If we successfully issue a TCP request, then its value will still be 0.
+            int numTcpRequestsAttempted = 0;
+
             // We loop here. Basically, we try to find a viable TCP server. If we find one, then we issue TCP request.
             // If that request fails, then we loop again, trying to find a (possibly different) TCP server. If we find
             // one, then issue TCP request. This continues until we are successful. Alternatively, if we cannot find
