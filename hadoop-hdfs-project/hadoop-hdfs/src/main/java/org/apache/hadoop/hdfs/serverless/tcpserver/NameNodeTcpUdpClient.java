@@ -19,11 +19,14 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.HashM
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.log4j.LogManager;
+import org.eclipse.jetty.util.ConcurrentHashSet;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.serverless.OpenWhiskHandler.getLogLevelFromInteger;
@@ -60,6 +63,11 @@ public class NameNodeTcpUdpClient {
      */
     //private final Cache<ServerlessHopsFSClient, Client> clients;
     private final Cache<String, Client> clients;
+
+    /**
+     * Number of connections per VM.
+     */
+    private final ConcurrentHashMap<String, Set<Integer>> connectionsPerVm;
 
     /**
      * The fraction of main memory reserved for TCP/UDP connection buffers.
@@ -175,6 +183,8 @@ public class NameNodeTcpUdpClient {
         this.objectBufferSize = defaultObjectBufferSizeBytes;
 
         this.maximumConnections = calculateMaxNumberTcpConnections();
+
+        this.connectionsPerVm = new ConcurrentHashMap<>();
 
         this.clients = Caffeine.newBuilder()
                 .maximumSize(maximumConnections)
@@ -366,6 +376,9 @@ public class NameNodeTcpUdpClient {
                 // disconnected, we don't care about it. Its update thread can block for all we care; we're just
                 // going to dispose of it anyway.
                 // disconnectedClients.add(tcpClient);
+                Set<Integer> connectedPorts = connectionsPerVm.computeIfAbsent(
+                        newClient.getClientIp(), ip -> ConcurrentHashMap.newKeySet());
+                connectedPorts.remove(newClient.getTcpPort());
 
                 tcpClient.stop();
             }
@@ -426,6 +439,14 @@ public class NameNodeTcpUdpClient {
                 else
                     LOG.debug("[TCP/UDP Client] Successfully added new TCP-Only client.");
             }
+
+            connectionsPerVm.compute(newClient.getClientIp(), (ip, connectedPorts) -> {
+               if (connectedPorts == null)
+                   connectedPorts = ConcurrentHashMap.newKeySet();
+
+               connectedPorts.add(newClient.getTcpPort());
+               return connectedPorts;
+            });
 
             return true;
         } else {
@@ -520,13 +541,16 @@ public class NameNodeTcpUdpClient {
                     requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
 
             long s = System.nanoTime();
-            // TODO: Determine how this impacts performance.
-            OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
-                    args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
-                    newClient.getClientId(), useUDP);
-            if (LOG.isDebugEnabled()) {
-                long t = System.nanoTime();
-                LOG.debug("Attempted additional connections in " + ((t-s) / 1.0e6) + " ms.");
+            // Only bother trying to connect if there's at least one non-existent connection.
+            if (connectionsPerVm.get(newClient.getClientIp()).size() != args.getActiveTcpPorts().size()) {
+                // TODO: Determine how this impacts performance.
+                OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
+                        args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
+                        newClient.getClientId(), useUDP);
+                if (LOG.isDebugEnabled()) {
+                    long t = System.nanoTime();
+                    LOG.debug("Attempted additional connections in " + ((t - s) / 1.0e6) + " ms.");
+                }
             }
 
             return tcpResult;
@@ -538,13 +562,16 @@ public class NameNodeTcpUdpClient {
                     requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
 
             long s = System.nanoTime();
-            // TODO: Determine how this impacts performance.
-            OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
-                    args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
-                    newClient.getClientId(), useUDP);
-            if (LOG.isDebugEnabled()) {
-                long t = System.nanoTime();
-                LOG.debug("Attempted additional connections in " + ((t-s) / 1.0e6) + " ms.");
+            // Only bother trying to connect if there's at least one non-existent connection.
+            if (connectionsPerVm.get(newClient.getClientIp()).size() != args.getActiveTcpPorts().size()) {
+                // TODO: Determine how this impacts performance.
+                OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
+                        args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
+                        newClient.getClientId(), useUDP);
+                if (LOG.isDebugEnabled()) {
+                    long t = System.nanoTime();
+                    LOG.debug("Attempted additional connections in " + ((t - s) / 1.0e6) + " ms.");
+                }
             }
 
             return tcpResult;
