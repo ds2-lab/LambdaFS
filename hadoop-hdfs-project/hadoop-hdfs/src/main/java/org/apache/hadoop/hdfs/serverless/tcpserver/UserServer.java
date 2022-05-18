@@ -995,8 +995,8 @@ public class UserServer {
         public void connected(Connection conn) {
             if (LOG.isDebugEnabled())
                 LOG.debug(serverPrefix + " Connection established with remote NameNode at " + conn.getRemoteAddressTCP());
-            conn.setKeepAliveTCP(6000);
-            conn.setTimeout(12000);
+            conn.setKeepAliveTCP(5000);
+            conn.setTimeout(20000);
         }
 
         /**
