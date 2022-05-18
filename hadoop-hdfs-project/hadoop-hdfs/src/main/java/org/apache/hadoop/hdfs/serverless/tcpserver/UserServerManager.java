@@ -8,6 +8,7 @@ import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -66,7 +67,23 @@ public class UserServerManager {
      */
     private volatile int nextUdpPort;
 
-    private ReadWriteLock mutex = new ReentrantReadWriteLock();
+    private final ReadWriteLock mutex = new ReentrantReadWriteLock();
+
+    private final ArrayList<UserServer> userServers = new ArrayList<>();
+
+    /**
+     * Gets incremented every time somebody calls {@link UserServerManager#findServerWithActiveConnectionToDeployment(int)}
+     * or {@link UserServerManager#findServerWithAtLeastOneActiveConnection()}. We use this to determine when to shuffle
+     * the list of user servers to ensure servers at the beginning of the list aren't disproportionately used.
+     */
+    private AtomicInteger counter = new AtomicInteger(0);
+
+    /**
+     * How frequently we shuffle the list of user servers.
+     *
+     * TODO: Should this also be volatile? It's only written to a single time.
+     */
+    private int shuffleEvery;
 
     /**
      * Retrieve the singleton instance, or create it if it does not exist.
@@ -97,6 +114,9 @@ public class UserServerManager {
         this.maxClientsPerServer = configuration.getInt(SERVERLESS_CLIENTS_PER_TCP_SERVER,
                 SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT);
 
+        this.shuffleEvery = configuration.getInt(SERVERLESS_SHUFFLE_SERVERS_EVERY,
+                SERVERLESS_SHUFFLE_SERVERS_EVERY_DEFAULT);
+
         this.nextTcpPort = configuration.getInt(SERVERLESS_TCP_SERVER_PORT, SERVERLESS_TCP_SERVER_PORT_DEFAULT);
         this.nextUdpPort = configuration.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT_DEFAULT);
@@ -126,10 +146,47 @@ public class UserServerManager {
      * servers exist.
      */
     public UserServer findServerWithActiveConnectionToDeployment(int targetDeployment) {
+        checkIfShuffleRequired();
+
         mutex.readLock().lock();
         try {
-            for (UserServer userServer : tcpPortToServerMapping.values()) {
+            for (UserServer userServer : userServers) {
                 if (userServer.connectionExists(targetDeployment))
+                    return userServer;
+            }
+
+            return null;
+        } finally {
+            mutex.readLock().unlock();
+        }
+    }
+
+    /**
+     * Check if we should shuffle the {@link UserServerManager#userServers} variable. If so, then shuffle it.
+     */
+    private void checkIfShuffleRequired() {
+        int val = counter.incrementAndGet();
+
+        if (val % shuffleEvery == 0) {
+            mutex.writeLock().lock();
+            try {
+                Collections.shuffle(userServers);
+            } finally {
+                mutex.writeLock().unlock();
+            }
+        }
+    }
+
+    /**
+     * Find and return a server that has at least one active TCP connection.
+     */
+    public UserServer findServerWithAtLeastOneActiveConnection() {
+        checkIfShuffleRequired();
+
+        mutex.readLock().lock();
+        try {
+            for (UserServer userServer : userServers) {
+                if (userServer.getNumActiveConnections() > 0)
                     return userServer;
             }
 
@@ -171,22 +228,34 @@ public class UserServerManager {
 
     /**
      * Call {@link UserServer#printDebugInformation(Set)} )} on each of our servers.
+     *
+     * This also shuffles the list of all user servers.
+     *
      * @return The total number of active TCP connections across all servers.
      */
     public int printDebugInformation() {
+        int numActiveConnections = 0;
+
         mutex.readLock().lock();
         try {
             LOG.info("There are " + tcpPortToServerMapping.values().size() + " TCP servers.");
-            int numActiveConnections = 0;
             Set<Long> nnIds = new HashSet<Long>();
             for (UserServer server : tcpPortToServerMapping.values())
                 numActiveConnections += server.printDebugInformation(nnIds);
 
             LOG.info("Clients in this JVM are connected to a total of " + nnIds.size() + " unique NNs.");
-            return numActiveConnections;
         } finally {
             mutex.readLock().unlock();
         }
+
+        mutex.writeLock().lock();
+        try {
+            Collections.shuffle(userServers);
+        } finally {
+            mutex.writeLock().unlock();
+        }
+
+        return numActiveConnections;
     }
 
     /**
@@ -268,6 +337,8 @@ public class UserServerManager {
 
                 LOG.info("Created new TCP server with TCP port " + tcpPort + ". There are now " +
                         tcpPortToServerMapping.size() + " unique TCP server(s).");
+
+                userServers.add(assignedServer);
             } else {
                 LOG.info("Retrieving existing TCP server with TCP port " + assignedPort + ".");
                 // Grab existing server and return it.

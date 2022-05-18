@@ -33,6 +33,7 @@ import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
+import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.ServerlessFunctionMapping;
@@ -537,7 +538,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private Object issueTCPRequest(String operationName, ArgumentContainer opArguments,
                                    int targetDeployment, UserServer userServer)
-            throws InterruptedException, ExecutionException, IOException {
+            throws InterruptedException, ExecutionException, IOException, TcpRequestCancelledException {
         long opStart = System.currentTimeMillis();
         String requestId = UUID.randomUUID().toString();
 
@@ -595,8 +596,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                     opArguments.addPrimitive(FORCE_REDO, true);
                     // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
-                    throw new IOException("The TCP future for request " + requestId + " (operation = " + operationName +
-                            ") has been cancelled. Reason: " + requestPayload.getCancellationReason() + ".");
+                    throw new TcpRequestCancelledException("The TCP future for request " + requestId +
+                            " (operation = " + operationName + ") has been cancelled. Reason: " +
+                            requestPayload.getCancellationReason() + ".");
                 }
 
                 NameNodeResult result = (NameNodeResult)response;
@@ -636,7 +638,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                             localStart, localEnd, true, false, wasResubmittedViaStragglerMitigation);
 
                 return response;
-            } catch (TimeoutException ex) {
+            }
+            catch (TimeoutException ex) {
                 // If the straggler mitigation technique/protocol is enabled, then we only count this timeout as a
                 // "real" timeout (i.e., one that uses the exponential backoff mechanism) if we've already re-submitted
                 // the task via the straggler mitigation protocol for this retry. If we haven't already re-submitted
@@ -649,14 +652,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         stragglerResubmissionAlreadyOccurred = false; // Flip this back to false.
                         // Don't continue. We need to exponentially backoff.
                     } else {
-                        if (LOG.isDebugEnabled()) LOG.debug("Will resubmit request " + requestId + " shortly via straggler mitigation...");
+                        if (LOG.isDebugEnabled())
+                            LOG.debug("Will resubmit request " + requestId + " shortly via straggler mitigation...");
                         stragglerResubmissionAlreadyOccurred = true; // Technically it hasn't "already" occurred yet, but still.
                         wasResubmittedViaStragglerMitigation = true;
 
                         // If this isn't a write operation, then make the NN redo it so that it may go faster.
                         if (!ServerlessNameNode.isWriteOperation(operationName))
                             tcpRequestPayload.getFsOperationArguments().put(FORCE_REDO, true);
-                            // payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
+                        // payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
                         continue; // Use continue statement to avoid exponential backoff.
                     }
                 } else {
@@ -664,60 +668,52 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 }
 
                 backoffInterval = exponentialBackOff.getBackOffInMillis();
-            } catch (IOException ex) {
-                // There are two reasons an IOException may occur for which we can handle things "cleanly".
-                //
-                // The first is when we go to issue the TCP request and find that there are actually no available
-                // connections. This can occur if the TCP connection(s) were closed in between when we checked if
-                // any existed and when we went to actually issue the TCP request.
-                //
-                // The second is when the TCP connection is closed AFTER we have issued the request, but before we
-                // receive a response from the NameNode for the request.
-                //
-                // In either scenario, we simply fall back to HTTP.
-                LOG.error("Encountered IOException while trying to issue TCP request for operation " +
-                        operationName + ":", ex);
-                LOG.error("Falling back to HTTP instead. Time elapsed: " + (System.currentTimeMillis() - opStart) + " ms.");
-
-                long startTime = System.currentTimeMillis();
-
-//                numOperationsIssued++;
-//                numOperationsIssuedViaHttp++;
-                // Issue the HTTP request. This function will handle retries and timeouts.
-                JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-                        operationName,
-                        dfsClient.serverlessEndpoint,
-                        null, // We do not have any additional/non-default arguments to pass to the NN.
-                        opArguments,
-                        requestId,
-                        targetDeployment);
-
-                // TODO: This might happen if all requests to a NN time out, in which case we should
-                //       either handle it more cleanly and/or throw a more meaningful exception.
-                if (response == null)
-                    throw new IOException("Received null response from NameNode for Request " + requestId + ", op=" +
-                            operationName + ". Time elapsed: " + (System.currentTimeMillis() - startTime) + " ms.");
-
-                long endTime = System.currentTimeMillis();
-                addLatency(-1, endTime - startTime);
-
-                if (LOG.isDebugEnabled())
-                    LOG.debug("Received result from NameNode after falling back to HTTP for operation " +
-                        operationName + ". Time elapsed: " + (endTime - opStart) + ".");
-
-                if (response.has("body"))
-                    response = response.get("body").getAsJsonObject();
-
-                if (!benchmarkModeEnabled)
-                    // Collect and save/record metrics.
-                    createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime,
-                            true, true, wasResubmittedViaStragglerMitigation);
-
-                return response;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Try to find a TCP server to use for a TCP request.
+     * @param targetDeploymentTcp The deployment the TCP request will target.
+     * @return A viable TCP server (i.e., one with a connection to the target deployment) if one exists, otherwise null.
+     */
+    private UserServer tryGetUserServer(int targetDeploymentTcp) {
+        UserServer targetServer = null;
+
+        // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
+        // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
+        if (tcpServer.connectionExists(targetDeploymentTcp)) {
+            // If random HTTP is disabled, then just issue a TCP request.
+            // Alternatively, if random HTTP is enabled, then we generate a random number between 0 and 1.
+            // If this number is strictly greater than the `randomHttpChance` threshold, then we still issue
+            // a TCP request. Otherwise, we'll fall all the way through an issue an HTTP request.
+            //
+            // For example, if `randomHttpChance` is 0.05, then we'd have to generate a number in the interval
+            // [0.0, 0.05] to issue an HTTP request. If we generate a number in the interval (0.05, 1], then we
+            // would just issue a TCP request.
+            if (!randomHttpEnabled || Math.random() > randomHttpChance)
+                targetServer = tcpServer;
+        }
+        // If connection sharing is enabled, then RNG to see if we should perform connection
+        // sharing. If we don't, then we'll just fall back to HTTP.
+        else if (connectionSharingEnabled && Math.random() > (1.0 - connectionSharingProbability)) {
+            if (LOG.isTraceEnabled()) LOG.trace("No TCP connections available for deployment " + targetDeploymentTcp + ". Attempting to perform Connection Sharing now...");
+
+            // Random HTTP-TCP replacement. See comment above for more detailed explanation.
+            if (!randomHttpEnabled || Math.random() > randomHttpChance)
+                targetServer = userServerManager.findServerWithActiveConnectionToDeployment(targetDeploymentTcp);
+
+            if (LOG.isTraceEnabled()) {
+                if (targetServer != null)
+                    LOG.trace("Found another server with active connection to target deployment " + targetDeploymentTcp);
+                else
+                    LOG.trace("Failed to find another server with active connection to target deployment " + targetDeploymentTcp + ", possibly due to random HTTP replacement.");
+            }
+        }
+
+        return targetServer;
     }
 
     /**
@@ -744,77 +740,85 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // Next, let's see if we have an entry in our cache for this file/directory.
         int targetDeployment = -1;
-        String sourceFileOrDirectory = null;
+
+        // Indicates whether a TCP request was submitted and subsequently got cancelled.
+        boolean tcpCancelled = false;
+
+        // In some cases, TCP functions will target a random deployment (by specifying -1).
+        // So, if we have to fall back to HTTP, we just use the targetDeployment variable. TCP
+        // may modify this variable to be -1, so we have a separate value for it.
+        int targetDeploymentTcp = -1;
+        String sourceFileOrDirectory;
         if (srcArgument != null) {
             sourceFileOrDirectory = (String)srcArgument;
             targetDeployment = serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
+            targetDeploymentTcp = targetDeployment;
         }
+
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
         if (tcpEnabled) {
-            // If there was indeed an entry, then we need to see if we have a connection to that NameNode.
-            // If we do, then we'll concurrently issue a TCP request and an HTTP request to that NameNode.
-            if (targetDeployment != -1 && tcpServer.connectionExists(targetDeployment)) {
-                // If random HTTP is disabled, then just issue a TCP request.
-                // Alternatively, if random HTTP is enabled, then we generate a random number between 0 and 1.
-                // If this number is strictly greater than the `randomHttpChance` threshold, then we still issue
-                // a TCP request. Otherwise, we'll fall all the way through an issue an HTTP request.
-                //
-                // For example, if `randomHttpChance` is 0.05, then we'd have to generate a number in the interval
-                // [0.0, 0.05] to issue an HTTP request. If we generate a number in the interval (0.05, 1], then we
-                // would just issue a TCP request.
-                if (!randomHttpEnabled || Math.random() > randomHttpChance)
-                    return issueTCPRequest(operationName, opArguments, targetDeployment, tcpServer);
-            }
-            // If connection sharing is enabled, then RNG to see if we should perform connection
-            // sharing. If we don't, then we'll just fall back to HTTP.
-            else if (connectionSharingEnabled && Math.random() > (1.0 - connectionSharingProbability)) {
-                if (LOG.isDebugEnabled()) LOG.debug("Attempting to perform Connection Sharing now...");
+            // We loop here. Basically, we try to find a viable TCP server. If we find one, then we issue TCP request.
+            // If that request fails, then we loop again, trying to find a (possibly different) TCP server. If we find
+            // one, then issue TCP request. This continues until we are successful. Alternatively, if we cannot find
+            // a viable TCP server, then we break out of the loop and fall back to HTTP.
+            while (true) {
+                // Attempt to find a viable TCP server.
+                UserServer targetServer = tryGetUserServer(targetDeploymentTcp);
 
-                UserServer otherServer = userServerManager.findServerWithActiveConnectionToDeployment(targetDeployment);
-                if (otherServer != null) {
-                    if (LOG.isDebugEnabled())
-                        LOG.debug("Found another server with active connection to target deployment " +
-                                targetDeployment);
+                // If we failed to find one AND Anti-Thrashing Mode is enabled, then we will try to use
+                // any TCP server on this VM that has at least one active connection to ANY deployment.
+                if (targetServer == null && antiThrashingModeEnabled) {
+                    if (LOG.isTraceEnabled()) LOG.trace("Anti-Thrashing Mode is enabled. Will attempt to use any available TCP connection for request.");
 
-                    return issueTCPRequest(operationName, opArguments, targetDeployment, otherServer);
-                } else {
-                    if (LOG.isDebugEnabled())
-                        LOG.debug(
-                                "Failed to find another server with active connection to target deployment " +
-                                        targetDeployment);
+                    // If anti-thrashing mode is enabled, then we'll just try to use ANY available TCP connections.
+                    // By passing -1, we'll randomly select a TCP connection from among all active deployments.
+                    // Notice that we checked to make sure that there is at least one active TCP connection before
+                    // entering the body of this if-else statement. We wouldn't want to bother trying to issue a TCP
+                    // request if we already know there are no available TCP connections. That being said, if we lose
+                    // all TCP connections prior to issuing the request, then we'll just fall back to HTTP.
+                    targetDeploymentTcp = -1;
+
+                    // If our assigned server has at least one active connection, then we'll use it.
+                    // Otherwise, we'll attempt to use another TCP server on this VM (if connection sharing is enabled).
+                    if (tcpServer.getNumActiveConnections() > 0)
+                        targetServer = tcpServer;
+                    else if (connectionSharingEnabled) {
+                        // If it is enabled, then we do it 100% of the time due to anti-thrashing.
+                        if (LOG.isTraceEnabled()) LOG.trace("Attempting to use Connection Sharing in conjunction with Anti-Thrashing mode.");
+                        targetServer = userServerManager.findServerWithAtLeastOneActiveConnection();
+                    }
                 }
-            }
-            else if (antiThrashingModeEnabled && tcpServer.getNumActiveConnections() > 0) {
-                // If anti-thrashing mode is enabled, then we'll just try to use ANY available TCP connections.
-                // By passing -1, we'll randomly select a TCP connection from among all active deployments.
-                // Notice that we checked to make sure that there is at least one active TCP connection before
-                // entering the body of this if-else statement. We wouldn't want to bother trying to issue a TCP
-                // request if we already know there are no available TCP connections. That being said, if we lose
-                // all TCP connections prior to issuing the request, then we'll just fall back to HTTP.
-                return issueTCPRequest(operationName, opArguments, -1, tcpServer);
-            }
-            else {
-                if (LOG.isDebugEnabled())
-                    LOG.debug("Source file/directory " + sourceFileOrDirectory + " is mapped to serverless NameNode " + targetDeployment + ". TCP connection exists: " + tcpServer.connectionExists(targetDeployment));
+
+                if (targetServer != null) {
+                    try {
+                        return issueTCPRequest(operationName, opArguments, targetDeploymentTcp, targetServer);
+                    } catch (IOException ex) {
+                        // There are two reasons an IOException may occur for which we can handle things "cleanly".
+                        //
+                        // The first is when we go to issue the TCP request and find that there are actually no available
+                        // connections. This can occur if the TCP connection(s) were closed in between when we checked if
+                        // any existed and when we went to actually issue the TCP request.
+                        //
+                        // The second is when the TCP connection is closed AFTER we have issued the request, but before we
+                        // receive a response from the NameNode for the request.
+                        //
+                        // In either scenario, we simply fall back to HTTP.
+                        LOG.error("Encountered IOException while trying to issue TCP request for operation " + operationName + ":", ex);
+                        tcpCancelled = true;
+                    }
+                } else {
+                    if (LOG.isTraceEnabled()) LOG.trace("Unable to find viable TCP server. Falling back to HTTP instead.");
+                    break;
+                }
             }
         }
 
-        if (LOG.isDebugEnabled())
-            LOG.debug("Issuing HTTP request only for operation " + operationName);
+        if (LOG.isTraceEnabled()) LOG.trace("Issuing HTTP request for operation " + operationName);
 
         String requestId = UUID.randomUUID().toString();
 
-        Object srcObj = opArguments.get("src");
-        String src = null;
-        if (srcObj != null)
-            src = (String)srcObj;
-
-//        int mappedFunctionNumber = (src != null) ? serverlessInvoker.cache.getFunction(src) : -1;
-
         long startTime = System.currentTimeMillis();
 
-//        numOperationsIssued++;
-//        numOperationsIssuedViaHttp++;
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
         JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
@@ -833,15 +837,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         addLatency(-1, endTime - startTime);
 
-        if (LOG.isDebugEnabled())
-            LOG.debug("Response: " + response);
+        if (LOG.isTraceEnabled())
+            LOG.trace("Response: " + response);
 
         if (response.has("body"))
             response = response.get("body").getAsJsonObject();
 
         if (!benchmarkModeEnabled)
             createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime,
-                    false, true, false);
+                    tcpCancelled, true, false);
 
         return response;
     }

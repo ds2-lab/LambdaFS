@@ -176,6 +176,16 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT = -1;
 
   /**
+   * There are certain times when clients will use the TCP server NOT assigned to them. In this case,
+   * they query a manager that iterates over all servers to find an appropriate candidate. We periodically
+   * shuffle the list of all servers to avoid disproportionately using servers at the beginning of this list.
+   *
+   * A value <= 0 will result in the list NEVER being shuffled.
+   */
+  public static final String SERVERLESS_SHUFFLE_SERVERS_EVERY = "serverless.tcp.shuffle-servers-every";
+  public static final int SERVERLESS_SHUFFLE_SERVERS_EVERY_DEFAULT = 100;
+
+  /**
    * The maximum size we should allocate for the TCP buffers,
    * regardless of the number of clients per TCP server.
    */
