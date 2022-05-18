@@ -552,10 +552,10 @@ public class NameNodeTcpUdpClient {
                 OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
                         args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
                         newClient.getClientId(), useUDP);
-                if (LOG.isDebugEnabled()) {
-                    long t = System.nanoTime();
-                    LOG.debug("Attempted additional connections in " + ((t - s) / 1.0e6) + " ms.");
-                }
+            }
+            if (LOG.isDebugEnabled()) {
+                long t = System.nanoTime();
+                LOG.debug("Attempted additional connections in " + ((t - s) / 1.0e6) + " ms.");
             }
 
             return tcpResult;
@@ -573,10 +573,10 @@ public class NameNodeTcpUdpClient {
                 OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
                         args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
                         newClient.getClientId(), useUDP);
-                if (LOG.isDebugEnabled()) {
-                    long t = System.nanoTime();
-                    LOG.debug("Attempted additional connections in " + ((t - s) / 1.0e6) + " ms.");
-                }
+            }
+            if (LOG.isDebugEnabled()) {
+                long t = System.nanoTime();
+                LOG.debug("Attempted additional connections in " + ((t - s) / 1.0e6) + " ms.");
             }
 
             return tcpResult;
