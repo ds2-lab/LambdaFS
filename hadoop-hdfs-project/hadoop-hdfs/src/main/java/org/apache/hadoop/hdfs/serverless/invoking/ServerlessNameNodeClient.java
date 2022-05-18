@@ -741,13 +741,19 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // Next, let's see if we have an entry in our cache for this file/directory.
         int targetDeployment = -1;
 
-        // Indicates whether a TCP request was submitted and subsequently got cancelled.
-        boolean tcpCancelled = false;
-
         // In some cases, TCP functions will target a random deployment (by specifying -1).
         // So, if we have to fall back to HTTP, we just use the targetDeployment variable. TCP
         // may modify this variable to be -1, so we have a separate value for it.
         int targetDeploymentTcp = -1;
+
+        // Indicates whether a TCP request was submitted and subsequently got cancelled or otherwise failed.
+        // Used for metrics and debugging.
+        boolean tcpTriedAndFailed = false;
+
+        // Used for metrics and debugging. This only gets updated when a request fails.
+        // If we successfully issue a TCP request, then its value will still be 0.
+        int numTcpRequestsAttempted = 0;
+
         String sourceFileOrDirectory;
         if (srcArgument != null) {
             sourceFileOrDirectory = (String)srcArgument;
@@ -803,8 +809,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         // receive a response from the NameNode for the request.
                         //
                         // In either scenario, we simply fall back to HTTP.
-                        LOG.error("Encountered IOException while trying to issue TCP request for operation " + operationName + ":", ex);
-                        tcpCancelled = true;
+                        LOG.error("Encountered IOException while trying to issue TCP request #" +
+                                (++numTcpRequestsAttempted) + " for operation " + operationName + ":", ex);
+                        tcpTriedAndFailed = true;
                     }
                 } else {
                     if (LOG.isTraceEnabled()) LOG.trace("Unable to find viable TCP server. Falling back to HTTP instead.");
@@ -845,7 +852,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         if (!benchmarkModeEnabled)
             createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime,
-                    tcpCancelled, true, false);
+                    tcpTriedAndFailed, true, false);
 
         return response;
     }
