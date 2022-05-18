@@ -236,7 +236,12 @@ public class NameNodeTcpUdpClient {
     }
 
     public synchronized boolean connectionExists(String host, int tcpPort) {
-        return clients.asMap().containsKey(host + ":" + tcpPort);
+        Set<Integer> connectedPorts = connectionsPerVm.get(host);
+
+        if (connectedPorts == null) return false;
+
+        return connectedPorts.contains(tcpPort);
+        // return clients.asMap().containsKey(host + ":" + tcpPort);
     }
 
     /**
