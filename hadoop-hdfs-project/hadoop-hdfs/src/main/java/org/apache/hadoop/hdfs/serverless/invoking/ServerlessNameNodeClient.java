@@ -540,7 +540,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private Object issueTCPRequest(String operationName, ArgumentContainer opArguments,
                                    int targetDeployment, UserServer userServer, String requestId)
-            throws InterruptedException, ExecutionException, IOException, TcpRequestCancelledException {
+            throws InterruptedException, ExecutionException, IOException {
         long opStart = System.currentTimeMillis();
 
         // This contains the file system operation arguments (and everything else) that will be submitted to the NN.
@@ -813,8 +813,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         //
                         // In either scenario, we simply fall back to HTTP.
                         LOG.error("Encountered IOException on TCP request attempt #" + (++numTcpRequestsAttempted) +
-                                " for operation " + operationName + ":", ex);
+                                " for operation " + operationName + " to deployment " + targetDeploymentTcp + ":", ex);
                         tcpTriedAndFailed = true;
+                        targetDeploymentTcp = targetDeployment;
                     }
                 } else {
                     if (LOG.isTraceEnabled()) LOG.trace("Unable to find viable TCP server for request " + requestId + ". Falling back to HTTP instead.");
