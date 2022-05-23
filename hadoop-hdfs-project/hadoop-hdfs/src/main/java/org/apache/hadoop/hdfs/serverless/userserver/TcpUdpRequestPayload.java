@@ -1,6 +1,4 @@
-package org.apache.hadoop.hdfs.serverless.tcpserver;
-
-import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
+package org.apache.hadoop.hdfs.serverless.userserver;
 
 import java.io.Serializable;
 import java.util.HashMap;

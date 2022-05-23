@@ -1,4 +1,4 @@
-package org.apache.hadoop.hdfs.serverless.tcpserver;
+package org.apache.hadoop.hdfs.serverless.userserver;
 
 /**
  * Encapsulates the information needed to communicate with a Serverless HopsFS client/user via TCP.

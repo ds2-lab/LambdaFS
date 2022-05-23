@@ -37,10 +37,10 @@ import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.ServerlessFunctionMapping;
-import org.apache.hadoop.hdfs.serverless.tcpserver.UserServerManager;
-import org.apache.hadoop.hdfs.serverless.tcpserver.UserServer;
-import org.apache.hadoop.hdfs.serverless.tcpserver.TcpUdpRequestPayload;
-import org.apache.hadoop.hdfs.serverless.tcpserver.TcpUdpTaskFuture;
+import org.apache.hadoop.hdfs.serverless.userserver.UserServerManager;
+import org.apache.hadoop.hdfs.serverless.userserver.UserServer;
+import org.apache.hadoop.hdfs.serverless.userserver.TcpUdpRequestPayload;
+import org.apache.hadoop.hdfs.serverless.userserver.TcpUdpTaskFuture;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.io.DataOutputBuffer;

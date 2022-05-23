@@ -1,4 +1,4 @@
-package org.apache.hadoop.hdfs.serverless.tcpserver;
+package org.apache.hadoop.hdfs.serverless.userserver;
 
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
@@ -19,13 +19,11 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.HashM
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
 import org.apache.log4j.LogManager;
-import org.eclipse.jetty.util.ConcurrentHashSet;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.*;
 

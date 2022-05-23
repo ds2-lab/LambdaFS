@@ -1,4 +1,4 @@
-package org.apache.hadoop.hdfs.serverless.tcpserver;
+package org.apache.hadoop.hdfs.serverless.userserver;
 
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
@@ -26,7 +26,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
-import static org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
+import static org.apache.hadoop.hdfs.serverless.userserver.ServerlessClientServerUtilities.OPERATION_REGISTER;
 
 /**
  * Clients of Serverless HopsFS expose a TCP server that serverless NameNodes can connect to.
@@ -544,6 +544,7 @@ public class UserServer {
 
         if (connection != null) {
             if (connection.isConnected()) {
+                if (LOG.isDebugEnabled()) LOG.debug("Attempting to delete active connection with NN " + nameNodeId + ".");
 
                 if (errorIfActive) {
                     throw new IllegalStateException(serverPrefix + " Connection to NN " + nameNodeId
@@ -560,15 +561,8 @@ public class UserServer {
                             activeConnectionsPerDeployment.get(deploymentNumber);
                     deploymentConnections.remove(nameNodeId);
 
+                    cancelRequests(connection.name);
 
-                    // Remove the list of futures associated with this connection.
-                    // TODO: Should we resubmit these via HTTP? Or just drop them, effectively?
-                    //       Currently, we're just dropping them.
-                    List<TcpUdpTaskFuture> incompleteFutures = submittedFutures.get(connection.name);
-                    if (incompleteFutures.size() > 0) {
-                        LOG.warn("Connection to NameNode " + nameNodeId + " has " + incompleteFutures.size() +
-                                " incomplete futures associated with it, yet we're deleting the connection...");
-                    }
                     submittedFutures.remove(connection.name);
 
                     if (LOG.isDebugEnabled())
@@ -580,7 +574,9 @@ public class UserServer {
                                 + " because it is still active " + "(and the override flag was not set to true).");
                     return false;
                 }
-            } else {
+            }
+            else {
+                if (LOG.isDebugEnabled()) LOG.debug("Attempting to delete inactive connection with NN " + nameNodeId + ".");
                 allActiveConnections.remove(nameNodeId);
 
                 // Remove from the mapping for the NN's specific deployment.
@@ -639,14 +635,14 @@ public class UserServer {
     public boolean connectionExists(long nameNodeId) {
         Connection tcpConnection = getConnection(nameNodeId);
 
-        if(tcpConnection != null) {
+        if (tcpConnection != null) {
             if (tcpConnection.isConnected())
                 return true;
 
-            // If the connection is NOT active, then we need to remove it from our cache of connections.
-            deleteConnection(nameNodeId, false, true);
             LOG.warn("Found that connection to NN " + nameNodeId + " is NOT connected while checking" +
                     " if it exists. Removing it from the connection mapping...");
+            // If the connection is NOT active, then we need to remove it from our cache of connections.
+            deleteConnection(nameNodeId, false, true);
         }
 
         return false;
@@ -791,8 +787,7 @@ public class UserServer {
 
         // Make sure the connection is active.
         if (!tcpConnection.isConnected()) {
-            LOG.warn(serverPrefix + " Selected connection to NameNode " + tcpConnection.name +
-                    " is NOT connected...");
+            LOG.warn(serverPrefix + " Selected connection to NameNode " + tcpConnection.name + " is NOT connected...");
 
             // Delete the connection. If it is active, then we throw an error, as we expect it to not be active.
             deleteConnection(tcpConnection.name, false, true);
@@ -961,6 +956,39 @@ public class UserServer {
     }
 
     /**
+     * Cancel the requests associated with a particular NameNode.
+     *
+     * This is used when the TCP connection to that NameNode is disconnected.
+     *
+     * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
+     */
+    private void cancelRequests(long nameNodeId) {
+        List<TcpUdpTaskFuture> incompleteFutures = submittedFutures.get(nameNodeId);
+
+        if (incompleteFutures == null) {
+            if (LOG.isDebugEnabled()) LOG.debug(serverPrefix + " There were no futures associated with now-closed connection to NN " + nameNodeId);
+            return;
+        }
+
+        LOG.warn(serverPrefix + " There were " + incompleteFutures.size()
+                + " incomplete future(s) associated with now-terminated connection to NN " + nameNodeId +
+                ". Cancelling the future(s) now.");
+
+        // Cancel each of the futures.
+        for (TcpUdpTaskFuture future : incompleteFutures) {
+            if (LOG.isDebugEnabled()) LOG.debug("    " + serverPrefix + " Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
+            try {
+                future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
+            } catch (InterruptedException ex) {
+                LOG.error("Error encountered while cancelling future " + future.getRequestId()
+                        + " for operation " + future.getOperationName() + ":", ex);
+            }
+        }
+
+        submittedFutures.remove(nameNodeId);
+    }
+
+    /**
      * Wrapper around Kryo connection objects in order to track per-connection state without needing to use
      * connection IDs to perform state look-up.
      */
@@ -1098,37 +1126,6 @@ public class UserServer {
                     LOG.warn(serverPrefix + " Lost connection to unregistered NameNode.");
                 else
                     LOG.warn(serverPrefix + " Lost connection to unregistered NameNode at " + address);
-            }
-        }
-
-        /**
-         * Cancel the requests associated with a particular NameNode.
-         *
-         * This is used when the TCP connection to that NameNode is disconnected.
-         *
-         * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
-         */
-        private void cancelRequests(long nameNodeId) {
-            List<TcpUdpTaskFuture> incompleteFutures = submittedFutures.get(nameNodeId);
-
-            if (incompleteFutures == null) {
-                if (LOG.isDebugEnabled()) LOG.debug(serverPrefix +
-                        " There were no futures associated with now-closed connection to NN " + nameNodeId);
-                return;
-            }
-
-            LOG.warn(serverPrefix + " There were " + incompleteFutures.size()
-                    + " incomplete future(s) associated with now-terminated connection to NN " + nameNodeId);
-
-            // Cancel each of the futures.
-            for (TcpUdpTaskFuture future : incompleteFutures) {
-                if (LOG.isDebugEnabled()) LOG.debug("    " + serverPrefix + " Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
-                try {
-                    future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
-                } catch (InterruptedException ex) {
-                    LOG.error("Error encountered while cancelling future " + future.getRequestId()
-                            + " for operation " + future.getOperationName() + ":", ex);
-                }
             }
         }
     }

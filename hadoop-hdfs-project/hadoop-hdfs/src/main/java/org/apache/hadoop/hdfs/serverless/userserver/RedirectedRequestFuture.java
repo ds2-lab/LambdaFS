@@ -1,4 +1,4 @@
-package org.apache.hadoop.hdfs.serverless.tcpserver;
+package org.apache.hadoop.hdfs.serverless.userserver;
 
 import com.google.gson.JsonObject;
 import org.apache.commons.lang3.NotImplementedException;

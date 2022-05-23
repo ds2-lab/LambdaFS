@@ -12,8 +12,8 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.JsonT
 import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.TaskArguments;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
-import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTcpUdpClient;
-import org.apache.hadoop.hdfs.serverless.tcpserver.ServerlessHopsFSClient;
+import org.apache.hadoop.hdfs.serverless.userserver.NameNodeTcpUdpClient;
+import org.apache.hadoop.hdfs.serverless.userserver.ServerlessHopsFSClient;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
@@ -23,10 +23,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 

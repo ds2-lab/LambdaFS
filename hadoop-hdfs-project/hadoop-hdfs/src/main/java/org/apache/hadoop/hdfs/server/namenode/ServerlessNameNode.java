@@ -81,7 +81,7 @@ import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.operation.execution.ExecutionManager;
 import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.TaskArguments;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
-import org.apache.hadoop.hdfs.serverless.tcpserver.NameNodeTcpUdpClient;
+import org.apache.hadoop.hdfs.serverless.userserver.NameNodeTcpUdpClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.io.DataInputBuffer;
