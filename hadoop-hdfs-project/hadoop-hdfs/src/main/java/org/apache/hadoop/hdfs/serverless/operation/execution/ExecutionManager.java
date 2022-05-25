@@ -227,18 +227,19 @@ public class ExecutionManager {
      */
     public void tryExecuteTask(String taskId, String operationName, TaskArguments taskArguments, boolean forceRedo,
                                NameNodeResultWithMetrics workerResult, boolean http) {
-        boolean duplicate = isTaskDuplicate(taskId);
+//        boolean duplicate = isTaskDuplicate(taskId);
 
-        if (duplicate && !forceRedo) {
-            // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
-            workerResult.addResult(new DuplicateRequest("TCP", taskId), true);
-            workerResult.setDequeuedTime(System.currentTimeMillis());
-            return;
-        } else {
-            // currentlyExecutingTasks.put(taskId, task);
-            // currentlyExecutingTasks.add(taskId);
-            seenTasks.add(taskId);
-        }
+        seenTasks.add(taskId);
+//        if (duplicate && !forceRedo) {
+//            // Technically we aren't dequeue-ing the task now, but we will never enqueue it since it is a duplicate.
+//            workerResult.addResult(new DuplicateRequest("TCP", taskId), true);
+//            workerResult.setDequeuedTime(System.currentTimeMillis());
+//            return;
+//        } else {
+//            // currentlyExecutingTasks.put(taskId, task);
+//            // currentlyExecutingTasks.add(taskId);
+//            seenTasks.add(taskId);
+//        }
 
         LOG.info("Executing task " + taskId + ", operation: " + operationName + " now.");
 
@@ -304,17 +305,19 @@ public class ExecutionManager {
      */
     public void tryExecuteTask(String taskId, String operationName, TaskArguments taskArguments,
                                boolean forceRedo, NameNodeResult workerResult, boolean http) {
-        boolean duplicate = isTaskDuplicate(taskId);
+//        boolean duplicate = isTaskDuplicate(taskId);
+//
+//        if (duplicate && !forceRedo) {
+//            // TODO: Just mark the request as duplicate using a boolean flag.
+//            workerResult.addResult(new DuplicateRequest("TCP", taskId), true);
+//            return;
+//        } else {
+//            // currentlyExecutingTasks.put(taskId, task);
+//            // currentlyExecutingTasks.add(taskId);
+//            seenTasks.add(taskId);
+//        }
 
-        if (duplicate && !forceRedo) {
-            // TODO: Just mark the request as duplicate using a boolean flag.
-            workerResult.addResult(new DuplicateRequest("TCP", taskId), true);
-            return;
-        } else {
-            // currentlyExecutingTasks.put(taskId, task);
-            // currentlyExecutingTasks.add(taskId);
-            seenTasks.add(taskId);
-        }
+        seenTasks.add(taskId);
 
         LOG.info("Executing task " + taskId + ", operation: " + operationName + " now.");
 

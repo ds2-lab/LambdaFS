@@ -611,22 +611,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 // NN should execute the FS operation regardless of whether it is a duplicate.
                 if (result.isDuplicate()) {
                     LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " + requestId + "...");
+                    LOG.warn("Resubmitting request " + requestId + " with FORCE_REDO...");
 
-                    if (userServer.isFutureActive(requestId)) {
-                        LOG.error("Request " + requestId +
-                                " is still active, yet we received a 'DUPLICATE REQUEST' notification for it.");
-                        LOG.warn("Resubmitting request " + requestId + " with FORCE_REDO...");
+                    //payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
+                    tcpRequestPayload.getFsOperationArguments().put(FORCE_REDO, true);
 
-                        //payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
-                        tcpRequestPayload.getFsOperationArguments().put(FORCE_REDO, true);
-
-                        // We don't sleep in this case, as there wasn't a time-out exception.
-                        continue;
-                    } else {
-                        // This generally shouldn't happen in practice...
-                        LOG.warn("Apparently we are not actually waiting on a result for request " + requestId +
-                                "... Not resubmitting.");
-                    }
+                    // We don't sleep in this case, as there wasn't a time-out exception.
+                    continue;
                 }
 
                 long localEnd = System.currentTimeMillis();
@@ -812,8 +803,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         // receive a response from the NameNode for the request.
                         //
                         // In either scenario, we simply fall back to HTTP.
-                        LOG.error("Encountered IOException on TCP request attempt #" + (++numTcpRequestsAttempted) +
-                                " for operation " + operationName + " to deployment " + targetDeploymentTcp + ":", ex);
+
+                        // Don't print the exception itself if it's a cancelled request.
+                        if (ex instanceof TcpRequestCancelledException)
+                            LOG.error("Encountered IOException on TCP request attempt #" + (++numTcpRequestsAttempted) +
+                                    " for operation " + operationName + " to deployment " + targetDeploymentTcp + ".");
+                        else
+                            LOG.error("Encountered IOException on TCP request attempt #" + (++numTcpRequestsAttempted) +
+                                    " for operation " + operationName + " to deployment " + targetDeploymentTcp + ":", ex);
                         tcpTriedAndFailed = true;
                         targetDeploymentTcp = targetDeployment;
                     }
