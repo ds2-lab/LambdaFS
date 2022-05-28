@@ -14,6 +14,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.exceptions.NoConnectionAvailableException;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
@@ -439,10 +440,12 @@ public class UserServer {
      * Get a random TCP connection for a NameNode from the specified deployment.
      *
      * @param deploymentNumber The deployment for which a connection is desired.
+     * @throws NoConnectionAvailableException If there are no connections available to the target deployment.
      *
      * @return a random, active connection if one exists. Otherwise, returns null.
      */
-    private NameNodeConnection getRandomConnection(int deploymentNumber) {
+    private NameNodeConnection getRandomConnection(int deploymentNumber)
+            throws NoConnectionAvailableException {
         ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
@@ -451,7 +454,8 @@ public class UserServer {
 
         // If there are no available connections, then we will return null to indicate that this is the case.
         if (values.length == 0)
-            return null;
+            throw new NoConnectionAvailableException(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
+                    " request to NameNode deployment " + deploymentNumber + ", but no such connections exist...");
 
         // If there's just one, don't bother with the RNG object. Just return the first available connection.
         if (values.length == 1)
@@ -502,8 +506,11 @@ public class UserServer {
      * @param excludedNameNode NN who should not have its connections returned.
      *
      * @return a random, active connection if one exists. Otherwise, returns null.
+     * @throws NoConnectionAvailableException If there are no connections available to the target deployment (aside
+     * from possibly a connection to the excluded name node).
      */
-    private NameNodeConnection getRandomConnection(int deploymentNumber, long excludedNameNode) {
+    private NameNodeConnection getRandomConnection(int deploymentNumber, long excludedNameNode)
+            throws NoConnectionAvailableException {
         ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
@@ -517,8 +524,14 @@ public class UserServer {
         }
 
         // If there are no available connections, then we will return null to indicate that this is the case.
-        if (values.size() == 0)
-            return null;
+        if (values.size() == 0) {
+            LOG.warn("There are no other deployment #" + deploymentNumber +
+                    " connections aside from the one to NN " + excludedNameNode);
+
+            throw new NoConnectionAvailableException(serverPrefix + " There are no TCP/UDP connections to deployment " +
+                    deploymentNumber + " except for possibly a connection to excluded NN " + excludedNameNode +
+                    ". Cannot issue TCP/UDP request.");
+        }
 
         // If there's just one, don't bother with the RNG object. Just return the first available connection.
         if (values.size() == 1)
@@ -614,6 +627,38 @@ public class UserServer {
                     deploymentNumber + ". Valid deployments: " + StringUtils.join(",", activeConnectionsPerDeployment.keySet()) + ".");
 
         return deploymentConnections.size() > 0;
+    }
+
+    /**
+     * Check if there exists at least one connection to a NameNode in the specified deployment besides
+     * a connection to the NameNode with the given ID.
+     *
+     * This is useful if we want to send a TCP request to the same deployment as the deployment of the NN with
+     * the ID {@code excludedNameNodeId}, but we do not want to send the request to NN {@code excludedNameNodeId}.
+     * This can occur if we previously sent a request to NN {@code excludedNameNodeId} that timed out.
+     *
+     * @param deploymentNumber The deployment to which we're asking if at least one connection exists.
+     * @param excludedNameNodeId The ID of the NameNode whose we do not want to count for the purposes of checking
+     *                           if a connection exists.
+     * @return True if a connection currently exists, otherwise false.
+     */
+    public boolean connectionExists(int deploymentNumber, long excludedNameNodeId) {
+        if (deploymentNumber == -1)
+            return false;
+
+        ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
+                activeConnectionsPerDeployment.get(deploymentNumber);
+
+        if (deploymentConnections == null)
+            throw new IllegalStateException("Mapping of NameNode IDs to associated TCP connections is null for deployment " +
+                    deploymentNumber + ". Valid deployments: " + StringUtils.join(",", activeConnectionsPerDeployment.keySet()) + ".");
+
+        // If we still have a connection to the specified NN, then we need to have at least one other connection.
+        // If we do not stil have such a connection, then having any connections at all would suffice.
+        if (deploymentConnections.containsKey(excludedNameNodeId))
+            return deploymentConnections.size() > 1;
+        else
+            return deploymentConnections.size() > 0;
     }
 
     /**
@@ -750,8 +795,9 @@ public class UserServer {
      *                                        to the same NN at which the request previously timed-out.
      * @return A Future representing the eventual response from the NameNode.
      */
-    public TcpUdpTaskFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck, String requestId,
-                                            TcpUdpRequestPayload payload, boolean tryToAvoidTargetingSameNameNode) {
+    public TcpUdpTaskFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck,
+                                            String requestId, TcpUdpRequestPayload payload,
+                                            boolean tryToAvoidTargetingSameNameNode) throws IOException {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
             LOG.warn(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
                     " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
@@ -770,19 +816,28 @@ public class UserServer {
 
             // Avoid race in the case that the connection gets terminated between containsKey() returning
             // and us trying to retrieve the mapped connection from the futureToNameNodeMapping map.
-            if (previousConnection != null)
-                tcpConnection = getRandomConnection(deploymentNumber, previousConnection.name);
-            else
+            if (previousConnection != null) {
+                // We only want to try to grab a connection if at least one other connection to this deployment exists.
+                // If no other connections are available, then we raise an exception.
+                if (connectionExists(deploymentNumber, previousConnection.name))
+                    tcpConnection = getRandomConnection(deploymentNumber, previousConnection.name);
+                else
+                    throw new NoConnectionAvailableException(serverPrefix + " There are no TCP/UDP connections to deployment " +
+                            deploymentNumber + " except for possibly a connection to excluded NN " + previousConnection.name +
+                            ". Cannot issue TCP/UDP request.");
+            } else {
                 tcpConnection = getRandomConnection(deploymentNumber);
+            }
         } else {
             tcpConnection = getRandomConnection(deploymentNumber);
         }
 
         // Make sure the connection variable is non-null.
         if (tcpConnection == null) {
-            LOG.warn(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
+            LOG.error(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
                     " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
-            return null;
+            throw new NoConnectionAvailableException(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
+                    " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
         }
 
         // Make sure the connection is active.
@@ -791,7 +846,9 @@ public class UserServer {
 
             // Delete the connection. If it is active, then we throw an error, as we expect it to not be active.
             deleteConnection(tcpConnection.name, false, true);
-            return null;
+
+            throw new NoConnectionAvailableException(serverPrefix + " Selected connection to NameNode " +
+                    tcpConnection.name + " is NOT connected...");
         }
 
         TcpUdpTaskFuture requestResponseFuture = registerRequestResponseFuture(payload, tcpConnection.name);

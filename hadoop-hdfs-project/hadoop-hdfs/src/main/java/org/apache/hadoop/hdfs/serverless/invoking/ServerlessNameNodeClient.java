@@ -573,7 +573,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     LOG.debug((userServer.isUdpEnabled() ? "UDP" : "TCP") +
                             ". OpName=" + operationName + ". RequestID=" + requestId + ". Attempt " +
                             exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
-                            ". Target='" + sourceArgument + "'.");
+                            ". Target='" + sourceArgument + "'. TargetDeployment=" + targetDeployment);
                 } else if (LOG.isTraceEnabled()) {
                     LOG.trace((userServer.isUdpEnabled() ? "UDP" : "TCP") + ". OpName=" + operationName +
                             ". RequestID=" + requestId + ". Attempt " + exponentialBackOff.getNumberOfRetries() +
@@ -581,7 +581,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                             ". Target='" + sourceArgument + "'. Time elapsed=" +
                             (System.currentTimeMillis() - opStart) + " ms. Timeout=" + requestTimeout + " ms. " +
                             (stragglerResubmissionAlreadyOccurred ? "Straggler resubmission occurred." :
-                            "Straggler resubmission NOT occurred."));
+                            "Straggler resubmission NOT occurred. TargetDeployment=" + targetDeployment));
                 }
 
                 Object response = userServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
