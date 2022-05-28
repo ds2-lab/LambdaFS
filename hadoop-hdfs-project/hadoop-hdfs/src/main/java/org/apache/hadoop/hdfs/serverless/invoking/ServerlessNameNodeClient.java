@@ -237,6 +237,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private double connectionSharingProbability;
 
     /**
+     * Maximum number of attempts to issue a TCP/UDP request before falling back to HTTP.
+     */
+    private final int maxNumTcpAttempts;
+
+    /**
      * Create a new instance of {@link ServerlessNameNodeClient}.
      *
      * IMPORTANT: The {@link ServerlessNameNodeClient#registerAndStartTcpServer()} function must be called after
@@ -273,6 +278,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 SERVERLESS_CONNECTION_SHARING_DEFAULT);
         connectionSharingProbability = conf.getDouble(SERVERLESS_CONNECTION_SHARING_CHANCE,
                 SERVERLESS_CONNECTION_SHARING_CHANCE_DEFAULT);
+        maxNumTcpAttempts = conf.getInt(SERVERLESS_TCP_RETRY_MAX, SERVERLESS_TCP_RETRY_MAX_DEFAULT);
 
         zkClient = new SyncZKClient(conf);
         // zkClient.connect();
@@ -761,7 +767,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // If that request fails, then we loop again, trying to find a (possibly different) TCP server. If we find
             // one, then issue TCP request. This continues until we are successful. Alternatively, if we cannot find
             // a viable TCP server, then we break out of the loop and fall back to HTTP.
-            while (true) {
+            while (numTcpRequestsAttempted < maxNumTcpAttempts) {
                 // Attempt to find a viable TCP server.
                 UserServer targetServer = tryGetUserServer(targetDeploymentTcp);
 
@@ -819,6 +825,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     break;
                 }
             }
+
+            LOG.error("Failed to successfully issue a TCP/UDP request for task " + requestId + " after " +
+                    maxNumTcpAttempts + " attempts. Falling back to HTTP instead.");
         }
 
         if (LOG.isTraceEnabled()) LOG.trace("Issuing HTTP request for request " + requestId + "(op=" + operationName + ")");

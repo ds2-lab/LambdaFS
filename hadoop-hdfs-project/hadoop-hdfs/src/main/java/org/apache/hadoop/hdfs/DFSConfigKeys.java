@@ -232,6 +232,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String SERVERLESS_HTTP_RETRY_MAX = "serverless.http.maxretries";
   public static final int SERVERLESS_HTTP_RETRY_MAX_DEFAULT = 3;
 
+  /**
+   * Maximum number of attempts to issue a TCP/UDP request before falling back to HTTP.
+   */
+  public static final String SERVERLESS_TCP_RETRY_MAX = "serverless.tcp.max-retries";
+  public static final int SERVERLESS_TCP_RETRY_MAX_DEFAULT = 5;
+
   public static final String SERVERLESS_TCP_DEBUG_LOGGING = "serverless.tcp.debuglogenabled";
   public static final boolean SERVERLESS_TCP_DEBUG_LOGGING_DEFAULT = false;
 
