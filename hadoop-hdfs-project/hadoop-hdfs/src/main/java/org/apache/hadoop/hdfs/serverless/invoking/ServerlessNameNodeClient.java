@@ -826,8 +826,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 }
             }
 
-            LOG.error("Failed to successfully issue a TCP/UDP request for task " + requestId + " after " +
-                    maxNumTcpAttempts + " attempts. Falling back to HTTP instead.");
+            if (numTcpRequestsAttempted >= maxNumTcpAttempts)
+                LOG.error("Failed to successfully issue a TCP/UDP request for task " + requestId + " after " +
+                        maxNumTcpAttempts + " attempts. Falling back to HTTP instead.");
         }
 
         if (LOG.isTraceEnabled()) LOG.trace("Issuing HTTP request for request " + requestId + "(op=" + operationName + ")");
