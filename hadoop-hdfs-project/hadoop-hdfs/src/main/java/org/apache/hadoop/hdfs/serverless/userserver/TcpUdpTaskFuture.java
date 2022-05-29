@@ -77,17 +77,6 @@ public class TcpUdpTaskFuture implements Future<Object> {
         resultQueue.put(associatedPayload);
         if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " +
                 operationName + ". Reason: " + reason);
-
-//        JsonObject cancellationMessage = new JsonObject();
-//        cancellationMessage.addProperty(ServerlessNameNodeKeys.REQUEST_ID, requestId);
-//        cancellationMessage.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
-//        cancellationMessage.addProperty(ServerlessNameNodeKeys.CANCELLED, true);
-//        cancellationMessage.addProperty(ServerlessNameNodeKeys.REASON, reason);
-//        cancellationMessage.addProperty(ServerlessNameNodeKeys.SHOULD_RETRY, shouldRetry);
-//
-//        if (LOG.isDebugEnabled()) LOG.debug("About to cancel future " + requestId + " now. Size of result queue: " + resultQueue.size());
-//        resultQueue.put(cancellationMessage);
-//        if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " + operationName + ". Reason: " + reason);
     }
 
     @Override

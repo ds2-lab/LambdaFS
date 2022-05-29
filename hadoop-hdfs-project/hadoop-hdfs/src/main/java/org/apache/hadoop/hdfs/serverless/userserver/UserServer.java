@@ -574,7 +574,7 @@ public class UserServer {
                             activeConnectionsPerDeployment.get(deploymentNumber);
                     deploymentConnections.remove(nameNodeId);
 
-                    cancelRequests(connection.name);
+                    cancelActiveFutures(connection.name);
 
                     submittedFutures.remove(connection.name);
 
@@ -1014,13 +1014,13 @@ public class UserServer {
     }
 
     /**
-     * Cancel the requests associated with a particular NameNode.
+     * Cancel the active (i.e., unfinished) requests associated with a particular NameNode.
      *
      * This is used when the TCP connection to that NameNode is disconnected.
      *
      * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
      */
-    private void cancelRequests(long nameNodeId) {
+    private void cancelActiveFutures(long nameNodeId) {
         List<TcpUdpTaskFuture> incompleteFutures = submittedFutures.get(nameNodeId);
 
         if (incompleteFutures == null) {
@@ -1031,6 +1031,14 @@ public class UserServer {
         LOG.warn(serverPrefix + " There were " + incompleteFutures.size()
                 + " incomplete future(s) associated with now-terminated connection to NN " + nameNodeId +
                 ". Cancelling the future(s) now.");
+
+        // TODO: If we handled the logic of re-submitting the tasks here, then we could bundle all of the cancelled
+        //       futures together into a single HTTP request if we ended up having to fall back to HTTP. Right now,
+        //       when we do things individually, we end up issuing a unique HTTP request for each cancelled request.
+        //       This can result in 64+ unique HTTP requests being issued per VM, which is too many for OpenWhisk to
+        //       handle in the configurations we've been testing.
+        //
+        // TODO: Alternatively, we could implement batching on the HTTP side so that always occurs.
 
         // Cancel each of the futures.
         for (TcpUdpTaskFuture future : incompleteFutures) {
@@ -1168,7 +1176,7 @@ public class UserServer {
                         activeConnectionsPerDeployment.get(mappedDeploymentNumber);
                 deploymentConnections.remove(nnId);
 
-                cancelRequests(nnId);
+                cancelActiveFutures(nnId);
 
                 // Check the status of the NN whom we lost connection to in the future.
                 // At the time of writing this, ZooKeeper is configured with a tick time of 1,000ms.
