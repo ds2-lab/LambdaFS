@@ -56,6 +56,15 @@ import static com.google.common.hash.Hashing.consistentHash;
  * the name of the function we want the NameNode to execute along with the function's arguments. We also pass
  * various configuration parameters, debug information, etc. in the HTTP payload. The NameNode will execute the
  * function for us, then return a result via HTTP.
+ *
+ * TODO: Possible redesign of HTTP requests to support batching.
+ *       Basically, just enqueue all of the outgoing requests as JsonObjects or something like that.
+ *       There would be one queue for each deployment so that requests to different deployments are kept separate.
+ *       Then, we have a thread that routinely goes through these queues and combines the JsonObjects into one big
+ *       JsonObject. Once they're combined appropriately (such that each "big" JsonObject contains no more than N
+ *       individual requests, where N is a configurable parameter), we submit the requests.
+ *
+ * TODO: I started an implementation similar to this in another branch. It may be time to revisit/finish this.
  */
 public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     private static final Log LOG = LogFactory.getLog(OpenWhiskInvoker.class);
