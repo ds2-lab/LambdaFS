@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.JsonObject;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -38,8 +39,13 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
     }
 
     @Override
-    public void setConfiguration(Configuration conf, String invokerIdentity) {
-        super.setConfiguration(conf, invokerIdentity);
+    protected void sendOutgoingRequests() {
+        throw new NotImplementedException("This feature is not supported for Nuclio invokers.");
+    }
+
+    @Override
+    public void setConfiguration(Configuration conf, String invokerIdentity, String functionUriBase) {
+        super.setConfiguration(conf, invokerIdentity, functionUriBase);
         String[] endpoints = conf.getStrings(SERVERLESS_NUCLIO_ENDPOINTS, SERVERLESS_NUCLIO_ENDPOINTS_DEFAULT);
         if (LOG.isDebugEnabled()) LOG.debug("Found " + endpoints.length + " Nuclio endpoint(s) in configuration.");
         for (int i = 0; i < endpoints.length; i++) {

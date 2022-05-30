@@ -563,7 +563,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
     this.serverlessInvoker.setIsClientInvoker(true);
-    this.serverlessInvoker.setConfiguration(conf, "C-" + this.getClientName());
+    this.serverlessInvoker.setConfiguration(conf, "C-" + this.getClientName(), serverlessEndpoint);
 
     // Copy only the required DFSClient configuration
     this.tracer = FsTracer.get(conf);
@@ -722,7 +722,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
     this.serverlessInvoker.setIsClientInvoker(true);
-    this.serverlessInvoker.setConfiguration(conf, "C-" + getClientName());
+    this.serverlessInvoker.setConfiguration(conf, "C-" + getClientName(), serverlessEndpoint);
 
     this.ugi = UserGroupInformation.getCurrentUser();
 

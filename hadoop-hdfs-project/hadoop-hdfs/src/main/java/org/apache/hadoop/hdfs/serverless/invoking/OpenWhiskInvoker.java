@@ -41,6 +41,7 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 
 import static com.google.common.hash.Hashing.consistentHash;
+import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.BATCH;
 
 /**
  * The serverless platform being used is specified in the configuration files for Serverless HopsFS. Currently, it
@@ -56,15 +57,6 @@ import static com.google.common.hash.Hashing.consistentHash;
  * the name of the function we want the NameNode to execute along with the function's arguments. We also pass
  * various configuration parameters, debug information, etc. in the HTTP payload. The NameNode will execute the
  * function for us, then return a result via HTTP.
- *
- * TODO: Possible redesign of HTTP requests to support batching.
- *       Basically, just enqueue all of the outgoing requests as JsonObjects or something like that.
- *       There would be one queue for each deployment so that requests to different deployments are kept separate.
- *       Then, we have a thread that routinely goes through these queues and combines the JsonObjects into one big
- *       JsonObject. Once they're combined appropriately (such that each "big" JsonObject contains no more than N
- *       individual requests, where N is a configurable parameter), we submit the requests.
- *
- * TODO: I started an implementation similar to this in another branch. It may be time to revisit/finish this.
  */
 public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     private static final Log LOG = LogFactory.getLog(OpenWhiskInvoker.class);
@@ -98,8 +90,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     }
 
     @Override
-    public synchronized void setConfiguration(Configuration conf, String invokerIdentity) {
-        super.setConfiguration(conf, invokerIdentity);
+    public synchronized void setConfiguration(Configuration conf, String invokerIdentity, String functionUriBase) {
+        super.setConfiguration(conf, invokerIdentity, functionUriBase);
 
         authorizationString = conf.get(DFSConfigKeys.SERVERLESS_OPENWHISK_AUTH,
                 DFSConfigKeys.SERVERLESS_OPENWHISK_AUTH_DEFAULT);
@@ -226,6 +218,62 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
         return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
                 fsArgs, requestId, targetDeployment, request);
+    }
+
+    @Override
+    protected void sendOutgoingRequests() throws UnsupportedEncodingException {
+        if (!hasBeenConfigured())
+            throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
+                    "You must configure it by calling .setConfiguration(...) before using it.");
+
+        List<List<JsonArray>> batchedRequests = processOutgoingRequests();
+
+        // We've created all the batches. Now we need to issue the requests.
+        for (int i = 0; i < numDeployments; i++) {
+            List<JsonArray> deploymentBatches = batchedRequests.get(i);
+
+            if (deploymentBatches.size() > 0) {
+                if (LOG.isDebugEnabled()) LOG.debug("Preparing to send " + deploymentBatches.size() +
+                        " batch(es) of requests for Deployment " + i);
+
+                for (JsonArray requestBatch : deploymentBatches) {
+                    // This is the top-level JSON object passed along with the HTTP POST request.
+                    JsonObject topLevel = new JsonObject();
+                    topLevel.add(BATCH, requestBatch);
+
+                    HttpPost request = new HttpPost(getFunctionUri(functionUriBase, i, topLevel));
+                    request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
+
+                    JsonObject nameNodeArguments = new JsonObject();
+
+                    // We pass the file system operation arguments to the NameNode, as it
+                    // will hand them off to the intended file system operation function.
+
+                    // TODO: These should be included for each request in the batch.
+                    // nameNodeArguments.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, fileSystemOperationArguments);
+                    // nameNodeArguments.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
+
+                    nameNodeArguments.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
+                    nameNodeArguments.addProperty(ServerlessNameNodeKeys.IS_CLIENT_INVOKER, isClientInvoker);
+                    nameNodeArguments.addProperty(ServerlessNameNodeKeys.INVOKER_IDENTITY, invokerIdentity);
+
+                    // TODO: The request ID should be added uniquely for each individual request in the batch.
+                    //       The standard arguments should be added once for all requests (i.e., not for each).
+                    addStandardArguments(nameNodeArguments, requestId);
+
+                    // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
+                    // within the HTTP POST request. They should be included with the key "value".
+                    topLevel.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
+
+                    // Prepare the HTTP POST request.
+                    StringEntity parameters = new StringEntity(topLevel.toString());
+                    request.setEntity(parameters);
+                    request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+
+                    long invokeStart = System.nanoTime();
+                }
+            }
+        }
     }
 
     /**

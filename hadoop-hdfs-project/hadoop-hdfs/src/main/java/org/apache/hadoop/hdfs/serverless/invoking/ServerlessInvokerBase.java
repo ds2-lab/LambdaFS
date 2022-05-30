@@ -4,6 +4,7 @@ import com.google.common.hash.Hashing;
 import com.google.gson.*;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
+import org.apache.avro.data.Json;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -83,6 +84,15 @@ import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.ext
  * the case of OpenWhisk, that's the API Gateway component.)
  *
  * @param <T> The type of object returned by invoking serverless functions, usually a JsonObject.
+ *
+ * TODO: Possible redesign of HTTP requests to support batching.
+ *       Basically, just enqueue all of the outgoing requests as JsonObjects or something like that.
+ *       There would be one queue for each deployment so that requests to different deployments are kept separate.
+ *       Then, we have a thread that routinely goes through these queues and combines the JsonObjects into one big
+ *       JsonObject. Once they're combined appropriately (such that each "big" JsonObject contains no more than N
+ *       individual requests, where N is a configurable parameter), we submit the requests.
+ *
+ * TODO: I started an implementation similar to this in another branch. It may be time to revisit/finish this.
  */
 public abstract class ServerlessInvokerBase<T> {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
@@ -234,6 +244,69 @@ public abstract class ServerlessInvokerBase<T> {
      */
     protected int sendInterval;
 
+    protected String functionUriBase;
+
+    /**
+     * Default constructor.
+     */
+    protected ServerlessInvokerBase() {
+        // instantiateTrustManager();
+        statisticsPackages = new HashMap<>();
+        transactionEvents = new HashMap<>();
+    }
+
+    /**
+     * This function should call {@link ServerlessInvokerBase#processOutgoingRequests()} and use the
+     * returned {@code List<List<JsonArray>>} object to send the requests.
+     */
+    protected abstract void sendOutgoingRequests() throws UnsupportedEncodingException;
+
+    /**
+     * Process the outgoing requests in the various queues.
+     *
+     * Merge the requests into batches and issue requests accordingly.
+     *
+     * TODO: When a client submits an HTTP request, it could either receive a Future or submit a callback to
+     *       be executed when the HTTP request completes. Probably a Future of some sort.
+     */
+    protected List<List<JsonArray>> processOutgoingRequests() {
+        List<List<JsonArray>> batchedRequests = new ArrayList<>();
+
+        for (int i = 0; i < numDeployments; i++) {
+            LinkedBlockingQueue<JsonObject> deploymentQueue = (LinkedBlockingQueue<JsonObject>) outgoingRequests[i];
+
+            // This will just be empty if there are no requests queued for this deployment.
+            List<JsonArray> deploymentBatches = new ArrayList<>();
+            batchedRequests.add(deploymentBatches);
+
+            if (deploymentQueue.size() > 0) {
+                JsonArray currentBatch = new JsonArray();
+                deploymentBatches.add(currentBatch);
+
+                int j = 0;
+                while (j < deploymentQueue.size()) {
+                    currentBatch.add(deploymentQueue.poll());
+                    j++;
+
+                    // If the current batch's size is equal to that of the batch size parameter,
+                    // then we need to start a new batch.
+                    if (currentBatch.size() > batchSize) {
+                        if (LOG.isTraceEnabled()) LOG.trace("Current batch for deployment " + i +
+                                " has reached maximum size (" + batchSize + "). Starting new batch.");
+
+                        // If there are more outgoing requests to process for this deployment, then create a new batch.
+                        if (deploymentQueue.size() > 0) {
+                            currentBatch = new JsonArray();
+                            deploymentBatches.add(currentBatch);
+                        }
+                    }
+                }
+            }
+        }
+
+        return batchedRequests;
+    }
+
     /**
      * Return the INode-NN mapping cache entry for the given file or directory.
      *
@@ -329,18 +402,9 @@ public abstract class ServerlessInvokerBase<T> {
     }
 
     /**
-     * Default constructor.
-     */
-    protected ServerlessInvokerBase() {
-        // instantiateTrustManager();
-        statisticsPackages = new HashMap<>();
-        transactionEvents = new HashMap<>();
-    }
-
-    /**
      * Set parameters of the invoker specified in the HopsFS configuration.
      */
-    public void setConfiguration(Configuration conf, String invokerIdentity) {
+    public void setConfiguration(Configuration conf, String invokerIdentity, String functionUriBase) {
         if (configured) return;
 
         if (LOG.isDebugEnabled()) LOG.debug("Configuring ServerlessInvokerBase now...");
@@ -356,6 +420,7 @@ public abstract class ServerlessInvokerBase<T> {
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
         batchSize = conf.getInt(SERVERLESS_HTTP_BATCH_SIZE, SERVERLESS_HTTP_BATCH_SIZE_DEFAULT);
         sendInterval = conf.getInt(SERVERLESS_HTTP_SEND_INTERVAL, SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT);
+        functionUriBase = functionUriBase;
 
         if (this.localMode)
             numDeployments = 1;
@@ -384,6 +449,7 @@ public abstract class ServerlessInvokerBase<T> {
 
         outgoingRequests = new LinkedBlockingQueue[numDeployments];
 
+        // Create an outgoing request queue for each deployment.
         for (int i = 0; i < numDeployments; i++) {
             outgoingRequests[i] = new LinkedBlockingQueue<JsonObject>();
         }
