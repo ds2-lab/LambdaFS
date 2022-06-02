@@ -28,7 +28,9 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
 
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.util.concurrent.ThreadLocalRandom;
@@ -221,7 +223,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
     }
 
     @Override
-    protected void sendOutgoingRequests() throws UnsupportedEncodingException {
+    protected void sendOutgoingRequests()
+            throws UnsupportedEncodingException, SocketException, UnknownHostException {
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
                     "You must configure it by calling .setConfiguration(...) before using it.");
@@ -259,7 +262,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
 
                     // TODO: The request ID should be added uniquely for each individual request in the batch.
                     //       The standard arguments should be added once for all requests (i.e., not for each).
-                    addStandardArguments(nameNodeArguments, requestId);
+                    addStandardArguments(nameNodeArguments);
 
                     // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
                     // within the HTTP POST request. They should be included with the key "value".
@@ -270,7 +273,15 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
                     request.setEntity(parameters);
                     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
-                    long invokeStart = System.nanoTime();
+                    // TODO: This will not return until the HTTP request has a response returned. This is really bad.
+                    //       This will make it very slow to issue HTTP requests. Deployment (i+1)'s requests will not
+                    //       be issued until Deployment i's requests have all been issued and returned, including retry
+                    //       attempts with exponential backoff. Need to modify how this is performed.
+                    try {
+                        doInvoke(request, topLevel, i);
+                    } catch (IOException ex) {
+                        LOG.error("Encountered IOException while issuing batched HTTP request:", ex);
+                    }
                 }
             }
         }

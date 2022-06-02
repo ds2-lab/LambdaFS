@@ -17,6 +17,7 @@ import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
 import org.apache.hadoop.hdfs.serverless.userserver.UserServerManager;
 import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.http.HttpHeaders;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
@@ -37,6 +38,7 @@ import org.apache.http.util.EntityUtils;
 
 import javax.net.ssl.*;
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -231,7 +233,7 @@ public abstract class ServerlessInvokerBase<T> {
      * Outgoing requests are placed in this list and sent in batches
      * (of a configurable size) on a configurable interval.
      */
-    private LinkedBlockingQueue[] outgoingRequests;
+    private LinkedBlockingQueue<JsonObject>[] outgoingRequests;
 
     /**
      * We batch individual requests together to reduce per-request overhead.
@@ -259,7 +261,7 @@ public abstract class ServerlessInvokerBase<T> {
      * This function should call {@link ServerlessInvokerBase#processOutgoingRequests()} and use the
      * returned {@code List<List<JsonArray>>} object to send the requests.
      */
-    protected abstract void sendOutgoingRequests() throws UnsupportedEncodingException;
+    protected abstract void sendOutgoingRequests() throws UnsupportedEncodingException, SocketException, UnknownHostException;
 
     /**
      * Process the outgoing requests in the various queues.
@@ -457,6 +459,17 @@ public abstract class ServerlessInvokerBase<T> {
         configured = true;
     }
 
+    /**
+     * Enqueue an outgoing request to a particular deployment.
+     * This request will be batched with other requests to the same deployment.
+     * @param requestArguments JsonObject encapsulating all arguments and information related to the request. This
+     *                         is what gets sent to the NameNode.
+     * @param targetDeployment The deployment to which this request is to be directed.
+     */
+    private void enqueueRequest(JsonObject requestArguments, int targetDeployment) {
+        outgoingRequests[targetDeployment].add(requestArguments);
+    }
+
     public void setConsistencyProtocolEnabled(boolean enabled) {
         this.consistencyProtocolEnabled = enabled;
     }
@@ -538,23 +551,28 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.IS_CLIENT_INVOKER, isClientInvoker);
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.INVOKER_IDENTITY, invokerIdentity);
+        nameNodeArguments.addProperty(REQUEST_ID, requestId);
 
-        addStandardArguments(nameNodeArguments, requestId);
+        // addStandardArguments(nameNodeArguments);
 
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
         // within the HTTP POST request. They should be included with the key "value".
         requestArguments.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
 
+        enqueueRequest(requestArguments, targetDeployment);
+
+        // TODO: Return future.
+        return null;
+    }
+
+    protected JsonObject doInvoke(HttpPost request, JsonObject requestArguments, int targetDeployment)
+            throws IOException {
+        long invokeStart = System.currentTimeMillis();
+
         // Prepare the HTTP POST request.
         StringEntity parameters = new StringEntity(requestArguments.toString());
         request.setEntity(parameters);
         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Invoking the OpenWhisk serverless NameNode function for operation " + operationName +
-                    " now (requestID = " + requestId + ")");
-            LOG.debug("Request URI/URL: " + request.getURI().toURL());
-        }
 
         ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(maxHttpRetries)
@@ -566,21 +584,16 @@ public abstract class ServerlessInvokerBase<T> {
 
         long backoffInterval = exponentialBackoff.getBackOffInMillis();
 
-        // Used for debugging.
-        String sourceArg = fileSystemOperationArguments.has(SRC) ? fileSystemOperationArguments.get("src").getAsString() : null;
-
         do {
             long currentTime = System.nanoTime();
             if (LOG.isDebugEnabled()) {
                 double timeElapsed = (currentTime - invokeStart) / 1.0e6;
-                LOG.debug("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
-                        ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
-                        "/" + maxHttpRetries + ". Target: '" + sourceArg + "'. Time elapsed: " + timeElapsed +
-                        " milliseconds.");
+                LOG.debug("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
+                        (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries +
+                        ". Time elapsed: " + timeElapsed + " milliseconds.");
             } else {
-                LOG.info("Issuing HTTP request to deployment " + targetDeployment + " (op=" + operationName +
-                        ", requestID=" + requestId + "), attempt " + (exponentialBackoff.getNumberOfRetries() - 1) +
-                        "/" + maxHttpRetries + ". Target: '" + sourceArg + "'.");
+                LOG.info("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
+                        (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries + ".");
             }
 
             CloseableHttpResponse httpResponse = null;
@@ -592,8 +605,8 @@ public abstract class ServerlessInvokerBase<T> {
                 if (LOG.isDebugEnabled()) {
                     currentTime = System.nanoTime();
                     double timeElapsed = (currentTime - invokeStart) / 1.0e6;
-                    LOG.debug("Received HTTP " + responseCode + " response code for request/task " + requestId +
-                            " (op=" + operationName + "). Time elapsed: " + timeElapsed + " milliseconds.");
+                    LOG.debug("Received HTTP " + responseCode +
+                            " response code. Time elapsed: " + timeElapsed + " milliseconds.");
                 }
 
                 // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
@@ -614,9 +627,9 @@ public abstract class ServerlessInvokerBase<T> {
             } catch (NoHttpResponseException | SocketTimeoutException ex) {
                 currentTime = System.nanoTime();
                 double timeElapsed = (currentTime - invokeStart) / 1000000.0;
-                LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) + " to invoke operation " +
-                        requestId + " targeting deployment " + targetDeployment + " timed out. Time elapsed: " +
-                        timeElapsed + " ms.");
+                LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) +
+                        " to issue request targeting deployment " + targetDeployment +
+                        " timed out. Time elapsed: " + timeElapsed + " ms.");
                 LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                 doSleep(backoffInterval);
                 backoffInterval = exponentialBackoff.getBackOffInMillis();
@@ -921,9 +934,8 @@ public abstract class ServerlessInvokerBase<T> {
      *  - Flag indicating whether the NameNode is running in local mode.
      *
      * @param nameNodeArgumentsJson The arguments to be passed to the ServerlessNameNode itself.
-     * @param requestId The request ID to use for this request. This will be added to the arguments.
      */
-    protected void addStandardArguments(JsonObject nameNodeArgumentsJson, String requestId)
+    protected void addStandardArguments(JsonObject nameNodeArgumentsJson)
             throws SocketException, UnknownHostException {
         // If there is not already a command-line-arguments entry, then we'll add one with the "-regular" flag
         // so that the name node performs standard execution. If there already is such an entry, then we do
@@ -944,11 +956,9 @@ public abstract class ServerlessInvokerBase<T> {
         for (int udpPort : udpPorts)
             udpPortsJson.add(udpPort);
 
-        nameNodeArgumentsJson.addProperty(REQUEST_ID, requestId);
+        // nameNodeArgumentsJson.addProperty(REQUEST_ID, requestId);
         nameNodeArgumentsJson.addProperty(DEBUG_NDB, debugEnabledNdb);
         nameNodeArgumentsJson.addProperty(DEBUG_STRING_NDB, debugStringNdb);
-        //nameNodeArgumentsJson.addProperty(TCP_PORT, tcpPort);
-        //nameNodeArgumentsJson.addProperty(UDP_PORT, udpPort);
         nameNodeArgumentsJson.add(TCP_PORT, tcpPortsJson);
         nameNodeArgumentsJson.add(UDP_PORT, udpPortsJson);
         nameNodeArgumentsJson.addProperty(BENCHMARK_MODE, benchmarkModeEnabled);
