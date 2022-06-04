@@ -6,7 +6,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
-import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
+import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
 
 import java.io.Serializable;
 import java.util.concurrent.*;

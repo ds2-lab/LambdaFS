@@ -77,10 +77,9 @@ import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
-import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
-import org.apache.hadoop.hdfs.serverless.operation.execution.ExecutionManager;
-import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.TaskArguments;
-import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNodeList;
+import org.apache.hadoop.hdfs.serverless.execution.taskarguments.TaskArguments;
+import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.userserver.NameNodeTcpUdpClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
@@ -204,7 +203,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    * Determines whether we use an instance of {@link NameNodeResult}
-   * or {@link org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics}.
+   * or {@link org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics}.
    */
   public static ThreadLocal<Boolean> benchmarkingModeEnabled = ThreadLocal.withInitial(() -> false);
 

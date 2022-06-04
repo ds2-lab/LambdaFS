@@ -74,8 +74,6 @@ import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import io.hops.metrics.OperationPerformed;
-import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
-import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.Credentials;

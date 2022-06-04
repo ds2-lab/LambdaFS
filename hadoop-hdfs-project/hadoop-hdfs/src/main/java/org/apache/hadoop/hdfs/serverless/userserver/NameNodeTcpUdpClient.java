@@ -14,10 +14,10 @@ import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
-import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
-import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.HashMapTaskArguments;
-import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
-import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
+import org.apache.hadoop.hdfs.serverless.consistency.ConsistencyProtocol;
+import org.apache.hadoop.hdfs.serverless.execution.taskarguments.HashMapTaskArguments;
+import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
 import org.apache.log4j.LogManager;
 
 import java.io.IOException;

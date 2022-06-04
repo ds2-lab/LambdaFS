@@ -6,8 +6,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.nio.reactor.IOReactorException;
 
 import java.io.IOException;
 import java.security.KeyManagementException;
@@ -21,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_NUCLIO_ENDPOINTS;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_NUCLIO_ENDPOINTS_DEFAULT;
 
-public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
+public class NuclioInvoker extends ServerlessInvokerBase {
     private static final Log LOG = LogFactory.getLog(NuclioInvoker.class);
 
     /**
@@ -55,7 +58,7 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
     }
 
     @Override
-    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
+    public ServerlessHttpFuture invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
@@ -74,8 +77,7 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
         JsonObject fsArgs = fileSystemOperationArguments.convertToJsonObject();
         HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fsArgs));
 
-        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-                fsArgs, requestId, targetDeployment, request);
+        return enqueueRequestForSubmission(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment);
     }
 
     private String getFunctionUri(int targetDeployment, JsonObject fileSystemOperationArguments) {
@@ -115,17 +117,15 @@ public class NuclioInvoker extends ServerlessInvokerBase<JsonObject> {
     }
 
     @Override
-    public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException {
+    public CloseableHttpAsyncClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException, IOReactorException {
         return getGenericTrustAllHttpClient();
     }
 
     @Override
-    public JsonObject redirectRequest(String operationName, String functionUriBase, JsonObject nameNodeArguments,
-                                      JsonObject fileSystemOperationArguments, String requestId, int targetDeployment)
+    public ServerlessHttpFuture redirectRequest(String operationName, JsonObject nameNodeArguments,
+                                                JsonObject fileSystemOperationArguments, String requestId,
+                                                int targetDeployment)
             throws IOException {
-        HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fileSystemOperationArguments));
-
-        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArguments,
-                fileSystemOperationArguments, requestId, targetDeployment, request);
+        return enqueueRequestForSubmission(operationName, nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment);
     }
 }

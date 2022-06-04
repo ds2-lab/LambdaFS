@@ -1,63 +1,53 @@
-package org.apache.hadoop.hdfs.serverless.userserver;
+package org.apache.hadoop.hdfs.serverless.execution.futures;
 
 import com.google.gson.JsonObject;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hdfs.serverless.operation.execution.FileSystemTask;
-import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
-import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
+import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
+import org.apache.hadoop.hdfs.serverless.userserver.UserServer;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 
 import java.util.concurrent.*;
 
 /**
- * These are created when issuing TCP requests to NameNodes. They are registered with the TCP Server so that
- * the server can return results for particular operations back to the client waiting on the result.
+ * Abstract base class for futures. These are returned by the {@link UserServer} and {@link ServerlessInvokerBase}
+ * instances (or w/e subclass of {@link ServerlessInvokerBase} is being used) when operations are submitted to NNs.
  *
- * These are used on the client side.
+ * @param <T> The type of the result to be posted to the future. Typically, subclasses of this class will have a
+ *           specific type that is used. For example, HTTP requests will use {@link JsonObject}.
  */
-public class TcpUdpTaskFuture implements Future<Object> {
-    private static final Log LOG = LogFactory.getLog(FileSystemTask.class);
+public abstract class ServerlessFuture<T> implements Future<T> {
+    private static final Log LOG = LogFactory.getLog(ServerlessFuture.class);
 
-    private enum State {WAITING, DONE, CANCELLED, ERROR}
+    protected enum State {WAITING, DONE, CANCELLED, ERROR}
 
-    private volatile State state = State.WAITING;
+    protected volatile State state = State.WAITING;
 
     /**
      * The unique ID identifying this future.
      */
-    private final String requestId;
+    protected final String requestId;
 
     /**
      * The name of the operation that will be performed to fulfill this future.
      */
-    private final String operationName;
+    protected final String operationName;
 
     /**
      * Return value of System.nanoTime() called in the constructor of this instance.
      */
-    private final long createdAt;
-
-    /**
-     * The NameNodeID of the NN this request was sent to.
-     */
-    private long targetNameNodeId;
-
-    /**
-     * The payload that was submitted for this request.
-     */
-    private TcpUdpRequestPayload associatedPayload;
+    protected final long createdAt;
 
     /**
      * This is used to receive the result of the future from the worker thread.
      */
-    private final BlockingQueue<Object> resultQueue = new ArrayBlockingQueue<>(1);
+    protected final BlockingQueue<T> resultQueue = new ArrayBlockingQueue<>(1);
 
-    public TcpUdpTaskFuture(TcpUdpRequestPayload associatedPayload, long targetNameNodeId) {
-        this.requestId = associatedPayload.getRequestId();
-        this.operationName = associatedPayload.getOperationName();
+    public ServerlessFuture(String requestId, String operationName) {
+        this.requestId = requestId;
+        this.operationName = operationName;
         this.createdAt = System.nanoTime();
-        this.targetNameNodeId = targetNameNodeId;
-        this.associatedPayload = associatedPayload;
     }
 
     /**
@@ -69,20 +59,11 @@ public class TcpUdpTaskFuture implements Future<Object> {
      * @param reason The reason for cancellation.
      * @param shouldRetry If True, then whoever is waiting on this future should resubmit.
      */
-    public void cancel(String reason, boolean shouldRetry) throws InterruptedException {
-        state = State.CANCELLED;
-        associatedPayload.setCancelled(true);
-        associatedPayload.setShouldRetry(shouldRetry);
-        associatedPayload.setCancellationReason(reason);
-        resultQueue.put(associatedPayload);
-        if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " +
-                operationName + ". Reason: " + reason);
-    }
+    public abstract void cancel(String reason, boolean shouldRetry) throws InterruptedException;
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
-        LOG.warn("Standard cancel API is not supported.");
-        return false;
+        throw new NotImplementedException("Standard cancel API is not supported.");
     }
 
     @Override
@@ -96,40 +77,30 @@ public class TcpUdpTaskFuture implements Future<Object> {
     }
 
     @Override
-    public Object get() throws InterruptedException, ExecutionException {
+    public T get() throws InterruptedException, ExecutionException {
         if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
-        final Object resultOrNull = this.resultQueue.take();
+        final T resultOrNull = this.resultQueue.take();
         if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
         if (resultOrNull instanceof NullResult)
             return null;
-        else if (resultOrNull instanceof JsonObject ||      // Probably shouldn't happen anymore?
-                resultOrNull instanceof NameNodeResult ||   // Standard result.
-                resultOrNull instanceof TcpUdpRequestPayload)  // Request got cancelled.
-            return resultOrNull;
-        else
-            throw new IllegalArgumentException("Received invalid object type as response for request " + requestId
-                    + ". Object type: " + resultOrNull.getClass().getSimpleName());
+
+        return resultOrNull;
     }
 
     @Override
-    public Object get(long timeout, TimeUnit unit)
+    public T get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
-        final Object resultOrNull = this.resultQueue.poll(timeout, unit);
+        final T resultOrNull = this.resultQueue.poll(timeout, unit);
         if (resultOrNull == null) {
             throw new TimeoutException();
         }
 
         if (resultOrNull instanceof NullResult)
             return null;
-        else if (resultOrNull instanceof JsonObject ||      // Probably shouldn't happen anymore?
-                resultOrNull instanceof NameNodeResult ||   // Standard result.
-                resultOrNull instanceof TcpUdpRequestPayload)  // Request got cancelled.
-            return resultOrNull;
-        else
-            throw new IllegalArgumentException("Received invalid object type as response for request " + requestId
-                    + ". Object type: " + resultOrNull.getClass().getSimpleName());
+
+        return resultOrNull;
     }
 
     /**
@@ -139,7 +110,7 @@ public class TcpUdpTaskFuture implements Future<Object> {
      *
      * @return True if we were able to insert the result into the queue, otherwise false.
      */
-    public boolean postResultImmediate(Object result) {
+    public boolean postResultImmediate(T result) {
         try {
             boolean success = resultQueue.offer(result);
 
@@ -157,15 +128,11 @@ public class TcpUdpTaskFuture implements Future<Object> {
 
         return false;
     }
-    
-    public long getTargetNameNodeId() {
-        return this.targetNameNodeId;
-    }
 
     /**
      * Post a result to this future so that it may be consumed by whoever is waiting on it.
      */
-    public void postResult(JsonObject result) {
+    public void postResult(T result) {
         try {
             resultQueue.put(result);
             this.state = State.DONE;
@@ -216,10 +183,10 @@ public class TcpUdpTaskFuture implements Future<Object> {
         if (this == obj)
             return true;
 
-        if (!(obj instanceof TcpUdpTaskFuture))
+        if (!(obj instanceof ServerlessFuture))
             return false;
 
-        TcpUdpTaskFuture other = (TcpUdpTaskFuture)obj;
+        ServerlessFuture other = (ServerlessFuture)obj;
 
         return this.requestId.equals(other.requestId);
     }

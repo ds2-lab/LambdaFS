@@ -34,13 +34,13 @@ import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
-import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
-import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
-import org.apache.hadoop.hdfs.serverless.operation.execution.results.ServerlessFunctionMapping;
+import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
+import org.apache.hadoop.hdfs.serverless.execution.results.ServerlessFunctionMapping;
 import org.apache.hadoop.hdfs.serverless.userserver.UserServerManager;
 import org.apache.hadoop.hdfs.serverless.userserver.UserServer;
 import org.apache.hadoop.hdfs.serverless.userserver.TcpUdpRequestPayload;
-import org.apache.hadoop.hdfs.serverless.userserver.TcpUdpTaskFuture;
+import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessFuture;
 import org.apache.hadoop.hdfs.serverless.zookeeper.SyncZKClient;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -206,7 +206,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * Minimum length of timeout when using straggler mitigation. If it is too short, then we'll thrash (responses
      * will come back but only after we've prematurely timed out, and this will turn into a cycle). There is a
      * mechanism in-place to prevent this thrashing (the TCP server holds onto results it receives that do not have
-     * an associated {@link TcpUdpTaskFuture}, but still.
+     * an associated {@link ServerlessFuture}, but still.
      */
     protected int minimumStragglerMitigationTimeout;
 

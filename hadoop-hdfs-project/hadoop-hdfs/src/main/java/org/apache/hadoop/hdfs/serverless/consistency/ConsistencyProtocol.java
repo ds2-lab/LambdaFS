@@ -1,4 +1,4 @@
-package org.apache.hadoop.hdfs.serverless.operation;
+package org.apache.hadoop.hdfs.serverless.consistency;
 
 import io.hops.events.*;
 import io.hops.exception.StorageException;

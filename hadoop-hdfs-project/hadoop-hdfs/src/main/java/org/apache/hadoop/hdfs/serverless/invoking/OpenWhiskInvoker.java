@@ -7,6 +7,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
+import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
@@ -26,6 +27,8 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.nio.reactor.IOReactorException;
 import org.apache.http.util.EntityUtils;
 
 import java.net.SocketException;
@@ -60,7 +63,7 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.BATCH;
  * various configuration parameters, debug information, etc. in the HTTP payload. The NameNode will execute the
  * function for us, then return a result via HTTP.
  */
-public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
+public class OpenWhiskInvoker extends ServerlessInvokerBase {
     private static final Log LOG = LogFactory.getLog(OpenWhiskInvoker.class);
 
     /**
@@ -106,11 +109,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * @param operationName The FS operation being performed. This is passed to the NameNode so that it knows which of
      *                      its functions it should execute. This is sort of taking the place of the RPC mechanism,
      *                      where ordinarily you'd just invoke an RPC method.
-     * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
-     *                        in order to invoke the function. Before the request is issued, a number is appended
-     *                        to the end of the URI to target a particular serverless name node. After the number is
-     *                        appended, we also append a string ?blocking=true to ensure that the operation blocks
-     *                        until it is completed so that the result may be returned to the caller.
      * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
      *                          arguments when using a serverful name node. We generally don't need to pass anything
      *                          for this parameter.
@@ -126,15 +124,15 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * @return The response from the Serverless NameNode.
      */
     @Override
-    public JsonObject redirectRequest(String operationName, String functionUriBase,
-                                      JsonObject nameNodeArguments, JsonObject fileSystemOperationArguments,
-                                      String requestId, int targetDeployment) throws IOException {
+    public ServerlessHttpFuture redirectRequest(String operationName, JsonObject nameNodeArguments,
+                                                JsonObject fileSystemOperationArguments,
+                                                String requestId, int targetDeployment) throws IOException {
         HttpPost request = new HttpPost(getFunctionUri(functionUriBase, targetDeployment, fileSystemOperationArguments));
         request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
         // Just hand everything off to the internal HTTP invoke method.
-        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArguments,
-                fileSystemOperationArguments, requestId, targetDeployment, request);
+        return enqueueRequestForSubmission(operationName, nameNodeArguments,
+                fileSystemOperationArguments, requestId, targetDeployment);
     }
 
     private String getFunctionUri(String functionUriBase, int targetDeployment, JsonObject fileSystemOperationArguments) {
@@ -197,7 +195,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * @return The response from the serverless NameNode.
      */
     @Override
-    public JsonObject invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
+    public ServerlessHttpFuture invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
@@ -218,8 +216,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
         HttpPost request = new HttpPost(getFunctionUri(functionUriBase, targetDeployment, fsArgs));
         request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
-        return invokeNameNodeViaHttpInternal(operationName, functionUriBase, nameNodeArgumentsJson,
-                fsArgs, requestId, targetDeployment, request);
+        return enqueueRequestForSubmission(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment);
     }
 
     @Override
@@ -291,7 +288,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase<JsonObject> {
      * Return an HTTP client configured appropriately for the OpenWhisk serverless platform.
      */
     @Override
-    public CloseableHttpClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException {
+    public CloseableHttpAsyncClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException,
+            CertificateException, KeyStoreException, IOReactorException {
         // We create the client in this way in order to avoid SSL certificate validation/verification errors.
         // The solution here is provided by:
         // https://gist.github.com/mingliangguo/c86e05a0f8a9019b281a63d151965ac7

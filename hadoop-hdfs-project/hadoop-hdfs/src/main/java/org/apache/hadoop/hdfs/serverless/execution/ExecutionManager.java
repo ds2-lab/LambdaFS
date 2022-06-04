@@ -1,4 +1,4 @@
-package org.apache.hadoop.hdfs.serverless.operation.execution;
+package org.apache.hadoop.hdfs.serverless.execution;
 
 import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
@@ -6,10 +6,10 @@ import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
-import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResult;
-import org.apache.hadoop.hdfs.serverless.operation.execution.results.NameNodeResultWithMetrics;
-import org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments.TaskArguments;
+import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
+import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
+import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
+import org.apache.hadoop.hdfs.serverless.execution.taskarguments.TaskArguments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,6 +1,4 @@
-package org.apache.hadoop.hdfs.serverless.operation.execution;
-
-import org.apache.hadoop.util.Time;
+package org.apache.hadoop.hdfs.serverless.execution.results;
 
 import java.io.Serializable;
 

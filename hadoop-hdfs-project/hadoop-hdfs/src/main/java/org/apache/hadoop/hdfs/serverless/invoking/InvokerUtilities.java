@@ -3,7 +3,6 @@ package org.apache.hadoop.hdfs.serverless.invoking;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import io.hops.leader_election.node.ActiveNode;
 import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
 import org.apache.commons.logging.Log;
@@ -17,12 +16,11 @@ import java.util.*;
 
 import org.apache.hadoop.fs.FsServerDefaults;
 import org.apache.hadoop.hdfs.protocol.*;
-import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.server.protocol.StorageReceivedDeletedBlocks;
 import org.apache.hadoop.hdfs.server.protocol.StorageReport;
-import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
+import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNodeList;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZooKeeperInvalidation;
 import org.nustaq.serialization.FSTConfiguration;
 

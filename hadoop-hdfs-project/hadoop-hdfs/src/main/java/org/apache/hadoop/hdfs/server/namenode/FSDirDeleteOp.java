@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs.server.namenode;
 
-import com.ctc.wstx.util.StringUtil;
 import com.google.gson.JsonObject;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.transaction.handler.HDFSOperationType;
@@ -39,7 +38,7 @@ import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.invoking.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
-import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
+import org.apache.hadoop.hdfs.serverless.consistency.ConsistencyProtocol;
 import org.apache.hadoop.ipc.RetriableException;
 import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.util.ChunkedArrayList;

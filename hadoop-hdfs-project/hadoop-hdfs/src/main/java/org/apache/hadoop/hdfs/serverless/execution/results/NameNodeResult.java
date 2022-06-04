@@ -1,13 +1,9 @@
-package org.apache.hadoop.hdfs.serverless.operation.execution.results;
+package org.apache.hadoop.hdfs.serverless.execution.results;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.hops.metrics.TransactionAttempt;
 import io.hops.metrics.TransactionEvent;
-import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.fs.FsServerDefaults;
 import org.apache.hadoop.hdfs.protocol.DirectoryListing;
@@ -18,22 +14,14 @@ import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 import org.apache.hadoop.hdfs.serverless.cache.MetadataCacheManager;
 import org.apache.hadoop.hdfs.serverless.cache.ReplicaCacheManager;
-import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.operation.ActiveServerlessNameNodeList;
-import org.apache.hadoop.hdfs.serverless.operation.execution.DuplicateRequest;
-import org.checkerframework.checker.units.qual.A;
-import org.checkerframework.common.returnsreceiver.qual.This;
+import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNodeList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.nustaq.serialization.FSTConfiguration;
 
 import java.io.Serializable;
-import java.lang.management.GarbageCollectorMXBean;
-import java.lang.management.ManagementFactory;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.List;
 
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 

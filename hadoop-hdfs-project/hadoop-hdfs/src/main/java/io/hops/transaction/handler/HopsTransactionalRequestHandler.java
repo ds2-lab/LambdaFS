@@ -27,7 +27,7 @@ import org.apache.hadoop.hdfs.server.namenode.FSNamesystem;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
-import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
+import org.apache.hadoop.hdfs.serverless.consistency.ConsistencyProtocol;
 
 import java.io.IOException;
 import java.util.*;

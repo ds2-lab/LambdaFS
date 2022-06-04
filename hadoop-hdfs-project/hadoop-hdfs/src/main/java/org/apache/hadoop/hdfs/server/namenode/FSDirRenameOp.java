@@ -35,7 +35,6 @@ import io.hops.transaction.lock.TransactionLockTypes.INodeLockType;
 import io.hops.transaction.lock.TransactionLockTypes.INodeResolveType;
 import io.hops.transaction.lock.TransactionLockTypes.LockType;
 import io.hops.transaction.lock.TransactionLocks;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.InvalidPathException;
 import org.apache.hadoop.fs.Options;
@@ -59,7 +58,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.fs.XAttr;
 import org.apache.hadoop.hdfs.protocol.FSLimitException;
-import org.apache.hadoop.hdfs.serverless.operation.ConsistencyProtocol;
+import org.apache.hadoop.hdfs.serverless.consistency.ConsistencyProtocol;
 import org.apache.hadoop.hdfs.util.ChunkedArrayList;
 import org.apache.hadoop.util.Time;
 

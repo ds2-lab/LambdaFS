@@ -1,6 +1,5 @@
-package org.apache.hadoop.hdfs.serverless.operation.execution.taskarguments;
+package org.apache.hadoop.hdfs.serverless.execution.taskarguments;
 
-import java.io.Serializable;
 import java.util.List;
 
 /**

@@ -4,7 +4,6 @@ import com.google.common.hash.Hashing;
 import com.google.gson.*;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
-import org.apache.avro.data.Json;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -13,32 +12,44 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
-import org.apache.hadoop.hdfs.serverless.operation.execution.NullResult;
+import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
 import org.apache.hadoop.hdfs.serverless.userserver.UserServerManager;
+import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.util.ExponentialBackOff;
+import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
+import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManager;
+import org.apache.hc.core5.reactor.DefaultConnectingIOReactor;
+import org.apache.hc.core5.reactor.IOReactorConfig;
+import org.apache.hc.core5.util.TimeValue;
 import org.apache.http.HttpHeaders;
-import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
+import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
+import org.apache.http.impl.nio.reactor.IOReactorConfig;
+import org.apache.http.nio.conn.NoopIOSessionStrategy;
+import org.apache.http.nio.conn.SchemeIOSessionStrategy;
+import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
+import org.apache.http.nio.reactor.ConnectingIOReactor;
+import org.apache.http.nio.reactor.IOReactorException;
 import org.apache.http.util.EntityUtils;
 
 import javax.net.ssl.*;
 import java.io.*;
-import java.net.MalformedURLException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -46,7 +57,9 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
@@ -85,8 +98,6 @@ import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.ext
  * serverless platform component is. We issue a request to whatever we're supposed to in order to invoke functions. In
  * the case of OpenWhisk, that's the API Gateway component.)
  *
- * @param <T> The type of object returned by invoking serverless functions, usually a JsonObject.
- *
  * TODO: Possible redesign of HTTP requests to support batching.
  *       Basically, just enqueue all of the outgoing requests as JsonObjects or something like that.
  *       There would be one queue for each deployment so that requests to different deployments are kept separate.
@@ -96,7 +107,7 @@ import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.ext
  *
  * TODO: I started an implementation similar to this in another branch. It may be time to revisit/finish this.
  */
-public abstract class ServerlessInvokerBase<T> {
+public abstract class ServerlessInvokerBase {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
 
     protected Registry<ConnectionSocketFactory> registry;
@@ -139,7 +150,7 @@ public abstract class ServerlessInvokerBase<T> {
     /**
      * HTTPClient used to invoke serverless functions.
      */
-    protected CloseableHttpClient httpClient;
+    protected CloseableHttpAsyncClient httpClient;
 
     /**
      * Maintains a mapping of files and directories to the serverless functions responsible for caching the
@@ -157,6 +168,11 @@ public abstract class ServerlessInvokerBase<T> {
      * Invoker is useb by a DataNode.
      */
     protected boolean isClientInvoker;
+
+    /**
+     * Mapping from request ID to the associated futures.
+     */
+    private final ConcurrentHashMap<String, ServerlessHttpFuture> futures;
 
     /**
      * Name of the entity using this invoker.
@@ -227,7 +243,7 @@ public abstract class ServerlessInvokerBase<T> {
      */
     protected boolean benchmarkModeEnabled = false;
 
-    private static ServerlessInvokerBase<JsonObject> instance;
+    private static ServerlessInvokerBase instance;
 
     /**
      * Outgoing requests are placed in this list and sent in batches
@@ -255,6 +271,7 @@ public abstract class ServerlessInvokerBase<T> {
         // instantiateTrustManager();
         statisticsPackages = new HashMap<>();
         transactionEvents = new HashMap<>();
+        this.futures = new ConcurrentHashMap<>();
     }
 
     /**
@@ -321,6 +338,11 @@ public abstract class ServerlessInvokerBase<T> {
         return consistentHash(Hashing.md5().hashString(extractParentPath(fileOrDirectory)), numDeployments);
     }
 
+    /**
+     * Extract the actual result payload returned by the NameNode. The result payload will be given to the client.
+     * @param httpResponse The HTTP response returned by the HTTP request.
+     * @return The result payload returned by the NameNode.
+     */
     protected JsonObject processHttpResponse(HttpResponse httpResponse) throws IOException {
         String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
         Gson gson = new Gson();
@@ -444,7 +466,7 @@ public abstract class ServerlessInvokerBase<T> {
 
         try {
             httpClient = getHttpClient();
-        } catch (NoSuchAlgorithmException | KeyManagementException | CertificateException | KeyStoreException e) {
+        } catch (NoSuchAlgorithmException | KeyManagementException | CertificateException | KeyStoreException | IOReactorException e) {
             e.printStackTrace();
             return;
         }
@@ -504,7 +526,7 @@ public abstract class ServerlessInvokerBase<T> {
      *                         cache entry exists.
      * @return The response from the Serverless NameNode.
      */
-    public abstract T invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
+    public abstract ServerlessHttpFuture invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
                                                 HashMap<String, Object> nameNodeArguments,
                                                 ArgumentContainer fileSystemOperationArguments,
                                                 String requestId, int targetDeployment)
@@ -515,11 +537,6 @@ public abstract class ServerlessInvokerBase<T> {
      * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
      *
      * @param operationName The FS operation being performed.
-     * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
-     *                        in order to invoke the function. Before the request is issued, a number is appended
-     *                        to the end of the URI to target a particular serverless name node. After the number is
-     *                        appended, we also append a string ?blocking=true to ensure that the operation blocks
-     *                        until it is completed so that the result may be returned to the caller.
      * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
      *                          arguments when using a serverful name node.
      * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
@@ -530,13 +547,11 @@ public abstract class ServerlessInvokerBase<T> {
      *                         cache entry exists.
      * @return The response from the Serverless NameNode.
      */
-    protected JsonObject invokeNameNodeViaHttpInternal(String operationName, String functionUriBase,
-                                                       JsonObject nameNodeArguments,
-                                                       JsonObject fileSystemOperationArguments,
-                                                       String requestId, int targetDeployment,
-                                                       HttpPost request)
-            throws IOException, IllegalStateException {
-        long invokeStart = System.nanoTime();
+    protected ServerlessHttpFuture enqueueRequestForSubmission(String operationName,
+                                                               JsonObject nameNodeArguments,
+                                                               JsonObject fileSystemOperationArguments,
+                                                               String requestId, int targetDeployment)
+            throws IllegalStateException {
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
                     "You must configure it by calling .setConfiguration(...) before using it.");
@@ -553,21 +568,18 @@ public abstract class ServerlessInvokerBase<T> {
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.INVOKER_IDENTITY, invokerIdentity);
         nameNodeArguments.addProperty(REQUEST_ID, requestId);
 
-        // addStandardArguments(nameNodeArguments);
-
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
         // within the HTTP POST request. They should be included with the key "value".
         requestArguments.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
 
         enqueueRequest(requestArguments, targetDeployment);
 
-        // TODO: Return future.
-        return null;
+        return new ServerlessHttpFuture(requestId, operationName);
     }
 
-    protected JsonObject doInvoke(HttpPost request, JsonObject requestArguments, int targetDeployment)
+    protected void doInvoke(HttpPost request, JsonObject requestArguments, int targetDeployment)
             throws IOException {
-        long invokeStart = System.currentTimeMillis();
+        final long invokeStart = System.currentTimeMillis();
 
         // Prepare the HTTP POST request.
         StringEntity parameters = new StringEntity(requestArguments.toString());
@@ -582,91 +594,101 @@ public abstract class ServerlessInvokerBase<T> {
                 .setRandomizationFactor(0.5)
                 .build();
 
-        long backoffInterval = exponentialBackoff.getBackOffInMillis();
+        final long backoffInterval = exponentialBackoff.getBackOffInMillis();
 
-        do {
-            long currentTime = System.nanoTime();
-            if (LOG.isDebugEnabled()) {
-                double timeElapsed = (currentTime - invokeStart) / 1.0e6;
-                LOG.debug("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
-                        (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries +
-                        ". Time elapsed: " + timeElapsed + " milliseconds.");
-            } else {
-                LOG.info("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
-                        (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries + ".");
-            }
+        final long currentTime = System.nanoTime();
+        if (LOG.isDebugEnabled()) {
+            double timeElapsed = (currentTime - invokeStart) / 1.0e6;
+            LOG.debug("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
+                    (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries +
+                    ". Time elapsed: " + timeElapsed + " milliseconds.");
+        } else {
+            LOG.info("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
+                    (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries + ".");
+        }
 
-            CloseableHttpResponse httpResponse = null;
-            JsonObject processedResponse;
-            try {
-                httpResponse = httpClient.execute(request);
+        httpClient.execute(request, new FutureCallback<HttpResponse>() {
+            @Override
+            public void completed(HttpResponse httpResponse) {
                 int responseCode = httpResponse.getStatusLine().getStatusCode();
 
                 if (LOG.isDebugEnabled()) {
-                    currentTime = System.nanoTime();
+                    long currentTime = System.nanoTime();
                     double timeElapsed = (currentTime - invokeStart) / 1.0e6;
                     LOG.debug("Received HTTP " + responseCode +
                             " response code. Time elapsed: " + timeElapsed + " milliseconds.");
                 }
 
-                // If we receive a 4XX or 5XX response code, then we should re-try. HTTP 4XX errors
-                // generally indicate a client error, but sometimes I receive this error right after
-                // updating the NameNodes. OpenWhisk complains that the function hasn't been initialized
-                // yet, but if you try again a few seconds later, then the request will get through.
                 if (responseCode >= 400 && responseCode <= 599) {
                     LOG.error("Received HTTP response code " + responseCode + " on attempt " +
                             (exponentialBackoff.getNumberOfRetries()) + "/" + maxHttpRetries + ".");
+
+                    long backoffInterval = exponentialBackoff.getBackOffInMillis();
+
+                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                    doSleep(backoffInterval);
+
+                    // TODO: Retry HTTP request.
+                }
+
+                try {
+                    JsonObject result = processHttpResponse(httpResponse);
+                    String requestId = result.get(REQUEST_ID).getAsString();
+                    if (LOG.isDebugEnabled()) LOG.debug("Posting HTTP result for request " + requestId + " now...");
+                    ServerlessHttpFuture future = futures.get(requestId);
+                    future.postResultImmediate(result);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    request.releaseConnection();
+                }
+            }
+
+            @Override
+            public void failed(Exception e) {
+                LOG.error("HTTP request has failed.");
+
+                if (e instanceof NoHttpResponseException || e instanceof SocketTimeoutException) {
+                    currentTime = System.nanoTime();
+                    double timeElapsed = (currentTime - invokeStart) / 1000000.0;
+                    LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) +
+                            " to issue request targeting deployment " + targetDeployment +
+                            " timed out. Time elapsed: " + timeElapsed + " ms.");
                     LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                     doSleep(backoffInterval);
                     backoffInterval = exponentialBackoff.getBackOffInMillis();
-                    httpResponse.close();
-                    continue;
+                }
+                else if (e instanceof IOException) {
+                    LOG.error("Encountered IOException while invoking NN via HTTP:", ex);
+                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                    doSleep(backoffInterval);
+                    backoffInterval = exponentialBackoff.getBackOffInMillis();
+                }
+                else if (e != null) {
+                    LOG.error("Unexpected error encountered while invoking NN via HTTP:", ex);
+                    throw new IOException("The file system operation could not be completed. "
+                            + "Encountered unexpected " + ex.getClass().getSimpleName() + " while invoking NN.");
                 }
 
-                processedResponse = processHttpResponse(httpResponse);
-            } catch (NoHttpResponseException | SocketTimeoutException ex) {
-                currentTime = System.nanoTime();
-                double timeElapsed = (currentTime - invokeStart) / 1000000.0;
-                LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) +
-                        " to issue request targeting deployment " + targetDeployment +
-                        " timed out. Time elapsed: " + timeElapsed + " ms.");
-                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                doSleep(backoffInterval);
-                backoffInterval = exponentialBackoff.getBackOffInMillis();
-                continue;
-            } catch (IOException ex) {
-                LOG.error("Encountered IOException while invoking NN via HTTP:", ex);
-                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                doSleep(backoffInterval);
-                backoffInterval = exponentialBackoff.getBackOffInMillis();
-                continue;
-            } catch (Exception ex) {
-                LOG.error("Unexpected error encountered while invoking NN via HTTP:", ex);
-                throw new IOException("The file system operation could not be completed. "
-                        + "Encountered unexpected " + ex.getClass().getSimpleName() + " while invoking NN.");
-            } finally {
-                // Make the request reusable.
-                request.releaseConnection();
-
-                if (httpResponse != null)
-                    httpResponse.close();
+                // TODO: Retry HTTP request.
             }
 
-            long invokeEnd = System.nanoTime();
-            double duration = (invokeEnd - invokeStart) / 1000000.0;
-            if (LOG.isDebugEnabled()) LOG.debug("Returning result to client after " + duration + " milliseconds.");
-            return processedResponse;
-        } while (backoffInterval != -1);
+            @Override
+            public void cancelled() {
+                LOG.warn("HTTP request has been cancelled.");
+                request.releaseConnection();
+            }
+        });
 
-        throw new IOException("The file system operation could not be completed. " +
-                "Failed to invoke Serverless NameNode " + targetDeployment + " after " + maxHttpRetries + " attempts.");
+//        throw new IOException("The file system operation could not be completed. " +
+//                "Failed to invoke Serverless NameNode " + targetDeployment + " after " + maxHttpRetries + " attempts.");
     }
 
     /**
      * Return an HTTP client that could theoretically be used for any platform. This client trusts all certificates,
      * so it is insecure.
      */
-    public CloseableHttpClient getGenericTrustAllHttpClient() throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException {
+    public CloseableHttpAsyncClient getGenericTrustAllHttpClient() throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException, IOReactorException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Setting HTTP connection timeout to " + httpTimeoutMilliseconds + " milliseconds.");
             LOG.debug("Setting HTTP socket timeout to " + httpTimeoutMilliseconds + " milliseconds.");
@@ -676,6 +698,7 @@ public abstract class ServerlessInvokerBase<T> {
                 .custom()
                 .setConnectTimeout(httpTimeoutMilliseconds)
                 .setSocketTimeout(httpTimeoutMilliseconds)
+                .setConnectionRequestTimeout(httpTimeoutMilliseconds)
                 .build();
 
         // This allows us to issue multiple HTTP requests at once, which may or may not be desirable/useful...
@@ -703,23 +726,33 @@ public abstract class ServerlessInvokerBase<T> {
         };
         SSLContext sslContext = org.apache.http.ssl.SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
         sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-        SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext, new NoopHostnameVerifier());
+        // SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext, new NoopHostnameVerifier());
 
-        Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder
-                .<ConnectionSocketFactory>create()
-                .register("https", csf)
-                .register("http", PlainConnectionSocketFactory.getSocketFactory())
+        SSLIOSessionStrategy sslioSessionStrategy =
+                new SSLIOSessionStrategy(sslContext, null, null, new NoopHostnameVerifier());
+
+        Registry<SchemeIOSessionStrategy> socketFactoryRegistry = RegistryBuilder
+                .<SchemeIOSessionStrategy>create()
+                .register("https", sslioSessionStrategy)
+                .register("http", NoopIOSessionStrategy.INSTANCE)
+                .build();
+
+        IOReactorConfig ioReactorConfig = IOReactorConfig.custom()
+                .setSelectInterval(Math.max(httpTimeoutMilliseconds / 10, 1000)) // Default is 1000
+                .setSoTimeout(httpTimeoutMilliseconds)
+                .setConnectTimeout(httpTimeoutMilliseconds)
                 .build();
 
         // Need to pass registry to this type of connection manager, as custom SSLContext is ignored.
-        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
-        connectionManager.setMaxTotal(25);
-        connectionManager.setDefaultMaxPerRoute(25);
+        PoolingNHttpClientConnectionManager connectionManager =
+                new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor(ioReactorConfig), socketFactoryRegistry);
+        connectionManager.setMaxTotal(50);
+        connectionManager.setDefaultMaxPerRoute(50);
 
-        return HttpClients
+        return HttpAsyncClients
                 .custom()
                 .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
-                .setSSLSocketFactory(csf)
+                //.setSSLSocketFactory(csf)
                 .setSSLContext(sslContext)
                 .setDefaultRequestConfig(requestConfig)
                 .setConnectionManager(connectionManager)
@@ -729,8 +762,8 @@ public abstract class ServerlessInvokerBase<T> {
     /**
      * Get an HTTP client configured for the particular serverless platform.
      */
-    public abstract CloseableHttpClient getHttpClient()
-            throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException;
+    public abstract CloseableHttpAsyncClient getHttpClient()
+            throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException, IOReactorException;
 
     /**
      * Extract the result of a file system operation from the {@link JsonObject} returned by the NameNode.
@@ -829,8 +862,7 @@ public abstract class ServerlessInvokerBase<T> {
                 }
 
                 if (LOG.isTraceEnabled())
-                    LOG.trace("Returning object of type " + result.getClass().getSimpleName() + ": "
-                        + result.toString());
+                    LOG.trace("Returning object of type " + result.getClass().getSimpleName() + ": " + result);
                 return result;
             } catch (Exception ex) {
                 LOG.error("Error encountered while extracting result from NameNode response:", ex);
@@ -848,11 +880,6 @@ public abstract class ServerlessInvokerBase<T> {
      * @param operationName The FS operation being performed. This is passed to the NameNode so that it knows which of
      *                      its functions it should execute. This is sort of taking the place of the RPC mechanism,
      *                      where ordinarily you'd just invoke an RPC method.
-     * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
-     *                        in order to invoke the function. Before the request is issued, a number is appended
-     *                        to the end of the URI to target a particular serverless name node. After the number is
-     *                        appended, we also append a string ?blocking=true to ensure that the operation blocks
-     *                        until it is completed so that the result may be returned to the caller.
      * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
      *                          arguments when using a serverful name node. We generally don't need to pass anything
      *                          for this parameter.
@@ -867,9 +894,9 @@ public abstract class ServerlessInvokerBase<T> {
      *                         cache entry exists.
      * @return The response from the Serverless NameNode.
      */
-    public abstract T redirectRequest(String operationName, String functionUriBase,
-                                      JsonObject nameNodeArguments, JsonObject fileSystemOperationArguments,
-                                      String requestId, int targetDeployment) throws IOException;
+    public abstract ServerlessHttpFuture redirectRequest(String operationName, JsonObject nameNodeArguments,
+                                      JsonObject fileSystemOperationArguments, String requestId,
+                                      int targetDeployment) throws IOException;
 
     /**
      * Set the name of the client using this invoker (e.g., the `clientName` field of the DFSClient class).
