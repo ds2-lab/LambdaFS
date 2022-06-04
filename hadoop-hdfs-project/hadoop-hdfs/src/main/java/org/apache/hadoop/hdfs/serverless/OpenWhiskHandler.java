@@ -55,14 +55,12 @@ public class OpenWhiskHandler extends BaseHandler {
      * OpenWhisk handler.
      */
     public static JsonObject main(JsonObject args) {
+        // TODO: Need to update this to handle batched HTTP requests.
+
         long startTime = System.currentTimeMillis();
         String functionName = platformSpecificInitialization();
 
-        //LOG.info("============================================================");
         LOG.info(functionName + " v" + ServerlessNameNode.versionNumber + " received HTTP request.");
-        //int activeRequests = activeRequestCounter.incrementAndGet();
-        //LOG.info("Active HTTP requests: " + activeRequests);
-        //LOG.info("============================================================\n");
 
         int actionMemory;
         JsonObject userArguments;

@@ -339,17 +339,9 @@ class FSDirDeleteOp {
 
               int finalTargetDeployment = targetDeployment;
               Future<Boolean> future = executorService.submit(() -> {
-                ServerlessHttpFuture httpFuture = serverlessInvoker.invokeNameNodeViaHttpPost(
-                        "subtreeDeleteSubOperation", serverlessEndpointBase, new HashMap<>(),
-                        argumentContainer, requestId, finalTargetDeployment);
-
-                JsonObject responseJson = null;
-                try {
-                  responseJson = httpFuture.get();
-                } catch (InterruptedException | ExecutionException ex) {
-                  LOG.error("Exception encountered while waiting for result of 'versionRequest' operation:", ex);
-                  // TODO: Resubmit request.
-                }
+                JsonObject responseJson = ServerlessInvokerBase.issueHttpRequestWithRetries(
+                        serverlessInvoker, "subtreeDeleteSubOperation", serverlessEndpointBase,
+                        null, argumentContainer, requestId, finalTargetDeployment);
 
                 // Attempt to extract the result. If it is null, then return false. Otherwise, return the result.
                 Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);

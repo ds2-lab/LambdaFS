@@ -165,26 +165,13 @@ class BPServiceActor implements Runnable {
 
         fsArgs.put("uuid", "N/A"); // This will always result in a groupId of 0 being assigned...
 
-        ServerlessHttpFuture future = serverlessInvoker.invokeNameNodeViaHttpPost(
-                "versionRequest",
-                dnConf.serverlessEndpoint,
-                null,
-                fsArgs,
-                null,
-                -1
-        );
+        JsonObject response = ServerlessInvokerBase.issueHttpRequestWithRetries(
+                serverlessInvoker, "versionRequest", dnConf.serverlessEndpoint,
+                null, fsArgs, null, -1);
 
-        JsonObject responseJson = null;
-        try {
-          responseJson = future.get();
-        } catch (InterruptedException | ExecutionException ex) {
-          LOG.error("Exception encountered while waiting for result of 'versionRequest' operation:", ex);
-          // TODO: Resubmit request.
-        }
+        LOG.info("responseJson = " + response.toString());
 
-        LOG.info("responseJson = " + responseJson.toString());
-
-        Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+        Object result = serverlessInvoker.extractResultFromJsonResponse(response);
         if (result != null)
           nsInfo = (NamespaceInfo)result;
 
