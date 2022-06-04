@@ -36,6 +36,7 @@ import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
+import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.hdfs.serverless.invoking.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.consistency.ConsistencyProtocol;
@@ -313,7 +314,7 @@ class FSDirDeleteOp {
           // to process before trying to offload batches to other NNs.
           if (batches.size() > 1 && !BaseHandler.localModeEnabled) {
             ExecutorService executorService = Executors.newFixedThreadPool(batches.size() - 1);
-            ServerlessInvokerBase<JsonObject> serverlessInvoker = instance.getServerlessInvoker();
+            ServerlessInvokerBase serverlessInvoker = instance.getServerlessInvoker();
             // final HashMap<String, Future<Boolean>> futures = new HashMap<>();
             final String serverlessEndpointBase = instance.getServerlessEndpointBase();
             if (LOG.isDebugEnabled()) LOG.debug("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
@@ -338,12 +339,21 @@ class FSDirDeleteOp {
 
               int finalTargetDeployment = targetDeployment;
               Future<Boolean> future = executorService.submit(() -> {
-                JsonObject response = serverlessInvoker.invokeNameNodeViaHttpPost(
+                ServerlessHttpFuture httpFuture = serverlessInvoker.invokeNameNodeViaHttpPost(
                         "subtreeDeleteSubOperation", serverlessEndpointBase, new HashMap<>(),
                         argumentContainer, requestId, finalTargetDeployment);
 
+                JsonObject responseJson = null;
+                try {
+                  responseJson = httpFuture.get();
+                } catch (InterruptedException | ExecutionException ex) {
+                  LOG.error("Exception encountered while waiting for result of 'versionRequest' operation:", ex);
+                  // TODO: Resubmit request.
+                }
+
                 // Attempt to extract the result. If it is null, then return false. Otherwise, return the result.
-                Object result = serverlessInvoker.extractResultFromJsonResponse(response);
+                Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
+
                 if (result == null) return false;
                 return (boolean) result;
               });

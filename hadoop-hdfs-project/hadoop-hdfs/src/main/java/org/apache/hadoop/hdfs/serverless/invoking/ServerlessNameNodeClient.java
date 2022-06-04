@@ -34,6 +34,7 @@ import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
+import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.execution.results.ServerlessFunctionMapping;
@@ -837,13 +838,20 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
-        JsonObject response = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+        ServerlessHttpFuture future = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
                 operationName,
                 dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 opArguments,
                 requestId,
                 targetDeployment);
+
+        JsonObject response = null;
+        try {
+            response = future.get();
+        } catch (ExecutionException | InterruptedException ex) {
+            LOG.error("Exception encountered while waiting for result of HTTP request " + requestId + ":", ex);
+        }
 
         if (response == null)
             throw new IOException("Received null response from NameNode for Request " + requestId + ", op=" +
