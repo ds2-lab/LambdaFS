@@ -594,11 +594,8 @@ public abstract class ServerlessInvokerBase {
                 .setRandomizationFactor(0.5)
                 .build();
 
-        final long backoffInterval = exponentialBackoff.getBackOffInMillis();
-
-        final long currentTime = System.nanoTime();
         if (LOG.isDebugEnabled()) {
-            double timeElapsed = (currentTime - invokeStart) / 1.0e6;
+            double timeElapsed = (System.nanoTime() - invokeStart) / 1.0e6;
             LOG.debug("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
                     (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries +
                     ". Time elapsed: " + timeElapsed + " milliseconds.");
@@ -628,7 +625,9 @@ public abstract class ServerlessInvokerBase {
                     LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
                     doSleep(backoffInterval);
 
-                    // TODO: Retry HTTP request.
+                    // TODO: Retry HTTP request. Could just put a 'request failed, retry if you want'
+                    //       message in the future and leave it up to the client. Also, probably need
+                    //       to move the retry logic out to the client.
                 }
 
                 try {
@@ -649,28 +648,30 @@ public abstract class ServerlessInvokerBase {
                 LOG.error("HTTP request has failed.");
 
                 if (e instanceof NoHttpResponseException || e instanceof SocketTimeoutException) {
-                    currentTime = System.nanoTime();
-                    double timeElapsed = (currentTime - invokeStart) / 1000000.0;
+                    double timeElapsed = (System.nanoTime() - invokeStart) / 1000000.0;
                     LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) +
                             " to issue request targeting deployment " + targetDeployment +
                             " timed out. Time elapsed: " + timeElapsed + " ms.");
-                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                    doSleep(backoffInterval);
-                    backoffInterval = exponentialBackoff.getBackOffInMillis();
+                    // long backoffInterval = exponentialBackoff.getBackOffInMillis();
+                    // LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                    // doSleep(backoffInterval);
                 }
                 else if (e instanceof IOException) {
-                    LOG.error("Encountered IOException while invoking NN via HTTP:", ex);
-                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                    doSleep(backoffInterval);
-                    backoffInterval = exponentialBackoff.getBackOffInMillis();
+                    LOG.error("Encountered IOException while invoking NN via HTTP:", e);
+                    // long backoffInterval = exponentialBackoff.getBackOffInMillis();
+                    // LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                    // doSleep(backoffInterval);
+                    // backoffInterval = exponentialBackoff.getBackOffInMillis();
                 }
                 else if (e != null) {
-                    LOG.error("Unexpected error encountered while invoking NN via HTTP:", ex);
-                    throw new IOException("The file system operation could not be completed. "
-                            + "Encountered unexpected " + ex.getClass().getSimpleName() + " while invoking NN.");
+                    LOG.error("Unexpected error encountered while invoking NN via HTTP:", e);
+                    // throw new IOException("The file system operation could not be completed. "
+                    //        + "Encountered unexpected " + e.getClass().getSimpleName() + " while invoking NN.");
                 }
 
-                // TODO: Retry HTTP request.
+                // TODO: Retry HTTP request. Could just put a 'request failed, retry if you want'
+                //       message in the future and leave it up to the client. Also, probably need
+                //       to move the retry logic out to the client.
             }
 
             @Override
