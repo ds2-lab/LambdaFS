@@ -52,6 +52,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -571,17 +572,41 @@ public abstract class ServerlessInvokerBase {
         return new ServerlessHttpFuture(requestId, operationName);
     }
 
-    protected void doInvoke(HttpPost request, JsonObject requestArguments, int targetDeployment)
+    /**
+     * Helper function to issue an HTTP request with retries.
+     *
+     * @param invokerInstance The {@link ServerlessInvokerBase} class to use to invoke the serverless function.
+     * @param operationName The FS operation being performed. This is passed to the NameNode so that it knows which of
+     *                      its functions it should execute. This is sort of taking the place of the RPC mechanism,
+     *                      where ordinarily you'd just invoke an RPC method.
+     * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
+     *                        in order to invoke the function. Before the request is issued, a number is appended
+     *                        to the end of the URI to target a particular serverless name node. After the number is
+     *                        appended, we also append a string ?blocking=true to ensure that the operation blocks
+     *                        until it is completed so that the result may be returned to the caller.
+     * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
+     *                          arguments when using a serverful name node. We generally don't need to pass anything
+     *                          for this parameter.
+     * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
+     *                                     to the Java function which performs the FS operation. The NameNode will
+     *                                     extract these after it sees what function it is supposed to execute. These
+     *                                     would traditionally just be passed as arguments to the RPC call, but we
+     *                                     aren't using RPC.
+     * @param requestId The unique ID used to match this request uniquely against its corresponding TCP request. If
+     *                  passed a null, then a random ID is generated.
+     * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
+     *                         cache entry exists.
+     * @return The response from the Serverless NameNode.
+     */
+    public static JsonObject issueHttpRequestWithRetries(ServerlessInvokerBase invokerInstance, String operationName,
+                                                   String functionUriBase, HashMap<String, Object> nameNodeArguments,
+                                                   ArgumentContainer fileSystemOperationArguments,
+                                                   String requestId, int targetDeployment)
             throws IOException {
-        final long invokeStart = System.currentTimeMillis();
-
-        // Prepare the HTTP POST request.
-        StringEntity parameters = new StringEntity(requestArguments.toString());
-        request.setEntity(parameters);
-        request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+        long invokeStart = System.nanoTime();
 
         ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
-                .setMaximumRetries(maxHttpRetries)
+                .setMaximumRetries(invokerInstance.maxHttpRetries)
                 .setInitialIntervalMillis(10000)
                 .setMaximumIntervalMillis(30000)
                 .setMultiplier(2.25)
@@ -591,12 +616,71 @@ public abstract class ServerlessInvokerBase {
         if (LOG.isDebugEnabled()) {
             double timeElapsed = (System.nanoTime() - invokeStart) / 1.0e6;
             LOG.debug("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
-                    (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries +
+                    (exponentialBackoff.getNumberOfRetries() - 1) + "/" + invokerInstance.maxHttpRetries +
                     ". Time elapsed: " + timeElapsed + " milliseconds.");
         } else {
             LOG.info("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
-                    (exponentialBackoff.getNumberOfRetries() - 1) + "/" + maxHttpRetries + ".");
+                    (exponentialBackoff.getNumberOfRetries() - 1) + "/" + invokerInstance.maxHttpRetries + ".");
         }
+
+        long backoffInterval = exponentialBackoff.getBackOffInMillis();
+
+        do {
+            ServerlessHttpFuture future = invokerInstance.invokeNameNodeViaHttpPost(operationName, functionUriBase,
+                    nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment);
+
+            JsonObject response;
+            try {
+                response = future.get();
+            } catch (InterruptedException | ExecutionException ex) {
+                LOG.error("Exception encountered while waiting on Future for HTTP request...");
+                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                invokerInstance.doSleep(backoffInterval);
+                backoffInterval = exponentialBackoff.getBackOffInMillis();
+                continue;
+            }
+
+            if (response.has(LOCAL_EXCEPTION)) {
+                String genericExceptionType = response.get(LOCAL_EXCEPTION).getAsString();
+
+                if (genericExceptionType.equalsIgnoreCase("NoHttpResponseException") ||
+                        genericExceptionType.equalsIgnoreCase("SocketTimeoutException")) {
+                    double timeElapsed = (System.nanoTime() - invokeStart) / 1000000.0;
+                    LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) +
+                            " to issue request targeting deployment " + targetDeployment +
+                            " timed out. Time elapsed: " + timeElapsed + " ms.");
+                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                    invokerInstance.doSleep(backoffInterval);
+                    backoffInterval = exponentialBackoff.getBackOffInMillis();
+                }
+                else if (genericExceptionType.equalsIgnoreCase("IOException")) {
+                    LOG.error("Encountered IOException while invoking NN via HTTP.");
+                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                    invokerInstance.doSleep(backoffInterval);
+                    backoffInterval = exponentialBackoff.getBackOffInMillis();
+                } else {
+                    LOG.error("Unexpected error encountered while invoking NN via HTTP: " + genericExceptionType);
+                    throw new IOException("The file system operation could not be completed. "
+                            + "Encountered unexpected " + genericExceptionType + " while invoking NN.");
+                }
+            } else {
+                return response;
+            }
+        } while (backoffInterval > 0);
+
+        throw new IOException("The file system operation could not be completed. " +
+                "Failed to invoke Serverless NameNode " + targetDeployment + " after " +
+                invokerInstance.maxHttpRetries + " attempts.");
+    }
+
+    protected void doInvoke(HttpPost request, JsonObject requestArguments, int targetDeployment)
+            throws IOException {
+        final long invokeStart = System.currentTimeMillis();
+
+        // Prepare the HTTP POST request.
+        StringEntity parameters = new StringEntity(requestArguments.toString());
+        request.setEntity(parameters);
+        request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
         httpClient.execute(request, new FutureCallback<HttpResponse>() {
             @Override
@@ -611,13 +695,7 @@ public abstract class ServerlessInvokerBase {
                 }
 
                 if (responseCode >= 400 && responseCode <= 599) {
-                    LOG.error("Received HTTP response code " + responseCode + " on attempt " +
-                            (exponentialBackoff.getNumberOfRetries()) + "/" + maxHttpRetries + ".");
-
-                    long backoffInterval = exponentialBackoff.getBackOffInMillis();
-
-                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                    doSleep(backoffInterval);
+                    LOG.error("Received HTTP response code " + responseCode + ".");
 
                     // TODO: Retry HTTP request. Could just put a 'request failed, retry if you want'
                     //       message in the future and leave it up to the client. Also, probably need
@@ -641,31 +719,18 @@ public abstract class ServerlessInvokerBase {
             public void failed(Exception e) {
                 LOG.error("HTTP request has failed.");
 
-                if (e instanceof NoHttpResponseException || e instanceof SocketTimeoutException) {
-                    double timeElapsed = (System.nanoTime() - invokeStart) / 1000000.0;
-                    LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) +
-                            " to issue request targeting deployment " + targetDeployment +
-                            " timed out. Time elapsed: " + timeElapsed + " ms.");
-                    // long backoffInterval = exponentialBackoff.getBackOffInMillis();
-                    // LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                    // doSleep(backoffInterval);
-                }
-                else if (e instanceof IOException) {
-                    LOG.error("Encountered IOException while invoking NN via HTTP:", e);
-                    // long backoffInterval = exponentialBackoff.getBackOffInMillis();
-                    // LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                    // doSleep(backoffInterval);
-                    // backoffInterval = exponentialBackoff.getBackOffInMillis();
-                }
-                else if (e != null) {
-                    LOG.error("Unexpected error encountered while invoking NN via HTTP:", e);
-                    // throw new IOException("The file system operation could not be completed. "
-                    //        + "Encountered unexpected " + e.getClass().getSimpleName() + " while invoking NN.");
+                // TODO: Need a way to get the request IDs.
+                ServerlessHttpFuture future = futures.get();
+
+                JsonObject response = new JsonObject();
+
+                if (e != null) {
+                    response.addProperty("EXCEPTION_TYPE", e.getClass().getSimpleName());
+                } else {
+                    response.addProperty("EXCEPTION_TYPE", "GENERIC/UNKNOWN");
                 }
 
-                // TODO: Retry HTTP request. Could just put a 'request failed, retry if you want'
-                //       message in the future and leave it up to the client. Also, probably need
-                //       to move the retry logic out to the client.
+                future.postResultImmediate(response);
             }
 
             @Override
@@ -674,9 +739,6 @@ public abstract class ServerlessInvokerBase {
                 request.releaseConnection();
             }
         });
-
-//        throw new IOException("The file system operation could not be completed. " +
-//                "Failed to invoke Serverless NameNode " + targetDeployment + " after " + maxHttpRetries + " attempts.");
     }
 
     /**

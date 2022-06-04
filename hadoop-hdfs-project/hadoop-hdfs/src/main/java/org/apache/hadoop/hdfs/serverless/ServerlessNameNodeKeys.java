@@ -20,6 +20,8 @@ public class ServerlessNameNodeKeys {
     public static final String PERFORMING_WRITE = "PERFORMING_WRITE";
     public static final String REDIRECTED_WRITE = "REDIRECTED_WRITE";
     public static final String FLAG = "flag";
+    public static final String LOCAL_EXCEPTION = "LOCAL_EXCEPTION";
+    public static final String GENERIC_EXCEPTION = "GENERIC_EXCEPTION";
 
     public static final String BATCH = "BATCH";
 
