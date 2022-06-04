@@ -11,8 +11,10 @@ public class ServerlessNameNodeKeys {
     public static final String INVOKER_IDENTITY = "INVOKER_IDENTITY";
     public static final String FILE_SYSTEM_OP_ARGS = "fsArgs";
     public static final String RESULT = "RESULT";
+    public static final String ALL_RESULTS = "ALL_RESULTS";
     public static final String EXCEPTIONS = "EXCEPTIONS";
     public static final String REQUEST_ID = "requestId";
+    public static final String ALL_REQUEST_IDS = "allRequestIds";
     public static final String SRC = "src";
     public static final String VALUE = "value";
     public static final String FUNCTION_NAME = "functionName";

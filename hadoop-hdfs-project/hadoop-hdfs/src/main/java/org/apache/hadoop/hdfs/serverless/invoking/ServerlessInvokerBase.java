@@ -16,6 +16,7 @@ import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
 import org.apache.hadoop.hdfs.serverless.userserver.UserServerManager;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.util.ExponentialBackOff;
+import org.apache.hadoop.util.StringUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
@@ -283,23 +284,25 @@ public abstract class ServerlessInvokerBase {
      * TODO: When a client submits an HTTP request, it could either receive a Future or submit a callback to
      *       be executed when the HTTP request completes. Probably a Future of some sort.
      */
-    protected List<List<JsonArray>> processOutgoingRequests() {
-        List<List<JsonArray>> batchedRequests = new ArrayList<>();
+    protected List<List<JsonObject>> processOutgoingRequests() {
+        List<List<JsonObject>> batchedRequests = new ArrayList<>();
 
         for (int i = 0; i < numDeployments; i++) {
-            LinkedBlockingQueue<JsonObject> deploymentQueue = (LinkedBlockingQueue<JsonObject>) outgoingRequests[i];
+            LinkedBlockingQueue<JsonObject> deploymentQueue = outgoingRequests[i];
 
             // This will just be empty if there are no requests queued for this deployment.
-            List<JsonArray> deploymentBatches = new ArrayList<>();
+            List<JsonObject> deploymentBatches = new ArrayList<>();
             batchedRequests.add(deploymentBatches);
 
             if (deploymentQueue.size() > 0) {
-                JsonArray currentBatch = new JsonArray();
+                JsonObject currentBatch = new JsonObject();
                 deploymentBatches.add(currentBatch);
 
                 int j = 0;
                 while (j < deploymentQueue.size()) {
-                    currentBatch.add(deploymentQueue.poll());
+                    JsonObject request = deploymentQueue.poll();
+                    String requestId = request.get(REQUEST_ID).getAsString();
+                    currentBatch.add(requestId, request);
                     j++;
 
                     // If the current batch's size is equal to that of the batch size parameter,
@@ -310,7 +313,7 @@ public abstract class ServerlessInvokerBase {
 
                         // If there are more outgoing requests to process for this deployment, then create a new batch.
                         if (deploymentQueue.size() > 0) {
-                            currentBatch = new JsonArray();
+                            currentBatch = new JsonObject();
                             deploymentBatches.add(currentBatch);
                         }
                     }
@@ -561,6 +564,8 @@ public abstract class ServerlessInvokerBase {
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.IS_CLIENT_INVOKER, isClientInvoker);
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.INVOKER_IDENTITY, invokerIdentity);
+
+        // TODO: Remove this as each request is stored under its requestId as the key in the top-level JsonObject.
         nameNodeArguments.addProperty(REQUEST_ID, requestId);
 
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
@@ -673,7 +678,15 @@ public abstract class ServerlessInvokerBase {
                 invokerInstance.maxHttpRetries + " attempts.");
     }
 
-    protected void doInvoke(HttpPost request, JsonObject requestArguments, int targetDeployment)
+    /**
+     * Asynchronously invoke a batched HTTP request.
+     *
+     * @param request The HTTP request to invoke. This is the actual HTTP request object itself.
+     * @param requestArguments This presumably contains a batch of multiple individual requests
+     *                         that will all be processed by the same NameNode.
+     * @param requestIds The IDs of the individual requests contained within the batch.
+     */
+    protected void doInvoke(HttpPost request, JsonObject requestArguments, Set<String> requestIds)
             throws IOException {
         final long invokeStart = System.currentTimeMillis();
 
@@ -695,19 +708,35 @@ public abstract class ServerlessInvokerBase {
                 }
 
                 if (responseCode >= 400 && responseCode <= 599) {
-                    LOG.error("Received HTTP response code " + responseCode + ".");
+                    LOG.error("Received HTTP response code " + responseCode +
+                            " for batched HTTP request containing " + requestIds.size() +
+                            " individual requests. Request IDs: " + StringUtils.join(", ", requestIds));
 
-                    // TODO: Retry HTTP request. Could just put a 'request failed, retry if you want'
-                    //       message in the future and leave it up to the client. Also, probably need
-                    //       to move the retry logic out to the client.
+                    // For each of the individual requests in the batch, post an error message to the future.
+                    // This way, the client can be notified of the failure and retry the request if desired.
+                    for (String requestId : requestIds) {
+                        ServerlessHttpFuture future = futures.get(requestId);
+                        JsonObject response = new JsonObject();
+                        response.addProperty("EXCEPTION_TYPE", "HttpResponseCode" + responseCode);
+                        future.postResultImmediate(response);
+                    }
+
+                    return;
                 }
 
                 try {
+                    // Extract the payload from the HTTP response.
                     JsonObject result = processHttpResponse(httpResponse);
-                    String requestId = result.get(REQUEST_ID).getAsString();
-                    if (LOG.isDebugEnabled()) LOG.debug("Posting HTTP result for request " + requestId + " now...");
-                    ServerlessHttpFuture future = futures.get(requestId);
-                    future.postResultImmediate(result);
+
+                    // For each of the individual requests in the batch, post an error message to the future.
+                    // This way, the client can be notified of the failure and retry the request if desired.
+                    Set<String> requestIds = result.keySet();
+                    if (LOG.isDebugEnabled()) LOG.debug("Received batch of " + requestIds.size() + " result(s).");
+                    for (String requestId : requestIds) {
+                        if (LOG.isDebugEnabled()) LOG.debug("Received result for HTTP request " + requestId);
+                        ServerlessHttpFuture future = futures.get(requestId);
+                        future.postResultImmediate(result.get(requestId).getAsJsonObject());
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
@@ -717,20 +746,20 @@ public abstract class ServerlessInvokerBase {
 
             @Override
             public void failed(Exception e) {
-                LOG.error("HTTP request has failed.");
+                LOG.error("Batched HTTP request containing " + requestIds.size() +
+                        " individual request(s) has failed. Request IDs: " + StringUtils.join(", ", requestIds));
 
-                // TODO: Need a way to get the request IDs.
-                ServerlessHttpFuture future = futures.get();
+                for (String requestId : requestIds) {
+                    ServerlessHttpFuture future = futures.get(requestId);
+                    JsonObject response = new JsonObject();
 
-                JsonObject response = new JsonObject();
+                    if (e != null)
+                        response.addProperty("EXCEPTION_TYPE", e.getClass().getSimpleName());
+                    else
+                        response.addProperty("EXCEPTION_TYPE", "GENERIC/UNKNOWN");
 
-                if (e != null) {
-                    response.addProperty("EXCEPTION_TYPE", e.getClass().getSimpleName());
-                } else {
-                    response.addProperty("EXCEPTION_TYPE", "GENERIC/UNKNOWN");
+                    future.postResultImmediate(response);
                 }
-
-                future.postResultImmediate(response);
             }
 
             @Override

@@ -76,7 +76,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * Responsible for invoking the Serverless NameNode(s).
      */
-    public ServerlessInvokerBase<JsonObject> serverlessInvoker;
+    public ServerlessInvokerBase serverlessInvoker;
 
     /**
      * Issue HTTP requests to this to invoke serverless functions.

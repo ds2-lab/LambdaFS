@@ -213,9 +213,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
             requestId = UUID.randomUUID().toString();
 
         JsonObject fsArgs = fileSystemOperationArguments.convertToJsonObject();
-        HttpPost request = new HttpPost(getFunctionUri(functionUriBase, targetDeployment, fsArgs));
-        request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
-
         return enqueueRequestForSubmission(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment);
     }
 
@@ -226,17 +223,17 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
                     "You must configure it by calling .setConfiguration(...) before using it.");
 
-        List<List<JsonArray>> batchedRequests = processOutgoingRequests();
+        List<List<JsonObject>> batchedRequests = processOutgoingRequests();
 
         // We've created all the batches. Now we need to issue the requests.
         for (int i = 0; i < numDeployments; i++) {
-            List<JsonArray> deploymentBatches = batchedRequests.get(i);
+            List<JsonObject> deploymentBatches = batchedRequests.get(i);
 
             if (deploymentBatches.size() > 0) {
                 if (LOG.isDebugEnabled()) LOG.debug("Preparing to send " + deploymentBatches.size() +
                         " batch(es) of requests for Deployment " + i);
 
-                for (JsonArray requestBatch : deploymentBatches) {
+                for (JsonObject requestBatch : deploymentBatches) {
                     // This is the top-level JSON object passed along with the HTTP POST request.
                     JsonObject topLevel = new JsonObject();
                     topLevel.add(BATCH, requestBatch);
@@ -245,21 +242,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                     request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
                     JsonObject nameNodeArguments = new JsonObject();
-
-                    // We pass the file system operation arguments to the NameNode, as it
-                    // will hand them off to the intended file system operation function.
-
-                    // TODO: These should be included for each request in the batch.
-                    // nameNodeArguments.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, fileSystemOperationArguments);
-                    // nameNodeArguments.addProperty(ServerlessNameNodeKeys.OPERATION, operationName);
-
                     nameNodeArguments.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
                     nameNodeArguments.addProperty(ServerlessNameNodeKeys.IS_CLIENT_INVOKER, isClientInvoker);
                     nameNodeArguments.addProperty(ServerlessNameNodeKeys.INVOKER_IDENTITY, invokerIdentity);
-
-                    // TODO: The request ID should be added uniquely for each individual request in the batch.
-                    //       The standard arguments should be added once for all requests (i.e., not for each).
-                    addStandardArguments(nameNodeArguments);
 
                     // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
                     // within the HTTP POST request. They should be included with the key "value".
@@ -270,12 +255,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                     request.setEntity(parameters);
                     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
-                    // TODO: This will not return until the HTTP request has a response returned. This is really bad.
-                    //       This will make it very slow to issue HTTP requests. Deployment (i+1)'s requests will not
-                    //       be issued until Deployment i's requests have all been issued and returned, including retry
-                    //       attempts with exponential backoff. Need to modify how this is performed.
                     try {
-                        doInvoke(request, topLevel, i);
+                        doInvoke(request, topLevel, requestBatch.keySet());
                     } catch (IOException ex) {
                         LOG.error("Encountered IOException while issuing batched HTTP request:", ex);
                     }
