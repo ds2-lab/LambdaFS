@@ -34,7 +34,6 @@ import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
-import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.execution.results.ServerlessFunctionMapping;
@@ -2138,7 +2137,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
                         // file/directory, then we'll just use an HTTP request.
                         try {
-                            dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+                            dfsClient.serverlessInvoker.enqueueHttpRequest(
                                     "prewarm",
                                     dfsClient.serverlessEndpoint,
                                     null, // We do not have any additional/non-default arguments to pass to the NN.
@@ -2173,7 +2172,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
-        dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
+        dfsClient.serverlessInvoker.enqueueHttpRequest(
                 "ping",
                 dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.

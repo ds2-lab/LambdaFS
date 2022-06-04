@@ -19,16 +19,13 @@ import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
-import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -39,14 +36,12 @@ import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.nio.conn.NoopIOSessionStrategy;
 import org.apache.http.nio.conn.SchemeIOSessionStrategy;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
-import org.apache.http.nio.reactor.ConnectingIOReactor;
 import org.apache.http.nio.reactor.IOReactorException;
 import org.apache.http.util.EntityUtils;
 
 import javax.net.ssl.*;
 import java.io.*;
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.security.*;
 import java.security.cert.CertificateException;
@@ -55,7 +50,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
@@ -93,15 +87,6 @@ import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.ext
  * to the API Gateway of the serverless platform. (It doesn't have to be the API Gateway; that's just often what the
  * serverless platform component is. We issue a request to whatever we're supposed to in order to invoke functions. In
  * the case of OpenWhisk, that's the API Gateway component.)
- *
- * TODO: Possible redesign of HTTP requests to support batching.
- *       Basically, just enqueue all of the outgoing requests as JsonObjects or something like that.
- *       There would be one queue for each deployment so that requests to different deployments are kept separate.
- *       Then, we have a thread that routinely goes through these queues and combines the JsonObjects into one big
- *       JsonObject. Once they're combined appropriately (such that each "big" JsonObject contains no more than N
- *       individual requests, where N is a configurable parameter), we submit the requests.
- *
- * TODO: I started an implementation similar to this in another branch. It may be time to revisit/finish this.
  */
 public abstract class ServerlessInvokerBase {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
@@ -129,13 +114,6 @@ public abstract class ServerlessInvokerBase {
      * This is only used for debugging/profiling/testing.
      */
     protected boolean localMode;
-
-    /**
-     * The maximum amount of time to wait before issuing another HTTP request after the previous request failed.
-     *
-     * TODO: Make this configurable.
-     */
-    private static final int maxBackoffMilliseconds = 5000;
 
     /**
      * Flag indicated whether the invoker has been configured.
@@ -277,12 +255,16 @@ public abstract class ServerlessInvokerBase {
     protected abstract void sendOutgoingRequests() throws UnsupportedEncodingException, SocketException, UnknownHostException;
 
     /**
-     * Process the outgoing requests in the various queues.
+     * Merges the requests from each deployment into batches (of a configurable maximum size).
+     * The batched requests are returned. These batches will then be issued in requests to the respective deployment.
+     * The invocations should occur in the {@link ServerlessInvokerBase#sendOutgoingRequests()} function, which is
+     * abstract and thus will be implemented by a subclass of {@link ServerlessInvokerBase}.
      *
-     * Merge the requests into batches and issue requests accordingly.
+     * Each batch of requests will be processed by a single NameNode. The results of the entire batch will be
+     * returned all at once, rather than one-at-a-time.
      *
-     * TODO: When a client submits an HTTP request, it could either receive a Future or submit a callback to
-     *       be executed when the HTTP request completes. Probably a Future of some sort.
+     * @return Batches of requests by deployment. Entry i in the returned list corresponds to deployment i.
+     * Each {@link JsonObject} contains a batch of requests.
      */
     protected List<List<JsonObject>> processOutgoingRequests() {
         List<List<JsonObject>> batchedRequests = new ArrayList<>();
@@ -301,6 +283,17 @@ public abstract class ServerlessInvokerBase {
                 int j = 0;
                 while (j < deploymentQueue.size()) {
                     JsonObject request = deploymentQueue.poll();
+
+                    if (request == null) {
+                        LOG.error("Received null from request queue for deployment " + i +
+                                " while invoking HTTP requests. Queue size: " + deploymentQueue.size());
+
+                        // This situation really shouldn't happen... But we just continue to the next iteration.
+                        // If the queue is empty, then the while-loop will terminate. Otherwise, we'll process
+                        // whatever requests are in the queue.
+                        continue;
+                    }
+
                     String requestId = request.get(REQUEST_ID).getAsString();
                     currentBatch.add(requestId, request);
                     j++;
@@ -499,8 +492,14 @@ public abstract class ServerlessInvokerBase {
     }
 
     /**
-     * This performs all the logic. The public versions of this function accept parameters that are convenient
-     * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
+     * This is the public-facing API for enqueuing an HTTP request for submission. Requests are invoked asynchronously
+     * and in a batched manner, meaning individual requests to the same deployment are batched together into larger
+     * requests. The number of individual requests in a batch is configurable. Each batch of requests is delivered
+     * to a single NameNode for processing.
+     *
+     * This function is implemented by each subclass of {@link ServerlessInvokerBase} in order to handle invocation
+     * logic specific to a particular serverless platform. For example, different platforms will likely expect
+     * arguments to be included in the HTTP request payload in different ways (or under different keys).
      *
      * @param operationName The FS operation being performed. This is passed to the NameNode so that it knows which of
      *                      its functions it should execute. This is sort of taking the place of the RPC mechanism,
@@ -522,17 +521,21 @@ public abstract class ServerlessInvokerBase {
      *                  passed a null, then a random ID is generated.
      * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
      *                         cache entry exists.
-     * @return The response from the Serverless NameNode.
+     *
+     * @return An instance of {@link ServerlessHttpFuture}, which will eventually be populated with the response from
+     * the Serverless NameNode that ultimately received the HTTP request.
      */
-    public abstract ServerlessHttpFuture invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
-                                                HashMap<String, Object> nameNodeArguments,
-                                                ArgumentContainer fileSystemOperationArguments,
-                                                String requestId, int targetDeployment)
+    public abstract ServerlessHttpFuture enqueueHttpRequest(String operationName, String functionUriBase,
+                                                            HashMap<String, Object> nameNodeArguments,
+                                                            ArgumentContainer fileSystemOperationArguments,
+                                                            String requestId, int targetDeployment)
             throws IOException, IllegalStateException;
 
     /**
-     * This performs all the logic. The public versions of this function accept parameters that are convenient
-     * for the callers. They convert these parameters to a usable form, and then pass control off to this function.
+     * This is the internal API for enqueuing an HTTP request for submission. Requests are invoked asynchronously
+     * and in a batched manner, meaning individual requests to the same deployment are batched together into larger
+     * requests. The number of individual requests in a batch is configurable. Each batch of requests is delivered
+     * to a single NameNode for processing.
      *
      * @param operationName The FS operation being performed.
      * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
@@ -543,12 +546,14 @@ public abstract class ServerlessInvokerBase {
      *                  passed a null, then a random ID is generated.
      * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
      *                         cache entry exists.
-     * @return The response from the Serverless NameNode.
+     *
+     * @return An instance of {@link ServerlessHttpFuture}, which will eventually be populated with the response from
+     * the Serverless NameNode that ultimately received the HTTP request.
      */
-    protected ServerlessHttpFuture enqueueRequestForSubmission(String operationName,
-                                                               JsonObject nameNodeArguments,
-                                                               JsonObject fileSystemOperationArguments,
-                                                               String requestId, int targetDeployment)
+    protected ServerlessHttpFuture enqueueHttpRequestInt(String operationName,
+                                                         JsonObject nameNodeArguments,
+                                                         JsonObject fileSystemOperationArguments,
+                                                         String requestId, int targetDeployment)
             throws IllegalStateException {
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
@@ -564,14 +569,15 @@ public abstract class ServerlessInvokerBase {
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.IS_CLIENT_INVOKER, isClientInvoker);
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.INVOKER_IDENTITY, invokerIdentity);
-
-        // TODO: Remove this as each request is stored under its requestId as the key in the top-level JsonObject.
         nameNodeArguments.addProperty(REQUEST_ID, requestId);
 
         // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
         // within the HTTP POST request. They should be included with the key "value".
         requestArguments.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
 
+        // TODO: Eventually switch this to trace rather than debug.
+        if (LOG.isDebugEnabled()) LOG.debug("Enqueuing HTTP request " + requestId +
+                " for submission with deployment " + targetDeployment);
         enqueueRequest(requestArguments, targetDeployment);
 
         return new ServerlessHttpFuture(requestId, operationName);
@@ -620,18 +626,18 @@ public abstract class ServerlessInvokerBase {
 
         if (LOG.isDebugEnabled()) {
             double timeElapsed = (System.nanoTime() - invokeStart) / 1.0e6;
-            LOG.debug("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
+            LOG.debug("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
                     (exponentialBackoff.getNumberOfRetries() - 1) + "/" + invokerInstance.maxHttpRetries +
                     ". Time elapsed: " + timeElapsed + " milliseconds.");
         } else {
-            LOG.info("Issuing HTTP request to deployment " + targetDeployment + ", attempt " +
+            LOG.info("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
                     (exponentialBackoff.getNumberOfRetries() - 1) + "/" + invokerInstance.maxHttpRetries + ".");
         }
 
         long backoffInterval = exponentialBackoff.getBackOffInMillis();
 
         do {
-            ServerlessHttpFuture future = invokerInstance.invokeNameNodeViaHttpPost(operationName, functionUriBase,
+            ServerlessHttpFuture future = invokerInstance.enqueueHttpRequest(operationName, functionUriBase,
                     nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment);
 
             JsonObject response;
@@ -862,7 +868,8 @@ public abstract class ServerlessInvokerBase {
         // TODO: This might happen if all requests to a NN time out, in which case we should either handle
         //       it more cleanly and/or throw a more meaningful exception.
         if (response == null) {
-            throw new IllegalStateException("Response from serverless NameNode was null.");
+            throw new IllegalStateException(
+                    "Response from serverless NameNode was null. Perhaps all request attempts timed out...");
         }
 
         // Sometimes(?) the actual result is included in the "body" key.

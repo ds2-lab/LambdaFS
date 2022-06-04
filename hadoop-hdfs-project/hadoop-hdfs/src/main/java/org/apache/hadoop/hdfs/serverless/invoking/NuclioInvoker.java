@@ -8,7 +8,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.reactor.IOReactorException;
 
@@ -58,10 +57,10 @@ public class NuclioInvoker extends ServerlessInvokerBase {
     }
 
     @Override
-    public ServerlessHttpFuture invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
-                                                HashMap<String, Object> nameNodeArguments,
-                                                ArgumentContainer fileSystemOperationArguments,
-                                                String requestId, int targetDeployment)
+    public ServerlessHttpFuture enqueueHttpRequest(String operationName, String functionUriBase,
+                                                   HashMap<String, Object> nameNodeArguments,
+                                                   ArgumentContainer fileSystemOperationArguments,
+                                                   String requestId, int targetDeployment)
             throws IOException, IllegalStateException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
@@ -77,7 +76,7 @@ public class NuclioInvoker extends ServerlessInvokerBase {
         JsonObject fsArgs = fileSystemOperationArguments.convertToJsonObject();
         HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fsArgs));
 
-        return enqueueRequestForSubmission(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment);
+        return enqueueHttpRequestInt(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment);
     }
 
     private String getFunctionUri(int targetDeployment, JsonObject fileSystemOperationArguments) {
@@ -126,6 +125,6 @@ public class NuclioInvoker extends ServerlessInvokerBase {
                                                 JsonObject fileSystemOperationArguments, String requestId,
                                                 int targetDeployment)
             throws IOException {
-        return enqueueRequestForSubmission(operationName, nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment);
+        return enqueueHttpRequestInt(operationName, nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment);
     }
 }

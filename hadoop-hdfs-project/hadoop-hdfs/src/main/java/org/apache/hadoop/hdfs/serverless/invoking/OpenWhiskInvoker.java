@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
 import com.google.gson.*;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -8,41 +9,18 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
-import org.apache.hadoop.util.ExponentialBackOff;
-import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
-import org.apache.http.NoHttpResponseException;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.reactor.IOReactorException;
-import org.apache.http.util.EntityUtils;
 
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
 import java.util.concurrent.ThreadLocalRandom;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.*;
 import java.security.*;
-import java.security.cert.X509Certificate;
 import java.util.*;
 
 import static com.google.common.hash.Hashing.consistentHash;
@@ -131,10 +109,28 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
         request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
         // Just hand everything off to the internal HTTP invoke method.
-        return enqueueRequestForSubmission(operationName, nameNodeArguments,
+        return enqueueHttpRequestInt(operationName, nameNodeArguments,
                 fileSystemOperationArguments, requestId, targetDeployment);
     }
 
+    /**
+     * Create the full function URI based on the base URI and target deployment. For OpenWhisk, the name of the
+     * function is part of the URI. Thus, the deployment number must be appended to the function URI base to create
+     * the full URI.
+     *
+     * @param functionUriBase The base URI. This is common to all functions, regardless of deployment number.
+     * @param targetDeployment The deployment we will be targeting in our future HTTP request.
+     * @param fileSystemOperationArguments The arguments that will be sent to the NN. We pass this as we want access
+     *                                     to the 'SRC' argument, assuming it exists. We use this to determine the
+     *                                     target deployment in the case that the {@code targetDeployment} parameter
+     *                                     is -1.
+     *
+     *                                     Previously, if the target deployment was -1 and there is no SRC argument,
+     *                                     then we just targeted a random deployment. But this would not work anymore.
+     *                                     The target deployment parameter must be greater than -1 if there is no
+     *                                     'SRC' argument contained within the `fileSystemOperationArguments` parameter.
+     * @return The full URI.
+     */
     private String getFunctionUri(String functionUriBase, int targetDeployment, JsonObject fileSystemOperationArguments) {
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);
@@ -156,8 +152,10 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
             // If we have a cache entry for this function, then we'll invoke that specific function.
             // Otherwise, we'll just select a function at random.
             if (targetDeployment < 0) {
-                targetDeployment = ThreadLocalRandom.current().nextInt(0, numDeployments);
-                if (LOG.isDebugEnabled()) LOG.debug("Randomly selected serverless function " + targetDeployment);
+                throw new NotImplementedException("The target deployment should not be negative by this point.");
+
+//                targetDeployment = ThreadLocalRandom.current().nextInt(0, numDeployments);
+//                if (LOG.isDebugEnabled()) LOG.debug("Randomly selected serverless function " + targetDeployment);
             }
 
             builder.append(targetDeployment);
@@ -174,7 +172,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
      * Invoke a serverless NameNode function via HTTP POST, which is the standard/only way of "invoking" a serverless
      * function in Serverless HopsFS. (OpenWhisk supports HTTP GET, I think? But we don't use that, in any case.)
      *
-     * This overload of the {@link ServerlessInvokerBase#invokeNameNodeViaHttpPost} function is used when the arguments
+     * This overload of the {@link ServerlessInvokerBase#enqueueHttpRequestInt} function is used when the arguments
      * for a {@link ArgumentContainer} object AND when we are passing a specific requestId to the function.
      *
      * We pass specific requestIds when we want that function to have that requestId. This occurs when we are
@@ -195,10 +193,10 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
      * @return The response from the serverless NameNode.
      */
     @Override
-    public ServerlessHttpFuture invokeNameNodeViaHttpPost(String operationName, String functionUriBase,
-                                                HashMap<String, Object> nameNodeArguments,
-                                                ArgumentContainer fileSystemOperationArguments,
-                                                String requestId, int targetDeployment)
+    public ServerlessHttpFuture enqueueHttpRequest(String operationName, String functionUriBase,
+                                                   HashMap<String, Object> nameNodeArguments,
+                                                   ArgumentContainer fileSystemOperationArguments,
+                                                   String requestId, int targetDeployment)
             throws IOException, IllegalStateException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
@@ -213,7 +211,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
             requestId = UUID.randomUUID().toString();
 
         JsonObject fsArgs = fileSystemOperationArguments.convertToJsonObject();
-        return enqueueRequestForSubmission(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment);
+        return enqueueHttpRequestInt(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment);
     }
 
     @Override
