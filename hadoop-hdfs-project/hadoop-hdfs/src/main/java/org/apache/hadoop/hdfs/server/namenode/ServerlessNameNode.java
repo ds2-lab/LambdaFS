@@ -2238,11 +2238,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     this.txAckTimeout =
             conf.getInt(SERVERLESS_TRANSACTION_ACK_TIMEOUT, SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT);
 
+    this.serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     this.serverlessInvoker = ServerlessInvokerFactory.getServerlessInvoker(
             conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT));
-    this.serverlessInvoker.setConfiguration(conf, "NN" + deploymentNumber + "-" + getId());
+    this.serverlessInvoker.setConfiguration(conf, "NN" + deploymentNumber + "-" + getId(), this.serverlessEndpointBase);
     this.serverlessInvoker.setIsClientInvoker(false); // We are not a client.
-    this.serverlessEndpointBase = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
 
     this.nameNodeTCPClient = new NameNodeTcpUdpClient(conf,this, nameNodeID, deploymentNumber, actionMemory);
 

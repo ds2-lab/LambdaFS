@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless.execution.futures;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.userserver.TcpUdpRequestPayload;
 import org.apache.hadoop.hdfs.serverless.userserver.UserServer;
 
@@ -11,7 +12,7 @@ import org.apache.hadoop.hdfs.serverless.userserver.UserServer;
  *
  * These are used on the client side.
  */
-public class ServerlessTcpUdpFuture extends ServerlessFuture<TcpUdpRequestPayload> {
+public class ServerlessTcpUdpFuture extends ServerlessFuture<NameNodeResult> {
     private static final Log LOG = LogFactory.getLog(ServerlessTcpUdpFuture.class);
 
     /**

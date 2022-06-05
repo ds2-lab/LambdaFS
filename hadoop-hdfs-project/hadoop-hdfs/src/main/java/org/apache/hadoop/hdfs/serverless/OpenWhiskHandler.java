@@ -176,7 +176,6 @@ public class OpenWhiskHandler extends BaseHandler {
                     ", UDP Ports: " + StringUtils.join(udpPorts, ","));
             LOG.debug("Action memory: " + actionMemory + "MB");
             LOG.debug("Local mode: " + (localModeEnabled ? "ENABLED" : "DISABLED"));
-            LOG.debug("Client IP address: " + (clientIpAddress == null ? "N/A" : clientIpAddress));
             LOG.debug("Function container was " + (isCold ? "COLD" : "WARM") + ".");
             LOG.debug("Handing control over to driver() function after " + DurationFormatUtils.formatDurationHMS((Duration.between(start, Instant.now()).toMillis())));
         }
@@ -253,7 +252,7 @@ public class OpenWhiskHandler extends BaseHandler {
             if (LOG.isDebugEnabled()) LOG.debug("Processing request " + (counter++) + "/" + requestIds.size() + ". ID: " + requestId + ", Operation name: " + operation);
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Client's name: " + clientName + ". Invoked by: " + invokerIdentity);
+                LOG.debug("Client's name: " + clientName + ", Client's IP address: " + clientIpAddress + ", Invoked by: " + invokerIdentity);
                 LOG.debug("Operation arguments: " + fsArgs);
             }
 

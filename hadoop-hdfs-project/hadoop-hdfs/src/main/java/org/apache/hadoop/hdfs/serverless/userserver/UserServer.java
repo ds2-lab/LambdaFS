@@ -18,7 +18,7 @@ import org.apache.hadoop.hdfs.serverless.exceptions.NoConnectionAvailableExcepti
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
-import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessFuture;
+import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessTcpUdpFuture;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessTcpUdpFuture;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 
@@ -71,7 +71,7 @@ public class UserServer {
      * The TCP Server maintains a collection of Futures for clients that are awaiting a response from
      * the NameNode to which they issued a request.
      */
-    private final ConcurrentHashMap<String, ServerlessFuture> activeFutures;
+    private final ConcurrentHashMap<String, ServerlessTcpUdpFuture> activeFutures;
 
     /**
      * We also map the unique IDs of NameNodes to their deployments. This is used for debugging/logging and for
@@ -83,7 +83,7 @@ public class UserServer {
      * A collection of all the futures that we've completed in one way or another (either they
      * were cancelled or we received a result for them).
      */
-    private final Cache<String, ServerlessFuture> completedFutures;
+    private final Cache<String, ServerlessTcpUdpFuture> completedFutures;
 
     /**
      * Associate with each connection the list of futures that have been submitted and NOT completed.
@@ -91,7 +91,7 @@ public class UserServer {
      *
      * If the connection is lost, then these futures must be re-submitted via HTTP.
      */
-    private final ConcurrentHashMap<Long, List<ServerlessFuture>> submittedFutures;
+    private final ConcurrentHashMap<Long, List<ServerlessTcpUdpFuture>> submittedFutures;
 
     /**
      * Mapping of task/request ID to the NameNode to which the task/request was submitted.
@@ -741,11 +741,11 @@ public class UserServer {
      * @param associatedPayload The payload that we will be sending via TCP to the target NameNode.
      * @param nnId The NameNodeID of the target NN.
      *
-     * @return A new {@link ServerlessFuture} object if one does not already exist.
+     * @return A new {@link ServerlessTcpUdpFuture} object if one does not already exist.
      * Otherwise, returns the existing RequestResponseFuture object.
      */
-    public ServerlessFuture registerRequestResponseFuture(TcpUdpRequestPayload associatedPayload, long nnId) {
-        ServerlessFuture requestResponseFuture = activeFutures.getOrDefault(associatedPayload.getRequestId(), null);
+    public ServerlessTcpUdpFuture registerRequestResponseFuture(TcpUdpRequestPayload associatedPayload, long nnId) {
+        ServerlessTcpUdpFuture requestResponseFuture = activeFutures.getOrDefault(associatedPayload.getRequestId(), null);
 
         // TODO: Previously, this function also checked completedFutures before registering. Do we need to do this?
         if (requestResponseFuture == null) {
@@ -762,7 +762,7 @@ public class UserServer {
      * @param requestId The ID of the request/task that was resolved via TCP.
      */
     public boolean deactivateFuture(String requestId) {
-        ServerlessFuture future = activeFutures.remove(requestId);
+        ServerlessTcpUdpFuture future = activeFutures.remove(requestId);
 
         if (future != null) {
             completedFutures.put(requestId, future);
@@ -773,7 +773,7 @@ public class UserServer {
                 // Remove this future from the submitted futures list associated with the connection,
                 // if it exists.
                 if (connection != null && submittedFutures.containsKey(connection.name)) {
-                    List<ServerlessFuture> futures = submittedFutures.get(connection.name);
+                    List<ServerlessTcpUdpFuture> futures = submittedFutures.get(connection.name);
                     futures.remove(future);
                 }
             }
@@ -797,7 +797,7 @@ public class UserServer {
      *                                        to the same NN at which the request previously timed-out.
      * @return A Future representing the eventual response from the NameNode.
      */
-    public ServerlessFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck,
+    public ServerlessTcpUdpFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck,
                                             String requestId, TcpUdpRequestPayload payload,
                                             boolean tryToAvoidTargetingSameNameNode) throws IOException {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
@@ -853,10 +853,10 @@ public class UserServer {
                     tcpConnection.name + " is NOT connected...");
         }
 
-        ServerlessFuture requestResponseFuture = registerRequestResponseFuture(payload, tcpConnection.name);
+        ServerlessTcpUdpFuture requestResponseFuture = registerRequestResponseFuture(payload, tcpConnection.name);
 
         // Make note of this future as being incomplete.
-        List<ServerlessFuture> incompleteFutures = submittedFutures.computeIfAbsent(
+        List<ServerlessTcpUdpFuture> incompleteFutures = submittedFutures.computeIfAbsent(
                 tcpConnection.name, k -> new ArrayList<>());
 
         incompleteFutures.add(requestResponseFuture);
@@ -941,12 +941,12 @@ public class UserServer {
                 return previouslyReceivedResult;
         }
         else if (completedFutures.asMap().containsKey(requestId)) {
-            ServerlessFuture future = completedFutures.getIfPresent(requestId);
+            ServerlessTcpUdpFuture future = completedFutures.getIfPresent(requestId);
             if (future != null && future.isDone()) return future.get();
         }
 
         long startTime = System.nanoTime();
-        ServerlessFuture requestResponseFuture = issueTcpRequest(
+        ServerlessTcpUdpFuture requestResponseFuture = issueTcpRequest(
                 deploymentNumber, bypassCheck, requestId, payload, tryToAvoidTargetingSameNameNode);
 
         double tcpSendDuration = (System.nanoTime() - startTime) / 1.0e6;
@@ -974,7 +974,7 @@ public class UserServer {
     private void handleResult(NameNodeResult result, NameNodeConnection connection) {
         String requestId = result.getRequestId();
 
-        ServerlessFuture future = activeFutures.getOrDefault(requestId, null);
+        ServerlessTcpUdpFuture future = activeFutures.getOrDefault(requestId, null);
 
         // If there is no future associated with this operation, then we have no means to return
         // the result back to the client who issued the file system operation.
@@ -999,7 +999,7 @@ public class UserServer {
         completedFutures.put(requestId, future); // Do this first to prevent races.
         activeFutures.remove(requestId);
 
-        List<ServerlessFuture> incompleteFutures = submittedFutures.get(connection.name);
+        List<ServerlessTcpUdpFuture> incompleteFutures = submittedFutures.get(connection.name);
         incompleteFutures.remove(future);
 
         if (LOG.isDebugEnabled()) {
@@ -1023,7 +1023,7 @@ public class UserServer {
      * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
      */
     private void cancelActiveFutures(long nameNodeId) {
-        List<ServerlessFuture> incompleteFutures = submittedFutures.get(nameNodeId);
+        List<ServerlessTcpUdpFuture> incompleteFutures = submittedFutures.get(nameNodeId);
 
         if (incompleteFutures == null) {
             if (LOG.isDebugEnabled()) LOG.debug(serverPrefix + " There were no futures associated with now-closed connection to NN " + nameNodeId);
@@ -1043,7 +1043,7 @@ public class UserServer {
         // TODO: Alternatively, we could implement batching on the HTTP side so that always occurs.
 
         // Cancel each of the futures.
-        for (ServerlessFuture future : incompleteFutures) {
+        for (ServerlessTcpUdpFuture future : incompleteFutures) {
             if (LOG.isDebugEnabled()) LOG.debug("    " + serverPrefix + " Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
             try {
                 future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
