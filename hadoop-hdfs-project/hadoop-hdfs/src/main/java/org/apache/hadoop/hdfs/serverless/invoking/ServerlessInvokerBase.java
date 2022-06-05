@@ -87,6 +87,9 @@ import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.ext
  * to the API Gateway of the serverless platform. (It doesn't have to be the API Gateway; that's just often what the
  * serverless platform component is. We issue a request to whatever we're supposed to in order to invoke functions. In
  * the case of OpenWhisk, that's the API Gateway component.)
+ *
+ * TODO: Multiple clients on the same VM should share {@link ServerlessInvokerBase} instances, just as multiple
+ *       clients on the same VM can share {@link org.apache.hadoop.hdfs.serverless.userserver.UserServer} instances.
  */
 public abstract class ServerlessInvokerBase {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
@@ -249,7 +252,11 @@ public abstract class ServerlessInvokerBase {
     }
 
     /**
-     * This function should call {@link ServerlessInvokerBase#processOutgoingRequests()} and use the
+     * IMPORTANT:
+     * This function should call the {@link ServerlessInvokerBase#addStandardArguments(JsonObject)} function. This is
+     * done to ensure that the NameNode has all of the required information necessary to properly handle the request.
+     *
+     * This function should also call {@link ServerlessInvokerBase#createRequestBatches()} and use the
      * returned {@code List<List<JsonArray>>} object to send the requests.
      */
     protected abstract void sendOutgoingRequests() throws UnsupportedEncodingException, SocketException, UnknownHostException;
@@ -266,7 +273,7 @@ public abstract class ServerlessInvokerBase {
      * @return Batches of requests by deployment. Entry i in the returned list corresponds to deployment i.
      * Each {@link JsonObject} contains a batch of requests.
      */
-    protected List<List<JsonObject>> processOutgoingRequests() {
+    protected List<List<JsonObject>> createRequestBatches() {
         List<List<JsonObject>> batchedRequests = new ArrayList<>();
 
         for (int i = 0; i < numDeployments; i++) {

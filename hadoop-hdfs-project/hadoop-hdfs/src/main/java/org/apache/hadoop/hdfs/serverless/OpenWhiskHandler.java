@@ -160,20 +160,10 @@ public class OpenWhiskHandler extends BaseHandler {
             LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
         }
 
-        if (userArguments.has(CONSISTENCY_PROTOCOL_ENABLED)) {
+        if (userArguments.has(CONSISTENCY_PROTOCOL_ENABLED))
             ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = userArguments.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
-//            LOG.debug("Consistency protocol is " +
-//                    (ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL ? "ENABLED." : "DISABLED."));
-        }
 
-//        int tcpPort = -1;
-//        if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT))
-//            tcpPort = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_PORT).getAsInt();
-//
-//        int udpPort = -1;
-//        if (userArguments.has(ServerlessNameNodeKeys.UDP_PORT))
-//            udpPort = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.UDP_PORT).getAsInt();
-
+        // Extract the list of TCP ports. Each port is being used by an active TCP server on the client's VM.
         List<Integer> tcpPorts = null;
         if (userArguments.has(ServerlessNameNodeKeys.TCP_PORT)) {
             JsonArray tcpPortsJson = userArguments.getAsJsonArray(ServerlessNameNodeKeys.TCP_PORT);
@@ -182,6 +172,7 @@ public class OpenWhiskHandler extends BaseHandler {
                 tcpPorts.add(tcpPortsJson.get(i).getAsInt());
         }
 
+        // Extract the list of UDP ports. Each port is being used by an active UDP server on the client's VM.
         List<Integer> udpPorts = null;
         if (userArguments.has(ServerlessNameNodeKeys.UDP_PORT)) {
             JsonArray udpPortsJson = userArguments.getAsJsonArray(ServerlessNameNodeKeys.UDP_PORT);
@@ -232,7 +223,6 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug("Returning back to client. Time elapsed: " + (endTime - startTime) + " milliseconds.");
             LOG.debug("ServerlessNameNode is exiting now...");
         }
-        //activeRequestCounter.decrementAndGet();
         return createJsonResponse(result);
     }
 

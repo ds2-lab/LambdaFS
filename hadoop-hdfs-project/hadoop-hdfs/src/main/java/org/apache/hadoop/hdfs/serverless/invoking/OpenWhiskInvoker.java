@@ -18,7 +18,6 @@ import org.apache.http.nio.reactor.IOReactorException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
-import java.util.concurrent.ThreadLocalRandom;
 import java.io.*;
 import java.security.*;
 import java.util.*;
@@ -215,13 +214,12 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
     }
 
     @Override
-    protected void sendOutgoingRequests()
-            throws UnsupportedEncodingException, SocketException, UnknownHostException {
+    protected void sendOutgoingRequests() throws UnsupportedEncodingException, SocketException, UnknownHostException {
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
                     "You must configure it by calling .setConfiguration(...) before using it.");
 
-        List<List<JsonObject>> batchedRequests = processOutgoingRequests();
+        List<List<JsonObject>> batchedRequests = createRequestBatches();
 
         // We've created all the batches. Now we need to issue the requests.
         for (int i = 0; i < numDeployments; i++) {
@@ -234,15 +232,13 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                 for (JsonObject requestBatch : deploymentBatches) {
                     // This is the top-level JSON object passed along with the HTTP POST request.
                     JsonObject topLevel = new JsonObject();
-                    topLevel.add(BATCH, requestBatch);
 
                     HttpPost request = new HttpPost(getFunctionUri(functionUriBase, i, topLevel));
                     request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
                     JsonObject nameNodeArguments = new JsonObject();
-                    nameNodeArguments.addProperty(ServerlessNameNodeKeys.CLIENT_NAME, clientName);
-                    nameNodeArguments.addProperty(ServerlessNameNodeKeys.IS_CLIENT_INVOKER, isClientInvoker);
-                    nameNodeArguments.addProperty(ServerlessNameNodeKeys.INVOKER_IDENTITY, invokerIdentity);
+                    nameNodeArguments.add(BATCH, requestBatch);
+                    addStandardArguments(nameNodeArguments);
 
                     // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
                     // within the HTTP POST request. They should be included with the key "value".
