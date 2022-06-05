@@ -34,6 +34,7 @@ import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
+import org.apache.hadoop.hdfs.serverless.execution.results.CancelledResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.execution.results.ServerlessFunctionMapping;
@@ -594,18 +595,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         operationName, tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
 
                 // This only ever happens when the request is cancelled.
-                if (response instanceof TcpUdpRequestPayload) {
-                    TcpUdpRequestPayload requestPayload = (TcpUdpRequestPayload)response;
-
-                    if (!requestPayload.isCancelled())
-                        throw new IllegalStateException("Obtained TcpRequestPayload as response from TCP request '" +
-                                requestId + "', but payload is not marked as cancelled...");
-
+                if (response instanceof CancelledResult) {
                     opArguments.addPrimitive(FORCE_REDO, true);
+
                     // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
                     throw new TcpRequestCancelledException("The TCP future for request " + requestId +
-                            " (operation = " + operationName + ") has been cancelled. Reason: " +
-                            requestPayload.getCancellationReason() + ".");
+                            " (operation = " + operationName + ") has been cancelled.");
                 }
 
                 NameNodeResult result = (NameNodeResult)response;

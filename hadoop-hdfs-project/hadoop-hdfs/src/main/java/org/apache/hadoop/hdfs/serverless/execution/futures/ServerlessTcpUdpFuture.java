@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.serverless.execution.futures;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hdfs.serverless.execution.results.CancelledResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.userserver.TcpUdpRequestPayload;
 import org.apache.hadoop.hdfs.serverless.userserver.UserServer;
@@ -48,10 +49,10 @@ public class ServerlessTcpUdpFuture extends ServerlessFuture<NameNodeResult> {
     @Override
     public void cancel(String reason, boolean shouldRetry) throws InterruptedException {
         state = State.CANCELLED;
-        associatedPayload.setCancelled(true);
-        associatedPayload.setShouldRetry(shouldRetry);
-        associatedPayload.setCancellationReason(reason);
-        resultQueue.put(associatedPayload);
+        // associatedPayload.setCancelled(true);
+        // associatedPayload.setShouldRetry(shouldRetry);
+        // associatedPayload.setCancellationReason(reason);
+        resultQueue.put(CancelledResult.instance);
         if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " +
                 operationName + ". Reason: " + reason);
     }
