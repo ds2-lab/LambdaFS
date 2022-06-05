@@ -203,7 +203,8 @@ public class OpenWhiskHandler extends BaseHandler {
      *                     connections at once, then it might crash due to OOM errors.
      * @param tcpEnabled Flag indicating whether the TCP invocation pathway is enabled. If false, then we do not
      *                   bother trying to establish TCP connections.
-     * @param startTime Return value from System.currentTimeMillis() called as the VERY first thing the HTTP handler does.
+     * @param invocationReceivedTime Return value from System.currentTimeMillis() called as the VERY first thing
+     *                               the HTTP handler does.
      *
      * @return A {@link JsonObject} containing the results for all the requests. Each request ID is used as a key,
      * and the associated {@link NameNodeResult} (converted to JSON) is the value.
@@ -213,8 +214,13 @@ public class OpenWhiskHandler extends BaseHandler {
      */
     private static JsonObject processBatch(JsonObject userArguments, String[] cmdLineArgs, String functionName,
                                            boolean tcpEnabled, boolean udpEnabled, List<Integer> tcpPorts,
-                                           List<Integer> udpPorts, int actionMemory, long startTime,
+                                           List<Integer> udpPorts, int actionMemory, long invocationReceivedTime,
                                            boolean benchmarkModeEnabled) {
+        // We create a local `startTime` variable here and set it equal to `invocationReceivedTime`. So, for the
+        // first request in the batch, we use `invocationReceivedTime` as the start time. For subsequent tasks,
+        // we update the value of `startTime` when we start processing that task. This way, we do not include time
+        // spent processing earlier tasks from the batch as part of the invocation time for later tasks in the batch.
+        long startTime = invocationReceivedTime;
         JsonObject batchOfResults = new JsonObject();
 
         JsonObject batchOfRequests = userArguments.get(BATCH).getAsJsonObject();
@@ -261,11 +267,16 @@ public class OpenWhiskHandler extends BaseHandler {
 
             if (LOG.isDebugEnabled()) {
                 long endTime = System.currentTimeMillis();
-                LOG.debug("Returning back to client. Time elapsed: " + (endTime - startTime) + " milliseconds.");
+                LOG.debug("Returning back to client. Time elapsed: " + (endTime - invocationReceivedTime) + " milliseconds.");
                 LOG.debug("ServerlessNameNode is exiting now...");
             }
             JsonObject latestResult = createJsonResponse(result);
             batchOfResults.add(requestId, latestResult);
+
+            // This will be used as the start time for the next task in the batch. We re-compute `startTime` as the
+            // last step in the loop iteration so that it is up-to-date when we begin processing the next task in
+            // the next loop iteration.
+            startTime = System.currentTimeMillis();
         }
 
         return batchOfResults;
