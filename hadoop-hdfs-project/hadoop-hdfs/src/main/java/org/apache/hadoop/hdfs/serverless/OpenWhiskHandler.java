@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 
@@ -83,8 +84,6 @@ public class OpenWhiskHandler extends BaseHandler {
             userArguments = args.get(ServerlessNameNodeKeys.VALUE).getAsJsonObject();
         }
 
-        String clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
-
         boolean tcpEnabled = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.TCP_ENABLED).getAsBoolean();
         boolean udpEnabled = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.UDP_ENABLED).getAsBoolean();
         boolean benchmarkModeEnabled = userArguments.getAsJsonPrimitive(BENCHMARK_MODE).getAsBoolean();
@@ -137,26 +136,9 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug("Also enabling ClusterJ debug logging...");
             LogManager.getLogger("com.mysql.clusterj").setLevel(Level.DEBUG);
         }
-
-        // The name of the client. This originates from the DFSClient class.
-        String clientName = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_NAME).getAsString();
-
-        // The name of the file system operation that the client wants us to perform.
-        String operation = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
-
-        // This is NOT the OpenWhisk activation ID. The request ID originates at the client who invoked us.
-        // That way, the corresponding TCP request (to this HTTP request) would have the same request ID.
-        // This is used to prevent duplicate requests from being processed.
-        String requestId = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.REQUEST_ID).getAsString();
-
-        // The arguments to the file system operation.
-        JsonObject fsArgs = userArguments.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
         
         if (userArguments.has(LOG_LEVEL)) {
             int logLevel = userArguments.get(LOG_LEVEL).getAsInt();
-            // LOG.debug("Setting log4j log level to: " + logLevel + ".");
-
-            //LogManager.getRootLogger().setLevel(Level.TRACE);
             LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
         }
 
@@ -181,15 +163,8 @@ public class OpenWhiskHandler extends BaseHandler {
                 udpPorts.add(udpPortsJson.get(i).getAsInt());
         }
 
-        // Flag that indicates whether this action was invoked by a client or a DataNode.
-        boolean isClientInvoker = userArguments.getAsJsonPrimitive(
-                ServerlessNameNodeKeys.IS_CLIENT_INVOKER).getAsBoolean();
-        String invokerIdentity = userArguments.getAsJsonPrimitive(
-                ServerlessNameNodeKeys.INVOKER_IDENTITY).getAsString();
-
         LOG.info("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
         LOG.info("Serverless function name: " + functionName);
-        LOG.info("Operation name: " + operation);
         if (LOG.isDebugEnabled()) {
             LOG.info("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
             LOG.debug("Top-level OpenWhisk arguments: " + args);
@@ -201,29 +176,99 @@ public class OpenWhiskHandler extends BaseHandler {
                     ", UDP Ports: " + StringUtils.join(udpPorts, ","));
             LOG.debug("Action memory: " + actionMemory + "MB");
             LOG.debug("Local mode: " + (localModeEnabled ? "ENABLED" : "DISABLED"));
-            LOG.debug("Client's name: " + clientName);
             LOG.debug("Client IP address: " + (clientIpAddress == null ? "N/A" : clientIpAddress));
-            LOG.debug("Invoked by: " + invokerIdentity);
             LOG.debug("Function container was " + (isCold ? "COLD" : "WARM") + ".");
-            LOG.debug("Operation arguments: " + fsArgs);
             LOG.debug("Handing control over to driver() function after " + DurationFormatUtils.formatDurationHMS((Duration.between(start, Instant.now()).toMillis())));
         }
         LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
 
-        // Execute the desired operation. Capture the result to be packaged and returned to the user.
-        NameNodeResult result = driver(operation, fsArgs, commandLineArguments, functionName, clientIpAddress,
-                requestId, clientName, isClientInvoker, tcpEnabled, udpEnabled, tcpPorts, udpPorts, actionMemory,
+        return processBatch(userArguments, commandLineArguments, functionName,
+                tcpEnabled, udpEnabled, tcpPorts, udpPorts, actionMemory,
                 startTime, benchmarkModeEnabled);
+    }
 
-        // Set the `isCold` flag to false given this is now a warm container.
-        isCold = false;
+    /**
+     * Process a batch of individual file system operations that were included within a 'batched HTTP request'.
+     *
+     * @param userArguments The arguments passed by the HopsFS client.
+     * @param cmdLineArgs The command-line arguments to be consumed by the NameNode during its creation.
+     * @param functionName The name of this particular OpenWhisk action (i.e., serverless function).
+     * @param tcpPorts The TCP port that the client who invoked us is using for their TCP server.
+     *                If the client is using multiple HopsFS client threads at the same time, then there will
+     *                presumably be multiple TCP servers, each listening on a different TCP port.
+     * @param udpPorts Same as the {@code tcpPorts} parameter, but for UDP ports.
+     * @param actionMemory The amount of RAM (in megabytes) that this function has been allocated. Used when
+     *                     determining the number of active TCP connections that this NameNode can have at once, as
+     *                     each TCP connection has two relatively-large buffers. If the NN creates too many TCP
+     *                     connections at once, then it might crash due to OOM errors.
+     * @param tcpEnabled Flag indicating whether the TCP invocation pathway is enabled. If false, then we do not
+     *                   bother trying to establish TCP connections.
+     * @param startTime Return value from System.currentTimeMillis() called as the VERY first thing the HTTP handler does.
+     *
+     * @return A {@link JsonObject} containing the results for all the requests. Each request ID is used as a key,
+     * and the associated {@link NameNodeResult} (converted to JSON) is the value.
+     *
+     * TODO: Update the way {@link io.hops.metrics.OperationPerformed} instances track invocation times and whatnot
+     *       to be accurate with batched HTTP requests.
+     */
+    private static JsonObject processBatch(JsonObject userArguments, String[] cmdLineArgs, String functionName,
+                                           boolean tcpEnabled, boolean udpEnabled, List<Integer> tcpPorts,
+                                           List<Integer> udpPorts, int actionMemory, long startTime,
+                                           boolean benchmarkModeEnabled) {
+        JsonObject batchOfResults = new JsonObject();
 
-        if (LOG.isDebugEnabled()) {
-            long endTime = System.currentTimeMillis();
-            LOG.debug("Returning back to client. Time elapsed: " + (endTime - startTime) + " milliseconds.");
-            LOG.debug("ServerlessNameNode is exiting now...");
+        JsonObject batchOfRequests = userArguments.get(BATCH).getAsJsonObject();
+        Set<String> requestIds = batchOfRequests.keySet();
+
+        if (LOG.isDebugEnabled()) LOG.debug("Processing batch of " + requestIds.size() + " requests. Request IDs: " + StringUtils.join(requestIds, ", "));
+
+        // Iterate over all the requests in the batch, executing them one-by-one.
+        int counter = 1;
+        for (String requestId : requestIds) {
+            JsonObject requestArguments = batchOfRequests.get(requestId).getAsJsonObject();
+
+            // The name of the client. This originates from the DFSClient class.
+            String clientName = requestArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_NAME).getAsString();
+
+            // The name of the file system operation that the client wants us to perform.
+            String operation = requestArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.OPERATION).getAsString();
+
+            // The arguments to the file system operation.
+            JsonObject fsArgs = requestArguments.getAsJsonObject(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS);
+
+            String clientIpAddress = userArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_INTERNAL_IP).getAsString();
+
+            // Flag that indicates whether this action was invoked by a client or a DataNode.
+            boolean isClientInvoker = requestArguments.getAsJsonPrimitive(
+                    ServerlessNameNodeKeys.IS_CLIENT_INVOKER).getAsBoolean();
+            String invokerIdentity = requestArguments.getAsJsonPrimitive(
+                    ServerlessNameNodeKeys.INVOKER_IDENTITY).getAsString();
+
+            if (LOG.isDebugEnabled()) LOG.debug("Processing request " + (counter++) + "/" + requestIds.size() + ". ID: " + requestId + ", Operation name: " + operation);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Client's name: " + clientName + ". Invoked by: " + invokerIdentity);
+                LOG.debug("Operation arguments: " + fsArgs);
+            }
+
+            // Execute the desired operation. Capture the result to be packaged and returned to the user.
+            NameNodeResult result = driver(operation, fsArgs, cmdLineArgs, functionName, clientIpAddress, requestId,
+                    clientName, isClientInvoker, tcpEnabled, udpEnabled, tcpPorts, udpPorts, actionMemory, startTime,
+                    benchmarkModeEnabled);
+
+            // Set the `isCold` flag to false given this is now a warm container.
+            isCold = false;
+
+            if (LOG.isDebugEnabled()) {
+                long endTime = System.currentTimeMillis();
+                LOG.debug("Returning back to client. Time elapsed: " + (endTime - startTime) + " milliseconds.");
+                LOG.debug("ServerlessNameNode is exiting now...");
+            }
+            JsonObject latestResult = createJsonResponse(result);
+            batchOfResults.add(requestId, latestResult);
         }
-        return createJsonResponse(result);
+
+        return batchOfResults;
     }
 
     /**
