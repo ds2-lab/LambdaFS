@@ -20,6 +20,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import com.google.common.hash.Hashing;
 import com.google.gson.JsonObject;
+import org.apache.hadoop.hdfs.serverless.execution.ExecutionManager;
 import org.apache.hadoop.util.VersionInfo;
 import io.hops.DalDriver;
 import io.hops.events.EventManager;
@@ -289,7 +290,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Used by the Serverless NameNode to invoke other Serverless NameNodes.
    */
-  private ServerlessInvokerBase<JsonObject> serverlessInvoker;
+  private ServerlessInvokerBase serverlessInvoker;
 
   /**
    * The base endpoint to which we direct requests when invoking serverless functions.
@@ -2517,7 +2518,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * Return the Serverless Invoker object used by this NameNode.
    */
-  public ServerlessInvokerBase<JsonObject> getServerlessInvoker() { return serverlessInvoker; }
+  public ServerlessInvokerBase getServerlessInvoker() { return serverlessInvoker; }
 
   public String getServerlessEndpointBase() { return serverlessEndpointBase; }
 

@@ -185,7 +185,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   /**
    * Responsible for invoking the Serverless NameNode(s).
    */
-  public ServerlessInvokerBase<JsonObject> serverlessInvoker;
+  public ServerlessInvokerBase serverlessInvoker;
 
   /**
    * Issue HTTP requests to this to invoke serverless functions.

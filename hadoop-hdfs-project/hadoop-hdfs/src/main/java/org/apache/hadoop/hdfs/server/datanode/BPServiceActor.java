@@ -69,7 +69,7 @@ class BPServiceActor implements Runnable {
   /**
    * Used to invoke serverless name nodes.
    */
-  private final ServerlessInvokerBase<JsonObject> serverlessInvoker;
+  private final ServerlessInvokerBase serverlessInvoker;
 
   static final Log LOG = DataNode.LOG;
   final InetSocketAddress nnAddr;

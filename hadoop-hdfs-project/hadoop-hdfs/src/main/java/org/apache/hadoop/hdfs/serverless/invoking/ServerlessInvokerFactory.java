@@ -44,7 +44,7 @@ public class ServerlessInvokerFactory {
      * @return Subclass of {@link ServerlessInvokerBase}.
      * @throws StorageInitializtionException
      */
-    public static ServerlessInvokerBase<JsonObject> getServerlessInvoker(String serverlessPlatformName)
+    public static ServerlessInvokerBase getServerlessInvoker(String serverlessPlatformName)
             throws StorageInitializtionException {
         String invokerClassName = getInvokerClassName(serverlessPlatformName);
 
@@ -52,7 +52,7 @@ public class ServerlessInvokerFactory {
             LOG.debug("Attempting to instantiate invoker of type: " + invokerClassName);
 
         try {
-            return (ServerlessInvokerBase<JsonObject>) Class.forName(invokerClassName).newInstance();
+            return (ServerlessInvokerBase) Class.forName(invokerClassName).newInstance();
         } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e1) {
             throw new StorageInitializtionException(e1);
         }
