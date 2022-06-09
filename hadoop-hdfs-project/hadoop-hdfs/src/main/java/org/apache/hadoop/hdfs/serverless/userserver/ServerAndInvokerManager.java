@@ -1,8 +1,11 @@
 package org.apache.hadoop.hdfs.serverless.userserver;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.math3.util.Pair;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
+import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 
 import java.io.IOException;
@@ -13,20 +16,25 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
-public class UserServerManager {
-    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(UserServerManager.class);
+public class ServerAndInvokerManager {
+    private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(ServerAndInvokerManager.class);
 
     /**
      * Maximum number of clients allowed to use a single TCP server.
      */
     private volatile int maxClientsPerServer;
 
-    private static UserServerManager instance;
+    private static ServerAndInvokerManager instance;
 
     /**
      * Map from server TCP port to the associated {@link UserServer} instance.
      */
     private final HashMap<Integer, UserServer> tcpPortToServerMapping;
+
+    /**
+     * Mapping from TCP port to {@link ServerlessInvokerBase} instance.
+     */
+    private final HashMap<Integer, ServerlessInvokerBase> tcpPortToInvokerMapping;
 
     /**
      * Map from server TCP port to the number of clients it has assigned to it.
@@ -66,13 +74,18 @@ public class UserServerManager {
      */
     private volatile int nextUdpPort;
 
+    /**
+     * Name of the serverless platform we're using.
+     */
+    private String serverlessPlatformName;
+
     private final ReadWriteLock mutex = new ReentrantReadWriteLock();
 
     private final ArrayList<UserServer> userServers = new ArrayList<>();
 
     /**
-     * Gets incremented every time somebody calls {@link UserServerManager#findServerWithActiveConnectionToDeployment(int)}
-     * or {@link UserServerManager#findServerWithAtLeastOneActiveConnection()}. We use this to determine when to shuffle
+     * Gets incremented every time somebody calls {@link ServerAndInvokerManager#findServerWithActiveConnectionToDeployment(int)}
+     * or {@link ServerAndInvokerManager#findServerWithAtLeastOneActiveConnection()}. We use this to determine when to shuffle
      * the list of user servers to ensure servers at the beginning of the list aren't disproportionately used.
      */
     private AtomicInteger counter = new AtomicInteger(0);
@@ -87,16 +100,16 @@ public class UserServerManager {
     /**
      * Retrieve the singleton instance, or create it if it does not exist.
      *
-     * IMPORTANT: You must call {@link UserServerManager#setConfiguration(Configuration)} on the instance
+     * IMPORTANT: You must call {@link ServerAndInvokerManager#setConfiguration(Configuration)} on the instance
      * returned by this function. If the singleton instance is being created for the first time, then it
-     * will not be configured properly unless the {@link UserServerManager#setConfiguration(Configuration)}
+     * will not be configured properly unless the {@link ServerAndInvokerManager#setConfiguration(Configuration)}
      * is called on it.
      *
-     * @return the singleton {@link UserServerManager} instance.
+     * @return the singleton {@link ServerAndInvokerManager} instance.
      */
-    public synchronized static UserServerManager getInstance() {
+    public synchronized static ServerAndInvokerManager getInstance() {
         if (instance == null)
-            instance = new UserServerManager();
+            instance = new ServerAndInvokerManager();
 
         return instance;
     }
@@ -120,6 +133,8 @@ public class UserServerManager {
         this.nextUdpPort = configuration.getInt(DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT,
                 DFSConfigKeys.SERVERLESS_UDP_SERVER_PORT_DEFAULT);
 
+        this.serverlessPlatformName = configuration.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
+
         // If the user has specified a value <= 0, then all clients on the same VM will share the same server.
         if (this.maxClientsPerServer <= 0) {
             this.maxClientsPerServer = Integer.MAX_VALUE;
@@ -129,8 +144,9 @@ public class UserServerManager {
         this.configured = true;
     }
 
-    private UserServerManager() {
+    private ServerAndInvokerManager() {
         tcpPortToServerMapping = new HashMap<>();
+        tcpPortToInvokerMapping = new HashMap<>();
         serverClientCounts = new HashMap<>();
         activeTcpPorts = new HashSet<>();
         activeUdpPorts = new HashSet<>();
@@ -161,7 +177,7 @@ public class UserServerManager {
     }
 
     /**
-     * Check if we should shuffle the {@link UserServerManager#userServers} variable. If so, then shuffle it.
+     * Check if we should shuffle the {@link ServerAndInvokerManager#userServers} variable. If so, then shuffle it.
      */
     private void checkIfShuffleRequired() {
         int val = counter.incrementAndGet();
@@ -290,15 +306,18 @@ public class UserServerManager {
      *
      * @param client The client registering with us. The {@link ServerlessNameNodeClient} should call this
      *               function and pass "this" for the {@code client} parameter.
+     * @param clientName Passed to new invokers.
+     * @param serverlessEndpointBase Passed to new invokers.
      *
      * @return The TCP server that this particular client should use.
      */
     // synchronized so multiple calls to this function cannot overlap.
     // we also use locking so that the `findServerWithActiveConnectionToDeployment()` can execute concurrently,
     // although this probably shouldn't happen due to when these synchronized functions are called in a workload.
-    public synchronized UserServer registerWithTcpServer(ServerlessNameNodeClient client)
-            throws IOException {
+    public synchronized Pair<UserServer, ServerlessInvokerBase> registerWithTcpServer(
+            ServerlessNameNodeClient client, String clientName, String serverlessEndpointBase) throws IOException {
         UserServer assignedServer;
+        ServerlessInvokerBase assignedInvoker;
         int oldNumClients = -1;
         int assignedPort = -1;
 
@@ -324,6 +343,9 @@ public class UserServerManager {
                 LOG.info("Creating new user server. Attempting to use TCP port " + nextTcpPort + ", UDP port " +
                         nextUdpPort);
                 assignedServer = new UserServer(conf, client, nextTcpPort, nextUdpPort);
+                assignedInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
+                assignedInvoker.setIsClientInvoker(true);
+                assignedInvoker.setConfiguration(conf, "C-" + clientName, serverlessEndpointBase);
                 int tcpPort = assignedServer.startServer();
 
                 activeTcpPorts.add(tcpPort);
@@ -342,6 +364,7 @@ public class UserServerManager {
                 LOG.info("Retrieving existing TCP server with TCP port " + assignedPort + ".");
                 // Grab existing server and return it.
                 assignedServer = tcpPortToServerMapping.get(assignedPort);
+                assignedInvoker = tcpPortToInvokerMapping.get(assignedPort);
                 serverClientCounts.put(assignedPort, oldNumClients + 1);
 
                 // Make sure to set the client's TCP/UDP port values, since this step
@@ -353,6 +376,6 @@ public class UserServerManager {
             mutex.writeLock().unlock();
         }
 
-        return assignedServer;
+        return new Pair<>(assignedServer, assignedInvoker);
     }
 }

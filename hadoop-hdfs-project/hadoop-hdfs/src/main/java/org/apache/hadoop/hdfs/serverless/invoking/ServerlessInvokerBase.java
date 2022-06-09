@@ -13,7 +13,7 @@ import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.cache.FunctionMetadataMap;
 import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
-import org.apache.hadoop.hdfs.serverless.userserver.UserServerManager;
+import org.apache.hadoop.hdfs.serverless.userserver.ServerAndInvokerManager;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.hadoop.util.StringUtils;
@@ -1074,12 +1074,12 @@ public abstract class ServerlessInvokerBase {
             throw new IllegalStateException("TCP Port has not been initialized to correct value.");
 
         JsonArray tcpPortsJson = new JsonArray();
-        List<Integer> tcpPorts = UserServerManager.getInstance().getActiveTcpPorts();
+        List<Integer> tcpPorts = ServerAndInvokerManager.getInstance().getActiveTcpPorts();
         for (int tcpPort : tcpPorts)
             tcpPortsJson.add(tcpPort);
 
         JsonArray udpPortsJson = new JsonArray();
-        List<Integer> udpPorts = udpEnabled ? UserServerManager.getInstance().getActiveUdpPorts() : new ArrayList<>();
+        List<Integer> udpPorts = udpEnabled ? ServerAndInvokerManager.getInstance().getActiveUdpPorts() : new ArrayList<>();
         for (int udpPort : udpPorts)
             udpPortsJson.add(udpPort);
 
