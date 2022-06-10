@@ -87,9 +87,6 @@ import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.ext
  * to the API Gateway of the serverless platform. (It doesn't have to be the API Gateway; that's just often what the
  * serverless platform component is. We issue a request to whatever we're supposed to in order to invoke functions. In
  * the case of OpenWhisk, that's the API Gateway component.)
- *
- * TODO: Multiple clients on the same VM should share {@link ServerlessInvokerBase} instances, just as multiple
- *       clients on the same VM can share {@link org.apache.hadoop.hdfs.serverless.userserver.UserServer} instances.
  */
 public abstract class ServerlessInvokerBase {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
@@ -101,14 +98,15 @@ public abstract class ServerlessInvokerBase {
      *
      * Map from request ID to statistics packages.
      */
-    protected HashMap<String, TransactionsStats.ServerlessStatisticsPackage> statisticsPackages;
+    private static ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> statisticsPackages
+            = new ConcurrentHashMap<>();
 
     /**
      * Store the transaction events from serverless name nodes in this HashMap.
      *
      * Map from request ID to statistics packages.
      */
-    protected HashMap<String, List<TransactionEvent>> transactionEvents;
+    private static ConcurrentHashMap<String, List<TransactionEvent>> transactionEvents = new ConcurrentHashMap<>();
 
     /**
      * Flag indicating whether we are running in 'local mode', which is only relevant on the client-side.
@@ -245,9 +243,6 @@ public abstract class ServerlessInvokerBase {
      * Default constructor.
      */
     protected ServerlessInvokerBase() {
-        // instantiateTrustManager();
-        statisticsPackages = new HashMap<>();
-        transactionEvents = new HashMap<>();
         this.futures = new ConcurrentHashMap<>();
     }
 
@@ -1104,19 +1099,19 @@ public abstract class ServerlessInvokerBase {
     // DEBUGGING/METRICS //
     ///////////////////////
 
-    public HashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
+    public ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
         return statisticsPackages;
     }
 
-    public void setStatisticsPackages(HashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages) {
+    public void setStatisticsPackages(ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages) {
         this.statisticsPackages = packages;
     }
 
-    public HashMap<String, List<TransactionEvent>> getTransactionEvents() {
+    public ConcurrentHashMap<String, List<TransactionEvent>> getTransactionEvents() {
         return transactionEvents;
     }
 
-    public void setTransactionEvents(HashMap<String, List<TransactionEvent>> transactionEvents) {
+    public void setTransactionEvents(ConcurrentHashMap<String, List<TransactionEvent>> transactionEvents) {
         this.transactionEvents = transactionEvents;
     }
 }

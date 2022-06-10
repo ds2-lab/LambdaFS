@@ -21,6 +21,7 @@ import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -113,6 +114,7 @@ import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
 import io.hops.metrics.OperationPerformed;
+import org.apache.hadoop.hdfs.serverless.userserver.ServerAndInvokerManager;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -269,18 +271,21 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * Clear the collection of statistics packages.
    */
   public void clearStatisticsPackages() {
-    if (this.namenode instanceof ServerlessNameNodeClient) {
-      ((ServerlessNameNodeClient)this.namenode).getServerlessInvoker().getStatisticsPackages().clear();
-    }
+//    if (this.namenode instanceof ServerlessNameNodeClient) {
+//      ((ServerlessNameNodeClient)this.namenode).getServerlessInvoker().getStatisticsPackages().clear();
+//    }
+    ServerAndInvokerManager.getInstance().clearStatisticsPackages();
   }
 
   /**
    * Clear the mapping of transaction events.
    */
   public void clearTransactionStatistics() {
-    if (this.namenode instanceof ServerlessNameNodeClient) {
-      ((ServerlessNameNodeClient)this.namenode).getServerlessInvoker().getTransactionEvents().clear();
-    }
+//    if (this.namenode instanceof ServerlessNameNodeClient) {
+//      ((ServerlessNameNodeClient)this.namenode).getServerlessInvoker().getTransactionEvents().clear();
+//    }
+
+    ServerAndInvokerManager.getInstance().clearTransactionStatistics();
   }
 
   /**
@@ -332,15 +337,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
    *                  requestId values, which are supposed to be unique.)
    */
-  public void mergeStatisticsPackages(HashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages,
+  public void mergeStatisticsPackages(ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages,
                                       boolean keepLocal) {
+    ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> merged =
+            new ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage>();
+
     ServerlessInvokerBase serverlessInvoker = ((ServerlessNameNodeClient)this.namenode).getServerlessInvoker();
 
-    HashMap<String, TransactionsStats.ServerlessStatisticsPackage> local =
+    ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> local =
             serverlessInvoker.getStatisticsPackages();
-
-    HashMap<String, TransactionsStats.ServerlessStatisticsPackage> merged =
-            new HashMap<String, TransactionsStats.ServerlessStatisticsPackage>();
 
     if (keepLocal) {
       merged.putAll(packages);
@@ -1136,8 +1141,6 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
       // close connections to the namenode
       closeConnectionsToNamenodes();
-
-      serverlessInvoker.terminate();
 
       // Stop the ServerlessNameNodeClient if that is what we're using as our ClientAPI name node.
       if (this.namenode instanceof ServerlessNameNodeClient) {

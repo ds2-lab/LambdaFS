@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.userserver;
 
+import io.hops.transaction.context.TransactionsStats;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.math3.util.Pair;
 import org.apache.hadoop.conf.Configuration;
@@ -82,6 +83,15 @@ public class ServerAndInvokerManager {
     private final ReadWriteLock mutex = new ReentrantReadWriteLock();
 
     private final ArrayList<UserServer> userServers = new ArrayList<>();
+
+    private final ArrayList<ServerlessInvokerBase> invokers = new ArrayList<>();
+
+    /**
+     * Indicates whether the {@link ServerAndInvokerManager#terminate()} function has been called.
+     *
+     * TODO: Should we check if `stopped` is true before doing work in most functions?
+     */
+    private volatile boolean stopped = false;
 
     /**
      * Gets incremented every time somebody calls {@link ServerAndInvokerManager#findServerWithActiveConnectionToDeployment(int)}
@@ -298,6 +308,21 @@ public class ServerAndInvokerManager {
     }
 
     /**
+     * Terminate all the {@link UserServer} and {@link ServerlessInvokerBase} instances.
+     */
+    public synchronized void terminate() {
+        if (!stopped) {
+            stopped = true;
+
+            for (UserServer userServer : userServers)
+                userServer.terminate();
+
+            for (ServerlessInvokerBase invoker : invokers)
+                invoker.terminate();
+        }
+    }
+
+    /**
      * Register a client with a TCP server. All that actually happens here is that
      * the client gets the TCP server that it will use for communicating with NameNodes.
      *
@@ -314,8 +339,11 @@ public class ServerAndInvokerManager {
     // synchronized so multiple calls to this function cannot overlap.
     // we also use locking so that the `findServerWithActiveConnectionToDeployment()` can execute concurrently,
     // although this probably shouldn't happen due to when these synchronized functions are called in a workload.
-    public synchronized Pair<UserServer, ServerlessInvokerBase> registerWithTcpServer(
+    public synchronized Pair<UserServer, ServerlessInvokerBase> registerClient(
             ServerlessNameNodeClient client, String clientName, String serverlessEndpointBase) throws IOException {
+        if (stopped)
+            throw new IllegalStateException("Manager has been stopped. Cannot register new clients.");
+
         UserServer assignedServer;
         ServerlessInvokerBase assignedInvoker;
         int oldNumClients = -1;
@@ -360,6 +388,7 @@ public class ServerAndInvokerManager {
                         tcpPortToServerMapping.size() + " unique TCP server(s).");
 
                 userServers.add(assignedServer);
+                invokers.add(assignedInvoker);
             } else {
                 LOG.info("Retrieving existing TCP server with TCP port " + assignedPort + ".");
                 // Grab existing server and return it.
@@ -378,4 +407,22 @@ public class ServerAndInvokerManager {
 
         return new Pair<>(assignedServer, assignedInvoker);
     }
+
+//    public void clearStatisticsPackages() {
+//        for (ServerlessInvokerBase invokerBase : invokers) {
+//            invokerBase.getStatisticsPackages().clear();
+//        }
+//    }
+//
+//    public void clearTransactionStatistics() {
+//        for (ServerlessInvokerBase invokerBase : invokers) {
+//            invokerBase.getTransactionEvents().clear();
+//        }
+//    }
+//    public void mergeStatisticsPackages(HashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages,
+//                                        boolean keepLocal) {
+//        for (ServerlessInvokerBase invokerBase : invokers) {
+//            invokerBase.getTransactionEvents().clear();
+//        }
+//    }
 }

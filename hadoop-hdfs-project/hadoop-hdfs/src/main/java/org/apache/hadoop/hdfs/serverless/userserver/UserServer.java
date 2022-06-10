@@ -268,7 +268,7 @@ public class UserServer {
     /**
      * Stop the TCP server.
      */
-    public void stop() {
+    public void terminate() {
         LOG.debug("HopsFSUserServer " + tcpPort + " stopping now...");
         this.server.removeListener(serverListener);
         LOG.debug("HopsFSUserServer " + tcpPort + " removed listener.");

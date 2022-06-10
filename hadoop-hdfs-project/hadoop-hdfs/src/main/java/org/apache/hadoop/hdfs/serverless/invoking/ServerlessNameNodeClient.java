@@ -68,9 +68,12 @@ import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
  *
  * This basically enables the DFSClient code to remain unmodified; it just issues its commands
  * to an instance of this class, which transparently handles the serverless invoking code.
+ *
+ * TODO(ben): Modify all the methods which grab data from Invokers to grab data from all Invokers,
+ *            since there will now be multiple invoker instances. Maybe just make the statistics packages
+ *            and transaction events static, so that they're implicitly shared across all instances.
  */
 public class ServerlessNameNodeClient implements ClientProtocol {
-
     public static final Log LOG = LogFactory.getLog(ServerlessNameNodeClient.class);
 
     /**
@@ -388,7 +391,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     public void registerAndStartTcpServer() throws IOException {
         // This function calls start on the server if necessary, so we don't need to do anything.
-        Pair<UserServer, ServerlessInvokerBase> pair = serverAndInvokerManager.registerWithTcpServer(
+        Pair<UserServer, ServerlessInvokerBase> pair = serverAndInvokerManager.registerClient(
                 this, dfsClient.getClientName(), serverlessEndpointBase);
 
         this.tcpServer = pair.getFirst();
@@ -1295,7 +1298,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         if (this.tcpServer != null)
             this.serverAndInvokerManager.unregisterClient(this.tcpServer.getTcpPort());
-        // this.tcpServer.stop();
+
+        // TODO: Determine when to call terminate() on the serverAndInvokerManager instance.
     }
 
     @Override
