@@ -283,6 +283,8 @@ public abstract class ServerlessInvokerBase {
             batchedRequests.add(deploymentBatches);
 
             if (deploymentQueue.size() > 0) {
+                if (LOG.isDebugEnabled()) LOG.debug("Deployment " + i + " has " + deploymentQueue.size() + " requests enqueued...");
+
                 JsonObject currentBatch = new JsonObject();
                 deploymentBatches.add(currentBatch);
 
@@ -575,6 +577,8 @@ public abstract class ServerlessInvokerBase {
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
                     "You must configure it by calling .setConfiguration(...) before using it.");
+
+        if (LOG.isDebugEnabled()) LOG.debug("Creating and enqueuing request " + requestId + "(op=" + operationName + ") targeting deployment " + targetDeployment);
 
         // This is the top-level JSON object passed along with the HTTP POST request.
         JsonObject requestArguments = new JsonObject();
