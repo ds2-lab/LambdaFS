@@ -302,6 +302,10 @@ public abstract class ServerlessInvokerBase {
                     }
 
                     String requestId = request.get(REQUEST_ID).getAsString();
+
+                    if (LOG.isDebugEnabled())
+                        LOG.debug("Placing request " + requestId + " into a batch...");
+
                     currentBatch.add(requestId, request);
 
                     // If the current batch's size is equal to that of the batch size parameter,
