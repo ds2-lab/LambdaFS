@@ -192,9 +192,9 @@ public abstract class ServerlessInvokerBase {
      * The TCP port that we ultimately bound to. See the comment in 'ServerlessNameNodeClient' for its
      * 'tcpServerPort' instance field for explanation as to why this field exists.
      */
-    protected int tcpPort;
+    protected volatile int tcpPort;
 
-    protected int udpPort;
+    protected volatile int udpPort;
 
     /**
      * The timeout, in milliseconds, for an HTTP request to a NameNode. This specifically
@@ -410,7 +410,7 @@ public abstract class ServerlessInvokerBase {
      * Update the TCP port being used by this client's TCP server.
      * @param tcpPort The new value for the TCP port.
      */
-    public void setTcpPort(int tcpPort) {
+    public synchronized void setTcpPort(int tcpPort) {
         this.tcpPort = tcpPort;
     }
 
@@ -418,7 +418,7 @@ public abstract class ServerlessInvokerBase {
      * Update the UDP port being used by this client's UDP server.
      * @param udpPort The new value for the UDP port.
      */
-    public void setUdpPort(int udpPort) {
+    public synchronized void setUdpPort(int udpPort) {
         this.udpPort = udpPort;
     }
 

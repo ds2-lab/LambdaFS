@@ -374,6 +374,8 @@ public class ServerAndInvokerManager {
                 assignedInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
                 assignedInvoker.setIsClientInvoker(true);
                 assignedInvoker.setConfiguration(conf, "C-" + clientName, serverlessEndpointBase);
+                assignedInvoker.setTcpPort(assignedPort);
+                assignedInvoker.setUdpPort(assignedServer.getUdpPort());
                 int tcpPort = assignedServer.startServer();
 
                 activeTcpPorts.add(tcpPort);
@@ -396,10 +398,13 @@ public class ServerAndInvokerManager {
                 assignedInvoker = tcpPortToInvokerMapping.get(assignedPort);
                 serverClientCounts.put(assignedPort, oldNumClients + 1);
 
+                // COMMENTED OUT: The TCP/UDP port will be assigned when the invoker is first created.
+                // Don't need to do it again each time we assign a new client to the invoker.
+
                 // Make sure to set the client's TCP/UDP port values, since this step
                 // doesn't happen automatically when we're using an existing server.
-                client.setTcpServerPort(assignedServer.getTcpPort());
-                client.setUdpServerPort(assignedServer.getUdpPort());
+                // client.setTcpServerPort(assignedServer.getTcpPort());
+                // client.setUdpServerPort(assignedServer.getUdpPort());
             }
         } finally {
             mutex.writeLock().unlock();
