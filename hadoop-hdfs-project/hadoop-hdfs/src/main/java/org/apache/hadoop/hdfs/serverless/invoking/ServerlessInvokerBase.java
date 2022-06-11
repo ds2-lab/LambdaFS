@@ -211,12 +211,12 @@ public abstract class ServerlessInvokerBase {
     /**
      * Passed to serverless functions. Determines whether they execute the consistency protocol.
      */
-    protected boolean consistencyProtocolEnabled = true;
+    protected volatile boolean consistencyProtocolEnabled = true;
 
     /**
      * Turns off metric collection to save time, network transfer, and memory.
      */
-    protected boolean benchmarkModeEnabled = false;
+    protected volatile boolean benchmarkModeEnabled = false;
 
     /**
      * Outgoing requests are placed in this list and sent in batches

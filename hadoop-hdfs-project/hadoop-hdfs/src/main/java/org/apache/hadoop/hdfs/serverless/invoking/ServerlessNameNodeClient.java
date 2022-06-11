@@ -304,9 +304,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         LOG.debug("Random HTTP " + (randomHttpEnabled ? "enabled." : "disabled.") +
                 " HTTP Chance: " + randomHttpChance);
 
-        // This should already be set to true in the DFSClient class.
-        this.serverlessInvoker.setIsClientInvoker(true);
-
         this.dfsClient = dfsClient;
 
         serverAndInvokerManager = ServerAndInvokerManager.getInstance();
@@ -2478,6 +2475,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     /**
      * IMPORTANT: This function just calls setTcpServerPort() on the ServerlessInvoker instance.
+     *
+     * TODO: This shouldn't be public...
      */
     public void setTcpServerPort(int tcpServerPort) {
         this.serverlessInvoker.setTcpPort(tcpServerPort);
@@ -2485,6 +2484,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     /**
      * IMPORTANT: This function just calls setUdpServerPort() on the ServerlessInvoker instance.
+     *
+     * TODO: This shouldn't be public...
      */
     public void setUdpServerPort(int udpServerPort) {
         this.serverlessInvoker.setUdpPort(udpServerPort);
