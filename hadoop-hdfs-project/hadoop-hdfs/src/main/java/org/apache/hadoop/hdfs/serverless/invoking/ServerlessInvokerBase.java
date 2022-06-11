@@ -47,9 +47,7 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
@@ -220,8 +218,6 @@ public abstract class ServerlessInvokerBase {
      */
     protected boolean benchmarkModeEnabled = false;
 
-    private static ServerlessInvokerBase instance;
-
     /**
      * Outgoing requests are placed in this list and sent in batches
      * (of a configurable size) on a configurable interval.
@@ -242,6 +238,11 @@ public abstract class ServerlessInvokerBase {
     protected String functionUriBase;
 
     /**
+     * This is used to issue all queued requests on an interval.
+     */
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+    /**
      * Default constructor.
      */
     protected ServerlessInvokerBase() {
@@ -256,12 +257,13 @@ public abstract class ServerlessInvokerBase {
      * This function should also call {@link ServerlessInvokerBase#createRequestBatches()} and use the
      * returned {@code List<List<JsonArray>>} object to send the requests.
      */
-    protected abstract void sendOutgoingRequests() throws UnsupportedEncodingException, SocketException, UnknownHostException;
+    protected abstract void sendEnqueuedRequests()
+            throws UnsupportedEncodingException, SocketException, UnknownHostException;
 
     /**
      * Merges the requests from each deployment into batches (of a configurable maximum size).
      * The batched requests are returned. These batches will then be issued in requests to the respective deployment.
-     * The invocations should occur in the {@link ServerlessInvokerBase#sendOutgoingRequests()} function, which is
+     * The invocations should occur in the {@link ServerlessInvokerBase#sendEnqueuedRequests()} function, which is
      * abstract and thus will be implemented by a subclass of {@link ServerlessInvokerBase}.
      *
      * Each batch of requests will be processed by a single NameNode. The results of the entire batch will be
@@ -439,7 +441,7 @@ public abstract class ServerlessInvokerBase {
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
         batchSize = conf.getInt(SERVERLESS_HTTP_BATCH_SIZE, SERVERLESS_HTTP_BATCH_SIZE_DEFAULT);
         sendInterval = conf.getInt(SERVERLESS_HTTP_SEND_INTERVAL, SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT);
-        functionUriBase = functionUriBase;
+        this.functionUriBase = functionUriBase;
 
         if (this.localMode)
             numDeployments = 1;
@@ -470,10 +472,19 @@ public abstract class ServerlessInvokerBase {
 
         // Create an outgoing request queue for each deployment.
         for (int i = 0; i < numDeployments; i++) {
-            outgoingRequests[i] = new LinkedBlockingQueue<JsonObject>();
+            outgoingRequests[i] = new LinkedBlockingQueue<>();
         }
 
         configured = true;
+
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                sendEnqueuedRequests();
+            } catch (UnsupportedEncodingException | UnknownHostException | SocketException e) {
+                // TODO: Handle the error more cleanly, like explicitly cancel the associated futures.
+                LOG.error("Exception encountered while issuing HTTP requests:", e);
+            }
+        }, sendInterval, sendInterval, TimeUnit.MILLISECONDS);
     }
 
     /**

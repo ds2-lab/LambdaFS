@@ -214,7 +214,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
     }
 
     @Override
-    protected void sendOutgoingRequests() throws UnsupportedEncodingException, SocketException, UnknownHostException {
+    protected void sendEnqueuedRequests() throws UnsupportedEncodingException, SocketException, UnknownHostException {
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
                     "You must configure it by calling .setConfiguration(...) before using it.");

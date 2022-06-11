@@ -200,12 +200,6 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final int SERVERLESS_HTTP_BATCH_SIZE_DEFAULT = 4;
 
   /**
-   * The interval, in milliseconds, that HTTP requests are issued.
-   */
-  public static final String SERVERLESS_HTTP_SEND_INTERVAL = "serverless.http.send-interval";
-  public static final int SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT = 5;
-
-  /**
    * The number of bytes allocated per client for the TCP server's buffers.
    */
   public static final String SERVERLESS_TCP_BASE_BUFFER_SIZE = "serverless.tcp.base-buffer-size";
@@ -248,6 +242,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    */
   public static final String SERVERLESS_HTTP_TIMEOUT = "serverless.http.timeout";
   public static final int SERVERLESS_HTTP_TIMEOUT_DEFAULT = 20;
+
+  /**
+   * The interval, in milliseconds, that batched HTTP requests are issued.
+   */
+  public static final String SERVERLESS_HTTP_SEND_INTERVAL = "serverless.http.send-interval";
+  public static final int SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT = 10;
 
   public static final String SERVERLESS_METADATA_CACHE_ENABLED = "serverless.metadatacache.enabled";
   public static final boolean SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT = true;

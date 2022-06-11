@@ -41,7 +41,7 @@ public class NuclioInvoker extends ServerlessInvokerBase {
     }
 
     @Override
-    protected void sendOutgoingRequests() {
+    protected void sendEnqueuedRequests() {
         throw new NotImplementedException("This feature is not supported for Nuclio invokers.");
     }
 
