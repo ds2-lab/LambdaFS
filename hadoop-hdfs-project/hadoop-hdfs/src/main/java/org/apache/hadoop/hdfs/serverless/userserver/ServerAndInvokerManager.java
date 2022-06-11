@@ -374,12 +374,14 @@ public class ServerAndInvokerManager {
                 assignedInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
                 assignedInvoker.setIsClientInvoker(true);
                 assignedInvoker.setConfiguration(conf, "C-" + clientName, serverlessEndpointBase);
-                assignedInvoker.setTcpPort(assignedPort);
-                assignedInvoker.setUdpPort(assignedServer.getUdpPort());
                 int tcpPort = assignedServer.startServer();
+                assert(tcpPort == assignedPort);
 
                 activeTcpPorts.add(tcpPort);
                 activeUdpPorts.add(assignedServer.getUdpPort());
+
+                assignedInvoker.setTcpPort(assignedPort);
+                assignedInvoker.setUdpPort(assignedServer.getUdpPort());
 
                 serverClientCounts.put(tcpPort, 1);
                 tcpPortToServerMapping.put(tcpPort, assignedServer);
