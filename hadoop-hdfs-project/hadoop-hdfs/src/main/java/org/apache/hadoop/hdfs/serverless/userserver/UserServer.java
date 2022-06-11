@@ -354,8 +354,8 @@ public class UserServer {
         if (!success)
             throw new IOException("Failed to start TCP/UDP server. Could not successfully bind to any ports.");
 
-        client.setTcpServerPort(tcpPort);
-        client.setUdpServerPort(udpPort);
+        //client.setTcpServerPort(tcpPort);
+        //client.setUdpServerPort(udpPort);
 
         this.started = true;
 

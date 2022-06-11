@@ -380,6 +380,7 @@ public class ServerAndInvokerManager {
                 activeTcpPorts.add(tcpPort);
                 activeUdpPorts.add(assignedServer.getUdpPort());
 
+                // We now set the ports here.
                 assignedInvoker.setTcpPort(assignedPort);
                 assignedInvoker.setUdpPort(assignedServer.getUdpPort());
 
