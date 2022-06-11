@@ -337,15 +337,12 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
    *                  requestId values, which are supposed to be unique.)
    */
-  public void mergeStatisticsPackages(ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages,
-                                      boolean keepLocal) {
-    ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> merged =
-            new ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage>();
-
-    ServerlessInvokerBase serverlessInvoker = ((ServerlessNameNodeClient)this.namenode).getServerlessInvoker();
+  public synchronized void mergeStatisticsPackages(
+          ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages, boolean keepLocal) {
+    ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> merged = new ConcurrentHashMap<>();
 
     ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> local =
-            serverlessInvoker.getStatisticsPackages();
+            ServerlessInvokerBase.getStatisticsPackages();
 
     if (keepLocal) {
       merged.putAll(packages);
@@ -355,7 +352,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       merged.putAll(packages);
     }
 
-    serverlessInvoker.setStatisticsPackages(merged);
+    ServerlessInvokerBase.setStatisticsPackages(merged);
   }
 
   /**
@@ -365,10 +362,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
    *                  requestId values, which are supposed to be unique.)
    */
-  public void mergeTransactionEvents(HashMap<String, List<TransactionEvent>> events,
+  public synchronized void mergeTransactionEvents(HashMap<String, List<TransactionEvent>> events,
                                       boolean keepLocal) {
-    ServerlessInvokerBase serverlessInvoker = ((ServerlessNameNodeClient)this.namenode).getServerlessInvoker();
-
     ConcurrentHashMap<String, List<TransactionEvent>> local =
             ServerlessInvokerBase.getTransactionEvents();
 
@@ -393,10 +388,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
    *                  requestId values, which are supposed to be unique.)
    */
-  public void mergeTransactionEvents(ConcurrentHashMap<String, List<TransactionEvent>> events,
+  public synchronized void mergeTransactionEvents(ConcurrentHashMap<String, List<TransactionEvent>> events,
                                      boolean keepLocal) {
-    ServerlessInvokerBase serverlessInvoker = ((ServerlessNameNodeClient)this.namenode).getServerlessInvoker();
-
     ConcurrentHashMap<String, List<TransactionEvent>> local =
             ServerlessInvokerBase.getTransactionEvents();
 
@@ -440,9 +433,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    * @param clearAfterWrite If true, clear the statistics packages after writing them.
    */
   public void dumpStatisticsPackages(boolean clearAfterWrite) throws IOException {
-    ServerlessInvokerBase serverlessInvoker = ((ServerlessNameNodeClient)this.namenode).getServerlessInvoker();
     ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> statisticsPackages =
-            serverlessInvoker.getStatisticsPackages();
+            ServerlessInvokerBase.getStatisticsPackages();
 
     LOG.debug("Writing " + statisticsPackages.size() + " statistics packages to files now...");
 
@@ -1276,8 +1268,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
-  private static Map<String, Boolean> localAddrMap =
-          Collections.synchronizedMap(new HashMap<String, Boolean>());
+  private static final Map<String, Boolean> localAddrMap =
+          Collections.synchronizedMap(new HashMap<>());
 
   public static boolean isLocalAddress(InetSocketAddress targetAddr) {
     InetAddress addr = targetAddr.getAddress();
