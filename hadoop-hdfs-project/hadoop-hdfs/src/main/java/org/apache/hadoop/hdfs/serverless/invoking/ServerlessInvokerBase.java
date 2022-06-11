@@ -289,7 +289,9 @@ public abstract class ServerlessInvokerBase {
                 deploymentBatches.add(currentBatch);
 
                 while (deploymentQueue.size() > 0) {
+                    if (LOG.isDebugEnabled()) LOG.debug("Polling queue for deployment " + i + " now...");
                     JsonObject request = deploymentQueue.poll();
+                    if (LOG.isDebugEnabled()) LOG.debug("Obtained the following request for deployment " + i + ": " + request);
 
                     if (request == null) {
                         LOG.error("Received null from request queue for deployment " + i +
