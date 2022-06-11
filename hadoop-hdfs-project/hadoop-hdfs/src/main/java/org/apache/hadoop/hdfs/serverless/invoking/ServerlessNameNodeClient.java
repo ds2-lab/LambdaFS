@@ -370,7 +370,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 NameNodeResultWithMetrics nameNodeResultWithMetrics = (NameNodeResultWithMetrics)result;
                 List<TransactionEvent> txEvents = nameNodeResultWithMetrics.getTxEvents();
                 if (txEvents != null) {
-                    this.serverlessInvoker.transactionEvents.put(nameNodeResultWithMetrics.getRequestId(), txEvents);
+                    ServerlessInvokerBase.getTransactionEvents().put(nameNodeResultWithMetrics.getRequestId(), txEvents);
                 }
             }
 
