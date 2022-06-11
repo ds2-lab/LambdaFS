@@ -91,6 +91,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
@@ -550,11 +551,11 @@ public class DistributedFileSystem extends FileSystem {
     return dataOutputStream;
   }
 
-  public HashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
+  public ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
     return this.dfs.getStatisticsPackages();
   }
 
-  public HashMap<String, List<TransactionEvent>> getTransactionEvents() {
+  public ConcurrentHashMap<String, List<TransactionEvent>> getTransactionEvents() {
     return this.dfs.getTransactionEvents();
   }
 
@@ -565,7 +566,7 @@ public class DistributedFileSystem extends FileSystem {
    *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
    *                  requestId values, which are supposed to be unique.)
    */
-  public void mergeStatisticsPackages(HashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages,
+  public void mergeStatisticsPackages(ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages,
                                       boolean keepLocal) {
     this.dfs.mergeStatisticsPackages(packages, keepLocal);
   }
@@ -577,7 +578,7 @@ public class DistributedFileSystem extends FileSystem {
    *                  will overwrite the local keys. (In general, keys should not be overwritten as keys are
    *                  requestId values, which are supposed to be unique.)
    */
-  public void mergeTransactionEvents(HashMap<String, List<TransactionEvent>> events,
+  public void mergeTransactionEvents(ConcurrentHashMap<String, List<TransactionEvent>> events,
                                      boolean keepLocal) {
     this.dfs.mergeTransactionEvents(events, keepLocal);
   }

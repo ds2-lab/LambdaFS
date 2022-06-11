@@ -87,6 +87,8 @@ import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.ext
  * to the API Gateway of the serverless platform. (It doesn't have to be the API Gateway; that's just often what the
  * serverless platform component is. We issue a request to whatever we're supposed to in order to invoke functions. In
  * the case of OpenWhisk, that's the API Gateway component.)
+ *
+ * TODO: Put metrics all on ServerlessNameNodeClient.
  */
 public abstract class ServerlessInvokerBase {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
@@ -923,7 +925,7 @@ public abstract class ServerlessInvokerBase {
                 TransactionsStats.ServerlessStatisticsPackage statisticsPackage =
                         (TransactionsStats.ServerlessStatisticsPackage)
                                 InvokerUtilities.base64StringToObject(statisticsPackageEncoded);
-                this.statisticsPackages.put(requestId, statisticsPackage);
+                statisticsPackages.put(requestId, statisticsPackage);
             } catch (Exception ex) {
                 LOG.error("Error encountered while extracting statistics packages from NameNode response:", ex);
                 return null;
@@ -938,7 +940,7 @@ public abstract class ServerlessInvokerBase {
             try {
                 List<TransactionEvent> txEvents =
                         (List<TransactionEvent>) InvokerUtilities.base64StringToObject(transactionEventsEncoded);
-                this.transactionEvents.put(requestId, txEvents);
+                transactionEvents.put(requestId, txEvents);
             } catch (Exception ex) {
                 LOG.error("Error encountered while extracting transaction events from NameNode response:", ex);
                 return null;
@@ -1099,19 +1101,27 @@ public abstract class ServerlessInvokerBase {
     // DEBUGGING/METRICS //
     ///////////////////////
 
-    public ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
+    public static ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> getStatisticsPackages() {
         return statisticsPackages;
     }
 
-    public void setStatisticsPackages(ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages) {
-        this.statisticsPackages = packages;
+    public static void setStatisticsPackages(ConcurrentHashMap<String, TransactionsStats.ServerlessStatisticsPackage> packages) {
+        statisticsPackages = packages;
     }
 
-    public ConcurrentHashMap<String, List<TransactionEvent>> getTransactionEvents() {
+    public static ConcurrentHashMap<String, List<TransactionEvent>> getTransactionEvents() {
         return transactionEvents;
     }
 
-    public void setTransactionEvents(ConcurrentHashMap<String, List<TransactionEvent>> transactionEvents) {
-        this.transactionEvents = transactionEvents;
+    public static void setTransactionEvents(ConcurrentHashMap<String, List<TransactionEvent>> txEvents) {
+        transactionEvents = txEvents;
+    }
+
+    public static void clearStatisticsPackages() {
+        statisticsPackages.clear();
+    }
+
+    public static void clearTransactionEvents() {
+        transactionEvents.clear();
     }
 }
