@@ -311,10 +311,10 @@ public abstract class ServerlessInvokerBase {
                         continue;
                     }
 
+                    // TODO(ben): Seem to be getting stuck here...
                     String requestId = request.get(REQUEST_ID).getAsString();
 
-                    if (LOG.isDebugEnabled())
-                        LOG.debug("Placing request " + requestId + " into a batch...");
+                    if (LOG.isDebugEnabled()) LOG.debug("Placing request " + requestId + " into a batch...");
 
                     currentBatch.add(requestId, request);
                     totalNumRequests++;
