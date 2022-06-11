@@ -34,6 +34,7 @@ import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
+import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.hdfs.serverless.execution.results.CancelledResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
@@ -2137,14 +2138,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
                         // file/directory, then we'll just use an HTTP request.
                         try {
-                            serverlessInvoker.enqueueHttpRequest(
+                            ServerlessHttpFuture future = serverlessInvoker.enqueueHttpRequest(
                                     "prewarm",
                                     dfsClient.serverlessEndpoint,
                                     null, // We do not have any additional/non-default arguments to pass to the NN.
                                     new ArgumentContainer(),
                                     requestId,
                                     depNum);
-                        } catch (IOException e) {
+                            future.get();
+                        } catch (IOException | InterruptedException | ExecutionException e) {
                             e.printStackTrace();
                         }
                     }
@@ -2172,13 +2174,19 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
         // file/directory, then we'll just use an HTTP request.
-        serverlessInvoker.enqueueHttpRequest(
+        ServerlessHttpFuture future = serverlessInvoker.enqueueHttpRequest(
                 "ping",
                 dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 new ArgumentContainer(),
                 requestId,
                 targetDeployment);
+
+        try {
+            future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

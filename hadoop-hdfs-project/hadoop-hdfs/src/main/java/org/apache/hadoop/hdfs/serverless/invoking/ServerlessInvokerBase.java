@@ -457,6 +457,8 @@ public abstract class ServerlessInvokerBase {
             LOG.debug("NDB debug enabled: " + debugEnabledNdb);
             LOG.debug("TCP Enabled: " + tcpEnabled);
             LOG.debug("UDP Enabled: " + udpEnabled);
+            LOG.debug("Batch size: " + batchSize);
+            LOG.debug("Send interval: " + sendInterval);
 
             if (debugEnabledNdb) LOG.debug("NDB debug string: " + debugStringNdb);
         }
@@ -477,7 +479,7 @@ public abstract class ServerlessInvokerBase {
 
         configured = true;
 
-        scheduler.scheduleAtFixedRate(() -> {
+        scheduler.scheduleWithFixedDelay(() -> {
             try {
                 sendEnqueuedRequests();
             } catch (UnsupportedEncodingException | UnknownHostException | SocketException e) {
@@ -980,31 +982,6 @@ public abstract class ServerlessInvokerBase {
 
         return null;
     }
-
-    /**
-     * Redirect a received request to another NameNode. This is useful when a client issues a write request to
-     * a deployment that is not authorized to perform writes on the target file/directory.
-     *
-     * @param operationName The FS operation being performed. This is passed to the NameNode so that it knows which of
-     *                      its functions it should execute. This is sort of taking the place of the RPC mechanism,
-     *                      where ordinarily you'd just invoke an RPC method.
-     * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
-     *                          arguments when using a serverful name node. We generally don't need to pass anything
-     *                          for this parameter.
-     * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
-     *                                     to the Java function which performs the FS operation. The NameNode will
-     *                                     extract these after it sees what function it is supposed to execute. These
-     *                                     would traditionally just be passed as arguments to the RPC call, but we
-     *                                     aren't using RPC.
-     * @param requestId The unique ID used to match this request uniquely against its corresponding TCP request. If
-     *                  passed a null, then a random ID is generated.
-     * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
-     *                         cache entry exists.
-     * @return The response from the Serverless NameNode.
-     */
-    public abstract ServerlessHttpFuture redirectRequest(String operationName, JsonObject nameNodeArguments,
-                                      JsonObject fileSystemOperationArguments, String requestId,
-                                      int targetDeployment) throws IOException;
 
     /**
      * Set the name of the client using this invoker (e.g., the `clientName` field of the DFSClient class).

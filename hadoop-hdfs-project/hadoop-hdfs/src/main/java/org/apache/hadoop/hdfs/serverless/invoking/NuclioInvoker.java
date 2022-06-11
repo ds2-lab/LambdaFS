@@ -119,12 +119,4 @@ public class NuclioInvoker extends ServerlessInvokerBase {
     public CloseableHttpAsyncClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException, IOReactorException {
         return getGenericTrustAllHttpClient();
     }
-
-    @Override
-    public ServerlessHttpFuture redirectRequest(String operationName, JsonObject nameNodeArguments,
-                                                JsonObject fileSystemOperationArguments, String requestId,
-                                                int targetDeployment)
-            throws IOException {
-        return enqueueHttpRequestInt(operationName, nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment);
-    }
 }
