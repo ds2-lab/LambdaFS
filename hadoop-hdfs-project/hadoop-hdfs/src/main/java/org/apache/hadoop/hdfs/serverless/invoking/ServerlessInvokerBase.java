@@ -288,8 +288,7 @@ public abstract class ServerlessInvokerBase {
                 JsonObject currentBatch = new JsonObject();
                 deploymentBatches.add(currentBatch);
 
-                int j = 0;
-                while (j < deploymentQueue.size()) {
+                while (deploymentQueue.size() > 0) {
                     JsonObject request = deploymentQueue.poll();
 
                     if (request == null) {
@@ -304,7 +303,6 @@ public abstract class ServerlessInvokerBase {
 
                     String requestId = request.get(REQUEST_ID).getAsString();
                     currentBatch.add(requestId, request);
-                    j++;
 
                     // If the current batch's size is equal to that of the batch size parameter,
                     // then we need to start a new batch.
