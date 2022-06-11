@@ -186,9 +186,14 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
                     "You must configure it by calling .setConfiguration(...) before using it.");
 
-        List<List<JsonObject>> batchedRequests = createRequestBatches();
+        List<List<JsonObject>> batchedRequests = new ArrayList<>();
+        int totalNumRequestsBatched = createRequestBatches(batchedRequests);
+
+        if (totalNumRequestsBatched == 0)
+            return;
 
         // We've created all the batches. Now we need to issue the requests.
+        int totalNumBatchedRequestsIssued = 0;
         for (int i = 0; i < numDeployments; i++) {
             List<JsonObject> deploymentBatches = batchedRequests.get(i);
 
@@ -218,12 +223,15 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
 
                     try {
                         doInvoke(request, topLevel, requestBatch.keySet());
+                        totalNumBatchedRequestsIssued++;
                     } catch (IOException ex) {
                         LOG.error("Encountered IOException while issuing batched HTTP request:", ex);
                     }
                 }
             }
         }
+
+        if (LOG.isDebugEnabled()) LOG.debug("Issued a total of " + totalNumBatchedRequestsIssued + " batched HTTP request(s).");
     }
 
     /**

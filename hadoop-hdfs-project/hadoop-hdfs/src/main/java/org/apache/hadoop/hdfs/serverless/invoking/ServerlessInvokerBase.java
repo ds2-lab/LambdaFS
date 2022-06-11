@@ -254,7 +254,7 @@ public abstract class ServerlessInvokerBase {
      * This function should call the {@link ServerlessInvokerBase#addStandardArguments(JsonObject)} function. This is
      * done to ensure that the NameNode has all of the required information necessary to properly handle the request.
      *
-     * This function should also call {@link ServerlessInvokerBase#createRequestBatches()} and use the
+     * This function should also call {@link ServerlessInvokerBase#createRequestBatches(List)} and use the
      * returned {@code List<List<JsonArray>>} object to send the requests.
      */
     protected abstract void sendEnqueuedRequests()
@@ -269,12 +269,20 @@ public abstract class ServerlessInvokerBase {
      * Each batch of requests will be processed by a single NameNode. The results of the entire batch will be
      * returned all at once, rather than one-at-a-time.
      *
-     * @return Batches of requests by deployment. Entry i in the returned list corresponds to deployment i.
+     * @param batchedRequests Empty list that will be populated with batches of requests.
+     * @return The number of requests that we placed into batches.
+     *
      * Each {@link JsonObject} contains a batch of requests.
      */
-    protected List<List<JsonObject>> createRequestBatches() {
-        List<List<JsonObject>> batchedRequests = new ArrayList<>();
+    protected int createRequestBatches(List<List<JsonObject>> batchedRequests) {
+        // Old return documentation:
+        // @return Batches of requests by deployment. Entry i in the returned list corresponds to deployment i.
+        if (batchedRequests.size() > 0)
+            throw new IllegalArgumentException("The batchedRequests list must be initially empty.");
 
+        // List<List<JsonObject>> batchedRequests = new ArrayList<>();
+
+        int totalNumRequests = 0;
         for (int i = 0; i < numDeployments; i++) {
             LinkedBlockingQueue<JsonObject> deploymentQueue = outgoingRequests[i];
 
@@ -309,6 +317,7 @@ public abstract class ServerlessInvokerBase {
                         LOG.debug("Placing request " + requestId + " into a batch...");
 
                     currentBatch.add(requestId, request);
+                    totalNumRequests++;
 
                     // If the current batch's size is equal to that of the batch size parameter,
                     // then we need to start a new batch.
@@ -326,7 +335,8 @@ public abstract class ServerlessInvokerBase {
             }
         }
 
-        return batchedRequests;
+        if (LOG.isDebugEnabled()) LOG.debug("Partitioned a total of " + totalNumRequests + " request(s) into batches.");
+        return totalNumRequests;
     }
 
     /**
