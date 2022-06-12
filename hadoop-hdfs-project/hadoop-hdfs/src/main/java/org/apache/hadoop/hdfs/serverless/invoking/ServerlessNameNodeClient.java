@@ -258,6 +258,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param dfsClient The {@link DFSClient} instance instantiating us.
      */
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
+        if (LOG.isDebugEnabled()) LOG.debug("Creating new ServerlessNameNodeClient for DFSClient " + dfsClient.getClientName());
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
         serverlessEndpointBase = dfsClient.serverlessEndpoint;
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
@@ -391,7 +392,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * {@link ServerlessNameNodeClient} must call this function after instantiating the instance.
      */
     public void registerAndStartTcpServer() throws IOException {
-        if (LOG.isDebugEnabled()) LOG.debug("Registering client with serverAndInvokerManager now...");
+        if (LOG.isDebugEnabled()) LOG.debug("Registering client " + dfsClient.getClientName() + " with serverAndInvokerManager now...");
         // This function calls start on the server if necessary, so we don't need to do anything.
         Pair<UserServer, ServerlessInvokerBase> pair = serverAndInvokerManager.registerClient(
                 this, dfsClient.getClientName(), serverlessEndpointBase);
