@@ -81,9 +81,9 @@ public abstract class ServerlessFuture<T> implements Future<T> {
 
     @Override
     public T get() throws InterruptedException, ExecutionException {
-        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
+        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for request " + requestId + " now...");
         final T resultOrNull = this.resultQueue.take();
-        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
+        if (LOG.isDebugEnabled()) LOG.debug("Got result for future " + requestId + ".");
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
         if (resultOrNull instanceof NullResult)

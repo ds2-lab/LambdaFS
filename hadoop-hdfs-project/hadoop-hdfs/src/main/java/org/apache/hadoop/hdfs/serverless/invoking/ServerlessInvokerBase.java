@@ -858,6 +858,7 @@ public abstract class ServerlessInvokerBase {
             public void failed(Exception e) {
                 LOG.error("Batched HTTP request containing " + requestIds.size() +
                         " individual request(s) has failed. Request IDs: " + StringUtils.join(", ", requestIds));
+                LOG.error("Reason for failure:", e);
 
                 for (String requestId : requestIds) {
                     ServerlessHttpFuture future = futures.get(requestId);

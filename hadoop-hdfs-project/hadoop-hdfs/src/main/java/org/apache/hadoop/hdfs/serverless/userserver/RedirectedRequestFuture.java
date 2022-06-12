@@ -61,9 +61,9 @@ public class RedirectedRequestFuture implements Future<Serializable> {
 
     @Override
     public Serializable get() throws InterruptedException, ExecutionException {
-        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
+        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for redirected request " + requestId + " now...");
         final JsonObject resultOrNull = requestFuture.get();
-        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
+        if (LOG.isDebugEnabled()) LOG.debug("Got result for redirected request future " + requestId + ".");
 
         if (resultOrNull != null)
             return extractResult(resultOrNull);
@@ -75,9 +75,9 @@ public class RedirectedRequestFuture implements Future<Serializable> {
     @Override
     public Serializable get(long timeout, TimeUnit unit)
             throws InterruptedException, ExecutionException, TimeoutException {
-        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for TCP request " + requestId + " now...");
+        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for redirected request " + requestId + " now...");
         final JsonObject resultOrNull = requestFuture.get(timeout, unit);
-        if (LOG.isDebugEnabled()) LOG.debug("Got result for TCP future " + requestId + ".");
+        if (LOG.isDebugEnabled()) LOG.debug("Got result for redirected request future " + requestId + ".");
         if (resultOrNull == null) {
             throw new TimeoutException();
         }
