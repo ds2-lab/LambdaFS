@@ -323,7 +323,7 @@ public abstract class ServerlessInvokerBase {
                         continue;
                     }
 
-                    String requestId = request.get(VALUE).getAsJsonObject().get(REQUEST_ID).getAsString();
+                    String requestId = request.get(REQUEST_ID).getAsString();
 
                     currentBatch.add(requestId, request);
                     totalNumRequests++;
