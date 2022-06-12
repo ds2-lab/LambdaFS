@@ -674,6 +674,16 @@ public abstract class ServerlessInvokerBase {
     }
 
     /**
+     * Mark a particular request as complete. This just amounts to remove the future associated with the request from
+     * the future mapping. This should be called by clients once they've received a correct result for their request.
+     *
+     * @param requestId the request ID of the request we're marking as complete.
+     */
+    public void markComplete(String requestId) {
+        futures.remove(requestId);
+    }
+
+    /**
      * Helper function to issue an HTTP request with retries. This is how HTTP requests should be issued, as it
      * provides for exception handling and exponential backoff for retries.
      *
@@ -766,6 +776,9 @@ public abstract class ServerlessInvokerBase {
                             + "Encountered unexpected " + genericExceptionType + " while invoking NN.");
                 }
             } else {
+                // Received a valid result. Return it to the client.
+                // First though, we should mark the request as complete.
+                invokerInstance.markComplete(requestId);
                 return response;
             }
         } while (backoffInterval > 0);
