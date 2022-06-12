@@ -9,6 +9,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
+import org.apache.hadoop.util.StringUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -199,7 +200,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
 
             if (deploymentBatches.size() > 0) {
                 if (LOG.isDebugEnabled()) LOG.debug("Preparing to send " + deploymentBatches.size() +
-                        " batch(es) of requests for Deployment " + i);
+                        " batch(es) of requests to Deployment " + i);
 
                 for (JsonObject requestBatch : deploymentBatches) {
                     // This is the top-level JSON object passed along with the HTTP POST request.
@@ -222,6 +223,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
                     try {
+                        if (LOG.isDebugEnabled()) LOG.debug("Issuing batched HTTP request to deployment " + i +
+                                " containing the following individual requests: " +
+                                StringUtils.join(", ", requestBatch.keySet()));
                         doInvoke(request, topLevel, requestBatch.keySet());
                         totalNumBatchedRequestsIssued++;
                     } catch (IOException ex) {
