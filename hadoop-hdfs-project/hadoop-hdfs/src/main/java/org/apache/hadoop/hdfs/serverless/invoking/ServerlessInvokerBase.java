@@ -668,7 +668,9 @@ public abstract class ServerlessInvokerBase {
                 " for submission with deployment " + targetDeployment);
         enqueueRequest(requestArguments, targetDeployment);
 
-        return new ServerlessHttpFuture(requestId, operationName);
+        ServerlessHttpFuture future = new ServerlessHttpFuture(requestId, operationName);
+        futures.put(requestId, future);
+        return future;
     }
 
     /**
@@ -846,12 +848,18 @@ public abstract class ServerlessInvokerBase {
 
                 for (String requestId : requestIds) {
                     ServerlessHttpFuture future = futures.get(requestId);
+
+                    if (future == null) {
+                        LOG.error("Cannot locate Future for request " + requestId + "...");
+                        continue;
+                    }
+
                     JsonObject response = new JsonObject();
 
                     if (e != null)
-                        response.addProperty("EXCEPTION_TYPE", e.getClass().getSimpleName());
+                        response.addProperty(LOCAL_EXCEPTION, e.getClass().getSimpleName());
                     else
-                        response.addProperty("EXCEPTION_TYPE", "GENERIC/UNKNOWN");
+                        response.addProperty(LOCAL_EXCEPTION, "GENERIC/UNKNOWN");
 
                     future.postResultImmediate(response);
                 }
