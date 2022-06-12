@@ -803,7 +803,8 @@ public abstract class ServerlessInvokerBase {
         request.setEntity(parameters);
         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
-        Future<HttpResponse> future = httpClient.execute(request, new FutureCallback<HttpResponse>() {
+        // Future<HttpResponse> future =
+        httpClient.execute(request, new FutureCallback<HttpResponse>() {
             @Override
             public void completed(HttpResponse httpResponse) {
                 int responseCode = httpResponse.getStatusLine().getStatusCode();
@@ -813,6 +814,7 @@ public abstract class ServerlessInvokerBase {
                     double timeElapsed = (currentTime - invokeStart) / 1.0e6;
                     LOG.debug("Received HTTP " + responseCode +
                             " response code. Time elapsed: " + timeElapsed + " milliseconds.");
+                    LOG.debug("httpResponse = " + httpResponse);
                 }
 
                 if (responseCode >= 400 && responseCode <= 599) {
@@ -884,14 +886,14 @@ public abstract class ServerlessInvokerBase {
             }
         });
 
-        LOG.debug("Getting response from Future<HttpResponse> now...");
-        try {
-            HttpResponse response = future.get();
-            JsonObject result = processHttpResponse(response);
-            LOG.debug("Got HttpResponse: " + result);
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
+//        LOG.debug("Getting response from Future<HttpResponse> now...");
+//        try {
+//            HttpResponse response = future.get();
+//            JsonObject result = processHttpResponse(response);
+//            LOG.debug("Got HttpResponse: " + result);
+//        } catch (InterruptedException | ExecutionException e) {
+//            e.printStackTrace();
+//        }
     }
 
     /**
