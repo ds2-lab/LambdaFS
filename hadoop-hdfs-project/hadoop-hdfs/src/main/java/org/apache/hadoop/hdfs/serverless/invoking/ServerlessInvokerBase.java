@@ -548,7 +548,8 @@ public abstract class ServerlessInvokerBase {
         for (String requestId : _processedRequestIds) {
             ServerlessHttpFuture future = futures.get(requestId);
             if (future != null) {
-                if (LOG.isTraceEnabled()) LOG.trace("Cancelling future associated with HTTP request " + requestId);
+                // TODO: Change this to trace.
+                if (LOG.isDebugEnabled()) LOG.debug("Cancelling future associated with HTTP request " + requestId);
                 future.cancel(true);
                 totalNumFuturesCancelled++;
             }
@@ -805,7 +806,7 @@ public abstract class ServerlessInvokerBase {
         request.setEntity(parameters);
         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
-        httpClient.execute(request, new FutureCallback<HttpResponse>() {
+        Future<HttpResponse> future = httpClient.execute(request, new FutureCallback<HttpResponse>() {
             @Override
             public void completed(HttpResponse httpResponse) {
                 int responseCode = httpResponse.getStatusLine().getStatusCode();
@@ -885,6 +886,15 @@ public abstract class ServerlessInvokerBase {
                 request.releaseConnection();
             }
         });
+
+        LOG.debug("Getting response from Future<HttpResponse> now...");
+        try {
+            HttpResponse response = future.get();
+            JsonObject result = processHttpResponse(response);
+            LOG.debug("Got HttpResponse: " + result);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
