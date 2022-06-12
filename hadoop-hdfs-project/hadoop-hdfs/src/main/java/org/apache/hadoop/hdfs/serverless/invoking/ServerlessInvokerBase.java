@@ -289,6 +289,10 @@ public abstract class ServerlessInvokerBase {
 
         Set<String> _processedRequestIds = processedRequestIds.get();
 
+        // Iterate over the request queue for each of the deployments.
+        // For each queue, we check if it has at least one enqueued request.
+        // If there are none, then we skip that queue.
+        // If it has at least one request, then we partition however many requests there are into batches.
         int totalNumRequests = 0;
         for (int i = 0; i < numDeployments; i++) {
             LinkedBlockingQueue<JsonObject> deploymentQueue = outgoingRequests[i];
@@ -297,12 +301,15 @@ public abstract class ServerlessInvokerBase {
             List<JsonObject> deploymentBatches = new ArrayList<>();
             batchedRequests.add(deploymentBatches);
 
+            // Does this queue have at least one request?
             if (deploymentQueue.size() > 0) {
                 if (LOG.isDebugEnabled()) LOG.debug("Deployment " + i + " has " + deploymentQueue.size() + " requests enqueued...");
 
                 JsonObject currentBatch = new JsonObject();
                 deploymentBatches.add(currentBatch);
 
+                // Process all requests in the queue. Note that other requests could be added while processing.
+                // These requests will presumably end up being processed now, rather than the next time we do this.
                 while (deploymentQueue.size() > 0) {
                     JsonObject request = deploymentQueue.poll();
 
