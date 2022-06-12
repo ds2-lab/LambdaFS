@@ -390,6 +390,7 @@ public class ServerAndInvokerManager {
 
                 serverClientCounts.put(tcpPort, 1);
                 tcpPortToServerMapping.put(tcpPort, assignedServer);
+                tcpPortToInvokerMapping.put(tcpPort, assignedInvoker);
                 nextTcpPort++;
                 nextUdpPort++;
 
@@ -418,6 +419,8 @@ public class ServerAndInvokerManager {
             mutex.writeLock().unlock();
         }
 
+        assert(assignedServer != null);
+        assert(assignedInvoker != null);
         return new Pair<>(assignedServer, assignedInvoker);
     }
 

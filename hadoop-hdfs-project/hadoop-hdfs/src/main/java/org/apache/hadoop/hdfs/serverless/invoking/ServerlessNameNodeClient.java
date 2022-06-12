@@ -114,7 +114,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * Registration involves being assigned {@link UserServer} and {@link ServerlessInvokerBase} instances.
      * The client needs to have been assigned these instances before it can issue any requests.
      */
-    private boolean registeredWithServerInvokerManager = false;
+    // private boolean registeredWithServerInvokerManager = false;
 
     /**
      * Not really used by this class. Just used for debugging.
@@ -247,7 +247,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * Responsible for invoking the Serverless NameNode(s).
      */
-    protected ServerlessInvokerBase serverlessInvoker;
+    private ServerlessInvokerBase serverlessInvoker;
 
     /**
      * Maximum number of attempts to issue a TCP/UDP request before falling back to HTTP.
@@ -334,7 +334,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.benchmarkModeEnabled = benchmarkModeEnabled;
 
         if (this.serverlessInvoker != null)
-            this.serverlessInvoker.benchmarkModeEnabled = benchmarkModeEnabled;
+            this.serverlessInvoker.setBenchmarkModeEnabled(benchmarkModeEnabled);
     }
 
     /**
@@ -410,7 +410,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         assert(this.tcpServer != null);
         assert(this.serverlessInvoker != null);
 
-        this.registeredWithServerInvokerManager = true;
+        // this.registeredWithServerInvokerManager = true;
     }
 
     public void setConsistencyProtocolEnabled(boolean enabled) {
@@ -749,9 +749,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throws IOException, InterruptedException, ExecutionException {
         // TODO: Remove this once the associated bug is resolved.
         // We don't want any unnecessary operations on the critical path.
-        if (!registeredWithServerInvokerManager)
-            throw new IllegalStateException("Client " + dfsClient.getClientName() +
-                    " has not yet registered with the Server and Invoker Manager and thus cannot issue requests.");
+        // if (!registeredWithServerInvokerManager)
+        //    throw new IllegalStateException("Client " + dfsClient.getClientName() +
+        //            " has not yet registered with the Server and Invoker Manager and thus cannot issue requests.");
 
         // Check if there's a source directory parameter, as this is the file or directory that could
         // potentially be mapped to a serverless function.
@@ -2456,23 +2456,5 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     @Override
     public long getEpochMS() throws IOException {
         return 0;
-    }
-
-    /**
-     * IMPORTANT: This function just calls setTcpServerPort() on the ServerlessInvoker instance.
-     *
-     * TODO: This shouldn't be public...
-     */
-    public void setTcpServerPort(int tcpServerPort) {
-        this.serverlessInvoker.setTcpPort(tcpServerPort);
-    }
-
-    /**
-     * IMPORTANT: This function just calls setUdpServerPort() on the ServerlessInvoker instance.
-     *
-     * TODO: This shouldn't be public...
-     */
-    public void setUdpServerPort(int udpServerPort) {
-        this.serverlessInvoker.setUdpPort(udpServerPort);
     }
 }
