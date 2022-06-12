@@ -356,18 +356,6 @@ public abstract class ServerlessInvokerBase {
     }
 
     /**
-     * Return the INode-NN mapping cache entry for the given file or directory.
-     *
-     * This function returns -1 if no such entry exists.
-     * @param fileOrDirectory The file or directory in question.
-     * @return The number of the NN to which the file or directory is mapped, if an entry exists in the cache. If no
-     * entry exists, then -1 is returned.
-     */
-    public int getFunctionNumberForFileOrDirectory(String fileOrDirectory) {
-        return consistentHash(Hashing.md5().hashString(extractParentPath(fileOrDirectory)), numDeployments);
-    }
-
-    /**
      * Extract the actual result payload returned by the NameNode. The result payload will be given to the client.
      * @param httpResponse The HTTP response returned by the HTTP request.
      * @return The result payload returned by the NameNode.

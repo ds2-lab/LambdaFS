@@ -63,6 +63,7 @@ import java.util.concurrent.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
+import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.getFunctionNumberForFileOrDirectory;
 
 /**
  * This serves as an adapter between the DFSClient interface and the serverless NameNode API.
@@ -759,7 +760,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String sourceFileOrDirectory;
         if (srcArgument != null) {
             sourceFileOrDirectory = (String)srcArgument;
-            targetDeployment = serverlessInvoker.getFunctionNumberForFileOrDirectory(sourceFileOrDirectory);
+            targetDeployment = getFunctionNumberForFileOrDirectory(sourceFileOrDirectory, numDeployments);
         }
 
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.

@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
+import com.google.common.hash.Hashing;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.commons.lang3.NotImplementedException;
@@ -12,11 +13,26 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.google.common.hash.Hashing.consistentHash;
+
 /**
  * Provides utility methods that may be used by the serverless name node during routine operation, but particularly
  * when interfacing with the serverless API (e.g., when extracting arguments from an invocation payload).
  */
 public class ServerlessUtilities {
+
+    /**
+     * Return the INode-NN mapping cache entry for the given file or directory.
+     *
+     * This function returns -1 if no such entry exists.
+     * @param fileOrDirectory The file or directory in question.
+     * @param numDeployments The number of unique deployments.
+     * @return The number of the NN to which the file or directory is mapped, if an entry exists in the cache. If no
+     * entry exists, then -1 is returned.
+     */
+    public static int getFunctionNumberForFileOrDirectory(String fileOrDirectory, int numDeployments) {
+        return consistentHash(Hashing.md5().hashString(extractParentPath(fileOrDirectory)), numDeployments);
+    }
 
     /**
      * Extract all the arguments for this function and return them in a HashMap.

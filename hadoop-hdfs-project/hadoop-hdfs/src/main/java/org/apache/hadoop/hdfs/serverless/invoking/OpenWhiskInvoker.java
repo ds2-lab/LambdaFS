@@ -25,6 +25,7 @@ import java.util.*;
 
 import static com.google.common.hash.Hashing.consistentHash;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.BATCH;
+import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.getFunctionNumberForFileOrDirectory;
 
 /**
  * The serverless platform being used is specified in the configuration files for Serverless HopsFS. Currently, it
@@ -108,7 +109,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                 if (fileSystemOperationArguments != null && fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
                     String sourceFileOrDirectory =
                             fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
-                    targetDeployment = getFunctionNumberForFileOrDirectory(sourceFileOrDirectory); // cache.getFunction(sourceFileOrDirectory);
+                    targetDeployment = getFunctionNumberForFileOrDirectory(sourceFileOrDirectory, numDeployments); // cache.getFunction(sourceFileOrDirectory);
                 } else {
                     if (LOG.isDebugEnabled()) LOG.debug("No `src` property found in file system arguments... " + "skipping the checking of INode cache...");
                 }
