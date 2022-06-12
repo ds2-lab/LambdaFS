@@ -311,6 +311,8 @@ public abstract class ServerlessInvokerBase {
                         continue;
                     }
 
+                    if (LOG.isDebugEnabled()) LOG.debug("Getting request ID now...");
+
                     // TODO(ben): Seem to be getting stuck here...
                     String requestId = request.get(REQUEST_ID).getAsString();
 
