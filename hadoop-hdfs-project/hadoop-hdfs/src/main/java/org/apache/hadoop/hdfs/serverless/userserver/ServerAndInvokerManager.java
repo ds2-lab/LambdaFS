@@ -384,6 +384,9 @@ public class ServerAndInvokerManager {
                 assignedInvoker.setTcpPort(assignedPort);
                 assignedInvoker.setUdpPort(assignedServer.getUdpPort());
 
+                assignedInvoker.setServerlessFunctionLogLevel(client.getServerlessFunctionLogLevel());
+                assignedInvoker.setConsistencyProtocolEnabled(client.getConsistencyProtocolEnabled());
+
                 serverClientCounts.put(tcpPort, 1);
                 tcpPortToServerMapping.put(tcpPort, assignedServer);
                 nextTcpPort++;

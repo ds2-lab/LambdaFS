@@ -398,7 +398,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     public void setConsistencyProtocolEnabled(boolean enabled) {
         this.consistencyProtocolEnabled = enabled;
-        this.serverlessInvoker.setConsistencyProtocolEnabled(enabled);
+        if (this.serverlessInvoker != null)
+            this.serverlessInvoker.setConsistencyProtocolEnabled(enabled);
     }
 
     public boolean getConsistencyProtocolEnabled() {
@@ -407,7 +408,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     public void setServerlessFunctionLogLevel(String logLevel) {
         this.serverlessFunctionLogLevel = logLevel;
-        this.serverlessInvoker.setServerlessFunctionLogLevel(logLevel);
+        if (this.serverlessInvoker != null)
+            this.serverlessInvoker.setServerlessFunctionLogLevel(logLevel);
     }
 
     public String getServerlessFunctionLogLevel() {
