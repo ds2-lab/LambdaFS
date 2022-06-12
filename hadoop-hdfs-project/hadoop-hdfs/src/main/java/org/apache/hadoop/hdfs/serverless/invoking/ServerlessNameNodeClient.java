@@ -323,7 +323,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     public void setBenchmarkModeEnabled(boolean benchmarkModeEnabled) {
         this.benchmarkModeEnabled = benchmarkModeEnabled;
-        this.serverlessInvoker.benchmarkModeEnabled = benchmarkModeEnabled;
+
+        if (this.serverlessInvoker != null)
+            this.serverlessInvoker.benchmarkModeEnabled = benchmarkModeEnabled;
     }
 
     /**
@@ -404,6 +406,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     public boolean getConsistencyProtocolEnabled() {
         return consistencyProtocolEnabled;
+    }
+
+    public boolean getBenchmarkModeEnabled() {
+        return benchmarkModeEnabled;
     }
 
     public void setServerlessFunctionLogLevel(String logLevel) {

@@ -267,6 +267,10 @@ public abstract class ServerlessInvokerBase {
     protected abstract void sendEnqueuedRequests()
             throws UnsupportedEncodingException, SocketException, UnknownHostException;
 
+    public void setBenchmarkModeEnabled(boolean benchmarkModeEnabled) {
+        this.benchmarkModeEnabled = benchmarkModeEnabled;
+    }
+
     /**
      * Merges the requests from each deployment into batches (of a configurable maximum size).
      * The batched requests are returned. These batches will then be issued in requests to the respective deployment.

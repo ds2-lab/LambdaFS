@@ -386,6 +386,7 @@ public class ServerAndInvokerManager {
 
                 assignedInvoker.setServerlessFunctionLogLevel(client.getServerlessFunctionLogLevel());
                 assignedInvoker.setConsistencyProtocolEnabled(client.getConsistencyProtocolEnabled());
+                assignedInvoker.setBenchmarkModeEnabled(client.getBenchmarkModeEnabled());
 
                 serverClientCounts.put(tcpPort, 1);
                 tcpPortToServerMapping.put(tcpPort, assignedServer);
