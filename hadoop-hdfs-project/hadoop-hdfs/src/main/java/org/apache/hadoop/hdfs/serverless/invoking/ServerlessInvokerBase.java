@@ -94,6 +94,13 @@ public abstract class ServerlessInvokerBase {
     protected Registry<ConnectionSocketFactory> registry;
 
     /**
+     * The set of request IDs that have been processed from the request queue and are ready to be sent.
+     * If an error occurs during processing, then these already-processed requests can be cancelled rather
+     * than having the request fail silently.
+     */
+    protected static ThreadLocal<Set<String>> processedRequestIds = new ThreadLocal<>();
+
+    /**
      * Store the statistics packages from serverless name nodes in this HashMap.
      *
      * Map from request ID to statistics packages.
@@ -280,7 +287,7 @@ public abstract class ServerlessInvokerBase {
         if (batchedRequests.size() > 0)
             throw new IllegalArgumentException("The batchedRequests list must be initially empty.");
 
-        // List<List<JsonObject>> batchedRequests = new ArrayList<>();
+        Set<String> _processedRequestIds = processedRequestIds.get();
 
         int totalNumRequests = 0;
         for (int i = 0; i < numDeployments; i++) {
@@ -297,9 +304,7 @@ public abstract class ServerlessInvokerBase {
                 deploymentBatches.add(currentBatch);
 
                 while (deploymentQueue.size() > 0) {
-                    if (LOG.isDebugEnabled()) LOG.debug("Polling queue for deployment " + i + " now...");
                     JsonObject request = deploymentQueue.poll();
-                    if (LOG.isDebugEnabled()) LOG.debug("Obtained the following request for deployment " + i + ": " + request);
 
                     if (request == null) {
                         LOG.error("Received null from request queue for deployment " + i +
@@ -311,12 +316,7 @@ public abstract class ServerlessInvokerBase {
                         continue;
                     }
 
-                    if (LOG.isDebugEnabled()) LOG.debug("Getting request ID now...");
-
-                    // TODO(ben): Seem to be getting stuck here...
-                    String requestId = request.get(REQUEST_ID).getAsString();
-
-                    if (LOG.isDebugEnabled()) LOG.debug("Placing request " + requestId + " into a batch...");
+                    String requestId = request.get(VALUE).getAsJsonObject().get(REQUEST_ID).getAsString();
 
                     currentBatch.add(requestId, request);
                     totalNumRequests++;
@@ -333,11 +333,14 @@ public abstract class ServerlessInvokerBase {
                             deploymentBatches.add(currentBatch);
                         }
                     }
+
+                    // The request has been fully processed and is ready to be sent, so add it to the set.
+                    _processedRequestIds.add(requestId);
                 }
             }
         }
 
-        if (LOG.isDebugEnabled()) LOG.debug("Partitioned a total of " + totalNumRequests + " request(s) into batches.");
+        if (LOG.isTraceEnabled() && totalNumRequests > 0) LOG.trace("Partitioned a total of " + totalNumRequests + " request(s) into batches.");
         return totalNumRequests;
     }
 
@@ -497,14 +500,55 @@ public abstract class ServerlessInvokerBase {
 
         configured = true;
 
-        scheduler.scheduleWithFixedDelay(() -> {
-            try {
-                sendEnqueuedRequests();
-            } catch (UnsupportedEncodingException | UnknownHostException | SocketException e) {
-                // TODO: Handle the error more cleanly, like explicitly cancel the associated futures.
-                LOG.error("Exception encountered while issuing HTTP requests:", e);
+        // Schedule the processing and sending of enqueued HTTP requests on a schedule with fixed delay.
+        // This means that the scheduled operation will execute `sendInterval` milliseconds after the previous
+        // execution completes. This will occur indefinitely.
+        scheduler.scheduleWithFixedDelay(
+                this::scheduledRequestProcessor, sendInterval, sendInterval, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * This method is executed by a {@link ScheduledExecutorService} instance every
+     * {@link ServerlessInvokerBase#sendInterval} milliseconds.
+     */
+    private void scheduledRequestProcessor() {
+        // Each time we process the enqueued requests, we clear this set.
+        Set<String> _processedRequestIds = processedRequestIds.get();
+        if (_processedRequestIds == null) {
+            _processedRequestIds = new HashSet<>();
+            processedRequestIds.set(_processedRequestIds);
+        } else {
+            _processedRequestIds.clear();
+        }
+
+        try {
+            sendEnqueuedRequests();
+        } catch (Exception e) {
+            LOG.error("Exception encountered while issuing HTTP requests:", e);
+            handleAlreadyProcessedRequestsOnException(_processedRequestIds);
+        }
+    }
+
+    /**
+     * If an exception occurs while preparing enqueued HTTP requests to be transmitted,
+     * then the already-processed HTTP requests need to be cancelled.
+     */
+    private void handleAlreadyProcessedRequestsOnException(Set<String> _processedRequestIds) {
+        LOG.warn("The following requests have already been processed and must now be cancelled: " +
+                StringUtils.join(", ", _processedRequestIds));
+
+        int totalNumFuturesCancelled = 0;
+        for (String requestId : _processedRequestIds) {
+            ServerlessHttpFuture future = futures.get(requestId);
+            if (future != null) {
+                if (LOG.isTraceEnabled()) LOG.trace("Cancelling future associated with HTTP request " + requestId);
+                future.cancel(true);
+                totalNumFuturesCancelled++;
             }
-        }, sendInterval, sendInterval, TimeUnit.MILLISECONDS);
+        }
+
+        if (LOG.isDebugEnabled()) LOG.debug("Cancelled " + totalNumFuturesCancelled + "/" +
+                _processedRequestIds.size() + " future(s).");
     }
 
     /**
@@ -621,7 +665,8 @@ public abstract class ServerlessInvokerBase {
     }
 
     /**
-     * Helper function to issue an HTTP request with retries.
+     * Helper function to issue an HTTP request with retries. This is how HTTP requests should be issued, as it
+     * provides for exception handling and exponential backoff for retries.
      *
      * @param invokerInstance The {@link ServerlessInvokerBase} class to use to invoke the serverless function.
      * @param operationName The FS operation being performed. This is passed to the NameNode so that it knows which of

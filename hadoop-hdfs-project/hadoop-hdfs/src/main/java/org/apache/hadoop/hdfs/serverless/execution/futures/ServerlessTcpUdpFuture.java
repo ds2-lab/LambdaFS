@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.execution.futures;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.serverless.execution.results.CancelledResult;
@@ -17,11 +18,6 @@ public class ServerlessTcpUdpFuture extends ServerlessFuture<NameNodeResult> {
     private static final Log LOG = LogFactory.getLog(ServerlessTcpUdpFuture.class);
 
     /**
-     * The payload that was submitted for this request.
-     */
-    private final TcpUdpRequestPayload associatedPayload;
-
-    /**
      * The NameNodeID of the NN this request was sent to.
      */
     private final long targetNameNodeId;
@@ -29,7 +25,9 @@ public class ServerlessTcpUdpFuture extends ServerlessFuture<NameNodeResult> {
     public ServerlessTcpUdpFuture(TcpUdpRequestPayload associatedPayload, long targetNameNodeId) {
         super(associatedPayload.getRequestId(), associatedPayload.getOperationName());
 
-        this.associatedPayload = associatedPayload;
+        /**
+         * The payload that was submitted for this request.
+         */
         this.targetNameNodeId = targetNameNodeId;
     }
 
@@ -49,11 +47,13 @@ public class ServerlessTcpUdpFuture extends ServerlessFuture<NameNodeResult> {
     @Override
     public void cancel(String reason, boolean shouldRetry) throws InterruptedException {
         state = State.CANCELLED;
-        // associatedPayload.setCancelled(true);
-        // associatedPayload.setShouldRetry(shouldRetry);
-        // associatedPayload.setCancellationReason(reason);
         resultQueue.put(CancelledResult.instance);
         if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " +
                 operationName + ". Reason: " + reason);
+    }
+
+    @Override
+    public boolean cancel(boolean mayInterruptIfRunning) {
+        throw new NotImplementedException("cancel(boolean) is not supported for TCP/UDP futures.");
     }
 }

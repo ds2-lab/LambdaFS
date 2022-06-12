@@ -833,20 +833,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         long startTime = System.currentTimeMillis();
 
-        // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
-        // file/directory, then we'll just use an HTTP request.
-//        ServerlessHttpFuture future = dfsClient.serverlessInvoker.invokeNameNodeViaHttpPost(
-//                operationName, dfsClient.serverlessEndpoint,
-//                null, // We do not have any additional/non-default arguments to pass to the NN.
-//                opArguments, requestId, targetDeployment);
-//
-//        JsonObject response = null;
-//        try {
-//            response = future.get();
-//        } catch (ExecutionException | InterruptedException ex) {
-//            LOG.error("Exception encountered while waiting for result of HTTP request " + requestId + ":", ex);
-//        }
-
         JsonObject response = ServerlessInvokerBase.issueHttpRequestWithRetries(
                 serverlessInvoker, operationName, dfsClient.serverlessEndpoint,
                 null, opArguments, requestId, targetDeployment);
