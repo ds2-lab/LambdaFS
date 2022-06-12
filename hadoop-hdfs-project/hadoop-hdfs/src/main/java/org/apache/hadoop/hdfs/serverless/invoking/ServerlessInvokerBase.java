@@ -652,9 +652,6 @@ public abstract class ServerlessInvokerBase {
 
         if (LOG.isDebugEnabled()) LOG.debug("Creating and enqueuing request " + requestId + "(op=" + operationName + ") targeting deployment " + targetDeployment);
 
-        // This is the top-level JSON object passed along with the HTTP POST request.
-        JsonObject requestArguments = new JsonObject();
-
         // We pass the file system operation arguments to the NameNode, as it
         // will hand them off to the intended file system operation function.
         nameNodeArguments.add(ServerlessNameNodeKeys.FILE_SYSTEM_OP_ARGS, fileSystemOperationArguments);
@@ -664,14 +661,10 @@ public abstract class ServerlessInvokerBase {
         nameNodeArguments.addProperty(ServerlessNameNodeKeys.INVOKER_IDENTITY, invokerIdentity);
         nameNodeArguments.addProperty(REQUEST_ID, requestId);
 
-        // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
-        // within the HTTP POST request. They should be included with the key "value".
-        requestArguments.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
-
         // TODO: Eventually switch this to trace rather than debug.
         if (LOG.isDebugEnabled()) LOG.debug("Enqueuing HTTP request " + requestId +
                 " for submission with deployment " + targetDeployment);
-        enqueueRequest(requestArguments, targetDeployment);
+        enqueueRequest(nameNodeArguments, targetDeployment);
 
         ServerlessHttpFuture future = new ServerlessHttpFuture(requestId, operationName);
         futures.put(requestId, future);

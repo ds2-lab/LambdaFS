@@ -232,6 +232,8 @@ public class OpenWhiskHandler extends BaseHandler {
         for (String requestId : requestIds) {
             JsonObject requestArguments = batchOfRequests.get(requestId).getAsJsonObject();
 
+            if (LOG.isDebugEnabled()) LOG.debug("Arguments for request " + requestId + ": " + requestArguments);
+
             // The name of the client. This originates from the DFSClient class.
             String clientName = requestArguments.getAsJsonPrimitive(ServerlessNameNodeKeys.CLIENT_NAME).getAsString();
 
