@@ -206,9 +206,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                     // This is the top-level JSON object passed along with the HTTP POST request.
                     JsonObject topLevel = new JsonObject();
 
-                    HttpPost request = new HttpPost(getFunctionUri(functionUriBase, i, topLevel));
-                    request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
-
                     JsonObject nameNodeArguments = new JsonObject();
                     nameNodeArguments.add(BATCH, requestBatch);
                     addStandardArguments(nameNodeArguments);
@@ -216,6 +213,9 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                     // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
                     // within the HTTP POST request. They should be included with the key "value".
                     topLevel.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
+
+                    HttpPost request = new HttpPost(getFunctionUri(functionUriBase, i, topLevel));
+                    request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
                     // Prepare the HTTP POST request.
                     StringEntity parameters = new StringEntity(topLevel.toString());
