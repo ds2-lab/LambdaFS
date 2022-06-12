@@ -498,6 +498,10 @@ public abstract class ServerlessInvokerBase {
             return;
         }
 
+        if (LOG.isDebugEnabled()) LOG.debug("Starting async HTTP client now...");
+        httpClient.start();
+        if (LOG.isDebugEnabled()) LOG.debug("Started async HTTP client.");
+
         outgoingRequests = new LinkedBlockingQueue[numDeployments];
 
         // Create an outgoing request queue for each deployment.
@@ -934,7 +938,6 @@ public abstract class ServerlessInvokerBase {
         };
 
         TrustStrategy acceptingTrustStrategy = (x509Certificates, s) -> {
-            //LOG.debug("Checking if certificates " + x509Certificates + " are trusted. String s: " + s + ".");
             return true;
         };
         SSLContext sslContext = org.apache.http.ssl.SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
