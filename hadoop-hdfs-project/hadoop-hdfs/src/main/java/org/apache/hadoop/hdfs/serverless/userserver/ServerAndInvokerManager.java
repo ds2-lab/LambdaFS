@@ -357,8 +357,8 @@ public class ServerAndInvokerManager {
                 int numClients = entry.getValue();
 
                 if (numClients < maxClientsPerServer) {
-                    LOG.info("Assigning client to TCP Server " + tcpPort + ", which will now have " +
-                            (numClients + 1) + " clients assigned to it.");
+                    LOG.info("Assigning client " + clientName + " to TCP Server " + tcpPort +
+                            ", which will now have " + (numClients + 1) + " clients assigned to it.");
 
                     oldNumClients = numClients;
                     assignedPort = tcpPort;
@@ -368,8 +368,8 @@ public class ServerAndInvokerManager {
 
             if (oldNumClients == -1 && assignedPort == -1) {
                 // Create new TCP server.
-                LOG.info("Creating new user server. Attempting to use TCP port " + nextTcpPort + ", UDP port " +
-                        nextUdpPort);
+                LOG.info("Creating new user server for client " + clientName + ". Attempting to use TCP port " +
+                        nextTcpPort + ", UDP port " + nextUdpPort);
                 assignedServer = new UserServer(conf, client, nextTcpPort, nextUdpPort);
                 assignedInvoker = ServerlessInvokerFactory.getServerlessInvoker(serverlessPlatformName);
                 assignedInvoker.setIsClientInvoker(true);
@@ -393,13 +393,14 @@ public class ServerAndInvokerManager {
                 nextTcpPort++;
                 nextUdpPort++;
 
-                LOG.info("Created new TCP server with TCP port " + tcpPort + ". There are now " +
-                        tcpPortToServerMapping.size() + " unique TCP server(s).");
+                LOG.info("Created new TCP server with TCP port " + tcpPort + " for client " + clientName +
+                        ". There are now " + tcpPortToServerMapping.size() + " unique TCP server(s).");
 
                 userServers.add(assignedServer);
                 invokers.add(assignedInvoker);
             } else {
-                LOG.info("Retrieving existing TCP server with TCP port " + assignedPort + ".");
+                LOG.info("Retrieving existing TCP server with TCP port " + assignedPort + " for client " +
+                        clientName + ".");
                 // Grab existing server and return it.
                 assignedServer = tcpPortToServerMapping.get(assignedPort);
                 assignedInvoker = tcpPortToInvokerMapping.get(assignedPort);
