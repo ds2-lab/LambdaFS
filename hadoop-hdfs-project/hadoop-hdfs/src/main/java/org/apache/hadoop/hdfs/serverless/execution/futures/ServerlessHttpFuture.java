@@ -19,6 +19,7 @@ public class ServerlessHttpFuture extends ServerlessFuture<JsonObject> {
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
+        LOG.debug("ServerlessHttpFuture for request " + requestId + " is being cancelled...");
         JsonObject cancellationMessage = new JsonObject();
         cancellationMessage.addProperty(REQUEST_ID, requestId);
         cancellationMessage.addProperty(LOCAL_EXCEPTION, "IOException");
@@ -37,6 +38,7 @@ public class ServerlessHttpFuture extends ServerlessFuture<JsonObject> {
 
     @Override
     public void cancel(String reason, boolean shouldRetry) throws InterruptedException {
+        LOG.debug("ServerlessHttpFuture for request " + requestId + " is being cancelled using incorrect API...");
         throw new NotImplementedException("cancel(String, boolean) is not supported for HTTP futures.");
     }
 }
