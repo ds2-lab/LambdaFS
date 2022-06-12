@@ -214,7 +214,8 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                     // within the HTTP POST request. They should be included with the key "value".
                     topLevel.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
 
-                    HttpPost request = new HttpPost(getFunctionUri(functionUriBase, i, topLevel));
+                    String requestUri = getFunctionUri(functionUriBase, i, topLevel);
+                    HttpPost request = new HttpPost(requestUri);
                     request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
 
                     // Prepare the HTTP POST request.
@@ -223,9 +224,12 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
                     try {
-                        if (LOG.isDebugEnabled()) LOG.debug("Issuing batched HTTP request to deployment " + i +
-                                " containing the following individual requests: " +
-                                StringUtils.join(", ", requestBatch.keySet()));
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("Issuing batched HTTP request to deployment " + i +
+                                    " with URI = " + requestUri + ", requestIDs = " +
+                                    StringUtils.join(", ", requestBatch.keySet()));
+                        }
+
                         doInvoke(request, topLevel, requestBatch.keySet());
                         totalNumBatchedRequestsIssued++;
                     } catch (IOException ex) {
