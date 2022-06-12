@@ -390,12 +390,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * {@link ServerlessNameNodeClient} must call this function after instantiating the instance.
      */
     public void registerAndStartTcpServer() throws IOException {
+        if (LOG.isDebugEnabled()) LOG.debug("Registering client with serverAndInvokerManager now...");
         // This function calls start on the server if necessary, so we don't need to do anything.
         Pair<UserServer, ServerlessInvokerBase> pair = serverAndInvokerManager.registerClient(
                 this, dfsClient.getClientName(), serverlessEndpointBase);
 
         this.tcpServer = pair.getFirst();
         this.serverlessInvoker = pair.getSecond();
+
+        assert(this.tcpServer != null);
+        assert(this.serverlessInvoker != null);
     }
 
     public void setConsistencyProtocolEnabled(boolean enabled) {
