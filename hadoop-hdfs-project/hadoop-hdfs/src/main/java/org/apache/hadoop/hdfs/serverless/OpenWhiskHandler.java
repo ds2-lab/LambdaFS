@@ -266,11 +266,6 @@ public class OpenWhiskHandler extends BaseHandler {
             // Set the `isCold` flag to false given this is now a warm container.
             isCold = false;
 
-            if (LOG.isDebugEnabled()) {
-                long endTime = System.currentTimeMillis();
-                LOG.debug("Returning back to client. Time elapsed: " + (endTime - invocationReceivedTime) + " milliseconds.");
-                LOG.debug("ServerlessNameNode is exiting now...");
-            }
             JsonObject latestResult = createJsonResponse(result);
             batchOfResults.add(requestId, latestResult);
 
@@ -278,6 +273,12 @@ public class OpenWhiskHandler extends BaseHandler {
             // last step in the loop iteration so that it is up-to-date when we begin processing the next task in
             // the next loop iteration.
             startTime = System.currentTimeMillis();
+        }
+
+        if (LOG.isDebugEnabled()) {
+            long endTime = System.currentTimeMillis();
+            LOG.debug("Returning back to client. Time elapsed: " + (endTime - invocationReceivedTime) + " milliseconds.");
+            LOG.debug("Batch of results: " + batchOfResults);
         }
 
         return batchOfResults;
@@ -409,6 +410,7 @@ public class OpenWhiskHandler extends BaseHandler {
             resultWithMetrics.setNameNodeId(serverlessNameNode.getId());
             resultWithMetrics.logResultDebugInformation(op);
         }
+
         return result;
     }
 
