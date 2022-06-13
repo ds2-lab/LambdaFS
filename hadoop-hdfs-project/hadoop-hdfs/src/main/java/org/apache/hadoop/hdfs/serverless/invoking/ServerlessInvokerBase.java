@@ -93,6 +93,8 @@ public abstract class ServerlessInvokerBase {
 
     protected Registry<ConnectionSocketFactory> registry;
 
+    private static final Random rng = new Random();
+
     /**
      * The set of request IDs that have been processed from the request queue and are ready to be sent.
      * If an error occurs during processing, then these already-processed requests can be cancelled rather
@@ -706,6 +708,9 @@ public abstract class ServerlessInvokerBase {
                                                    String requestId, int targetDeployment)
             throws IOException {
         long invokeStart = System.nanoTime();
+
+        if (targetDeployment == -1)
+            targetDeployment = rng.nextInt(invokerInstance.numDeployments);
 
         ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(invokerInstance.maxHttpRetries)

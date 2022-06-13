@@ -87,6 +87,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     public String serverlessEndpointBase;
 
+    private final static Random rng = new Random();
+
     /**
      * The name of the serverless platform being used for the Serverless NameNodes.
      */
@@ -747,12 +749,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private Object submitOperationToNameNode(String operationName, ArgumentContainer opArguments)
             throws IOException, InterruptedException, ExecutionException {
-        // TODO: Remove this once the associated bug is resolved.
-        // We don't want any unnecessary operations on the critical path.
-        // if (!registeredWithServerInvokerManager)
-        //    throw new IllegalStateException("Client " + dfsClient.getClientName() +
-        //            " has not yet registered with the Server and Invoker Manager and thus cannot issue requests.");
-
         // Check if there's a source directory parameter, as this is the file or directory that could
         // potentially be mapped to a serverless function.
         Object srcArgument = opArguments.get(ServerlessNameNodeKeys.SRC);
@@ -779,6 +775,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // So, if we have to fall back to HTTP, we just use the targetDeployment variable. TCP
             // may modify this variable to be -1, so we have a separate value for it.
             int targetDeploymentTcp = targetDeployment;
+
+            // Randomly select a deployment if the user did not specify one.
+            if (targetDeploymentTcp == -1)
+                targetDeploymentTcp = rng.nextInt(numDeployments);
 
             // Used for metrics and debugging. This only gets updated when a request fails.
             // If we successfully issue a TCP request, then its value will still be 0.
