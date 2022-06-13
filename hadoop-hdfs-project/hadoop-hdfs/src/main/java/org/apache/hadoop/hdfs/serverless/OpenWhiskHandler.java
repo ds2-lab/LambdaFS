@@ -266,7 +266,9 @@ public class OpenWhiskHandler extends BaseHandler {
             // Set the `isCold` flag to false given this is now a warm container.
             isCold = false;
 
-            JsonObject latestResult = createJsonResponse(result);
+            JsonObject latestResult = result.toJson(ServerlessNameNode.
+                    tryGetNameNodeInstance(true).getNamesystem().getMetadataCacheManager());
+            // JsonObject latestResult = createJsonResponse(result);
             batchOfResults.add(requestId, latestResult);
 
             // This will be used as the start time for the next task in the batch. We re-compute `startTime` as the
@@ -281,7 +283,7 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug("Batch of results: " + batchOfResults);
         }
 
-        return batchOfResults;
+        return createJsonResponse(batchOfResults);
     }
 
     /**
@@ -565,28 +567,29 @@ public class OpenWhiskHandler extends BaseHandler {
         JsonObject response = new JsonObject();
         JsonObject headers = new JsonObject();
         headers.addProperty("content-type", "application/json");
-
-        // TODO: We cannot gauge whether or not a request was successful simply on the basis of whether there is/isn't
-        //       a result and if there are or are not any exceptions. Certain FS operations return nothing, meaning
-        //       there wouldn't be a result. And the NN can encounter exceptions but still succeed. So for now, we'll
-        //       just always return a statusCode 200, but eventually we may want to create a more robust system that
-        //       uses status codes to indicate failures.
-
         response.addProperty("statusCode", 200);
         response.addProperty("status", "success");
         response.addProperty("success", true);
-
         response.add("headers", headers);
         response.add("body", resultJson);
 
-//        if (LOG.isDebugEnabled()) {
-//            LOG.debug("Contents of result to be returned to the client: ");
-//            for (String key : resultJson.keySet())
-//                if (key.equals(RESULT))
-//                    LOG.debug("Result: <Content Omitted>");
-//                else
-//                    LOG.debug(key + ": " + resultJson.get(key).toString());
-//        }
+        return response;
+    }
+
+    /**
+     * Create and return the response to return to whoever invoked this Serverless NameNode.
+     * @param batchOfResults The batch of results from processing the last batch of HTTP requests.
+     * @return JsonObject to return as result of this OpenWhisk activation (i.e., serverless function execution).
+     */
+    private static JsonObject createJsonResponse(JsonObject batchOfResults) {
+        JsonObject response = new JsonObject();
+        JsonObject headers = new JsonObject();
+        headers.addProperty("content-type", "application/json");
+        response.addProperty("statusCode", 200);
+        response.addProperty("status", "success");
+        response.addProperty("success", true);
+        response.add("headers", headers);
+        response.add("body", batchOfResults);
 
         return response;
     }
