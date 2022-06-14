@@ -723,11 +723,11 @@ public abstract class ServerlessInvokerBase {
         if (LOG.isDebugEnabled()) {
             double timeElapsed = (System.nanoTime() - invokeStart) / 1.0e6;
             LOG.debug("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
-                    (exponentialBackoff.getNumberOfRetries() - 1) + "/" + invokerInstance.maxHttpRetries +
+                    (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries +
                     ". Time elapsed: " + timeElapsed + " milliseconds.");
         } else {
             LOG.info("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
-                    (exponentialBackoff.getNumberOfRetries() - 1) + "/" + invokerInstance.maxHttpRetries + ".");
+                    (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries + ".");
         }
 
         long backoffInterval = exponentialBackoff.getBackOffInMillis();
@@ -834,6 +834,8 @@ public abstract class ServerlessInvokerBase {
                 try {
                     // Extract the payload from the HTTP response.
                     JsonObject result = processHttpResponse(httpResponse);
+
+                    LOG.debug("result: " + result);
 
                     // For each of the individual requests in the batch, post an error message to the future.
                     // This way, the client can be notified of the failure and retry the request if desired.
