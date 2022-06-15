@@ -344,6 +344,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     public ZKClient getZkClient() { return this.zkClient; }
 
+    public boolean isTcpEnabled() { return tcpEnabled; }
+
     /**
      * Extract the result from the NN.
      *

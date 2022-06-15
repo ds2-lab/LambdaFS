@@ -288,7 +288,7 @@ public class UserServer {
     public synchronized int startServer() throws IOException {
         if (!enabled) {
             LOG.warn("TCP Server is NOT enabled. Server will NOT be started.");
-            return -1;
+            return tcpPort;
         }
 
         if (started) {
@@ -475,7 +475,7 @@ public class UserServer {
      */
     public int getTcpPort() {
         if (!started)
-            throw new IllegalStateException("User server has not been started yet. TCP port has not been assigned.");
+            LOG.warn("User server has not been started yet. TCP port may not have been assigned.");
 
         return this.tcpPort;
     }
