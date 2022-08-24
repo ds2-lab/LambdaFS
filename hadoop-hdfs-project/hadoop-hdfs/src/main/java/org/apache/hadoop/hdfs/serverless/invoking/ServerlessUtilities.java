@@ -4,7 +4,6 @@ import com.google.common.hash.Hashing;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.commons.lang3.NotImplementedException;
-import org.apache.hadoop.hdfs.protocol.DatanodeID;
 
 import java.io.IOException;
 import java.lang.reflect.Method;

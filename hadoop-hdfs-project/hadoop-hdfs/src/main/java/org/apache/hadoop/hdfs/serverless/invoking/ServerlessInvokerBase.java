@@ -839,7 +839,14 @@ public abstract class ServerlessInvokerBase {
                 try {
                     // Extract the payload from the HTTP response.
                     JsonObject httpResponseAsJson = processHttpResponse(httpResponse);
-                    JsonObject result = httpResponseAsJson.get("body").getAsJsonObject();
+
+                    LOG.debug("JsonObject response from HTTP request: " + httpResponseAsJson);
+
+                    JsonObject result;
+                    if (httpResponseAsJson.has("body"))
+                        result = httpResponseAsJson.get("body").getAsJsonObject();
+                    else
+                        result = httpResponseAsJson;
 
                     // For each of the individual requests in the batch, post an error message to the future.
                     // This way, the client can be notified of the failure and retry the request if desired.

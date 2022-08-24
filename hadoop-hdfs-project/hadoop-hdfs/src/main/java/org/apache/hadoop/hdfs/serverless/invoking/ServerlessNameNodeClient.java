@@ -344,6 +344,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     public ZKClient getZkClient() { return this.zkClient; }
 
+    public boolean isTcpEnabled() { return tcpEnabled; }
+
     /**
      * Extract the result from the NN.
      *
@@ -842,7 +844,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         targetDeploymentTcp = targetDeployment;
                     }
                 } else {
-                    LOG.error("Unable to find viable TCP/UDP server for request " + requestId + ". Falling back to HTTP instead.");
+                    LOG.warn("Unable to find viable TCP/UDP server for request " + requestId + ". Falling back to HTTP instead.");
                     break;
                 }
             }
