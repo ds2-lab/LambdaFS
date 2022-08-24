@@ -288,7 +288,7 @@ public class UserServer {
     public synchronized int startServer() throws IOException {
         if (!enabled) {
             LOG.warn("TCP Server is NOT enabled. Server will NOT be started.");
-            return -1;
+            return tcpPort;
         }
 
         if (started) {

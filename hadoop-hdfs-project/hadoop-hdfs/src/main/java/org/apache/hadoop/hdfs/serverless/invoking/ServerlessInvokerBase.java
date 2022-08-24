@@ -800,6 +800,11 @@ public abstract class ServerlessInvokerBase {
         request.setEntity(parameters);
         request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Issuing batched request containing " + requestIds.size() + " individual request(s): " +
+                    StringUtils.join(", ", requestIds));
+        }
+
         // Future<HttpResponse> future =
         httpClient.execute(request, new FutureCallback<HttpResponse>() {
             @Override
