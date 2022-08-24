@@ -636,7 +636,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>11.0.2</version>
+      <version>15.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
