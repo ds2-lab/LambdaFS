@@ -98,7 +98,7 @@ public class ServerAndInvokerManager {
      * or {@link ServerAndInvokerManager#findServerWithAtLeastOneActiveConnection()}. We use this to determine when to shuffle
      * the list of user servers to ensure servers at the beginning of the list aren't disproportionately used.
      */
-    private AtomicInteger counter = new AtomicInteger(0);
+    private final AtomicInteger counter = new AtomicInteger(0);
 
     /**
      * How frequently we shuffle the list of user servers.
