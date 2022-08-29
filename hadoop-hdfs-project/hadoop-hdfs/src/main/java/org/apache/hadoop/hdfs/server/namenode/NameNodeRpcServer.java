@@ -137,6 +137,9 @@ class NameNodeRpcServer implements NamenodeProtocols {
     int handlerCount = conf.getInt(DFS_NAMENODE_HANDLER_COUNT_KEY,
         DFS_NAMENODE_HANDLER_COUNT_DEFAULT);
 
+    LOG.info("Will be creating " + handlerCount + " RPC handler thread(s) to respond to HopsFS clients.");
+    System.out.println("Will be creating " + handlerCount + " RPC handler thread(s) to respond to HopsFS clients.");
+
     RPC.setProtocolEngine(conf, ClientNamenodeProtocolPB.class,
         ProtobufRpcEngine.class);
 
