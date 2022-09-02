@@ -844,7 +844,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         targetDeploymentTcp = targetDeployment;
                     }
                 } else {
-                    LOG.warn("No TCP/UDP connection to deployment " + targetDeploymentTcp + " (src: " + srcArgument + "). RequestID: " + requestId);
+                    LOG.debug("No TCP/UDP connection to deployment " + targetDeploymentTcp + " (src: " + srcArgument + "). RequestID: " + requestId);
                     break;
                 }
             }
