@@ -30,7 +30,7 @@ public class ServerlessUtilities {
      * entry exists, then -1 is returned.
      */
     public static int getFunctionNumberForFileOrDirectory(String fileOrDirectory, int numDeployments) {
-        return consistentHash(Hashing.md5().hashString(extractParentPath(fileOrDirectory)), numDeployments);
+        return consistentHash(Hashing.md5().hashUnencodedChars(extractParentPath(fileOrDirectory)), numDeployments);
     }
 
     /**
