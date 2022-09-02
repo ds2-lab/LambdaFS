@@ -197,7 +197,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * This is the number of requests per batch.
    */
   public static final String SERVERLESS_HTTP_BATCH_SIZE = "serverless.http.batch-size";
-  public static final int SERVERLESS_HTTP_BATCH_SIZE_DEFAULT = 4;
+  public static final int SERVERLESS_HTTP_BATCH_SIZE_DEFAULT = 8;
 
   /**
    * The number of bytes allocated per client for the TCP server's buffers.

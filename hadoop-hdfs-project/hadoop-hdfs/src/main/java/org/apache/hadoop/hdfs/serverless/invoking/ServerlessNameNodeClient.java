@@ -844,7 +844,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         targetDeploymentTcp = targetDeployment;
                     }
                 } else {
-                    LOG.warn("Unable to find viable TCP/UDP server for request " + requestId + ". Falling back to HTTP instead.");
+                    LOG.debug("Unable to find viable TCP/UDP server for request " + requestId + ". Falling back to HTTP instead.");
                     break;
                 }
             }
