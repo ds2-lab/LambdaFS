@@ -142,6 +142,10 @@ public class DistributedFileSystem extends FileSystem {
     
   }
 
+  public void addLatencyValues(double[] latencies) {
+    this.dfs.addLatencyValues(latencies);
+  }
+
   public void clearLatencyStatistics() {
     this.dfs.clearLatencyStatistics();
   }

@@ -922,6 +922,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     this.latency.clear();
   }
 
+  public void addLatencyValues(double[] latencies) {
+    for (double l : latencies)
+      this.latency.addValue(l);
+  }
+
   /**
    * @see ClientProtocol#getBlockLocations(String, long, long)
    */
