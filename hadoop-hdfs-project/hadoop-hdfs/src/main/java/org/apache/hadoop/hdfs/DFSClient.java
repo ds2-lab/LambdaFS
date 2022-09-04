@@ -61,6 +61,7 @@ import javax.net.SocketFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.CipherSuite;
@@ -217,6 +218,11 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   /* The service used for delegation tokens */
   private Text dtService;
 
+  /**
+   * Statistics about per-invocation latency. This includes both TCP and HTTP requests.
+   */
+  private final DescriptiveStatistics latency;
+
   final UserGroupInformation ugi;
   volatile boolean clientRunning = true;
   volatile long lastLeaseRenewal;
@@ -311,7 +317,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     this.dtpReplaceDatanodeOnFailure = ReplaceDatanodeOnFailure.get(conf);
 
     this.ugi = UserGroupInformation.getCurrentUser();
-
+    this.latency = new DescriptiveStatistics();
     this.authority = nameNodeUri == null? "null": nameNodeUri.getAuthority();
 
     String clientNamePrefix = "";
@@ -406,7 +412,14 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       conf, DataTransferSaslUtil.getSaslPropertiesResolver(conf),
       TrustedChannelResolver.getInstance(conf), nnFallbackToSimpleAuth);
   }
-  
+
+  /**
+   * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics object.
+   */
+  public DescriptiveStatistics getLatencyStatistics() {
+    return latency.copy();
+  }
+
   /**
    * Return the socket addresses to use with each configured
    * local interface. Local interfaces may be specified by IP
@@ -897,9 +910,16 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   @VisibleForTesting
   public LocatedBlocks getLocatedBlocks(String src, long start, long length)
       throws IOException {
+    long startTime = System.currentTimeMillis();
     try (TraceScope ignored = newPathTraceScope("getBlockLocations", src)) {
       return callGetBlockLocations(namenode, src, start, length);
+    } finally {
+      latency.addValue(System.currentTimeMillis() - startTime);
     }
+  }
+
+  public void clearLatencyStatistics() {
+    this.latency.clear();
   }
 
   /**
@@ -1368,16 +1388,19 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
                              EncodingPolicy policy) throws IOException {
     checkOpen();
     final FsPermission masked = applyUMask(permission);
-    if(LOG.isDebugEnabled()) {
-      LOG.debug(src + ": masked=" + masked);
+
+    long startTime = System.currentTimeMillis();
+    try {
+      final DFSOutputStream result = DFSOutputStream.newStreamForCreate(this,
+              src, masked, flag, createParent, replication, blockSize, progress,
+              buffersize, dfsClientConf.createChecksum(checksumOpt),
+              getFavoredNodesStr(favoredNodes),
+              policy, dfsClientConf.getDBFileMaxSize(), dfsClientConf.getForceClientToWriteSFToDisk());
+      beginFileLease(result.getFileId(), result);
+      return result;
+    } finally {
+      latency.addValue(System.currentTimeMillis() - startTime);
     }
-    final DFSOutputStream result = DFSOutputStream.newStreamForCreate(this,
-        src, masked, flag, createParent, replication, blockSize, progress,
-        buffersize, dfsClientConf.createChecksum(checksumOpt),
-        getFavoredNodesStr(favoredNodes),
-        policy, dfsClientConf.getDBFileMaxSize(), dfsClientConf.getForceClientToWriteSFToDisk());
-    beginFileLease(result.getFileId(), result);
-    return result;
   }
 
   private String[] getFavoredNodesStr(InetSocketAddress[] favoredNodes) {
@@ -1666,6 +1689,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   public boolean delete(String src, boolean recursive) throws IOException {
     checkOpen();
+    long startTime = System.currentTimeMillis();
     try (TraceScope ignored = newPathTraceScope("delete", src)) {
       if (getServerDefaults().getQuotaEnabled()) {
         return leaderNN.delete(src, recursive);
@@ -1677,6 +1701,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
                                      FileNotFoundException.class,
                                      SafeModeException.class,
                                      UnresolvedPathException.class);
+    } finally {
+      latency.addValue(System.currentTimeMillis() - startTime);
     }
   }
 
@@ -1709,12 +1735,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       boolean needLocation)
     throws IOException {
     checkOpen();
+    long startTime = System.currentTimeMillis();
     try (TraceScope ignored = newPathTraceScope("listPaths", src)) {
       return namenode.getListing(src, startAfter, needLocation);
     } catch(RemoteException re) {
       throw re.unwrapRemoteException(AccessControlException.class,
                                      FileNotFoundException.class,
                                      UnresolvedPathException.class);
+    } finally {
+      latency.addValue(System.currentTimeMillis() - startTime);
     }
   }
 
@@ -1728,12 +1757,15 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
    */
   public HdfsFileStatus getFileInfo(String src) throws IOException {
     checkOpen();
+    long startTime = System.currentTimeMillis();
     try (TraceScope ignored = newPathTraceScope("getFileInfo", src)) {
       return namenode.getFileInfo(src);
     } catch(RemoteException re) {
       throw re.unwrapRemoteException(AccessControlException.class,
                                      FileNotFoundException.class,
                                      UnresolvedPathException.class);
+    } finally {
+      latency.addValue(System.currentTimeMillis() - startTime);
     }
   }
 

@@ -21,6 +21,7 @@ package org.apache.hadoop.hdfs;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -140,7 +141,18 @@ public class DistributedFileSystem extends FileSystem {
   private class AlternativeDistributedFileSystem extends DistributedFileSystem{
     
   }
-  
+
+  public void clearLatencyStatistics() {
+    this.dfs.clearLatencyStatistics();
+  }
+
+  /**
+   * Return a copy of the latency (TCP & HTTP) DescriptiveStatistics object.
+   */
+  public DescriptiveStatistics getLatencyStatistics() {
+    return this.dfs.getLatencyStatistics();
+  }
+
   @Override
   public void initialize(URI uri, Configuration conf) throws IOException {
     super.initialize(uri, conf);
