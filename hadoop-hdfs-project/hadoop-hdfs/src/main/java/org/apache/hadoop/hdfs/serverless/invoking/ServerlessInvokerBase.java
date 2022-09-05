@@ -720,15 +720,18 @@ public abstract class ServerlessInvokerBase {
                 .setRandomizationFactor(0.5)
                 .build();
 
-        if (LOG.isDebugEnabled()) {
-            double timeElapsed = (System.nanoTime() - invokeStart) / 1.0e6;
+//        if (LOG.isTraceEnabled()) {
+//            double timeElapsed = (System.nanoTime() - invokeStart) / 1.0e6;
+//            LOG.trace("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
+//                    (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries +
+//                    ". Time elapsed: " + timeElapsed + " milliseconds.");
+//        } else if (LOG.isDebugEnabled()) {
+//            LOG.debug("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
+//                    (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries + ".");
+//        }
+        if (LOG.isDebugEnabled())
             LOG.debug("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
-                    (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries +
-                    ". Time elapsed: " + timeElapsed + " milliseconds.");
-        } else {
-            LOG.info("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
                     (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries + ".");
-        }
 
         long backoffInterval = exponentialBackoff.getBackOffInMillis();
 
