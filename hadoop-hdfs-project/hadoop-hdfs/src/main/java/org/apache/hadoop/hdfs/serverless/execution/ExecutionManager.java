@@ -115,7 +115,7 @@ public class ExecutionManager {
      */
     private int numGCsTriggeredDuringThisIdleInterval = 0;
 
-    private final int maxGCsDuringSingleIdleInterval = 2;
+    private final int maxGCsDuringSingleIdleInterval = 1;
 
     /**
      * We only want to perform NDB updates roughly every heartbeat interval. The update thread wakes up more
