@@ -436,7 +436,7 @@ public class FSDirectory implements Closeable {
   /**
    * This is a wrapper for resolvePath(). If the path passed
    * is prefixed with /.reserved/raw, then it checks to ensure that the caller
-   * has super user privileges.
+   * has super-user privileges.
    *
    * @param pc The permission checker used when resolving path.
    * @param path The path to resolve.
@@ -449,7 +449,7 @@ public class FSDirectory implements Closeable {
    * @throws AccessControlException
    */
   String resolvePath(FSPermissionChecker pc, String path, byte[][] pathComponents)
-      throws FileNotFoundException, AccessControlException, IOException {
+      throws IOException {
     if (isReservedRawName(path) && isPermissionEnabled) {
       pc.checkSuperuserPrivilege();
     }
@@ -460,7 +460,7 @@ public class FSDirectory implements Closeable {
    * @return true if the path is a non-empty directory; otherwise, return false.
    */
   boolean isNonEmptyDirectory(INodesInPath inodesInPath)
-      throws UnresolvedLinkException, StorageException,
+      throws StorageException,
       TransactionContextException {
     final INode inode = inodesInPath.getLastINode();
     if (inode == null || !inode.isDirectory()) {
@@ -1812,7 +1812,7 @@ public class FSDirectory implements Closeable {
     FSPermissionChecker pc, INodesInPath iip, boolean doCheckOwner,
     FsAction ancestorAccess, FsAction parentAccess, FsAction access,
     FsAction subAccess)
-    throws AccessControlException, UnresolvedLinkException, IOException {
+    throws IOException {
     checkPermission(pc, iip, doCheckOwner, ancestorAccess,
         parentAccess, access, subAccess, false);
   }

@@ -1475,10 +1475,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     DirectoryListing files =
             namesystem.getListing(src, startAfter, needLocation);
+
     if (files != null) {
       metrics.incrGetListingOps();
       metrics.incrFilesInGetListingOps(files.getPartialListing().length);
     }
+
     return files;
   }
 
@@ -1935,7 +1937,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   /**
    * Format a new filesystem. Destroys any filesystem that may already exist
-   * at this location.  *
+   * at this location.
    */
   public static void format(Configuration conf) throws IOException {
     formatHdfs(conf, false, true);

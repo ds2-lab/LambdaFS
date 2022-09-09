@@ -197,8 +197,7 @@ class FSPermissionChecker {
    */
   void checkPermission(INodesInPath inodesInPath, boolean doCheckOwner,
       FsAction ancestorAccess, FsAction parentAccess, FsAction access,
-      FsAction subAccess, boolean ignoreEmptyDir) throws AccessControlException,
-      StorageException, TransactionContextException, IOException {
+      FsAction subAccess, boolean ignoreEmptyDir) throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("ACCESS CHECK: " + this
           + ", doCheckOwner=" + doCheckOwner

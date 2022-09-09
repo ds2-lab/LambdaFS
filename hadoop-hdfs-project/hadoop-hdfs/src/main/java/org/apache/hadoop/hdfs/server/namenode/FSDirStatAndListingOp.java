@@ -56,6 +56,7 @@ class FSDirStatAndListingOp {
       final boolean needLocation)
     throws IOException {
     final FSPermissionChecker pc = fsd.getPermissionChecker();
+
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     String startAfterString = new String(startAfterArg, Charsets.UTF_8);
     final String src = fsd.resolvePath(pc, srcArg, pathComponents);
