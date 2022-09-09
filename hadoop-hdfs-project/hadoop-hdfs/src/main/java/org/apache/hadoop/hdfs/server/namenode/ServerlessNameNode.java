@@ -783,9 +783,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     operations.put("getStats", this::getStats);
     operations.put("isFileClosed", this::isFileClosed);
     operations.put("mkdirs", this::mkdirs);
-    operations.put("ping", args ->  {
-      return null;
-    });
+    operations.put("ping", args -> nameNodeID); // Ping now returns the NameNode ID.
     operations.put("prewarm", args ->  {
       try {
         Thread.sleep(500);

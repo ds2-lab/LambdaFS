@@ -125,6 +125,18 @@ public class ServerAndInvokerManager {
     }
 
     /**
+     * Return the set of IDs of all NameNodes for which there is at least one server with an active connection
+     * to the NameNode.
+     */
+    public synchronized Set<Long> getIDsOfConnectedNameNodes() {
+        HashSet<Long> ids = new HashSet<>();
+        for (UserServer server : userServers) {
+            ids.addAll(server.getIDsOfConnectedNameNodes());
+        }
+        return ids;
+    }
+
+    /**
      * Set the configuration of the UserServerManager instance. If the instance has
      * already been configured by another thread, then this function returns immediately.
      * @param configuration Configuration to be applied to both this instance and every

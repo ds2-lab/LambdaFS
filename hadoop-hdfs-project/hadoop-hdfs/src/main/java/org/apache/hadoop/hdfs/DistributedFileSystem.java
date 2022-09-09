@@ -192,6 +192,14 @@ public class DistributedFileSystem extends FileSystem {
     this.dfs.addOperationPerformeds(operationPerformeds);
   }
 
+  /**
+   * Return the set of IDs of all NameNodes for which there is at least one
+   * server with an active connection to the NameNode.
+   */
+  public synchronized Set<Long> getIDsOfConnectedNameNodes() {
+    return this.dfs.getIDsOfConnectedNameNodes();
+  }
+
   // Added for debugging serverless NN.
   public void printOperationsPerformed() {
     this.dfs.printOperationsPerformed();

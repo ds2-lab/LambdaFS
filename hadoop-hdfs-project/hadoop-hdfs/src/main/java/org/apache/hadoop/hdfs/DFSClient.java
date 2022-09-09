@@ -319,6 +319,19 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   }
 
   /**
+   * Return the set of IDs of all NameNodes for which there is at least one
+   * server with an active connection to the NameNode.
+   */
+  public synchronized Set<Long> getIDsOfConnectedNameNodes() {
+    if (namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient) namenode;
+      return client.getIDsOfConnectedNameNodes();
+    } else {
+      throw new IllegalStateException("The internal NameNode client is not of the correct type. That is, it does not implement any Serverless APIs.");
+    }
+  }
+
+  /**
    * Clear the operations performed.
    */
   public void clearOperationsPerformed() {

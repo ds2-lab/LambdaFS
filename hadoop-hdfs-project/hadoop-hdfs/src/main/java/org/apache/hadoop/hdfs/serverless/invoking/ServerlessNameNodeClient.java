@@ -622,7 +622,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 }
 
                 Object response = userServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
-                        operationName, tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
+                        tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
 
                 // This only ever happens when the request is cancelled.
                 if (response instanceof CancelledResult) {
@@ -834,9 +834,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         // In either scenario, we simply fall back to HTTP.
 
                         // Don't print the exception itself if it's a cancelled request.
-                        if (ex instanceof TcpRequestCancelledException)
-                            LOG.error("Encountered IOException on TCP request attempt #" + (++numTcpRequestsAttempted) +
-                                    " for operation " + operationName + " to deployment " + targetDeploymentTcp + ".");
+                        if (ex instanceof TcpRequestCancelledException) {
+                            // LOG.error("Encountered cancellation of TCP request attempt #" + (++numTcpRequestsAttempted) +
+                            //        " for operation " + operationName + " to deployment " + targetDeploymentTcp + ".");
+                            throw new IOException("TCP request attempt #" + (++numTcpRequestsAttempted) +
+                                    " for operation " + operationName + " to deployment " + targetDeploymentTcp + " was cancelled.");
+                        }
                         else
                             LOG.error("Encountered IOException on TCP request attempt #" + (++numTcpRequestsAttempted) +
                                     " for operation " + operationName + " to deployment " + targetDeploymentTcp + ":", ex);
@@ -881,6 +884,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     tcpTriedAndFailed, true, false);
 
         return response;
+    }
+
+    /**
+     * Return the set of IDs of all NameNodes for which there is at least one
+     * server with an active connection to the NameNode.
+     */
+    public synchronized Set<Long> getIDsOfConnectedNameNodes() {
+        return this.serverAndInvokerManager.getIDsOfConnectedNameNodes();
     }
 
     /**

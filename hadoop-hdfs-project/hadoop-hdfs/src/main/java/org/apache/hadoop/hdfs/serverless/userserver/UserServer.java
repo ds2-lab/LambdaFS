@@ -15,10 +15,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.exceptions.NoConnectionAvailableException;
+import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
-import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessTcpUdpFuture;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessTcpUdpFuture;
 import org.apache.hadoop.hdfs.serverless.zookeeper.ZKClient;
 
@@ -426,6 +426,13 @@ public class UserServer {
     }
 
     public int getNumActiveConnections() { return this.allActiveConnections.size(); }
+
+    /**
+     * Return the set of IDs of all NameNodes whom this server is actively connected to.
+     */
+    public synchronized Set<Long> getIDsOfConnectedNameNodes() {
+        return new HashSet<>(this.allActiveConnections.keySet());
+    }
 
     /**
      * Get the TCP connection associated with the NameNode deployment identified by the given function number.
@@ -896,7 +903,6 @@ public class UserServer {
      *                         select a target deployment/NameNode from among all available, active connections.
      * @param bypassCheck Do not check if the connection exists.
      * @param requestId The unique ID of the task/request.
-     * @param operationName The name of the FS operation we're performing.
      * @param payload The payload to send to the NameNode in the TCP request.
      * @param timeout If positive, then wait for future to resolve with a timeout.
      *                If zero, then this will return immediately if the future is not available.
@@ -907,9 +913,9 @@ public class UserServer {
      *                                        which the request previously timed-out.
      * @return The response from the NameNode, or null if the request failed for some reason.
      */
-    public Object issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, String requestId,
-                                         String operationName, TcpUdpRequestPayload payload, long timeout,
-                                         boolean tryToAvoidTargetingSameNameNode)
+    public Object issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck,
+                                         String requestId, TcpUdpRequestPayload payload,
+                                         long timeout, boolean tryToAvoidTargetingSameNameNode)
             throws ExecutionException, InterruptedException, TimeoutException, IOException {
         if (deploymentNumber == -1) {
             // Randomly select an available connection. This is implemented using existing constructs, so it

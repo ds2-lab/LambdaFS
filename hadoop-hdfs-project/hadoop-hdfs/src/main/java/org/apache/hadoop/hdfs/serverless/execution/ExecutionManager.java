@@ -181,10 +181,10 @@ public class ExecutionManager {
         long duration = System.currentTimeMillis() - start;
 
         LOG.info("Queried sizes of DirectByteBuffer memory pools in " + duration +
-                " ms. Current size: " + toGB(usage));
+                " ms. Current size: " + toGB(usage) + " GB");
 
-        if (usage >= 10e9) {
-            LOG.warn("DirectByteBuffer usage has exceeded 4GB. Attempting to perform GC now...");
+        if (usage >= 8e9) {
+            LOG.warn("DirectByteBuffer usage has exceeded 8GB. Attempting to perform GC now...");
             System.gc();
         }
     }

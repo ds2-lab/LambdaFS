@@ -86,6 +86,8 @@ public abstract class ServerlessFuture<T> implements Future<T> {
         if (LOG.isDebugEnabled()) LOG.debug("Got result for future " + requestId + ".");
 
         // Check if the NullResult object was placed in the queue, in which case we should return null.
+        // Note: This presently cannot happen, as we always make the type parameter
+        //       a NameNodeResult, and NullResult is a completely separate class.
         if (resultOrNull instanceof NullResult)
             return null;
 
@@ -100,6 +102,8 @@ public abstract class ServerlessFuture<T> implements Future<T> {
             throw new TimeoutException();
         }
 
+        // Note: This presently cannot happen, as we always make the type parameter
+        //       a NameNodeResult, and NullResult is a completely separate class.
         if (resultOrNull instanceof NullResult)
             return null;
 
