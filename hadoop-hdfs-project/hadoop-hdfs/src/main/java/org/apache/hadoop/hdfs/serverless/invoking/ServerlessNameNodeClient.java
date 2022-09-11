@@ -1419,7 +1419,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         opArguments.put("enumSetBase64", enumSetBase64);
         opArguments.put("createParent", createParent);
-        LOG.warn("Using hard-coded replication value of 1.");
+        // LOG.warn("Using hard-coded replication value of 1.");
         opArguments.put("replication", (short)1);
         opArguments.put("blockSize", blockSize);
 

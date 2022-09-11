@@ -65,7 +65,7 @@ public class UserServer {
     /**
      * Caches the active connections in lists per deployment.
      */
-    private final ConcurrentHashMap<Integer, ConcurrentHashMap<Long, NameNodeConnection>> activeConnectionsPerDeployment;
+    private final ArrayList<ConcurrentHashMap<Long, NameNodeConnection>> activeConnectionsPerDeployment;
 
     /**
      * The TCP Server maintains a collection of Futures for clients that are awaiting a response from
@@ -190,7 +190,7 @@ public class UserServer {
         this.activeFutures = new ConcurrentHashMap<>();
         this.futureToNameNodeMapping = new ConcurrentHashMap<>();
         this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
-        this.activeConnectionsPerDeployment = new ConcurrentHashMap<>();
+        this.activeConnectionsPerDeployment = new ArrayList<>();
         //this.completedFutures = new ConcurrentHashMap<>();
         this.completedFutures = Caffeine.newBuilder()
                 .maximumSize(2_500)
@@ -240,7 +240,7 @@ public class UserServer {
 
         // Populate the active connections mapping with default, empty hash maps for each deployment.
         for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {
-            activeConnectionsPerDeployment.put(deployNum, new ConcurrentHashMap<>());
+            activeConnectionsPerDeployment.add(new ConcurrentHashMap<>());
         }
 
         // Create the TCP server.
@@ -453,8 +453,7 @@ public class UserServer {
      *
      * @return a random, active connection if one exists. Otherwise, returns null.
      */
-    private NameNodeConnection getRandomConnection(int deploymentNumber)
-            throws NoConnectionAvailableException {
+    private NameNodeConnection getRandomConnection(int deploymentNumber) throws NoConnectionAvailableException {
         ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
@@ -632,8 +631,9 @@ public class UserServer {
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
         if (deploymentConnections == null)
-            throw new IllegalStateException("Mapping of NameNode IDs to associated TCP connections is null for deployment " +
-                    deploymentNumber + ". Valid deployments: " + StringUtils.join(",", activeConnectionsPerDeployment.keySet()) + ".");
+            throw new IllegalStateException(
+                    "Mapping of NameNode IDs to associated TCP connections is null for deployment " +
+                            deploymentNumber + ".");
 
         return deploymentConnections.size() > 0;
     }
@@ -659,8 +659,9 @@ public class UserServer {
                 activeConnectionsPerDeployment.get(deploymentNumber);
 
         if (deploymentConnections == null)
-            throw new IllegalStateException("Mapping of NameNode IDs to associated TCP connections is null for deployment " +
-                    deploymentNumber + ". Valid deployments: " + StringUtils.join(",", activeConnectionsPerDeployment.keySet()) + ".");
+            throw new IllegalStateException(
+                    "Mapping of NameNode IDs to associated TCP connections is null for deployment " +
+                    deploymentNumber + ".");
 
         // If we still have a connection to the specified NN, then we need to have at least one other connection.
         // If we do not stil have such a connection, then having any connections at all would suffice.
@@ -711,29 +712,14 @@ public class UserServer {
         StringBuilder msg = new StringBuilder("Num Active Connections: " + numActiveConnections + ", Active Futures: " +
                 activeFutures.size() + ", Completed Futures: " + completedFutures.asMap().size() + ". ");
 
-//        LOG.debug("========== TCP Server Debug Information ==========");
-//        LOG.debug("CONNECTIONS:");
-//        LOG.debug("     Number of active connections: " + allActiveConnections.size());
-//        LOG.debug("     Connected to:");
-        for (Map.Entry<Integer, ConcurrentHashMap<Long, NameNodeConnection>> entry : activeConnectionsPerDeployment.entrySet()) {
-            int deploymentNumber = entry.getKey();
-            ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = entry.getValue();
+        // for (Map.Entry<Integer, ConcurrentHashMap<Long, NameNodeConnection>> entry : activeConnectionsPerDeployment.entrySet()) {
+        for (int deploymentNumber = 0; deploymentNumber < totalNumberOfDeployments; deploymentNumber++) {
+            // int deploymentNumber = entry.getKey();
+            // ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = entry.getValue();
+            ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = activeConnectionsPerDeployment.get(deploymentNumber);
             nnIds.addAll(deploymentConnections.keySet());
             msg.append("D ").append(deploymentNumber).append(": ").append(deploymentConnections.size()).append(", ");
-//            LOG.debug("     Deployment #" + deploymentNumber + ": ");
-//
-//            if (deploymentConnections.size() == 0) {
-//                LOG.debug("               No connections established");
-//                continue;
-//            }
-//
-//            ConcurrentHashMap.KeySetView<Long, NameNodeConnection> keySetView = deploymentConnections.keySet();
-//            keySetView.forEach(funcName -> LOG.debug("               " + funcName));
         }
-//        LOG.debug("FUTURES:");
-//        LOG.debug("     Number of active futures: " + activeFutures.size());
-//        LOG.debug("     Number of completed futures: " + completedFutures.asMap().size());
-//        LOG.debug("==================================================");
 
         LOG.info(msg);
         return numActiveConnections;
