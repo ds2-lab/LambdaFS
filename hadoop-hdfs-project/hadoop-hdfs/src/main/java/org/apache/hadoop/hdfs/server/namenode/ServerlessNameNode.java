@@ -1723,7 +1723,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       policy = new EncodingPolicy(codec, targetReplication);
     }
 
-    LOG.info("Create Arguments:\n   src = " + src + "\n   clientName = "+ clientName + "\n   createParent = " +
+    if (LOG.isDebugEnabled())
+      LOG.debug("Create Arguments:\n   src = " + src + "\n   clientName = "+ clientName + "\n   createParent = " +
             createParent + "\n   replication = " + replication + "\n   blockSize = " + blockSize);
 
     if (!checkPathLength(src)) {
