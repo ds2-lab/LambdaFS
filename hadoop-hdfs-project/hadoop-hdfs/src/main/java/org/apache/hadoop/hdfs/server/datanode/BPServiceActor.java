@@ -167,7 +167,7 @@ class BPServiceActor implements Runnable {
 
         JsonObject response = ServerlessInvokerBase.issueHttpRequestWithRetries(
                 serverlessInvoker, "versionRequest", dnConf.serverlessEndpoint,
-                null, fsArgs, null, -1);
+                null, fsArgs, null, -1, false);
 
         LOG.info("responseJson = " + response.toString());
 

@@ -158,13 +158,15 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
      *                  passed a null, then a random ID is generated.
      * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
      *                         cache entry exists.
+     * @param subtreeOperation If true, use a longer timeout.
      * @return The response from the serverless NameNode.
      */
     @Override
     public ServerlessHttpFuture enqueueHttpRequest(String operationName, String functionUriBase,
                                                    HashMap<String, Object> nameNodeArguments,
                                                    ArgumentContainer fileSystemOperationArguments,
-                                                   String requestId, int targetDeployment)
+                                                   String requestId, int targetDeployment,
+                                                   boolean subtreeOperation)
             throws IOException, IllegalStateException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
@@ -179,7 +181,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
             requestId = UUID.randomUUID().toString();
 
         JsonObject fsArgs = fileSystemOperationArguments.convertToJsonObject();
-        return enqueueHttpRequestInt(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment);
+        return enqueueHttpRequestInt(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment, subtreeOperation);
     }
 
     @Override
@@ -204,38 +206,16 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                         " batch(es) of requests to Deployment " + i);
 
                 for (JsonObject requestBatch : deploymentBatches) {
-                    // This is the top-level JSON object passed along with the HTTP POST request.
-                    JsonObject topLevel = new JsonObject();
+                    String requestUri = getFunctionUri(functionUriBase, i, null);
 
-                    JsonObject nameNodeArguments = new JsonObject();
-                    nameNodeArguments.add(BATCH, requestBatch);
-                    addStandardArguments(nameNodeArguments);
-
-                    // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
-                    // within the HTTP POST request. They should be included with the key "value".
-                    topLevel.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
-
-                    String requestUri = getFunctionUri(functionUriBase, i, topLevel);
-                    HttpPost request = new HttpPost(requestUri);
-                    request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
-
-                    // Prepare the HTTP POST request.
-                    StringEntity parameters = new StringEntity(topLevel.toString());
-                    request.setEntity(parameters);
-                    request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
-
-                    try {
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Issuing batched HTTP request to deployment " + i +
-                                    " with URI = " + requestUri + ", requestIDs = " +
-                                    StringUtils.join(", ", requestBatch.keySet()));
-                        }
-
-                        doInvoke(request, topLevel, requestBatch.keySet());
-                        totalNumBatchedRequestsIssued++;
-                    } catch (IOException ex) {
-                        LOG.error("Encountered IOException while issuing batched HTTP request:", ex);
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Issuing batched HTTP request to deployment " + i +
+                                " with URI = " + requestUri + ", requestIDs = " +
+                                StringUtils.join(", ", requestBatch.keySet()));
                     }
+
+                    prepareAndInvokeRequestBatch(requestBatch, requestUri, authorizationString);
+                    totalNumBatchedRequestsIssued++;
                 }
             }
         }

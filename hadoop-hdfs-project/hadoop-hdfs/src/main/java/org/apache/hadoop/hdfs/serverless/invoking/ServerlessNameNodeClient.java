@@ -539,10 +539,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *                        which we'd miss the result if it arrived.
      *
      *                        We do not include the 'backoffInterval' if 'stragglerResubmissionAlreadyOccurred' is False.
+     * @param subtreeOperation If true, use a much longer timeout.
      *
      * @return The timeout to use for the next TCP request.
      */
-    private long calculateRequestTimeout(boolean stragglerResubmissionAlreadyOccurred, long backoffInterval) {
+    private long calculateRequestTimeout(boolean stragglerResubmissionAlreadyOccurred, long backoffInterval,
+                                         boolean subtreeOperation) {
+        if (subtreeOperation)
+            return 720000; // 12 Minutes.
+
         long requestTimeout;
         if (stragglerMitigationEnabled && !stragglerResubmissionAlreadyOccurred) {
             // First, calculate the potential timeout using the current average latency and the threshold factor.
@@ -572,11 +577,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param userServer The server with which to issue the TCP request. This will almost always be the request.
      * @param requestId The unique ID of this request. If we end up falling back to HTTP, then the HTTP request
      *                  will use the same request ID.
+     * @param subtreeOperation If true, use a [much] longer request timeout.
      *
      * @return The response from the NameNode.
      */
     private Object issueTCPRequest(String operationName, ArgumentContainer opArguments,
-                                   int targetDeployment, UserServer userServer, String requestId)
+                                   int targetDeployment, UserServer userServer, String requestId,
+                                   boolean subtreeOperation)
             throws InterruptedException, ExecutionException, IOException {
         long opStart = System.currentTimeMillis();
 
@@ -600,7 +607,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         long backoffInterval = exponentialBackOff.getBackOffInMillis();
         int maxRetries = exponentialBackOff.getMaximumRetries();
         while (backoffInterval >= 0) {
-            long requestTimeout = calculateRequestTimeout(stragglerResubmissionAlreadyOccurred, backoffInterval);
+            long requestTimeout = calculateRequestTimeout(
+                    stragglerResubmissionAlreadyOccurred, backoffInterval, subtreeOperation);
 
             long localStart;
             try {
@@ -746,10 +754,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *
      * @param operationName The name of the FS operation that the NameNode should perform.
      * @param opArguments The arguments to be passed to the specified file system operation.
-     *
-     * @return The result of executing the desired FS operation on the NameNode.
+     * @param subtreeOperation If true, then the timeout for requests is adjusted, as subtree operations can take
+     *                         a very long time, depending on the size of the subtree.
+     * @return
      */
-    private Object submitOperationToNameNode(String operationName, ArgumentContainer opArguments)
+    private Object submitOperationToNameNode(String operationName, ArgumentContainer opArguments,
+                                             boolean subtreeOperation)
             throws IOException, InterruptedException, ExecutionException {
         // Check if there's a source directory parameter, as this is the file or directory that could
         // potentially be mapped to a serverless function.
@@ -820,7 +830,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 if (targetServer != null) {
                     try {
-                        return issueTCPRequest(operationName, opArguments, targetDeploymentTcp, targetServer, requestId);
+                        return issueTCPRequest(operationName, opArguments, targetDeploymentTcp,
+                                targetServer, requestId, subtreeOperation);
                     } catch (IOException ex) {
                         // There are two reasons an IOException may occur for which we can handle things "cleanly".
                         //
@@ -863,7 +874,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         JsonObject response = ServerlessInvokerBase.issueHttpRequestWithRetries(
                 serverlessInvoker, operationName, dfsClient.serverlessEndpoint,
-                null, opArguments, requestId, targetDeployment);
+                null, opArguments, requestId, targetDeployment, subtreeOperation);
 
         if (response == null)
             throw new IOException("Received null response from NameNode for Request " + requestId + ", op=" +
@@ -884,6 +895,23 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     tcpTriedAndFailed, true, false);
 
         return response;
+    }
+
+    /**
+     * This is the function that is used to submit a file system operation to a NameNode. This is done either via
+     * TCP directly to a NameNode in the target deployment or via an HTTP invocation through OpenWhisk (or whatever
+     * serverless platform is being used).
+     *
+     * This function should only be used for non-subtree operations.
+     *
+     * @param operationName The name of the FS operation that the NameNode should perform.
+     * @param opArguments The arguments to be passed to the specified file system operation.
+     *
+     * @return The result of executing the desired FS operation on the NameNode.
+     */
+    private Object submitOperationToNameNode(String operationName, ArgumentContainer opArguments)
+            throws IOException, InterruptedException, ExecutionException {
+        return this.submitOperationToNameNode(operationName, opArguments, false);
     }
 
     /**
@@ -1685,7 +1713,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             submitOperationToNameNode(
                     "rename",
                     // We do not have any additional/non-default arguments to pass to the NN.
-                    opArguments);
+                    opArguments, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation rename to NameNode:", ex);
             throw new IOException("Exception encountered while submitting operation rename to NameNode.");
@@ -1730,7 +1758,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             submitOperationToNameNode(
                     "rename", // Not rename2, we just map 'rename' to 'renameTo' or 'rename2' or whatever
                     // We do not have any additional/non-default arguments to pass to the NN.
-                    opArguments);
+                    opArguments, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation rename to NameNode:", ex);
         }
@@ -1774,7 +1802,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             responseFromNN = submitOperationToNameNode(
                     "delete",
                     // We do not have any additional/non-default arguments to pass to the NN.
-                    opArguments);
+                    opArguments, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation delete to NameNode:", ex);
             throw new IOException("Exception encountered while submitting operation delete to NameNode.");
@@ -2139,9 +2167,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                     "prewarm",
                                     dfsClient.serverlessEndpoint,
                                     null, // We do not have any additional/non-default arguments to pass to the NN.
-                                    new ArgumentContainer(),
-                                    requestId,
-                                    depNum);
+                                    new ArgumentContainer(), requestId, depNum, false);
                             future.get();
                         } catch (IOException | InterruptedException | ExecutionException e) {
                             e.printStackTrace();
@@ -2175,9 +2201,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 "ping",
                 dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
-                new ArgumentContainer(),
-                requestId,
-                targetDeployment);
+                new ArgumentContainer(), requestId, targetDeployment, false);
 
         try {
             future.get();

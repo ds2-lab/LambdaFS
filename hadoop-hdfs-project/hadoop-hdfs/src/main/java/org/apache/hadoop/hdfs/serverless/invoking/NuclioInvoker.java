@@ -60,7 +60,8 @@ public class NuclioInvoker extends ServerlessInvokerBase {
     public ServerlessHttpFuture enqueueHttpRequest(String operationName, String functionUriBase,
                                                    HashMap<String, Object> nameNodeArguments,
                                                    ArgumentContainer fileSystemOperationArguments,
-                                                   String requestId, int targetDeployment)
+                                                   String requestId, int targetDeployment,
+                                                   boolean subtreeOperation)
             throws IOException, IllegalStateException {
         // These are the arguments given to the {@link org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode}
         // object itself. That is, these are NOT the arguments for the particular file system operation that we
@@ -76,7 +77,8 @@ public class NuclioInvoker extends ServerlessInvokerBase {
         JsonObject fsArgs = fileSystemOperationArguments.convertToJsonObject();
         HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fsArgs));
 
-        return enqueueHttpRequestInt(operationName, nameNodeArgumentsJson, fsArgs, requestId, targetDeployment);
+        return enqueueHttpRequestInt(operationName, nameNodeArgumentsJson, fsArgs, requestId,
+                targetDeployment, subtreeOperation);
     }
 
     private String getFunctionUri(int targetDeployment, JsonObject fileSystemOperationArguments) {

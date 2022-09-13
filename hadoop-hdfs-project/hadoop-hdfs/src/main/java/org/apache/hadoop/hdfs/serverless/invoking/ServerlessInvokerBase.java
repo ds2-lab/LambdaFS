@@ -91,6 +91,8 @@ import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.ext
 public abstract class ServerlessInvokerBase {
     private static final Log LOG = LogFactory.getLog(ServerlessInvokerBase.class);
 
+    private static final String CONTAINS_SUBTREE_OP = "CONTAINS_SUBTREE_OP";
+
     protected Registry<ConnectionSocketFactory> registry;
 
     private static final Random rng = new Random();
@@ -100,7 +102,13 @@ public abstract class ServerlessInvokerBase {
      * If an error occurs during processing, then these already-processed requests can be cancelled rather
      * than having the request fail silently.
      */
-    protected static ThreadLocal<Set<String>> processedRequestIds = new ThreadLocal<>();
+    protected static Set<String> processedRequestIds = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Request IDs enqueued for submission that are subtree operations, and thus will need to be
+     * submitted with a higher request timeout than usual.
+     */
+    protected static Set<String> subtreeRequests = ConcurrentHashMap.newKeySet();
 
     /**
      * Store the statistics packages from serverless name nodes in this HashMap.
@@ -293,8 +301,6 @@ public abstract class ServerlessInvokerBase {
         if (batchedRequests.size() > 0)
             throw new IllegalArgumentException("The batchedRequests list must be initially empty.");
 
-        Set<String> _processedRequestIds = processedRequestIds.get();
-
         // Iterate over the request queue for each of the deployments.
         // For each queue, we check if it has at least one enqueued request.
         // If there are none, then we skip that queue.
@@ -331,6 +337,9 @@ public abstract class ServerlessInvokerBase {
 
                     String requestId = request.get(REQUEST_ID).getAsString();
 
+                    if (subtreeRequests.contains(requestId))
+                        currentBatch.addProperty(CONTAINS_SUBTREE_OP, true);
+
                     currentBatch.add(requestId, request);
                     totalNumRequests++;
 
@@ -348,12 +357,13 @@ public abstract class ServerlessInvokerBase {
                     }
 
                     // The request has been fully processed and is ready to be sent, so add it to the set.
-                    _processedRequestIds.add(requestId);
+                    processedRequestIds.add(requestId);
                 }
             }
         }
 
-        if (LOG.isTraceEnabled() && totalNumRequests > 0) LOG.trace("Partitioned a total of " + totalNumRequests + " request(s) into batches.");
+        if (LOG.isTraceEnabled() && totalNumRequests > 0) LOG.trace("Partitioned a total of " + totalNumRequests +
+                " request(s) into batches.");
         return totalNumRequests;
     }
 
@@ -366,8 +376,8 @@ public abstract class ServerlessInvokerBase {
         String json = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
         Gson gson = new Gson();
 
-        JsonObject jsonObjectResponse = null;
-        JsonPrimitive jsonPrimitiveResponse = null;
+        JsonObject jsonObjectResponse;
+        JsonPrimitive jsonPrimitiveResponse;
 
         // If there was an OpenWhisk error, like a 502 Bad Gateway (for example), then this will
         // be a JsonPrimitive object. Specifically, it'd be a String containing the error message.
@@ -517,20 +527,15 @@ public abstract class ServerlessInvokerBase {
      * {@link ServerlessInvokerBase#sendInterval} milliseconds.
      */
     private void scheduledRequestProcessor() {
-        // Each time we process the enqueued requests, we clear this set.
-        Set<String> _processedRequestIds = processedRequestIds.get();
-        if (_processedRequestIds == null) {
-            _processedRequestIds = new HashSet<>();
-            processedRequestIds.set(_processedRequestIds);
-        } else {
-            _processedRequestIds.clear();
-        }
-
         try {
             sendEnqueuedRequests();
         } catch (Exception e) {
             LOG.error("Exception encountered while issuing HTTP requests:", e);
-            handleAlreadyProcessedRequestsOnException(_processedRequestIds);
+            handleAlreadyProcessedRequestsOnException();
+        } finally {
+            // Each time we process the enqueued requests, we clear this set and the subtreeRequests set.
+            processedRequestIds.clear();
+            subtreeRequests.clear();
         }
     }
 
@@ -538,12 +543,12 @@ public abstract class ServerlessInvokerBase {
      * If an exception occurs while preparing enqueued HTTP requests to be transmitted,
      * then the already-processed HTTP requests need to be cancelled.
      */
-    private void handleAlreadyProcessedRequestsOnException(Set<String> _processedRequestIds) {
+    private void handleAlreadyProcessedRequestsOnException() {
         LOG.warn("The following requests have already been processed and must now be cancelled: " +
-                StringUtils.join(", ", _processedRequestIds));
+                StringUtils.join(", ", processedRequestIds));
 
         int totalNumFuturesCancelled = 0;
-        for (String requestId : _processedRequestIds) {
+        for (String requestId : processedRequestIds) {
             ServerlessHttpFuture future = futures.get(requestId);
             if (future != null) {
                 // TODO: Change this to trace.
@@ -554,7 +559,7 @@ public abstract class ServerlessInvokerBase {
         }
 
         if (LOG.isDebugEnabled()) LOG.debug("Cancelled " + totalNumFuturesCancelled + "/" +
-                _processedRequestIds.size() + " future(s).");
+                processedRequestIds.size() + " future(s).");
     }
 
     /**
@@ -606,6 +611,7 @@ public abstract class ServerlessInvokerBase {
      *                  passed a null, then a random ID is generated.
      * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
      *                         cache entry exists.
+     * @param subtreeOperation If true, use a longer timeout.
      *
      * @return An instance of {@link ServerlessHttpFuture}, which will eventually be populated with the response from
      * the Serverless NameNode that ultimately received the HTTP request.
@@ -613,7 +619,8 @@ public abstract class ServerlessInvokerBase {
     public abstract ServerlessHttpFuture enqueueHttpRequest(String operationName, String functionUriBase,
                                                             HashMap<String, Object> nameNodeArguments,
                                                             ArgumentContainer fileSystemOperationArguments,
-                                                            String requestId, int targetDeployment)
+                                                            String requestId, int targetDeployment,
+                                                            boolean subtreeOperation)
             throws IOException, IllegalStateException;
 
     /**
@@ -631,6 +638,7 @@ public abstract class ServerlessInvokerBase {
      *                  passed a null, then a random ID is generated.
      * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
      *                         cache entry exists.
+     * @param subtreeOperation If true, use a longer timeout as subtree operations can take a long time.
      *
      * @return An instance of {@link ServerlessHttpFuture}, which will eventually be populated with the response from
      * the Serverless NameNode that ultimately received the HTTP request.
@@ -638,7 +646,8 @@ public abstract class ServerlessInvokerBase {
     protected ServerlessHttpFuture enqueueHttpRequestInt(String operationName,
                                                          JsonObject nameNodeArguments,
                                                          JsonObject fileSystemOperationArguments,
-                                                         String requestId, int targetDeployment)
+                                                         String requestId, int targetDeployment,
+                                                         boolean subtreeOperation)
             throws IllegalStateException {
         if (!hasBeenConfigured())
             throw new IllegalStateException("Serverless Invoker has not yet been configured! " +
@@ -659,6 +668,9 @@ public abstract class ServerlessInvokerBase {
         if (LOG.isDebugEnabled()) LOG.debug("Enqueuing HTTP request " + requestId +
                 " for submission with deployment " + targetDeployment);
         enqueueRequest(nameNodeArguments, targetDeployment);
+
+        if (subtreeOperation)
+            subtreeRequests.add(requestId);
 
         ServerlessHttpFuture future = new ServerlessHttpFuture(requestId, operationName);
         futures.put(requestId, future);
@@ -700,12 +712,13 @@ public abstract class ServerlessInvokerBase {
      *                  passed a null, then a random ID is generated.
      * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
      *                         cache entry exists.
+     * @param subtreeOperation If this is a subtree operation, then the timeout needs to be adjusted.
      * @return The response from the Serverless NameNode.
      */
     public static JsonObject issueHttpRequestWithRetries(ServerlessInvokerBase invokerInstance, String operationName,
                                                    String functionUriBase, HashMap<String, Object> nameNodeArguments,
                                                    ArgumentContainer fileSystemOperationArguments,
-                                                   String requestId, int targetDeployment)
+                                                   String requestId, int targetDeployment, boolean subtreeOperation)
             throws IOException {
         long invokeStart = System.nanoTime();
 
@@ -737,7 +750,7 @@ public abstract class ServerlessInvokerBase {
 
         do {
             ServerlessHttpFuture future = invokerInstance.enqueueHttpRequest(operationName, functionUriBase,
-                    nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment);
+                    nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment, subtreeOperation);
 
             JsonObject response;
             try {
@@ -784,6 +797,55 @@ public abstract class ServerlessInvokerBase {
         throw new IOException("The file system operation could not be completed. " +
                 "Failed to invoke Serverless NameNode " + targetDeployment + " after " +
                 invokerInstance.maxHttpRetries + " attempts.");
+    }
+
+    /**
+     * Package up a batch of requests and send them to the target deployment via an HTTP request.
+     *
+     * @param requestBatch The batch of requests we're sending.
+     * @param requestUri The HTTP endpoint of the target deployment.
+     * @param authorizationString Included with the request. Used for authorizing the request.
+     */
+    protected void prepareAndInvokeRequestBatch(JsonObject requestBatch, String requestUri, String authorizationString)
+            throws SocketException, UnknownHostException, UnsupportedEncodingException {
+        // This is the top-level JSON object passed along with the HTTP POST request.
+        JsonObject topLevel = new JsonObject();
+        HttpPost request = new HttpPost(requestUri);
+        request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + authorizationString);
+
+        // Check if the batch has a flag on it indicating that it contains a subtree operation.
+        if (requestBatch.has(CONTAINS_SUBTREE_OP)) {
+            // Remove the flag so that it doesn't get confused as being an actual request.
+            requestBatch.remove(CONTAINS_SUBTREE_OP);
+
+            request.setConfig(RequestConfig
+                    .custom()
+                    .setConnectTimeout(httpTimeoutMilliseconds)
+                    .setConnectionRequestTimeout(httpTimeoutMilliseconds)
+                    .setSocketTimeout(720000) // 12 minutes.
+                    .build());
+        }
+
+        JsonObject nameNodeArguments = new JsonObject();
+        nameNodeArguments.add(BATCH, requestBatch);
+        addStandardArguments(nameNodeArguments);
+
+        // OpenWhisk expects the arguments for the serverless function handler to be included in the JSON contained
+        // within the HTTP POST request. They should be included with the key "value".
+        topLevel.add(ServerlessNameNodeKeys.VALUE, nameNodeArguments);
+
+        // String requestUri = getFunctionUri(functionUriBase, i, topLevel);
+
+        // Prepare the HTTP POST request.
+        StringEntity parameters = new StringEntity(topLevel.toString());
+        request.setEntity(parameters);
+        request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+
+        try {
+            doInvoke(request, topLevel, requestBatch.keySet());
+        } catch (IOException ex) {
+            LOG.error("Encountered IOException while issuing batched HTTP request:", ex);
+        }
     }
 
     /**
@@ -945,9 +1007,7 @@ public abstract class ServerlessInvokerBase {
                 }
         };
 
-        TrustStrategy acceptingTrustStrategy = (x509Certificates, s) -> {
-            return true;
-        };
+        TrustStrategy acceptingTrustStrategy = (x509Certificates, s) -> true;
         SSLContext sslContext = org.apache.http.ssl.SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
         sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
         // SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext, new NoopHostnameVerifier());
@@ -963,7 +1023,7 @@ public abstract class ServerlessInvokerBase {
 
         IOReactorConfig ioReactorConfig = IOReactorConfig.custom()
                 .setSelectInterval(Math.max(httpTimeoutMilliseconds / 10, 1000)) // Default is 1000
-                .setSoTimeout(httpTimeoutMilliseconds)
+                // .setSoTimeout(httpTimeoutMilliseconds)
                 .setConnectTimeout(httpTimeoutMilliseconds)
                 .build();
 
@@ -1015,15 +1075,15 @@ public abstract class ServerlessInvokerBase {
             requestId = "N/A";
 
         // First, let's check and see if there's any information about file/directory-to-function mappings.
-        if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_MAPPING) && cache != null) {
-            JsonObject functionMapping = response.getAsJsonObject(ServerlessNameNodeKeys.DEPLOYMENT_MAPPING);
-
-            String src = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FILE_OR_DIR).getAsString();
-            long parentINodeId = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.PARENT_ID).getAsLong();
-            int function = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION).getAsInt();
-
-            // cache.addEntry(src, function, false);
-        }
+//        if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_MAPPING) && cache != null) {
+//            JsonObject functionMapping = response.getAsJsonObject(ServerlessNameNodeKeys.DEPLOYMENT_MAPPING);
+//
+//            String src = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FILE_OR_DIR).getAsString();
+//            long parentINodeId = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.PARENT_ID).getAsLong();
+//            int function = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION).getAsInt();
+//
+//            // cache.addEntry(src, function, false);
+//        }
 
         // Print any exceptions that were encountered first.
         if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {
