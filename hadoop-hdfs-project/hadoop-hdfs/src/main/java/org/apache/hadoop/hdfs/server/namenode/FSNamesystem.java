@@ -3748,12 +3748,16 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       throw new NotALeaderException("Quota enabled. Delete operation can only be performed on a " +
               "leader namenode");
     }
-    
-    boolean ret = false;
+
+    long start = System.currentTimeMillis();
+
+    boolean ret;
     try {
       checkNameNodeSafeMode("Cannot delete " + src);
       ret = FSDirDeleteOp.delete(
           this, src, recursive);
+
+      LOG.info("Successfully deleted '" + src + "' in " + (System.currentTimeMillis() - start) + "ms.");
     } catch (AccessControlException e) {
       logAuditEvent(false, "delete", src);
       throw e;
