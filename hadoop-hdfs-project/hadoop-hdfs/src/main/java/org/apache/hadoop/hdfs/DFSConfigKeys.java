@@ -377,7 +377,10 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * Serverless NameNodes to execute it in-parallel. We send each other Serverless NN this many paths to delete.
    */
   public static final String SERVERLESS_SUBTREE_DELETE_BATCH_SIZE = "serverless.subtree.delete.batchsize";
-  public static final int SERVERLESS_SUBTREE_DELETE_BATCH_SIZE_DEFAULT = 128;
+  public static final int SERVERLESS_SUBTREE_DELETE_BATCH_SIZE_DEFAULT = 1024;
+
+  public static final String SERVERLESS_SUBTREE_DELETE_BATCH_SIZE_LARGE = "serverless.subtree.delete.batchsize.large";
+  public static final int SERVERLESS_SUBTREE_DELETE_BATCH_SIZE_LARGE_DEFAULT = 16384;
 
   /**
    * When enabled, we "spoof" network operations to NDB. This is expected to be done exclusively

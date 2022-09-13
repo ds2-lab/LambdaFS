@@ -60,6 +60,7 @@ class FSDirDeleteOp {
    * Serverless NameNodes to execute it in-parallel. We send each other Serverless NN this many paths to delete.
    */
   public static int SUBTREE_DELETE_BATCH_SIZE;
+  public static int SUBTREE_DELETE_BATCH_SIZE_LARGE;
 
   /**
    * Delete the target directory and collect the blocks under it
@@ -242,7 +243,9 @@ class FSDirDeleteOp {
     List<ProjectedINode> emptyDirs = new ArrayList();
 
     for (final ProjectedINode dir : fileTree.getDirsByLevel(level)) {
-      int numChildren = fileTree.countChildren(dir.getId());
+      Collection<ProjectedINode> children = fileTree.getChildren(dir.getId());
+      int numChildren = children.size();
+
       if (LOG.isDebugEnabled()) LOG.debug("Children in directory (id=" + dir.getId() + "): " + numChildren);
       if (numChildren <= BIGGEST_DELETABLE_DIR) { // Can we delete the directory directly?
         if (LOG.isDebugEnabled()) LOG.debug("Directory " + dir.getId() + " has less than " + BIGGEST_DELETABLE_DIR + " children. Can delete it directly.");
@@ -255,14 +258,19 @@ class FSDirDeleteOp {
         // Delete the content of the directory one by one.
         LOG.debug("Directory " + dir.getId() + " has too many child files (" + numChildren +
                 "). Deleting content of directory one-by-one.");
-
-        Collection<ProjectedINode> children = fileTree.getChildren(dir.getId());
-
         ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+
+        int BATCH_SIZE;
+
+        // Depending on how large the directory is, we'll use a different batch size.
+        if (numChildren >= 131072)
+          BATCH_SIZE = SUBTREE_DELETE_BATCH_SIZE_LARGE;
+        else
+          BATCH_SIZE = SUBTREE_DELETE_BATCH_SIZE;
 
         // If we cannot get the instance for some reason (shouldn't happen), or if there just aren't enough files
         // to batch across multiple NNs, then we'll perform the delete operations locally.
-        if (instance == null || children.size() <= SUBTREE_DELETE_BATCH_SIZE) {
+        if (instance == null || numChildren <= BATCH_SIZE) {
           // These if statements are just to determine what message to log.
           if (instance == null)
             LOG.error("Cannot retrieve singleton ServerlessNameNode instance for batched subtree delete.");
@@ -280,11 +288,12 @@ class FSDirDeleteOp {
         }
         else {
           List<String[]> batches = new ArrayList<>();
-          String[] currentBatch = new String[SUBTREE_DELETE_BATCH_SIZE];
+          String[] currentBatch = new String[BATCH_SIZE];
 
-          if (LOG.isDebugEnabled()) LOG.debug("Splitting the " + children.size() + " child files into " + children.size() / SUBTREE_DELETE_BATCH_SIZE + " batches of size ~" + SUBTREE_DELETE_BATCH_SIZE + ".");
+          if (LOG.isDebugEnabled()) LOG.debug("Splitting the " + numChildren + " child files into " +
+                  numChildren / BATCH_SIZE + " batches of size ~" + BATCH_SIZE + ".");
 
-          // Create batches of paths of size 'SUBTREE_DELETE_BATCH_SIZE'.
+          // Create batches of paths of size 'BATCH_SIZE'.
           // We will partition these batches across multiple other NameNodes in order to complete them in-parallel.
           // I do this manually rather than using the `partition` function from commons.collections or Guava so that
           // we can construct the paths for the various nodes as we go.
@@ -301,9 +310,9 @@ class FSDirDeleteOp {
             final String path = fileTree.createAbsolutePath(subtreeRootPath, node);
             currentBatch[idx++] = path;
 
-            if (idx >= SUBTREE_DELETE_BATCH_SIZE) {
+            if (idx >= BATCH_SIZE) {
               batches.add(currentBatch);
-              currentBatch = new String[SUBTREE_DELETE_BATCH_SIZE];
+              currentBatch = new String[BATCH_SIZE];
               idx = 0;
             }
           }
@@ -335,7 +344,8 @@ class FSDirDeleteOp {
                 targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments());
               }
 
-              if (LOG.isDebugEnabled()) LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i + "/" + batches.size());
+              if (LOG.isDebugEnabled()) LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i +
+                      "/" + batches.size());
 
               int finalTargetDeployment = targetDeployment;
               Future<Boolean> future = executorService.submit(() -> {
