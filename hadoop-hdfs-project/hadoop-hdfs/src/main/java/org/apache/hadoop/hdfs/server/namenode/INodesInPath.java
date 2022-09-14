@@ -313,7 +313,7 @@ public class INodesInPath {
     INode[] inodes = new INode[iip.inodes.length];
     System.arraycopy(iip.inodes, 0, inodes, 0, inodes.length);
     inodes[pos] = inode;
-    return new INodesInPath(inodes, iip.path);
+    return new INodesInPath(inodes, iip.getPathBytes());
   }
 
   /**
