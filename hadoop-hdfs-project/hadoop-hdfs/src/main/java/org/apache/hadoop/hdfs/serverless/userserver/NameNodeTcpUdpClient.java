@@ -349,7 +349,7 @@ public class NameNodeTcpUdpClient {
                 }
                 else {
                     LOG.error("[TCP/UDP Client] Received object of unexpected type from client " + connection
-                                    + ". Object type: " + object.getClass().getSimpleName() + ": " + object);
+                            + ". Object type: " + object.getClass().getSimpleName() + ": " + object);
                     // Create and log the exception to be returned to the client,
                     // so they know they sent the wrong thing.
                     IllegalArgumentException ex = new IllegalArgumentException(
@@ -497,25 +497,25 @@ public class NameNodeTcpUdpClient {
                     connection.getRemoteAddressTCP());
 
         // Increase the buffer size for future TCP connections to hopefully avoid buffer overflows.
-        if (bytesSent > objectBufferSize) {
-            LOG.warn("[TCP/UDP Client] Sent object of size " + bytesSent
-                    + " bytes when object buffer is only of size " + objectBufferSize + " bytes.");
-
-            // Do not go above the max buffer size.
-            int oldBufferSize = objectBufferSize;
-            objectBufferSize = Math.min(objectBufferSize * 2, maxBufferSize);
-
-            // If we were able to increase the buffer size, then print a message indicating that
-            // we did so. If we were already at the max, then we'll print a warning, but currently
-            // we don't do anything about it, so future TCP sends of the same object size will fail.
-            if (oldBufferSize < objectBufferSize)
-                if (LOG.isDebugEnabled()) LOG.debug(
-                        "[TCP/UDP Client] Increasing buffer size of future TCP connections to " +
-                                objectBufferSize + " bytes.");
-            else
-                // TODO: What should we do if this occurs?
-                LOG.warn("[TCP/UDP Client] Already at the maximum buffer size for TCP connections...");
-        }
+//        if (bytesSent > objectBufferSize) {
+//            LOG.warn("[TCP/UDP Client] Sent object of size " + bytesSent
+//                    + " bytes when object buffer is only of size " + objectBufferSize + " bytes.");
+//
+//            // Do not go above the max buffer size.
+//            int oldBufferSize = objectBufferSize;
+//            objectBufferSize = Math.min(objectBufferSize * 2, maxBufferSize);
+//
+//            // If we were able to increase the buffer size, then print a message indicating that
+//            // we did so. If we were already at the max, then we'll print a warning, but currently
+//            // we don't do anything about it, so future TCP sends of the same object size will fail.
+//            if (oldBufferSize < objectBufferSize)
+//                if (LOG.isDebugEnabled()) LOG.debug(
+//                        "[TCP/UDP Client] Increasing buffer size of future TCP connections to " +
+//                                objectBufferSize + " bytes.");
+//            else
+//                // TODO: What should we do if this occurs?
+//                LOG.warn("[TCP/UDP Client] Already at the maximum buffer size for TCP connections...");
+//        }
     }
 
     /**
