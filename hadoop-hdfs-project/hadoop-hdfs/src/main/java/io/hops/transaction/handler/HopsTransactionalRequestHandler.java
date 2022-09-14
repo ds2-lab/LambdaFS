@@ -125,12 +125,12 @@ public abstract class HopsTransactionalRequestHandler
   @Override
   protected final boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException {
     if (!ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL) {
-      requestHandlerLOG.debug("Consistency protocol is DISABLED. Not executing consistency protocol.");
+      if (requestHandlerLOG.isDebugEnabled()) requestHandlerLOG.debug("Consistency protocol is DISABLED. Not executing consistency protocol.");
       return true;
     }
 
     if (skipConsistencyProtocol) {
-      requestHandlerLOG.debug("Skipping consistency protocol (presumably because we're within a subtree op).");
+      // requestHandlerLOG.debug("Skipping consistency protocol (presumably because we're within a subtree op).");
       return true;
     }
 

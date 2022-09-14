@@ -3425,7 +3425,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   public static boolean isNameNodeAlive(long namenodeId, Collection<ActiveNode> activeNamenodes) {
     ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
 
-    if (LOG.isDebugEnabled()) LOG.debug("Checking if NameNode " + namenodeId + " is alive...");
+    // if (LOG.isDebugEnabled()) LOG.debug("Checking if NameNode " + namenodeId + " is alive...");
 
     Collection<ActiveNode> activeNodes;
 
