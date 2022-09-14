@@ -95,16 +95,16 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
    * @param path The fully-qualified path of the desired INode.
    * @return The INode for the file/directory at the specified path, or null if the INode is not in the cache.
    */
-  private INode checkCache(String path) {
-    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
-
-    InMemoryINodeCache metadataCache = getMetadataCache();
-    if (metadataCache == null) {
-      LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
-      return null;
-    }
-    return metadataCache.getByPath(path);
-  }
+//  private INode checkCache(String path) {
+//    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+//
+//    InMemoryINodeCache metadataCache = getMetadataCache();
+//    if (metadataCache == null) {
+//      LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
+//      return null;
+//    }
+//    return metadataCache.getByPath(path);
+//  }
 
   /**
    * Check the local metadata cache for the specified INode.

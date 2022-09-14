@@ -41,6 +41,7 @@ import io.hops.metadata.hdfs.dal.*;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.resolvingcache.Cache;
 import io.hops.transaction.EntityManager;
+import io.hops.transaction.context.EntityContext;
 import io.hops.transaction.context.RootINodeCache;
 import io.hops.transaction.handler.EncodingStatusOperationType;
 import io.hops.transaction.handler.HDFSOperationType;
@@ -8302,10 +8303,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
   public INode getINode(String path)
       throws UnresolvedLinkException, StorageException,
       TransactionContextException {
-    // First, try to serve the node directly from the metadata cache. If this fails (i.e., if the
-    INode node = metadataCacheManager.getINodeCache().getByPath(path);
-    if (node != null)
-      return node;
+    // Make sure the cache is enabled first before using it...
+    if (EntityContext.areMetadataCacheReadsEnabled()) {
+      // Try to serve the node directly from the metadata cache.
+      INode node = metadataCacheManager.getINodeCache().getByPath(path);
+      if (node != null)
+        return node;
+    }
 
     // If we were unable to serve the INode from our cache, then we'll go about it the ordinary way.
     INodesInPath inodesInPath = dir.getINodesInPath4Write(path);

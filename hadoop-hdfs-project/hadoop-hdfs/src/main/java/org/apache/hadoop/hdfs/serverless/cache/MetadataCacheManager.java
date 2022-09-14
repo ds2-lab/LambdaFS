@@ -98,7 +98,7 @@ public class MetadataCacheManager {
     }
 
     public boolean invalidateINode(String key, boolean skipCheck) {
-        INode node = inodeCache.getByPath(key);
+        INode node = inodeCache.getByPathNoMetrics(key);
 
         if (node != null) {
             long inodeId = node.getId();

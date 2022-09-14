@@ -266,9 +266,9 @@ class FSDirDeleteOp {
 
         // Depending on how large the directory is, we'll use a different batch size.
         if (numChildren >= 131072)
-          BATCH_SIZE = SUBTREE_DELETE_BATCH_SIZE_LARGE;
+          BATCH_SIZE = Integer.MAX_VALUE; // SUBTREE_DELETE_BATCH_SIZE_LARGE;
         else
-          BATCH_SIZE = SUBTREE_DELETE_BATCH_SIZE;
+          BATCH_SIZE = Integer.MAX_VALUE; // SUBTREE_DELETE_BATCH_SIZE;
 
         // If we cannot get the instance for some reason (shouldn't happen), or if there just aren't enough files
         // to batch across multiple NNs, then we'll perform the delete operations locally.

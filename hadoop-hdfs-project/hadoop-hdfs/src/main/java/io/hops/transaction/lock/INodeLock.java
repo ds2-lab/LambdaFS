@@ -214,41 +214,41 @@ public class INodeLock extends BaseINodeLock {
    *
    * @return The resolved INodes.
    */
-  private List<INode> resolveUsingServerlessMetadataCache(String path, boolean exitOnFirstMiss) {
-    LOG.debug("Attempting to resolve INodes using in-memory cache for path '" + path + "'.");
-
-    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
-
-    if (instance == null) {
-      LOG.warn("Cannot get access to ServerlessNameNode instance, and thus cannot use in-memory cache.");
-
-      return null;
-    }
-
-    InMemoryINodeCache metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
-    List<INode> resolvedINodes = new ArrayList<INode>();
-    List<String> fullPathComponents = INode.getFullPathComponents(path);
-
-    for (String pathComponentFullPath : fullPathComponents) {
-      if (LOG.isDebugEnabled()) LOG.debug("Checking cache for component '" + pathComponentFullPath + "'");
-      INode cachedINode = metadataCache.getByPath(pathComponentFullPath);
-
-      if (cachedINode == null) {
-        if (LOG.isDebugEnabled()) LOG.debug("Path component '" + pathComponentFullPath + "' was NOT cached locally.");
-
-        // This will almost always be true.
-        if (exitOnFirstMiss)
-          return null;
-      } else {
-        if (LOG.isDebugEnabled()) LOG.debug("Path component '" + pathComponentFullPath + "' WAS cached locally.");
-        resolvedINodes.add(cachedINode);
-      }
-    }
-
-    if (LOG.isDebugEnabled()) LOG.debug("Resolved " + resolvedINodes.size() + "/" + fullPathComponents.size() +
-            " INodes using local metadata cache.");
-    return resolvedINodes;
-  }
+//  private List<INode> resolveUsingServerlessMetadataCache(String path, boolean exitOnFirstMiss) {
+//    LOG.debug("Attempting to resolve INodes using in-memory cache for path '" + path + "'.");
+//
+//    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+//
+//    if (instance == null) {
+//      LOG.warn("Cannot get access to ServerlessNameNode instance, and thus cannot use in-memory cache.");
+//
+//      return null;
+//    }
+//
+//    InMemoryINodeCache metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
+//    List<INode> resolvedINodes = new ArrayList<INode>();
+//    List<String> fullPathComponents = INode.getFullPathComponents(path);
+//
+//    for (String pathComponentFullPath : fullPathComponents) {
+//      if (LOG.isDebugEnabled()) LOG.debug("Checking cache for component '" + pathComponentFullPath + "'");
+//      INode cachedINode = metadataCache.getByPath(pathComponentFullPath);
+//
+//      if (cachedINode == null) {
+//        if (LOG.isDebugEnabled()) LOG.debug("Path component '" + pathComponentFullPath + "' was NOT cached locally.");
+//
+//        // This will almost always be true.
+//        if (exitOnFirstMiss)
+//          return null;
+//      } else {
+//        if (LOG.isDebugEnabled()) LOG.debug("Path component '" + pathComponentFullPath + "' WAS cached locally.");
+//        resolvedINodes.add(cachedINode);
+//      }
+//    }
+//
+//    if (LOG.isDebugEnabled()) LOG.debug("Resolved " + resolvedINodes.size() + "/" + fullPathComponents.size() +
+//            " INodes using local metadata cache.");
+//    return resolvedINodes;
+//  }
 
   /**
    * This was previously called resolveUsingCache(), but I changed the name so that it is clear that this

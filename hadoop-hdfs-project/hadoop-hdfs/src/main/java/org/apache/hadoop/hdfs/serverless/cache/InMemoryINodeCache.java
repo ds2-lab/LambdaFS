@@ -222,6 +222,32 @@ public class InMemoryINodeCache {
      * Return the metadata object associated with the given key, or null if:
      *  (1) No entry exists for the given key, or
      *  (2) The given key has been invalidated.
+     *
+     * For internal use only (e.g., by the cache manager when invalidating INodes).
+     * Does not increment cache hit/miss metrics.
+     * @param key key The fully-qualified path of the desired INode
+     * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been
+     * invalidated.
+     */
+    protected INode getByPathNoMetrics(String key) {
+        if (!enabled)
+            return null;
+
+        long s = System.currentTimeMillis();
+
+        try {
+            return cache.getIfPresent(key);
+        } finally {
+            long t4 = System.currentTimeMillis();
+            if (LOG.isTraceEnabled() && t4 - s > 10) LOG.trace("Checked cache by path w/o metrics for INode '" +
+                    key + "' in " + (t4 - s) + " ms. [1]");
+        }
+    }
+
+    /**
+     * Return the metadata object associated with the given key, or null if:
+     *  (1) No entry exists for the given key, or
+     *  (2) The given key has been invalidated.
      * @param parentId The INode ID of the parent INode of the desired INode.
      * @param localName The local name of the desired INode.
      * @return The metadata object cached under the given key, or null if no such mapping exists or the key has been

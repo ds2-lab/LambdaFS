@@ -151,7 +151,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         long inMemoryStart = System.currentTimeMillis();
         acquireLockTime = (inMemoryStart - oldTime);
         if(requestHandlerLOG.isTraceEnabled()){
-          requestHandlerLOG.debug("All Locks Acquired. Time " + acquireLockTime + " ms");
+          requestHandlerLOG.trace("All Locks Acquired. Time " + acquireLockTime + " ms");
         }
         //sometimes in setup we call lightweight request handler that messes up with the NDC
         removeNDC();
@@ -235,12 +235,12 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
           stat.setTimes(acquireLockTime, inMemoryProcessingTime, commitTime);
 
         if(requestHandlerLOG.isTraceEnabled()) {
-          requestHandlerLOG.debug("TX committed. Time " + commitTime + " ms");
+          requestHandlerLOG.trace("TX committed. Time " + commitTime + " ms");
         }
         totalTime = (System.currentTimeMillis() - txStartTime);
         if(requestHandlerLOG.isTraceEnabled()) {
           String opName = !NDCWrapper.NDCEnabled()?opType+" ":"";
-          requestHandlerLOG.debug(opName+"TX Finished. " +
+          requestHandlerLOG.trace(opName+"TX Finished. " +
                   "TX Time: " + (totalTime) + " ms, " +
                   // -1 because 'tryCount` also counts the initial attempt which is technically not a retry
                   "RetryCount: " + (tryCount-1) + ", " +
@@ -290,10 +290,10 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
       }
       finally {
         removeNDC();
-        if (!committed && locksAcquirer!=null) {
+        if (!committed && locksAcquirer != null) {
           try {
             requestHandlerLOG.warn("TX " + operationId + " Failed. Rolling back now...");
-            requestHandlerLOG.debug(Arrays.toString((new Throwable()).getStackTrace()));
+            // requestHandlerLOG.debug(Arrays.toString((new Throwable()).getStackTrace()));
             EntityManager.rollback(locksAcquirer.getLocks());
           } catch (Exception e) {
             requestHandlerLOG.warn("Could not rollback transaction", e);
