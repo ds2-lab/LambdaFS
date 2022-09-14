@@ -3550,7 +3550,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
           !inode.asFile().isUnderConstruction()) {
         // This could be a retry RPC - i.e the client tried to close
         // the file, but missed the RPC response. Thus, it is trying
-        // again to close the file. If the file still exists and◊
+        // again to close the file. If the file still exists and
         // the client's view of the last block matches the actual
         // last block, then we'll treat it as a successful close.
         // See HDFS-3031.
@@ -3581,7 +3581,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     finalizeINodeFileUnderConstruction(src, pendingFile);
 
     ServerlessNameNode.stateChangeLog
-        .info("DIR* completeFile: " + src + " is closed by " + holder);
+        .debug("DIR* completeFile: " + src + " is closed by " + holder);
     return true;
   }
 
@@ -3637,7 +3637,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     finalizeINodeFileUnderConstruction(src, pendingFile);
 
     ServerlessNameNode.stateChangeLog
-        .info("DIR* completeFile: " + src + " is closed by " + holder);
+        .debug("DIR* completeFile: " + src + " is closed by " + holder);
     return true;
   }
 
