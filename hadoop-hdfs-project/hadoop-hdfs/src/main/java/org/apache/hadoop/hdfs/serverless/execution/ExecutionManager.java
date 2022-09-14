@@ -257,7 +257,8 @@ public class ExecutionManager {
                                NameNodeResultWithMetrics workerResult, boolean http) {
         seenTasks.add(taskId);
 
-        LOG.info("Executing task " + taskId + ", operation: " + operationName + " now.");
+        if (LOG.isDebugEnabled())
+            LOG.debug("Executing task " + taskId + ", operation: " + operationName + " now.");
 
         workerResult.setDequeuedTime(System.currentTimeMillis());
 
@@ -315,7 +316,8 @@ public class ExecutionManager {
                                boolean forceRedo, NameNodeResult workerResult, boolean http) {
         seenTasks.add(taskId);
 
-        LOG.info("Executing task " + taskId + ", operation: " + operationName + " now.");
+        if (LOG.isDebugEnabled())
+            LOG.info("Executing task " + taskId + ", operation: " + operationName + " now.");
 
         Serializable result;
         try {
