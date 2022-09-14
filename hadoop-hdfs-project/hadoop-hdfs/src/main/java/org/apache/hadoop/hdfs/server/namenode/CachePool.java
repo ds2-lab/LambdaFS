@@ -44,7 +44,7 @@ import java.util.List;
  *
  * This is an internal class, only used on the NameNode.  For identifying or
  * describing a cache pool to clients, please use CachePoolInfo.
- * 
+ *
  * CachePools must be accessed under the FSNamesystem lock.
  */
 @InterfaceAudience.Private
@@ -78,10 +78,10 @@ public final class CachePool {
 
   @Nonnull
   private String groupName;
-  
+
   /**
    * Cache pool permissions.
-   * 
+   *
    * READ permission means that you can list the cache directives in this pool.
    * WRITE permission means that you can add, remove, or modify cache directives
    *       in this pool.
@@ -113,7 +113,7 @@ public final class CachePool {
    * defaults.
    */
   static CachePool createFromInfoAndDefaults(CachePoolInfo info)
-      throws IOException {
+          throws IOException {
     UserGroupInformation ugi = null;
     String ownerName = info.getOwnerName();
     if (ownerName == null) {
@@ -127,15 +127,15 @@ public final class CachePool {
       }
       groupName = ugi.getPrimaryGroupName();
     }
-    FsPermission mode = (info.getMode() == null) ? 
-        FsPermission.getCachePoolDefault() : info.getMode();
+    FsPermission mode = (info.getMode() == null) ?
+            FsPermission.getCachePoolDefault() : info.getMode();
     long limit = info.getLimit() == null ?
-        CachePoolInfo.DEFAULT_LIMIT : info.getLimit();
+            CachePoolInfo.DEFAULT_LIMIT : info.getLimit();
     long maxRelativeExpiry = info.getMaxRelativeExpiryMs() == null ?
-        CachePoolInfo.DEFAULT_MAX_RELATIVE_EXPIRY :
-        info.getMaxRelativeExpiryMs();
+            CachePoolInfo.DEFAULT_MAX_RELATIVE_EXPIRY :
+            info.getMaxRelativeExpiryMs();
     return new CachePool(info.getPoolName(),
-        ownerName, groupName, mode, limit, maxRelativeExpiry);
+            ownerName, groupName, mode, limit, maxRelativeExpiry);
   }
 
   /**
@@ -144,12 +144,12 @@ public final class CachePool {
    */
   static CachePool createFromInfo(CachePoolInfo info) {
     return new CachePool(info.getPoolName(),
-        info.getOwnerName(), info.getGroupName(),
-        info.getMode(), info.getLimit(), info.getMaxRelativeExpiryMs());
+            info.getOwnerName(), info.getGroupName(),
+            info.getMode(), info.getLimit(), info.getMaxRelativeExpiryMs());
   }
-  
+
   CachePool(String poolName, String ownerName, String groupName,
-      FsPermission mode, long limit, long maxRelativeExpiry) {
+            FsPermission mode, long limit, long maxRelativeExpiry) {
     Preconditions.checkNotNull(poolName);
     Preconditions.checkNotNull(ownerName);
     Preconditions.checkNotNull(groupName);
@@ -161,11 +161,11 @@ public final class CachePool {
     this.limit = limit;
     this.maxRelativeExpiryMs = maxRelativeExpiry;
   }
-  
+
   //when getting the object from the db
   public CachePool(String poolName, String ownerName, String groupName,
-      FsPermission mode, long limit, long maxRelativeExpiry,
-      long bytesNeeded, long bytesCached, long filesNeeded, long filesCached) {
+                   FsPermission mode, long limit, long maxRelativeExpiry,
+                   long bytesNeeded, long bytesCached, long filesNeeded, long filesCached) {
     this.poolName = poolName;
     this.ownerName = ownerName;
     this.groupName = groupName;
@@ -232,7 +232,7 @@ public final class CachePool {
    * Get either full or partial information about this CachePool.
    *
    * @param fullInfo
-   *          If true, only the name will be returned (i.e., what you 
+   *          If true, only the name will be returned (i.e., what you
    *          would get if you didn't have read permission for this pool.)
    * @return
    *          Cache pool information.
@@ -243,10 +243,10 @@ public final class CachePool {
       return info;
     }
     return info.setOwnerName(ownerName).
-        setGroupName(groupName).
-        setMode(new FsPermission(mode)).
-        setLimit(limit).
-        setMaxRelativeExpiryMs(maxRelativeExpiryMs);
+            setGroupName(groupName).
+            setMode(new FsPermission(mode)).
+            setLimit(limit).
+            setMaxRelativeExpiryMs(maxRelativeExpiryMs);
   }
 
   /**
@@ -303,19 +303,19 @@ public final class CachePool {
    */
   private CachePoolStats getStats() {
     return new CachePoolStats.Builder().
-        setBytesNeeded(bytesNeeded).
-        setBytesCached(bytesCached).
-        setBytesOverlimit(getBytesOverlimit()).
-        setFilesNeeded(filesNeeded).
-        setFilesCached(filesCached).
-        build();
+            setBytesNeeded(bytesNeeded).
+            setBytesCached(bytesCached).
+            setBytesOverlimit(getBytesOverlimit()).
+            setFilesNeeded(filesNeeded).
+            setFilesCached(filesCached).
+            build();
   }
 
   /**
    * Returns a CachePoolInfo describing this CachePool based on the permissions
    * of the calling user. Unprivileged users will see only minimal descriptive
    * information about the pool.
-   * 
+   *
    * @param pc Permission checker to be used to validate the user's permissions,
    *          or null
    * @return CachePoolEntry describing this CachePool
@@ -329,25 +329,25 @@ public final class CachePool {
         hasPermission = false;
       }
     }
-    return new CachePoolEntry(getInfo(hasPermission), 
-        hasPermission ? getStats() : new CachePoolStats.Builder().build());
+    return new CachePoolEntry(getInfo(hasPermission),
+            hasPermission ? getStats() : new CachePoolStats.Builder().build());
   }
 
   public String toString() {
     return new StringBuilder().
-        append("{ ").append("poolName:").append(poolName).
-        append(", ownerName:").append(ownerName).
-        append(", groupName:").append(groupName).
-        append(", mode:").append(mode).
-        append(", limit:").append(limit).
-        append(", maxRelativeExpiryMs:").append(maxRelativeExpiryMs).
-        append(" }").toString();
+            append("{ ").append("poolName:").append(poolName).
+            append(", ownerName:").append(ownerName).
+            append(", groupName:").append(groupName).
+            append(", mode:").append(mode).
+            append(", limit:").append(limit).
+            append(", maxRelativeExpiryMs:").append(maxRelativeExpiryMs).
+            append(" }").toString();
   }
 
   public List<CacheDirective> getDirectiveList() throws TransactionContextException, StorageException {
     return (List<CacheDirective>) EntityManager.findList(CacheDirective.Finder.ByPoolName, poolName);
   }
-  
+
   public void save() throws TransactionContextException, StorageException{
     EntityManager.update(this);
   }
