@@ -450,7 +450,7 @@ class FSDirDeleteOp {
   public static Future multiTransactionDeleteInternal(final FSNamesystem fsn, final String src, final long subTreeRootId) {
     final FSDirectory fsd = fsn.getFSDirectory();
 
-    LOG.debug("Performing multi-transaction internal delete for " + src + " now...");
+    // LOG.debug("Performing multi-transaction internal delete for " + src + " now...");
 
     return fsn.getFSOperationsExecutor().submit(new Callable<Boolean>() {
       @Override

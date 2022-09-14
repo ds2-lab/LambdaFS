@@ -1654,7 +1654,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     }
     ArrayList<Future> barrier = new ArrayList<>();
     for (String path : paths) {
-      if (LOG.isDebugEnabled()) LOG.debug("Submitting deletion for path '" + path + "' now...");
+      // if (LOG.isDebugEnabled()) LOG.debug("Submitting deletion for path '" + path + "' now...");
       Future f = FSDirDeleteOp.multiTransactionDeleteInternal(namesystem, path, subtreeRootId);
       barrier.add(f);
     }
@@ -3428,6 +3428,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     // The instance can be null when we're first starting up.
     if (instance != null) {
+      // If the ID is our local ID, then return true, since we're clearly alive.
+      if (namenodeId == instance.getId())
+        return true;
+
       SortedActiveNodeList activeNodeList = instance.getActiveNameNodes();
       if (activeNodeList == null)
         activeNodes = activeNamenodes;
@@ -3457,10 +3461,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               "(that we grabbed during initialization), so this should be okay...");
       return false;
     }
-
-    // If the ID is our local ID, then return true, since we're clearly alive.
-    if (namenodeId == instance.getId())
-      return true;
 
     // If not in cache, then check ZooKeeper. We'll check for the existence of a persistent ZNode
     // in the permanent sub-group of each deployment. If one does not exist, then the NN is dead.
