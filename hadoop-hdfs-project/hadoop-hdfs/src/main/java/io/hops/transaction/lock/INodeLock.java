@@ -266,7 +266,7 @@ public class INodeLock extends BaseINodeLock {
       if (LOG.isTraceEnabled()) LOG.trace("Resolved " + resolvedINodes.size() + " INode(s) via INode Hint Cache.");
 
       for (INode iNode : resolvedINodes) {
-        if(iNode!=null){
+        if(iNode != null){
           checkSubtreeLock(iNode);
         }
       }
