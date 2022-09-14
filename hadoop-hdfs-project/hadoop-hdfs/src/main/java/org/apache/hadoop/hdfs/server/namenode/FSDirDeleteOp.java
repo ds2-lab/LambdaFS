@@ -332,7 +332,8 @@ class FSDirDeleteOp {
             ServerlessInvokerBase serverlessInvoker = instance.getServerlessInvoker();
             // final HashMap<String, Future<Boolean>> futures = new HashMap<>();
             final String serverlessEndpointBase = instance.getServerlessEndpointBase();
-            if (LOG.isDebugEnabled()) LOG.debug("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
+            // if (LOG.isDebugEnabled()) LOG.debug("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
+            LOG.info("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
             for (int i = 1; i < batches.size(); i++) {
               String[] batch = batches.get(i);
               String requestId = UUID.randomUUID().toString();
@@ -350,8 +351,9 @@ class FSDirDeleteOp {
                 targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments());
               }
 
-              if (LOG.isDebugEnabled()) LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i +
-                      "/" + batches.size());
+//              if (LOG.isDebugEnabled()) LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i +
+//                      "/" + batches.size());
+              LOG.info("Targeting deployment " + targetDeployment + " for batch " + i + "/" + batches.size());
 
               int finalTargetDeployment = targetDeployment;
               Future<Boolean> future = executorService.submit(() -> {
