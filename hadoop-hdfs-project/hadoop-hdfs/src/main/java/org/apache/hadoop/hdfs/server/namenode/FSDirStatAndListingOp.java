@@ -93,6 +93,7 @@ class FSDirStatAndListingOp {
         }
         locks.add(lf.getAcesLock());
         locks.add(lf.getEZLock());
+        // TODO: Add support for encryption.
         // locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO, src));
       }
 

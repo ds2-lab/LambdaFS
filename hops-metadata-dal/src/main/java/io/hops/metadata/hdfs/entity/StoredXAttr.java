@@ -66,7 +66,7 @@ public final class StoredXAttr {
     private final long inodeId;
     private final byte namespace;
     private final String name;
-  
+
     public PrimaryKey(long inodeId, byte namespace, String name) {
       this.inodeId = inodeId;
       this.namespace = namespace;
