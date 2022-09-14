@@ -505,7 +505,7 @@ class FSDirDeleteOp {
           public Object performTask() throws IOException {
             final INodesInPath iip = fsd.getINodesInPath4Write(src);
             if (!deleteInternal(fsn, src, iip)) {
-              // at this point the delete op is expected to succeed. Apart from DB errors
+              // At this point, the "delete" op is expected to succeed. Apart from DB errors
               // this can only fail if the "quiesce phase" in the subtree operation failed to
               // quiesce the subtree. See TestSubtreeConflicts.testConcurrentSTOandInodeOps
               throw new RetriableException("Unable to Delete path: " + src + "." + " Possible subtree quiesce failure");
