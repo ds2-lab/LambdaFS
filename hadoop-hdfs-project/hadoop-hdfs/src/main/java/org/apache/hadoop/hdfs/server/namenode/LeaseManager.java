@@ -450,10 +450,10 @@ public class LeaseManager {
   //HOP: bug fix changes HDFS-4242
   private Map<LeasePath, Lease> findLeaseWithPrefixPath(String prefix)
       throws StorageException, TransactionContextException {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug(
-          LeaseManager.class.getSimpleName() + ".findLease: prefix=" + prefix);
-    }
+//    if (LOG.isDebugEnabled()) {
+//      LOG.debug(
+//          LeaseManager.class.getSimpleName() + ".findLease: prefix=" + prefix);
+//    }
 
     Collection<LeasePath> leasePathSet =
         EntityManager.findList(LeasePath.Finder.ByPrefix, prefix);
@@ -485,10 +485,10 @@ public class LeaseManager {
 
     private Collection<LeasePath> findLeasePathsWithPrefix(String prefix)
       throws StorageException, TransactionContextException {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug(
-          LeaseManager.class.getSimpleName() + ".findLease: prefix=" + prefix);
-    }
+//    if (LOG.isDebugEnabled()) {
+//      LOG.debug(
+//          LeaseManager.class.getSimpleName() + ".findLease: prefix=" + prefix);
+//    }
 
     Collection<LeasePath> leasePathSet =
         EntityManager.findList(LeasePath.Finder.ByPrefix, prefix);

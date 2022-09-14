@@ -74,9 +74,9 @@ class FSDirDeleteOp {
   static long delete(
       FSDirectory fsd, INodesInPath iip, BlocksMapUpdateInfo collectedBlocks,
       List<INode> removedINodes, long mtime) throws IOException {
-    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
-      ServerlessNameNode.stateChangeLog.debug("DIR* FSDirectory.delete: " + iip.getPath());
-    }
+//    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+//      ServerlessNameNode.stateChangeLog.debug("DIR* FSDirectory.delete: " + iip.getPath());
+//    }
     final long filesRemoved;
     if (!deleteAllowed(iip, iip.getPath()) ) {
       filesRemoved = -1;
@@ -587,9 +587,9 @@ class FSDirDeleteOp {
    * @throws IOException
    */
   static boolean deleteInternal(FSNamesystem fsn, String src, INodesInPath iip) throws IOException {
-    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
-      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.delete: " + src);
-    }
+//    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+//      ServerlessNameNode.stateChangeLog.debug("DIR* NameSystem.delete: " + src);
+//    }
 
     FSDirectory fsd = fsn.getFSDirectory();
     BlocksMapUpdateInfo collectedBlocks = new BlocksMapUpdateInfo();
@@ -609,9 +609,9 @@ class FSDirDeleteOp {
     fsn.removeBlocks(collectedBlocks); // Incremental deletion of blocks
     collectedBlocks.clear();
 
-    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
-      ServerlessNameNode.stateChangeLog.debug("DIR* Namesystem.delete: " + src +" is removed");
-    }
+//    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+//      ServerlessNameNode.stateChangeLog.debug("DIR* Namesystem.delete: " + src +" is removed");
+//    }
     return true;
   }
 
@@ -682,10 +682,10 @@ class FSDirDeleteOp {
     targetNode.destroyAndCollectBlocks(fsd.getBlockStoragePolicySuite(),
         collectedBlocks, removedINodes);
     
-    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
-      ServerlessNameNode.stateChangeLog.debug("DIR* FSDirectory.unprotectedDelete: "
-          + iip.getPath() + " is removed");
-    }
+//    if (ServerlessNameNode.stateChangeLog.isDebugEnabled()) {
+//      ServerlessNameNode.stateChangeLog.debug("DIR* FSDirectory.unprotectedDelete: "
+//          + iip.getPath() + " is removed");
+//    }
     return removed;
   }
   
