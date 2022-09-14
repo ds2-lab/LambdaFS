@@ -162,7 +162,7 @@ class FSDirDeleteOp {
 
       //sub tree operation
       try {
-        LOG.debug("Performing subtree operation to delete " + src + " now...");
+        LOG.info("Performing subtree operation to delete " + src + " now...");
         //once subtree is locked we still need to check all subAccess in AbstractFileTree.FileTree
         //permission check in Apache Hadoop: doCheckOwner:false, ancestorAccess:null, parentAccess:FsAction.WRITE, 
         //access:null, subAccess:FsAction.ALL, ignoreEmptyDir:true
@@ -177,7 +177,7 @@ class FSDirDeleteOp {
         long s = System.currentTimeMillis();
         fileTree.buildUp(fsd.getBlockStoragePolicySuite());
         long t = System.currentTimeMillis();
-        LOG.debug("Built-up file tree for '" + srcArg + "' for DELETE operation in " + (t - s) + " ms.");
+        LOG.info("Built-up file tree for '" + srcArg + "' for DELETE operation in " + (t - s) + " ms.");
         fsn.delayAfterBbuildingTree("Built tree for " + srcArg + " for delete op");
 
         Set<Integer> associatedDeployments = fileTree.getAssociatedDeployments();
@@ -236,7 +236,8 @@ class FSDirDeleteOp {
 
   private static boolean deleteTreeLevel(final FSNamesystem fsn, final String subtreeRootPath, final long subTreeRootID,
                                         final AbstractFileTree.FileTree fileTree, int level) throws IOException {
-    if (LOG.isDebugEnabled()) LOG.debug("Deleting tree level " + level + " of tree rooted at " + subtreeRootPath + " (ID = " +subTreeRootID + ") now...");
+    // if (LOG.isDebugEnabled()) LOG.debug("Deleting tree level " + level + " of tree rooted at " + subtreeRootPath + " (ID = " +subTreeRootID + ") now...");
+    LOG.info("Deleting tree level " + level + " of tree rooted at " + subtreeRootPath + " (ID = " +subTreeRootID + ") now...");
 
     ArrayList<Future> barrier = new ArrayList<>();
 
@@ -246,7 +247,8 @@ class FSDirDeleteOp {
       Collection<ProjectedINode> children = fileTree.getChildren(dir.getId());
       int numChildren = children.size();
 
-      if (LOG.isDebugEnabled()) LOG.debug("Children in directory (id=" + dir.getId() + "): " + numChildren);
+      // if (LOG.isDebugEnabled()) LOG.debug("Children in directory (id=" + dir.getId() + "): " + numChildren);
+      LOG.info("Children in directory (id=" + dir.getId() + "): " + numChildren);
       if (numChildren <= BIGGEST_DELETABLE_DIR) { // Can we delete the directory directly?
         if (LOG.isDebugEnabled()) LOG.debug("Directory " + dir.getId() + " has less than " + BIGGEST_DELETABLE_DIR + " children. Can delete it directly.");
         final String path = fileTree.createAbsolutePath(subtreeRootPath, dir);
@@ -256,7 +258,7 @@ class FSDirDeleteOp {
       }
       else { // Cannot delete directory. So, delete contents of directory one-by-one.
         // Delete the content of the directory one by one.
-        LOG.debug("Directory " + dir.getId() + " has too many child files (" + numChildren +
+        LOG.info("Directory " + dir.getId() + " has too many child files (" + numChildren +
                 "). Deleting content of directory one-by-one.");
         ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
 
@@ -275,7 +277,8 @@ class FSDirDeleteOp {
           if (instance == null)
             LOG.error("Cannot retrieve singleton ServerlessNameNode instance for batched subtree delete.");
           else
-            if (LOG.isDebugEnabled()) LOG.debug("There are not enough files to batch across multiple NNs (Performing all deletes locally.");
+          LOG.info("There are not enough files to batch across multiple NNs (Performing all deletes locally.");
+            // if (LOG.isDebugEnabled()) LOG.debug("There are not enough files to batch across multiple NNs (Performing all deletes locally.");
 
           for (final ProjectedINode inode : children) {
             if (LOG.isDebugEnabled()) LOG.debug("    Trying to delete child INode " + inode.getName() + " (id=" + inode.getId() + ").");
@@ -290,7 +293,10 @@ class FSDirDeleteOp {
           List<String[]> batches = new ArrayList<>();
           String[] currentBatch = new String[BATCH_SIZE];
 
-          if (LOG.isDebugEnabled()) LOG.debug("Splitting the " + numChildren + " child files into " +
+//          if (LOG.isDebugEnabled()) LOG.debug("Splitting the " + numChildren + " child files into " +
+//                  numChildren / BATCH_SIZE + " batches of size ~" + BATCH_SIZE + ".");
+
+          LOG.info("Splitting the " + numChildren + " child files into " +
                   numChildren / BATCH_SIZE + " batches of size ~" + BATCH_SIZE + ".");
 
           // Create batches of paths of size 'BATCH_SIZE'.

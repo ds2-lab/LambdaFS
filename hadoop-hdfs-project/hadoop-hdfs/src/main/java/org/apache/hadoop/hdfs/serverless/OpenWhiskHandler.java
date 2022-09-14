@@ -163,10 +163,10 @@ public class OpenWhiskHandler extends BaseHandler {
                 udpPorts.add(udpPortsJson.get(i).getAsInt());
         }
 
-        LOG.info("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
-        LOG.info("Serverless function name: " + functionName);
         if (LOG.isDebugEnabled()) {
-            LOG.info("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+            LOG.debug("=-=-=-=-=-=-= Serverless Function Information =-=-=-=-=-=-=");
+            LOG.debug("Serverless function name: " + functionName);
+            LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
             LOG.debug("Top-level OpenWhisk arguments: " + args);
             LOG.debug("User-passed OpenWhisk arguments: " + userArguments);
             LOG.debug("Benchmarking Mode: " + (benchmarkModeEnabled ? "ENABLED" : "DISABLED"));
@@ -178,8 +178,8 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug("Local mode: " + (localModeEnabled ? "ENABLED" : "DISABLED"));
             LOG.debug("Function container was " + (isCold ? "COLD" : "WARM") + ".");
             LOG.debug("Handing control over to driver() function after " + DurationFormatUtils.formatDurationHMS((Duration.between(start, Instant.now()).toMillis())));
+            LOG.debug("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
         }
-        LOG.info("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
 
         return processBatch(userArguments, commandLineArguments, functionName,
                 tcpEnabled, udpEnabled, tcpPorts, udpPorts, actionMemory,
