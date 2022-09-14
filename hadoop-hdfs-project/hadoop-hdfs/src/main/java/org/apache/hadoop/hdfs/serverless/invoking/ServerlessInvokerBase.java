@@ -1176,10 +1176,18 @@ public abstract class ServerlessInvokerBase {
     /**
      * Sets the flag indicating whether this Invoker is used by a client/user.
      *
+     * DataNodes and NameNodes only use HTTP to talk to other NameNodes.
+     * DataNodes could theoretically use TCP, but for now, they don't.
+     *
      * True indicates client/user, false indicates datanode.
      */
     public void setIsClientInvoker(boolean isClientInvoker) {
         this.isClientInvoker = isClientInvoker;
+
+        // DataNodes and NameNodes only use HTTP to talk to other NameNodes.
+        // DataNodes could theoretically use TCP, but for now, they don't.
+        if (!isClientInvoker)
+            this.tcpEnabled = false;
     }
 
     /**
@@ -1227,27 +1235,32 @@ public abstract class ServerlessInvokerBase {
         // If there is not already a command-line-arguments entry, then we'll add one with the "-regular" flag
         // so that the name node performs standard execution. If there already is such an entry, then we do
         // not want to overwrite it.
-        if (!nameNodeArgumentsJson.has(COMMAND_LINE_ARGS));
+        if (!nameNodeArgumentsJson.has(COMMAND_LINE_ARGS))
             nameNodeArgumentsJson.addProperty(COMMAND_LINE_ARGS, "-regular");
 
-        if (this.tcpEnabled && this.tcpPort == 0)
-            throw new IllegalStateException("TCP Port has not been initialized to correct value.");
+        // If TCP is enabled, then we'll add the TCP (and possibly UDP) ports to the arguments.
+        if (this.tcpEnabled) {
+            if (this.tcpPort == 0)
+                throw new IllegalStateException("TCP Port has not been initialized to correct value.");
 
-        JsonArray tcpPortsJson = new JsonArray();
-        List<Integer> tcpPorts = ServerAndInvokerManager.getInstance().getActiveTcpPorts();
-        for (int tcpPort : tcpPorts)
-            tcpPortsJson.add(tcpPort);
+            JsonArray tcpPortsJson = new JsonArray();
+            List<Integer> tcpPorts = ServerAndInvokerManager.getInstance().getActiveTcpPorts();
+            for (int tcpPort : tcpPorts)
+                tcpPortsJson.add(tcpPort);
 
-        JsonArray udpPortsJson = new JsonArray();
-        List<Integer> udpPorts = udpEnabled ? ServerAndInvokerManager.getInstance().getActiveUdpPorts() : new ArrayList<>();
-        for (int udpPort : udpPorts)
-            udpPortsJson.add(udpPort);
+            JsonArray udpPortsJson = new JsonArray();
+            List<Integer> udpPorts = udpEnabled ?
+                    ServerAndInvokerManager.getInstance().getActiveUdpPorts() : new ArrayList<>();
+            for (int udpPort : udpPorts)
+                udpPortsJson.add(udpPort);
+
+            nameNodeArgumentsJson.add(TCP_PORT, tcpPortsJson);
+            nameNodeArgumentsJson.add(UDP_PORT, udpPortsJson);
+        }
 
         // nameNodeArgumentsJson.addProperty(REQUEST_ID, requestId);
         nameNodeArgumentsJson.addProperty(DEBUG_NDB, debugEnabledNdb);
         nameNodeArgumentsJson.addProperty(DEBUG_STRING_NDB, debugStringNdb);
-        nameNodeArgumentsJson.add(TCP_PORT, tcpPortsJson);
-        nameNodeArgumentsJson.add(UDP_PORT, udpPortsJson);
         nameNodeArgumentsJson.addProperty(BENCHMARK_MODE, benchmarkModeEnabled);
 
         // If we aren't a client invoker (e.g., DataNode, other NameNode, etc.), then don't populate the internal IP field.
