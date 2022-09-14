@@ -1478,8 +1478,8 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       metrics.incrGetListingOps();
       metrics.incrFilesInGetListingOps(files.getPartialListing().length);
 
-      LOG.info("DirectoryListing for dir '" + src + "' contains " + files.getPartialListing().length +
-              " files with " + files.getRemainingEntries() + " remaining entries.");
+      // LOG.info("DirectoryListing for dir '" + src + "' contains " + files.getPartialListing().length +
+      //        " files with " + files.getRemainingEntries() + " remaining entries.");
     }
 
     return files;

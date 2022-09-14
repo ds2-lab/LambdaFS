@@ -93,7 +93,7 @@ class FSDirStatAndListingOp {
         }
         locks.add(lf.getAcesLock());
         locks.add(lf.getEZLock());
-        locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO, src));
+        // locks.add(lf.getXAttrLock(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO, src));
       }
 
       @Override
