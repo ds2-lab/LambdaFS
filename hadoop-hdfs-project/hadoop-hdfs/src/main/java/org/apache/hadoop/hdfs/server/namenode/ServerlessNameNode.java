@@ -3451,7 +3451,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // First check local cache. This contains the NNs currently alive within our deployment.
     for (ActiveNode nameNode : activeNodes) {
       if (nameNode.getId() == namenodeId) {
-        if (LOG.isDebugEnabled()) LOG.debug("NameNode " + namenodeId + " IS alive, according to our local records.");
+        // if (LOG.isDebugEnabled()) LOG.debug("NameNode " + namenodeId + " IS alive, according to our local records.");
         return true;
       }
     }
