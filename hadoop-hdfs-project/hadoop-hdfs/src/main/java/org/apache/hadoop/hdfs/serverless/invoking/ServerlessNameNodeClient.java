@@ -587,6 +587,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             throws InterruptedException, ExecutionException, IOException {
         long opStart = System.currentTimeMillis();
 
+        LOG.info("Issuing TCP request. subtreeOperation: " + subtreeOperation);
+
         // This contains the file system operation arguments (and everything else) that will be submitted to the NN.
         TcpUdpRequestPayload tcpRequestPayload = new TcpUdpRequestPayload(requestId, operationName,
                 consistencyProtocolEnabled, OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel),
@@ -609,6 +611,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         while (backoffInterval >= 0) {
             long requestTimeout = calculateRequestTimeout(
                     stragglerResubmissionAlreadyOccurred, backoffInterval, subtreeOperation);
+
+            LOG.info("Request timeout: " + requestTimeout);
 
             long localStart;
             try {
