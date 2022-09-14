@@ -952,8 +952,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             if (response.has(DEPLOYMENT_NUMBER))
                 deployment = response.get(DEPLOYMENT_NUMBER).getAsInt();
 
-            int cacheHits = response.get(CACHE_HITS).getAsInt();
-            int cacheMisses = response.get(CACHE_MISSES).getAsInt();
+            int cacheHits = -1;
+            if (response.has(CACHE_HITS))
+                cacheHits = response.get(CACHE_HITS).getAsInt();
+
+            int cacheMisses = -1;
+            if (response.has(CACHE_MISSES))
+                cacheMisses = response.get(CACHE_MISSES).getAsInt();
 
             long fnStartTime = response.get(FN_START_TIME).getAsLong();
             long fnEndTime = response.get(FN_END_TIME).getAsLong();
