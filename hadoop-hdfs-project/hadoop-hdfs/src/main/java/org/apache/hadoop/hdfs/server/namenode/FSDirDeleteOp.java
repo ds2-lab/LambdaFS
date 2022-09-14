@@ -334,6 +334,20 @@ class FSDirDeleteOp {
             final String serverlessEndpointBase = instance.getServerlessEndpointBase();
             // if (LOG.isDebugEnabled()) LOG.debug("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
             LOG.info("Submitting " + (batches.size() - 1) + " batch(es) of deletes to other NameNodes.");
+
+            // Offload batches of deletes to other deployments in a round-robin fashion.
+            // We start with a random deployment that is NOT our own deployment.
+            int targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments());
+
+            // Don't start with our own deployment.
+            if (targetDeployment == instance.getDeploymentNumber()) {
+              targetDeployment++;
+
+              // Loop back around in case we are in the largest-numbered deployment.
+              if (targetDeployment >= instance.getNumDeployments())
+                targetDeployment = 0;
+            }
+
             for (int i = 1; i < batches.size(); i++) {
               String[] batch = batches.get(i);
               String requestId = UUID.randomUUID().toString();
@@ -343,23 +357,14 @@ class FSDirDeleteOp {
               argumentContainer.addPrimitive("leaderNameNodeID", instance.getId());
               argumentContainer.addNonByteArray("paths", batch);
 
-              int targetDeployment = -1;
-
-              // Randomly pick a deployment different from our own so that we don't invoke ourselves, as that
-              // would defeat the purpose of offloading/batching these delete operations to another NameNode.
-              while (targetDeployment == -1 || targetDeployment == instance.getDeploymentNumber()) {
-                targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments());
-              }
-
-//              if (LOG.isDebugEnabled()) LOG.debug("Targeting deployment " + targetDeployment + " for batch " + i +
-//                      "/" + batches.size());
               LOG.info("Targeting deployment " + targetDeployment + " for batch " + i + "/" + batches.size());
 
-              int finalTargetDeployment = targetDeployment;
+              // We're passing this to another thread, so it needs to be final.
+              int targetDeploymentFinalized = targetDeployment;
               Future<Boolean> future = executorService.submit(() -> {
                 JsonObject responseJson = ServerlessInvokerBase.issueHttpRequestWithRetries(
                         serverlessInvoker, "subtreeDeleteSubOperation", serverlessEndpointBase,
-                        null, argumentContainer, requestId, finalTargetDeployment, true);
+                        null, argumentContainer, requestId, targetDeploymentFinalized, true);
 
                 // Attempt to extract the result. If it is null, then return false. Otherwise, return the result.
                 Object result = serverlessInvoker.extractResultFromJsonResponse(responseJson);
@@ -370,6 +375,13 @@ class FSDirDeleteOp {
 
               // futures.put(requestId, future);
               remoteBarrier.add(future);
+
+              // Increment the counter so that we target another deployment for the next batch.
+              targetDeployment++;
+
+              // Loop back around.
+              if (targetDeployment >= instance.getNumDeployments())
+                targetDeployment = 0;
             }
           }
           else if (BaseHandler.localModeEnabled) { // Just enables us to write a different print than the base case.
