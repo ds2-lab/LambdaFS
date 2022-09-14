@@ -1826,7 +1826,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     String dst = fsArgs.getString("dst"); // fsArgs.getAsJsonPrimitive("dst").getAsString();
 
-    org.apache.hadoop.fs.Options.Rename[] options = fsArgs.getObjectArray("options");
+    Integer[] optionsInts = fsArgs.getObjectArray("options");
 //    JsonArray optionsArr = fsArgs.getAsJsonArray("options");
 //
 //    org.apache.hadoop.fs.Options.Rename[] options = new org.apache.hadoop.fs.Options.Rename[optionsArr.size()];
@@ -1835,6 +1835,12 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //      int renameOptionOrdinal = optionsArr.get(i).getAsInt();
 //      options[i] = org.apache.hadoop.fs.Options.Rename.values()[renameOptionOrdinal];
 //    }
+
+    org.apache.hadoop.fs.Options.Rename[] options = new org.apache.hadoop.fs.Options.Rename[optionsInts.length];
+    for (int i = 0; i < optionsInts.length; i++) {
+      int opt = optionsInts[i];
+      options[i] = org.apache.hadoop.fs.Options.Rename.values()[opt];
+    }
 
     if (stateChangeLog.isDebugEnabled()) {
       stateChangeLog.debug("*DIR* NameNode.rename: " + src + " to " + dst);

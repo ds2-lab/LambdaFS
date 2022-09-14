@@ -103,6 +103,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(CipherSuite.class);
         kryo.register(FsAction.class);
         kryo.register(TcpRequestCancelledException.class);
+        kryo.register(java.lang.ClassCastException.class);
         kryo.register(NullResult.class);
         kryo.register(DuplicateRequest.class);
         kryo.register(FileNotFoundException.class);
