@@ -411,11 +411,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         if (invalidatedINodes == null && !subtreeOperation) {
             INodeContext transactionINodeContext = (INodeContext) callingThreadINodeContext;
             invalidatedINodes = transactionINodeContext.getInvalidatedINodes();
-            int numInvalidated = invalidatedINodes.size();
 
             // If there are no invalidated INodes, then we do not need to carry out the consistency protocol;
             // however, if there is at least 1 invalidated INode, then we must proceed with the protocol.
-            if (numInvalidated == 0) {
+            if (invalidatedINodes.size() == 0) {
                 this.canProceed = true;
                 return;
             }

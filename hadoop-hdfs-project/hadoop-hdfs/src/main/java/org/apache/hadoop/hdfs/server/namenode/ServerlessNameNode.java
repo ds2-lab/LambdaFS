@@ -2243,7 +2243,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // https://stackoverflow.com/questions/15184820/how-to-generate-unique-positive-long-using-uuid
     this.nameNodeID = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
 
-    if (LOG.isDebugEnabled()) LOG.debug("Assigned new NN instance ID " + nameNodeID);
+    LOG.info("Assigned new NN instance ID " + nameNodeID);
 
     this.txAckTimeout =
             conf.getInt(SERVERLESS_TRANSACTION_ACK_TIMEOUT, SERVERLESS_TRANSACTION_ACK_TIMEOUT_DEFAULT);
@@ -3092,7 +3092,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   public static ServerlessNameNode createNameNode(String[] argv, Configuration conf, String functionName,
                                                   int actionMemory, boolean asServerless)
           throws Exception {
-    LOG.info("createNameNode " + Arrays.asList(argv));
+    // LOG.info("createNameNode " + Arrays.asList(argv));
     if (conf == null) {
       conf = new HdfsConfiguration();
     }
