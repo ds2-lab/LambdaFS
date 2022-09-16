@@ -352,7 +352,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
    */
   private volatile boolean startingActiveService = false;
 
-  private KeyProviderCryptoExtension provider = null;
+  private KeyProviderCryptoExtension provider;
 
   private volatile boolean imageLoaded = false;
   
@@ -2059,7 +2059,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       final short replication, final long blockSize,
       final CryptoProtocolVersion[] supportedVersions) throws IOException {
     
-    HdfsFileStatus stat = null;
+    HdfsFileStatus stat;
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     
     /**
@@ -2069,10 +2069,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
      * 
      * Since the path can flip-flop between being in an encryption zone and not
      * in the meantime, we need to recheck the preconditions when we retake the
-     * lock to do the create. If the preconditions are not met, we throw a
-     * special RetryStartFileException to ask the DFSClient to try the create
-     * again later.
+     * lock to do the create operation. If the preconditions are not met, we throw
+     * a special RetryStartFileException to ask the DFSClient to try the create
+     * operation again later.
      */
+
+    long startEdek = System.currentTimeMillis();
+
     final CryptoProtocolVersion[] protocolVersion = new CryptoProtocolVersion[1];
     final CipherSuite[] suite = {null};
     final String[] ezKeyName = {null};
@@ -2120,10 +2123,15 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       // Generate EDEK if necessary while not holding the lock
       edek[0] = generateEncryptedDataEncryptionKey(ezKeyName[0]);
       EncryptionFaultInjector.getInstance().startFileAfterGenerateKey();
+
+      if (LOG.isDebugEnabled())
+        LOG.debug("Performed optimistic EDEK creation for new file in " +
+                (System.currentTimeMillis() - startEdek) + " ms.");
     }
+
+    long startCreate = System.currentTimeMillis();
         
-    // Proceed with the create operation, using the computed cipher suite and
-    // generated EDEK
+    // Proceed with the create operation, using the computed cipher suite and generated EDEK.
     stat = (HdfsFileStatus) new HopsTransactionalRequestHandler(
         HDFSOperationType.START_FILE, src) {
       @Override
@@ -2155,10 +2163,13 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         }
         locks.add(lf.getAcesLock());
         locks.add(lf.getEZLock(LockType.WRITE));
-        List<XAttr> xAttrsToLock = new ArrayList<>();
-        xAttrsToLock.add(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO);
-        xAttrsToLock.add(FSDirXAttrOp.XATTR_ENCRYPTION_ZONE);
-        locks.add(lf.getXAttrLock(xAttrsToLock));
+        // TODO: Add support for encryption.
+        // NOTE: Uncommenting these lines won't break anything.
+        //       We just don't do encryption.
+//        List<XAttr> xAttrsToLock = new ArrayList<>();
+//        xAttrsToLock.add(FSDirXAttrOp.XATTR_FILE_ENCRYPTION_INFO);
+//        xAttrsToLock.add(FSDirXAttrOp.XATTR_ENCRYPTION_ZONE);
+//        locks.add(lf.getXAttrLock(xAttrsToLock));
       }
 
       @Override
@@ -2204,6 +2215,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         }
       }
     }.handle(this);
+
+    if (LOG.isDebugEnabled())
+      LOG.debug("Created new file '" + src + "' in " + (System.currentTimeMillis() - startCreate) + " ms.");
+
     logAuditEvent(true, "create", srcArg, null, stat);
     return stat;
   }
@@ -2212,7 +2227,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       String holder, String clientMachine, EnumSet<CreateFlag> flag,
       boolean createParent, short replication, long blockSize, CipherSuite suite,
       CryptoProtocolVersion version, EncryptedKeyVersion edek)
-      throws IOException, RetryStartFileException {
+      throws IOException {
     FSPermissionChecker pc = getPermissionChecker();
     if (!DFSUtil.isValidName(src)) {
       throw new InvalidPathException(src);
@@ -2227,12 +2242,30 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 
     boolean create = flag.contains(CreateFlag.CREATE);
     boolean overwrite = flag.contains(CreateFlag.OVERWRITE);
-    
+
+    long startPathResolution = System.currentTimeMillis();
     final INodesInPath iip = dir.getINodesInPath4Write(src);
+
+    if (LOG.isDebugEnabled())
+      LOG.debug("Performed path resolution for new file to be created '" + src + "' in " +
+              (System.currentTimeMillis() - startPathResolution) + " ms.");
+
+    long startStartFileInternal = System.currentTimeMillis();
+
     startFileInternal(pc, iip, permissions, holder, clientMachine, create, overwrite,
         createParent, replication, blockSize, suite, version, edek);
+
+    if (LOG.isDebugEnabled())
+      LOG.debug("Executed startFileInternal() for new file '" + src + "' in " +
+              (System.currentTimeMillis() - startStartFileInternal) + " ms.");
+
+    long startGetInfo = System.currentTimeMillis();
+
     final HdfsFileStatus stat = FSDirStatAndListingOp.
         getFileInfo(dir, src, false, FSDirectory.isReservedRawName(srcArg), true);
+
+    if (LOG.isDebugEnabled())
+      LOG.debug("Got file info for new file '" + src + "' in " + (System.currentTimeMillis() - startGetInfo) + " ms.");
 
     logAuditEvent(true, "create", src, null,
         (isAuditEnabled() && isExternalInvocation()) ? stat : null);
@@ -2252,7 +2285,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       PermissionStatus permissions, String holder, String clientMachine,
       boolean create, boolean overwrite, boolean createParent, short replication,
       long blockSize, CipherSuite suite, CryptoProtocolVersion version,
-      EncryptedKeyVersion edek) throws RetryStartFileException, IOException {
+      EncryptedKeyVersion edek) throws IOException {
 
     // Verify that the destination does not exist as a directory already.
     final INode inode = iip.getLastINode();
