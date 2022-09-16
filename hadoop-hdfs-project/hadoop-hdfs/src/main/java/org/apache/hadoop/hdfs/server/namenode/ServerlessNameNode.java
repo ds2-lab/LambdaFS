@@ -1730,16 +1730,19 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.debug("Create Arguments:\n   src = " + src + "\n   clientName = "+ clientName + "\n   createParent = " +
             createParent + "\n   replication = " + replication + "\n   blockSize = " + blockSize);
 
+    long startCheckPathLength = System.currentTimeMillis();
     if (!checkPathLength(src)) {
       throw new IOException(
               "create: Pathname too long.  Limit " + MAX_PATH_LENGTH + " characters, " + MAX_PATH_DEPTH + " levels.");
     }
-    // I don't know what to use for this; the RPC server has a method for it, but I don't know if it applies to serverless case...
-    String clientMachine = "";
+
+    if (LOG.isDebugEnabled())
+      LOG.debug("Checked path length for new file '" + src + "' in " +
+              (System.currentTimeMillis() - startCheckPathLength) + " ms.");
 
     HdfsFileStatus stat = namesystem.startFile(
             src, new PermissionStatus(getRemoteUser().getShortUserName(), null, masked),
-            clientName, clientMachine, flag, createParent, replication, blockSize, supportedVersions);
+            clientName, "", flag, createParent, replication, blockSize, supportedVersions);
 
     // Currently, it is impossible to pass null for EncodingPolicy, but pretending it's possible for now...
     if (policy != null) {

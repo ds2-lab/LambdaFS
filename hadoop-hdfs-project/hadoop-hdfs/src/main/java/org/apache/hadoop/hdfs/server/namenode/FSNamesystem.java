@@ -2129,6 +2129,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
                 (System.currentTimeMillis() - startEdek) + " ms.");
     }
 
+    if (LOG.isDebugEnabled())
+      LOG.debug("Preparing to actually create new file: '" + src + "'");
+
     long startCreate = System.currentTimeMillis();
         
     // Proceed with the create operation, using the computed cipher suite and generated EDEK.
