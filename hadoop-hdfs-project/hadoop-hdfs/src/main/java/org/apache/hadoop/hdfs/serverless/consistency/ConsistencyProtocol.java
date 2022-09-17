@@ -342,6 +342,12 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
 
         for (INode invalidatedINode : invalidatedINodes) {
+            if (LOG.isDebugEnabled()) {
+                if (invalidatedINode.isUnderConstruction())
+                    LOG.debug("Invalidated INode '" + invalidatedINode.getLocalName() + " IS under construction.");
+                else
+                    LOG.debug("Invalidated INode '" + invalidatedINode.getLocalName() + " is NOT under construction.");
+            }
             int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
             involvedDeployments.add(mappedDeploymentNumber);
 
