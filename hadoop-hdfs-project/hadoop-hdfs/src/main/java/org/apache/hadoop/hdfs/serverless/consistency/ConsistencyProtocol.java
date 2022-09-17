@@ -168,7 +168,20 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      */
     private int totalNumberOfACKsRequiredPreComputed = -1;
 
+    /**
+     * The set of INodes being invalidated by the transaction.
+     * These are what we retrieve from the EntityContext.
+     */
     private Collection<INode> invalidatedINodes;
+
+    /**
+     * We process the {@code invalidatedINodes} collection, filtering out
+     * any INodes that are set to `UnderConstruction`, as these cannot be
+     * cached. (They are newly-created. Anyone who reads them from NDB will
+     * not be able to cache them. They will not have been cached already,
+     * since they're new. So, we do not need to issue invalidations for them.)
+     */
+    private List<INode> invalidatedINodesFiltered;
 
     /**
      * If true, then we're performing a `complete` operation.
@@ -359,6 +372,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                             (callingThreadINodeContext == null));
         }
 
+        invalidatedINodesFiltered = new ArrayList<>();
         for (INode invalidatedINode : invalidatedINodes) {
             // If the INode is under construction, then it cannot be cached, and thus we do not need to invalidate it.
             // This occurs when creating a new file -- the newly-created INode is designated as "under construction".
@@ -373,6 +387,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
             int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
             involvedDeployments.add(mappedDeploymentNumber);
+            invalidatedINodesFiltered.add(invalidatedINode);
 
             // We'll have to guest-join the other deployment if the INode is not mapped to our deployment.
             // This is common during subtree operations and when creating a new directory (as that modifies the parent
@@ -560,7 +575,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             if (useZooKeeperForACKsAndINVs) {
                 try {
                     long invStartTime = System.currentTimeMillis();
-                    issueInvalidationsZooKeeper(invalidatedINodes);
+                    issueInvalidationsZooKeeper();
                     long invEndTime = System.currentTimeMillis();
 
                     if (TransactionalRequestHandler.TX_EVENTS_ENABLED)
@@ -1130,7 +1145,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
     /**
      * Perform Step (1) of the consistency protocol:
-     *    Create the ACK instances that we will add to NDB. We do NOT add them in this function; we merely compute
+     *    Create the ACK instances that we will add to NDB/ZK. We do NOT add them in this function; we merely compute
      *    them (i.e., create the objects). In some cases, we will find that we don't create any, in which case we
      *    skip subscribing to the ACK events table. If we create at least one ACK object in this method however, we
      *    will first subscribe to ACK events, then we will add the ACKs to intermediate storage.
@@ -1240,13 +1255,18 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         return totalNumberOfACKsRequired;
     }
 
-    private void issueInvalidationsZooKeeper(Collection<INode> invalidatedINodes) throws Exception {
+    private void issueInvalidationsZooKeeper() throws Exception {
         if (LOG.isDebugEnabled()) LOG.debug("=-----=-----= Step 3 - Issuing Initial Invalidations via ZooKeeper =-----=-----=");
 
         List<Long> invalidatedINodeIDs;
 
-        // Will be null for subtree operations?
-        if (invalidatedINodes != null)
+        // I believe `invalidatedINodesFiltered` will always be non-null during subtree operations.
+        // I believe both `invalidatedINodesFiltered` and `invalidatedINodes` will be null during subtree operations.
+        // I believe `invalidatedINodes` will never need to be used in place of `invalidatedINodesFiltered`; that is,
+        // if `invalidatedINodes` is non-null, then `invalidatedINodesFiltered` will necessarily be non-null as well.
+        if (invalidatedINodesFiltered != null)
+            invalidatedINodeIDs = invalidatedINodesFiltered.stream().map(INode::getId).collect(Collectors.toList());
+        else if (invalidatedINodes != null) // So, this else-if here is probably unnecessary...
             invalidatedINodeIDs = invalidatedINodes.stream().map(INode::getId).collect(Collectors.toList());
         else
             invalidatedINodeIDs = new ArrayList<>();
