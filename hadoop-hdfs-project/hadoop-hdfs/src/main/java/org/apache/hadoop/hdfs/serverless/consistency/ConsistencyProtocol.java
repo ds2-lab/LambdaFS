@@ -251,7 +251,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * for which we do not actually need any ACKs.
      */
     public int precomputeAcks() throws IOException {
-        if (!DO_CONSISTENCY_PROTOCOL.get()) {
+        if (DO_CONSISTENCY_PROTOCOL.get() == null || !DO_CONSISTENCY_PROTOCOL.get()) {
             if (LOG.isDebugEnabled()) LOG.debug("Skipping consistency protocol as 'DO_CONSISTENCY_PROTOCOL' is set to false.");
             canProceed = true;
             return 0;
@@ -443,7 +443,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         //
         //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
 
-        if (!DO_CONSISTENCY_PROTOCOL.get()) {
+        if (DO_CONSISTENCY_PROTOCOL.get() == null || !DO_CONSISTENCY_PROTOCOL.get()) {
             if (LOG.isDebugEnabled()) LOG.debug("Skipping consistency protocol as 'DO_CONSISTENCY_PROTOCOL' is set to false.");
             canProceed = true;
             return;

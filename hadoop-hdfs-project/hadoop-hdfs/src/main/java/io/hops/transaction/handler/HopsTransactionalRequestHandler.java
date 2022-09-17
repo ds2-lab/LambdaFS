@@ -142,7 +142,7 @@ public abstract class HopsTransactionalRequestHandler
 
   @Override
   protected final boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException {
-    if (!ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.get()) {
+    if (ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.get() == null || !ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.get()) {
       // if (requestHandlerLOG.isDebugEnabled()) requestHandlerLOG.debug("Consistency protocol is DISABLED. Not executing consistency protocol.");
       return true;
     }

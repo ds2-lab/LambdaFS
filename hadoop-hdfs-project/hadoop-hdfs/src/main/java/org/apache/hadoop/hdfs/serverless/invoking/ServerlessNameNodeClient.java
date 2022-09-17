@@ -1774,7 +1774,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public boolean truncate(String src, long newLength, String clientName) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
+    public boolean truncate(String src, long newLength, String clientName) throws IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put(ServerlessNameNodeKeys.SRC, src);

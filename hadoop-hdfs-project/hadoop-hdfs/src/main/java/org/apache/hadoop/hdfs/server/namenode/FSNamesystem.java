@@ -2086,7 +2086,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       new HopsTransactionalRequestHandler(
           HDFSOperationType.START_FILE) {
         @Override
-        public void acquireLock(TransactionLocks locks) throws IOException {
+        public void acquireLock(TransactionLocks locks) {
           LockFactory lf = getInstance();
           INodeLock il = lf.getINodeLock(INodeLockType.WRITE_ON_TARGET_AND_PARENT, INodeResolveType.PATH, src)
               .setNameNodeID(serverlessNameNode.getId())
