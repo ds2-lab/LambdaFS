@@ -342,12 +342,14 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         }
 
         for (INode invalidatedINode : invalidatedINodes) {
-            if (LOG.isDebugEnabled()) {
-                if (invalidatedINode.isUnderConstruction())
-                    LOG.debug("Invalidated INode '" + invalidatedINode.getLocalName() + " IS under construction.");
-                else
-                    LOG.debug("Invalidated INode '" + invalidatedINode.getLocalName() + " is NOT under construction.");
-            }
+            // If the INode is under construction, then it cannot be cached, and thus we do not need to invalidate it.
+            // This occurs when creating a new file -- the newly-created INode is designated as "under construction".
+            // If we run the consistency protocol for the `create` operation, then it's basically a waste of time,
+            // as we'll invalidate the exact same INodes when the `complete` operation is executed. No reason to cache.
+            // No reason to invalidate/run consistency protocol.
+            if (invalidatedINode.isUnderConstruction())
+                continue;
+
             int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
             involvedDeployments.add(mappedDeploymentNumber);
 

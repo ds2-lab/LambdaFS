@@ -312,19 +312,23 @@ public class InMemoryINodeCache {
      * @param value The metadata object to cache under the given key.
      *
      * @return The previous value associated with key, or null if there was no mapping for key.
+     *
+     * If the INode could not be cached due to it being Under Construction, then null is returned.
+     *
+     * TODO: Should we just remove the return value altogether? It is never used and may cause confusion...
      */
     public INode put(String key, long iNodeId, INode value) {
         if (value == null)
             throw new IllegalArgumentException("INode Metadata Cache does NOT support null values. Associated key: " + key);
         long s = System.currentTimeMillis();
 
-//        if (consistentHash(Hashing.md5().hashString(getPathToCache(key)), numDeployments) != deploymentNumber) {
-//            if (LOG.isTraceEnabled()) {
-//                long t = System.currentTimeMillis();
-//                LOG.trace("Rejected INode '" + key + "' (ID=" + iNodeId + ") from being cached in " + (t - s) + " ms.");
-//            }
-//            return null;
-//        }
+        if (value.isUnderConstruction()) {
+            if (LOG.isTraceEnabled())
+                LOG.trace("Cannot cache INode '" + value.getLocalName() + "' (id=" + value.getId() +
+                        ") as it is Under Construction.");
+
+            return null;
+        }
 
         _mutex.writeLock().lock();
         INode returnValue;
@@ -347,9 +351,6 @@ public class InMemoryINodeCache {
 
         // Create a mapping between the INode ID and the path.
         idToFullPathMap.put(iNodeId, key);
-
-        // Cache by full-path.
-        // fullPathMetadataCache.put(key, value);
 
         return returnValue;
     }
