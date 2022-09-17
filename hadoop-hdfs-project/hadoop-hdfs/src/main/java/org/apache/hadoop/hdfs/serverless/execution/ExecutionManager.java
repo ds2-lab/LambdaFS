@@ -4,7 +4,6 @@ import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
 import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
-import org.apache.commons.math3.stat.descriptive.SynchronizedDescriptiveStatistics;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
@@ -16,10 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.management.BufferPoolMXBean;
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryPoolMXBean;
-import java.lang.management.MemoryUsage;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -249,16 +244,17 @@ public class ExecutionManager {
      * @param taskId The unique ID of the request/task that we're executing.
      * @param operationName The name of the file system operation that we're executing.
      * @param taskArguments The arguments for the file system operation.
-     * @param forceRedo If True, we should re-execute the task, even if we've executed it before.
      * @param workerResult Encapsulates all the information we will eventually return to the client.
-     * @param http If true, we were invoked via HTTP. If false, then we were "invoked" via TCP.
      */
-    public void tryExecuteTask(String taskId, String operationName, TaskArguments taskArguments, boolean forceRedo,
-                               NameNodeResultWithMetrics workerResult, boolean http) {
-        seenTasks.add(taskId);
+    public void tryExecuteTask(String taskId, String operationName, TaskArguments taskArguments,
+                               NameNodeResultWithMetrics workerResult) {
+        // seenTasks.add(taskId);
 
-        if (LOG.isDebugEnabled())
+        long start = 0L;
+        if (LOG.isDebugEnabled()) {
+            start = System.currentTimeMillis();
             LOG.debug("Executing task " + taskId + ", operation: " + operationName + " now.");
+        }
 
         workerResult.setDequeuedTime(System.currentTimeMillis());
 
@@ -275,7 +271,11 @@ public class ExecutionManager {
 
             // We only add the task to the `completedTasks` mapping if we executed it successfully.
             // If there was an error, then may be automatically re-submitted by the client.
-            lastTaskExecutedTimestamp.set(System.currentTimeMillis());
+            long end = System.currentTimeMillis();
+            lastTaskExecutedTimestamp.set(end);
+
+            if (LOG.isDebugEnabled())
+                LOG.debug("Successfully executed task " + taskId + ", operation: " + operationName + " in " + (end - start) + " ms.");
         } catch (Exception ex) {
             LOG.error("Encountered exception while executing file system operation " + operationName +
                     " for task " + taskId + ".", ex);
@@ -292,14 +292,14 @@ public class ExecutionManager {
         if (txEventsEnabled)
             workerResult.commitTransactionEvents(serverlessNameNodeInstance.getAndClearTransactionEvents());
 
-        boolean locked = bufferPoolQueryLock.tryLock();
-        if (locked) {
-            try {
-                checkOffHeapMemoryPools();
-            } finally {
-                bufferPoolQueryLock.unlock();
-            }
-        }
+//        boolean locked = bufferPoolQueryLock.tryLock();
+//        if (locked) {
+//            try {
+//                checkOffHeapMemoryPools();
+//            } finally {
+//                bufferPoolQueryLock.unlock();
+//            }
+//        }
     }
 
     /**
@@ -308,16 +308,16 @@ public class ExecutionManager {
      * @param taskId The unique ID of the request/task that we're executing.
      * @param operationName The name of the file system operation that we're executing.
      * @param taskArguments The arguments for the file system operation.
-     * @param forceRedo If True, we should re-execute the task, even if we've executed it before.
      * @param workerResult Encapsulates all the information we will eventually return to the client.
-     * @param http If true, we were invoked via HTTP. If false, then we were "invoked" via TCP.
      */
     public void tryExecuteTask(String taskId, String operationName, TaskArguments taskArguments,
-                               boolean forceRedo, NameNodeResult workerResult, boolean http) {
-        seenTasks.add(taskId);
+                               NameNodeResult workerResult) {
+        // seenTasks.add(taskId);
 
-        if (LOG.isDebugEnabled())
-            LOG.info("Executing task " + taskId + ", operation: " + operationName + " now.");
+        long start = 0L;
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Executing task " + taskId + ", operation: " + operationName + " now.");
+        }
 
         Serializable result;
         try {
@@ -330,7 +330,11 @@ public class ExecutionManager {
 
             // We only add the task to the `completedTasks` mapping if we executed it successfully.
             // If there was an error, then may be automatically re-submitted by the client.
-            lastTaskExecutedTimestamp.set(System.currentTimeMillis());
+            long end = System.currentTimeMillis();
+            lastTaskExecutedTimestamp.set(end);
+
+            if (LOG.isDebugEnabled())
+                LOG.debug("Successfully executed task " + taskId + ", operation: " + operationName + " in " + (end - start) + " ms.");
         } catch (Exception ex) {
             LOG.error("Encountered exception while executing file system operation " + operationName +
                     " for task " + taskId + ".", ex);
@@ -341,14 +345,14 @@ public class ExecutionManager {
             workerResult.addThrowable(t);
         }
 
-        boolean locked = bufferPoolQueryLock.tryLock();
-        if (locked) {
-            try {
-                checkOffHeapMemoryPools();
-            } finally {
-                bufferPoolQueryLock.unlock();
-            }
-        }
+//        boolean locked = bufferPoolQueryLock.tryLock();
+//        if (locked) {
+//            try {
+//                checkOffHeapMemoryPools();
+//            } finally {
+//                bufferPoolQueryLock.unlock();
+//            }
+//        }
     }
 
 
@@ -458,9 +462,9 @@ public class ExecutionManager {
      * @param candidate the task for which we are checking if it is a duplicate
      * @return true if the task is a duplicate, otherwise false.
      */
-    public synchronized boolean isTaskDuplicate(FileSystemTask<Serializable> candidate) {
-        return isTaskDuplicate(candidate.getTaskId());
-    }
+//    public synchronized boolean isTaskDuplicate(FileSystemTask<Serializable> candidate) {
+//        return isTaskDuplicate(candidate.getTaskId());
+//    }
 
     /**
      * Check if the task identified by the given ID is a duplicate.
@@ -468,12 +472,12 @@ public class ExecutionManager {
      * @param taskId the task ID of the task for which we are checking if it is a duplicate
      * @return true if the task is a duplicate, otherwise false.
      */
-    public synchronized boolean isTaskDuplicate(String taskId) {
-        //return currentlyExecutingTasks.asMap().containsKey(taskId) || completedTasks.asMap().containsKey(taskId);
-        //return currentlyExecutingTasks.containsKey(taskId) || completedTasks.containsKey(taskId);
-        // return currentlyExecutingTasks.contains(taskId) || completedTasks.contains(taskId);
-        return seenTasks.contains(taskId);
-    }
+//    public synchronized boolean isTaskDuplicate(String taskId) {
+//        //return currentlyExecutingTasks.asMap().containsKey(taskId) || completedTasks.asMap().containsKey(taskId);
+//        //return currentlyExecutingTasks.containsKey(taskId) || completedTasks.containsKey(taskId);
+//        // return currentlyExecutingTasks.contains(taskId) || completedTasks.contains(taskId);
+//        return seenTasks.contains(taskId);
+//    }
 
 //    /**
 //     * Handler for when the worker thread encounters a duplicate task.

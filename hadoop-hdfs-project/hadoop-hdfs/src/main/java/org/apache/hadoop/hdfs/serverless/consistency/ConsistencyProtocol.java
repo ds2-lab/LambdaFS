@@ -343,16 +343,16 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         for (INode invalidatedINode : invalidatedINodes) {
             int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);
-            int localDeploymentNumber = serverlessNameNodeInstance.getDeploymentNumber();
+            involvedDeployments.add(mappedDeploymentNumber);
 
             // We'll have to guest-join the other deployment if the INode is not mapped to our deployment.
             // This is common during subtree operations and when creating a new directory (as that modifies the parent
             // INode of the new directory, which is possibly mapped to a different deployment).
-            if (mappedDeploymentNumber != localDeploymentNumber) {
-//                if (LOG.isDebugEnabled()) LOG.debug("INode '" + invalidatedINode.getLocalName() +
-//                        "' is mapped to a different deployment (" + mappedDeploymentNumber + ").");
-                involvedDeployments.add(mappedDeploymentNumber);
-            }
+            // COMMENTED OUT: We need to receive ACKs from other NNs in our deployment if they cache the nodes
+            //                being invalidated, so we shouldn't perform the commented-out check.
+//            if (mappedDeploymentNumber != serverlessNameNodeInstance.getDeploymentNumber()) {
+//                involvedDeployments.add(mappedDeploymentNumber);
+//            }
         }
     }
 
@@ -674,6 +674,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         // Steps 6 and 7 happen automatically. We can return from this function to perform the writes.
         this.canProceed = true;
+
+        if (LOG.isDebugEnabled())
+            LOG.debug("Completed consistency protocol in " + (System.currentTimeMillis() - startTime) +
+                    " ms for the following INodes: " + StringUtils.join(invalidatedINodes, ", "));
     }
 
     /**
@@ -1137,23 +1141,26 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         for (int deploymentNumber : involvedDeployments) {
             List<WriteAcknowledgement> writeAcknowledgements = new ArrayList<>();
 
-            long s = System.nanoTime();
+            long s = System.currentTimeMillis();
             List<String> groupMemberIds = zkClient.getPermanentGroupMembers("namenode" + deploymentNumber);
             if (LOG.isTraceEnabled())
                 LOG.trace("Retrieved active NNs in deployment " + deploymentNumber + " in " +
-                        ((System.nanoTime() - s) / 1.0e6) + " ms.");
+                        (System.currentTimeMillis() - s) + " ms.");
 
             if (groupMemberIds.size() == 0) {
                 toRemove.add(deploymentNumber);
                 continue;
             } else if (LOG.isDebugEnabled()) {
                 if (groupMemberIds.size() == 1)
-                    LOG.trace("There is 1 active instance in deployment #" + deploymentNumber + " at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
+                    LOG.trace("There is 1 active instance in deployment #" + deploymentNumber +
+                            " at the start of consistency protocol: " + groupMemberIds.get(0) + ".");
                 else
-                    LOG.trace("There are " + groupMemberIds.size() + " active instances in deployment #" + deploymentNumber + " at the start of consistency protocol: " + StringUtils.join(groupMemberIds, ", "));
+                    LOG.trace("There are " + groupMemberIds.size() + " active instances in deployment #" +
+                            deploymentNumber + " at the start of consistency protocol: " +
+                            StringUtils.join(groupMemberIds, ", "));
             }
 
-            Set<Long> acksForCurrentDeployment = waitingForAcksPerDeployment.computeIfAbsent(deploymentNumber, depNum -> new HashSet<Long>());
+            Set<Long> acksForCurrentDeployment = waitingForAcksPerDeployment.computeIfAbsent(deploymentNumber, depNum -> new HashSet<>());
 
             // Iterate over all the current group members. For each group member, we create a WriteAcknowledgement object,
             // which we'll persist to intermediate storage. We skip ourselves, as we do not need to ACK our own write. We also

@@ -542,7 +542,7 @@ public class NameNodeTcpUdpClient {
         if (benchmarkingModeEnabled) {
             NameNodeResult tcpResult = new NameNodeResult(requestId, op);
             serverlessNameNode.getExecutionManager().tryExecuteTask(
-                    requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
+                    requestId, op, new HashMapTaskArguments(fsArgs), tcpResult);
 
             long s = System.nanoTime();
             // Only bother trying to connect if there's at least one non-existent connection.
@@ -563,7 +563,7 @@ public class NameNodeTcpUdpClient {
                     "TCP", serverlessNameNode.getId(), op);
             tcpResult.setFnStartTime(startTime);
             serverlessNameNode.getExecutionManager().tryExecuteTask(
-                    requestId, op, new HashMapTaskArguments(fsArgs), false, tcpResult, false);
+                    requestId, op, new HashMapTaskArguments(fsArgs), tcpResult);
 
             long s = System.nanoTime();
             // Only bother trying to connect if there's at least one non-existent connection.

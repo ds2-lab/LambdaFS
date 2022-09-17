@@ -485,9 +485,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @param requestId The ID of the request.
    * @return true if the request has been received and processed already, otherwise false.
    */
-  public boolean checkIfRequestProcessedAlready(String requestId) {
-    return executionManager.isTaskDuplicate(requestId);
-  }
+//  public boolean checkIfRequestProcessedAlready(String requestId) {
+//    return executionManager.isTaskDuplicate(requestId);
+//  }
 
   public ExecutionManager getExecutionManager() { return executionManager; }
 
@@ -1730,15 +1730,15 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.debug("Create Arguments:\n   src = " + src + "\n   clientName = "+ clientName + "\n   createParent = " +
             createParent + "\n   replication = " + replication + "\n   blockSize = " + blockSize);
 
-    long startCheckPathLength = System.currentTimeMillis();
+//    long startCheckPathLength = System.currentTimeMillis();
     if (!checkPathLength(src)) {
       throw new IOException(
               "create: Pathname too long.  Limit " + MAX_PATH_LENGTH + " characters, " + MAX_PATH_DEPTH + " levels.");
     }
 
-    if (LOG.isDebugEnabled())
-      LOG.debug("Checked path length for new file '" + src + "' in " +
-              (System.currentTimeMillis() - startCheckPathLength) + " ms.");
+//    if (LOG.isDebugEnabled())
+//      LOG.debug("Checked path length for new file '" + src + "' in " +
+//              (System.currentTimeMillis() - startCheckPathLength) + " ms.");
 
     HdfsFileStatus stat = namesystem.startFile(
             src, new PermissionStatus(getRemoteUser().getShortUserName(), null, masked),

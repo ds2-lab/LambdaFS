@@ -389,10 +389,10 @@ public class OpenWhiskHandler extends BaseHandler {
         try {
             if (result instanceof NameNodeResultWithMetrics)
                 serverlessNameNode.getExecutionManager().tryExecuteTask(
-                        requestId, op, new JsonTaskArguments(fsArgs), redoEvenIfDuplicate, (NameNodeResultWithMetrics)result, true);
+                        requestId, op, new JsonTaskArguments(fsArgs), (NameNodeResultWithMetrics)result);
             else
                 serverlessNameNode.getExecutionManager().tryExecuteTask(
-                        requestId, op, new JsonTaskArguments(fsArgs), redoEvenIfDuplicate, result, true);
+                        requestId, op, new JsonTaskArguments(fsArgs), result);
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);
