@@ -45,7 +45,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * Basically just exists to make debugging/performance testing easier. I use this to dynamically
      * enable or disable the consistency protocol, which is used during write transactions.
      */
-    public static boolean DO_CONSISTENCY_PROTOCOL = true;
+    public static ThreadLocal<Boolean> DO_CONSISTENCY_PROTOCOL = new ThreadLocal<>();
 
     private static Log LOG = LogFactory.getLog(ConsistencyProtocol.class);
 
@@ -251,6 +251,12 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * for which we do not actually need any ACKs.
      */
     public int precomputeAcks() throws IOException {
+        if (!DO_CONSISTENCY_PROTOCOL.get()) {
+            if (LOG.isDebugEnabled()) LOG.debug("Skipping consistency protocol as 'DO_CONSISTENCY_PROTOCOL' is set to false.");
+            canProceed = true;
+            return 0;
+        }
+
         LOG.debug("Pre-computing ACKs (before running full consistency protocol).");
         if (this.invalidatedINodes == null) {
             LOG.error("Cannot pre-compute ACKs if set of invalidated INodes is null.");
@@ -437,7 +443,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         //
         //// // // // // // // // // // //// // // // // // // // // // //// // // // // // // // // // ////
 
-        if (!DO_CONSISTENCY_PROTOCOL) {
+        if (!DO_CONSISTENCY_PROTOCOL.get()) {
             if (LOG.isDebugEnabled()) LOG.debug("Skipping consistency protocol as 'DO_CONSISTENCY_PROTOCOL' is set to false.");
             canProceed = true;
             return;

@@ -152,6 +152,11 @@ public class NameNodeTcpUdpClient {
     private boolean useUDP;
 
     /**
+     * We compare the `doConsistencyProtocol` included in requests and only update the real one if there's a change.
+     */
+    private boolean cachedDoConsistencyProtocol = true;
+
+    /**
      * Constructor.
      *
      * @param conf Configuration passed to the serverless NameNode.
@@ -531,7 +536,11 @@ public class NameNodeTcpUdpClient {
 
         String op = args.getOperationName();
         HashMap<String, Object> fsArgs = args.getFsOperationArguments();
-        ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.isConsistencyProtocolEnabled();
+        if (cachedDoConsistencyProtocol != args.isConsistencyProtocolEnabled()) {
+            ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.set(args.isConsistencyProtocolEnabled());
+            cachedDoConsistencyProtocol = args.isConsistencyProtocolEnabled();
+        }
+        // ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.isConsistencyProtocolEnabled();
 
         int logLevel = args.getServerlessFunctionLogLevel();
         LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));

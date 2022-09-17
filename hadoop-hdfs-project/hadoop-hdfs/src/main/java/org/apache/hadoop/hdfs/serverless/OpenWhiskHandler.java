@@ -143,7 +143,7 @@ public class OpenWhiskHandler extends BaseHandler {
         }
 
         if (userArguments.has(CONSISTENCY_PROTOCOL_ENABLED))
-            ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = userArguments.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean();
+            ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.set(userArguments.get(CONSISTENCY_PROTOCOL_ENABLED).getAsBoolean());
 
         // Extract the list of TCP ports. Each port is being used by an active TCP server on the client's VM.
         List<Integer> tcpPorts = null;
