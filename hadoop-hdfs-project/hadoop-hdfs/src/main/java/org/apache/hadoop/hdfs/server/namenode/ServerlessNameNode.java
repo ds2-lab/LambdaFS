@@ -1753,6 +1753,9 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
               EncodingStatus.Status.ENCODING_REQUESTED, false);
     }
 
+    if (LOG.isDebugEnabled())
+      LOG.debug("Returning HdfsFileStatus for newly-created file '" + src + "' now...");
+
     return stat;
   }
 

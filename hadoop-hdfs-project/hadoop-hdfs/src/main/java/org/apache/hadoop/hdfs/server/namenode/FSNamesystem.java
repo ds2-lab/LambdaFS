@@ -2253,22 +2253,22 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
 //      LOG.debug("Performed path resolution for new file to be created '" + src + "' in " +
 //              (System.currentTimeMillis() - startPathResolution) + " ms.");
 
-//    long startStartFileInternal = System.currentTimeMillis();
+    long startStartFileInternal = System.currentTimeMillis();
 
     startFileInternal(pc, iip, permissions, holder, clientMachine, create, overwrite,
         createParent, replication, blockSize, suite, version, edek);
 
-//    if (LOG.isDebugEnabled())
-//      LOG.debug("Executed startFileInternal() for new file '" + src + "' in " +
-//              (System.currentTimeMillis() - startStartFileInternal) + " ms.");
+    if (LOG.isDebugEnabled())
+      LOG.debug("Executed startFileInternal() for new file '" + src + "' in " +
+              (System.currentTimeMillis() - startStartFileInternal) + " ms.");
 
-//    long startGetInfo = System.currentTimeMillis();
+    long startGetInfo = System.currentTimeMillis();
 
     final HdfsFileStatus stat = FSDirStatAndListingOp.getFileInfo(
             dir, src, false, FSDirectory.isReservedRawName(srcArg), true);
 
-//    if (LOG.isDebugEnabled())
-//      LOG.debug("Got file info for new file '" + src + "' in " + (System.currentTimeMillis() - startGetInfo) + " ms.");
+    if (LOG.isDebugEnabled())
+      LOG.debug("Got file info for new file '" + src + "' in " + (System.currentTimeMillis() - startGetInfo) + " ms.");
 
     logAuditEvent(true, "create", src, null,
         (isAuditEnabled() && isExternalInvocation()) ? stat : null);
