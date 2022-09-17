@@ -250,9 +250,8 @@ public class ExecutionManager {
                                NameNodeResultWithMetrics workerResult) {
         // seenTasks.add(taskId);
 
-        long start = 0L;
+        long start = System.currentTimeMillis();
         if (LOG.isDebugEnabled()) {
-            start = System.currentTimeMillis();
             LOG.debug("Executing task " + taskId + ", operation: " + operationName + " now.");
         }
 
@@ -314,7 +313,7 @@ public class ExecutionManager {
                                NameNodeResult workerResult) {
         // seenTasks.add(taskId);
 
-        long start = 0L;
+        long start = System.currentTimeMillis();
         if (LOG.isDebugEnabled()) {
             LOG.debug("Executing task " + taskId + ", operation: " + operationName + " now.");
         }
