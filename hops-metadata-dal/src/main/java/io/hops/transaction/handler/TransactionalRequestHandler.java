@@ -98,17 +98,16 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         transactionEvent.addAttempt(transactionAttempt);
       }
 
-      long expWaitTime = exponentialBackoff();
+      exponentialBackoff();
       long txStartTime = System.currentTimeMillis();
       long oldTime = System.currentTimeMillis();
 
       long setupTime = -1;
-      long beginTxTime = -1;
       long acquireLockTime = -1;
       long inMemoryProcessingTime = -1;
       long consistencyProtocolTime = -1;
       long commitTime = -1;
-      long totalTime = -1;
+      long totalTime;
       TransactionLockAcquirer locksAcquirer = null;
 
       tryCount++;
@@ -119,7 +118,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
       boolean success = false;
       try {
         setNDC(info);
-        if(requestHandlerLOG.isTraceEnabled()) {
+        if(requestHandlerLOG.isDebugEnabled()) {
           requestHandlerLOG.debug("Pre-transaction phase started");
         }
         preTransactionSetup();
@@ -129,13 +128,13 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         long lockAcquireStartTime = System.currentTimeMillis();
         setupTime = (lockAcquireStartTime - oldTime);
 
-        if(requestHandlerLOG.isTraceEnabled()) {
+        if(requestHandlerLOG.isDebugEnabled()) {
           requestHandlerLOG.debug("Pre-transaction phase finished. Time " + setupTime + " ms");
         }
         setRandomPartitioningKey();
         EntityManager.begin();
-        if(requestHandlerLOG.isTraceEnabled()) {
-          requestHandlerLOG.trace("TX Started");
+        if(requestHandlerLOG.isDebugEnabled()) {
+          requestHandlerLOG.debug("TX Started");
         }
         //beginTxTime = (System.currentTimeMillis() - oldTime);
         oldTime = System.currentTimeMillis();
@@ -150,8 +149,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
 
         long inMemoryStart = System.currentTimeMillis();
         acquireLockTime = (inMemoryStart - oldTime);
-        if(requestHandlerLOG.isTraceEnabled()){
-          requestHandlerLOG.trace("All Locks Acquired. Time " + acquireLockTime + " ms");
+        if(requestHandlerLOG.isDebugEnabled()){
+          requestHandlerLOG.debug("All Locks Acquired. Time " + acquireLockTime + " ms");
         }
         //sometimes in setup we call lightweight request handler that messes up with the NDC
         removeNDC();
@@ -171,7 +170,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         inMemoryProcessingTime = (consistencyStartTime - inMemoryStart);
 
         oldTime = System.currentTimeMillis();
-        if(requestHandlerLOG.isTraceEnabled()) {
+        if(requestHandlerLOG.isDebugEnabled()) {
           requestHandlerLOG.debug("In Memory Processing Finished. Time " + inMemoryProcessingTime + " ms");
         }
 
@@ -186,7 +185,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         oldTime = System.currentTimeMillis();
 
         if (canProceed) {
-          if (printSuccessMessage)
+          if (printSuccessMessage && requestHandlerLOG.isDebugEnabled())
             requestHandlerLOG.debug("Consistency protocol for TX " + operationId + " succeeded after " + consistencyProtocolTime + " ms");
         } else {
           if (TX_EVENTS_ENABLED && transactionAttempt != null) {
@@ -234,8 +233,8 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
         if(stat != null)
           stat.setTimes(acquireLockTime, inMemoryProcessingTime, commitTime);
 
-        if(requestHandlerLOG.isTraceEnabled()) {
-          requestHandlerLOG.trace("TX committed. Time " + commitTime + " ms");
+        if(requestHandlerLOG.isDebugEnabled()) {
+          requestHandlerLOG.debug("TX committed. Time " + commitTime + " ms");
         }
         totalTime = (System.currentTimeMillis() - txStartTime);
         if(requestHandlerLOG.isTraceEnabled()) {
