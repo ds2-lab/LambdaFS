@@ -267,8 +267,8 @@ class FSDirRenameOp {
                                              final long timestamp) throws IOException {
 
     HopsTransactionalRequestHandler renameToHandler = new HopsTransactionalRequestHandler(
-        isUsingSubTreeLocks ? HDFSOperationType.SUBTREE_DEPRICATED_RENAME : HDFSOperationType.DEPRICATED_RENAME,
-         src) {
+        isUsingSubTreeLocks ? HDFSOperationType.SUBTREE_DEPRICATED_RENAME : HDFSOperationType.DEPRICATED_RENAME
+    ) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
@@ -572,7 +572,7 @@ class FSDirRenameOp {
                                                   final long timestamp, final Options.Rename... options) throws IOException {
 
     return (RenameResult) new HopsTransactionalRequestHandler(
-        isUsingSubTreeLocks ? HDFSOperationType.SUBTREE_RENAME : HDFSOperationType.RENAME, src) {
+        isUsingSubTreeLocks ? HDFSOperationType.SUBTREE_RENAME : HDFSOperationType.RENAME) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();

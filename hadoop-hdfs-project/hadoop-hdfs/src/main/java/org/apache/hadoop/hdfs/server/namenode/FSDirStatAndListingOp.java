@@ -24,7 +24,6 @@ import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.lock.INodeLock;
 import io.hops.transaction.lock.LockFactory;
 import io.hops.transaction.lock.LockFactory.BLK;
-import io.hops.transaction.lock.TransactionLockTypes;
 import io.hops.transaction.lock.TransactionLockTypes.INodeLockType;
 import io.hops.transaction.lock.TransactionLockTypes.INodeResolveType;
 import io.hops.transaction.lock.TransactionLocks;
@@ -79,7 +78,7 @@ class FSDirStatAndListingOp {
     final byte[] startAfter = startAfterArg;
     
     HopsTransactionalRequestHandler getListingHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.GET_LISTING, src) {
+        HDFSOperationType.GET_LISTING) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
@@ -134,8 +133,8 @@ class FSDirStatAndListingOp {
     final FSPermissionChecker pc = fsd.getPermissionChecker();
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = fsd.resolvePath(pc, srcArg, pathComponents);
-    return (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.GET_FILE_INFO,
-            src) {
+    return (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.GET_FILE_INFO
+    ) {
           @Override
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = LockFactory.getInstance();
@@ -171,8 +170,8 @@ class FSDirStatAndListingOp {
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = fsd.resolvePath(pc, srcArg, pathComponents);
     return (boolean) new HopsTransactionalRequestHandler(
-        HDFSOperationType.GET_FILE_INFO,
-        src) {
+        HDFSOperationType.GET_FILE_INFO
+    ) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();

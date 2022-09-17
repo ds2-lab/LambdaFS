@@ -110,7 +110,7 @@ public class TestAddBlockRetry {
     final LocatedBlock[] onRetryBlock = new LocatedBlock[1];
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(src);
     new HopsTransactionalRequestHandler(
-        HDFSOperationType.GET_ADDITIONAL_BLOCK, src) {
+        HDFSOperationType.GET_ADDITIONAL_BLOCK) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();

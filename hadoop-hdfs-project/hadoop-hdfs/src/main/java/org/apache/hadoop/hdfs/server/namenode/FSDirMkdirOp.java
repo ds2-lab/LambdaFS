@@ -63,7 +63,7 @@ class FSDirMkdirOp {
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = fsd.resolvePath(pc, srcArg, pathComponents);
 
-    HopsTransactionalRequestHandler mkdirsHandler = new HopsTransactionalRequestHandler(HDFSOperationType.MKDIRS, src) {
+    HopsTransactionalRequestHandler mkdirsHandler = new HopsTransactionalRequestHandler(HDFSOperationType.MKDIRS) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();

@@ -36,7 +36,6 @@ import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
 import org.apache.hadoop.hdfs.serverless.BaseHandler;
-import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.hdfs.serverless.invoking.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.consistency.ConsistencyProtocol;
@@ -473,7 +472,7 @@ class FSDirDeleteOp {
         // only gets executed in subtree operations. If we've gotten this far, then the consistency protocol already
         // executed successfully at the beginning of this subtree op, and therefore we do not need to run it again.
         HopsTransactionalRequestHandler deleteHandler = new HopsTransactionalRequestHandler(
-            HDFSOperationType.SUBTREE_DELETE, null, true) {
+            HDFSOperationType.SUBTREE_DELETE, true) {
           @Override
           public void acquireLock(TransactionLocks locks) {
             LockFactory lf = LockFactory.getInstance();
@@ -528,7 +527,7 @@ class FSDirDeleteOp {
 
     LOG.debug("Performing delete transaction for source " + src + " now...");
 
-    HopsTransactionalRequestHandler deleteHandler = new HopsTransactionalRequestHandler(HDFSOperationType.DELETE, src) {
+    HopsTransactionalRequestHandler deleteHandler = new HopsTransactionalRequestHandler(HDFSOperationType.DELETE) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();

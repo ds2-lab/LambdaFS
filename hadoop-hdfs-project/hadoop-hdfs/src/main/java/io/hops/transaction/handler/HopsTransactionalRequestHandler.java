@@ -45,17 +45,35 @@ public abstract class HopsTransactionalRequestHandler
    */
   private final boolean skipConsistencyProtocol;
 
+  /**
+   * If true, then we're performing a `complete` operation.
+   */
+  private boolean isCompleteOperation = false;
+
+  /**
+   * If we're executing a `complete` operation, then let N be the INode being completed.
+   *
+   * This is the INode ID of the parent of N. We don't need to worry about the consistency protocol for this,
+   * as the parent of N would've
+   */
+  private long parentINodeId = -1L;
+
   public HopsTransactionalRequestHandler(HDFSOperationType opType) {
-    this(opType, null, false);
-  }
-  
-  public HopsTransactionalRequestHandler(HDFSOperationType opType, String path) {
-    this(opType, path, false);
+    this(opType, false);
   }
 
-  public HopsTransactionalRequestHandler(HDFSOperationType opType, String path, boolean skipConsistencyProtocol) {
+  // TODO: We probably don't need the `parentINodeId` or `isCompleteOperation`.
+  //       Can just pass `true` for `skipConsistencyProtocol` from the `complete` function.
+  public HopsTransactionalRequestHandler(HDFSOperationType opType, boolean isCompleteOperation,
+                                         long parentINodeId, boolean skipConsistencyProtocol) {
     super(opType);
     this.skipConsistencyProtocol = skipConsistencyProtocol;
+    this.parentINodeId = parentINodeId;
+    this.isCompleteOperation = isCompleteOperation;
+  }
+
+  public HopsTransactionalRequestHandler(HDFSOperationType opType, boolean skipConsistencyProtocol) {
+    this(opType, false, -1L, skipConsistencyProtocol);
   }
 
   @Override
@@ -157,7 +175,7 @@ public abstract class HopsTransactionalRequestHandler
               // If NN instance is currently null, then we default to using ZooKeeper. If the NN instance is non-null,
               // then we use the configured value.
               serverlessNameNodeInstance == null || !serverlessNameNodeInstance.useNdbForConsistencyProtocol(),
-              false, null, invalidatedINodes);
+              false, isCompleteOperation, null, invalidatedINodes, parentINodeId);
 
       // Pre-compute the ACKs.
       // This will allow us to avoid starting the thread if it turns out that no ACKs will be required.

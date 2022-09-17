@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hdfs.server.blockmanagement;
 
-import com.google.common.base.Preconditions;
 import io.hops.common.INodeUtil;
 import io.hops.exception.StorageException;
 import io.hops.metadata.HdfsStorageFactory;
@@ -278,7 +277,7 @@ public class TestPendingReplication {
   
   private Block[] getBlocks(final String file, final MiniDFSCluster cluster, final FSNamesystem fsn) throws IOException {
     HopsTransactionalRequestHandler getBlocksHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.VERIFY_FILE_BLOCKS, file) {
+        HDFSOperationType.VERIFY_FILE_BLOCKS) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();

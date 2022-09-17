@@ -41,7 +41,6 @@ import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.BlockStoragePolicy;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
@@ -75,8 +74,8 @@ public class FSDirAttrOp {
     final boolean isSTO = inode != null;
     boolean txFailed = true;
     try {
-      HdfsFileStatus ret = (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.SUBTREE_SETPERMISSION,
-          src) {
+      HdfsFileStatus ret = (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.SUBTREE_SETPERMISSION
+      ) {
         @Override
         public void acquireLock(TransactionLocks locks) throws IOException {
           LockFactory lf = LockFactory.getInstance();
@@ -140,7 +139,7 @@ public class FSDirAttrOp {
     final boolean isSTO = inode != null;
     try {
       HdfsFileStatus ret
-          = (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.SET_OWNER_SUBTREE, src) {
+          = (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.SET_OWNER_SUBTREE) {
             @Override
             public void acquireLock(TransactionLocks locks) throws IOException {
               LockFactory lf = LockFactory.getInstance();
@@ -210,7 +209,7 @@ public class FSDirAttrOp {
     final FSPermissionChecker pc = fsd.getPermissionChecker();
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = fsd.resolvePath(pc, srcArg, pathComponents);
-    return (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.SET_TIMES, src) {
+    return (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.SET_TIMES) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
@@ -250,8 +249,8 @@ public class FSDirAttrOp {
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = fsd.resolvePath(pc, srcArg, pathComponents);
     HopsTransactionalRequestHandler setReplicationHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.SET_REPLICATION,
-        src) {
+        HDFSOperationType.SET_REPLICATION
+    ) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
@@ -307,7 +306,7 @@ public class FSDirAttrOp {
     final String src = FSDirectory.resolvePath(srcArg, pathComponents, fsd);
     
     HopsTransactionalRequestHandler setStoragePolicyHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.SET_STORAGE_POLICY, src) {
+        HDFSOperationType.SET_STORAGE_POLICY) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
@@ -357,7 +356,7 @@ public class FSDirAttrOp {
     final String src = fsd.resolvePath(pc, srcArg, pathComponents);
    
     HopsTransactionalRequestHandler getPreferredBlockSizeHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.GET_PREFERRED_BLOCK_SIZE, src) {
+        HDFSOperationType.GET_PREFERRED_BLOCK_SIZE) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
@@ -443,8 +442,8 @@ public class FSDirAttrOp {
         }
       }
 
-      HopsTransactionalRequestHandler setQuotaHandler = new HopsTransactionalRequestHandler(HDFSOperationType.SET_QUOTA,
-          src) {
+      HopsTransactionalRequestHandler setQuotaHandler = new HopsTransactionalRequestHandler(HDFSOperationType.SET_QUOTA
+      ) {
         @Override
         public void acquireLock(TransactionLocks locks) throws IOException {
           LockFactory lf = LockFactory.getInstance();

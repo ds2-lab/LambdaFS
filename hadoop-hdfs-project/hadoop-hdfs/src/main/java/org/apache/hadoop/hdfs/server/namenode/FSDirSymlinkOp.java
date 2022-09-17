@@ -66,8 +66,8 @@ class FSDirSymlinkOp {
     final FSPermissionChecker pc = fsn.getPermissionChecker();
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(linkArg);
     final String link = fsd.resolvePath(pc, linkArg, pathComponents);
-    return (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.CREATE_SYM_LINK,
-        link) {
+    return (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.CREATE_SYM_LINK
+    ) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();

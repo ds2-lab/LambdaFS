@@ -128,7 +128,7 @@ public class TestFSDirectory {
   @Test
   public void testDumpTree() throws Exception {
     HopsTransactionalRequestHandler verifyFileBlocksHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.VERIFY_FILE_BLOCKS, dir.toString()) {
+        HDFSOperationType.VERIFY_FILE_BLOCKS) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();
@@ -169,7 +169,7 @@ public class TestFSDirectory {
     DFSTestUtil.createFile(hdfs, file4, 1024, REPLICATION, seed);
 
     verifyFileBlocksHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.VERIFY_FILE_BLOCKS, dir.toString()) {
+        HDFSOperationType.VERIFY_FILE_BLOCKS) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = LockFactory.getInstance();

@@ -99,7 +99,7 @@ public class TestBlockUnderConstruction {
       throws IOException {
     HopsTransactionalRequestHandler verifyFileBlocksHandler =
         new HopsTransactionalRequestHandler(
-            HDFSOperationType.VERIFY_FILE_BLOCKS, file) {
+            HDFSOperationType.VERIFY_FILE_BLOCKS) {
           @Override
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = LockFactory.getInstance();

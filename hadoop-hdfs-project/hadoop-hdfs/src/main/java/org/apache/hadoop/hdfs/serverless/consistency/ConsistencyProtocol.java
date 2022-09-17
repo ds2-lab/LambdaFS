@@ -171,6 +171,19 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
     private Collection<INode> invalidatedINodes;
 
     /**
+     * If true, then we're performing a `complete` operation.
+     */
+    private boolean isCompleteOperation = false;
+
+    /**
+     * If we're executing a `complete` operation, then let N be the INode being completed.
+     *
+     * This is the INode ID of the parent of N. We don't need to worry about the consistency protocol for this,
+     * as the parent of N would've
+     */
+    private long parentINodeId = -1L;
+
+    /**
      * Constructor for non-subtree operations.
      *
      * @param callingThreadINodeContext The INode {@link EntityContext} object of the calling thread. We need this
@@ -197,8 +210,10 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
                                long transactionStartTime,
                                boolean useZooKeeper,
                                boolean subtreeOperation,
+                               boolean isCompleteOperation,
                                String subtreeRoot,
-                               Collection<INode> invalidatedINodes) {
+                               Collection<INode> invalidatedINodes,
+                               long parentINodeId) {
         this.callingThreadINodeContext = callingThreadINodeContext;
         this.involvedDeployments = involvedDeployments;
         this.transactionAttempt = transactionAttempt;
@@ -211,6 +226,8 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
         this.subtreeOperation = subtreeOperation;
         this.subtreeRoot = subtreeRoot;
         this.invalidatedINodes = invalidatedINodes;
+        this.isCompleteOperation = isCompleteOperation;
+        this.parentINodeId = parentINodeId;
     }
 
     /**
@@ -287,7 +304,8 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
 
         ConsistencyProtocol subtreeConsistencyProtocol = new ConsistencyProtocol(
                 null, associatedDeployments, txAttempt, txEvent,
-                txStartTime, true, true, src, null);
+                txStartTime, true, true, false, src,
+                null, -1L);
         subtreeConsistencyProtocol.start();
 
         boolean interruptedExceptionOccurred = false;
@@ -348,6 +366,9 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
             // as we'll invalidate the exact same INodes when the `complete` operation is executed. No reason to cache.
             // No reason to invalidate/run consistency protocol.
             if (invalidatedINode.isUnderConstruction())
+                continue;
+
+            if (isCompleteOperation && invalidatedINode.getId() == parentINodeId)
                 continue;
 
             int mappedDeploymentNumber = serverlessNameNodeInstance.getMappedDeploymentNumber(invalidatedINode);

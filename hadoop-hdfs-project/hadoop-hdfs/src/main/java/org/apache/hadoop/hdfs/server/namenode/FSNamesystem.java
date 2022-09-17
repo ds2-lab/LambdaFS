@@ -1217,7 +1217,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
     final boolean isSuperUser =  dir.getPermissionChecker().isSuperUser();
     HopsTransactionalRequestHandler getBlockLocationsHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.GET_BLOCK_LOCATIONS, src) {
+        HDFSOperationType.GET_BLOCK_LOCATIONS) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
@@ -1297,7 +1297,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     final String src = dir.resolvePath(pc, srcArg, pathComponents);
     final boolean isSuperUser =  dir.getPermissionChecker().isSuperUser();
     HopsTransactionalRequestHandler getBlockLocationsHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.GET_BLOCK_LOCATIONS, src) {
+        HDFSOperationType.GET_BLOCK_LOCATIONS) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
@@ -1555,8 +1555,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       }
       final AbstractFileTree.FileTree fileTree = buildTreeForLogging(stoRootINode,
           metaStatus.isMetaEnabled());
-      new HopsTransactionalRequestHandler(HDFSOperationType.SET_META_ENABLED,
-          src) {
+      new HopsTransactionalRequestHandler(HDFSOperationType.SET_META_ENABLED
+      ) {
         @Override
         public void acquireLock(TransactionLocks locks) throws IOException {
           long stoRootINodeId = (Long) getParams()[0];
@@ -2084,7 +2084,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     final String src = dir.resolvePath(pc, srcArg, pathComponents);
     if (provider != null) {
       new HopsTransactionalRequestHandler(
-          HDFSOperationType.START_FILE, src) {
+          HDFSOperationType.START_FILE) {
         @Override
         public void acquireLock(TransactionLocks locks) throws IOException {
           LockFactory lf = getInstance();
@@ -2136,7 +2136,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
         
     // Proceed with the create operation, using the computed cipher suite and generated EDEK.
     stat = (HdfsFileStatus) new HopsTransactionalRequestHandler(
-        HDFSOperationType.START_FILE, src) {
+        HDFSOperationType.START_FILE) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
@@ -2563,8 +2563,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(pc, srcArg, pathComponents);
     HopsTransactionalRequestHandler recoverLeaseHandler =
-        new HopsTransactionalRequestHandler(HDFSOperationType.RECOVER_LEASE,
-            src) {
+        new HopsTransactionalRequestHandler(HDFSOperationType.RECOVER_LEASE
+        ) {
           @Override
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();
@@ -2747,8 +2747,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
     HopsTransactionalRequestHandler appendFileHandler =
-        new HopsTransactionalRequestHandler(HDFSOperationType.APPEND_FILE,
-            src) {
+        new HopsTransactionalRequestHandler(HDFSOperationType.APPEND_FILE
+        ) {
           @Override
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();
@@ -2918,7 +2918,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
 
     HopsTransactionalRequestHandler additionalBlockHandler = new HopsTransactionalRequestHandler(
-        HDFSOperationType.GET_ADDITIONAL_BLOCK, src) {
+        HDFSOperationType.GET_ADDITIONAL_BLOCK) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
@@ -3257,7 +3257,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
     HopsTransactionalRequestHandler getAdditionalDatanodeHandler =
         new HopsTransactionalRequestHandler(
-            HDFSOperationType.GET_ADDITIONAL_DATANODE, src) {
+            HDFSOperationType.GET_ADDITIONAL_DATANODE) {
           @Override
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();
@@ -3345,8 +3345,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
     HopsTransactionalRequestHandler abandonBlockHandler =
-        new HopsTransactionalRequestHandler(HDFSOperationType.ABANDON_BLOCK,
-            src) {
+        new HopsTransactionalRequestHandler(HDFSOperationType.ABANDON_BLOCK
+        ) {
 
           @Override
           public void acquireLock(TransactionLocks locks) throws IOException {
@@ -3495,7 +3495,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
     HopsTransactionalRequestHandler completeFileHandler =
-        new HopsTransactionalRequestHandler(HDFSOperationType.COMPLETE_FILE, src) {
+        new HopsTransactionalRequestHandler(
+                HDFSOperationType.COMPLETE_FILE, true, -1L, true) {
           @Override
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();
@@ -3970,7 +3971,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     final FSPermissionChecker pc = getPermissionChecker();
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(pc, srcArg, pathComponents);
-    new HopsTransactionalRequestHandler(HDFSOperationType.FSYNC, src) {
+    new HopsTransactionalRequestHandler(HDFSOperationType.FSYNC) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
@@ -8572,7 +8573,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     // For now this is hardcoded, as we only support one method.
     final CryptoProtocolVersion version = CryptoProtocolVersion.ENCRYPTION_ZONES;
     HdfsFileStatus resultingStat
-        = (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.CREATE_EZ, src) {
+        = (HdfsFileStatus) new HopsTransactionalRequestHandler(HDFSOperationType.CREATE_EZ) {
           @Override
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();
@@ -8636,7 +8637,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       final String src = dir.resolvePath(pc, srcArg, pathComponents);
 
       final EncryptionZone ret
-          = (EncryptionZone) new HopsTransactionalRequestHandler(HDFSOperationType.GET_EZ_PATH, src) {
+          = (EncryptionZone) new HopsTransactionalRequestHandler(HDFSOperationType.GET_EZ_PATH) {
             @Override
             public void acquireLock(TransactionLocks locks) throws IOException {
               LockFactory lf = getInstance();
@@ -8972,8 +8973,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     final FSPermissionChecker pc = getPermissionChecker();
     final String src = dir.resolvePath(pc, srcArg, pathComponents);
     HopsTransactionalRequestHandler checkAccessHandler =
-        new HopsTransactionalRequestHandler(HDFSOperationType.CHECK_ACCESS,
-            src) {
+        new HopsTransactionalRequestHandler(HDFSOperationType.CHECK_ACCESS
+        ) {
           @Override
           public void acquireLock(TransactionLocks locks) throws IOException {
             LockFactory lf = getInstance();

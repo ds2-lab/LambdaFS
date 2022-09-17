@@ -19,7 +19,6 @@ package org.apache.hadoop.hdfs.server.namenode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import com.google.common.hash.Hashing;
-import com.google.gson.JsonObject;
 import org.apache.hadoop.hdfs.serverless.execution.ExecutionManager;
 import org.apache.hadoop.util.VersionInfo;
 import io.hops.DalDriver;
@@ -589,7 +588,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     final boolean isSuperUser =  namesystem.dir.getPermissionChecker().isSuperUser();
 
     HopsTransactionalRequestHandler getINodeRequestHandler = new HopsTransactionalRequestHandler(
-            HDFSOperationType.GET_BLOCK_LOCATIONS, src) {
+            HDFSOperationType.GET_BLOCK_LOCATIONS) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
         LockFactory lf = getInstance();
