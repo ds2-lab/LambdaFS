@@ -45,12 +45,7 @@ public class ConsistencyProtocol extends Thread implements HopsEventListener {
      * Basically just exists to make debugging/performance testing easier. I use this to dynamically
      * enable or disable the consistency protocol, which is used during write transactions.
      */
-    public static ThreadLocal<Boolean> DO_CONSISTENCY_PROTOCOL = new ThreadLocal<>() {
-        @Override
-        public Boolean initialValue() {
-            return true;
-        }
-    };
+    public static ThreadLocal<Boolean> DO_CONSISTENCY_PROTOCOL = ThreadLocal.withInitial(() -> true);
 
     private static Log LOG = LogFactory.getLog(ConsistencyProtocol.class);
 
