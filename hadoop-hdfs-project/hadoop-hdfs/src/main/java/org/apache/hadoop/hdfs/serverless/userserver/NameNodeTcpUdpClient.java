@@ -536,12 +536,11 @@ public class NameNodeTcpUdpClient {
 
         String op = args.getOperationName();
         HashMap<String, Object> fsArgs = args.getFsOperationArguments();
-        if (cachedDoConsistencyProtocol != args.isConsistencyProtocolEnabled()) {
-            ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.set(args.isConsistencyProtocolEnabled());
-            cachedDoConsistencyProtocol = args.isConsistencyProtocolEnabled();
-        }
-        // ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.set(args.isConsistencyProtocolEnabled());
-        // ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL = args.isConsistencyProtocolEnabled();
+//        if (cachedDoConsistencyProtocol != args.isConsistencyProtocolEnabled()) {
+//            ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.set(args.isConsistencyProtocolEnabled());
+//            cachedDoConsistencyProtocol = args.isConsistencyProtocolEnabled();
+//        }
+        ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.set(args.isConsistencyProtocolEnabled());
 
         int logLevel = args.getServerlessFunctionLogLevel();
         LogManager.getRootLogger().setLevel(getLogLevelFromInteger(logLevel));
