@@ -446,6 +446,28 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     /**
+     * Return the percent chance, as a decimal in the closed interval [0,1],
+     * that a TCP request will be randomly replaced by an HTTP request.
+     */
+    public double getHttpTcpReplacementChance() {
+        return this.randomHttpChance;
+    }
+
+    /**
+     * Set the percent chance that a TCP request will be randomly replaced by an HTTP request.
+     *
+     * @param chance a value in the closed interval [0.0, 1.0] representing the percent chance that a
+     *               given TCP request will be randomly replaced by an HTTP request.
+     */
+    public void setHttpTcpReplacementChance(double chance) {
+        if (chance < 0.0 || chance > 1.0)
+            throw new IllegalArgumentException(
+                    "The value of the `chance` parameter must be within the closed interval [0.0, 1.0]. Value specified: " + chance);
+
+        this.randomHttpChance = chance;
+    }
+
+    /**
      * Used for merging latency values in from other clients into a master client that we use for book-keeping.
      * This is primarily done using Ben's HopsFS benchmarking application.
      * @param tcpLatencies Latencies from TCP requests.

@@ -184,6 +184,24 @@ public class DistributedFileSystem extends FileSystem {
     this.dfs.addOperationPerformed(operationPerformed);
   }
 
+  /**
+   * Return the percent chance, as a decimal in the closed interval [0,1],
+   * that a TCP request will be randomly replaced by an HTTP request.
+   */
+  public double getHttpTcpReplacementChance() {
+    return this.dfs.getHttpTcpReplacementChance();
+  }
+
+  /**
+   * Set the percent chance that a TCP request will be randomly replaced by an HTTP request.
+   *
+   * @param chance a value in the closed interval [0.0, 1.0] representing the percent chance that a
+   *               given TCP request will be randomly replaced by an HTTP request.
+   */
+  public void setHttpTcpReplacementChance(double chance) {
+    this.dfs.setHttpTcpReplacementChance(chance);
+  }
+
   public void addOperationPerformeds(Collection<OperationPerformed> operationPerformeds) {
     this.dfs.addOperationPerformeds(operationPerformeds);
   }

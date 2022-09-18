@@ -395,6 +395,36 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   }
 
   /**
+   * Return the percent chance, as a decimal in the closed interval [0,1],
+   * that a TCP request will be randomly replaced by an HTTP request.
+   */
+  public double getHttpTcpReplacementChance() {
+    if (this.namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient) this.namenode;
+      return client.getHttpTcpReplacementChance();
+    }
+
+    throw new IllegalStateException(
+            "This function is not supported by the implementation of the ClientProtocol interface being used.");
+  }
+
+  /**
+   * Set the percent chance that a TCP request will be randomly replaced by an HTTP request.
+   *
+   * @param chance a value in the closed interval [0.0, 1.0] representing the percent chance that a
+   *               given TCP request will be randomly replaced by an HTTP request.
+   */
+  public void setHttpTcpReplacementChance(double chance) {
+    if (this.namenode instanceof ServerlessNameNodeClient) {
+      ServerlessNameNodeClient client = (ServerlessNameNodeClient) this.namenode;
+      client.setHttpTcpReplacementChance(chance);
+    } else {
+      throw new IllegalStateException(
+              "This function is not supported by the implementation of the ClientProtocol interface being used.");
+    }
+  }
+
+  /**
    * Merge the provided map of transaction events with our own.
    *
    * @param keepLocal If true, the local keys will be preserved. If false, the keys in the 'packages' parameter
