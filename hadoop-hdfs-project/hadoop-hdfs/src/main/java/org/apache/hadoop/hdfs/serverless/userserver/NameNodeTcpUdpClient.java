@@ -540,6 +540,8 @@ public class NameNodeTcpUdpClient {
 //            ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.set(args.isConsistencyProtocolEnabled());
 //            cachedDoConsistencyProtocol = args.isConsistencyProtocolEnabled();
 //        }
+        if (LOG.isDebugEnabled())
+            LOG.debug("Setting `DO_CONSISTENCY_PROTOCOL` to " + args.isConsistencyProtocolEnabled());
         ConsistencyProtocol.DO_CONSISTENCY_PROTOCOL.set(args.isConsistencyProtocolEnabled());
 
         int logLevel = args.getServerlessFunctionLogLevel();
