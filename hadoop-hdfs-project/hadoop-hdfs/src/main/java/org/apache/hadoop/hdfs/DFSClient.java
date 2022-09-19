@@ -2398,7 +2398,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       LOG.debug(src + ": masked=" + absPermission);
     }
     try (TraceScope ignored = tracer.newScope("mkdir")) {
-      return namenode.mkdirs(src, absPermission, createParent);
+      long start = System.currentTimeMillis();
+      boolean result = namenode.mkdirs(src, absPermission, createParent);
+      this.latency.addValue(System.currentTimeMillis() - start);
+      return result;
     } catch(RemoteException re) {
       throw re.unwrapRemoteException(AccessControlException.class,
                                      InvalidPathException.class,
