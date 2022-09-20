@@ -935,7 +935,7 @@ public class NameNodeRpcServer implements NamenodeProtocols {
       throws IOException {
     checkNNStartup();
     if (stateChangeLog.isDebugEnabled()) {
-      stateChangeLog.debug("*DIR* NameNode.rename: " + src + " to " + dst);
+      stateChangeLog.debug("*DIR* NameNode.rename2: " + src + " to " + dst);
     }
     if (!checkPathLength(dst)) {
       throw new IOException(

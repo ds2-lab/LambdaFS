@@ -90,6 +90,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(IOException.class);
         kryo.register(HdfsFileStatus.class);
         kryo.register(HdfsFileStatus[].class);
+        kryo.register(java.lang.Integer[].class);
         kryo.register(DirectoryListing.class);
         kryo.register(Boolean.class);
         kryo.register(FsServerDefaults.class);
