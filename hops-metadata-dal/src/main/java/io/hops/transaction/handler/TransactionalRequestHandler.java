@@ -178,7 +178,7 @@ public abstract class TransactionalRequestHandler extends RequestHandler {
             .collectStats(opType,
             ignoredException);
 
-        boolean canProceed = true; // consistencyProtocol(txStartTime, transactionAttempt);
+        boolean canProceed = consistencyProtocol(txStartTime, transactionAttempt);
 
         long commitStart = System.currentTimeMillis();
         consistencyProtocolTime = (commitStart - oldTime);
