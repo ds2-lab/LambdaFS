@@ -13,6 +13,7 @@ import org.apache.hadoop.hdfs.serverless.execution.taskarguments.TaskArguments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
@@ -276,17 +277,18 @@ public class ExecutionManager {
             if (LOG.isDebugEnabled())
                 LOG.debug("Successfully executed task " + taskId + ", operation: " + operationName + " in " + (end - start) + " ms.");
         } catch (Exception ex) {
-            LOG.error("Encountered exception while executing file system operation " + operationName +
-                    " for task " + taskId + ".", ex);
-            workerResult.addException(new Exception("Encountered exception while executing file system operation " + operationName +
-                    " for task " + taskId + "."));
+            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while executing file system operation " +
+                    operationName + " for task " + taskId + ".", ex);
+            // Sometimes returning exceptions directly causes the connection to be terminated.
+            // Maybe the stack traces just make them too large. So, we return a newly-created generic exception,
+            // which appears to work for whatever reason.
+            workerResult.addException(
+                    new Exception("Encountered " + ex.getClass().getSimpleName() + ": " + ex.getMessage()));
             workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         } catch (Throwable t) {
             LOG.error("Encountered throwable while executing file system operation " + operationName +
                     " for task " + taskId + ".", t);
-            workerResult.addException(new Exception("Encountered exception while executing file system operation " + operationName +
-                    " for task " + taskId + "."));
-            // workerResult.addThrowable(t);
+            workerResult.addThrowable(t);
             workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         }
 
