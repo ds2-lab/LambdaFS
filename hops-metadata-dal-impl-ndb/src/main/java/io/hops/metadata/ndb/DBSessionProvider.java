@@ -161,7 +161,7 @@ public class DBSessionProvider implements Runnable {
     }
   }
 
-  public void returnSession(DBSession returnedSession, boolean forceClose) throws StorageException {
+  public synchronized void returnSession(DBSession returnedSession, boolean forceClose) throws StorageException {
     //session has been used, increment the use counter
     returnedSession
         .setSessionUseCount(returnedSession.getSessionUseCount() + 1);
