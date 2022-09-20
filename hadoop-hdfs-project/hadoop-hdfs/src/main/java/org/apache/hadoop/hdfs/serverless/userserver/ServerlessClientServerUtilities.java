@@ -77,6 +77,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(TransactionEvent.class);
         kryo.register(TransactionAttempt.class);
         kryo.register(LocatedBlocks.class);
+        kryo.register(java.lang.Exception.class);
         kryo.register(LocatedBlock.class);
         kryo.register(Token.class);
         kryo.register(TokenRenewer.class);
