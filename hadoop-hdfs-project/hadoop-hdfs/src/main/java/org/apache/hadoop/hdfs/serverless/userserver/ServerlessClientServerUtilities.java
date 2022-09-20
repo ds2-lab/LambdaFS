@@ -92,6 +92,8 @@ public class ServerlessClientServerUtilities {
         kryo.register(HdfsFileStatus[].class);
         kryo.register(java.lang.Integer[].class);
         kryo.register(DirectoryListing.class);
+        kryo.register(StackTraceElement.class);
+        kryo.register(StackTraceElement[].class);
         kryo.register(Boolean.class);
         kryo.register(FsServerDefaults.class);
         kryo.register(ActiveServerlessNameNodeList.class);
