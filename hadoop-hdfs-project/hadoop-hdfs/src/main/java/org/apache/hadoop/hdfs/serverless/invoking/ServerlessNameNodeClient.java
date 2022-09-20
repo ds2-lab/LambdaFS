@@ -687,6 +687,17 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     continue;
                 }
 
+                int numExceptions = result.getExceptions().size();
+                if (numExceptions > 0) {
+                    LOG.error("NameNode encountered " + numExceptions + " exception(s) while executing task " +
+                            requestId + " (operation=" + operationName + ").");
+                    for (Throwable t : result.getExceptions()) {
+                        LOG.error(t);
+                    }
+
+                    throw new IOException("Request " + requestId + " could not be completed. See log for details.");
+                }
+
                 long localEnd = System.currentTimeMillis();
 
                 addLatency(localEnd - localStart, -1);
