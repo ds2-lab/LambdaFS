@@ -203,7 +203,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * The number of bytes allocated per client for the TCP server's buffers.
    */
   public static final String SERVERLESS_TCP_BASE_BUFFER_SIZE = "serverless.tcp.base-buffer-size";
-  public static final int SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT = (int)2.5e5;
+  public static final int SERVERLESS_TCP_BASE_BUFFER_SIZE_DEFAULT = (int)5e6;
 
   /**
    * Port to use for UDP server.

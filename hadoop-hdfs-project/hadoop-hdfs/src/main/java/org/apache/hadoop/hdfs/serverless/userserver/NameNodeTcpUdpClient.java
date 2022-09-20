@@ -91,13 +91,13 @@ public class NameNodeTcpUdpClient {
      * The size, in bytes, used for the "Write Buffer" of new TCP connections. Objects are serialized to
      * the "Write Buffer" where the bytes are queued until they can be written to the TCP socket.
      */
-    private static final int defaultWriteBufferSizeBytes = (int)1e6;
+    private static final int defaultWriteBufferSizeBytes = (int)10e6;
 
     /**
      * The size, in bytes, used for the object buffer of new TCP connections. Object buffers are used
      * to hold the bytes for a single object graph until it can be sent over the network or deserialized.
      */
-    private static final int defaultObjectBufferSizeBytes = (int)1e6;
+    private static final int defaultObjectBufferSizeBytes = (int)10e6;
 
     /**
      * The maximum size, in bytes, that can be used for a TCP write buffer or a TCP object buffer.
