@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.userserver;
 
 import com.esotericsoftware.kryo.Kryo;
+import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import io.hops.exception.TransientDeadLockException;
 import io.hops.exception.TransientStorageException;
 import io.hops.metrics.TransactionAttempt;
@@ -67,6 +68,8 @@ public class ServerlessClientServerUtilities {
         kryo.setReferences(true);
         kryo.setRegistrationRequired(true);
 
+        UnmodifiableCollectionsSerializer.registerSerializers( kryo );
+
         kryo.register(NameNodeResult.class);
         kryo.register(ServerlessFunctionMapping.class);
         kryo.register(TcpUdpRequestPayload.class);
@@ -94,6 +97,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(DirectoryListing.class);
         kryo.register(StackTraceElement.class);
         kryo.register(StackTraceElement[].class);
+        kryo.register(java.util.Collections. class);
         kryo.register(Boolean.class);
         kryo.register(FsServerDefaults.class);
         kryo.register(ActiveServerlessNameNodeList.class);
