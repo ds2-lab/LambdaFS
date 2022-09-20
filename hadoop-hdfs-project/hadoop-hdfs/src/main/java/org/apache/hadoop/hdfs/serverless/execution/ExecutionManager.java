@@ -278,12 +278,15 @@ public class ExecutionManager {
         } catch (Exception ex) {
             LOG.error("Encountered exception while executing file system operation " + operationName +
                     " for task " + taskId + ".", ex);
-            workerResult.addException(ex);
+            workerResult.addException(new Exception("Encountered exception while executing file system operation " + operationName +
+                    " for task " + taskId + "."));
             workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         } catch (Throwable t) {
             LOG.error("Encountered throwable while executing file system operation " + operationName +
                     " for task " + taskId + ".", t);
-            workerResult.addThrowable(t);
+            workerResult.addException(new Exception("Encountered exception while executing file system operation " + operationName +
+                    " for task " + taskId + "."));
+            // workerResult.addThrowable(t);
             workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         }
 

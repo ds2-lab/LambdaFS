@@ -727,11 +727,6 @@ class FSDirRenameOp {
     }.handle();
   }
 
-  
-  /**
-   * @deprecated Use {@link #renameToInt(FSDirectory, String, String,
-   * boolean, Options.Rename...)}
-   */
   @Deprecated
   @SuppressWarnings("deprecation")
   private static boolean renameTo(FSDirectory fsd, FSPermissionChecker pc,
