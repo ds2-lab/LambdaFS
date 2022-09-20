@@ -29,6 +29,7 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenRenewer;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.EnumSet;
 
@@ -86,6 +87,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(ExtendedBlock.class);
         kryo.register(NamespaceInfo.class);
         kryo.register(LastBlockWithStatus.class);
+        kryo.register(IOException.class);
         kryo.register(HdfsFileStatus.class);
         kryo.register(HdfsFileStatus[].class);
         kryo.register(DirectoryListing.class);

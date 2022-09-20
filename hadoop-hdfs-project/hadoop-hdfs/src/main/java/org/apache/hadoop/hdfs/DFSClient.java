@@ -1737,7 +1737,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   @Deprecated
   public DFSInputStream open(String src, int buffersize, boolean verifyChecksum,
                              FileSystem.Statistics stats)
-          throws IOException, UnresolvedLinkException {
+          throws IOException {
     return open(src, buffersize, verifyChecksum);
   }
 
