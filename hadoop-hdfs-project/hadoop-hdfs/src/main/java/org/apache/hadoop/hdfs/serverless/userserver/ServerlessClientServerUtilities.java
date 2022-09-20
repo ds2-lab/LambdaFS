@@ -65,7 +65,7 @@ public class ServerlessClientServerUtilities {
      */
     public static synchronized void registerClassesToBeTransferred(Kryo kryo) {
         kryo.setReferences(true);
-        kryo.setRegistrationRequired(false);
+        kryo.setRegistrationRequired(true);
 
         kryo.register(NameNodeResult.class);
         kryo.register(ServerlessFunctionMapping.class);
