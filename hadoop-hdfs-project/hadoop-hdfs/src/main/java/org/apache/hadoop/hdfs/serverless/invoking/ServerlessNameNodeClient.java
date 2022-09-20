@@ -414,6 +414,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         assert(this.tcpServer != null);
         assert(this.serverlessInvoker != null);
 
+        this.serverlessInvoker.setClientName(dfsClient.getClientName());
+
         // this.registeredWithServerInvokerManager = true;
     }
 
