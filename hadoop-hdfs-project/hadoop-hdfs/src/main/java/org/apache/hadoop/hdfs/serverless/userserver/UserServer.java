@@ -954,8 +954,21 @@ public class UserServer {
 
         if (timeout >= 0)
             return requestResponseFuture.get(timeout, TimeUnit.MILLISECONDS);
-        else
-            return requestResponseFuture.get();
+        else {
+            long start = System.currentTimeMillis();
+            // Basically wait in a loop, so we get printed reminders about waiting.
+            while (true) {
+                try {
+                    return requestResponseFuture.get(10000, TimeUnit.MILLISECONDS);
+                } catch (TimeoutException ex) {
+                    if (LOG.isDebugEnabled()) {
+                        long elapsed = System.currentTimeMillis() - start;
+                        LOG.debug("Waiting on TCP req " + requestId + " to NN " + requestResponseFuture.getTargetNameNodeId() +
+                                " (deployment=" + deploymentNumber + ") for " + elapsed + " ms.");
+                    }
+                }
+            }
+        }
     }
 
     /**
