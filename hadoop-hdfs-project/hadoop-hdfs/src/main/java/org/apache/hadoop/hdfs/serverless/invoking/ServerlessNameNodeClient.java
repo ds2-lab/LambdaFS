@@ -1765,7 +1765,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     opArguments, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation rename to NameNode:", ex);
-            throw new IOException("Exception encountered while submitting operation rename to NameNode.");
+            return false;
         }
 
         return true;
@@ -1854,7 +1854,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     opArguments, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation delete to NameNode:", ex);
-            throw new IOException("Exception encountered while submitting operation delete to NameNode.");
+            return false;
         }
 
         Object result = extractResultFromNameNode(responseFromNN);
