@@ -35,10 +35,7 @@ import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
-import org.apache.hadoop.hdfs.serverless.execution.results.CancelledResult;
-import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
-import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
-import org.apache.hadoop.hdfs.serverless.execution.results.ServerlessFunctionMapping;
+import org.apache.hadoop.hdfs.serverless.execution.results.*;
 import org.apache.hadoop.hdfs.serverless.userserver.ServerAndInvokerManager;
 import org.apache.hadoop.hdfs.serverless.userserver.UserServer;
 import org.apache.hadoop.hdfs.serverless.userserver.TcpUdpRequestPayload;
@@ -55,6 +52,7 @@ import org.apache.hadoop.util.ExponentialBackOff;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.file.FileAlreadyExistsException;
 import java.sql.SQLException;
 import java.util.*;
@@ -387,7 +385,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 }
             }
 
-            return result.getResult();
+            Serializable res = result.getResult();
+
+            if (res instanceof NullResult)
+                return null;
+
+            return res;
         }
         else if (resultPayload instanceof JsonObject)
             return serverlessInvoker.extractResultFromJsonResponse((JsonObject) resultPayload);
