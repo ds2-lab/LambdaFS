@@ -370,13 +370,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
             ArrayList<Throwable> exceptions = result.getExceptions();
             if (exceptions != null && exceptions.size() > 0) {
-                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
+                //LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
                 LOG.warn("The ServerlessNameNode encountered " + exceptions.size() +
                         (exceptions.size() == 1 ? " exception." : " exceptions."));
 
                 for (Throwable t : exceptions)
                     LOG.error(t);
-                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
+                //LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
             }
 
             if (!benchmarkModeEnabled) {
