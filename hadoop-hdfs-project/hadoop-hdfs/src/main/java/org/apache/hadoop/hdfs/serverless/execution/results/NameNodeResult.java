@@ -16,6 +16,7 @@ import org.apache.hadoop.hdfs.serverless.cache.MetadataCacheManager;
 import org.apache.hadoop.hdfs.serverless.cache.ReplicaCacheManager;
 import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNodeList;
+import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.nustaq.serialization.FSTConfiguration;
@@ -55,7 +56,7 @@ public class NameNodeResult implements Serializable {
     /**
      * Exceptions encountered during the current request's execution.
      */
-    protected ArrayList<Throwable> exceptions = new ArrayList<>();
+    protected ArrayList<NameNodeException> exceptions = new ArrayList<>();
 
     /**
      * Name of the FS operation we performed.
@@ -149,11 +150,11 @@ public class NameNodeResult implements Serializable {
      * Formally record/take note that an exception occurred.
      * @param ex The exception that occurred.
      */
-    public void addException(Exception ex) {
-        addThrowable(ex);
+    public void addException(NameNodeException ex) {
+        exceptions.add(ex);
     }
 
-    public ArrayList<Throwable> getExceptions() {
+    public ArrayList<NameNodeException> getExceptions() {
         return exceptions;
     }
 
@@ -166,16 +167,6 @@ public class NameNodeResult implements Serializable {
      */
     public boolean getHasResult() {
         return hasResult;
-    }
-
-    /**
-     * Essentially an alias for `addException()`, though there are Throwables that are not exceptions (e.g.,
-     * IllegalAccessError) that we could encounter.
-     *
-     * @param t The exception/throwable to record.
-     */
-    public void addThrowable(Throwable t) {
-        exceptions.add(t);
     }
 
     public String serializeAndEncode(Object object) {

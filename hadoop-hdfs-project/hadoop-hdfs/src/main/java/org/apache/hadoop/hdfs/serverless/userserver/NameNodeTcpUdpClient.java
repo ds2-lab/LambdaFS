@@ -15,6 +15,7 @@ import org.apache.hadoop.hdfs.serverless.BaseHandler;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.consistency.ConsistencyProtocol;
+import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
 import org.apache.hadoop.hdfs.serverless.execution.taskarguments.HashMapTaskArguments;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
@@ -357,11 +358,9 @@ public class NameNodeTcpUdpClient {
                             + ". Object type: " + object.getClass().getSimpleName() + ": " + object);
                     // Create and log the exception to be returned to the client,
                     // so they know they sent the wrong thing.
-                    IllegalArgumentException ex = new IllegalArgumentException(
-                            "[TCP/UDP Client] Received object of unexpected type from client " + connection
-                                    + ". Object type: " + object.getClass().getSimpleName() + ": " + object);
                     result = new NameNodeResult("N/A", "N/A");
-                    result.addException(ex);
+                    result.addException(new NameNodeException("[TCP/UDP Client] Received object of unexpected type from client " + connection
+                            + ". Object type: " + object.getClass().getSimpleName() + ": " + object, "IllegalArgumentException"));
                 }
 
                 result.prepare(serverlessNameNode.getNamesystem().getMetadataCacheManager());

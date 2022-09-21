@@ -18,6 +18,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
+import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
 import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNodeList;
@@ -79,6 +80,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(LocatedBlocks.class);
         kryo.register(java.lang.Exception.class);
         kryo.register(LocatedBlock.class);
+        kryo.register(NameNodeException.class);
         kryo.register(Token.class);
         kryo.register(TokenRenewer.class);
         kryo.register(BlockTokenIdentifier.class);

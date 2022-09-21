@@ -6,6 +6,7 @@ import io.hops.metadata.hdfs.dal.WriteAcknowledgementDataAccess;
 import io.hops.metadata.hdfs.entity.WriteAcknowledgement;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
+import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
 import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
@@ -283,12 +284,12 @@ public class ExecutionManager {
             // Maybe the stack traces just make them too large. So, we return a newly-created generic exception,
             // which appears to work for whatever reason.
             workerResult.addException(
-                    new Exception("Encountered " + ex.getClass().getSimpleName() + ": " + ex.getMessage()));
+                    new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
             workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         } catch (Throwable t) {
             LOG.error("Encountered throwable while executing file system operation " + operationName +
                     " for task " + taskId + ".", t);
-            workerResult.addThrowable(t);
+            workerResult.addException(new NameNodeException(t.getMessage(), t.getClass().getSimpleName()));
             workerResult.setProcessingFinishedTime(System.currentTimeMillis());
         }
 
@@ -342,11 +343,11 @@ public class ExecutionManager {
         } catch (Exception ex) {
             LOG.error("Encountered exception while executing file system operation " + operationName +
                     " for task " + taskId + ".", ex);
-            workerResult.addException(ex);
+            workerResult.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
         } catch (Throwable t) {
             LOG.error("Encountered throwable while executing file system operation " + operationName +
                     " for task " + taskId + ".", t);
-            workerResult.addThrowable(t);
+            workerResult.addException(new NameNodeException(t.getMessage(), t.getClass().getSimpleName()));
         }
 
 //        boolean locked = bufferPoolQueryLock.tryLock();

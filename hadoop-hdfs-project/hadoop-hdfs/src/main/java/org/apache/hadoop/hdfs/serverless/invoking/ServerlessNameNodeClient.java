@@ -33,6 +33,7 @@ import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
+import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.hdfs.serverless.execution.results.*;
@@ -366,14 +367,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         false);
             }
 
-            ArrayList<Throwable> exceptions = result.getExceptions();
+            ArrayList<NameNodeException> exceptions = result.getExceptions();
             if (exceptions != null && exceptions.size() > 0) {
                 //LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
                 LOG.warn("The ServerlessNameNode encountered " + exceptions.size() +
                         (exceptions.size() == 1 ? " exception." : " exceptions."));
 
-                for (Throwable t : exceptions)
-                    LOG.error(t);
+                for (NameNodeException ex : exceptions)
+                    LOG.error(ex);
                 //LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
             }
 
@@ -611,7 +612,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private Object issueTCPRequest(String operationName, ArgumentContainer opArguments,
                                    int targetDeployment, UserServer userServer, String requestId,
                                    boolean subtreeOperation)
-            throws InterruptedException, ExecutionException, IOException {
+            throws InterruptedException, ExecutionException, IOException, NameNodeException {
         long opStart = System.currentTimeMillis();
 
         // LOG.info("Issuing TCP request. subtreeOperation: " + subtreeOperation);
@@ -694,11 +695,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 if (numExceptions > 0) {
                     LOG.error("NameNode encountered " + numExceptions + " exception(s) while executing task " +
                             requestId + " (operation=" + operationName + ").");
-                    for (Throwable t : result.getExceptions()) {
-                        LOG.error(t);
+                    for (NameNodeException ex : result.getExceptions()) {
+                        LOG.error(ex);
                     }
 
-                    throw new IOException("Request " + requestId + " could not be completed. See log for details.");
+                    throw result.getExceptions().get(0);
                 }
 
                 long localEnd = System.currentTimeMillis();
@@ -898,6 +899,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                                     " for operation " + operationName + " to deployment " + targetDeploymentTcp + ":", ex);
                         tcpTriedAndFailed = true;
                         targetDeploymentTcp = targetDeployment;
+                    } catch (NameNodeException ex) {
+                        LOG.error("Encountered " + ex.getTrueExceptionName() + "on TCP request attempt #" +
+                                (++numTcpRequestsAttempted) + " for operation " + operationName + " to deployment " +
+                                targetDeploymentTcp + ": " + ex.getMessage());
+
+                        if (ex.getTrueExceptionName().contains("FileNotFound")) {
+                            return null;
+                        }
                     }
                 } else {
                     LOG.debug("No TCP/UDP connection to deployment " + targetDeploymentTcp + " (src: " + srcArgument + "). RequestID: " + requestId);

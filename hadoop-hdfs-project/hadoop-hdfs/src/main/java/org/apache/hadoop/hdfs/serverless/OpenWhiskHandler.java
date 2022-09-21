@@ -8,6 +8,7 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.consistency.ConsistencyProtocol;
+import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
 import org.apache.hadoop.hdfs.serverless.execution.taskarguments.JsonTaskArguments;
 import org.apache.hadoop.hdfs.serverless.execution.taskarguments.TaskArguments;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
@@ -292,28 +293,6 @@ public class OpenWhiskHandler extends BaseHandler {
     }
 
     /**
-     * Assert that the container was cold prior to the currently-running activation.
-     *
-     * If the container is warm, then this will create a new IllegalStateException and add it to the
-     * parameterized `result` object so that the client that invoked this function can see the exception
-     * and process it accordingly.
-     * @param result The result to be returned to the client.
-     * @return True if the function was cold (as is expected when this function is called). Otherwise, false will be
-     * returned, indicating that the function is warm (which is bad in the case that this function is called).
-     */
-    private static boolean assertIsCold(NameNodeResult result) {
-        if (!isCold) {
-            // Create and add the exception to the result so that it will be returned to the client.
-            IllegalStateException ex = new IllegalStateException("Expected container to be cold, but it is warm.");
-            result.addException(ex);
-
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
      * Executes the NameNode code/operation/function execution.
      * @param op The name of the FS operation to be performed.
      * @param fsArgs The arguments to be passed to the desired FS operation.
@@ -367,7 +346,7 @@ public class OpenWhiskHandler extends BaseHandler {
         catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName()
                     + " while creating and initializing the NameNode: ", ex);
-            result.addException(ex);
+            result.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
             return result;
         }
 
@@ -401,7 +380,7 @@ public class OpenWhiskHandler extends BaseHandler {
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
                     + " to be executed by the worker thread: ", ex);
-            result.addException(ex);
+            result.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
         }
 
         // The last step is to establish a TCP connection to the client that invoked us.
@@ -544,7 +523,7 @@ public class OpenWhiskHandler extends BaseHandler {
             catch (IOException ex) {
                 LOG.error("Encountered IOException while retrieving INode associated with target directory "
                         + src + ": ", ex);
-                result.addException(ex);
+                result.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
             }
 
             // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
