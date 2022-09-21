@@ -1422,7 +1422,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     opArguments);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation getBlockLocations to NameNode:", ex);
-            throw new IOException("Exception encountered while submitting operation getBlockLocations to NameNode.");
+            // throw new IOException("Exception encountered while submitting operation getBlockLocations to NameNode.");
+
+            return null;
         }
 
         Object result = extractResultFromNameNode(responseFromNN);
