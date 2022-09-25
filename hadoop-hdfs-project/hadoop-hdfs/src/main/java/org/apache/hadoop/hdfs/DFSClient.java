@@ -625,8 +625,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
-    LOG.info("Serverless endpoint: " + serverlessEndpoint);
-    LOG.info("Serverless platform: " + serverlessPlatformName);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Serverless endpoint: " + serverlessEndpoint);
+      LOG.debug("Serverless platform: " + serverlessPlatformName);
+    }
 
     // Copy only the required DFSClient configuration
     this.tracer = FsTracer.get(conf);
@@ -671,7 +673,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
 
     // this.namenode = new ServerlessNameNodeClient(conf, this);
 
-    LOG.warn("Skipping the set-up of namenode and leaderNN variables...");
+    // LOG.warn("Skipping the set-up of namenode and leaderNN variables...");
     /*if (proxyInfo != null) {
       this.dtService = proxyInfo.getDelegationTokenService();
       this.namenode = proxyInfo.getProxy();
@@ -779,8 +781,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
-    LOG.info("Serverless endpoint: " + serverlessEndpoint);
-    LOG.info("Serverless platform: " + serverlessPlatformName);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Serverless endpoint: " + serverlessEndpoint);
+      LOG.debug("Serverless platform: " + serverlessPlatformName);
+    }
 
     this.ugi = UserGroupInformation.getCurrentUser();
 

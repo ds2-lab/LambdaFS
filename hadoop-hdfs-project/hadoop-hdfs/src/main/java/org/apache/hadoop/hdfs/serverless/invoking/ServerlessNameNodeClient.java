@@ -304,16 +304,25 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             numDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
                     DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
-        LOG.info("Serverless endpoint: " + serverlessEndpointBase);
-        LOG.info("Serverless platform: " + serverlessPlatformName);
-        LOG.info("TCP requests are " + (tcpEnabled ? "enabled." : "disabled."));
-        LOG.info("UDP requests are " + (udpEnabled ? "enabled." : "disabled."));
-        LOG.debug("Default serverless log level: " + serverlessFunctionLogLevel);
-        LOG.debug("Straggler mitigation is " + (stragglerMitigationEnabled ? " enabled. " +
-                "Straggler mitigation factor: " + stragglerMitigationThresholdFactor + "." : "disabled."));
-        LOG.debug("Latency Window: " + latencyWindowSize + ", Latency Threshold: " + latencyThreshold + " ms.");
-        LOG.debug("Random HTTP " + (randomHttpEnabled ? "enabled." : "disabled.") +
-                " HTTP Chance: " + randomHttpChance);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Serverless endpoint: " + serverlessEndpointBase + ", platform: " + serverlessPlatformName +
+                    ", TCP requests: " + (tcpEnabled ? "enabled, " : "disabled, ") + "UDP requests: " +
+                    (udpEnabled ? "enabled, " : "disabled, ") + "default log level: " + serverlessFunctionLogLevel +
+                    ", straggler mitigation: " + (stragglerMitigationEnabled ? " enabled, " +
+                    "Straggler mitigation factor: " + stragglerMitigationThresholdFactor + ", " : "disabled, ") +
+                    "latency window: " + latencyWindowSize + ", latency threshold: " + latencyThreshold + " ms, " +
+                    "random http replacement: " + (randomHttpEnabled ? "enabled, http chance: " + randomHttpChance
+                    : "disabled."));
+//            LOG.debug("Serverless platform: " + serverlessPlatformName);
+//            LOG.debug("TCP requests are " + (tcpEnabled ? "enabled." : "disabled."));
+//            LOG.debug("UDP requests are " + (udpEnabled ? "enabled." : "disabled."));
+//            LOG.debug("Default serverless log level: " + serverlessFunctionLogLevel);
+//            LOG.debug("Straggler mitigation is " + (stragglerMitigationEnabled ? " enabled. " +
+//                    "Straggler mitigation factor: " + stragglerMitigationThresholdFactor + "." : "disabled."));
+//            LOG.debug("Latency Window: " + latencyWindowSize + ", Latency Threshold: " + latencyThreshold + " ms.");
+//            LOG.debug("Random HTTP " + (randomHttpEnabled ? "enabled." : "disabled.") +
+//                    " HTTP Chance: " + randomHttpChance);
+        }
 
         this.dfsClient = dfsClient;
 
