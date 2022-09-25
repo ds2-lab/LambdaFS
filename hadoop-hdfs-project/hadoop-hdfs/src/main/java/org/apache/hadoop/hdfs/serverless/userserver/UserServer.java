@@ -216,9 +216,10 @@ public class UserServer {
 //        }
         this.actualBufferSize = Math.min(maxBufferSize, baseBufferSize);
 
-        LOG.info("User server will be used by at-most " + maxNumClients +
-                (maxNumClients == 1 ? " client." : " clients.") + " Buffer size: " + actualBufferSize +
-                " bytes each (there are 2 buffers).");
+//        if (LOG.isDebugEnabled())
+//            LOG.debug("User server will be used by at-most " + maxNumClients +
+//                (maxNumClients == 1 ? " client." : " clients.") + " Buffer size: " + actualBufferSize +
+//                " bytes each (there are 2 buffers).");
 
         // Read some options from config file.
         enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
@@ -226,8 +227,9 @@ public class UserServer {
         totalNumberOfDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
-        LOG.info("User server " + (enabled ? "ENABLED." : "DISABLED.") + " Running in " +
-                (useUDP ? "TCP-UDP mode." : "TCP-only mode."));
+//        if (LOG.isDebugEnabled())
+//            LOG.debug("User server " + (enabled ? "ENABLED." : "DISABLED.") + " Running in " +
+//                (useUDP ? "TCP-UDP mode." : "TCP-only mode."));
 
         // Determine if TCP debug logging should be enabled.
         if (conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_DEBUG_LOGGING,
@@ -296,10 +298,10 @@ public class UserServer {
             return tcpPort;
         }
 
-        if (useUDP)
-            LOG.debug("Starting HopsFS USER SERVER now. [TCP+UDP Mode]");
-        else
-            LOG.debug("Starting HopsFS USER SERVER now. [TCP Only Mode]");
+//        if (useUDP)
+//            LOG.debug("Starting HopsFS USER SERVER now. [TCP+UDP Mode]");
+//        else
+//            LOG.debug("Starting HopsFS USER SERVER now. [TCP Only Mode]");
 
         // Start the tcp/udp server.
         server.start();
@@ -336,11 +338,11 @@ public class UserServer {
                 }
 
                 if (useUDP) {
-                    if (LOG.isDebugEnabled()) LOG.debug("Successfully bound to TCP port " + tcpPort + ", UDP port " + udpPort + ".");
+//                    if (LOG.isDebugEnabled()) LOG.debug("Successfully bound to TCP port " + tcpPort + ", UDP port " + udpPort + ".");
 
                     serverPrefix = "[USER SERVER " + tcpPort + "-" + udpPort + "]";
                 } else {
-                    if (LOG.isDebugEnabled()) LOG.debug("Successfully bound to TCP port " + tcpPort + ".");
+//                    if (LOG.isDebugEnabled()) LOG.debug("Successfully bound to TCP port " + tcpPort + ".");
                     serverPrefix = "[USER SERVER " + tcpPort + "]";
                 }
 
