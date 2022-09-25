@@ -266,7 +266,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param dfsClient The {@link DFSClient} instance instantiating us.
      */
     public ServerlessNameNodeClient(Configuration conf, DFSClient dfsClient) throws IOException {
-        if (LOG.isDebugEnabled()) LOG.debug("Creating new ServerlessNameNodeClient for DFSClient " + dfsClient.getClientName());
+        // if (LOG.isDebugEnabled()) LOG.debug("Creating new ServerlessNameNodeClient for DFSClient " + dfsClient.getClientName());
         // "https://127.0.0.1:443/api/v1/web/whisk.system/default/namenode?blocking=true";
         serverlessEndpointBase = dfsClient.serverlessEndpoint;
         serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);

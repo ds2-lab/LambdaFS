@@ -369,8 +369,8 @@ public class ServerAndInvokerManager {
                 int numClients = entry.getValue();
 
                 if (numClients < maxClientsPerServer) {
-                    LOG.info("Assigning client " + clientName + " to TCP Server " + tcpPort +
-                            ", which will now have " + (numClients + 1) + " clients assigned to it.");
+//                    LOG.info("Assigning client " + clientName + " to TCP Server " + tcpPort +
+//                            ", which will now have " + (numClients + 1) + " clients assigned to it.");
 
                     oldNumClients = numClients;
                     assignedPort = tcpPort;

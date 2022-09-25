@@ -180,8 +180,8 @@ public final class DataTransferSaslUtil {
       Configuration conf) {
     String qops = conf.get(DFS_DATA_TRANSFER_PROTECTION_KEY);
     if (qops == null || qops.isEmpty()) {
-      LOG.debug("DataTransferProtocol not using SaslPropertiesResolver, no " +
-        "QOP found in configuration for {}", DFS_DATA_TRANSFER_PROTECTION_KEY);
+      //LOG.debug("DataTransferProtocol not using SaslPropertiesResolver, no " +
+      //  "QOP found in configuration for {}", DFS_DATA_TRANSFER_PROTECTION_KEY);
       return null;
     }
     Configuration saslPropsResolverConf = new Configuration(conf);

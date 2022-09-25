@@ -488,15 +488,15 @@ public abstract class ServerlessInvokerBase {
         // NDB
         debugEnabledNdb = conf.getBoolean(DFSConfigKeys.NDB_DEBUG, DFSConfigKeys.NDB_DEBUG_DEFAULT);
         debugStringNdb = conf.get(DFSConfigKeys.NDB_DEBUG_STRING, DFSConfigKeys.NDB_DEBUG_STRING_DEFAULT);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("NDB debug enabled: " + debugEnabledNdb);
-            LOG.debug("TCP Enabled: " + tcpEnabled);
-            LOG.debug("UDP Enabled: " + udpEnabled);
-            LOG.debug("Batch size: " + batchSize);
-            LOG.debug("Send interval: " + sendInterval);
-
-            if (debugEnabledNdb) LOG.debug("NDB debug string: " + debugStringNdb);
-        }
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("NDB debug enabled: " + debugEnabledNdb);
+//            LOG.debug("TCP Enabled: " + tcpEnabled);
+//            LOG.debug("UDP Enabled: " + udpEnabled);
+//            LOG.debug("Batch size: " + batchSize);
+//            LOG.debug("Send interval: " + sendInterval);
+//
+//            if (debugEnabledNdb) LOG.debug("NDB debug string: " + debugStringNdb);
+//        }
 
         try {
             httpClient = getHttpClient();
@@ -983,10 +983,10 @@ public abstract class ServerlessInvokerBase {
      * so it is insecure.
      */
     public CloseableHttpAsyncClient getGenericTrustAllHttpClient() throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException, IOReactorException {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Setting HTTP connection timeout to " + httpTimeoutMilliseconds + " milliseconds.");
-            LOG.debug("Setting HTTP socket timeout to " + httpTimeoutMilliseconds + " milliseconds.");
-        }
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("Setting HTTP connection timeout to " + httpTimeoutMilliseconds + " milliseconds.");
+//            LOG.debug("Setting HTTP socket timeout to " + httpTimeoutMilliseconds + " milliseconds.");
+//        }
 
         RequestConfig requestConfig = RequestConfig
                 .custom()

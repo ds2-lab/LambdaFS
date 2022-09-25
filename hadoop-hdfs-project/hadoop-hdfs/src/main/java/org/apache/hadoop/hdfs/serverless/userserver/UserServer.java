@@ -237,8 +237,8 @@ public class UserServer {
             LOG.debug("KryoNet Debug logging is ENABLED.");
             Log.set(Log.LEVEL_TRACE);
         }
-        else
-            LOG.debug("KryoNet Debug logging is DISABLED.");
+        //else
+        //    LOG.debug("KryoNet Debug logging is DISABLED.");
 
         // Populate the active connections mapping with default, empty hash maps for each deployment.
         for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {

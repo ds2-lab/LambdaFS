@@ -576,16 +576,16 @@ public class DfsClientConf {
           DFSConfigKeys.DFS_DOMAIN_SOCKET_PATH_KEY,
           DFSConfigKeys.DFS_DOMAIN_SOCKET_PATH_DEFAULT);
 
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(DFSConfigKeys.DFS_CLIENT_USE_LEGACY_BLOCKREADERLOCAL
-            + " = " + useLegacyBlockReaderLocal);
-        LOG.debug(HdfsClientConfigKeys.Read.ShortCircuit.KEY
-            + " = " + shortCircuitLocalReads);
-        LOG.debug(DFSConfigKeys.DFS_CLIENT_DOMAIN_SOCKET_DATA_TRAFFIC
-            + " = " + domainSocketDataTraffic);
-        LOG.debug(DFSConfigKeys.DFS_DOMAIN_SOCKET_PATH_KEY
-            + " = " + domainSocketPath);
-      }
+//      if (LOG.isDebugEnabled()) {
+//        LOG.debug(DFSConfigKeys.DFS_CLIENT_USE_LEGACY_BLOCKREADERLOCAL
+//            + " = " + useLegacyBlockReaderLocal);
+//        LOG.debug(HdfsClientConfigKeys.Read.ShortCircuit.KEY
+//            + " = " + shortCircuitLocalReads);
+//        LOG.debug(DFSConfigKeys.DFS_CLIENT_DOMAIN_SOCKET_DATA_TRAFFIC
+//            + " = " + domainSocketDataTraffic);
+//        LOG.debug(DFSConfigKeys.DFS_DOMAIN_SOCKET_PATH_KEY
+//            + " = " + domainSocketPath);
+//      }
 
       skipShortCircuitChecksums = conf.getBoolean(
           HdfsClientConfigKeys.Read.ShortCircuit.SKIP_CHECKSUM_KEY,
