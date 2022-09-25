@@ -927,10 +927,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
     fsRunning = false;
     try {
       stopCommonServices();
-      if (smmthread != null) {
+      if (smmthread != null)
         smmthread.interrupt();
-      }
-      fsOperationsExecutor.shutdownNow();
+      if (fsOperationsExecutor != null)
+        fsOperationsExecutor.shutdownNow();
     } finally {
       // using finally to ensure we also wait for lease daemon
       try {
