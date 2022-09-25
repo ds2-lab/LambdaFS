@@ -781,10 +781,10 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       serverlessEndpoint = conf.get(SERVERLESS_ENDPOINT, SERVERLESS_ENDPOINT_DEFAULT);
     serverlessPlatformName = conf.get(SERVERLESS_PLATFORM, SERVERLESS_PLATFORM_DEFAULT);
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Serverless endpoint: " + serverlessEndpoint);
-      LOG.debug("Serverless platform: " + serverlessPlatformName);
-    }
+    //if (LOG.isDebugEnabled()) {
+    //  LOG.debug("Serverless endpoint: " + serverlessEndpoint);
+    //  LOG.debug("Serverless platform: " + serverlessPlatformName);
+    //}
 
     this.ugi = UserGroupInformation.getCurrentUser();
 

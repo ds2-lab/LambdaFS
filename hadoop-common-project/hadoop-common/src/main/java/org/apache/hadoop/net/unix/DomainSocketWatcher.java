@@ -443,10 +443,10 @@ public final class DomainSocketWatcher implements Closeable {
   final Thread watcherThread = new Thread(new Runnable() {
     @Override
     public void run() {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(this + ": starting with interruptCheckPeriodMs = " +
-            interruptCheckPeriodMs);
-      }
+      //if (LOG.isDebugEnabled()) {
+      //  LOG.debug(this + ": starting with interruptCheckPeriodMs = " +
+      //      interruptCheckPeriodMs);
+      //}
       final TreeMap<Integer, Entry> entries = new TreeMap<Integer, Entry>();
       FdSet fdSet = new FdSet();
       addNotificationSocket(entries, fdSet);
@@ -487,9 +487,9 @@ public final class DomainSocketWatcher implements Closeable {
             // toRemove are now empty and processedCond has been notified if it
             // needed to be.
             if (closed) {
-              if (LOG.isDebugEnabled()) {
-                LOG.debug(toString() + " thread terminating.");
-              }
+              //if (LOG.isDebugEnabled()) {
+              //  LOG.debug(toString() + " thread terminating.");
+              //}
               return;
             }
             // Check if someone sent our thread an InterruptedException while we

@@ -37,12 +37,12 @@ public class JniBasedUnixGroupsNetgroupMappingWithFallback implements
     if (NativeCodeLoader.isNativeCodeLoaded()) {
       this.impl = new JniBasedUnixGroupsNetgroupMapping();
     } else {
-      LOG.info("Falling back to shell based");
+      //LOG.info("Falling back to shell based");
       this.impl = new ShellBasedUnixGroupsNetgroupMapping();
     }
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Group mapping impl=" + impl.getClass().getName());
-    }
+    //if (LOG.isDebugEnabled()) {
+    //  LOG.debug("Group mapping impl=" + impl.getClass().getName());
+    //}
   }
 
   @Override

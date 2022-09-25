@@ -315,25 +315,25 @@ public class UserServer {
         while (currentTcpPort < maxTcpPort && currentUdpPort < maxUdpPort && !success) {
             try {
                 if (useUDP) {
-                    LOG.debug("[USER SERVER] Trying to bind to TCP port " + currentTcpPort +
-                            " and UDP port " + currentUdpPort + ".");
+                    //LOG.debug("[USER SERVER] Trying to bind to TCP port " + currentTcpPort +
+                    //        " and UDP port " + currentUdpPort + ".");
                     server.bind(currentTcpPort, currentUdpPort);
                 } else {
-                    LOG.debug("[USER SERVER] Trying to bind to TCP port " + currentTcpPort + ".");
+                    //LOG.debug("[USER SERVER] Trying to bind to TCP port " + currentTcpPort + ".");
                     server.bind(currentTcpPort);
                 }
 
                 if (tcpPort != currentTcpPort) {
-                    LOG.warn("[USER SERVER] Configuration specified port " + tcpPort +
-                            ", but we were unable to bind to that port. Instead, we are bound to port " + currentTcpPort +
-                            ".");
+                    //LOG.warn("[USER SERVER] Configuration specified port " + tcpPort +
+                    //        ", but we were unable to bind to that port. Instead, we are bound to port " + currentTcpPort +
+                    //        ".");
                     this.tcpPort = currentTcpPort;
                 }
 
                 if (useUDP && udpPort != currentUdpPort) {
-                    LOG.warn("[USER SERVER] Configuration specified port " + udpPort +
-                            ", but we were unable to bind to that port. Instead, we are bound to port " +
-                            currentUdpPort + ".");
+                    //LOG.warn("[USER SERVER] Configuration specified port " + udpPort +
+                    //        ", but we were unable to bind to that port. Instead, we are bound to port " +
+                    //        currentUdpPort + ".");
                     this.udpPort = currentUdpPort;
                 }
 

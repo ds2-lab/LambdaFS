@@ -48,8 +48,8 @@ public class ServerlessInvokerFactory {
             throws StorageInitializtionException {
         String invokerClassName = getInvokerClassName(serverlessPlatformName);
 
-        if (LOG.isDebugEnabled())
-            LOG.debug("Attempting to instantiate invoker of type: " + invokerClassName);
+        //if (LOG.isDebugEnabled())
+        //    LOG.debug("Attempting to instantiate invoker of type: " + invokerClassName);
 
         try {
             return (ServerlessInvokerBase) Class.forName(invokerClassName).newInstance();

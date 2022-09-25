@@ -47,7 +47,7 @@ public class JniBasedUnixGroupsMapping implements GroupMappingServiceProvider {
         "be loaded");
     }
     anchorNative();
-    LOG.debug("Using JniBasedUnixGroupsMapping for Group resolution");
+//    LOG.debug("Using JniBasedUnixGroupsMapping for Group resolution");
   }
 
   /**

@@ -518,16 +518,15 @@ public abstract class Shell {
       home = checkHadoopHome();
       ex = null;
     } catch (IOException ioe) {
-      LOG.debug("Failed to detect a valid hadoop home directory.");
-      LOG.debug("Note that, if this is a Serverless NameNode, then this is by-design. " +
-                      "Serverless NameNodes do not have a HADOOP_HOME directory.");
+      LOG.debug("Failed to detect a valid hadoop home directory. Note that if this is a Serverless NameNode, " +
+              "then this is by-design. Serverless NameNodes do not have a HADOOP_HOME directory.");
       ex = ioe;
       home = null;
     }
     HADOOP_HOME_FILE = home;
     HADOOP_HOME_DIR_FAILURE_CAUSE = ex;
-    if (home != null)
-      LOG.debug("Located Hadoop home directory: " + home);
+    //if (home != null)
+    //  LOG.debug("Located Hadoop home directory: " + home);
   }
 
   /**
@@ -821,10 +820,10 @@ public abstract class Shell {
         setsidSupported = false;
       }
     }  finally { // handle the exit code
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("setsid exited with exit code "
-                 + (shexec != null ? shexec.getExitCode() : "(null executor)"));
-      }
+      //if (LOG.isDebugEnabled()) {
+        //LOG.debug("setsid exited with exit code "
+        //         + (shexec != null ? shexec.getExitCode() : "(null executor)"));
+      //}
     }
     return setsidSupported;
   }

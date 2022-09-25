@@ -60,7 +60,7 @@ public class ProcessTree {
       LOG.warn("setsid is not available on this machine. So not using it.");
       setsidSupported = false;
     } finally { // handle the exit code
-      LOG.info("setsid exited with exit code " + shexec.getExitCode());
+      //LOG.info("setsid exited with exit code " + shexec.getExitCode());
     }
     return setsidSupported;
   }

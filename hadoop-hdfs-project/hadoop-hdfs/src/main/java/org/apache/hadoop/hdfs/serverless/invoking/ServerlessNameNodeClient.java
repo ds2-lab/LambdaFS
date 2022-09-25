@@ -304,15 +304,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             numDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
                     DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Serverless endpoint: " + serverlessEndpointBase + ", platform: " + serverlessPlatformName +
-                    ", TCP requests: " + (tcpEnabled ? "enabled, " : "disabled, ") + "UDP requests: " +
-                    (udpEnabled ? "enabled, " : "disabled, ") + "default log level: " + serverlessFunctionLogLevel +
-                    ", straggler mitigation: " + (stragglerMitigationEnabled ? " enabled, " +
-                    "Straggler mitigation factor: " + stragglerMitigationThresholdFactor + ", " : "disabled, ") +
-                    "latency window: " + latencyWindowSize + ", latency threshold: " + latencyThreshold + " ms, " +
-                    "random http replacement: " + (randomHttpEnabled ? "enabled, http chance: " + randomHttpChance
-                    : "disabled."));
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("Serverless endpoint: " + serverlessEndpointBase + ", platform: " + serverlessPlatformName +
+//                    ", TCP requests: " + (tcpEnabled ? "enabled, " : "disabled, ") + "UDP requests: " +
+//                    (udpEnabled ? "enabled, " : "disabled, ") + "default log level: " + serverlessFunctionLogLevel +
+//                    ", straggler mitigation: " + (stragglerMitigationEnabled ? " enabled, " +
+//                    "Straggler mitigation factor: " + stragglerMitigationThresholdFactor + ", " : "disabled, ") +
+//                    "latency window: " + latencyWindowSize + ", latency threshold: " + latencyThreshold + " ms, " +
+//                    "random http replacement: " + (randomHttpEnabled ? "enabled, http chance: " + randomHttpChance
+//                    : "disabled."));
 //            LOG.debug("Serverless platform: " + serverlessPlatformName);
 //            LOG.debug("TCP requests are " + (tcpEnabled ? "enabled." : "disabled."));
 //            LOG.debug("UDP requests are " + (udpEnabled ? "enabled." : "disabled."));
@@ -322,7 +322,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 //            LOG.debug("Latency Window: " + latencyWindowSize + ", Latency Threshold: " + latencyThreshold + " ms.");
 //            LOG.debug("Random HTTP " + (randomHttpEnabled ? "enabled." : "disabled.") +
 //                    " HTTP Chance: " + randomHttpChance);
-        }
+        //}
 
         this.dfsClient = dfsClient;
 
@@ -416,7 +416,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * {@link ServerlessNameNodeClient} must call this function after instantiating the instance.
      */
     public void registerAndStartTcpServer() throws IOException {
-        if (LOG.isDebugEnabled()) LOG.debug("Registering client " + dfsClient.getClientName() + " with serverAndInvokerManager now...");
+        //if (LOG.isDebugEnabled()) LOG.debug("Registering client " + dfsClient.getClientName() + " with serverAndInvokerManager now...");
         // This function calls start on the server if necessary, so we don't need to do anything.
         Pair<UserServer, ServerlessInvokerBase> pair = serverAndInvokerManager.registerClient(
                 this, dfsClient.getClientName(), serverlessEndpointBase);

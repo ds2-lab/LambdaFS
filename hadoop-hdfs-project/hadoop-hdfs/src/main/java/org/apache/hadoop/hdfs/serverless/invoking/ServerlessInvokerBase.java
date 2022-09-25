@@ -463,7 +463,7 @@ public abstract class ServerlessInvokerBase {
     public void setConfiguration(Configuration conf, String invokerIdentity, String functionUriBase) {
         if (configured) return;
 
-        if (LOG.isDebugEnabled()) LOG.debug("Configuring ServerlessInvokerBase now...");
+        //if (LOG.isDebugEnabled()) LOG.debug("Configuring ServerlessInvokerBase now...");
 
         // cache = new FunctionMetadataMap(conf);
         localMode = conf.getBoolean(SERVERLESS_LOCAL_MODE, SERVERLESS_LOCAL_MODE_DEFAULT);
@@ -505,9 +505,9 @@ public abstract class ServerlessInvokerBase {
             return;
         }
 
-        if (LOG.isDebugEnabled()) LOG.debug("Starting async HTTP client now...");
+        //if (LOG.isDebugEnabled()) LOG.debug("Starting async HTTP client now...");
         httpClient.start();
-        if (LOG.isDebugEnabled()) LOG.debug("Started async HTTP client.");
+        //if (LOG.isDebugEnabled()) LOG.debug("Started async HTTP client.");
 
         outgoingRequests = new LinkedBlockingQueue[numDeployments];
 

@@ -152,10 +152,10 @@ public class Groups {
       negativeCache = Collections.newSetFromMap(tempMap.asMap());
     }
 
-    if(LOG.isDebugEnabled())
-      LOG.debug("Group mapping impl=" + impl.getClass().getName() + 
-          "; cacheTimeout=" + cacheTimeout + "; warningDeltaMs=" +
-          warningDeltaMs + "; bypassCache=" + bypassCache);
+    //if(LOG.isDebugEnabled())
+    //  LOG.debug("Group mapping impl=" + impl.getClass().getName() +
+    //      "; cacheTimeout=" + cacheTimeout + "; warningDeltaMs=" +
+    //      warningDeltaMs + "; bypassCache=" + bypassCache);
   }
   
   @VisibleForTesting
@@ -461,9 +461,9 @@ public class Groups {
     Configuration conf) {
 
     if(GROUPS == null) {
-      if(LOG.isDebugEnabled()) {
-        LOG.debug(" Creating new Groups object");
-      }
+//      if(LOG.isDebugEnabled()) {
+//        LOG.debug(" Creating new Groups object");
+//      }
       GROUPS = new Groups(conf);
     }
     return GROUPS;
