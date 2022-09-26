@@ -621,7 +621,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private Object issueTCPRequest(String operationName, ArgumentContainer opArguments,
                                    int targetDeployment, UserServer userServer, String requestId,
                                    boolean subtreeOperation)
-            throws InterruptedException, ExecutionException, IOException, NameNodeException {
+            throws InterruptedException, ExecutionException, IOException {
         long opStart = System.currentTimeMillis();
 
         // LOG.info("Issuing TCP request. subtreeOperation: " + subtreeOperation);
@@ -704,11 +704,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 if (numExceptions > 0) {
                     LOG.error("NameNode encountered " + numExceptions + " exception(s) while executing task " +
                             requestId + " (operation=" + operationName + ").");
+
                     for (NameNodeException ex : result.getExceptions()) {
-                        LOG.error(ex);
+                        LOG.error(ex.toString());
                     }
 
-                    throw result.getExceptions().get(0);
+                    throw new IOException("NameNode encountered " + numExceptions + " exception(s) while executing task " +
+                            requestId + " (operation=" + operationName + ").");
                 }
 
                 long localEnd = System.currentTimeMillis();
@@ -884,6 +886,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     try {
                         return issueTCPRequest(operationName, opArguments, targetDeploymentTcp,
                                 targetServer, requestId, subtreeOperation);
+                    } catch (FileNotFoundException ex) {
+                        LOG.error("Encountered FileNotFoundException on TCP request attempt #" +
+                                (++numTcpRequestsAttempted) + " for operation " + operationName + " to deployment " +
+                                targetDeploymentTcp + ": " + ex.getMessage());
+
+                        return null;
                     } catch (IOException ex) {
                         // There are two reasons an IOException may occur for which we can handle things "cleanly".
                         //
@@ -902,20 +910,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                             //        " for operation " + operationName + " to deployment " + targetDeploymentTcp + ".");
                             throw new IOException("TCP request attempt #" + (++numTcpRequestsAttempted) +
                                     " for operation " + operationName + " to deployment " + targetDeploymentTcp + " was cancelled.");
-                        }
-                        else
+                        } else
                             LOG.error("Encountered IOException on TCP request attempt #" + (++numTcpRequestsAttempted) +
                                     " for operation " + operationName + " to deployment " + targetDeploymentTcp + ":", ex);
                         tcpTriedAndFailed = true;
                         targetDeploymentTcp = targetDeployment;
-                    } catch (NameNodeException ex) {
-                        LOG.error("Encountered " + ex.getTrueExceptionName() + "on TCP request attempt #" +
-                                (++numTcpRequestsAttempted) + " for operation " + operationName + " to deployment " +
-                                targetDeploymentTcp + ": " + ex.getMessage());
-
-                        if (ex.getTrueExceptionName().contains("FileNotFound")) {
-                            return null;
-                        }
                     }
                 } else {
                     LOG.debug("No TCP/UDP connection to deployment " + targetDeploymentTcp + " (src: " + srcArgument + "). RequestID: " + requestId);
