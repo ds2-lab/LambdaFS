@@ -102,7 +102,8 @@ public class DataNodeClusterJ implements TablesDef.DataNodesTableDef, DataNodeDa
 
         session.deletePersistent(deleteMe);
 
-        LOG.debug("Successfully deleted metadata for DataNode " + uuid);
+        if (LOG.isDebugEnabled())
+            LOG.debug("Successfully deleted metadata for DataNode " + uuid);
     }
 
     /**

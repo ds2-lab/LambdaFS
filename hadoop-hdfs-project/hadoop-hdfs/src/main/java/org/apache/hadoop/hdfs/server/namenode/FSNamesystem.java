@@ -3795,7 +3795,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean, NameNodeMXBe
       ret = FSDirDeleteOp.delete(
           this, src, recursive);
 
-      LOG.info("Successfully deleted '" + src + "' in " + (System.currentTimeMillis() - start) + "ms.");
+      if (LOG.isDebugEnabled())
+        LOG.debug("Successfully deleted '" + src + "' in " + (System.currentTimeMillis() - start) + "ms.");
     } catch (AccessControlException e) {
       logAuditEvent(false, "delete", src);
       throw e;

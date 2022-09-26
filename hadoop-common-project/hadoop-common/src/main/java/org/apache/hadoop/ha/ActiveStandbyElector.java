@@ -391,7 +391,8 @@ public class ActiveStandbyElector implements StatCallback, StringCallback {
       throw new IOException("Couldn't clear parent znode " + znodeWorkingDir,
           e);
     }
-    LOG.info("Successfully deleted " + znodeWorkingDir + " from ZK.");
+    if (LOG.isDebugEnabled())
+      LOG.debug("Successfully deleted " + znodeWorkingDir + " from ZK.");
   }
 
 

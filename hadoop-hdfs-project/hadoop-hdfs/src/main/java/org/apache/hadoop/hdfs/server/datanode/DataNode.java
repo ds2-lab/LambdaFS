@@ -1426,23 +1426,26 @@ public class DataNode extends ReconfigurableBase
             (StorageReportDataAccess) HdfsStorageFactory.getDataAccess(StorageReportDataAccess.class);
     int numDeleted = storageReportDataAccess.removeStorageReports(dataNodeUuid);
 
-    LOG.debug("Successfully deleted " + numDeleted + " storage report(s). " +
-            "Deleting DataNode Storages associated with DN " + dataNodeUuid + " now...");
+    if (LOG.isDebugEnabled())
+      LOG.debug("Successfully deleted " + numDeleted + " storage report(s). " +
+              "Deleting DataNode Storages associated with DN " + dataNodeUuid + " now...");
 
     // Next, remove the DatanodeStorage instances associated with this DataNode.
     DatanodeStorageDataAccess<DatanodeStorage> datanodeStorageDataAccess =
             (DatanodeStorageDataAccess) HdfsStorageFactory.getDataAccess(DatanodeStorageDataAccess.class);
     numDeleted = datanodeStorageDataAccess.removeDatanodeStorages(dataNodeUuid);
 
-    LOG.debug("Successfully deleted " + numDeleted + " DataNode Storages. " +
-            " Deleting intermediate block reports associated with DN " + dataNodeUuid + " now...");
+    if (LOG.isDebugEnabled())
+      LOG.debug("Successfully deleted " + numDeleted + " DataNode Storages. " +
+              " Deleting intermediate block reports associated with DN " + dataNodeUuid + " now...");
 
     IntermediateBlockReportDataAccess<IntermediateBlockReport> intermediateBlockReportDataAccess =
             (IntermediateBlockReportDataAccess) HdfsStorageFactory.getDataAccess(IntermediateBlockReportDataAccess.class);
     numDeleted = intermediateBlockReportDataAccess.deleteReports(dataNodeUuid);
 
-    LOG.debug("Successfully deleted " + numDeleted + " Intermediate Block Report(s). " +
-            " Deleting DataNode " + dataNodeUuid + " itself from intermediate storage now...");
+    if (LOG.isDebugEnabled())
+      LOG.debug("Successfully deleted " + numDeleted + " Intermediate Block Report(s). " +
+              " Deleting DataNode " + dataNodeUuid + " itself from intermediate storage now...");
 
     // Finally, remove the metadata of the datanode from intermediate storage. There are foreign key constraints
     // in place that require us to perform this step last (i.e., after the entries referencing this datanode have
