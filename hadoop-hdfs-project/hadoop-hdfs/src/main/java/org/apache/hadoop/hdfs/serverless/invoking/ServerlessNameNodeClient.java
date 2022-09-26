@@ -1764,16 +1764,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public boolean rename(String src, String dst) throws UnresolvedLinkException, IOException {
+    public boolean rename(String src, String dst) throws IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("dst", dst);
 
         Integer[] optionsArr = new Integer[1];
-
         optionsArr[0] = 0; // 0 is the Options.Rename ordinal/value for `NONE`
-
         opArguments.put("options", optionsArr);
 
         try {
@@ -1813,10 +1811,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         opArguments.put(ServerlessNameNodeKeys.SRC, src);
         opArguments.put("dst", dst);
 
-        Integer[] optionsArr = new Integer[options.length];
-
-        for (int i = 0; i < options.length; i++) {
-            optionsArr[i] = options[i].ordinal();
+        Integer[] optionsArr;
+        if (options.length == 0) {
+            optionsArr = new Integer[1];
+            optionsArr[0] = 0; // 0 is the Options.Rename ordinal/value for `NONE`
+        } else {
+            optionsArr = new Integer[options.length];
+            for (int i = 0; i < options.length; i++) {
+                optionsArr[i] = options[i].ordinal();
+            }
         }
 
         opArguments.put("options", optionsArr);
