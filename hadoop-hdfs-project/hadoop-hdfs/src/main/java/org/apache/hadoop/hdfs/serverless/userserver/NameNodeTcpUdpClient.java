@@ -549,47 +549,33 @@ public class NameNodeTcpUdpClient {
 
         boolean benchmarkingModeEnabled = args.isBenchmarkingModeEnabled();
         ServerlessNameNode.benchmarkingModeEnabled.set(benchmarkingModeEnabled);
+
+        NameNodeResult tcpResult;
         if (benchmarkingModeEnabled) {
-            NameNodeResult tcpResult = new NameNodeResult(requestId, op);
-            serverlessNameNode.getExecutionManager().tryExecuteTask(
-                    requestId, op, new HashMapTaskArguments(fsArgs), tcpResult);
-
-            long s = System.nanoTime();
-            // Only bother trying to connect if there's at least one non-existent connection.
-            if (connectionsPerVm.get(newClient.getClientIp()).size() != args.getActiveTcpPorts().size()) {
-                // TODO: Determine how this impacts performance.
-                OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
-                        args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
-                        newClient.getClientId(), useUDP);
-            }
-            if (LOG.isDebugEnabled()) {
-                long t = System.nanoTime();
-                LOG.debug("Attempted additional connections in " + ((t - s) / 1.0e6) + " ms.");
-            }
-
-            return tcpResult;
+            tcpResult = new NameNodeResult(requestId, op);
         } else {
-            NameNodeResultWithMetrics tcpResult = new NameNodeResultWithMetrics(deploymentNumber, requestId,
+            tcpResult = new NameNodeResultWithMetrics(deploymentNumber, requestId,
                     "TCP", serverlessNameNode.getId(), op);
-            tcpResult.setFnStartTime(startTime);
-            serverlessNameNode.getExecutionManager().tryExecuteTask(
-                    requestId, op, new HashMapTaskArguments(fsArgs), tcpResult);
-
-            long s = System.nanoTime();
-            // Only bother trying to connect if there's at least one non-existent connection.
-            if (connectionsPerVm.get(newClient.getClientIp()).size() != args.getActiveTcpPorts().size()) {
-                // TODO: Determine how this impacts performance.
-                OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
-                        args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
-                        newClient.getClientId(), useUDP);
-            }
-            if (LOG.isDebugEnabled()) {
-                long t = System.nanoTime();
-                LOG.debug("Attempted additional connections in " + ((t - s) / 1.0e6) + " ms.");
-            }
-
-            return tcpResult;
+            ((NameNodeResultWithMetrics)tcpResult).setFnStartTime(startTime);
         }
+
+        serverlessNameNode.getExecutionManager().tryExecuteTask(
+                requestId, op, new HashMapTaskArguments(fsArgs), tcpResult);
+
+        long s = System.nanoTime();
+        // Only bother trying to connect if there's at least one non-existent connection.
+        if (connectionsPerVm.get(newClient.getClientIp()).size() != args.getActiveTcpPorts().size()) {
+            // TODO: Determine how this impacts performance.
+            OpenWhiskHandler.attemptToConnectToClient(serverlessNameNode,
+                    args.getActiveTcpPorts(), args.getActiveUdpPorts(), newClient.getClientIp(),
+                    newClient.getClientId(), useUDP);
+        }
+        if (LOG.isDebugEnabled()) {
+            long t = System.nanoTime();
+            LOG.debug("Attempted additional connections in " + ((t - s) / 1.0e6) + " ms.");
+        }
+
+        return tcpResult;
     }
 
 //    private NameNodeResult handleWorkAssignment(JsonObject args, long startTime) {

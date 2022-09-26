@@ -23,6 +23,7 @@ import org.nustaq.serialization.FSTConfiguration;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
 
@@ -200,8 +201,8 @@ public class NameNodeResult implements Serializable {
         if (exceptions.size() > 0) {
             JsonArray exceptionsJson = new JsonArray();
 
-            for (Throwable t : exceptions) {
-                exceptionsJson.add(t.toString());
+            for (NameNodeException ex : exceptions) {
+                exceptionsJson.add(ex.toString());
             }
 
             json.add(EXCEPTIONS, exceptionsJson);
@@ -226,6 +227,10 @@ public class NameNodeResult implements Serializable {
         json.addProperty(FN_END_TIME, System.currentTimeMillis());
         return json;
     }
+
+    public void setDequeuedTime(long dequeuedTime) {}
+    public void setProcessingFinishedTime(long processingFinishedTime) {}
+    public void commitTransactionEvents(List<TransactionEvent> transactionEvents) {}
 
     /**
      * Called before sending the result via TCP.

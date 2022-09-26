@@ -10,6 +10,7 @@ import io.hops.transaction.context.TransactionsStats;
 import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 import org.apache.hadoop.hdfs.serverless.cache.MetadataCacheManager;
 import org.apache.hadoop.hdfs.serverless.cache.ReplicaCacheManager;
+import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,7 +195,7 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
             builder.append("Exceptions:\n");
 
             int counter = 1;
-            for (Throwable ex : exceptions) {
+            for (NameNodeException ex : exceptions) {
                 builder.append("Exception #");
                 builder.append(counter);
                 builder.append(": ");
@@ -261,8 +262,8 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
         if (exceptions.size() > 0) {
             ArrayNode exceptionsJson = mapper.createArrayNode();
 
-            for (Throwable t : exceptions) {
-                exceptionsJson.add(t.toString());
+            for (NameNodeException ex : exceptions) {
+                exceptionsJson.add(ex.toString());
             }
 
             json.set(EXCEPTIONS, exceptionsJson);
@@ -407,8 +408,8 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
         if (exceptions.size() > 0) {
             JsonArray exceptionsJson = new JsonArray();
 
-            for (Throwable t : exceptions) {
-                exceptionsJson.add(t.toString());
+            for (NameNodeException ex : exceptions) {
+                exceptionsJson.add(ex.toString());
             }
 
             json.add(EXCEPTIONS, exceptionsJson);
