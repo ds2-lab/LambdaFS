@@ -8,8 +8,14 @@ import java.io.Serializable;
 public class NameNodeException implements Serializable {
     private static final long serialVersionUID = -4872084057395323848L;
 
-    private final String trueExceptionName;
-    private final String message;
+    private String trueExceptionName;
+    private String message;
+
+    /**
+     * Default constructor.
+     * Exists to support sending over TCP with KryoNet (which requires a default c'tor).
+     */
+    public NameNodeException() { }
 
     public NameNodeException(String message, String trueExceptionName) {
         this.message = message;

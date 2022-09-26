@@ -71,6 +71,14 @@ public class ServerlessClientServerUtilities {
 
         UnmodifiableCollectionsSerializer.registerSerializers( kryo );
 
+        //////////////////////////////////////////////////////////
+        // MAKE SURE THESE CLASSES HAVE A DEFAULT CONSTRUCTOR.  //
+        // IF THEY DON'T, THEN SENDING THEM OVER TCP WILL       //
+        // PROBABLY RESULT IN THE CONNECTION BEING TERMINATED   //
+        // WITHOUT ANY SORT OF INDICATION AS TO WHY IT GOT      //
+        // TERMINATED. VERY ANNOYING.                           //
+        //////////////////////////////////////////////////////////
+
         kryo.register(NameNodeResult.class);
         kryo.register(ServerlessFunctionMapping.class);
         kryo.register(TcpUdpRequestPayload.class);
