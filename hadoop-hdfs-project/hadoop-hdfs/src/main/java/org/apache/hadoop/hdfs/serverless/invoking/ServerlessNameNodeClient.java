@@ -601,7 +601,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private Object submitFsOperationViaTcp(String operationName, ArgumentContainer opArguments,
                                            int targetDeployment, UserServer userServer, String requestId,
                                            boolean subtreeOperation)
-            throws NoConnectionAvailableException, FileNotFoundException, IOException, TcpRequestCancelledException {
+            throws NoConnectionAvailableException, IOException, TcpRequestCancelledException {
         long opStart = System.currentTimeMillis();
 
         // This contains the file system operation arguments (and everything else) that will be submitted to the NN.
@@ -853,7 +853,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             try {
                 return submitFsOperationViaTcp(operationName, opArguments, targetDeploymentTcp,
                         targetServer, requestId, subtreeOperation);
-            } catch (IOException ex) {
+            }
+            catch (IOException ex) {
+                // If it was a FileNotFoundException, then we shouldn't bother retrying.
+                if (ex instanceof FileNotFoundException)
+                    throw ex;
+
                 numTcpRequestsAttempted++;
             }
         }
