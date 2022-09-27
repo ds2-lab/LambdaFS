@@ -801,8 +801,7 @@ class FSDirRenameOp {
       error = "rename source " + srcIIP.getPath() + " is not found.";
       ServerlessNameNode.stateChangeLog.warn("DIR* FSDirectory.unprotectedRenameTo: "
           + error);
-      throw new IOException("FileNotFoundError: rename source " + srcIIP.getPath() + " cannot be found.");
-      // throw new FileNotFoundException(error);
+      throw new FileNotFoundException(error);
     }
     if (srcIIP.length() == 1) {
       error = "rename source cannot be the root";
