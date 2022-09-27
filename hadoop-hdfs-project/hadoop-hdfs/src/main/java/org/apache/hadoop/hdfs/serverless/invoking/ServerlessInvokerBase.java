@@ -338,7 +338,8 @@ public abstract class ServerlessInvokerBase {
                     String requestId = request.get(REQUEST_ID).getAsString();
 
                     if (subtreeRequests.contains(requestId)) {
-                        LOG.info("Request " + requestId +
+                        if (LOG.isDebugEnabled())
+                            LOG.debug("Request " + requestId +
                                 " is a subtree operation. Current batch contains a subtree operation.");
                         currentBatch.addProperty(CONTAINS_SUBTREE_OP, true);
                     }
@@ -673,7 +674,8 @@ public abstract class ServerlessInvokerBase {
         enqueueRequest(nameNodeArguments, targetDeployment);
 
         if (subtreeOperation) {
-            LOG.info("Recording that request " + requestId + " is a subtree operation.");
+            if (LOG.isDebugEnabled())
+                LOG.debug("Recording that request " + requestId + " is a subtree operation.");
             subtreeRequests.add(requestId);
         }
 
