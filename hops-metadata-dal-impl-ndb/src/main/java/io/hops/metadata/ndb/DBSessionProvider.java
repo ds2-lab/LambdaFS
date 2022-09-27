@@ -161,7 +161,7 @@ public class DBSessionProvider implements Runnable {
     }
   }
 
-  public synchronized void returnSession(DBSession returnedSession, boolean forceClose) throws StorageException {
+  public void returnSession(DBSession returnedSession, boolean forceClose) throws StorageException {
     //session has been used, increment the use counter
     returnedSession
         .setSessionUseCount(returnedSession.getSessionUseCount() + 1);
@@ -172,7 +172,6 @@ public class DBSessionProvider implements Runnable {
       // session can be closed even before the reuse count has expired.
       // Close the session in case of database errors.
       toGC.add(returnedSession);
-      toGC.notify();
     } else { // increment the count and return it to the pool
       returnedSession.getSession().setLockMode(LockMode.READ_COMMITTED);
       sessionPool.add(returnedSession);
