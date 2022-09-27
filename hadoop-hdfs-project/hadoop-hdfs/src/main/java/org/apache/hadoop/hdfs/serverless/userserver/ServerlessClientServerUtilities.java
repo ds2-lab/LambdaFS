@@ -11,6 +11,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.crypto.CipherSuite;
 import org.apache.hadoop.crypto.CryptoProtocolVersion;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.FileEncryptionInfo;
 import org.apache.hadoop.fs.FsServerDefaults;
 import org.apache.hadoop.fs.permission.FsAction;
@@ -88,6 +89,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(NameNodeException.class, new JavaSerializer());
         kryo.register(UnsupportedObjectPayloadException.class, new JavaSerializer());
         kryo.register(Token.class);
+        kryo.register(FileAlreadyExistsException.class);
         kryo.register(TokenRenewer.class);
         kryo.register(BlockTokenIdentifier.class);
         kryo.register(BlockTokenIdentifier.AccessMode.class);

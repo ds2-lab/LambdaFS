@@ -73,7 +73,7 @@ public class OpenWhiskHandler extends BaseHandler {
             // In this case, the top-level arguments are in-fact the user arguments.
             userArguments = args;
 
-            LOG.warn("Using hard-coded value for action memory in local mode!");
+            // LOG.warn("Using hard-coded value for action memory in local mode!");
             // In this case, we retrieve the action memory from an environment variable.
             actionMemory = 7250; // Integer.parseInt(System.getenv("__ACTION_MEMORY"));
         } else {

@@ -731,7 +731,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             if (!benchmarkModeEnabled)
                 // Collect and save/record metrics.
                 createAndStoreOperationPerformed((NameNodeResultWithMetrics)result, operationName, requestId,
-                        localStart, localEnd, true, false, wasResubmittedViaStragglerMitigation);
+                        localStart, localEnd, wasResubmittedViaStragglerMitigation);
 
             return response;
         }
@@ -955,7 +955,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         if (!benchmarkModeEnabled)
             createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime,
-                    tcpTriedAndFailed, true, false);
+                    tcpTriedAndFailed);
 
         if (response.has(EXCEPTION)) {
             Exception ex = (Exception)
@@ -1010,11 +1010,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param startTime The local timestamp at which this operation began.
      * @param endTime The local timestamp at which this operation completed.
      * @param issuedViaTCP Indicates whether the associated operation was issued via TCP to a NN.
-     * @param issuedViaHTTP Indicates whether the associated operation was issued via HTTP to a NN.
      */
     private void createAndStoreOperationPerformed(JsonObject response, String operationName, String requestId,
-                                                  long startTime, long endTime, boolean issuedViaTCP,
-                                                  boolean issuedViaHTTP, boolean wasResubmittedViaStragglerMitigation) {
+                                                  long startTime, long endTime, boolean issuedViaTCP) {
         if (benchmarkModeEnabled)
             return;
 
@@ -1048,8 +1046,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             OperationPerformed operationPerformed
                     = new OperationPerformed(operationName, requestId,
                     startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
-                    deployment, issuedViaHTTP, issuedViaTCP, response.get(REQUEST_METHOD).getAsString(),
-                    nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation,
+                    deployment, true, issuedViaTCP, response.get(REQUEST_METHOD).getAsString(),
+                    nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, false,
                     this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime);
             operationsPerformed.put(requestId, operationPerformed);
         } catch (NullPointerException ex) {
@@ -1066,12 +1064,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param requestId The unique ID of the request associated with this file system operation.
      * @param startTime The local timestamp at which this operation began.
      * @param endTime The local timestamp at which this operation completed.
-     * @param issuedViaTCP Indicates whether the associated operation was issued via TCP to a NN.
-     * @param issuedViaHTTP Indicates whether the associated operation was issued via HTTP to a NN.
      */
     private void createAndStoreOperationPerformed(NameNodeResultWithMetrics result, String operationName,
-                                                  String requestId, long startTime, long endTime, boolean issuedViaTCP,
-                                                  boolean issuedViaHTTP, boolean wasResubmittedViaStragglerMitigation) {
+                                                  String requestId, long startTime, long endTime,
+                                                  boolean wasResubmittedViaStragglerMitigation) {
         long nameNodeId = result.getNameNodeId();
 
         int deployment = result.getDeploymentNumber();
@@ -1092,7 +1088,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         OperationPerformed operationPerformed
                 = new OperationPerformed(operationName, requestId,
                 startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
-                deployment, issuedViaHTTP, issuedViaTCP, result.getRequestMethod(),
+                deployment, false, true, result.getRequestMethod(),
                 nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation,
                 this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime);
         operationsPerformed.put(requestId, operationPerformed);
