@@ -223,11 +223,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   private ExecutionManager executionManager;
 
   /**
-   * Thread in which the EventManager runs.
-   */
-  private Thread eventManagerThread;
-
-  /**
    * How often the DataNodes are supposed to publish heartbeats/storage reports to intermediate storage.
    * The units of this variable are milliseconds.
    */
@@ -477,16 +472,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * Units: milliseconds.
    */
   private int txAckTimeout;
-
-  /**
-   * Determines if the given request (identified by its request ID) has already been received and processed by the NN.
-   *
-   * @param requestId The ID of the request.
-   * @return true if the request has been received and processed already, otherwise false.
-   */
-//  public boolean checkIfRequestProcessedAlready(String requestId) {
-//    return executionManager.isTaskDuplicate(requestId);
-//  }
 
   public ExecutionManager getExecutionManager() { return executionManager; }
 
@@ -1832,14 +1817,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String dst = fsArgs.getString("dst"); // fsArgs.getAsJsonPrimitive("dst").getAsString();
 
     Integer[] optionsInts = fsArgs.getObjectArray("options");
-//    JsonArray optionsArr = fsArgs.getAsJsonArray("options");
-//
-//    org.apache.hadoop.fs.Options.Rename[] options = new org.apache.hadoop.fs.Options.Rename[optionsArr.size()];
-//
-//    for (int i = 0; i < optionsArr.size(); i++) {
-//      int renameOptionOrdinal = optionsArr.get(i).getAsInt();
-//      options[i] = org.apache.hadoop.fs.Options.Rename.values()[renameOptionOrdinal];
-//    }
 
     org.apache.hadoop.fs.Options.Rename[] options = new org.apache.hadoop.fs.Options.Rename[optionsInts.length];
     for (int i = 0; i < optionsInts.length; i++) {
@@ -2367,10 +2344,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // not found errors.
     ndbEventManager = DalDriver.loadEventManager(conf.get(DFS_EVENT_MANAGER_CLASS, DFS_EVENT_MANAGER_CLASS_DEFAULT));
     ndbEventManager.setConfigurationParameters(deploymentNumber, null, false, namesystem);
-
-    // Note that we need to register the namesystem as an event listener with the event manager,
-    // but the name system doesn't get loaded until a little later.
-    eventManagerThread = new Thread(ndbEventManager);
 
     if (LOG.isDebugEnabled())
       LOG.debug("Started the NDB EventManager thread.");
@@ -3287,7 +3260,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       this.zooKeeperClient.createAndJoinGroup(this.functionName, String.valueOf(this.nameNodeID), namesystem);
       namesystem.startActiveServices();
       startTrashEmptier(conf);
-      // eventManagerThread.start();
 
       // Create the thread and tell it to run!
       executionManager = new ExecutionManager(conf, this);

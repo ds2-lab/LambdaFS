@@ -359,10 +359,6 @@ public class OpenWhiskHandler extends BaseHandler {
             LOG.debug("==================================================================");
         }
 
-        // Check if we need to redo this operation. This can occur if the TCP connection that was supposed
-        // to deliver the result back to the client was dropped before the client received the result.
-        boolean redoEvenIfDuplicate = fsArgs.has(FORCE_REDO) && fsArgs.get(FORCE_REDO).getAsBoolean();
-
         // Finally, create a new task and assign it to the worker thread.
         // After this, we will simply wait for the result to be completed before returning it to the user.
         // FileSystemTask<Serializable> task = new FileSystemTask<>(requestId, op, fsArgs, redoEvenIfDuplicate, "HTTP");

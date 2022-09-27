@@ -1,6 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.userserver;
 
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import io.hops.exception.TransientDeadLockException;
 import io.hops.exception.TransientStorageException;
@@ -82,10 +83,10 @@ public class ServerlessClientServerUtilities {
         kryo.register(TransactionEvent.class);
         kryo.register(TransactionAttempt.class);
         kryo.register(LocatedBlocks.class);
-        kryo.register(java.lang.Exception.class);
+        kryo.register(java.lang.Exception.class, new JavaSerializer());
         kryo.register(LocatedBlock.class);
-        kryo.register(NameNodeException.class);
-        kryo.register(UnsupportedObjectPayloadException.class);
+        kryo.register(NameNodeException.class, new JavaSerializer());
+        kryo.register(UnsupportedObjectPayloadException.class, new JavaSerializer());
         kryo.register(Token.class);
         kryo.register(TokenRenewer.class);
         kryo.register(BlockTokenIdentifier.class);
@@ -98,7 +99,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(ExtendedBlock.class);
         kryo.register(NamespaceInfo.class);
         kryo.register(LastBlockWithStatus.class);
-        kryo.register(IOException.class);
+        kryo.register(IOException.class, new JavaSerializer());
         kryo.register(HdfsFileStatus.class);
         kryo.register(HdfsFileStatus[].class);
         kryo.register(java.lang.Integer[].class);
@@ -119,16 +120,16 @@ public class ServerlessClientServerUtilities {
         kryo.register(CryptoProtocolVersion.class);
         kryo.register(CipherSuite.class);
         kryo.register(FsAction.class);
-        kryo.register(TcpRequestCancelledException.class);
-        kryo.register(java.lang.ClassCastException.class);
+        kryo.register(TcpRequestCancelledException.class, new JavaSerializer());
+        kryo.register(java.lang.ClassCastException.class, new JavaSerializer());
         kryo.register(NullResult.class);
         kryo.register(DuplicateRequest.class);
-        kryo.register(FileNotFoundException.class);
-        kryo.register(NullPointerException.class);
-        kryo.register(TransientDeadLockException.class);
-        kryo.register(TransientStorageException.class);
-        kryo.register(IllegalArgumentException.class);
-        kryo.register(org.apache.hadoop.fs.FileAlreadyExistsException.class);
+        kryo.register(FileNotFoundException.class, new JavaSerializer());
+        kryo.register(NullPointerException.class, new JavaSerializer());
+        kryo.register(TransientDeadLockException.class, new JavaSerializer());
+        kryo.register(TransientStorageException.class, new JavaSerializer());
+        kryo.register(IllegalArgumentException.class, new JavaSerializer());
+        kryo.register(org.apache.hadoop.fs.FileAlreadyExistsException.class, new JavaSerializer());
         kryo.register(Collections.EMPTY_LIST.getClass());
     }
 }
