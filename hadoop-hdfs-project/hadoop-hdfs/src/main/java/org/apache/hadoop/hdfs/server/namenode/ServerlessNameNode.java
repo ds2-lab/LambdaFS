@@ -1816,7 +1816,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String src = fsArgs.getString("src"); // fsArgs.getAsJsonPrimitive("src").getAsString();
     String dst = fsArgs.getString("dst"); // fsArgs.getAsJsonPrimitive("dst").getAsString();
 
-    Integer[] optionsInts = fsArgs.getObjectArray("options");
+    Integer[] optionsInts = fsArgs.getIntegerArray("options");
 
     org.apache.hadoop.fs.Options.Rename[] options = new org.apache.hadoop.fs.Options.Rename[optionsInts.length];
     for (int i = 0; i < optionsInts.length; i++) {

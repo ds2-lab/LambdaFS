@@ -48,6 +48,9 @@ public class HashMapTaskArguments implements TaskArguments {
     }
 
     @Override
+    public Integer[] getIntegerArray(String key) { return getObject(key); }
+
+    @Override
     public List<String> getStringList(String key) {
         return getList(key);
     }
@@ -64,7 +67,7 @@ public class HashMapTaskArguments implements TaskArguments {
 
     @Override
     public String[] getStringArray(String key) {
-        return (String[])taskArguments.get(key);
+        return getObject(key);
     }
 
     @Override

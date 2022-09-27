@@ -49,6 +49,20 @@ public class JsonTaskArguments implements TaskArguments {
     }
 
     @Override
+    public Integer[] getIntegerArray(String key) {
+        if (taskArguments.has(key)) {
+            JsonArray jsonArray = taskArguments.getAsJsonArray(key);
+            Integer[] arr = new Integer[jsonArray.size()];
+            for (int i = 0; i < jsonArray.size(); i++)
+                arr[i] = jsonArray.get(i).getAsInt();
+
+            return arr;
+        }
+
+        return null;
+    }
+
+    @Override
     public long getLong(String key) {
         if (taskArguments.has(key))
             return taskArguments.getAsJsonPrimitive(key).getAsLong();

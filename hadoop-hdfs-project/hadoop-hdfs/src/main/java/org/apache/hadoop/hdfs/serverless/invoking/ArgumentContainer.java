@@ -190,7 +190,7 @@ public class ArgumentContainer {
             packagePrimitive(entry.getKey(), entry.getValue(), arguments);
 
         for (Map.Entry<String, Serializable> entry : objectArguments.entrySet()) {
-            String base64Encoded = InvokerUtilities.serializableToBase64String((Serializable)entry.getValue());
+            String base64Encoded = InvokerUtilities.serializableToBase64String(entry.getValue());
             arguments.addProperty(entry.getKey(), base64Encoded);
         }
 

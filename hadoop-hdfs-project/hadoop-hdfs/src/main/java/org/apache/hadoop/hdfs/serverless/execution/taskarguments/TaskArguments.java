@@ -19,6 +19,8 @@ public interface TaskArguments {
 
     <T> T[] getObjectArray(String key);
 
+    Integer[] getIntegerArray(String key);
+
     String[] getStringArray(String key);
 
     byte[] getByteArray(String key);
