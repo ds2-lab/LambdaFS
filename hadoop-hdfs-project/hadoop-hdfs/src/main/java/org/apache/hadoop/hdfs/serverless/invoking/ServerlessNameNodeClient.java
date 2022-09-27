@@ -367,19 +367,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (resultPayload instanceof NameNodeResult) {
             NameNodeResult result = (NameNodeResult)resultPayload;
 
-//            ArrayList<NameNodeException> exceptions = result.getExceptions();
-//            if (exceptions != null && exceptions.size() > 0) {
-//                LOG.warn("The ServerlessNameNode encountered " + exceptions.size() +
-//                        (exceptions.size() == 1 ? " exception." : " exceptions."));
-//
-//                for (NameNodeException ex : exceptions)
-//                    LOG.error(ex);
-//            }
-//            Exception exception = result.getException();
-//            if (exception != null) {
-//                LOG.warn("The NameNode encountered " + exception.getClass().getSimpleName() + "/");
-//            }
-
             if (!benchmarkModeEnabled) {
                 NameNodeResultWithMetrics nameNodeResultWithMetrics = (NameNodeResultWithMetrics)result;
                 List<TransactionEvent> txEvents = nameNodeResultWithMetrics.getTxEvents();
@@ -718,7 +705,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " + requestId + "...");
                 LOG.warn("Resubmitting request " + requestId + " with FORCE_REDO...");
 
-                //payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
                 tcpRequestPayload.getFsOperationArguments().put(FORCE_REDO, true);
 
                 // We don't sleep in this case, as there wasn't a time-out exception.
@@ -965,6 +951,22 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (!benchmarkModeEnabled)
             createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime,
                     tcpTriedAndFailed, true, false);
+
+        if (response.has(EXCEPTION)) {
+            Exception ex = (Exception)
+                    InvokerUtilities.base64StringToObject(response.getAsJsonPrimitive(EXCEPTION).getAsString());
+
+            LOG.error("NameNode encountered " + ex.getClass().getSimpleName() +
+                    " while executing task " + requestId + " (operation=" + operationName + ").");
+
+            if (ex instanceof FileNotFoundException)
+                throw (FileNotFoundException)ex;
+            else if (ex instanceof IOException)
+                throw (IOException)ex;
+            else // Throw a "generic" IOException.
+                throw new IOException("Encountered unexpected " + ex.getClass().getSimpleName() +
+                        " while executing task " + requestId + " (operation=" + operationName + ").", ex);
+        }
 
         return response;
     }

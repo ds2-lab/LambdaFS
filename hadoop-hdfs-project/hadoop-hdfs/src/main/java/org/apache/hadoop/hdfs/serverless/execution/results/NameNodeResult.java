@@ -183,14 +183,18 @@ public class NameNodeResult implements Serializable {
             json.addProperty(DUPLICATE_REQUEST, false);
         }
 
-        if (exceptions.size() > 0) {
-            JsonArray exceptionsJson = new JsonArray();
-
-            for (NameNodeException ex : exceptions) {
-                exceptionsJson.add(ex.toString());
-            }
-
-            json.add(EXCEPTIONS, exceptionsJson);
+//        if (exceptions.size() > 0) {
+//            JsonArray exceptionsJson = new JsonArray();
+//
+//            for (NameNodeException ex : exceptions) {
+//                exceptionsJson.add(ex.toString());
+//            }
+//
+//            json.add(EXCEPTIONS, exceptionsJson);
+//        }
+        if (exception != null) {
+            String serializedException = serializeAndEncode(exception);
+            json.addProperty(EXCEPTION, serializedException);
         }
 
         json.addProperty(OPERATION, operationName);

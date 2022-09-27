@@ -13,6 +13,7 @@ public class ServerlessNameNodeKeys {
     public static final String RESULT = "RESULT";
     public static final String ALL_RESULTS = "ALL_RESULTS";
     public static final String EXCEPTIONS = "EXCEPTIONS";
+    public static final String EXCEPTION = "EXCEPTION";
     public static final String REQUEST_ID = "requestId";
     public static final String ALL_REQUEST_IDS = "allRequestIds";
     public static final String SRC = "src";

@@ -1083,20 +1083,21 @@ public abstract class ServerlessInvokerBase {
 //            // cache.addEntry(src, function, false);
 //        }
 
+        // COMMENTED OUT: We handle exception processing elsewhere (e.g., in the submitFsOperationViaHttp function)
         // Print any exceptions that were encountered first.
-        if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {
-            JsonArray exceptionsJson = response.get(ServerlessNameNodeKeys.EXCEPTIONS).getAsJsonArray();
-
-            int numExceptions = exceptionsJson.size();
-
-            if (numExceptions > 0) {
-                LOG.warn("*** The ServerlessNameNode encountered " + numExceptions +
-                        (numExceptions == 1 ? " exception. ***" : " exceptions. ***"));
-
-                for (int i = 0; i < exceptionsJson.size(); i++)
-                    LOG.error(exceptionsJson.get(i).getAsString());
-            }
-        }
+//        if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {
+//            JsonArray exceptionsJson = response.get(ServerlessNameNodeKeys.EXCEPTIONS).getAsJsonArray();
+//
+//            int numExceptions = exceptionsJson.size();
+//
+//            if (numExceptions > 0) {
+//                LOG.warn("*** The ServerlessNameNode encountered " + numExceptions +
+//                        (numExceptions == 1 ? " exception. ***" : " exceptions. ***"));
+//
+//                for (int i = 0; i < exceptionsJson.size(); i++)
+//                    LOG.error(exceptionsJson.get(i).getAsString());
+//            }
+//        }
 
         // This is just related to debugging/metrics. There are objects called "STATISTICS PACKAGES" that have
         // certain statistics about NN execution. We're just checking if there are any included here and, if so,
