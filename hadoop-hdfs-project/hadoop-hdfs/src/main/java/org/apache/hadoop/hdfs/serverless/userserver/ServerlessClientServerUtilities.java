@@ -91,6 +91,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(Token.class);
         kryo.register(FileAlreadyExistsException.class);
         kryo.register(TokenRenewer.class);
+        kryo.register(IllegalMonitorStateException.class);
         kryo.register(BlockTokenIdentifier.class);
         kryo.register(BlockTokenIdentifier.AccessMode.class);
         kryo.register(EnumSet.class);
