@@ -22,11 +22,8 @@ import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
 import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNode;
 import org.apache.hadoop.hdfs.serverless.consistency.ActiveServerlessNameNodeList;
-import org.apache.hadoop.hdfs.serverless.execution.results.DuplicateRequest;
-import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
-import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
-import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
-import org.apache.hadoop.hdfs.serverless.execution.results.ServerlessFunctionMapping;
+import org.apache.hadoop.hdfs.serverless.exceptions.UnsupportedObjectPayloadException;
+import org.apache.hadoop.hdfs.serverless.execution.results.*;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenRenewer;
 
@@ -80,7 +77,6 @@ public class ServerlessClientServerUtilities {
         //////////////////////////////////////////////////////////
 
         kryo.register(NameNodeResult.class);
-        kryo.register(ServerlessFunctionMapping.class);
         kryo.register(TcpUdpRequestPayload.class);
         kryo.register(NameNodeResultWithMetrics.class);
         kryo.register(TransactionEvent.class);
@@ -89,6 +85,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(java.lang.Exception.class);
         kryo.register(LocatedBlock.class);
         kryo.register(NameNodeException.class);
+        kryo.register(UnsupportedObjectPayloadException.class);
         kryo.register(Token.class);
         kryo.register(TokenRenewer.class);
         kryo.register(BlockTokenIdentifier.class);

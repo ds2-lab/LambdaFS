@@ -59,6 +59,8 @@ public class NameNodeResult implements Serializable {
      */
     protected ArrayList<NameNodeException> exceptions = new ArrayList<>();
 
+    protected Exception exception;
+
     /**
      * Name of the FS operation we performed.
      */
@@ -84,11 +86,6 @@ public class NameNodeResult implements Serializable {
      */
     protected boolean hasResult = false;
 
-    /**
-     * We may be returning a mapping of a file or directory to a particular serverless function.
-     */
-    protected ServerlessFunctionMapping serverlessFunctionMapping;
-
     public NameNodeResult(String requestId, String operationName) {
         this.requestId = requestId;
         this.operationName = operationName;
@@ -98,18 +95,6 @@ public class NameNodeResult implements Serializable {
 
     public boolean isDuplicate() {
         return isDuplicate;
-    }
-
-    /**
-     * Store the file/directory-to-serverless-function mapping information so that it may be returned to
-     * whoever invoked us.
-     *
-     * @param fileOrDirectory The file or directory being mapped to a function.
-     * @param parentId The ID of the file or directory's parent iNode.
-     * @param mappedFunctionName The name of the serverless function to which the file or directory was mapped.
-     */
-    public void addFunctionMapping(String fileOrDirectory, long parentId, int mappedFunctionName) {
-        this.serverlessFunctionMapping = new ServerlessFunctionMapping(fileOrDirectory, parentId, mappedFunctionName);
     }
 
     /**
@@ -135,10 +120,6 @@ public class NameNodeResult implements Serializable {
         return result;
     }
 
-    public ServerlessFunctionMapping getServerlessFunctionMapping() {
-        return serverlessFunctionMapping;
-    }
-
     public String getRequestId() {
         return requestId;
     }
@@ -154,6 +135,10 @@ public class NameNodeResult implements Serializable {
     public void addException(NameNodeException ex) {
         exceptions.add(ex);
     }
+
+    public void setException(Exception ex) { this.exception = ex; }
+
+    public Exception getException() { return this.exception; }
 
     public ArrayList<NameNodeException> getExceptions() {
         return exceptions;
@@ -206,16 +191,6 @@ public class NameNodeResult implements Serializable {
             }
 
             json.add(EXCEPTIONS, exceptionsJson);
-        }
-
-        if (serverlessFunctionMapping != null) {
-            // Embed all the information about the serverless function mapping in the Json response.
-            JsonObject functionMapping = new JsonObject();
-            functionMapping.addProperty(FILE_OR_DIR, serverlessFunctionMapping.fileOrDirectory);
-            functionMapping.addProperty(PARENT_ID, serverlessFunctionMapping.parentId);
-            functionMapping.addProperty(FUNCTION, serverlessFunctionMapping.mappedFunctionNumber);
-
-            json.add(DEPLOYMENT_MAPPING, functionMapping);
         }
 
         json.addProperty(OPERATION, operationName);

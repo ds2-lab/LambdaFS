@@ -33,7 +33,7 @@ import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.hdfs.serverless.OpenWhiskHandler;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import io.hops.metrics.OperationPerformed;
-import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
+import org.apache.hadoop.hdfs.serverless.exceptions.NoConnectionAvailableException;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.hdfs.serverless.execution.results.*;
@@ -367,25 +367,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (resultPayload instanceof NameNodeResult) {
             NameNodeResult result = (NameNodeResult)resultPayload;
 
-            ServerlessFunctionMapping functionMapping = result.getServerlessFunctionMapping();
-
-            if (functionMapping != null) {
-                serverlessInvoker.cache.addEntry(
-                        functionMapping.fileOrDirectory,
-                        functionMapping.parentId,
-                        false);
-            }
-
-            ArrayList<NameNodeException> exceptions = result.getExceptions();
-            if (exceptions != null && exceptions.size() > 0) {
-                //LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
-                LOG.warn("The ServerlessNameNode encountered " + exceptions.size() +
-                        (exceptions.size() == 1 ? " exception." : " exceptions."));
-
-                for (NameNodeException ex : exceptions)
-                    LOG.error(ex);
-                //LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
-            }
+//            ArrayList<NameNodeException> exceptions = result.getExceptions();
+//            if (exceptions != null && exceptions.size() > 0) {
+//                LOG.warn("The ServerlessNameNode encountered " + exceptions.size() +
+//                        (exceptions.size() == 1 ? " exception." : " exceptions."));
+//
+//                for (NameNodeException ex : exceptions)
+//                    LOG.error(ex);
+//            }
+//            Exception exception = result.getException();
+//            if (exception != null) {
+//                LOG.warn("The NameNode encountered " + exception.getClass().getSimpleName() + "/");
+//            }
 
             if (!benchmarkModeEnabled) {
                 NameNodeResultWithMetrics nameNodeResultWithMetrics = (NameNodeResultWithMetrics)result;
@@ -618,13 +611,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *
      * @return The response from the NameNode.
      */
-    private Object issueTCPRequest(String operationName, ArgumentContainer opArguments,
-                                   int targetDeployment, UserServer userServer, String requestId,
-                                   boolean subtreeOperation)
-            throws InterruptedException, ExecutionException, IOException {
+    private Object submitFsOperationViaTcp(String operationName, ArgumentContainer opArguments,
+                                           int targetDeployment, UserServer userServer, String requestId,
+                                           boolean subtreeOperation)
+            throws NoConnectionAvailableException, FileNotFoundException, IOException, TcpRequestCancelledException {
         long opStart = System.currentTimeMillis();
-
-        // LOG.info("Issuing TCP request. subtreeOperation: " + subtreeOperation);
 
         // This contains the file system operation arguments (and everything else) that will be submitted to the NN.
         TcpUdpRequestPayload tcpRequestPayload = new TcpUdpRequestPayload(requestId, operationName,
@@ -649,80 +640,26 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             long requestTimeout = calculateRequestTimeout(
                     stragglerResubmissionAlreadyOccurred, backoffInterval, subtreeOperation);
 
-            // LOG.info("Request timeout: " + requestTimeout);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug((userServer.isUdpEnabled() ? "UDP" : "TCP") +
+                        ". OpName=" + operationName + ". RequestID=" + requestId + ". Attempt " +
+                        exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
+                        ". Target='" + sourceArgument + "'. TargetDeployment=" + targetDeployment);
+            } else if (LOG.isTraceEnabled()) {
+                LOG.trace((userServer.isUdpEnabled() ? "UDP" : "TCP") + ". OpName=" + operationName +
+                        ". RequestID=" + requestId + ". Attempt " + exponentialBackOff.getNumberOfRetries() +
+                        (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
+                        ". Target='" + sourceArgument + "'. Time elapsed=" +
+                        (System.currentTimeMillis() - opStart) + " ms. Timeout=" + requestTimeout + " ms. " +
+                        (stragglerResubmissionAlreadyOccurred ? "Straggler resubmission occurred." :
+                                "Straggler resubmission NOT occurred. TargetDeployment=" + targetDeployment));
+            }
 
-            long localStart;
+            long localStart = System.currentTimeMillis();
+            Object response;
             try {
-                localStart = System.currentTimeMillis();
-
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug((userServer.isUdpEnabled() ? "UDP" : "TCP") +
-                            ". OpName=" + operationName + ". RequestID=" + requestId + ". Attempt " +
-                            exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
-                            ". Target='" + sourceArgument + "'. TargetDeployment=" + targetDeployment);
-                } else if (LOG.isTraceEnabled()) {
-                    LOG.trace((userServer.isUdpEnabled() ? "UDP" : "TCP") + ". OpName=" + operationName +
-                            ". RequestID=" + requestId + ". Attempt " + exponentialBackOff.getNumberOfRetries() +
-                            (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
-                            ". Target='" + sourceArgument + "'. Time elapsed=" +
-                            (System.currentTimeMillis() - opStart) + " ms. Timeout=" + requestTimeout + " ms. " +
-                            (stragglerResubmissionAlreadyOccurred ? "Straggler resubmission occurred." :
-                            "Straggler resubmission NOT occurred. TargetDeployment=" + targetDeployment));
-                }
-
-                Object response = userServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
+                response = userServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
                         tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
-
-                // This only ever happens when the request is cancelled.
-                if (response instanceof CancelledResult) {
-                    opArguments.addPrimitive(FORCE_REDO, true);
-
-                    // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
-                    throw new TcpRequestCancelledException("The TCP future for request " + requestId +
-                            " (operation = " + operationName + ") has been cancelled.");
-                }
-
-                NameNodeResult result = (NameNodeResult)response;
-
-                // If the NameNode is reporting that this FS operation was a duplicate, then we check to see if
-                // we're actually still waiting on a result for the operation. If we are, then it might have been
-                // lost (e.g., network connection terminated while NN sending result back to us) or something like
-                // that. In that case, we resubmit the FS operation with an additional argument indicating that the
-                // NN should execute the FS operation regardless of whether it is a duplicate.
-                if (result.isDuplicate()) {
-                    LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " + requestId + "...");
-                    LOG.warn("Resubmitting request " + requestId + " with FORCE_REDO...");
-
-                    //payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
-                    tcpRequestPayload.getFsOperationArguments().put(FORCE_REDO, true);
-
-                    // We don't sleep in this case, as there wasn't a time-out exception.
-                    continue;
-                }
-
-                int numExceptions = result.getExceptions().size();
-                if (numExceptions > 0) {
-                    LOG.error("NameNode encountered " + numExceptions + " exception(s) while executing task " +
-                            requestId + " (operation=" + operationName + ").");
-
-                    for (NameNodeException ex : result.getExceptions()) {
-                        LOG.error(ex.toString());
-                    }
-
-                    throw new IOException("NameNode encountered " + numExceptions + " exception(s) while executing task " +
-                            requestId + " (operation=" + operationName + ").");
-                }
-
-                long localEnd = System.currentTimeMillis();
-
-                addLatency(localEnd - localStart, -1);
-
-                if (!benchmarkModeEnabled)
-                    // Collect and save/record metrics.
-                    createAndStoreOperationPerformed((NameNodeResultWithMetrics)result, operationName, requestId,
-                            localStart, localEnd, true, false, wasResubmittedViaStragglerMitigation);
-
-                return response;
             }
             catch (TimeoutException ex) {
                 // If the straggler mitigation technique/protocol is enabled, then we only count this timeout as a
@@ -745,7 +682,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         // If this isn't a write operation, then make the NN redo it so that it may go faster.
                         if (!ServerlessNameNode.isWriteOperation(operationName))
                             tcpRequestPayload.getFsOperationArguments().put(FORCE_REDO, true);
-                        // payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
                         continue; // Use continue statement to avoid exponential backoff.
                     }
                 } else {
@@ -753,9 +689,68 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 }
 
                 backoffInterval = exponentialBackOff.getBackOffInMillis();
+                continue;
+            } catch (ExecutionException | InterruptedException ex) {
+                LOG.error("Exception encountered while invoking TCP request " + requestId + " for operation " +
+                        operationName + ":", ex);
+
+                backoffInterval = exponentialBackOff.getBackOffInMillis();
+                continue;
             }
+
+            // This only ever happens when the request is cancelled.
+            if (response instanceof CancelledResult) {
+                opArguments.addPrimitive(FORCE_REDO, true);
+
+                // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
+                throw new TcpRequestCancelledException("The TCP future for request " + requestId +
+                        " (operation = " + operationName + ") has been cancelled.");
+            }
+
+            NameNodeResult result = (NameNodeResult)response;
+
+            // If the NameNode is reporting that this FS operation was a duplicate, then we check to see if
+            // we're actually still waiting on a result for the operation. If we are, then it might have been
+            // lost (e.g., network connection terminated while NN sending result back to us) or something like
+            // that. In that case, we resubmit the FS operation with an additional argument indicating that the
+            // NN should execute the FS operation regardless of whether it is a duplicate.
+            if (result.isDuplicate()) {
+                LOG.warn("Received 'DUPLICATE REQUEST' notification via TCP for request " + requestId + "...");
+                LOG.warn("Resubmitting request " + requestId + " with FORCE_REDO...");
+
+                //payload.get(FILE_SYSTEM_OP_ARGS).getAsJsonObject().addProperty(FORCE_REDO, true);
+                tcpRequestPayload.getFsOperationArguments().put(FORCE_REDO, true);
+
+                // We don't sleep in this case, as there wasn't a time-out exception.
+                continue;
+            }
+
+            if (result.getException() != null) {
+                LOG.error("NameNode encountered " + result.getException().getClass().getSimpleName() +
+                        " while executing task " + requestId + " (operation=" + operationName + ").");
+
+                if (result.getException() instanceof FileNotFoundException)
+                    throw (FileNotFoundException)result.getException();
+                else if (result.getException() instanceof IOException)
+                    throw (FileNotFoundException)result.getException();
+                else // Throw a "generic" IOException.
+                    throw new IOException("Encountered unexpected " + result.getException().getClass().getSimpleName() +
+                            " while executing task " + requestId + " (operation=" + operationName + ").", result.getException());
+            }
+
+            long localEnd = System.currentTimeMillis();
+
+            addLatency(localEnd - localStart, -1);
+
+            if (!benchmarkModeEnabled)
+                // Collect and save/record metrics.
+                createAndStoreOperationPerformed((NameNodeResultWithMetrics)result, operationName, requestId,
+                        localStart, localEnd, true, false, wasResubmittedViaStragglerMitigation);
+
+            return response;
         }
 
+        LOG.error("Failed to complete request " + requestId + " for operation " + operationName + " via TCP.");
         return null;
     }
 
@@ -802,6 +797,86 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     /**
+     * Attempt to find an active connection to the appropriate deployment and issue a TCP request using
+     * said connection. If no connection can be found, then throw an exception and fall back to HTTP.
+     *
+     * @param targetDeployment The serverless function deployment we're targeting for this operation.
+     * @param operationName The name of the operation being performed. Used mostly for logging/debugging/metrics.
+     * @param requestId The unique ID of this particular request.
+     * @param subtreeOperation Indicates whether this operation is a subtree operation (true) or not (false).
+     * @param opArguments The arguments for this file system operation. These will be used by the NameNode when
+     *                    performing the file system operation.
+     * @param srcArgument The target file or directory. Mostly used for logging/debugging.
+     * @return Object returned by the NameNode after performing the file system operation.
+     *
+     * @return The result from the NameNode after executing the TCP request.
+     */
+    private Object trySubmitFsOperationViaTcp(int targetDeployment, String operationName, String requestId,
+                                              boolean subtreeOperation, ArgumentContainer opArguments,
+                                              String srcArgument)
+            throws NoConnectionAvailableException, FileNotFoundException, IOException, TcpRequestCancelledException {
+        // In some cases, TCP functions will target a random deployment (by specifying -1).
+        // So, if we have to fall back to HTTP, we just use the targetDeployment variable. TCP
+        // may modify this variable to be -1, so we have a separate value for it.
+        int targetDeploymentTcp = targetDeployment;
+
+        // Randomly select a deployment if the user did not specify one.
+        if (targetDeploymentTcp == -1)
+            targetDeploymentTcp = rng.nextInt(numDeployments);
+
+        // Used for metrics and debugging. This only gets updated when a request fails.
+        // If we successfully issue a TCP request, then its value will still be 0.
+        int numTcpRequestsAttempted = 0;
+
+        // We loop here. Basically, we try to find a viable TCP server. If we find one, then we issue TCP request.
+        // If that request fails, then we loop again, trying to find a (possibly different) TCP server. If we find
+        // one, then issue TCP request. This continues until we are successful. Alternatively, if we cannot find
+        // a viable TCP server, then we break out of the loop and fall back to HTTP.
+        while (numTcpRequestsAttempted < maxNumTcpAttempts) {
+            // Attempt to find a viable TCP server.
+            UserServer targetServer = tryGetUserServer(targetDeploymentTcp);
+
+            // If we failed to find one AND Anti-Thrashing Mode is enabled, then we will try to use
+            // any TCP server on this VM that has at least one active connection to ANY deployment.
+            if (targetServer == null && antiThrashingModeEnabled) {
+                if (LOG.isTraceEnabled()) LOG.trace("Anti-Thrashing Mode is enabled. Will attempt to use any available TCP connection for request.");
+
+                // If anti-thrashing mode is enabled, then we'll just try to use ANY available TCP connections.
+                // By passing -1, we'll randomly select a TCP connection from among all active deployments.
+                // Notice that we checked to make sure that there is at least one active TCP connection before
+                // entering the body of this if-else statement. We wouldn't want to bother trying to issue a TCP
+                // request if we already know there are no available TCP connections. That being said, if we lose
+                // all TCP connections prior to issuing the request, then we'll just fall back to HTTP.
+                targetDeploymentTcp = -1;
+
+                // If our assigned server has at least one active connection, then we'll use it.
+                // Otherwise, we'll attempt to use another TCP server on this VM (if connection sharing is enabled).
+                if (tcpServer.getNumActiveConnections() > 0)
+                    targetServer = tcpServer;
+                else if (connectionSharingEnabled) {
+                    // If it is enabled, then we do it 100% of the time due to anti-thrashing.
+                    if (LOG.isTraceEnabled()) LOG.trace("Attempting to use Connection Sharing in conjunction with Anti-Thrashing mode.");
+                    targetServer = serverAndInvokerManager.findServerWithAtLeastOneActiveConnection();
+                }
+            }
+
+            if (targetServer == null)
+                throw new NoConnectionAvailableException("No TCP/UDP connection to deployment " + targetDeploymentTcp +
+                        " (src: " + srcArgument + "). RequestID: " + requestId);
+
+            try {
+                return submitFsOperationViaTcp(operationName, opArguments, targetDeploymentTcp,
+                        targetServer, requestId, subtreeOperation);
+            } catch (IOException ex) {
+                numTcpRequestsAttempted++;
+            }
+        }
+
+        throw new IOException("Failed to successfully issue a TCP/UDP request for task " + requestId + " after " +
+                maxNumTcpAttempts + " attempts. Falling back to HTTP instead.");
+    }
+
+    /**
      * This is the function that is used to submit a file system operation to a NameNode. This is done either via
      * TCP directly to a NameNode in the target deployment or via an HTTP invocation through OpenWhisk (or whatever
      * serverless platform is being used).
@@ -810,7 +885,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param opArguments The arguments to be passed to the specified file system operation.
      * @param subtreeOperation If true, then the timeout for requests is adjusted, as subtree operations can take
      *                         a very long time, depending on the size of the subtree.
-     * @return
+     *
+     * @return The result from the NameNode after executing the file system operation.
      */
     private Object submitOperationToNameNode(String operationName, ArgumentContainer opArguments,
                                              boolean subtreeOperation)
@@ -829,104 +905,45 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // Unique identifier of the request.
         String requestId = UUID.randomUUID().toString();
 
-        String sourceFileOrDirectory;
+        String srcFileOrDirectory = null;
         if (srcArgument != null) {
-            sourceFileOrDirectory = (String)srcArgument;
-            targetDeployment = getFunctionNumberForFileOrDirectory(sourceFileOrDirectory, numDeployments);
+            srcFileOrDirectory = (String)srcArgument;
+            targetDeployment = getFunctionNumberForFileOrDirectory(srcFileOrDirectory, numDeployments);
         }
 
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
         if (tcpEnabled) {
-            // In some cases, TCP functions will target a random deployment (by specifying -1).
-            // So, if we have to fall back to HTTP, we just use the targetDeployment variable. TCP
-            // may modify this variable to be -1, so we have a separate value for it.
-            int targetDeploymentTcp = targetDeployment;
-
-            // Randomly select a deployment if the user did not specify one.
-            if (targetDeploymentTcp == -1)
-                targetDeploymentTcp = rng.nextInt(numDeployments);
-
-            // Used for metrics and debugging. This only gets updated when a request fails.
-            // If we successfully issue a TCP request, then its value will still be 0.
-            int numTcpRequestsAttempted = 0;
-
-            // We loop here. Basically, we try to find a viable TCP server. If we find one, then we issue TCP request.
-            // If that request fails, then we loop again, trying to find a (possibly different) TCP server. If we find
-            // one, then issue TCP request. This continues until we are successful. Alternatively, if we cannot find
-            // a viable TCP server, then we break out of the loop and fall back to HTTP.
-            while (numTcpRequestsAttempted < maxNumTcpAttempts) {
-                // Attempt to find a viable TCP server.
-                UserServer targetServer = tryGetUserServer(targetDeploymentTcp);
-
-                // If we failed to find one AND Anti-Thrashing Mode is enabled, then we will try to use
-                // any TCP server on this VM that has at least one active connection to ANY deployment.
-                if (targetServer == null && antiThrashingModeEnabled) {
-                    if (LOG.isTraceEnabled()) LOG.trace("Anti-Thrashing Mode is enabled. Will attempt to use any available TCP connection for request.");
-
-                    // If anti-thrashing mode is enabled, then we'll just try to use ANY available TCP connections.
-                    // By passing -1, we'll randomly select a TCP connection from among all active deployments.
-                    // Notice that we checked to make sure that there is at least one active TCP connection before
-                    // entering the body of this if-else statement. We wouldn't want to bother trying to issue a TCP
-                    // request if we already know there are no available TCP connections. That being said, if we lose
-                    // all TCP connections prior to issuing the request, then we'll just fall back to HTTP.
-                    targetDeploymentTcp = -1;
-
-                    // If our assigned server has at least one active connection, then we'll use it.
-                    // Otherwise, we'll attempt to use another TCP server on this VM (if connection sharing is enabled).
-                    if (tcpServer.getNumActiveConnections() > 0)
-                        targetServer = tcpServer;
-                    else if (connectionSharingEnabled) {
-                        // If it is enabled, then we do it 100% of the time due to anti-thrashing.
-                        if (LOG.isTraceEnabled()) LOG.trace("Attempting to use Connection Sharing in conjunction with Anti-Thrashing mode.");
-                        targetServer = serverAndInvokerManager.findServerWithAtLeastOneActiveConnection();
-                    }
-                }
-
-                if (targetServer != null) {
-                    try {
-                        return issueTCPRequest(operationName, opArguments, targetDeploymentTcp,
-                                targetServer, requestId, subtreeOperation);
-                    } catch (FileNotFoundException ex) {
-                        LOG.error("Encountered FileNotFoundException on TCP request attempt #" +
-                                (++numTcpRequestsAttempted) + " for operation " + operationName + " to deployment " +
-                                targetDeploymentTcp + ": " + ex.getMessage());
-
-                        return null;
-                    } catch (IOException ex) {
-                        // There are two reasons an IOException may occur for which we can handle things "cleanly".
-                        //
-                        // The first is when we go to issue the TCP request and find that there are actually no available
-                        // connections. This can occur if the TCP connection(s) were closed in between when we checked if
-                        // any existed and when we went to actually issue the TCP request.
-                        //
-                        // The second is when the TCP connection is closed AFTER we have issued the request, but before we
-                        // receive a response from the NameNode for the request.
-                        //
-                        // In either scenario, we simply fall back to HTTP.
-
-                        // Don't print the exception itself if it's a cancelled request.
-                        if (ex instanceof TcpRequestCancelledException) {
-                            // LOG.error("Encountered cancellation of TCP request attempt #" + (++numTcpRequestsAttempted) +
-                            //        " for operation " + operationName + " to deployment " + targetDeploymentTcp + ".");
-                            throw new IOException("TCP request attempt #" + (++numTcpRequestsAttempted) +
-                                    " for operation " + operationName + " to deployment " + targetDeploymentTcp + " was cancelled.");
-                        } else
-                            LOG.error("Encountered IOException on TCP request attempt #" + (++numTcpRequestsAttempted) +
-                                    " for operation " + operationName + " to deployment " + targetDeploymentTcp + ":", ex);
-                        tcpTriedAndFailed = true;
-                        targetDeploymentTcp = targetDeployment;
-                    }
-                } else {
-                    LOG.debug("No TCP/UDP connection to deployment " + targetDeploymentTcp + " (src: " + srcArgument + "). RequestID: " + requestId);
-                    break;
-                }
+            try {
+                return trySubmitFsOperationViaTcp(
+                        targetDeployment, operationName, requestId, subtreeOperation, opArguments, srcFileOrDirectory);
+            } catch (NoConnectionAvailableException | TcpRequestCancelledException | IOException ex) {
+                // Handle exception, fallback to TCP.
+                tcpTriedAndFailed = true;
             }
-
-            if (numTcpRequestsAttempted >= maxNumTcpAttempts)
-                LOG.error("Failed to successfully issue a TCP/UDP request for task " + requestId + " after " +
-                        maxNumTcpAttempts + " attempts. Falling back to HTTP instead.");
         }
 
+        // If TCP is disabled, or if the TCP request failed for some reason, then issue an HTTP request instead.
+        return submitFsOperationViaHttp(
+                targetDeployment, operationName, requestId, subtreeOperation, opArguments, tcpTriedAndFailed);
+    }
+
+    /**
+     * Issue an HTTP request to a NameNode deployment for the specified file system operation.
+     *
+     * @param targetDeployment The serverless function deployment we're targeting for this operation.
+     * @param operationName The name of the operation being performed. Used mostly for logging/debugging/metrics.
+     * @param requestId The unique ID of this particular request.
+     * @param subtreeOperation Indicates whether this operation is a subtree operation (true) or not (false).
+     * @param opArguments The arguments for this file system operation. These will be used by the NameNode when
+     *                    performing the file system operation.
+     * @param tcpTriedAndFailed Indicates whether we tried issuing this request by TCP (and the TCP request
+     *                          subsequently failed for whatever reason).
+     * @return Object returned by the NameNode after performing the file system operation.
+     */
+    private Object submitFsOperationViaHttp(int targetDeployment, String operationName, String requestId,
+                                            boolean subtreeOperation, ArgumentContainer opArguments,
+                                            boolean tcpTriedAndFailed)
+            throws IOException {
         if (LOG.isTraceEnabled()) LOG.trace("Issuing HTTP request for request " + requestId + "(op=" + operationName + ")");
 
         long startTime = System.currentTimeMillis();
@@ -934,10 +951,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         JsonObject response = ServerlessInvokerBase.issueHttpRequestWithRetries(
                 serverlessInvoker, operationName, dfsClient.serverlessEndpoint,
                 null, opArguments, requestId, targetDeployment, subtreeOperation);
-
-        if (response == null)
-            throw new IOException("Received null response from NameNode for Request " + requestId + ", op=" +
-                    operationName + ". Time elapsed: " + (System.currentTimeMillis() - startTime) + " ms.");
 
         long endTime = System.currentTimeMillis();
 

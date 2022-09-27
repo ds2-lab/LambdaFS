@@ -209,14 +209,6 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
             LOG.debug(builder.toString());
         }
 
-        LOG.debug("----------------------------------------------------");
-
-        if (serverlessFunctionMapping != null) {
-            LOG.debug(serverlessFunctionMapping.toString());
-        } else {
-            LOG.debug("No serverless function mapping data contained within this result.");
-        }
-
         LOG.debug("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n");
     }
 
@@ -267,16 +259,6 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
             }
 
             json.set(EXCEPTIONS, exceptionsJson);
-        }
-
-        if (serverlessFunctionMapping != null) {
-            // Embed all the information about the serverless function mapping in the Json response.
-            ObjectNode functionMapping = mapper.createObjectNode();
-            functionMapping.put(FILE_OR_DIR, serverlessFunctionMapping.fileOrDirectory);
-            functionMapping.put(PARENT_ID, serverlessFunctionMapping.parentId);
-            functionMapping.put(FUNCTION, serverlessFunctionMapping.mappedFunctionNumber);
-
-            json.set(DEPLOYMENT_MAPPING, functionMapping);
         }
 
         if (operation != null)
@@ -413,16 +395,6 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
             }
 
             json.add(EXCEPTIONS, exceptionsJson);
-        }
-
-        if (serverlessFunctionMapping != null) {
-            // Embed all the information about the serverless function mapping in the Json response.
-            JsonObject functionMapping = new JsonObject();
-            functionMapping.addProperty(FILE_OR_DIR, serverlessFunctionMapping.fileOrDirectory);
-            functionMapping.addProperty(PARENT_ID, serverlessFunctionMapping.parentId);
-            functionMapping.addProperty(FUNCTION, serverlessFunctionMapping.mappedFunctionNumber);
-
-            json.add(DEPLOYMENT_MAPPING, functionMapping);
         }
 
         long numGarbageCollectionsNow = 0L;

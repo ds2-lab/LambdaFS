@@ -738,15 +738,6 @@ public abstract class ServerlessInvokerBase {
                 .setRandomizationFactor(0.5)
                 .build();
 
-//        if (LOG.isTraceEnabled()) {
-//            double timeElapsed = (System.nanoTime() - invokeStart) / 1.0e6;
-//            LOG.trace("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
-//                    (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries +
-//                    ". Time elapsed: " + timeElapsed + " milliseconds.");
-//        } else if (LOG.isDebugEnabled()) {
-//            LOG.debug("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
-//                    (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries + ".");
-//        }
         if (LOG.isDebugEnabled())
             LOG.debug("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
                     (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries + ".");
@@ -1099,13 +1090,11 @@ public abstract class ServerlessInvokerBase {
             int numExceptions = exceptionsJson.size();
 
             if (numExceptions > 0) {
-                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
                 LOG.warn("*** The ServerlessNameNode encountered " + numExceptions +
                         (numExceptions == 1 ? " exception. ***" : " exceptions. ***"));
 
                 for (int i = 0; i < exceptionsJson.size(); i++)
                     LOG.error(exceptionsJson.get(i).getAsString());
-                LOG.warn("=+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=+==+=");
             }
         }
 

@@ -344,9 +344,9 @@ public class OpenWhiskHandler extends BaseHandler {
                     actionMemory, isCold);
         }
         catch (Exception ex) {
-            LOG.error("Encountered " + ex.getClass().getSimpleName()
-                    + " while creating and initializing the NameNode: ", ex);
-            result.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
+            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while creating and initializing the NameNode: ", ex);
+            // result.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
+            result.setException(ex);
             return result;
         }
 
@@ -370,13 +370,7 @@ public class OpenWhiskHandler extends BaseHandler {
         currentRequestId.set(requestId);
 
         // Wait for the worker thread to execute the task. We'll return the result (if there is one) to the client.
-        try {
-            serverlessNameNode.getExecutionManager().tryExecuteTask(requestId, op, new JsonTaskArguments(fsArgs), result);
-        } catch (Exception ex) {
-            LOG.error("Encountered " + ex.getClass().getSimpleName() + " while waiting for task " + requestId
-                    + " to be executed by the worker thread: ", ex);
-            result.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
-        }
+        serverlessNameNode.getExecutionManager().tryExecuteTask(requestId, op, new JsonTaskArguments(fsArgs), result);
 
         // The last step is to establish a TCP connection to the client that invoked us.
         if (isClientInvoker && tcpEnabled) {
@@ -488,71 +482,6 @@ public class OpenWhiskHandler extends BaseHandler {
 
         LOG.error("Unknown log level specified: '" + level + "'. Defaulting to 'debug'.");
         return 1;
-    }
-
-    /**
-     * Check if there is a single target file/directory specified within the file system arguments passed by the client.
-     * If there is, then we will create a function mapping for the client, so they know which NameNode is responsible
-     * for caching the metadata associated with that particular file/directory.
-     * @param result The current NameNodeResult, which will ultimately be returned to the user.
-     * @param fsArgs The file system operation arguments passed in by the client (i.e., the individual who invoked us).
-     * @param serverlessNameNode The current serverless name node instance, as we need this to determine the mapping.
-     */
-    public static void tryCreateDeploymentMapping(NameNodeResult result,
-                                                  TaskArguments fsArgs,
-                                                  ServerlessNameNode serverlessNameNode)
-            throws IOException {
-        // After performing the desired FS operation, we check if there is a particular file or directory
-        // identified by the `src` parameter. This is the file/directory that should be hashed to a particular
-        // serverless function. We calculate this here and include the information for the client in our response.
-        if (fsArgs != null && fsArgs.contains(ServerlessNameNodeKeys.SRC)) {
-            //String src = fsArgs.getAsJsonPrimitive(ServerlessNameNodeKeys.SRC).getAsString();
-            String src = fsArgs.getString(SRC);
-
-            INode inode = null;
-            try {
-                synchronized (serverlessNameNode) {
-                    inode = serverlessNameNode.getINodeForCache(src);
-                }
-            }
-            catch (IOException ex) {
-                LOG.error("Encountered IOException while retrieving INode associated with target directory "
-                        + src + ": ", ex);
-                result.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
-            }
-
-            // If we just deleted this INode, then it will presumably be null, so we need to check that it is not null.
-            if (inode != null) {
-                if (LOG.isDebugEnabled()) LOG.debug("Parent INode ID for '" + src + "': " + inode.getParentId());
-
-                int functionNumber = serverlessNameNode.getMappedDeploymentNumber(inode.getParentId());
-
-                if (LOG.isDebugEnabled()) LOG.debug("Consistently hashed parent INode ID " + inode.getParentId() + " to serverless function " + functionNumber);
-
-                result.addFunctionMapping(src, inode.getParentId(), functionNumber);
-            }
-        }
-    }
-
-    /**
-     * Create and return the response to return to whoever invoked this Serverless NameNode.
-     * @param result The result returned from by `driver()`.
-     * @return JsonObject to return as result of this OpenWhisk activation (i.e., serverless function execution).
-     */
-    private static JsonObject createJsonResponse(NameNodeResult result) {
-        JsonObject resultJson = result.toJson(ServerlessNameNode.
-                tryGetNameNodeInstance(true).getNamesystem().getMetadataCacheManager());
-
-        JsonObject response = new JsonObject();
-        JsonObject headers = new JsonObject();
-        headers.addProperty("content-type", "application/json");
-        response.addProperty("statusCode", 200);
-        response.addProperty("status", "success");
-        response.addProperty("success", true);
-        response.add("headers", headers);
-        response.add("body", resultJson);
-
-        return response;
     }
 
     /**

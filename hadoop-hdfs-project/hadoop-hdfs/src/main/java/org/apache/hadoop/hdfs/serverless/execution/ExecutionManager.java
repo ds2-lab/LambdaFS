@@ -266,11 +266,8 @@ public class ExecutionManager {
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while executing file system operation " +
                     operationName + " for task " + taskId + ".", ex);
-            // Sometimes returning exceptions directly causes the connection to be terminated.
-            // Maybe the stack traces just make them too large. So, we return a newly-created generic exception,
-            // which appears to work for whatever reason.
-            workerResult.addException(
-                    new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
+            // workerResult.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
+            workerResult.setException(ex);
             erred = true;
         } finally {
             long end = System.currentTimeMillis();
@@ -321,11 +318,8 @@ public class ExecutionManager {
         } catch (Exception ex) {
             LOG.error("Encountered " + ex.getClass().getSimpleName() + " while executing file system operation " +
                     operationName + " for task " + taskId + ".", ex);
-            // Sometimes returning exceptions directly causes the connection to be terminated.
-            // Maybe the stack traces just make them too large. So, we return a newly-created generic exception,
-            // which appears to work for whatever reason.
-            workerResult.addException(
-                    new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
+            // workerResult.addException(new NameNodeException(ex.getMessage(), ex.getClass().getSimpleName()));
+            workerResult.setException(ex);
             erred = true;
         } finally {
             long end = System.currentTimeMillis();

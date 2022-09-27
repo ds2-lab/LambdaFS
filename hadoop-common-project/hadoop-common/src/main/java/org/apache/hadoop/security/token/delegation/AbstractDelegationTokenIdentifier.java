@@ -33,12 +33,15 @@ import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
 import org.apache.hadoop.security.token.TokenIdentifier;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.apache.yetus.audience.InterfaceStability;
 
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public abstract class AbstractDelegationTokenIdentifier 
 extends TokenIdentifier {
   private static final byte VERSION = 0;
+  private static final long serialVersionUID = 416438743397733429L;
 
   private Text owner;
   private Text renewer;

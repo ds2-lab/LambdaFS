@@ -9,8 +9,10 @@ import java.io.IOException;
  * available, viable connection. But now that we're about to issue the request, that connection is no longer
  * present.
  */
-public class NoConnectionAvailableException extends IOException {
+public class NoConnectionAvailableException extends Exception {
     private static final long serialVersionUID = -4872084057395323848L;
+
+    public NoConnectionAvailableException() { }
 
     public NoConnectionAvailableException(String str) {
         super(str);

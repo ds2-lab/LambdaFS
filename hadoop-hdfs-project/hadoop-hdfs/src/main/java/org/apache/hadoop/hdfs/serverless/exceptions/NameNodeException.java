@@ -1,5 +1,6 @@
 package org.apache.hadoop.hdfs.serverless.exceptions;
 
+import java.io.FileNotFoundException;
 import java.io.Serializable;
 
 /**

@@ -95,19 +95,9 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
+      <version>3.2.0.3-SNAPSHOT</version>
       <!--<scope>provided</scope>-->
       <scope>${dependency-scope}</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.hops</groupId>
-      <artifactId>hadoop-common</artifactId>
-      <scope>provided</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>io.hops.metadata</groupId>
-          <artifactId>hops-metadata-dal</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -118,6 +108,10 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
           <groupId>io.hops</groupId>
           <artifactId>hadoop-common</artifactId>
       </dependency>
+    <dependency>
+      <groupId>io.hops</groupId>
+      <artifactId>hadoop-common</artifactId>
+    </dependency>
   </dependencies>
 
   <build>

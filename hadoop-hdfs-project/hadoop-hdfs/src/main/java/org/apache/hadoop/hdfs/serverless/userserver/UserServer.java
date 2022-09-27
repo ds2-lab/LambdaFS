@@ -794,7 +794,8 @@ public class UserServer {
      */
     public ServerlessTcpUdpFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck,
                                             String requestId, TcpUdpRequestPayload payload,
-                                            boolean tryToAvoidTargetingSameNameNode) throws IOException {
+                                            boolean tryToAvoidTargetingSameNameNode)
+            throws NoConnectionAvailableException, IOException {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
             LOG.warn(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
                     " request to NameNode deployment " + deploymentNumber + ", but connection no longer exists...");
@@ -904,7 +905,7 @@ public class UserServer {
     public Object issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck,
                                          String requestId, TcpUdpRequestPayload payload,
                                          long timeout, boolean tryToAvoidTargetingSameNameNode)
-            throws ExecutionException, InterruptedException, TimeoutException, IOException {
+            throws ExecutionException, InterruptedException, TimeoutException, IOException, NoConnectionAvailableException{
         if (deploymentNumber == -1) {
             // Randomly select an available connection. This is implemented using existing constructs, so it
             // is a little awkward. We have a mapping of ALL active NN connections from NN ID --> Connection, and
