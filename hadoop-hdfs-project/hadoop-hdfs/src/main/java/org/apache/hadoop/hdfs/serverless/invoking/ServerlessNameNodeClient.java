@@ -732,7 +732,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 if (result.getException() instanceof FileNotFoundException)
                     throw (FileNotFoundException)result.getException();
                 else if (result.getException() instanceof IOException)
-                    throw (FileNotFoundException)result.getException();
+                    throw (IOException)result.getException();
                 else // Throw a "generic" IOException.
                     throw new IOException("Encountered unexpected " + result.getException().getClass().getSimpleName() +
                             " while executing task " + requestId + " (operation=" + operationName + ").", result.getException());
