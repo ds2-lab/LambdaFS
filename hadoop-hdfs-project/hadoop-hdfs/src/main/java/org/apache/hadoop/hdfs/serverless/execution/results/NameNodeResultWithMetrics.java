@@ -219,6 +219,8 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
      * is added to the payload indicating that this response is for a duplicate request and should not be
      * returned as the true result of the associated file system operation.
      *
+     * TODO: Ideally we just have this call super(), and this adds whatever extra state atop the base class' toJson().
+     *
      * @param metadataCacheManager The manager of the in-memory metadata caches so we can get cache hit/miss metrics.
      *
      *                      We do NOT clear the counters on the metadataCache object after extracting them.
@@ -251,14 +253,18 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
             json.put(DUPLICATE_REQUEST, false);
         }
 
-        if (exceptions.size() > 0) {
-            ArrayNode exceptionsJson = mapper.createArrayNode();
-
-            for (NameNodeException ex : exceptions) {
-                exceptionsJson.add(ex.toString());
-            }
-
-            json.set(EXCEPTIONS, exceptionsJson);
+//        if (exceptions.size() > 0) {
+//            ArrayNode exceptionsJson = mapper.createArrayNode();
+//
+//            for (NameNodeException ex : exceptions) {
+//                exceptionsJson.add(ex.toString());
+//            }
+//
+//            json.set(EXCEPTIONS, exceptionsJson);
+//        }
+        if (exception != null) {
+            String serializedException = serializeAndEncode(exception);
+            json.put(EXCEPTION, serializedException);
         }
 
         if (operation != null)
@@ -387,14 +393,18 @@ public final class NameNodeResultWithMetrics extends NameNodeResult {
             json.addProperty(DUPLICATE_REQUEST, false);
         }
 
-        if (exceptions.size() > 0) {
-            JsonArray exceptionsJson = new JsonArray();
-
-            for (NameNodeException ex : exceptions) {
-                exceptionsJson.add(ex.toString());
-            }
-
-            json.add(EXCEPTIONS, exceptionsJson);
+//        if (exceptions.size() > 0) {
+//            JsonArray exceptionsJson = new JsonArray();
+//
+//            for (NameNodeException ex : exceptions) {
+//                exceptionsJson.add(ex.toString());
+//            }
+//
+//            json.add(EXCEPTIONS, exceptionsJson);
+//        }
+        if (exception != null) {
+            String serializedException = serializeAndEncode(exception);
+            json.addProperty(EXCEPTION, serializedException);
         }
 
         long numGarbageCollectionsNow = 0L;
