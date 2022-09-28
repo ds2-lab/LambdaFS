@@ -99,6 +99,9 @@ public class ServerlessClientServerUtilities {
         kryo.register(DatanodeInfoWithStorage.class);
         kryo.register(DatanodeInfoWithStorage[].class);
         kryo.register(StorageType.class);
+        kryo.register(io.hops.exception.LockUpgradeException.class);
+        kryo.register(io.hops.exception.TransactionContextException.class);
+        kryo.register(io.hops.exception.HopsException.class);
         kryo.register(ExtendedBlock.class);
         kryo.register(NamespaceInfo.class);
         kryo.register(LastBlockWithStatus.class);
