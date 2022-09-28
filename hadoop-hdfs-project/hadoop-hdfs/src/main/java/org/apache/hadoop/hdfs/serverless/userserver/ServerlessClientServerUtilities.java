@@ -33,6 +33,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Utility functions exposed by both TCP clients and servers.
@@ -96,6 +98,8 @@ public class ServerlessClientServerUtilities {
         kryo.register(BlockTokenIdentifier.AccessMode.class);
         kryo.register(EnumSet.class);
         kryo.register(Block.class);
+        kryo.register(Set.class);
+        kryo.register(HashSet.class);
         kryo.register(DatanodeInfoWithStorage.class);
         kryo.register(DatanodeInfoWithStorage[].class);
         kryo.register(StorageType.class);
