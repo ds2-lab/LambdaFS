@@ -412,7 +412,7 @@ public class NameNodeTcpUdpClient {
                         tcpClient.connect(CONNECTION_TIMEOUT, newClient.getClientIp(), newClient.getTcpPort());
                     }
                 } catch (IOException ex) {
-                    LOG.warn("IOException encountered while trying to connect to HopsFS Client via TCP/UDP:", ex);
+                    LOG.warn("Failed to connect to HopsFS Client via TCP/UDP.");
                 }
             }
         };

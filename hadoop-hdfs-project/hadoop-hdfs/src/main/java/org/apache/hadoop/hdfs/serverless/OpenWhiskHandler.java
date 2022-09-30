@@ -414,7 +414,7 @@ public class OpenWhiskHandler extends BaseHandler {
                 try {
                     tcpClient.addClient(serverlessHopsFSClient);
                 } catch (IOException ex) {
-                    LOG.error("Encountered exception while connecting to client " + serverlessHopsFSClient + ":", ex);
+                    LOG.warn("Failed to connect to HopsFS client via TCP/UDP " + serverlessHopsFSClient + ".");
                 }
             }).start();
         }
