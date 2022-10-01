@@ -117,6 +117,7 @@ public class InMemoryINodeCache {
         this.prefixMetadataCache = new PatriciaTrie<>();
         this.cache = Caffeine.newBuilder()
                 .initialCapacity(cacheCapacity)
+                .maximumSize(cacheCapacity)
                 .evictionListener((RemovalListener<String, INode>) (fullPath, iNode, removalCause) -> {
                     _mutex.writeLock().lock();
                     try {
@@ -124,9 +125,6 @@ public class InMemoryINodeCache {
                     } finally {
                         _mutex.writeLock().unlock();
                     }
-
-//                    if (fullPath != null)
-//                        fullPathMetadataCache.remove(fullPath);
 
                     if (iNode != null)
                         idToFullPathMap.remove(iNode.getId());
@@ -318,6 +316,9 @@ public class InMemoryINodeCache {
      * TODO: Should we just remove the return value altogether? It is never used and may cause confusion...
      */
     public INode put(String key, long iNodeId, INode value) {
+        if (!enabled)
+            return null;
+
         if (value == null)
             throw new IllegalArgumentException("INode Metadata Cache does NOT support null values. Associated key: " + key);
         long s = System.currentTimeMillis();
@@ -384,6 +385,9 @@ public class InMemoryINodeCache {
      * Return the size of the cache.
      */
     public int size() {
+        if (!enabled)
+            return -1;
+
         _mutex.readLock().lock();
         try {
             return prefixMetadataCache.size();
@@ -436,6 +440,9 @@ public class InMemoryINodeCache {
      * @return True if the key was invalidated, otherwise false.
      */
     protected boolean invalidateKey(long inodeId) {
+        if (!enabled)
+            return false;
+
         _mutex.writeLock().lock();
         try  {
             if (idToFullPathMap.containsKey(inodeId)) {
@@ -484,6 +491,9 @@ public class InMemoryINodeCache {
      * function will always return true.
      */
     private boolean invalidateKeyInternal(String key, boolean skipCheck) {
+        if (!enabled)
+            return false;
+
         long s = System.currentTimeMillis();
         _mutex.writeLock().lock();
         try {
@@ -506,6 +516,9 @@ public class InMemoryINodeCache {
      * Invalidate all entries in the cache.
      */
     protected void invalidateEntireCache() {
+        if (!enabled)
+            return;
+
         LOG.warn("Invalidating ENTIRE cache. ");
         long s = System.currentTimeMillis();
         _mutex.writeLock().lock();
@@ -532,6 +545,9 @@ public class InMemoryINodeCache {
      * cached metadata objects (e.g., Ace and EncryptionZone instances).
      */
     protected Collection<INode> invalidateKeysByPrefix(String prefix) {
+        if (!enabled)
+            return new ArrayList<>();
+
         long s = System.currentTimeMillis();
         if (LOG.isDebugEnabled()) LOG.debug("Invalidating all INodes prefixed by '" + prefix + "'.");
 

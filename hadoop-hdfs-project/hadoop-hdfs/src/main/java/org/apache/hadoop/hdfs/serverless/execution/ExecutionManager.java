@@ -89,7 +89,7 @@ public class ExecutionManager {
      * Records the timestamp of the last time we executed a task. We use this to determine
      * if we should trigger a garbage collection ourselves (i.e., while we're idle).
      */
-    private AtomicLong lastTaskExecutedTimestamp = new AtomicLong(0L);
+    private final AtomicLong lastTaskExecutedTimestamp = new AtomicLong(0L);
 
     /**
      * Used to reset the value of {@code gcTriggeredDuringThisIdleInterval}. Specifically, if this value is not

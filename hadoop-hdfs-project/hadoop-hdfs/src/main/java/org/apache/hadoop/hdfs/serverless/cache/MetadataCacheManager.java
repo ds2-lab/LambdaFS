@@ -71,18 +71,23 @@ public class MetadataCacheManager {
         this.cacheCapacity = configuration.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
         inodeCache = new InMemoryINodeCache(configuration, deploymentNumber);
         encryptionZoneCache = Caffeine.newBuilder()
+                .initialCapacity(cacheCapacity)
                 .maximumSize(cacheCapacity)
                 .build();
         aceCache = Caffeine.newBuilder()
+                .initialCapacity(cacheCapacity)
                 .maximumSize(cacheCapacity)
                 .build();
         aceCacheByINodeId = Caffeine.newBuilder()
+                .initialCapacity(cacheCapacity)
                 .maximumSize(cacheCapacity)
                 .build();
         xAttrCache = Caffeine.newBuilder()
+                .initialCapacity(cacheCapacity)
                 .maximumSize(cacheCapacity)
                 .build();
         xAttrCacheByINodeId = Caffeine.newBuilder()
+                .initialCapacity(cacheCapacity)
                 .maximumSize(cacheCapacity)
                 .build();
 
