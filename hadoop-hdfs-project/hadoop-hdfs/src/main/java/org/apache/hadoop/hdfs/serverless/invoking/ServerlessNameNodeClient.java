@@ -1033,15 +1033,29 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             if (response.has(CACHE_MISSES))
                 cacheMisses = response.get(CACHE_MISSES).getAsInt();
 
-            long fnStartTime = response.get(FN_START_TIME).getAsLong();
-            long fnEndTime = response.get(FN_END_TIME).getAsLong();
+            long fnStartTime = -1;
+            long fnEndTime = -1;
+            if (response.has(FN_START_TIME))
+                fnStartTime = response.get(FN_START_TIME).getAsLong();
+            if (response.has(FN_END_TIME))
+                fnEndTime = response.get(FN_END_TIME).getAsLong();
 
-            long enqueuedAt = response.get(ENQUEUED_TIME).getAsLong();
-            long dequeuedAt = response.get(DEQUEUED_TIME).getAsLong();
-            long finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
+            long enqueuedAt = -1;
+            long dequeuedAt = -1;
+            long finishedProcessingAt = -1;
+            if (response.has(ENQUEUED_TIME))
+                enqueuedAt = response.get(ENQUEUED_TIME).getAsLong();
+            if (response.has(DEQUEUED_TIME))
+                dequeuedAt = response.get(DEQUEUED_TIME).getAsLong();
+            if (response.has(PROCESSING_FINISHED_TIME))
+                finishedProcessingAt = response.get(PROCESSING_FINISHED_TIME).getAsLong();
 
-            long numGarbageCollections = response.get(NUMBER_OF_GCs).getAsLong();
-            long garbageCollectionTime = response.get(GC_TIME).getAsLong();
+            long numGarbageCollections = -1;
+            long garbageCollectionTime = -1;
+            if (response.has(NUMBER_OF_GCs))
+                numGarbageCollections = response.get(NUMBER_OF_GCs).getAsLong();
+            if (response.has(GC_TIME))
+                garbageCollectionTime = response.get(GC_TIME).getAsLong();
 
             OperationPerformed operationPerformed
                     = new OperationPerformed(operationName, requestId,
