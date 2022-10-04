@@ -1065,7 +1065,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                     deployment, true, issuedViaTCP, response.get(REQUEST_METHOD).getAsString(),
                     nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, false,
-                    this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime, targetPath);
+                    this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime, targetPath,
+                    this.tcpServer != null ? this.tcpServer.getTcpPort() : -1);
             operationsPerformed.put(requestId, operationPerformed);
         } catch (NullPointerException ex) {
             LOG.error("Unexpected NullPointerException encountered while creating OperationPerformed from JSON response:", ex);
@@ -1107,7 +1108,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                 deployment, false, true, result.getRequestMethod(),
                 nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation,
-                this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime, targetPath);
+                this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime, targetPath,
+                this.tcpServer != null ? this.tcpServer.getTcpPort() : -1);
         operationsPerformed.put(requestId, operationPerformed);
     }
 
