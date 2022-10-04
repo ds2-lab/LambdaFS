@@ -157,6 +157,11 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     private String originJvmIdentifier;
 
     /**
+     * The target file or directory.
+     */
+    private String targetPath;
+
+    /**
      * An identifier for the JVM from which this OperationPerformed instance originated.
      *
      * It is of the form PID@HOSTNAME.
@@ -178,7 +183,8 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                               long nameNodeId, int metadataCacheMisses,
                               int metadataCacheHits, long finishedProcessingAt,
                               boolean stragglerResubmitted, String clientId,
-                              long numGarbageCollections, long garbageCollectionTime) {
+                              long numGarbageCollections, long garbageCollectionTime,
+                              String targetPath) {
         this.operationName = operationName;
         this.requestId = requestId;
         this.invokedAtTime = invokedAtTime;
@@ -202,6 +208,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         this.numGarbageCollections = numGarbageCollections;
         this.garbageCollectionTime = garbageCollectionTime;
         this.originJvmIdentifier = localJvmName;
+        this.targetPath = targetPath;
     }
 
     public long getNumGarbageCollections() { return this.numGarbageCollections; }
@@ -213,6 +220,10 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     }
 
     public long getNameNodeId() { return this.nameNodeId; }
+
+    public String getTargetPath() { return this.targetPath; }
+
+    public String getOperationName() { return this.operationName; }
 
     public int getDeployment() { return this.deployment; }
 
@@ -267,7 +278,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 "finished_executing_time,serverless_fn_end_time,result_received_time,invocation_duration," +
                 "preprocessing_duration,waiting_in_queue_duration,execution_duration,postprocessing_duration,return_to_client_duration," +
                 "serverless_fn_duration,end_to_end_duration,deployment_number,name_node_id,request_type," +
-                "metadata_cache_hits,metadata_cache_misses,straggler_resubmitted,num_gcs,gc_time";
+                "metadata_cache_hits,metadata_cache_misses,straggler_resubmitted,num_gcs,gc_time,target_file";
     }
 
     public static String getToStringHeader() {
@@ -391,7 +402,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
         String formatString = "%-16s,%-38s,%-16s,%-22s," +                              // 4
                               "%-26s,%-26s,%-26s,%-26s,%-26s,%-26s,%-26s," +            // 7
                               "%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s,%-8s," +              // 8
-                              "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s,%-5s,%-5s";               // 8
+                              "%-3s,%-22s,%-6s,%-5s,%-5s,%-5s,%-5s,%-5s,%-255s";        // 9
         writer.write(String.format(formatString,
                 operationName, requestId, clientId, originJvmIdentifier,
                 invokedAtTime,                    // Client invokes NN.
@@ -410,7 +421,7 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 serverlessFunctionDuration,                                 // Total duration of the serverless func.
                 endToEndDuration,                                           // End-to-end duration of the operation.
                 deployment, nameNodeId, resultReceivedVia, metadataCacheHits, metadataCacheMisses,
-                stragglerResubmittedToInt(), numGarbageCollections, garbageCollectionTime));
+                stragglerResubmittedToInt(), numGarbageCollections, garbageCollectionTime, targetPath));
         writer.newLine();
 
         if (serverlessFnStartTime <= 0)

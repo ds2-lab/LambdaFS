@@ -731,7 +731,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             if (!benchmarkModeEnabled)
                 // Collect and save/record metrics.
                 createAndStoreOperationPerformed((NameNodeResultWithMetrics)result, operationName, requestId,
-                        localStart, localEnd, wasResubmittedViaStragglerMitigation);
+                        localStart, localEnd, wasResubmittedViaStragglerMitigation, sourceArgument);
 
             return response;
         }
@@ -914,8 +914,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         }
 
         // If TCP is disabled, or if the TCP request failed for some reason, then issue an HTTP request instead.
-        return submitFsOperationViaHttp(
-                targetDeployment, operationName, requestId, subtreeOperation, opArguments, tcpTriedAndFailed);
+        return submitFsOperationViaHttp(targetDeployment, operationName, requestId, subtreeOperation, opArguments,
+                tcpTriedAndFailed, srcFileOrDirectory);
     }
 
     /**
@@ -929,11 +929,12 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *                    performing the file system operation.
      * @param tcpTriedAndFailed Indicates whether we tried issuing this request by TCP (and the TCP request
      *                          subsequently failed for whatever reason).
+     * @param srcFileOrDirectory The target file/directory, if it exists and is available.
      * @return Object returned by the NameNode after performing the file system operation.
      */
     private Object submitFsOperationViaHttp(int targetDeployment, String operationName, String requestId,
                                             boolean subtreeOperation, ArgumentContainer opArguments,
-                                            boolean tcpTriedAndFailed)
+                                            boolean tcpTriedAndFailed, String srcFileOrDirectory)
             throws IOException {
         if (LOG.isTraceEnabled()) LOG.trace("Issuing HTTP request for request " + requestId + "(op=" + operationName + ")");
 
@@ -955,7 +956,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         if (!benchmarkModeEnabled)
             createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime,
-                    tcpTriedAndFailed);
+                    tcpTriedAndFailed, srcFileOrDirectory);
 
         if (response.has(EXCEPTION)) {
             Exception ex = (Exception)
@@ -1010,9 +1011,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param startTime The local timestamp at which this operation began.
      * @param endTime The local timestamp at which this operation completed.
      * @param issuedViaTCP Indicates whether the associated operation was issued via TCP to a NN.
+     * @param targetPath The target file/directory, if available.
      */
     private void createAndStoreOperationPerformed(JsonObject response, String operationName, String requestId,
-                                                  long startTime, long endTime, boolean issuedViaTCP) {
+                                                  long startTime, long endTime, boolean issuedViaTCP,
+                                                  String targetPath) {
         if (benchmarkModeEnabled)
             return;
 
@@ -1062,7 +1065,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                     deployment, true, issuedViaTCP, response.get(REQUEST_METHOD).getAsString(),
                     nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, false,
-                    this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime);
+                    this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime, targetPath);
             operationsPerformed.put(requestId, operationPerformed);
         } catch (NullPointerException ex) {
             LOG.error("Unexpected NullPointerException encountered while creating OperationPerformed from JSON response:", ex);
@@ -1081,7 +1084,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private void createAndStoreOperationPerformed(NameNodeResultWithMetrics result, String operationName,
                                                   String requestId, long startTime, long endTime,
-                                                  boolean wasResubmittedViaStragglerMitigation) {
+                                                  boolean wasResubmittedViaStragglerMitigation, String targetPath) {
         long nameNodeId = result.getNameNodeId();
 
         int deployment = result.getDeploymentNumber();
@@ -1104,7 +1107,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
                 deployment, false, true, result.getRequestMethod(),
                 nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, wasResubmittedViaStragglerMitigation,
-                this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime);
+                this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime, targetPath);
         operationsPerformed.put(requestId, operationPerformed);
     }
 
