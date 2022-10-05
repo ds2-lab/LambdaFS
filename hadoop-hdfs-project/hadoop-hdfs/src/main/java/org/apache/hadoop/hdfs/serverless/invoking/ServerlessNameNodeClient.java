@@ -1060,10 +1060,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             if (response.has(GC_TIME))
                 garbageCollectionTime = response.get(GC_TIME).getAsLong();
 
+            String requestMethod;
+            if (response.has(REQUEST_METHOD))
+                requestMethod = response.get(REQUEST_METHOD).getAsString();
+            else
+                requestMethod = "N/A";
+
             OperationPerformed operationPerformed
                     = new OperationPerformed(operationName, requestId,
                     startTime, endTime, enqueuedAt, dequeuedAt, fnStartTime, fnEndTime,
-                    deployment, true, issuedViaTCP, response.get(REQUEST_METHOD).getAsString(),
+                    deployment, true, issuedViaTCP, requestMethod,
                     nameNodeId, cacheMisses, cacheHits, finishedProcessingAt, false,
                     this.dfsClient.clientName, numGarbageCollections, garbageCollectionTime, targetPath,
                     this.tcpServer != null ? this.tcpServer.getTcpPort() : -1);
