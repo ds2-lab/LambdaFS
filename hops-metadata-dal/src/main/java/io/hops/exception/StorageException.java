@@ -16,6 +16,8 @@
 package io.hops.exception;
 
 public class StorageException extends HopsException {
+  private static final long serialVersionUID = 8485849615731715462L;
+
   public StorageException() {
   }
 
