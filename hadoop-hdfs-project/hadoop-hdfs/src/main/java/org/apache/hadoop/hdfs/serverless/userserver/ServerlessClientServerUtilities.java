@@ -19,6 +19,7 @@ import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
+import org.apache.hadoop.hdfs.server.namenode.LeaseExpiredException;
 import org.apache.hadoop.hdfs.server.protocol.NamespaceInfo;
 import org.apache.hadoop.hdfs.serverless.exceptions.NameNodeException;
 import org.apache.hadoop.hdfs.serverless.exceptions.TcpRequestCancelledException;
@@ -93,6 +94,7 @@ public class ServerlessClientServerUtilities {
         kryo.register(Token.class);
         kryo.register(FileAlreadyExistsException.class);
         kryo.register(TokenRenewer.class);
+        kryo.register(LeaseExpiredException.class);
         kryo.register(IllegalMonitorStateException.class);
         kryo.register(BlockTokenIdentifier.class);
         kryo.register(BlockTokenIdentifier.AccessMode.class);
