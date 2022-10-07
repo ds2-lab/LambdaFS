@@ -2283,11 +2283,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void prewarm(int numPingsPerThread, int numThreadsPerDeployment) throws IOException {
-        Thread[] threads = new Thread[numReadWriteDeployments * numThreadsPerDeployment];
-        CountDownLatch startLatch = new CountDownLatch(numReadWriteDeployments * numThreadsPerDeployment);
+        Thread[] threads = new Thread[totalNumDeployments * numThreadsPerDeployment];
+        CountDownLatch startLatch = new CountDownLatch(totalNumDeployments * numThreadsPerDeployment);
 
         int counter = 0;
-        for (int deploymentNumber = 0; deploymentNumber < numReadWriteDeployments; deploymentNumber++) {
+        for (int deploymentNumber = 0; deploymentNumber < totalNumDeployments; deploymentNumber++) {
             final int depNum = deploymentNumber;
             for (int j = 0; j < numThreadsPerDeployment; j++) {
                 Thread thread = new Thread(() -> {
