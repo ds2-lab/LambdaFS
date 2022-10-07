@@ -600,7 +600,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private Object submitFsOperationViaTcp(String operationName, ArgumentContainer opArguments,
                                            int targetDeployment, UserServer userServer, String requestId,
-                                           boolean subtreeOperation)
+                                           boolean subtreeOperation, boolean writeOp)
             throws NoConnectionAvailableException, IOException, TcpRequestCancelledException {
         long opStart = System.currentTimeMillis();
 
@@ -646,7 +646,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             Object response;
             try {
                 response = userServer.issueTcpRequestAndWait(targetDeployment, false, requestId,
-                        tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred);
+                        tcpRequestPayload, requestTimeout, !stragglerResubmissionAlreadyOccurred, writeOp);
             }
             catch (TimeoutException ex) {
                 // If the straggler mitigation technique/protocol is enabled, then we only count this timeout as a
@@ -799,7 +799,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private Object trySubmitFsOperationViaTcp(int targetDeployment, String operationName, String requestId,
                                               boolean subtreeOperation, ArgumentContainer opArguments,
-                                              String srcArgument)
+                                              String srcArgument, boolean writeOp)
             throws NoConnectionAvailableException, FileNotFoundException, IOException, TcpRequestCancelledException {
         // In some cases, TCP functions will target a random deployment (by specifying -1).
         // So, if we have to fall back to HTTP, we just use the targetDeployment variable. TCP
@@ -852,7 +852,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
             try {
                 return submitFsOperationViaTcp(operationName, opArguments, targetDeploymentTcp,
-                        targetServer, requestId, subtreeOperation);
+                        targetServer, requestId, subtreeOperation, writeOp);
             }
             catch (IOException ex) {
                 // If it was a FileNotFoundException, then we shouldn't bother retrying.
@@ -879,8 +879,26 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *
      * @return The result from the NameNode after executing the file system operation.
      */
+    private Object submitOperationToNameNode(String operationName, ArgumentContainer opArguments, boolean subtreeOperation)
+            throws IOException, ExecutionException, InterruptedException {
+        return submitOperationToNameNode(operationName, opArguments, subtreeOperation, false);
+    }
+
+    /**
+     * This is the function that is used to submit a file system operation to a NameNode. This is done either via
+     * TCP directly to a NameNode in the target deployment or via an HTTP invocation through OpenWhisk (or whatever
+     * serverless platform is being used).
+     *
+     * @param operationName The name of the FS operation that the NameNode should perform.
+     * @param opArguments The arguments to be passed to the specified file system operation.
+     * @param subtreeOperation If true, then the timeout for requests is adjusted, as subtree operations can take
+     *                         a very long time, depending on the size of the subtree.
+     * @param writeOp Indicates whether we're performing a write operation.
+     *
+     * @return The result from the NameNode after executing the file system operation.
+     */
     private Object submitOperationToNameNode(String operationName, ArgumentContainer opArguments,
-                                             boolean subtreeOperation)
+                                             boolean subtreeOperation, boolean writeOp)
             throws IOException, InterruptedException, ExecutionException {
         // Check if there's a source directory parameter, as this is the file or directory that could
         // potentially be mapped to a serverless function.
@@ -905,8 +923,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
         if (tcpEnabled) {
             try {
-                return trySubmitFsOperationViaTcp(
-                        targetDeployment, operationName, requestId, subtreeOperation, opArguments, srcFileOrDirectory);
+                return trySubmitFsOperationViaTcp(targetDeployment, operationName, requestId, subtreeOperation,
+                        opArguments, srcFileOrDirectory, writeOp);
             } catch (NoConnectionAvailableException | TcpRequestCancelledException | IOException ex) {
                 // Handle exception, fallback to TCP.
                 tcpTriedAndFailed = true;
@@ -1569,10 +1587,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         Object responseFromNN;
         try {
-            responseFromNN = submitOperationToNameNode(
-                    "create",
-                    // We do not have any additional/non-default arguments to pass to the NN.
-                    opArguments);
+            responseFromNN = submitOperationToNameNode("create", opArguments, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation create to NameNode:", ex);
             throw new IOException("Exception encountered while submitting operation create to NameNode.");
@@ -1782,10 +1797,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         Object responseFromNN;
         try {
-            responseFromNN = submitOperationToNameNode(
-                    "complete",
-                    // We do not have any additional/non-default arguments to pass to the NN.
-                    opArguments);
+            responseFromNN = submitOperationToNameNode("complete", opArguments, false, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation complete to NameNode:", ex);
             throw new IOException("Exception encountered while submitting operation complete to NameNode.");
@@ -1818,7 +1830,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             submitOperationToNameNode(
                     "rename",
                     // We do not have any additional/non-default arguments to pass to the NN.
-                    opArguments, true);
+                    opArguments, true, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation rename to NameNode:", ex);
             return false;
@@ -1868,7 +1880,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             submitOperationToNameNode(
                     "rename", // Not rename2, we just map 'rename' to 'renameTo' or 'rename2' or whatever
                     // We do not have any additional/non-default arguments to pass to the NN.
-                    opArguments, true);
+                    opArguments, true, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation rename to NameNode:", ex);
         }
@@ -1901,7 +1913,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public boolean delete(String src, boolean recursive) throws AccessControlException, FileNotFoundException, SafeModeException, UnresolvedLinkException, IOException {
+    public boolean delete(String src, boolean recursive) throws IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put(ServerlessNameNodeKeys.SRC, src);
@@ -1910,9 +1922,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         Object responseFromNN;
         try {
             responseFromNN = submitOperationToNameNode(
-                    "delete",
-                    // We do not have any additional/non-default arguments to pass to the NN.
-                    opArguments, true);
+                    "delete", opArguments, true, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation delete to NameNode:", ex);
             return false;

@@ -63,6 +63,12 @@ public class UserServer {
     private final ConcurrentHashMap<Long, NameNodeConnection> allActiveConnections;
 
     /**
+     * Map from deployment number to the smallest NameNode ID.
+     * We try to target write operations to this NameNode when possible.
+     */
+    private final ConcurrentHashMap<Integer, Long> writeNameNodes;
+
+    /**
      * Caches the active connections in lists per deployment.
      */
     private final ArrayList<ConcurrentHashMap<Long, NameNodeConnection>> activeConnectionsPerDeployment;
@@ -190,6 +196,7 @@ public class UserServer {
         this.activeFutures = new ConcurrentHashMap<>();
         this.futureToNameNodeMapping = new ConcurrentHashMap<>();
         this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
+        this.writeNameNodes = new ConcurrentHashMap<>();
         this.activeConnectionsPerDeployment = new ArrayList<>();
         //this.completedFutures = new ConcurrentHashMap<>();
         this.completedFutures = Caffeine.newBuilder()
@@ -422,6 +429,14 @@ public class UserServer {
                     " from deployment " + deploymentNumber);
         }
 
+//        writeNameNodes.compute(deploymentNumber, (k, v) -> {
+//            if (v == null)
+//                return nameNodeId;
+//            else if (v > nameNodeId)
+//                return nameNodeId;
+//            return v;
+//        });
+
         allActiveConnections.put(nameNodeId, connection);
         activeConnectionsPerDeployment.get(deploymentNumber).put(nameNodeId, connection);
         nameNodeIdToDeploymentMapping.put(nameNodeId, deploymentNumber);
@@ -451,13 +466,26 @@ public class UserServer {
      * Get a random TCP connection for a NameNode from the specified deployment.
      *
      * @param deploymentNumber The deployment for which a connection is desired.
+     * @param performingWrite If True, then we're performing a write op, and thus we'll target the NN with the smallest
+     *                        ID in that deployment.
+     *
      * @throws NoConnectionAvailableException If there are no connections available to the target deployment.
      *
      * @return a random, active connection if one exists. Otherwise, returns null.
      */
-    private NameNodeConnection getRandomConnection(int deploymentNumber) throws NoConnectionAvailableException {
+    private NameNodeConnection getRandomConnection(int deploymentNumber, boolean performingWrite)
+            throws NoConnectionAvailableException {
         ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                 activeConnectionsPerDeployment.get(deploymentNumber);
+
+        // If we're performing a write operation and have a mapping to the
+        // smallest NameNode ID, then return the connection to that NameNode.
+//        if (performingWrite && writeNameNodes.containsKey(deploymentNumber)) {
+//            long smallestNameNodeId = writeNameNodes.get(deploymentNumber);
+//
+//            if (deploymentConnections.containsKey(smallestNameNodeId))
+//                return deploymentConnections.get(smallestNameNodeId);
+//        }
 
         // Return a random NameNode connection.
         NameNodeConnection[] values = deploymentConnections.values().toArray(new NameNodeConnection[0]);
@@ -584,6 +612,27 @@ public class UserServer {
                             activeConnectionsPerDeployment.get(deploymentNumber);
                     deploymentConnections.remove(nameNodeId);
 
+                    // If the smallest NN ID is equal to the ID of the NN whose connection we're deleting,
+                    // then we need to change the ID stored in the `writeNameNodes` mapping.
+//                    writeNameNodes.computeIfPresent(deploymentNumber, (k,v) -> {
+//                        if (v == nameNodeId) {
+//                            // Will default to -1 if there are no other active connections.
+//                            long smallestId = -1L;
+//                            for (Long id : deploymentConnections.keySet()) {
+//                                if (id < smallestId || smallestId == -1L)
+//                                    smallestId = id;
+//                            }
+//
+//                            return smallestId;
+//                        }
+//
+//                        return v;
+//                    });
+//
+//                    if (writeNameNodes.get(deploymentNumber) == nameNodeId) {
+//                        writeNameNodes.remove(deploymentNumber);
+//                    }
+
                     cancelActiveFutures(connection.name);
 
                     submittedFutures.remove(connection.name);
@@ -607,6 +656,21 @@ public class UserServer {
                 ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                         activeConnectionsPerDeployment.get(deploymentNumber);
                 deploymentConnections.remove(nameNodeId);
+
+//                writeNameNodes.computeIfPresent(deploymentNumber, (k,v) -> {
+//                    if (v == nameNodeId) {
+//                        // Will default to -1 if there are no other active connections.
+//                        long smallestId = -1L;
+//                        for (Long id : deploymentConnections.keySet()) {
+//                            if (id < smallestId || smallestId == -1L)
+//                                smallestId = id;
+//                        }
+//
+//                        return smallestId;
+//                    }
+//
+//                    return v;
+//                });
 
                 if (LOG.isDebugEnabled())
                     LOG.debug(serverPrefix + " Removed already-closed connection to NN " + nameNodeId);
@@ -714,10 +778,7 @@ public class UserServer {
         StringBuilder msg = new StringBuilder("Num Active Connections: " + numActiveConnections + ", Active Futures: " +
                 activeFutures.size() + ", Completed Futures: " + completedFutures.asMap().size() + ". ");
 
-        // for (Map.Entry<Integer, ConcurrentHashMap<Long, NameNodeConnection>> entry : activeConnectionsPerDeployment.entrySet()) {
         for (int deploymentNumber = 0; deploymentNumber < totalNumberOfDeployments; deploymentNumber++) {
-            // int deploymentNumber = entry.getKey();
-            // ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = entry.getValue();
             ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = activeConnectionsPerDeployment.get(deploymentNumber);
             nnIds.addAll(deploymentConnections.keySet());
             msg.append("D ").append(deploymentNumber).append(": ").append(deploymentConnections.size()).append(", ");
@@ -794,7 +855,7 @@ public class UserServer {
      */
     public ServerlessTcpUdpFuture issueTcpRequest(int deploymentNumber, boolean bypassCheck,
                                             String requestId, TcpUdpRequestPayload payload,
-                                            boolean tryToAvoidTargetingSameNameNode)
+                                            boolean tryToAvoidTargetingSameNameNode, boolean writeOp)
             throws NoConnectionAvailableException, IOException {
         if (!bypassCheck && !connectionExists(deploymentNumber)) {
             LOG.warn(serverPrefix + " Was about to issue " + (useUDP ? "UDP" : "TCP") +
@@ -824,10 +885,10 @@ public class UserServer {
                             deploymentNumber + " except for possibly a connection to excluded NN " + previousConnection.name +
                             ". Cannot issue TCP/UDP request.");
             } else {
-                tcpConnection = getRandomConnection(deploymentNumber);
+                tcpConnection = getRandomConnection(deploymentNumber, writeOp);
             }
         } else {
-            tcpConnection = getRandomConnection(deploymentNumber);
+            tcpConnection = getRandomConnection(deploymentNumber, writeOp);
         }
 
         // Make sure the connection variable is non-null.
@@ -902,9 +963,9 @@ public class UserServer {
      *                                        which the request previously timed-out.
      * @return The response from the NameNode, or null if the request failed for some reason.
      */
-    public Object issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck,
-                                         String requestId, TcpUdpRequestPayload payload,
-                                         long timeout, boolean tryToAvoidTargetingSameNameNode)
+    public Object issueTcpRequestAndWait(int deploymentNumber, boolean bypassCheck, String requestId,
+                                         TcpUdpRequestPayload payload, long timeout,
+                                         boolean tryToAvoidTargetingSameNameNode, boolean writeOp)
             throws ExecutionException, InterruptedException, TimeoutException, IOException, NoConnectionAvailableException{
         if (deploymentNumber == -1) {
             // Randomly select an available connection. This is implemented using existing constructs, so it
@@ -942,7 +1003,7 @@ public class UserServer {
 
         long startTime = System.nanoTime();
         ServerlessTcpUdpFuture requestResponseFuture = issueTcpRequest(
-                deploymentNumber, bypassCheck, requestId, payload, tryToAvoidTargetingSameNameNode);
+                deploymentNumber, bypassCheck, requestId, payload, tryToAvoidTargetingSameNameNode, writeOp);
 
         double tcpSendDuration = (System.nanoTime() - startTime) / 1.0e6;
         if (tcpSendDuration > 50) {
