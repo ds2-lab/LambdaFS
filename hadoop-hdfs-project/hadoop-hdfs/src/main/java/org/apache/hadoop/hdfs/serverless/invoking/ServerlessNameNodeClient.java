@@ -1262,11 +1262,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println("\n-- REQUESTS PER DEPLOYMENT ---------------------------------------------------------------------------------------------------");
         HashMap<Integer, Integer> requestsPerDeployment = OperationPerformed.getRequestsPerDeployment(opsPerformedList);
         StringBuilder deploymentHeader = new StringBuilder();
-        for (int i = 0; i < numReadWriteDeployments; i++)
+        for (int i = 0; i < totalNumDeployments; i++)
             deploymentHeader.append(i).append('\t');
         System.out.println(deploymentHeader);
         StringBuilder valuesString = new StringBuilder();
-        for (int i = 0; i < numReadWriteDeployments; i++) {
+        for (int i = 0; i < totalNumDeployments; i++) {
             int requests = requestsPerDeployment.getOrDefault(i, 0);
             valuesString.append(requests).append("\t");
         }
@@ -1291,8 +1291,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         for (Long nameNodeId : requestsPerNameNode.keySet())
             idsWithDeployment[idx++] = nameNodeId + " (" + deploymentMapping.get(nameNodeId) + ")";
 
-        System.out.println(String.format(formatString.toString(), idsWithDeployment));
-        System.out.println(String.format(formatString.toString(), requestsPerNameNode.values().toArray()));
+        System.out.printf((formatString) + "%n", idsWithDeployment);
+        System.out.printf((formatString) + "%n", requestsPerNameNode.values().toArray());
         System.out.println("Number of Unique NameNodes: " + requestsPerNameNode.size());
 
         System.out.println("\n-- Current HTTP & TCP Statistics ----------------------------------------------------------------------------------------------------");
