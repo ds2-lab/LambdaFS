@@ -1953,7 +1953,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public boolean mkdirs(String src, FsPermission masked, boolean createParent) throws AccessControlException, FileAlreadyExistsException, FileNotFoundException, NSQuotaExceededException, ParentNotDirectoryException, SafeModeException, UnresolvedLinkException, IOException {
+    public boolean mkdirs(String src, FsPermission masked, boolean createParent) throws IOException {
         ArgumentContainer opArguments = new ArgumentContainer();
 
         opArguments.put(ServerlessNameNodeKeys.SRC, src);
@@ -1965,7 +1965,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             responseFromNN = submitOperationToNameNode(
                     "mkdirs",
                     // We do not have any additional/non-default arguments to pass to the NN.
-                    opArguments);
+                    opArguments, false, true);
         } catch (ExecutionException | InterruptedException ex) {
             LOG.error("Exception encountered while submitting operation mkdirs to NameNode:", ex);
             throw new IOException("Exception encountered while submitting operation mkdirs to NameNode.");
