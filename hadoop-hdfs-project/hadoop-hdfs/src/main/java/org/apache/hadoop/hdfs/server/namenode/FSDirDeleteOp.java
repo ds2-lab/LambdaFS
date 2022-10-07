@@ -336,14 +336,14 @@ class FSDirDeleteOp {
 
             // Offload batches of deletes to other deployments in a round-robin fashion.
             // We start with a random deployment that is NOT our own deployment.
-            int targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getNumDeployments());
+            int targetDeployment = ThreadLocalRandom.current().nextInt(0, instance.getTotalNumDeployments());
 
             // Don't start with our own deployment.
             if (targetDeployment == instance.getDeploymentNumber()) {
               targetDeployment++;
 
               // Loop back around in case we are in the largest-numbered deployment.
-              if (targetDeployment >= instance.getNumDeployments())
+              if (targetDeployment >= instance.getTotalNumDeployments())
                 targetDeployment = 0;
             }
 
@@ -379,7 +379,7 @@ class FSDirDeleteOp {
               targetDeployment++;
 
               // Loop back around.
-              if (targetDeployment >= instance.getNumDeployments())
+              if (targetDeployment >= instance.getTotalNumDeployments())
                 targetDeployment = 0;
             }
           }

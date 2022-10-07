@@ -153,7 +153,18 @@ public abstract class ServerlessInvokerBase {
     /**
      * The number of uniquely-deployed serverless functions available for use.
      */
-    protected int numDeployments;
+    protected int numReadWriteDeployments;
+
+    /**
+     * The total number of deployments, including write-only and mixed (read-write) deployments.
+     */
+    protected int totalNumDeployments;
+
+    /**
+     * The number of write-only deployments. The first write-only deployment can be calculated as
+     * totalNumDeployments - numWriteDeployments.
+     */
+    protected int numWriteOnlyDeployments;
 
     /**
      * Indicates whether this Invoker instance is used by a client/user. When false, indicates that this
@@ -306,7 +317,7 @@ public abstract class ServerlessInvokerBase {
         // If there are none, then we skip that queue.
         // If it has at least one request, then we partition however many requests there are into batches.
         int totalNumRequests = 0;
-        for (int i = 0; i < numDeployments; i++) {
+        for (int i = 0; i < totalNumDeployments; i++) {
             LinkedBlockingQueue<JsonObject> deploymentQueue = outgoingRequests[i];
 
             // This will just be empty if there are no requests queued for this deployment.
@@ -479,10 +490,16 @@ public abstract class ServerlessInvokerBase {
         sendInterval = conf.getInt(SERVERLESS_HTTP_SEND_INTERVAL, SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT);
         this.functionUriBase = functionUriBase;
 
-        if (this.localMode)
-            numDeployments = 1;
-        else
-            numDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS, DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        if (this.localMode) {
+            numReadWriteDeployments = 1;
+            totalNumDeployments = 1;
+            numWriteOnlyDeployments = 0;
+        }
+        else {
+            this.totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+            this.numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
+            this.numReadWriteDeployments = this.totalNumDeployments - this.numWriteOnlyDeployments;
+        }
 
         this.invokerIdentity = invokerIdentity;
 
@@ -510,10 +527,10 @@ public abstract class ServerlessInvokerBase {
         httpClient.start();
         //if (LOG.isDebugEnabled()) LOG.debug("Started async HTTP client.");
 
-        outgoingRequests = new LinkedBlockingQueue[numDeployments];
+        outgoingRequests = new LinkedBlockingQueue[totalNumDeployments];
 
         // Create an outgoing request queue for each deployment.
-        for (int i = 0; i < numDeployments; i++) {
+        for (int i = 0; i < totalNumDeployments; i++) {
             outgoingRequests[i] = new LinkedBlockingQueue<>();
         }
 
@@ -729,8 +746,16 @@ public abstract class ServerlessInvokerBase {
             throws IOException {
         long invokeStart = System.nanoTime();
 
-        if (targetDeployment == -1)
-            targetDeployment = rng.nextInt(invokerInstance.numDeployments);
+        if (targetDeployment == -1) {
+            if (ServerlessUtilities.WRITE_OPS.contains(operationName)) {
+                // The write-only deployments begin after the mixed (read-write) deployments. So, we
+                // generate an integer between [Number of Mixed Deployments, Total Number of Deployments].
+                targetDeployment = ThreadLocalRandom.current().nextInt(
+                        invokerInstance.numReadWriteDeployments, invokerInstance.totalNumDeployments);
+            } else {
+                targetDeployment = rng.nextInt(invokerInstance.numReadWriteDeployments);
+            }
+        }
 
         ExponentialBackOff exponentialBackoff = new ExponentialBackOff.Builder()
                 .setMaximumRetries(invokerInstance.maxHttpRetries)

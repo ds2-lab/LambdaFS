@@ -461,6 +461,12 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String  DFS_DIR_DELETE_BATCH_SIZE= "dfs.dir.delete.batch.size";
   public static final int DFS_DIR_DELETE_BATCH_SIZE_DEFAULT = 512;
 
+  /**
+   * The number of deployments used exclusively to serve write operations.
+   */
+  public static final String NUMBER_OF_WRITE_ONLY_DEPLOYMENTS = "num.write-only.deployments";
+  public static final int NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT = 0;
+
   /*for client failover api*/
   // format {ip:port, ip:port, ip:port} comma separated
   public static final String DFS_NAMENODES_RPC_ADDRESS_KEY = "dfs.namenodes.rpc.addresses";

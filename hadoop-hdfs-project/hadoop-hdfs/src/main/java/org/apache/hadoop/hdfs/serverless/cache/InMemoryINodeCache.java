@@ -3,7 +3,6 @@ package org.apache.hadoop.hdfs.serverless.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalListener;
-import com.google.common.hash.Hashing;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -11,8 +10,6 @@ import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -85,7 +82,21 @@ public class InMemoryINodeCache {
 
     private final int deploymentNumber;
 
-    private final int numDeployments;
+    /**
+     * The number of mixed (read-write) deployments.
+     */
+    private final int numReadWriteDeployments;
+
+    /**
+     * The total number of deployments, including write-only and mixed (read-write) deployments.
+     */
+    private final int totalNumDeployments;
+
+    /**
+     * The number of write-only deployments. The first write-only deployment can be calculated as
+     * totalNumDeployments - numWriteDeployments.
+     */
+    private final int numWriteOnlyDeployments;
 
     /**
      * Create an LRU Metadata Cache using the default maximum capacity and load factor values.
@@ -103,7 +114,9 @@ public class InMemoryINodeCache {
          * Maximum elements in INode cache.
          */
         int cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
-        this.numDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        this.totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        this.numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
+        this.numReadWriteDeployments = this.totalNumDeployments - this.numWriteOnlyDeployments;
         this.idToFullPathMap = new ConcurrentHashMap<>(cacheCapacity, loadFactor);
         this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(cacheCapacity, loadFactor);
         this.deploymentNumber = deploymentNumber;

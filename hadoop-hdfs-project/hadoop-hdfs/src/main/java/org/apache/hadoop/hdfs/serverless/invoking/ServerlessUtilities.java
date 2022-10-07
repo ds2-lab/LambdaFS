@@ -9,8 +9,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.hash.Hashing.consistentHash;
 
@@ -19,18 +18,44 @@ import static com.google.common.hash.Hashing.consistentHash;
  * when interfacing with the serverless API (e.g., when extracting arguments from an invocation payload).
  */
 public class ServerlessUtilities {
+    private static final String[] WRITE_OP_VALUES =
+            new String[] { "create", "delete", "rename", "rename2", "complete", "append" };
+
+    /**
+     * Names of all supported write operations.
+     */
+    protected static final Set<String> WRITE_OPS = new HashSet<>(Arrays.asList(WRITE_OP_VALUES));
 
     /**
      * Return the INode-NN mapping cache entry for the given file or directory.
      *
      * This function returns -1 if no such entry exists.
      * @param fileOrDirectory The file or directory in question.
-     * @param numDeployments The number of unique deployments.
+     * @param opName The name of the FS operation to be performed.
+     * @param totalNumDeployments The number of unique deployments, including read-only and mixed (read-write).
+     * @param numReadWriteDeployments The number of mixed (read-write) deployments.
      * @return The number of the NN to which the file or directory is mapped, if an entry exists in the cache. If no
      * entry exists, then -1 is returned.
      */
-    public static int getFunctionNumberForFileOrDirectory(String fileOrDirectory, int numDeployments) {
-        return consistentHash(Hashing.md5().hashUnencodedChars(extractParentPath(fileOrDirectory)), numDeployments);
+    public static int getDeploymentForPath(String fileOrDirectory, String opName, int totalNumDeployments, int numReadWriteDeployments) {
+        if (WRITE_OPS.contains(opName)) {
+            int numWriteDeployments = totalNumDeployments - numReadWriteDeployments;
+
+            // This will generate a number between [0, numWriteDeployments).
+            // Need to adjust, since write-only deployments start after the mixed (read-write) deployments.
+            int tmp = consistentHash(Hashing.md5().hashUnencodedChars(extractParentPath(fileOrDirectory)),
+                    numWriteDeployments);
+
+            // Let's say there are 10 total deployments, 8 of which are mixed (read-write). That means there are
+            // 2 write-only deployments. The mixed deployments are 0, 1, ..., 7. The write-only deployments are 8
+            // and 9. We generate a number between [0,2). We then add this number to 8. This gives us a value in
+            // the range [8,9], which is what we want.
+            return numReadWriteDeployments + tmp;
+        }
+        else {
+            return consistentHash(Hashing.md5().hashUnencodedChars(extractParentPath(fileOrDirectory)),
+                    numReadWriteDeployments);
+        }
     }
 
     /**

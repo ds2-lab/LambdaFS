@@ -30,7 +30,7 @@ import org.nustaq.serialization.FSTConfiguration;
 public class InvokerUtilities {
     private static final Log LOG = LogFactory.getLog(InvokerUtilities.class);
 
-    private static FSTConfiguration conf = FSTConfiguration.createDefaultConfiguration();
+    private static final FSTConfiguration conf = FSTConfiguration.createDefaultConfiguration();
 
     /**
      * One easy and important optimization is to register classes which are serialized for sure in your application

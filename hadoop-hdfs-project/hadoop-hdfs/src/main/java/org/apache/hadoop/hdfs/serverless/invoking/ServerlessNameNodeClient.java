@@ -62,7 +62,7 @@ import java.util.concurrent.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.SERVERLESS_PLATFORM_DEFAULT;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
-import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.getFunctionNumberForFileOrDirectory;
+import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.getDeploymentForPath;
 
 /**
  * This serves as an adapter between the DFSClient interface and the serverless NameNode API.
@@ -103,7 +103,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     /**
      * Number of unique deployments.
      */
-    private final int numDeployments;
+    private final int numReadWriteDeployments;
+
+    /**
+     * The total number of deployments, including write-only and mixed (read-write) deployments.
+     */
+    private final int totalNumDeployments;
+
+    /**
+     * The number of write-only deployments. The first write-only deployment can be calculated as
+     * totalNumDeployments - numWriteDeployments.
+     */
+    private final int numWriteOnlyDeployments;
 
     /**
      * Flag that dictates whether TCP requests can be used to perform FS operations.
@@ -298,11 +309,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         zkClient = new SyncZKClient(conf);
         // zkClient.connect();
 
-        if (localMode)
-            numDeployments = 1;
-        else
-            numDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
-                    DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        if (localMode) {
+            totalNumDeployments = 1;
+            numReadWriteDeployments = 1;
+            numWriteOnlyDeployments = 0;
+        }
+        else {
+            this.totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+            this.numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
+            this.numReadWriteDeployments = this.totalNumDeployments - this.numWriteOnlyDeployments;
+        }
 
 //        if (LOG.isDebugEnabled()) {
 //            LOG.debug("Serverless endpoint: " + serverlessEndpointBase + ", platform: " + serverlessPlatformName +
@@ -808,7 +824,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         // Randomly select a deployment if the user did not specify one.
         if (targetDeploymentTcp == -1)
-            targetDeploymentTcp = rng.nextInt(numDeployments);
+            targetDeploymentTcp = rng.nextInt(numReadWriteDeployments);
 
         // Used for metrics and debugging. This only gets updated when a request fails.
         // If we successfully issue a TCP request, then its value will still be 0.
@@ -917,7 +933,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         String srcFileOrDirectory = null;
         if (srcArgument != null) {
             srcFileOrDirectory = (String)srcArgument;
-            targetDeployment = getFunctionNumberForFileOrDirectory(srcFileOrDirectory, numDeployments);
+            targetDeployment = getDeploymentForPath(srcFileOrDirectory, operationName,
+                    totalNumDeployments, numReadWriteDeployments);
         }
 
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
@@ -1245,11 +1262,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println("\n-- REQUESTS PER DEPLOYMENT ---------------------------------------------------------------------------------------------------");
         HashMap<Integer, Integer> requestsPerDeployment = OperationPerformed.getRequestsPerDeployment(opsPerformedList);
         StringBuilder deploymentHeader = new StringBuilder();
-        for (int i = 0; i < numDeployments; i++)
+        for (int i = 0; i < numReadWriteDeployments; i++)
             deploymentHeader.append(i).append('\t');
         System.out.println(deploymentHeader);
         StringBuilder valuesString = new StringBuilder();
-        for (int i = 0; i < numDeployments; i++) {
+        for (int i = 0; i < numReadWriteDeployments; i++) {
             int requests = requestsPerDeployment.getOrDefault(i, 0);
             valuesString.append(requests).append("\t");
         }
@@ -2266,11 +2283,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void prewarm(int numPingsPerThread, int numThreadsPerDeployment) throws IOException {
-        Thread[] threads = new Thread[numDeployments * numThreadsPerDeployment];
-        CountDownLatch startLatch = new CountDownLatch(numDeployments * numThreadsPerDeployment);
+        Thread[] threads = new Thread[numReadWriteDeployments * numThreadsPerDeployment];
+        CountDownLatch startLatch = new CountDownLatch(numReadWriteDeployments * numThreadsPerDeployment);
 
         int counter = 0;
-        for (int deploymentNumber = 0; deploymentNumber < numDeployments; deploymentNumber++) {
+        for (int deploymentNumber = 0; deploymentNumber < numReadWriteDeployments; deploymentNumber++) {
             final int depNum = deploymentNumber;
             for (int j = 0; j < numThreadsPerDeployment; j++) {
                 Thread thread = new Thread(() -> {

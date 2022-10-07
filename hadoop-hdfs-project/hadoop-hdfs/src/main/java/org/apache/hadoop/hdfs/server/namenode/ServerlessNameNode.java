@@ -248,7 +248,18 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    *
    * This is used when hashing parent inode IDs to particular serverless name nodes.
    */
-  private int numDeployments;
+  private int numReadWriteDeployments;
+
+  /**
+   * The total number of deployments, including write-only and mixed (read-write) deployments.
+   */
+  private int totalNumDeployments;
+
+  /**
+   * The number of write-only deployments. The first write-only deployment can be calculated as
+   * totalNumDeployments - numWriteDeployments.
+   */
+  private int numWriteOnlyDeployments;
 
   /**
    * List of currently-active NameNodes. This list is based on metadata stored in NDB.
@@ -475,9 +486,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
   public ExecutionManager getExecutionManager() { return executionManager; }
 
-  public int getNumDeployments() {
-    return numDeployments;
+  public int getNumReadWriteDeployments() {
+    return numReadWriteDeployments;
   }
+
+  public int getTotalNumDeployments() { return this.totalNumDeployments; }
+
+  public int getNumWriteOnlyDeployments() { return this.numWriteOnlyDeployments; }
 
   public NameNodeTcpUdpClient getNameNodeTcpClient() {
     return nameNodeTCPClient;
@@ -626,7 +641,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     String parentOfTargetPath = extractParentPath(target);
 
     // Compute the target deployment number via consistent hashing of the parent directory of `target`.
-    int targetDeployment = (consistentHash(Hashing.md5().hashString(parentOfTargetPath), numDeployments));
+    int targetDeployment = (consistentHash(Hashing.md5().hashString(parentOfTargetPath), numReadWriteDeployments));
 
     boolean enableUpdates = (targetDeployment == deploymentNumber);
 
@@ -844,7 +859,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   public void refreshActiveNameNodesList() throws IOException {
     synchronized (this) {
       if (activeNameNodes == null)
-        activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.numDeployments);
+        activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.totalNumDeployments);
     }
 
     activeNameNodes.refreshFromZooKeeper(this.zooKeeperClient);
@@ -2262,12 +2277,22 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       LOG.debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
     }
 
-    if (localModeEnabled)
-      numDeployments = 1;
-    else
-      numDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+    if (localModeEnabled) {
+      numReadWriteDeployments = 1;
+      totalNumDeployments = 1;
+      numWriteOnlyDeployments = 0;
+    }
+    else {
+      numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
+      totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+      numReadWriteDeployments = totalNumDeployments - numWriteOnlyDeployments;
+    }
 
-    if (LOG.isDebugEnabled()) LOG.debug("Number of unique serverless name nodes: " + numDeployments);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("There are a total of " + totalNumDeployments + " deployment(s). There are " +
+              numReadWriteDeployments + " mixed (read+write) deployment(s) and " + numWriteOnlyDeployments +
+              " write-only deployments.");
+    }
 
     int baseWaitTime = conf.getInt(DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_KEY,
             DFSConfigKeys.DFS_NAMENODE_TX_INITIAL_WAIT_TIME_BEFORE_RETRY_DEFAULT);
@@ -3194,7 +3219,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return The number of the serverless function responsible for caching this INode.
    */
   public int getMappedDeploymentNumber(INode inode) {
-    return consistentHash(inode.getParentId(), numDeployments);
+    return consistentHash(inode.getParentId(), numReadWriteDeployments);
     //return consistentHash(inode.getFullPathName().hashCode(), numUniqueServerlessNameNodes);
   }
 
@@ -3204,7 +3229,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    * @return The number of the serverless function responsible for caching this INode.
    */
   public int getMappedDeploymentNumber(long parentINodeId) {
-    return consistentHash(parentINodeId, numDeployments);
+    return consistentHash(parentINodeId, numReadWriteDeployments);
   }
 
   /**
@@ -3223,7 +3248,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
       return deploymentNumber;
     }
 
-    return consistentHash(inode.getParentId(), numDeployments);
+    return consistentHash(inode.getParentId(), numReadWriteDeployments);
     //return consistentHash(path.hashCode(), numUniqueServerlessNameNodes);
   }
 
@@ -3451,7 +3476,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // If not in cache, then check ZooKeeper. We'll check for the existence of a persistent ZNode
     // in the permanent sub-group of each deployment. If one does not exist, then the NN is dead.
     ZKClient zkClient = instance.getZooKeeperClient();
-    int numDeployments = instance.getNumDeployments();
+    int numDeployments = instance.getTotalNumDeployments();
 
     // If we encounter an exception, then we'll just be conservative and assume the NameNode is alive.
     boolean exceptionEncountered = false;

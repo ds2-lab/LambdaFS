@@ -10,9 +10,6 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.util.StringUtils;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.reactor.IOReactorException;
 
@@ -24,8 +21,7 @@ import java.security.*;
 import java.util.*;
 
 import static com.google.common.hash.Hashing.consistentHash;
-import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.BATCH;
-import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.getFunctionNumberForFileOrDirectory;
+import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.getDeploymentForPath;
 
 /**
  * The serverless platform being used is specified in the configuration files for Serverless HopsFS. Currently, it
@@ -88,42 +84,19 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
      *
      * @param functionUriBase The base URI. This is common to all functions, regardless of deployment number.
      * @param targetDeployment The deployment we will be targeting in our future HTTP request.
-     * @param fileSystemOperationArguments The arguments that will be sent to the NN. We pass this as we want access
-     *                                     to the 'SRC' argument, assuming it exists. We use this to determine the
-     *                                     target deployment in the case that the {@code targetDeployment} parameter
-     *                                     is -1.
-     *
-     *                                     Previously, if the target deployment was -1 and there is no SRC argument,
-     *                                     then we just targeted a random deployment. But this would not work anymore.
-     *                                     The target deployment parameter must be greater than -1 if there is no
-     *                                     'SRC' argument contained within the `fileSystemOperationArguments` parameter.
      * @return The full URI.
      */
-    private String getFunctionUri(String functionUriBase, int targetDeployment, JsonObject fileSystemOperationArguments) {
+    private String getFunctionUri(String functionUriBase, int targetDeployment) {
         StringBuilder builder = new StringBuilder();
         builder.append(functionUriBase);
 
         if (!this.localMode) {
-            if (targetDeployment == -1) {
-                // Attempt to get the serverless function associated with the particular file/directory, if one exists.
-                if (fileSystemOperationArguments != null && fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
-                    String sourceFileOrDirectory =
-                            fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
-                    targetDeployment = getFunctionNumberForFileOrDirectory(sourceFileOrDirectory, numDeployments); // cache.getFunction(sourceFileOrDirectory);
-                } else {
-                    if (LOG.isDebugEnabled()) LOG.debug("No `src` property found in file system arguments... " + "skipping the checking of INode cache...");
-                }
-            } else {
-                if (LOG.isDebugEnabled()) LOG.debug("Explicitly targeting deployment #" + targetDeployment + ".");
-            }
+            if (LOG.isDebugEnabled()) LOG.debug("Explicitly targeting deployment #" + targetDeployment + ".");
 
             // If we have a cache entry for this function, then we'll invoke that specific function.
             // Otherwise, we'll just select a function at random.
             if (targetDeployment < 0) {
                 throw new NotImplementedException("The target deployment should not be negative by this point.");
-
-//                targetDeployment = ThreadLocalRandom.current().nextInt(0, numDeployments);
-//                if (LOG.isDebugEnabled()) LOG.debug("Randomly selected serverless function " + targetDeployment);
             }
 
             builder.append(targetDeployment);
@@ -198,7 +171,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
 
         // We've created all the batches. Now we need to issue the requests.
         int totalNumBatchedRequestsIssued = 0;
-        for (int i = 0; i < numDeployments; i++) {
+        for (int i = 0; i < totalNumDeployments; i++) {
             List<JsonObject> deploymentBatches = batchedRequests.get(i);
 
             if (deploymentBatches.size() > 0) {
@@ -206,7 +179,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
                         " batch(es) of requests to Deployment " + i);
 
                 for (JsonObject requestBatch : deploymentBatches) {
-                    String requestUri = getFunctionUri(functionUriBase, i, null);
+                    String requestUri = getFunctionUri(functionUriBase, i);
 
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Issuing batched HTTP request to deployment " + i +

@@ -82,39 +82,7 @@ public class NuclioInvoker extends ServerlessInvokerBase {
     }
 
     private String getFunctionUri(int targetDeployment, JsonObject fileSystemOperationArguments) {
-        StringBuilder builder = new StringBuilder();
-
-        if (!this.localMode) {
-            if (targetDeployment == -1) {
-                // Attempt to get the serverless function associated with the particular file/directory, if one exists.
-                if (fileSystemOperationArguments != null && fileSystemOperationArguments.has(ServerlessNameNodeKeys.SRC)) {
-                    String sourceFileOrDirectory =
-                            fileSystemOperationArguments.getAsJsonPrimitive("src").getAsString();
-                    targetDeployment = cache.getFunction(sourceFileOrDirectory);
-                } else {
-                    if (LOG.isDebugEnabled()) LOG.debug("No `src` property found in file system arguments... " +
-                            "skipping the checking of INode cache...");
-                }
-            } else {
-                if (LOG.isDebugEnabled()) LOG.debug("Explicitly targeting deployment #" + targetDeployment + ".");
-            }
-
-            // If we have a cache entry for this function, then we'll invoke that specific function.
-            // Otherwise, we'll just select a function at random.
-            if (targetDeployment < 0) {
-                targetDeployment = ThreadLocalRandom.current().nextInt(0, numDeployments);
-                if (LOG.isDebugEnabled()) LOG.debug("Randomly selected serverless function " + targetDeployment);
-            }
-
-            if (!deploymentToEndpointMap.containsKey(targetDeployment)) {
-                throw new IllegalStateException("Nuclio deployment-to-endpoint mapping does not contain entry for target deployment " + targetDeployment);
-            }
-
-            builder.append("http://");
-            builder.append(deploymentToEndpointMap.get(targetDeployment));
-        }
-
-        return builder.toString();
+        throw new NotImplementedException("Needs to be updated.");
     }
 
     @Override
