@@ -38,7 +38,7 @@ public class ServerlessUtilities {
      * entry exists, then -1 is returned.
      */
     public static int getDeploymentForPath(String fileOrDirectory, String opName, int totalNumDeployments, int numReadWriteDeployments) {
-        if (WRITE_OPS.contains(opName)) {
+        if (WRITE_OPS.contains(opName) && totalNumDeployments != numReadWriteDeployments) {
             int numWriteDeployments = totalNumDeployments - numReadWriteDeployments;
 
             // This will generate a number between [0, numWriteDeployments).

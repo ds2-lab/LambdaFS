@@ -51,8 +51,6 @@ import java.util.concurrent.*;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 import static org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys.*;
-import static com.google.common.hash.Hashing.consistentHash;
-import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.extractParentPath;
 
 /**
  * Base class of serverless invokers. Defines some concrete state (i.e., instance variables) used by

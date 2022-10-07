@@ -20,9 +20,6 @@ import java.io.*;
 import java.security.*;
 import java.util.*;
 
-import static com.google.common.hash.Hashing.consistentHash;
-import static org.apache.hadoop.hdfs.serverless.invoking.ServerlessUtilities.getDeploymentForPath;
-
 /**
  * The serverless platform being used is specified in the configuration files for Serverless HopsFS. Currently, it
  * defaults to OpenWhisk. In order to obtain an invoker, you simply utilize the {@link ServerlessInvokerBase} class,
