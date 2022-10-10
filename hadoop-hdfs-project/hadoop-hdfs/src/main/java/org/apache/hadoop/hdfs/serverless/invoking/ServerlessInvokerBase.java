@@ -845,8 +845,6 @@ public abstract class ServerlessInvokerBase {
                     .setConnectionRequestTimeout(httpTimeoutMilliseconds)
                     .setSocketTimeout(720000) // 12 minutes.
                     .build());
-
-            LOG.info("Configuring HTTP request containing at least one subtree operation with extended socket timeout.");
         }
 
         JsonObject nameNodeArguments = new JsonObject();
