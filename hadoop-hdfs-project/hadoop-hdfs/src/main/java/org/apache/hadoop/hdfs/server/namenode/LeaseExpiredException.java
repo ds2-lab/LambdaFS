@@ -31,6 +31,8 @@ import java.io.IOException;
 public class LeaseExpiredException extends IOException {
   private static final long serialVersionUID = 1L;
 
+  public LeaseExpiredException() { super(); }
+
   public LeaseExpiredException(String msg) {
     super(msg);
   }
