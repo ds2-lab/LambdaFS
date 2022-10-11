@@ -2,6 +2,8 @@ package org.apache.hadoop.hdfs.serverless.userserver;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
+import com.mysql.clusterj.ClusterJDatastoreException;
+import com.mysql.clusterj.ClusterJException;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransientDeadLockException;
@@ -102,6 +104,9 @@ public class ServerlessClientServerUtilities {
         kryo.register(EnumSet.class);
         kryo.register(Block.class);
         kryo.register(Set.class);
+        kryo.register(RuntimeException.class);
+        kryo.register(ClusterJException.class, new JavaSerializer());
+        kryo.register(ClusterJDatastoreException.class, new JavaSerializer());
         kryo.register(HashSet.class);
         kryo.register(DatanodeInfoWithStorage.class);
         kryo.register(DatanodeInfoWithStorage[].class);
