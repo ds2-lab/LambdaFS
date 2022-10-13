@@ -399,6 +399,19 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
     }
 
     /**
+     * Write an abridged version of the data contained within this instance.
+     *
+     * Specifically, this writes the following data to a file:
+     * operation name, request id, serverless function start, serverless function end, serverless namenode id.
+     */
+    public void writeBrief(BufferedWriter writer) throws IOException {
+        String formatString = "%-16s,%-38s,%-26s,%-26s,%-22s";
+        writer.write(String.format(formatString, operationName, requestId, serverlessFnStartTime,
+                        serverlessFnEndTime, nameNodeId));
+        writer.newLine();
+    }
+
+    /**
      * Write this instance to a file in CSV format (using tabs to separate).
      */
     public void write(BufferedWriter writer) throws IOException {
