@@ -289,6 +289,10 @@ public class OperationPerformed implements Serializable, Comparable<OperationPer
                 "metadata_cache_hits,metadata_cache_misses,straggler_resubmitted,num_gcs,gc_time,tcp_port,target_file";
     }
 
+    public String getBriefHeader() {
+        return "operation_name,request_id,serverless_fn_start_time,serverless_fn_end_time,name_node_id";
+    }
+
     public static String getToStringHeader() {
         return "OpName RequestID InvokedAt FnStartTime EnqueuedAt BeganExecutingAt FnEndTime ResultReceivedAt FnDuration DepNum NNID ResReceivedVia CacheHits CacheMisses";
     }
