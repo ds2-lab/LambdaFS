@@ -39,6 +39,19 @@
           <plugin>
             <artifactId>maven-source-plugin</artifactId>
             <version>2.3</version>
+            <executions>
+              <execution>
+                <id>hadoop-java-sources</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                  <goal>test-jar-no-fork</goal>
+                </goals>
+                <configuration>
+                  <skipSource>true</skipSource>
+                </configuration>
+              </execution>
+            </executions>
             <configuration>
               <skipSource>true</skipSource>
             </configuration>
