@@ -20,6 +20,7 @@
     <groupId>io.hops</groupId>
     <version>3.2.0.2-RC0</version>
   </parent>
+  <version>3.2.0.2-RC0</version>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>hadoop-build-tools</artifactId>
   <description>Apache Hadoop Build Tools Project</description>

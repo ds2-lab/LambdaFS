@@ -203,7 +203,7 @@
               <workingDirectory>${project.build.testOutputDirectory}</workingDirectory>
               <requiresOnline>false</requiresOnline>
               <arguments>
-                <argument>ensure-jars-have-correct-contents.sh</argument>
+                <argument>${basedir}/ensure-jars-have-correct-contents.sh</argument>
                 <argument>${hadoop-client-artifacts}</argument>
               </arguments>
             </configuration>
