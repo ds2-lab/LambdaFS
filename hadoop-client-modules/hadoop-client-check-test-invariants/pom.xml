@@ -49,6 +49,7 @@
     <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-client-minicluster</artifactId>
+      <version>3.2.0.3-SNAPSHOT</version>
     </dependency>
   </dependencies>
   <build>

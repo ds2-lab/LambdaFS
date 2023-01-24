@@ -3,7 +3,7 @@
   #%L
   Apache Hadoop Client Runtime
   %%
-  Copyright (C) 2008 - 2021 Apache Software Foundation
+  Copyright (C) 2008 - 2023 Apache Software Foundation
   %%
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -245,11 +245,11 @@
                     </transformer>
                     <transformer>
                       <resource>META-INF/LICENSE.txt</resource>
-                      <file>/home/ben/repos/hops/hadoop-client-modules/hadoop-client-runtime/../../LICENSE.txt</file>
+                      <file>/home/ubuntu/repos/hops/hadoop-client-modules/hadoop-client-runtime/../../LICENSE.txt</file>
                     </transformer>
                     <transformer>
                       <resource>META-INF/NOTICE.txt</resource>
-                      <file>/home/ben/repos/hops/hadoop-client-modules/hadoop-client-runtime/../../NOTICE.txt</file>
+                      <file>/home/ubuntu/repos/hops/hadoop-client-modules/hadoop-client-runtime/../../NOTICE.txt</file>
                     </transformer>
                     <transformer>
                       <resource>META-INF/jboss-beans.xml</resource>
@@ -291,7 +291,7 @@
                   </includes>
                   <canUpdateCopyright>false</canUpdateCopyright>
                   <roots>
-                    <root>/home/ben/repos/hops/hadoop-client-modules/hadoop-client-runtime</root>
+                    <root>/home/ubuntu/repos/hops/hadoop-client-modules/hadoop-client-runtime</root>
                   </roots>
                 </configuration>
               </execution>
@@ -299,7 +299,7 @@
             <configuration>
               <canUpdateCopyright>false</canUpdateCopyright>
               <roots>
-                <root>/home/ben/repos/hops/hadoop-client-modules/hadoop-client-runtime</root>
+                <root>/home/ubuntu/repos/hops/hadoop-client-modules/hadoop-client-runtime</root>
               </roots>
             </configuration>
           </plugin>
@@ -366,7 +366,7 @@
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>
-      <version>3.0.0</version>
+      <version>3.0.2</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
@@ -374,28 +374,6 @@
       <artifactId>log4j</artifactId>
       <version>1.2.17</version>
       <scope>runtime</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>jmxtools</artifactId>
-          <groupId>com.sun.jdmk</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jmxri</artifactId>
-          <groupId>com.sun.jmx</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>mail</artifactId>
-          <groupId>javax.mail</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jmx</artifactId>
-          <groupId>javax.jms</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jms</artifactId>
-          <groupId>javax.jms</groupId>
-        </exclusion>
-      </exclusions>
       <optional>true</optional>
     </dependency>
   </dependencies>

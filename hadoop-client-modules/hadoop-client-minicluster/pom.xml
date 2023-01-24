@@ -82,6 +82,7 @@
       <groupId>io.hops</groupId>
       <artifactId>hadoop-minicluster</artifactId>
       <optional>true</optional>
+      <version>3.2.0.3-SNAPSHOT</version>
       <exclusions>
         <!-- exclude everything that comes in via the shaded runtime and api  TODO remove once we have a filter for "is in these artifacts" -->
         <!-- Skip jersey, since we need it again here. -->

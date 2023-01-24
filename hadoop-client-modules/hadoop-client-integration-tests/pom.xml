@@ -36,6 +36,7 @@
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
       <scope>test</scope>
+      <version>1.2.17</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -71,16 +72,17 @@
             </exclusion>
           </exclusions>
         </dependency>
-        <dependency>
-          <groupId>io.hops</groupId>
-          <artifactId>hadoop-client-runtime</artifactId>
-          <scope>test</scope>
-        </dependency>
-        <dependency>
-          <groupId>io.hops</groupId>
-          <artifactId>hadoop-client-minicluster</artifactId>
-          <scope>test</scope>
-        </dependency>
+<!--        <dependency>-->
+<!--          <groupId>io.hops</groupId>-->
+<!--          <artifactId>hadoop-client-runtime</artifactId>-->
+<!--          <scope>test</scope>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--          <groupId>io.hops</groupId>-->
+<!--          <artifactId>hadoop-client-minicluster</artifactId>-->
+<!--          <scope>test</scope>-->
+<!--          <version>3.2.0.3-SNAPSHOT</version>-->
+<!--        </dependency>-->
       </dependencies>
       <build>
         <plugins>

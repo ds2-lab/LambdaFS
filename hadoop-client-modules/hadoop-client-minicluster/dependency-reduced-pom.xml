@@ -3,7 +3,7 @@
   #%L
   Apache Hadoop Client Test Minicluster
   %%
-  Copyright (C) 2008 - 2021 Apache Software Foundation
+  Copyright (C) 2008 - 2023 Apache Software Foundation
   %%
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -334,11 +334,11 @@
                     </transformer>
                     <transformer>
                       <resource>META-INF/LICENSE.txt</resource>
-                      <file>/home/ben/repos/hops/hadoop-client-modules/hadoop-client-minicluster/../../LICENSE.txt</file>
+                      <file>/home/ubuntu/repos/hops/hadoop-client-modules/hadoop-client-minicluster/../../LICENSE.txt</file>
                     </transformer>
                     <transformer>
                       <resource>META-INF/NOTICE.txt</resource>
-                      <file>/home/ben/repos/hops/hadoop-client-modules/hadoop-client-minicluster/../../NOTICE.txt</file>
+                      <file>/home/ubuntu/repos/hops/hadoop-client-modules/hadoop-client-minicluster/../../NOTICE.txt</file>
                     </transformer>
                   </transformers>
                 </configuration>
@@ -371,7 +371,7 @@
                   </includes>
                   <canUpdateCopyright>false</canUpdateCopyright>
                   <roots>
-                    <root>/home/ben/repos/hops/hadoop-client-modules/hadoop-client-minicluster</root>
+                    <root>/home/ubuntu/repos/hops/hadoop-client-modules/hadoop-client-minicluster</root>
                   </roots>
                 </configuration>
               </execution>
@@ -379,7 +379,7 @@
             <configuration>
               <canUpdateCopyright>false</canUpdateCopyright>
               <roots>
-                <root>/home/ben/repos/hops/hadoop-client-modules/hadoop-client-minicluster</root>
+                <root>/home/ubuntu/repos/hops/hadoop-client-modules/hadoop-client-minicluster</root>
               </roots>
             </configuration>
           </plugin>

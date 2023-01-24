@@ -496,6 +496,12 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>de.javakaffee</groupId>
+      <artifactId>kryo-serializers</artifactId>
+      <version>0.48</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hops-leader-election</artifactId>
       <version>3.2.0.3-SNAPSHOT</version>
@@ -535,6 +541,12 @@
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
       <version>2.9.2</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+      <version>3.0.2</version>
       <scope>compile</scope>
     </dependency>
     <dependency>

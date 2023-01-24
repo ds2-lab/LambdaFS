@@ -33,8 +33,6 @@ import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
 import org.apache.hadoop.security.token.TokenIdentifier;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.yetus.audience.InterfaceAudience;
-import org.apache.yetus.audience.InterfaceStability;
 
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
