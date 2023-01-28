@@ -850,18 +850,6 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>io.hops</groupId>
-      <artifactId>hadoop-minikdc</artifactId>
-      <version>3.2.0.3-SNAPSHOT</version>
-      <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>bcprov-jdk16</artifactId>
-          <groupId>bouncycastle</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-all</artifactId>
       <version>1.8.5</version>

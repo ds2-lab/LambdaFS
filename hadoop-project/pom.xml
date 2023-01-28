@@ -31,8 +31,7 @@
 
   <properties>
     <!-- Set the Release year during release -->
-    <release-year>2021</release-year>
-
+    <release-year>2023</release-year>
 
     <maven.compile.source>1.8</maven.compile.source>
     <maven.compile.encoding>UTF-8</maven.compile.encoding>
@@ -549,11 +548,11 @@
 <!--        <version>${hadoop.version}</version>-->
 <!--      </dependency>-->
 
-      <dependency>
-        <groupId>io.hops</groupId>
-        <artifactId>hadoop-minikdc</artifactId>
-        <version>${hadoop.version}</version>
-      </dependency>
+<!--      <dependency>-->
+<!--        <groupId>io.hops</groupId>-->
+<!--        <artifactId>hadoop-minikdc</artifactId>-->
+<!--        <version>${hadoop.version}</version>-->
+<!--      </dependency>-->
 
       <dependency>
         <groupId>io.hops</groupId>
@@ -1353,7 +1352,7 @@
       <dependency>
         <groupId>io.hops.metadata</groupId>
         <artifactId>hops-metadata-dal</artifactId>
-        <version>${hadoop.version}</version>
+        <version>3.2.0.3-SNAPSHOT</version>
       </dependency>
       <dependency>
         <groupId>io.hops.gpu</groupId>

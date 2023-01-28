@@ -233,11 +233,11 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>-->
-    <dependency>
-      <groupId>io.hops</groupId>
-      <artifactId>hadoop-minikdc</artifactId>
-      <scope>test</scope>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>io.hops</groupId>-->
+<!--      <artifactId>hadoop-minikdc</artifactId>-->
+<!--      <scope>test</scope>-->
+<!--    </dependency>-->
     <dependency>
       <groupId>com.jcraft</groupId>
       <artifactId>jsch</artifactId>

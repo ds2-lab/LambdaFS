@@ -33,17 +33,17 @@
   <description>Apache Hadoop KMS</description>
 
   <dependencies>
-    <dependency>
-      <groupId>io.hops</groupId>
-      <artifactId>hadoop-minikdc</artifactId>
-      <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>bouncycastle</groupId>
-          <artifactId>bcprov-jdk15</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>io.hops</groupId>-->
+<!--      <artifactId>hadoop-minikdc</artifactId>-->
+<!--      <scope>test</scope>-->
+<!--      <exclusions>-->
+<!--        <exclusion>-->
+<!--          <groupId>bouncycastle</groupId>-->
+<!--          <artifactId>bcprov-jdk15</artifactId>-->
+<!--        </exclusion>-->
+<!--      </exclusions>-->
+<!--    </dependency>-->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

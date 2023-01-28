@@ -717,7 +717,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
         <dependency>
           <groupId>io.hops.metadata</groupId>
           <artifactId>hops-metadata-dal-impl-ndb</artifactId>
-          <version>${project.version}</version>
+          <version>3.2.0.3-SNAPSHOT</version>
           <scope>test</scope>
         </dependency>
         <dependency>
