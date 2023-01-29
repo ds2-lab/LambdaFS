@@ -51,7 +51,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
-import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
+import org.apache.hadoop.hdfs.server.namenode.cache.InMemoryINodeCache;
 
 public abstract class BaseINodeLock extends Lock {
   private final Map<INode, TransactionLockTypes.INodeLockType>

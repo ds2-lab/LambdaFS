@@ -21,7 +21,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.METADATA_CACHE_CAPACITY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.METADATA_CACHE_CAPACITY_DEFAULT;
 
 /**
- * Used by Serverless NameNodes to store and retrieve cached metadata.
+ * Used by NameNodes to store and retrieve cached metadata.
  *
  * We partition the namespace by parent INode ID (and/or possibly the full path to the parent directory).
  * In this way, we basically map terminal INodes (i.e., files) to particular directories. Single INode operations

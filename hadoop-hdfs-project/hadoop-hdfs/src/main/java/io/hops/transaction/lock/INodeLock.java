@@ -30,8 +30,9 @@ import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
-import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
-import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
+
+import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.cache.InMemoryINodeCache;
 import org.apache.hadoop.ipc.RetriableException;
 
 import java.io.IOException;
@@ -201,56 +202,6 @@ public class INodeLock extends BaseINodeLock {
   }
 
   /**
-   * Resolve the desired INodes using our new, in-memory metadata cache.
-   *
-   * @param path The path along which we need to resolve the INodes (for each path component).
-   * @param exitOnFirstMiss When true, this method will return upon the first cache miss. If at least one component
-   *                        of the path is not cached locally, we'll have to go to NDB, so in most (if not all) cases,
-   *                        as soon as there is a cache miss, we should just give up to save time. We're going to
-   *                        NDB anyway, and we might as well retrieve all the INodes we need.
-   *
-   *                        Note that, in this case, we return null so that it's easier to determine that the cache
-   *                        missed at least once, and we're not going to use any of the cached metadata here anyway.
-   *
-   * @return The resolved INodes.
-   */
-//  private List<INode> resolveUsingServerlessMetadataCache(String path, boolean exitOnFirstMiss) {
-//    LOG.debug("Attempting to resolve INodes using in-memory cache for path '" + path + "'.");
-//
-//    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
-//
-//    if (instance == null) {
-//      LOG.warn("Cannot get access to ServerlessNameNode instance, and thus cannot use in-memory cache.");
-//
-//      return null;
-//    }
-//
-//    InMemoryINodeCache metadataCache = instance.getNamesystem().getMetadataCacheManager().getINodeCache();
-//    List<INode> resolvedINodes = new ArrayList<INode>();
-//    List<String> fullPathComponents = INode.getFullPathComponents(path);
-//
-//    for (String pathComponentFullPath : fullPathComponents) {
-//      if (LOG.isDebugEnabled()) LOG.debug("Checking cache for component '" + pathComponentFullPath + "'");
-//      INode cachedINode = metadataCache.getByPath(pathComponentFullPath);
-//
-//      if (cachedINode == null) {
-//        if (LOG.isDebugEnabled()) LOG.debug("Path component '" + pathComponentFullPath + "' was NOT cached locally.");
-//
-//        // This will almost always be true.
-//        if (exitOnFirstMiss)
-//          return null;
-//      } else {
-//        if (LOG.isDebugEnabled()) LOG.debug("Path component '" + pathComponentFullPath + "' WAS cached locally.");
-//        resolvedINodes.add(cachedINode);
-//      }
-//    }
-//
-//    if (LOG.isDebugEnabled()) LOG.debug("Resolved " + resolvedINodes.size() + "/" + fullPathComponents.size() +
-//            " INodes using local metadata cache.");
-//    return resolvedINodes;
-//  }
-
-  /**
    * This was previously called resolveUsingCache(), but I changed the name so that it is clear that this
    * uses the INode Hint Cache and not our new metadata cache.
    *
@@ -368,23 +319,17 @@ public class INodeLock extends BaseINodeLock {
         // ignore this lock. this is needed for sub operations in a sub tree ops protocol
         locked = false;
       }
-    }// else {
-      // TODO: We need to double-check this. But for Serverless HopsFS, if ZooKeeper does not detect that the
-      //       NameNode is alive, then we can safely assume that it is dead.
-      //LOG.debug("The subtree is supposedly locked, but ZooKeeper has indicated that the owner of the lock is " +
-      //        "no longer running. Ignoring the lock.");
-
-      // the lock flag is set but the lock is dead
+    } else { // the lock flag is set but the lock is dead
       // you can ignore the lock after some time. it is possible that
       // the NN is alive and its ID just changed because it is slow to HB
-//      long timePassed = System.currentTimeMillis() - getStoLockTime(iNode.getId());
-//      if (timePassed < ServerlessNameNode.getFailedSTOCleanDelay()) {
-//        locked = true;
-//      } else {
-//        LOG.debug("Ignoring subtree lock as more than " + timePassed + " ms has passed.  Max " +
-//                "lock retention time is:" + ServerlessNameNode.getFailedSTOCleanDelay());
-//      }
-    //}
+      long timePassed = System.currentTimeMillis() - getStoLockTime(iNode.getId());
+      if (timePassed < NameNode.getFailedSTOCleanDelay()) {
+        locked = true;
+      } else {
+        LOG.debug("Ignoring subtree lock as more than " + timePassed + " ms has passed.  Max " +
+                "lock retention time is:" + NameNode.getFailedSTOCleanDelay());
+      }
+    }
 
     if (locked) {
       throw new RetriableException("The subtree " + iNode.getLocalName() + " is locked by " +

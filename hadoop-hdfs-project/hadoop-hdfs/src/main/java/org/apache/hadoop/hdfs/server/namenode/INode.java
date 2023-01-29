@@ -191,6 +191,20 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement {
 
   }
 
+  public static int getNumPathComponents(String path) {
+    if (path == null || !path.startsWith(Path.SEPARATOR)) {
+      throw new AssertionError("Absolute path required");
+    }
+
+    int pathComponents = 1;
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == Path.SEPARATOR_CHAR && i != (path.length() - 1))
+        pathComponents++;
+    }
+
+    return pathComponents;
+  }
+
   private int numAces;
   /** parent is {@link INodeDirectory} */
   protected INode parent = null;
@@ -202,6 +216,25 @@ public abstract class INode implements Comparable<byte[]>, LinkedElement {
 
   /** Get inode id */
   public abstract long getId();
+
+  /**
+   * Split absolute path into array of components. Mimicking the function of {@link INode#getPathComponents}, we
+   * return an array of length one containing null if the path components come back empty (e.g., if the value of the
+   * {@code path} argument is "/").
+   *
+   * @param path The absolute path to split and return components.
+   *
+   * @return Components of the given path in a String array.
+   */
+  public static String[] getComponentsAsStringArray(String path) {
+    if (path == null || !path.startsWith(Path.SEPARATOR)) {
+      throw new AssertionError("Absolute path required");
+    }
+    String[] components = StringUtils.split(path, Path.SEPARATOR_CHAR);
+    if (components.length == 0)
+      components = new String[] {null};
+    return components;
+  }
 
   public AclFeature getAclFeature() throws TransactionContextException, StorageException, AclException {
     return INodeAclHelper.getAclFeature(this);
