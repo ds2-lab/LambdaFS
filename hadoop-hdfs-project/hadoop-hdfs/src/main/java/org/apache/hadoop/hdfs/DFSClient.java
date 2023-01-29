@@ -420,7 +420,7 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
   }
 
   private ClientProtocol getNameNodeBasedOnTargetPath(String target) {
-    int idx = consistentHash(Hashing.md5().hashString(DFSUtil.extractParentPath(target)), allNNs.size());
+    int idx = consistentHash(Hashing.md5().hashUnencodedChars(DFSUtil.extractParentPath(target)), allNNs.size());
 
     return allNNs.get(idx);
   }

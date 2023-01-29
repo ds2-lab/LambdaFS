@@ -27,8 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-import static com.google.common.hash.Hashing.consistentHash;
-
 /**
  * Consistently hash the namespace over the available name node proxies.
  */
@@ -97,7 +95,7 @@ public class HopsConsistentHashingFailoverProxyProvider<T> implements
 
     @Override
     public ProxyInfo<T> getProxy(String target) {
-        int idx = consistentHash(Hashing.md5().hashString(DFSUtil.extractParentPath(target)), proxies.size());
+        int idx = consistentHash(Hashing.md5().hashUnencodedChars(DFSUtil.extractParentPath(target)), proxies.size());
 
         return getProxyInternal(idx);
     }
