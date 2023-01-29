@@ -92,6 +92,7 @@ import org.apache.hadoop.hdfs.server.namenode.top.metrics.TopMetrics;
 import org.apache.hadoop.hdfs.server.namenode.top.window.RollingWindowManager;
 import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMethods;
 import org.apache.hadoop.hdfs.server.protocol.*;
+import org.apache.hadoop.hdfs.server.protocol.StorageReport;
 import org.apache.hadoop.hdfs.util.EnumCounters;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -4273,9 +4274,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * @throws IOException
    */
   HeartbeatResponse handleHeartbeat(DatanodeRegistration nodeReg,
-      StorageReport[] reports, long cacheCapacity, long cacheUsed, int xceiverCount,
-      int xmitsInProgress, int failedVolumes,
-      VolumeFailureSummary volumeFailureSummary) throws IOException {
+                                    StorageReport[] reports, long cacheCapacity, long cacheUsed, int xceiverCount,
+                                    int xmitsInProgress, int failedVolumes,
+                                    VolumeFailureSummary volumeFailureSummary) throws IOException {
     //get datanode commands
     final int maxTransfer =
         blockManager.getMaxReplicationStreams() - xmitsInProgress;
