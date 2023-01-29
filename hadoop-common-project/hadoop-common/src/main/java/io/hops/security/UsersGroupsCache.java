@@ -53,7 +53,22 @@ class UsersGroupsCache {
     GET_GROUP,
     ADD_USER_TO_GROUPS,
     REMOVE_USER_FROM_GROUPS,
-    CREATE_LOCK_ROWS
+    CREATE_LOCK_ROWS;
+
+    @Override
+    public boolean shouldUseConsistencyProtocol() {
+      return false;
+    }
+
+    @Override
+    public boolean shouldUseConsistencyProtocol(RequestHandler.OperationType operationType) {
+      return false;
+    }
+
+    @Override
+    public String getName() {
+      return this.name();
+    }
   }
 
   private final UserGroupDataAccess userGroupDataAccess;

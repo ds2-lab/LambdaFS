@@ -18,6 +18,20 @@ package io.hops.transaction.handler;
 public enum LeaderOperationType implements RequestHandler.OperationType {
 
   // LeaderElection
-  LEADER_ELECTION
+  LEADER_ELECTION;
 
+  @Override
+  public boolean shouldUseConsistencyProtocol() {
+    return false;
+  }
+
+  @Override
+  public boolean shouldUseConsistencyProtocol(RequestHandler.OperationType operationType) {
+    return false;
+  }
+
+  @Override
+  public String getName() {
+    return this.name();
+  }
 }
