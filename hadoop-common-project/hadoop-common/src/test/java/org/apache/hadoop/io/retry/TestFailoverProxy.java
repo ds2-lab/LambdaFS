@@ -53,6 +53,11 @@ public class TestFailoverProxy {
     }
 
     @Override
+    public ProxyInfo<T> getProxy(String target) {
+      return new ProxyInfo<T>(currentlyActive, currentlyActive.toString());
+    }
+
+    @Override
     public synchronized void performFailover(Object currentProxy) {
       currentlyActive = impl1 == currentProxy ? impl2 : impl1;
       failoversOccurred++;

@@ -131,6 +131,15 @@ public class ConfiguredFailoverProxyProvider<T> extends
     throw new UnsupportedOperationException("fix me");
   }
 
+  /**
+   * Lazily initialize the RPC proxy object.
+   */
+  @SuppressWarnings("unchecked")
+  @Override
+  public synchronized ProxyInfo<T> getProxy(String target) {
+    return getProxy();
+  }
+
   @Override
   public synchronized void performFailover(T currentProxy) {
     currentProxyIndex = (currentProxyIndex + 1) % proxies.size();

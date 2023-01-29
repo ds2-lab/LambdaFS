@@ -60,7 +60,18 @@ public interface FailoverProxyProvider<T> extends Closeable {
   /**
    * Get the proxy object which should be used until the next failover event
    * occurs.
+   *
+   * @param target The fully-qualified path of the target file or directory of whatever operation is to be
+   *               performed using the returned proxy.
    * 
+   * @return the proxy object to invoke methods upon
+   */
+  public ProxyInfo<T> getProxy(String target);
+
+  /**
+   * Get the proxy object which should be used until the next failover event
+   * occurs.
+   *
    * @return the proxy object to invoke methods upon
    */
   public ProxyInfo<T> getProxy();

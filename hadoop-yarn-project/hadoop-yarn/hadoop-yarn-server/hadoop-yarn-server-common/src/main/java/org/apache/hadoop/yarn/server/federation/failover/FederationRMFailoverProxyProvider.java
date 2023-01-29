@@ -179,6 +179,11 @@ public class FederationRMFailoverProxyProvider<T>
   }
 
   @Override
+  public synchronized ProxyInfo<T> getProxy(String target) {
+    return getProxy();
+  }
+
+  @Override
   public synchronized ProxyInfo<T> getProxy() {
     if (current == null) {
       current = getProxyInternal(false);

@@ -83,6 +83,11 @@ public class ConfiguredRMFailoverProxyProvider<T>
   }
 
   @Override
+  public synchronized ProxyInfo<T> getProxy(String target) {
+    return getProxy();
+  }
+
+  @Override
   public synchronized ProxyInfo<T> getProxy() {
     String rmId = rmServiceIds[currentProxyIndex];
     T current = proxies.get(rmId);

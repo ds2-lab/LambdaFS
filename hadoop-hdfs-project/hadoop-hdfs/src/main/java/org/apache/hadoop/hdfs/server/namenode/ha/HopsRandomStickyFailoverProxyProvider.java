@@ -119,6 +119,15 @@ public class HopsRandomStickyFailoverProxyProvider<T> implements
    */
   @SuppressWarnings("unchecked")
   @Override
+  public synchronized ProxyInfo<T> getProxy(String target) {
+    return getProxy();
+  }
+
+  /**
+   * Lazily initialize the RPC proxy object.
+   */
+  @SuppressWarnings("unchecked")
+  @Override
   public synchronized ProxyInfo<T> getProxy() {
     try {
       if (currentProxyIndex == -1) {
