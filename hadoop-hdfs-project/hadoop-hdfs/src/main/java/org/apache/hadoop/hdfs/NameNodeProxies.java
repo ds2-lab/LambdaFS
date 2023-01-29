@@ -470,9 +470,8 @@ public class NameNodeProxies {
     try {
       Constructor<FailoverProxyProvider<T>> ctor = failoverProxyProviderClass
           .getConstructor(Configuration.class, URI.class, Class.class);
-      FailoverProxyProvider<T> provider = ctor.newInstance(conf, nameNodeUri,
+      return ctor.newInstance(conf, nameNodeUri,
           xface);
-      return provider;
     } catch (Exception e) {
       String message = "Couldn't create proxy provider " + failoverProxyProviderClass;
       if (LOG.isDebugEnabled()) {
@@ -514,9 +513,8 @@ public class NameNodeProxies {
                     HdfsConstantsClient.SAFEMODE_EXCEPTION_CLASS_NAME);
 
     Map<Class<? extends Exception>, RetryPolicy> remoteExceptionToPolicyMap
-            = new HashMap<Class<? extends Exception>, RetryPolicy>();
+            = new HashMap<>();
     remoteExceptionToPolicyMap.put(SafeModeException.class, defaultPolicy);
-
 
     T proxy = (T) RetryProxy.create(xface,
             failoverProxyProvider,
@@ -527,7 +525,7 @@ public class NameNodeProxies {
 
     Text dtService = HAUtilClient.buildTokenServiceForLogicalUri(nameNodeUri,
                                                                 HdfsConstants.HDFS_URI_SCHEME);
-    return new ProxyAndInfo<T>(proxy, dtService);
+    return new ProxyAndInfo<>(proxy, dtService);
   }
 
   public static <T> ProxyAndInfo<T> createHopsLeaderProxy(Configuration conf, URI nameNodeUri, Class<T> xface,

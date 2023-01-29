@@ -35,6 +35,7 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_SERVER_HTTPS_KEYPASSWORD_
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_SERVER_HTTPS_KEYSTORE_PASSWORD_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_SERVER_HTTPS_TRUSTSTORE_PASSWORD_KEY;
 
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
@@ -145,6 +146,31 @@ public class DFSUtil {
    */
   public static SecureRandom getSecureRandom() {
     return SECURE_RANDOM.get();
+  }
+
+  /**
+   * Given a path to a file or directory "X", extract the path to the parent directory of "X".
+   *
+   * @param originalPath Path to file or directory whose parent's path is desired.
+   *
+   * @return The path to the parent directory of {@code originalPath}.
+   */
+  public static String extractParentPath(String originalPath) {
+    // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
+    // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
+    // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
+    java.nio.file.Path parentPath = Paths.get(originalPath).getParent();
+    String pathToCache = null;
+
+    // If there is no parent, then we are caching metadata mapping information for the root.
+    if (parentPath == null) {
+      // assert(originalPath.equals("/") || originalPath.isEmpty());
+      pathToCache = originalPath;
+    } else {
+      pathToCache = parentPath.toString();
+    }
+
+    return pathToCache;
   }
 
   /**

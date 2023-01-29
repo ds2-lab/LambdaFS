@@ -2,6 +2,7 @@ package org.apache.hadoop.hdfs.server.namenode.ha;
 
 import com.google.common.hash.Hashing;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.io.retry.FailoverProxyProvider;
 
 import com.google.common.base.Preconditions;
@@ -94,35 +95,29 @@ public class HopsConsistentHashingFailoverProxyProvider<T> implements
         }
     }
 
-    /**
-     * Given a path to a file or directory "X", extract the path to the parent directory of "X".
-     *
-     * @param originalPath Path to file or directory whose parent's path is desired.
-     *
-     * @return The path to the parent directory of {@code originalPath}.
-     */
-    public static String extractParentPath(String originalPath) {
-        // First, we get the parent of whatever file or directory is passed in, as we cache by parent directory.
-        // Thus, if we received mapping info for /foo/bar, then we really have mapping info for anything of the form
-        // /foo/*, where * is a file or terminal directory (e.g., "bar" or "bar/").
-        Path parentPath = Paths.get(originalPath).getParent();
-        String pathToCache = null;
+    @Override
+    public ProxyInfo<T> getProxy(String target) {
+        int idx = consistentHash(Hashing.md5().hashString(DFSUtil.extractParentPath(target)), proxies.size());
 
-        // If there is no parent, then we are caching metadata mapping information for the root.
-        if (parentPath == null) {
-            // assert(originalPath.equals("/") || originalPath.isEmpty());
-            pathToCache = originalPath;
-        } else {
-            pathToCache = parentPath.toString();
-        }
-
-        return pathToCache;
+        return getProxyInternal(idx);
     }
 
     @Override
-    public ProxyInfo<T> getProxy(String target) {
-        int idx = consistentHash(Hashing.md5().hashString(extractParentPath(target)), proxies.size());
+    public ProxyInfo<T> getProxy() {
+        int randomIdx = rand.nextInt(proxies.size());
 
+        return getProxyInternal(randomIdx);
+    }
+
+    /**
+     * Get (and/or possibly create) the proxy associated with the RPC address at the given index.
+     *
+     * The index refers to the index in the list of `AddressRpcProxyPair` instances.
+     *
+     * @param idx The index into the list of `AddressRpcProxyPair` instances for which we will return a proxy, creating
+     *            a new proxy if one does not already exist for the particular `AddressRpcProxyPair` instance.
+     */
+    private ProxyInfo<T> getProxyInternal(int idx) {
         AddressRpcProxyPair<T> current = proxies.get(idx);
         if (current.namenode == null) {
             try {
@@ -137,11 +132,6 @@ public class HopsConsistentHashingFailoverProxyProvider<T> implements
         LOG.debug(name + " returning proxy for index: " + idx + " address: " +
                 "" + current .address + " " + "Total proxies are: " + proxies.size());
         return new ProxyInfo<>(current.namenode, null);
-    }
-
-    @Override
-    public ProxyInfo<T> getProxy() {
-        throw new NotImplementedException("Cannot return a proxy without specifying the target file or directory when using consistent hashing.");
     }
 
     @Override

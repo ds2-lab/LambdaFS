@@ -19,7 +19,6 @@ package org.apache.hadoop.hdfs.server.namenode.ha;
 
 import com.google.common.base.Preconditions;
 import io.hops.leader_election.node.ActiveNode;
-import io.hops.leader_election.node.SortedActiveNodeList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -126,7 +125,6 @@ public class HopsRandomStickyFailoverProxyProvider<T> implements
   /**
    * Lazily initialize the RPC proxy object.
    */
-  @SuppressWarnings("unchecked")
   @Override
   public synchronized ProxyInfo<T> getProxy() {
     try {
@@ -137,7 +135,7 @@ public class HopsRandomStickyFailoverProxyProvider<T> implements
 //      return new ProxyInfo<T>((T) null, null);
       }
 
-      AddressRpcProxyPair current = proxies.get(currentProxyIndex);
+      AddressRpcProxyPair<T> current = proxies.get(currentProxyIndex);
       if (current.namenode == null) {
         current.namenode = NameNodeProxies.createNonHAProxy(conf,
                 current.address, xface, ugi, false).getProxy();
@@ -145,7 +143,7 @@ public class HopsRandomStickyFailoverProxyProvider<T> implements
 
       LOG.debug(name + " returning proxy for index: " + currentProxyIndex + " address: " +
               "" + current .address + " " + "Total proxies are: " + proxies.size());
-      return new ProxyInfo<T>((T) current.namenode, null);
+      return new ProxyInfo<>(current.namenode, null);
 
     } catch (IOException e) {
       LOG.error(name + " failed to create RPC proxy to NameNode", e);

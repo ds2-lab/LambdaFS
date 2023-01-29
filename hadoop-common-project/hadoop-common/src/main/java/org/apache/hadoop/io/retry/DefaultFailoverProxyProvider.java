@@ -49,7 +49,7 @@ public class DefaultFailoverProxyProvider<T> implements FailoverProxyProvider<T>
 
   @Override
   public ProxyInfo<T> getProxy(String target) {
-    return new ProxyInfo<T>(proxy, null);
+    return getProxy();
   }
 
   @Override

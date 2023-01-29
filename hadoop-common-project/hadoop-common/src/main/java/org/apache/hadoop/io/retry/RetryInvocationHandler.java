@@ -211,6 +211,10 @@ public class RetryInvocationHandler<T> implements RpcInvocationHandler {
       return proxyInfo.proxy;
     }
 
+    synchronized T getProxy(String target) {
+      return proxyInfo.proxy;
+    }
+
     synchronized long getFailoverCount() {
       return failoverCount;
     }

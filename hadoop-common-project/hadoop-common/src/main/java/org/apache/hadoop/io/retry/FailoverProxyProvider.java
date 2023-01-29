@@ -24,9 +24,8 @@ import org.apache.hadoop.classification.InterfaceStability;
 /**
  * An implementer of this interface is capable of providing proxy objects for
  * use in IPC communication, and potentially modifying these objects or creating
- * entirely new ones in the event of certain types of failures. The
- * determination of whether or not to fail over is handled by
- * {@link RetryPolicy}.
+ * entirely new ones in the event of certain types of failures.
+ * The determination of whether to fail over is handled by {@link RetryPolicy}.
  */
 @InterfaceStability.Evolving
 public interface FailoverProxyProvider<T> extends Closeable {
