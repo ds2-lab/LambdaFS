@@ -167,6 +167,11 @@ public class NameNode implements NameNodeStatusMXBean {
   }
 
   /**
+   * The singleton ServerlessNameNode instance associated with this container. There can only be one!
+   */
+  private static NameNode instance;
+
+  /**
    * HDFS configuration can have three types of parameters:
    * <ol>
    * <li>Parameters that are common for all the name services in the
@@ -799,6 +804,50 @@ public class NameNode implements NameNodeStatusMXBean {
   }
 
   /**
+   * Returns the singleton ServerlessNameNode instance.
+   *
+   * @param commandLineArguments The command-line arguments given to the NameNode during initialization.
+   */
+  public static synchronized NameNode getOrCreateNameNodeInstance(String[] commandLineArguments)
+          throws Exception {
+    if (instance != null) {
+      if (LOG.isDebugEnabled()) LOG.debug("Using existing NameNode instance with ID = " + instance.getId());
+      return instance;
+    }
+
+    instance = NameNode.createNameNode(commandLineArguments, null);
+
+    // Next, the NameNode needs to exit safe mode (if it is in safe mode).
+    assert instance != null;
+    if (instance.isInSafeMode()) {
+      instance.getNamesystem().leaveSafeMode();
+    }
+
+    return instance;
+  }
+
+  /**
+   * Attempt to get the singleton ServerlessNameNode instance. This function will throw an exception if the
+   * instance does not exist. This is useful for trying to get the instance when you expect/need it to exist.
+   * This should be used when the caller feels that the ServerlessNameNode instance SHOULD exist, and that it would
+   * be an error if it did not exist when this function is called.
+   * @param exceptOnFailure If true, throw an exception if the NameNode does not exist.
+   * @return The ServerlessNameNode instance, if it exists.
+   * @throws IllegalStateException Thrown if the ServerlessNameNode instance does not exist and `exceptOnFailure`
+   * is true.
+   */
+  public static synchronized NameNode tryGetNameNodeInstance(boolean exceptOnFailure)
+          throws IllegalStateException {
+    if (instance != null)
+      return instance;
+
+    if (exceptOnFailure)
+      throw new IllegalStateException("ServerlessNameNode instance does not exist!");
+    else
+      return null;
+  }
+
+  /**
    * Start NameNode.
    * <p/>
    * The name-node can be started with one of the following startup options:
@@ -809,7 +858,7 @@ public class NameNode implements NameNodeStatusMXBean {
    *     confirguration
    * @throws IOException
    */
-  public NameNode(Configuration conf) throws IOException {
+  protected NameNode(Configuration conf) throws IOException {
     this(conf, NamenodeRole.NAMENODE);
   }
 

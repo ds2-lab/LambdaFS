@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 
-class BlockPK {
+public class BlockPK {
   private long blockId = Long.MIN_VALUE;
   private long inodeId = BlockInfoContiguous.NON_EXISTING_ID;
 
@@ -47,11 +47,11 @@ class BlockPK {
     return this.inodeId != BlockInfoContiguous.NON_EXISTING_ID;
   }
 
-  long getBlockId() {
+  public long getBlockId() {
     return blockId;
   }
 
-  long getInodeId() {
+  public long getInodeId() {
     return inodeId;
   }
 
@@ -83,7 +83,7 @@ class BlockPK {
     return result;
   }
 
-  static class ReplicaPK extends BlockPK {
+  public static class ReplicaPK extends BlockPK {
     private int storageId;
 
     ReplicaPK(long blockId, long inodeId, int storageId) {
@@ -162,7 +162,7 @@ class BlockPK {
     return keys;
   }
   
-  static class CachedBlockPK extends BlockPK {
+  public static class CachedBlockPK extends BlockPK {
     private String datanodeId=null;
 
     CachedBlockPK(long blockId, long inodeId, String datanodeId) {

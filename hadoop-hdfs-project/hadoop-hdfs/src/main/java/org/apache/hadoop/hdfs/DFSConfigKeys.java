@@ -33,6 +33,14 @@ import org.apache.hadoop.http.HttpConfig;
  */
 @InterfaceAudience.Private
 public class DFSConfigKeys extends CommonConfigurationKeys {
+
+  public static final String METADATA_CACHE_ENABLED = "metadatacache.enabled";
+  public static final boolean METADATA_CACHE_ENABLED_DEFAULT = true;
+
+  public static final String METADATA_CACHE_CAPACITY = "metadatacache.capacity";
+  public static final int METADATA_CACHE_CAPACITY_DEFAULT = 825_000; // Each INode is around 1,168 bytes.
+
+
   //db storage
   public static final String DFS_STORAGE_DRIVER_JAR_FILE = "dfs.storage.driver.jarFile";
   public static final String DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT = "";

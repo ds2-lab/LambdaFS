@@ -36,6 +36,7 @@ import io.hops.metadata.hdfs.dal.*;
 import io.hops.metadata.hdfs.entity.*;
 import io.hops.resolvingcache.Cache;
 import io.hops.transaction.EntityManager;
+import io.hops.transaction.context.EntityContext;
 import io.hops.transaction.context.RootINodeCache;
 import io.hops.transaction.handler.EncodingStatusOperationType;
 import io.hops.transaction.handler.HDFSOperationType;
@@ -80,6 +81,7 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants.StartupOption;
 import org.apache.hadoop.hdfs.server.common.Storage;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
+import org.apache.hadoop.hdfs.server.namenode.cache.MetadataCacheManager;
 import org.apache.hadoop.hdfs.server.namenode.metrics.FSNamesystemMBean;
 import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.*;
@@ -257,6 +259,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   private final boolean isDefaultAuditLogger;
   private final List<AuditLogger> auditLoggers;
 
+  public MetadataCacheManager getMetadataCacheManager() { return metadataCacheManager; }
+
   /**
    * The namespace tree.
    */
@@ -280,6 +284,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
   private volatile boolean hasResourcesAvailable = true;
   private volatile boolean fsRunning = true;
+
+  private final MetadataCacheManager metadataCacheManager;
 
   /**
    * The start time of the namesystem.
@@ -474,6 +480,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       this.erasureCodingEnabled =
           ErasureCodingManager.isErasureCodingEnabled(conf);
       this.erasureCodingManager = new ErasureCodingManager(this, conf);
+
+      this.metadataCacheManager = new MetadataCacheManager(conf);
 
       DB_IN_MEMORY_BUCKET_SIZE = getDBFileInMemBucketSize();
       DB_ON_DISK_SMALL_BUCKET_SIZE = getDBFileSmallBucketSize();

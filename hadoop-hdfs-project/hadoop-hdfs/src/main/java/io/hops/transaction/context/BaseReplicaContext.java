@@ -28,7 +28,7 @@ import java.util.Map;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 
 
-abstract class BaseReplicaContext<Key extends BlockPK, Entity>
+public abstract class BaseReplicaContext<Key extends BlockPK, Entity>
     extends BaseEntityContext<Key, Entity> {
 
   private Map<Long, Map<Key, Entity>> blocksToReplicas =
