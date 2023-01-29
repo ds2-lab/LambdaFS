@@ -31,9 +31,7 @@ public abstract class LeaderTransactionalRequestHandler
   }
 
   @Override
-  public void commitEvents() {
-    throw new NotImplementedException("Not implemented/supported!");
-  }
+  public void commitEvents() { }
 
   @Override
   protected boolean consistencyProtocol(long txStartTime, TransactionAttempt txAttempt) throws IOException {
