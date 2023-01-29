@@ -50,7 +50,7 @@ final class IndividualINodeLock extends BaseINodeLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     setPartitioningKey(inodeIdentifier.getInodeId());
 
     INode inode = null;
@@ -67,7 +67,7 @@ final class IndividualINodeLock extends BaseINodeLock {
 
     if (readUpPathInodes && inode != null) {
       List<INode> pathInodes = readUpInodes(inode);
-      addPathINodesAndUpdateResolvingCache(INodeUtil.constructPath(pathInodes),
+      addPathINodesAndUpdateResolvingAndInMemoryCaches(INodeUtil.constructPath(pathInodes),
           pathInodes);
     } else {
       addIndividualINode(inode);

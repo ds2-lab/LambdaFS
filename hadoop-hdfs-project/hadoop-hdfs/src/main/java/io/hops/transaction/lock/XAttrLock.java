@@ -64,7 +64,7 @@ public class XAttrLock extends Lock{
   }
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     BaseINodeLock inodeLock = (BaseINodeLock) locks.getLock(Type.INode);
     for(INode inode : inodeLock.getTargetINodes()){
       acquire(inode);
@@ -94,7 +94,7 @@ public class XAttrLock extends Lock{
   }
   
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.XAttr;
   }
 }

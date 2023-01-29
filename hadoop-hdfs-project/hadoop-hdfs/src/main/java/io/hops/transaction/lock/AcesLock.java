@@ -25,7 +25,7 @@ import java.io.IOException;
 public class AcesLock extends Lock {
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     BaseINodeLock inodeLock = (BaseINodeLock) locks.getLock(Type.INode);
     for (INode inode : inodeLock.getAllResolvedINodes()){
       if (inode.getNumAces() > 0) {
@@ -40,7 +40,7 @@ public class AcesLock extends Lock {
   }
   
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.Ace;
   }
 }

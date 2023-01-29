@@ -21,25 +21,42 @@ import io.hops.metadata.hdfs.entity.EncryptionZone;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import io.hops.transaction.EntityManager;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 
 public class EZLock extends Lock {
+  private final TransactionLockTypes.LockType lockType;
+
+  /**
+   * Creates a new EZLock instance. This instance will use the default lock type, whatever that is.
+   */
+  public EZLock() {
+    lockType = DEFAULT_LOCK_TYPE;
+  }
+
+  /**
+   * Creates a new EZLock instance, specifying the lock type to use.
+   */
+  public EZLock(TransactionLockTypes.LockType lockType) {
+    this.lockType = lockType;
+  }
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     BaseINodeLock inodeLock = (BaseINodeLock) locks.getLock(Type.INode);
     List<Long> inodeIds = new ArrayList<>();
     for (INode inode : inodeLock.getAllResolvedINodes()) {
       inodeIds.add(inode.getId());
     }
     if (!inodeIds.isEmpty()) {
-      //the locking should have been done on the inodes so it does not mappter which lock we take here.
-      acquireLockList(DEFAULT_LOCK_TYPE, EncryptionZone.Finder.ByPrimaryKeyBatch, inodeIds);
+      // The locking should have been done on the INodes, so it does not matter which lock we take here.
+      acquireLockList(this.lockType, EncryptionZone.Finder.ByPrimaryKeyBatch, inodeIds);
     }
   }
 
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.EZ;
   }
 }

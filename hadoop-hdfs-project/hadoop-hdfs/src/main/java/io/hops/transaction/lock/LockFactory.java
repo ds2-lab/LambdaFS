@@ -19,6 +19,7 @@ package io.hops.transaction.lock;
 import io.hops.metadata.common.entity.Variable;
 import io.hops.metadata.hdfs.entity.INodeIdentifier;
 import io.hops.metadata.hdfs.entity.QuotaUpdate;
+import io.hops.transaction.EntityManager;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.XAttr;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -167,6 +168,10 @@ public class LockFactory {
 
   public Lock getMultipleINodesLock(List<INodeIdentifier> inodeIdentifiers,
                                     TransactionLockTypes.INodeLockType lockType) {
+    if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
+            lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
+      EntityManager.toggleMetadataCacheReads(false);
+
     return new MultipleINodesLock(inodeIdentifiers, lockType);
   }
 
@@ -178,26 +183,46 @@ public class LockFactory {
   public Lock getIndividualINodeLock(
       TransactionLockTypes.INodeLockType lockType,
       INodeIdentifier inodeIdentifier, boolean readUpPathInodes) {
+    if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
+            lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
+      EntityManager.toggleMetadataCacheReads(false);
+
     return new IndividualINodeLock(lockType, inodeIdentifier, readUpPathInodes);
   }
 
   public Lock getIndividualINodeLock(
       TransactionLockTypes.INodeLockType lockType,
       INodeIdentifier inodeIdentifier) {
+    if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
+            lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
+      EntityManager.toggleMetadataCacheReads(false);
+
     return new IndividualINodeLock(lockType, inodeIdentifier);
   }
 
   public Lock getINodesLocks(TransactionLockTypes.INodeLockType lockType, List<INodeIdentifier> inodeIdentifiers) {
+    if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
+            lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
+      EntityManager.toggleMetadataCacheReads(false);
+
     return new INodesLocks(lockType, inodeIdentifiers);
   }
   
   public INodeLock getINodeLock(TransactionLockTypes.INodeLockType lockType,
                                 TransactionLockTypes.INodeResolveType resolveType, String... paths) {
+    if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
+        lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
+      EntityManager.toggleMetadataCacheReads(false);
+
     return new INodeLock(lockType, resolveType, paths);
   }
 
   public INodeLock getINodeLock(TransactionLockTypes.INodeLockType lockType,
                                 TransactionLockTypes.INodeResolveType resolveType, long inodeId) {
+    if (lockType == TransactionLockTypes.INodeLockType.WRITE ||
+            lockType == TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT)
+      EntityManager.toggleMetadataCacheReads(false);
+
     return new INodeLock(lockType, resolveType, inodeId);
   }
 
@@ -416,6 +441,13 @@ public class LockFactory {
   
   public Lock getEZLock(){
     return new EZLock();
+  }
+
+  /**
+   * Create and return a new {@link EZLock} instance with the specified {@link TransactionLockTypes.LockType}.
+   */
+  public Lock getEZLock(TransactionLockTypes.LockType lockType) {
+    return new EZLock(lockType);
   }
   
   public void setConfiguration(Configuration conf) {

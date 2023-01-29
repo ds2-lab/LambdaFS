@@ -44,17 +44,17 @@ final class INodesLocks extends BaseINodeLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     if (inodeIdentifiers == null || inodeIdentifiers.isEmpty()) {
       return;
     }
 
     Collections.sort(inodeIdentifiers);
     for (INodeIdentifier inodeIdentifier : inodeIdentifiers) {
-      List<INode> resolvedINodes = resolveUsingCache(lockType, inodeIdentifier.getInodeId());
+      List<INode> resolvedINodes = resolveUsingINodeHintCache(lockType, inodeIdentifier.getInodeId());
       
       String path = INodeUtil.constructPath(resolvedINodes);
-      addPathINodesAndUpdateResolvingCache(path, resolvedINodes);
+      addPathINodesAndUpdateResolvingAndInMemoryCaches(path, resolvedINodes);
 
     }
     acquireINodeAttributes();

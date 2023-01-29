@@ -42,7 +42,7 @@ abstract class BaseEncodingStatusLock extends Lock {
   }
 
   @Override
-  protected final Type getType() {
+  public final Type getType() {
     return Type.EncodingStatus;
   }
 
@@ -65,7 +65,7 @@ abstract class BaseEncodingStatusLock extends Lock {
     }
 
     @Override
-    protected void acquire(TransactionLocks locks) throws IOException {
+    public void acquire(TransactionLocks locks) throws IOException {
       BaseINodeLock iNodeLock = (BaseINodeLock) locks.getLock(Type.INode);
       Arrays.sort(targets);
       for (String target : targets) {
@@ -114,7 +114,7 @@ abstract class BaseEncodingStatusLock extends Lock {
     }
 
     @Override
-    protected void acquire(TransactionLocks locks) throws IOException {
+    public void acquire(TransactionLocks locks) throws IOException {
       // TODO STEFFEN - Should only acquire the locks if we know it has a status and also not twice.
       // Maybe add a flag to iNode specifying whether it's encoded or a parity file
 
@@ -142,7 +142,7 @@ abstract class BaseEncodingStatusLock extends Lock {
     }
 
     @Override
-    protected void acquire(TransactionLocks locks) throws IOException {
+    public void acquire(TransactionLocks locks) throws IOException {
       // TODO STEFFEN - Should only acquire the locks if we know it has a status and also not twice.
       // Maybe add a flag to iNode specifying whether it's encoded or a parity file
       Collection<EncodingStatus> status = acquireLockList(getLockType(), EncodingStatus.Finder.ByInodeIds, inodeIds);

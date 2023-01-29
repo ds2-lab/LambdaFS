@@ -19,6 +19,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import io.hops.common.INodeResolver;
+import io.hops.common.INodeStringResolver;
 import io.hops.common.INodeUtil;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
@@ -28,7 +29,7 @@ import io.hops.resolvingcache.Cache;
 import io.hops.metadata.hdfs.entity.INodeCandidatePrimaryKey;
 import io.hops.metadata.hdfs.entity.INodeIdentifier;
 import io.hops.transaction.EntityManager;
-import static io.hops.transaction.lock.Lock.LOG;
+
 import java.io.IOException;
 
 import org.apache.commons.lang3.StringUtils;
@@ -43,11 +44,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
+
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.protocol.UnresolvedPathException;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
+import org.apache.hadoop.hdfs.serverless.cache.InMemoryINodeCache;
 
 public abstract class BaseINodeLock extends Lock {
   private final Map<INode, TransactionLockTypes.INodeLockType>
@@ -173,9 +177,18 @@ public abstract class BaseINodeLock extends Lock {
     return resolvedINodesMap.getAll();
   }
 
-  void addPathINodesAndUpdateResolvingCache(String path, List<INode> iNodes) {
+  /**
+   * Update both the resolving and in-memory metadata caches.
+   */
+  void addPathINodesAndUpdateResolvingAndInMemoryCaches(String path, List<INode> iNodes) {
     addPathINodes(path, iNodes);
     updateResolvingCache(path, iNodes);
+
+//    try {
+//      updateMetadataCache(iNodes);
+//    } catch (TransactionContextException | StorageException ex) {
+//      LOG.error("Exception encountered while caching metadata locally:", ex);
+//    }
   }
 
   void updateResolvingCache(String path, List<INode> iNodes){
@@ -210,9 +223,17 @@ public abstract class BaseINodeLock extends Lock {
   List<INode> getTargetINodes() {
     List<INode> targetInodes =
         Lists.newArrayListWithExpectedSize(resolvedINodesMap.pathToPathINodes.size());
+
+    //LOG.debug("Expecting " + resolvedINodesMap.pathToPathINodes.size() + " target INode(s).");
+
     for(String path : resolvedINodesMap.pathToPathINodes.keySet()) {
       List<INode> list = resolvedINodesMap.getPathINodes(path);
-      targetInodes.add(list.get(list.size() - 1));
+      //LOG.debug("Path INodes for path '" + path + "': " + (list != null ? list.stream().map(INode::getLocalName).collect(Collectors.toList()) : "null"));
+
+      if (list == null)
+        LOG.warn("Path INodes for path '" + path + "' is null...");
+      else
+        targetInodes.add(list.get(list.size() - 1));
     }
     targetInodes.addAll(resolvedINodesMap.individualInodes);
     return targetInodes;
@@ -255,12 +276,40 @@ public abstract class BaseINodeLock extends Lock {
   }
 
   protected List<INode> find(TransactionLockTypes.INodeLockType lock,
-      String[] names, long[] parentIds, long[] partitionIds, boolean checkLocalCache)
+      String[] names, long[] parentIds, long[] partitionIds, boolean checkINodeHintCache)
       throws StorageException, TransactionContextException {
     setINodeLockType(lock);
-    List<INode> inodes = (List<INode>) EntityManager.findList(checkLocalCache ? INode.Finder
+    List<INode> inodes = (List<INode>) EntityManager.findList(checkINodeHintCache ? INode.Finder
                 .ByNamesParentIdsAndPartitionIdsCheckLocal : INode.Finder
-                .ByNamesParentIdsAndPartitionIds, names, parentIds, partitionIds);
+                .ByNamesParentIdsAndPartitionIds, names, parentIds, partitionIds,
+                (lock == TransactionLockTypes.INodeLockType.READ || lock == TransactionLockTypes.INodeLockType.READ_COMMITTED));
+    if(inodes != null) {
+      for (INode inode : inodes) {
+        addLockedINodes(inode, lock);
+      }
+    }
+    return inodes;
+  }
+
+  /**
+   * Overload of the find() function that enables the caller to explicitly specify whether the local, in-memory
+   * metadata cache can be checked or not. This is useful during subtree delete operations, as normally we call
+   * find() and pass the default lock type, rather than a write-lock. I'm not sure why this is the case yet. But
+   * we do not want to use the in-memory cache at this point, as it is a write operation, and later on, we DO
+   * write-lock things, meaning the cache is inaccessible. So, if we had used the cache earlier, then the INodes will
+   * not have been read from NDB and will not be in the INodeContext, and then we will try to go to NDB after write
+   * locking and after disabling NDB storage access, which causes an exception. So, here we can explicitly deny
+   * access to the local in-memory cache, forcing reads to NDB.
+   */
+  protected List<INode> find(TransactionLockTypes.INodeLockType lock,
+                             String[] names, long[] parentIds, long[] partitionIds,
+                             boolean checkINodeHintCache,
+                             boolean checkInMemoryMetadataCache)
+          throws StorageException, TransactionContextException {
+    setINodeLockType(lock);
+    List<INode> inodes = (List<INode>) EntityManager.findList(checkINodeHintCache ? INode.Finder
+                    .ByNamesParentIdsAndPartitionIdsCheckLocal : INode.Finder
+                    .ByNamesParentIdsAndPartitionIds, names, parentIds, partitionIds, checkInMemoryMetadataCache);
     if(inodes != null) {
       for (INode inode : inodes) {
         addLockedINodes(inode, lock);
@@ -275,7 +324,8 @@ public abstract class BaseINodeLock extends Lock {
       return;
     }
 
-    if (LOG.isTraceEnabled()) LOG.trace("Resolved INode " + inode + " (id=" + inode.getId() + ") with lock " + lock.name());
+    if (LOG.isTraceEnabled()) LOG.trace("Resolved INode " + inode.getLocalName() + " (id=" + inode.getId() +
+            ") with lock " + lock.name());
 
     TransactionLockTypes.INodeLockType oldLock = allLockedInodesInTx.get(inode);
     if (oldLock == null || oldLock.compareTo(lock) < 0) {
@@ -299,7 +349,7 @@ public abstract class BaseINodeLock extends Lock {
     }
   }
 
-  protected void acquireINodeAttributes()
+  public void acquireINodeAttributes()
       throws StorageException, TransactionContextException {
     List<INodeCandidatePrimaryKey> pks =
         new ArrayList<>();
@@ -330,7 +380,7 @@ public abstract class BaseINodeLock extends Lock {
   }
 
   @Override
-  protected final Type getType() {
+  public final Type getType() {
     return Type.INode;
   }
 
@@ -452,7 +502,7 @@ public abstract class BaseINodeLock extends Lock {
     List<INode> fetchINodes(final TransactionLockTypes.INodeLockType lockType, String path, boolean resolveLink) throws
         IOException {
       long[] inodeIds = Cache.getInstance().get(path);
-      if (LOG.isTraceEnabled()) LOG.trace("Resolving INodes along path '" + path + "'. INode IDs: " + StringUtils.join(inodeIds, ", "));
+      if (LOG.isTraceEnabled()) LOG.trace("Resolving INodes along path '" + path + "'. INode IDs: " + StringUtils.join(inodeIds, ','));
       if (inodeIds != null) {
         final String[] names = INode.getPathNames(path);
         final boolean partial = names.length > inodeIds.length;
@@ -501,8 +551,8 @@ public abstract class BaseINodeLock extends Lock {
       INode targetInode = INodeUtil.getNode(inodeId, true);
       setINodeLockType(getDefaultInodeLockType());
       if (targetInode == null) {
-        //we throw a LeaseExpiredException as this should be called only when we try to edit an open file
-        //and the exception normaly sent if the file does not exist. This is to be compatible with apache client.
+        // we throw a LeaseExpiredException as this should be called only when we try to edit an open file
+        // and the exception normally sent if the file does not exist. This is to be compatible with apache client.
         throw new LeaseExpiredException("No lease on inode: " + inodeId + ": File does not exist. ");
       }
       Cache.getInstance().set(targetInode);
@@ -517,7 +567,7 @@ public abstract class BaseINodeLock extends Lock {
         INode targetInode = INodeUtil.getNode(inodeId, false);
         if (targetInode == null) {
           //we throw a LeaseExpiredException as this should be called only when we try to edit an open file
-          //and the exception normaly sent if the file does not exist. This is to be compatible with apache client.
+          //and the exception normally sent if the file does not exist. This is to be compatible with apache client.
           throw new LeaseExpiredException("No lease on " + inodeId + ": File does not exist. ");
         }
         targetIdentifier = new INodeIdentifier(targetInode.getId(), targetInode.getParentId(), targetInode.
@@ -539,7 +589,7 @@ public abstract class BaseINodeLock extends Lock {
       Cache.getInstance().set(parentInode);
       INode targetINode = lockInode(lockType, inodeId);
       if (targetINode.getParentId() != parentInode.getId()) {
-        //the cached inode didn't match the one in the DB, it has now been overwriten by the one in the db, retry transaction
+        //the cached inode didn't match the one in the DB, it has now been overwritten by the one in the db, retry transaction
         throw new TransientStorageException("wrong inode in the cache");
       }
       inodes.add(targetINode);
@@ -612,14 +662,15 @@ public abstract class BaseINodeLock extends Lock {
     @Override
     List<INode> fetchINodes(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws IOException {
       List<INode> inodes = new LinkedList<>();
-      //get the inode and its parrent from the cache
+
+      // Get the inode and its parent from the cache.
       if (TransactionLockTypes.impliesParentWriteLock(lockType)) {
         inodes.addAll(lockInodeAndParent(lockType, inodeId));
       } else {
         inodes.add(lockInode(lockType, inodeId));
       }
 
-      //we are now sure that nothing should rewrite the parents path, build it
+      // We are now sure that nothing should rewrite the parent's path, so build it.
       Map<Long, INode> parentsMap = new HashMap<>();
       getPathInodes(inodes.get(0).getParentId(), parentsMap);
       INode cur = parentsMap.get(inodes.get(0).getParentId());
@@ -639,7 +690,8 @@ public abstract class BaseINodeLock extends Lock {
       addPathINodesWithOffset(path, inodes, offset);
     }
 
-    private void addPathINodesWithOffset(String path, List<INode> inodes, int offset) {
+    private void addPathINodesWithOffset(String path, List<INode> inodes, int offset)
+            throws TransactionContextException, StorageException {
       addPathINodes(path, inodes);
       if (offset == 0) {
         updateResolvingCache(path, inodes);
@@ -653,6 +705,9 @@ public abstract class BaseINodeLock extends Lock {
         updateResolvingCache(
             Joiner.on(Path.SEPARATOR_CHAR).join(newPath), newInodes);
       }
+
+      // Also update the metadata cache.
+      // updateMetadataCache(inodes);
     }
 
     protected List<INode> readINodesWhileRespectingLocks(final TransactionLockTypes.INodeLockType lockType,
@@ -673,16 +728,21 @@ public abstract class BaseINodeLock extends Lock {
       rowsToReadWithDefaultLock = Math.min(rowsToReadWithDefaultLock,
           parentIds.length);
 
+      boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
+                                             lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
+
       if (LOG.isTraceEnabled())
         LOG.trace("Trying to resolve " + names.length + " INodes: " + StringUtils.join(names, ", ") +
-                " using PathResolver. LockType: " + lockType.name() + ", path: '" + path + "'");
+                " using PathResolver. LockType: " + lockType.name() + ", path: '" + path +
+                "', CanUseMetadataCache: " + canUseInMemoryMetadataCache);
 
       List<INode> inodes = null;
       if (rowsToReadWithDefaultLock > 0) {
         inodes = find(getDefaultInodeLockType(),
             Arrays.copyOf(names, rowsToReadWithDefaultLock),
             Arrays.copyOf(parentIds, rowsToReadWithDefaultLock),
-            Arrays.copyOf(partitionIds, rowsToReadWithDefaultLock), true);
+            Arrays.copyOf(partitionIds, rowsToReadWithDefaultLock),
+                true, canUseInMemoryMetadataCache);
       }
 
       if (inodes != null) {
@@ -703,14 +763,23 @@ public abstract class BaseINodeLock extends Lock {
       return inodes;
     }
 
-    protected void resolveRestOfThePath(final TransactionLockTypes.INodeLockType lockType, String path,
-        List<INode> inodes, boolean resolveLink)
+    protected void resolveRestOfThePath(
+            final TransactionLockTypes.INodeLockType lockType,
+            String path,
+            List<INode> inodes, boolean resolveLink)
         throws StorageException, TransactionContextException,
         UnresolvedPathException {
-      byte[][] components = INode.getPathComponents(path);
+      // byte[][] components = INode.getPathComponents(path);
+      String[] components = INode.getComponentsAsStringArray(path);
       INode currentINode = inodes.get(inodes.size() - 1);
-      INodeResolver resolver = new INodeResolver(components, currentINode, resolveLink, true,
-          inodes.size() - 1);
+
+      boolean canUseInMemoryMetadataCache = (lockType == TransactionLockTypes.INodeLockType.READ ||
+              lockType == TransactionLockTypes.INodeLockType.READ_COMMITTED);
+
+//      INodeResolver resolver = new INodeResolver(components, currentINode, resolveLink, true,
+//          inodes.size() - 1, canUseInMemoryMetadataCache);
+      INodeStringResolver resolver = new INodeStringResolver(INode.getPathNames(path), currentINode, resolveLink,
+              true, inodes.size() - 1, canUseInMemoryMetadataCache);
       while (resolver.hasNext()) {
         TransactionLockTypes.INodeLockType currentINodeLock = identifyLockType(lockType, resolver.getCount() + 1,
             components);
@@ -726,6 +795,20 @@ public abstract class BaseINodeLock extends Lock {
         }
       }
     }
+  }
+
+  protected TransactionLockTypes.INodeLockType identifyLockType(final TransactionLockTypes.INodeLockType lockType,
+                                                                int count,
+                                                                String[] components) {
+    TransactionLockTypes.INodeLockType lkType;
+    if (isTarget(count, components)) {
+      lkType = lockType;
+    } else if (isParent(count, components) && TransactionLockTypes.impliesParentWriteLock(lockType)) {
+      lkType = TransactionLockTypes.INodeLockType.WRITE;
+    } else {
+      lkType = getDefaultInodeLockType();
+    }
+    return lkType;
   }
 
   protected TransactionLockTypes.INodeLockType identifyLockType(final TransactionLockTypes.INodeLockType lockType,
@@ -746,11 +829,25 @@ public abstract class BaseINodeLock extends Lock {
     return count == components.length - 1;
   }
 
+  protected boolean isTarget(int count, String[] components) {
+    return count == components.length - 1;
+  }
+
   protected boolean isParent(int count, byte[][] components) {
     return count == components.length - 2;
   }
 
-  protected List<INode> resolveUsingCache(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws
+  protected boolean isParent(int count, String[] components) {
+    return count == components.length - 2;
+  }
+
+  /**
+   * This was previously called resolveUsingCache(), but I changed the name so that it is clear that this
+   * uses the INode Hint Cache and not our new metadata cache.
+   *
+   * @param inodeId The ID of the INode that we're attempting to resolve.
+   */
+  protected List<INode> resolveUsingINodeHintCache(final TransactionLockTypes.INodeLockType lockType, long inodeId) throws
       IOException {
     CacheResolver cacheResolver = getCacheResolver();
     return cacheResolver.fetchINodes(lockType, inodeId);

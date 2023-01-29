@@ -16,7 +16,7 @@
 package io.hops.transaction.lock;
 
 import io.hops.leader_election.node.ActiveNode;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.ServerlessNameNode;
 
 import java.util.Collection;
 
@@ -24,7 +24,16 @@ public final class SubtreeLockHelper {
 
   public static boolean isSTOLocked(boolean subtreeLocked, long nameNodeId,
                                     Collection<ActiveNode> activeNamenodes) {
+    ServerlessNameNode instance = ServerlessNameNode.tryGetNameNodeInstance(false);
+
+    // We'll check if we're the owner of the lock. If we are, then we're free to do as we please.
+    if (instance != null)
+      return subtreeLocked &&
+              ServerlessNameNode.isNameNodeAlive(nameNodeId, activeNamenodes) &&
+              instance.getId() != nameNodeId;
+
+    // If there's no ServerlessNameNode instance (which should never happen), then just ignore that.
     return subtreeLocked &&
-        NameNode.isNameNodeAlive(activeNamenodes, nameNodeId);
+              ServerlessNameNode.isNameNodeAlive(nameNodeId, activeNamenodes);
   }
 }

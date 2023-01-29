@@ -19,12 +19,9 @@ import io.hops.common.INodeUtil;
 import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.hdfs.entity.INodeIdentifier;
-import io.hops.transaction.EntityManager;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class BatchedINodeLock extends BaseINodeLock {
@@ -38,7 +35,7 @@ public class BatchedINodeLock extends BaseINodeLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     if (inodeIdentifiers != null && !inodeIdentifiers.isEmpty()) {
 
       List<INode> inodes = batchRead();
@@ -46,7 +43,7 @@ public class BatchedINodeLock extends BaseINodeLock {
       for (INode inode : inodes) {
         if (inode != null) {
           List<INode> pathInodes = readUpInodes(inode);
-          addPathINodesAndUpdateResolvingCache(INodeUtil.constructPath(pathInodes),
+          addPathINodesAndUpdateResolvingAndInMemoryCaches(INodeUtil.constructPath(pathInodes),
               pathInodes);
         }
       }

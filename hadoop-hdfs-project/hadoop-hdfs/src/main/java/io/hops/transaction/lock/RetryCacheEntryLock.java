@@ -46,7 +46,7 @@ public class RetryCacheEntryLock extends Lock {
   }
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     setLockMode(TransactionLockTypes.LockType.WRITE);
     for (int i = 0; i < clientId.size(); i++) {
       byte[] cid = clientId.get(i);
@@ -58,7 +58,7 @@ public class RetryCacheEntryLock extends Lock {
   }
 
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.retryCachEntry;
   }
 }

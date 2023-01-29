@@ -62,7 +62,7 @@ public class CacheDirectiveLock extends Lock {
   }
     
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     setLockMode(lockType);
     if (maxNumResults>0) {
       listAll();
@@ -84,7 +84,7 @@ public class CacheDirectiveLock extends Lock {
   }
 
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.cacheDirective;
   }
   

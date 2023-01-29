@@ -33,7 +33,7 @@ public class IndividualHashBucketLock extends Lock {
   }
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     setLockMode(TransactionLockTypes.LockType.WRITE);
     if (EntityManager.find(HashBucket.Finder.ByStorageIdAndBucketId,
         storageId, bucketId) == null){
@@ -44,7 +44,7 @@ public class IndividualHashBucketLock extends Lock {
   }
   
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.HashBucket;
   }
 
