@@ -3,6 +3,7 @@ package org.apache.hadoop.hdfs.server.namenode.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalListener;
+import io.hops.transaction.context.EntityContext;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -121,8 +122,17 @@ public class InMemoryINodeCache {
                         idToFullPathMap.remove(iNode.getId());
                 })
                 .build();
+
         this.enabled = conf.getBoolean(DFSConfigKeys.METADATA_CACHE_ENABLED,
                 DFSConfigKeys.METADATA_CACHE_ENABLED_DEFAULT);
+
+        if (!this.enabled) {
+            EntityContext.toggleMetadataCacheReads(false);
+            EntityContext.toggleMetadataCacheWrites(false);
+        } else {
+            EntityContext.toggleMetadataCacheReads(true);
+            EntityContext.toggleMetadataCacheWrites(true);
+        }
     }
 
     /**
