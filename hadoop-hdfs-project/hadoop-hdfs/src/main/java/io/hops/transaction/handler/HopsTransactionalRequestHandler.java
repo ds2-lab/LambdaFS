@@ -43,6 +43,8 @@ public abstract class HopsTransactionalRequestHandler
     return new HdfsTransactionalLockAcquirer();
   }
 
+  @Override
+  public void commitEvents() {}
   
   @Override
   protected Object execute(final Object namesystem) throws IOException {
