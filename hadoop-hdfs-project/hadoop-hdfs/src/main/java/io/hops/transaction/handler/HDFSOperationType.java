@@ -409,5 +409,20 @@ public enum HDFSOperationType implements OperationType {
   //FSCK
   FSCK_GET_NUM_REPLICAS,
   FSCK_GET_CORRUPT_REPLICAS,
-  FSCK_GET_STORAGES
+  FSCK_GET_STORAGES;
+
+  @Override
+  public boolean shouldUseConsistencyProtocol() {
+    return false;
+  }
+
+  @Override
+  public boolean shouldUseConsistencyProtocol(OperationType operationType) {
+    return false;
+  }
+
+  @Override
+  public String getName() {
+    return null;
+  }
 }
