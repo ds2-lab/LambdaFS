@@ -127,9 +127,11 @@ public class InMemoryINodeCache {
                 DFSConfigKeys.METADATA_CACHE_ENABLED_DEFAULT);
 
         if (!this.enabled) {
+            LOG.info("Metadata cache is DISABLED.");
             EntityContext.toggleMetadataCacheReads(false);
             EntityContext.toggleMetadataCacheWrites(false);
         } else {
+            LOG.info("Metadata cache is ENABLED.");
             EntityContext.toggleMetadataCacheReads(true);
             EntityContext.toggleMetadataCacheWrites(true);
         }
