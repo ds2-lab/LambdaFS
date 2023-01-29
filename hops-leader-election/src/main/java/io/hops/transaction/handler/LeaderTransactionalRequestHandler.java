@@ -35,11 +35,6 @@ public abstract class LeaderTransactionalRequestHandler
   }
 
   @Override
-  protected boolean consistencyProtocol(long txStartTime) throws IOException {
-    return true;
-  }
-
-  @Override
   protected TransactionLockAcquirer newLockAcquirer() {
     return new LeaderElectionTransactionalLockAcquirer();
   }
