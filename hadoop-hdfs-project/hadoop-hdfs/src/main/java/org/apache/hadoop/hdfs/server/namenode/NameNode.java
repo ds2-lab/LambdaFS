@@ -808,14 +808,14 @@ public class NameNode implements NameNodeStatusMXBean {
    *
    * @param commandLineArguments The command-line arguments given to the NameNode during initialization.
    */
-  public static synchronized NameNode getOrCreateNameNodeInstance(String[] commandLineArguments, Configuration conf)
+  public static synchronized NameNode getOrCreateNameNodeInstance(Configuration conf)
           throws Exception {
     if (instance != null) {
       if (LOG.isDebugEnabled()) LOG.debug("Using existing NameNode instance with ID = " + instance.getId());
       return instance;
     }
 
-    instance = NameNode.createNameNode(commandLineArguments, conf);
+    instance = new NameNode(conf);
 
     // Next, the NameNode needs to exit safe mode (if it is in safe mode).
     assert instance != null;
@@ -1270,7 +1270,7 @@ public class NameNode implements NameNodeStatusMXBean {
       }
       default: {
         DefaultMetricsSystem.initialize("NameNode");
-        return getOrCreateNameNodeInstance(argv, conf);
+        return getOrCreateNameNodeInstance(conf);
       }
     }
   }
