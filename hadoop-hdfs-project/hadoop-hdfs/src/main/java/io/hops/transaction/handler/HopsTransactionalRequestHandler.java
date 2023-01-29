@@ -15,6 +15,7 @@
  */
 package io.hops.transaction.handler;
 
+import io.hops.metrics.TransactionAttempt;
 import io.hops.transaction.TransactionInfo;
 import io.hops.transaction.lock.HdfsTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
@@ -36,6 +37,11 @@ public abstract class HopsTransactionalRequestHandler
       String path) {
     super(opType);
     this.path = path;
+  }
+
+  @Override
+  protected final boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException {
+    return true;
   }
 
   @Override
