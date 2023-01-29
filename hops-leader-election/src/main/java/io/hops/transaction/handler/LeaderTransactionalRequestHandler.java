@@ -15,6 +15,7 @@
  */
 package io.hops.transaction.handler;
 
+import io.hops.metrics.TransactionAttempt;
 import io.hops.transaction.TransactionInfo;
 import io.hops.transaction.lock.LeaderElectionTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
@@ -32,6 +33,11 @@ public abstract class LeaderTransactionalRequestHandler
   @Override
   public void commitEvents() {
     throw new NotImplementedException("Not implemented/supported!");
+  }
+
+  @Override
+  protected boolean consistencyProtocol(long txStartTime, TransactionAttempt txAttempt) throws IOException {
+    return true;
   }
 
   @Override
