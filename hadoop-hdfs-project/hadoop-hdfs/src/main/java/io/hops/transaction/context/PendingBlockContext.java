@@ -25,14 +25,22 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.PendingBlockDataAccess;
 import io.hops.transaction.lock.TransactionLocks;
 import org.apache.hadoop.hdfs.server.blockmanagement.PendingBlockInfo;
+import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.cache.ReplicaCache;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PendingBlockContext
     extends BaseReplicaContext<BlockPK, PendingBlockInfo> {
+
+  public static final Logger LOG = LoggerFactory.getLogger(PendingBlockContext.class);
 
   private final PendingBlockDataAccess<PendingBlockInfo> dataAccess;
   private boolean allPendingRead = false;
@@ -41,6 +49,59 @@ public class PendingBlockContext
     this.dataAccess = dataAccess;
   }
 
+  private ReplicaCache<BlockPK, PendingBlockInfo> getReplicaCache() {
+    NameNode instance = NameNode.tryGetNameNodeInstance(false);
+    if (instance == null)
+      return null;
+
+    return (ReplicaCache<BlockPK, PendingBlockInfo>) instance.getNamesystem().getMetadataCacheManager().getReplicaCacheManager().getReplicaCache(this.getClass());
+  }
+
+  private PendingBlockInfo checkCache(long inodeId, long blockId) {
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+
+    ReplicaCache<BlockPK, PendingBlockInfo> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    BlockPK pk = new BlockPK(blockId, inodeId);
+
+    return cache.getByPrimaryKey(pk);
+  }
+
+  private List<PendingBlockInfo> checkCacheByINodeId(long inodeId) {
+    ReplicaCache<BlockPK, PendingBlockInfo> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByINodeId(inodeId);
+  }
+
+  private List<PendingBlockInfo> checkCacheByBlockId(long blockId) {
+    ReplicaCache<BlockPK, PendingBlockInfo> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByBlockId(blockId);
+  }
+
+  private void updateCache(PendingBlockInfo replica) {
+    if (replica == null) return;
+
+    ReplicaCache<BlockPK, PendingBlockInfo> cache = getReplicaCache();
+    if (cache == null) return;
+
+    cache.cacheEntry(new BlockPK(replica.getBlockId(), replica.getInodeId()), replica);
+  }
+
+  private void updateCache(List<PendingBlockInfo> replicas) {
+    if (replicas == null) return;
+
+    ReplicaCache<BlockPK, PendingBlockInfo> cache = getReplicaCache();
+    if (cache == null) return;
+
+    for (PendingBlockInfo replica : replicas) {
+      cache.cacheEntry(new BlockPK(replica.getBlockId(), replica.getInodeId()), replica);
+    }
+  }
+  
   @Override
   public void update(PendingBlockInfo pendingBlockInfo)
       throws TransactionContextException {
@@ -120,13 +181,29 @@ public class PendingBlockContext
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long blockId = (Long) params[0];
     final long inodeId = (Long) params[1];
+
     PendingBlockInfo result = null;
+    List<PendingBlockInfo> results = checkCacheByBlockId(blockId);
+    if (results != null) {
+      if (results.size() > 1)
+        throw new IllegalStateException("Should have only one PendingBlockInfo per block");
+      if (!results.isEmpty())
+        return results.get(0);
+    } else {
+      results = checkCacheByINodeId(inodeId);
+      if (results != null) {
+        if (results.size() > 1)
+          throw new IllegalStateException("Should have only one PendingBlockInfo per block");
+        if (!results.isEmpty())
+          return results.get(0);
+      }
+    }
+
     if (containsByBlock(blockId) || containsByINode(inodeId)) {
       List<PendingBlockInfo> pblks = getByBlock(blockId);
       if (pblks != null) {
         if (pblks.size() > 1) {
-          throw new IllegalStateException(
-              "you should have only one " + "PendingBlockInfo per block");
+          throw new IllegalStateException("Should have only one PendingBlockInfo per block");
         }
         if (!pblks.isEmpty()) {
           result = pblks.get(0);
@@ -134,8 +211,10 @@ public class PendingBlockContext
       }
       hit(pFinder, result, "bid", blockId, "inodeid", inodeId);
     } else {
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for PendingBlockInfo instance with INodeID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(pFinder, params);
       result = dataAccess.findByBlockAndInodeIds(blockId, inodeId);
+      updateCache(result);
       gotFromDB(new BlockPK(blockId, inodeId), result);
       miss(pFinder, result, "bid", blockId, "inodeid", inodeId);
     }
@@ -149,9 +228,11 @@ public class PendingBlockContext
       result = new ArrayList<>(getAll());
       hit(pFinder, result);
     } else {
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for ALL PendingBlockInfo instances");
       aboutToAccessStorage(pFinder);
       result = dataAccess.findAll();
       gotFromDB(result);
+      updateCache(result);
       allPendingRead = true;
       miss(pFinder, result);
     }
@@ -161,13 +242,18 @@ public class PendingBlockContext
   private List<PendingBlockInfo> findByINodeId(PendingBlockInfo.Finder pFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long inodeId = (Long) params[0];
-    List<PendingBlockInfo> result = null;
+
+    List<PendingBlockInfo> result = checkCacheByINodeId(inodeId);
+    if (result != null) return  result;
+
     if (containsByINode(inodeId)) {
       result = getByINode(inodeId);
       hit(pFinder, result, "inodeid", inodeId);
     } else {
+      if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for PendingBlockInfo instances with INodeID=" + inodeId);
       aboutToAccessStorage(pFinder, params);
       result = dataAccess.findByINodeId(inodeId);
+      updateCache(result);
       gotFromDB(new BlockPK(null, inodeId), result);
       miss(pFinder, result, "inodeid", inodeId);
     }
@@ -178,8 +264,11 @@ public class PendingBlockContext
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
     List<PendingBlockInfo> result = null;
+    if (LOG.isTraceEnabled()) LOG.trace("Going to NDB for PendingBlockInfo instances with INodeIDs=" +
+            StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(pFinder, params);
     result = dataAccess.findByINodeIds(inodeIds);
+    updateCache(result);
     gotFromDB(BlockPK.getBlockKeys(inodeIds), result);
     miss(pFinder, result, "inodeids", Arrays.toString(inodeIds));
     return result;

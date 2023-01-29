@@ -29,6 +29,8 @@ import io.hops.transaction.lock.LastTwoBlocksLock;
 import io.hops.transaction.lock.Lock;
 import io.hops.transaction.lock.SqlBatchedBlocksLock;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 
@@ -42,6 +44,7 @@ import java.util.Map;
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockInfoContiguous;
 
 public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguous> {
+  private static final Log LOG = LogFactory.getLog(BlockInfoContext.class);
 
   private final static int DEFAULT_NUM_BLOCKS_PER_INODE = 10;
 
@@ -154,6 +157,7 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
         break;
       case EmptyFile:
         Long inodeId = (Long) params[0];
+        // LOG.debug("<SNAPSHOT MAINTENANCE> INode file ID=" + inodeId + " is an empty file.");
         List<BlockInfoContiguous> result = Collections.emptyList();
         inodeBlocks.put(inodeId, syncBlockInfoInstances(result));
         break;
@@ -172,9 +176,11 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
     List<BlockInfoContiguous> result = null;
     final Long inodeId = (Long) params[0];
     if (inodeBlocks.containsKey(inodeId)) {
+      //LOG.debug("BlockInfoContiguous instances for INode ID=" + inodeId + " found in transaction context.");
       result = inodeBlocks.get(inodeId);
       hit(bFinder, result, "inodeid", inodeId);
     } else {
+      // LOG.debug("Reading BlockInfoContiguous instances from intermediate storage for INode ID=" + inodeId);
       aboutToAccessStorage(bFinder, params);
       result = dataAccess.findByInodeId(inodeId);
       inodeBlocks.put(inodeId, syncBlockInfoInstances(result));
@@ -200,6 +206,8 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
     List<BlockInfoContiguous> result = null;
     final long[] ids = (long[]) params[0];
     aboutToAccessStorage(bFinder, params);
+    // LOG.debug("Finding BlockInfoContiguous instances for the following INodes: " +
+    //         StringUtils.join(", ", ids));
     result = dataAccess.findByInodeIds(ids);
     for (long id : ids) {
       inodeBlocks.put(id, null);
@@ -244,7 +252,7 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
           inodeId != null ? Long.toString(inodeId) : "NULL");
     } else {
       // some test intentionally look for blocks that are not in the DB
-      // duing the acquire lock phase if we see that an id does not
+      // during the acquire-lock phase if we see that an id does not
       // exist in the db then we should put null in the cache for that id
 
       if (inodeId == null) {
@@ -311,6 +319,7 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
       if (syncInodeBlocks) {
         List<BlockInfoContiguous> blockList = inodeBlocks.get(blockInfo.getInodeId());
         if (blockList == null) {
+          // LOG.debug("Synchronizing BlockInfoContiguous instances for INode ID=" + blockInfo.getInodeId());
           blockList = new ArrayList<>();
           inodeBlocks.put(blockInfo.getInodeId(), blockList);
         }
@@ -338,6 +347,8 @@ public class BlockInfoContext extends BaseEntityContext<Long, BlockInfoContiguou
       List<BlockInfoContiguous> list =
           new ArrayList<>(DEFAULT_NUM_BLOCKS_PER_INODE);
       list.add(newBlock);
+      // LOG.debug("Caching BlockInfoContiguous instances in transaction context for INode ID=" +
+      //         newBlock.getInodeId());
       inodeBlocks.put(newBlock.getInodeId(), list);
     }
   }

@@ -26,16 +26,86 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.EncryptionZoneDataAccess;
 import io.hops.metadata.hdfs.entity.EncryptionZone;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.cache.MetadataCacheManager;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
 public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZone> {
+  public static final Logger LOG = LoggerFactory.getLogger(EncryptionZoneContext.class);
 
   private final EncryptionZoneDataAccess<EncryptionZone> dataAccess;
 
   public EncryptionZoneContext(EncryptionZoneDataAccess dataAccess) {
     this.dataAccess = dataAccess;
+  }
+
+  private MetadataCacheManager getMetadataCacheManager() {
+    NameNode instance = NameNode.tryGetNameNodeInstance(false);
+    if (instance == null) {
+      return null;
+    }
+    return instance.getNamesystem().getMetadataCacheManager();
+  }
+
+  /**
+   * Check the metadata cache for the encryption zone associated with the given INode.
+   */
+  private EncryptionZone checkCache(long inodeId) {
+    // if (LOG.isDebugEnabled()) LOG.debug("Checking in-memory cache for EZ. Lock Mode: " + EntityContext.getLockMode().name());
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return null;
+    }
+
+    return metadataCacheManager.getEncryptionZone(inodeId);
+  }
+
+  /**
+   * Check the metadata cache for the encryption zone associated with the given INodes.
+   *
+   * Returns null if there's at least one cache miss.
+   */
+  private List<EncryptionZone> checkCache(Collection<Long> inodeIds) {
+    // if (LOG.isDebugEnabled()) LOG.debug("Checking in-memory cache for EZ. Lock Mode: " + EntityContext.getLockMode().name());
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return null;
+    }
+
+    List<EncryptionZone> encryptionZones = Lists.newArrayListWithExpectedSize(inodeIds.size());
+    for (Long id : inodeIds) {
+      EncryptionZone ez = metadataCacheManager.getEncryptionZone(id);
+      if (ez == null)
+        return null;
+
+      encryptionZones.add(ez);
+    }
+
+    return encryptionZones;
+  }
+
+  /**
+   * Cache the EncryptionZone instances retrieved from intermediate storage in our local, in-memory metadata cache.
+   */
+  private void cacheResults(List<EncryptionZone> results) {
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return;
+    }
+
+    for (EncryptionZone ez : results) {
+      metadataCacheManager.putEncryptionZone(ez.getInodeId(), ez);
+    }
   }
 
   @Override
@@ -73,7 +143,14 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
   private EncryptionZone findInContextByPrimaryKey(EncryptionZone.Finder finder, Object[] params) throws
       StorageException, StorageCallPreventedException {
     final Long pk = (Long) params[0];
-    EncryptionZone result = null;
+    EncryptionZone result = checkCache(pk);
+
+    if (result != null) {
+      // if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved EncryptionZone instance from local cache.");
+      return result;
+    }
+
+    // If we don't have it cached in our in-memory metadata cache, then check the context.
     if (contains(pk)) {
       result = get(pk);
       hit(finder, result, "pk", pk, "results", result);
@@ -84,14 +161,22 @@ public class EncryptionZoneContext extends BaseEntityContext<Long, EncryptionZon
   private Collection<EncryptionZone> findByPrimaryKeyBatch(EncryptionZone.Finder finder, Object[] params) throws
       StorageException, StorageCallPreventedException {
     final List<Long> pks = (List<Long>) params[0];
-    List<EncryptionZone> results = null;
+    List<EncryptionZone> results = checkCache(pks);
+
+    if (results != null) {
+      // if (LOG.isDebugEnabled()) LOG.debug("Successfully retrieved all EncryptionZone instances from local cache.");
+      return results;
+    }
+
     if (containsAll(pks)) {
       results = getAll(pks);
       hit(finder, results, "pks", pks, "results", results);
     } else {
+      if (LOG.isTraceEnabled()) LOG.trace("Retrieving EncryptionZones from intermediate storage for INodes: " + StringUtils.join(", ", pks));
       aboutToAccessStorage(finder, params);
       results = dataAccess.getEncryptionZoneByInodeIdBatch(pks);
       gotFromDB(pks, results);
+      cacheResults(results);
       miss(finder, results, "pks", pks, "results", results);
     }
     return results;

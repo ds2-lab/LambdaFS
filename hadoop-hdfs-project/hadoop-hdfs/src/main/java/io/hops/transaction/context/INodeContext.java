@@ -25,6 +25,7 @@ import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.INodeDataAccess;
+import io.hops.transaction.EntityManager;
 import io.hops.transaction.lock.BaseINodeLock;
 import io.hops.transaction.lock.Lock;
 import io.hops.transaction.lock.TransactionLockTypes;
@@ -35,6 +36,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hdfs.protocol.HdfsConstantsClient;
 import org.apache.hadoop.hdfs.server.namenode.INode;
 import org.apache.hadoop.hdfs.server.namenode.INodeDirectory;
+import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.cache.InMemoryINodeCache;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,6 +62,85 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
   public INodeContext(INodeDataAccess dataAccess) {
     this.dataAccess = dataAccess;
+  }
+
+  private InMemoryINodeCache getMetadataCache() {
+    NameNode instance = NameNode.tryGetNameNodeInstance(false);
+
+    if (instance == null) {
+      return null;
+    }
+
+    return instance.getNamesystem().getMetadataCacheManager().getINodeCache();
+  }
+
+  /**
+   * Check the local metadata cache for the specified INode.
+   * @param id The ID of the desired INode.
+   * @return The INode with the specified ID, or null if the INode is not in the cache.
+   */
+  private INode checkCache(long id) {
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+
+    InMemoryINodeCache metadataCache = getMetadataCache();
+    if (metadataCache == null) {
+      LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
+      return null;
+    }
+    return metadataCache.getByINodeId(id);
+  }
+
+  /**
+   * Check the local metadata cache for the specified INode.
+   * @param path The fully-qualified path of the desired INode.
+   * @return The INode for the file/directory at the specified path, or null if the INode is not in the cache.
+   */
+//  private INode checkCache(String path) {
+//    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+//
+//    InMemoryINodeCache metadataCache = getMetadataCache();
+//    if (metadataCache == null) {
+//      LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
+//      return null;
+//    }
+//    return metadataCache.getByPath(path);
+//  }
+
+  /**
+   * Check the local metadata cache for the specified INode.
+   * @param localName The local name of the desired INode.
+   * @param parentId The ID of the parent INode.
+   * @return The desired INode if it is was in the cache, otherwise null.
+   */
+  private INode checkCache(String localName, long parentId) {
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+
+    InMemoryINodeCache metadataCache = getMetadataCache();
+    if (metadataCache == null) {
+      LOG.warn("Cannot check local, in-memory metadata cache bc Serverless NN instance is null.");
+      return null;
+    }
+    return metadataCache.getByParentINodeIdAndLocalName(parentId, localName);
+  }
+
+  /**
+   * Attempt to add an INode to the cache, if it is non-null. If the INode parameter is null, this just returns.
+   *
+   * This will fail to add the INode to the cache of the full path name cannot be retrieved using data
+   * already contained locally (i.e., going to NDB is not an option here).
+   *
+   * @param node The INode to add to the cache.
+   */
+  private void tryUpdateCache(INode node) throws TransactionContextException, StorageException {
+    if (node == null || !EntityContext.areMetadataCacheWritesEnabled()) {
+      return;
+    }
+
+    InMemoryINodeCache metadataCache = getMetadataCache();
+    if (metadataCache == null) return;
+
+    String fullPathName = node.getFullPathName();
+    metadataCache.put(fullPathName, node.getId(), node);
   }
 
   @Override
@@ -87,7 +169,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       throws TransactionContextException, StorageException {
     INode.Finder iFinder = (INode.Finder) finder;
     switch (iFinder) {
-      case ByParentIdFTIS:
+      case ByParentIdFTIS: // TODO: Add support for this case for local, in-memory metadata cache.
         return findByParentIdFTIS(iFinder, params);
       case ByParentIdAndPartitionId:
         return findByParentIdAndPartitionIdPPIS(iFinder,params);
@@ -119,13 +201,101 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     }
   }
 
+  /**
+   * Return a collection containing all INodes to be removed/deleted from intermediate storage.
+   * @return
+   */
+  public Collection<INode> getRemovedINodes() {
+    return getRemoved();
+  }
+
+  /**
+   * Return a collection containing all the new INodes to be persisted to intermediate storage.
+   * This collection includes renamed INodes.
+   */
+  public Collection<INode> getAddedINodes() {
+    Collection<INode> added = new ArrayList<INode>(getAdded());
+    added.addAll(renamedInodes);
+
+    return added;
+  }
+
+  /**
+   * Return a collection of all INodes that exist already in intermediate storage and will be
+   * updated in some way by the upcoming transactional commit.
+   */
+  public Collection<INode> getUpdatedINodes() {
+    return getModified();
+  }
+
+  /**
+   * Return a collection of INodes that will be invalidated by the upcoming transactional commit.
+   * That means that any Serverless NameNodes that are caching these INodes will need to invalidate
+   * their caches.
+   *
+   * Specifically, this includes any removed and modified INodes. This does NOT include any added INodes
+   * (i.e., INodes that do not already exist in intermediate storage).
+   */
+  public Collection<INode> getInvalidatedINodes() {
+    Collection<INode> removed = getRemoved();
+    Collection<INode> modified = getModified();
+    Collection<INode> invalidated = new ArrayList<INode>(removed);
+    invalidated.addAll(modified);
+
+    if (removed.size() > 0 || modified.size() > 0) {
+      // We try to print their full path names here if we can. But if not, then print local names.
+      // If we're running in a thread from the FSNamesystem's executor service for subtree operations,
+      // then we'll probably not be able to resolve the full path names. This is due to the transaction
+      // context being local to each thread, so we don't have the ability to access storage right now.
+      List<String> removedToStr = new ArrayList<>();
+      List<String> modifiedToStr = new ArrayList<>();
+
+      try {
+        for (INode removedNode : removed) {
+          String fullPath = removedNode.getFullPathName();
+          removedToStr.add(fullPath);
+        }
+
+        for (INode modifiedNode : modified) {
+          String fullPath = modifiedNode.getFullPathName();
+          modifiedToStr.add(fullPath);
+        }
+      } catch (RuntimeException ex) {
+        removedToStr.clear();
+        modifiedToStr.clear();
+
+        // This can happen if we're a thread from an Executor Service during a subtree operation.
+        for (INode removedNode : removed) {
+          String fullPath = removedNode.getLocalName();
+          removedToStr.add(fullPath);
+        }
+
+        for (INode modifiedNode : modified) {
+          String fullPath = modifiedNode.getLocalName();
+          modifiedToStr.add(fullPath);
+        }
+      } catch (TransactionContextException | StorageException ex) {
+        ex.printStackTrace();
+      }
+
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Transaction will REMOVE the following INodes (" + removed.size() + "): " +
+                StringUtils.join(removedToStr, ", "));
+        LOG.debug("Transaction will MODIFY the following INodes (" + modified.size() + "): " +
+                StringUtils.join(modifiedToStr, ", "));
+        LOG.debug("Transaction will alter (i.e., remove or modify) a total of " + invalidated.size() + " INodes.");
+      }
+    }
+    return invalidated;
+  }
+
   @Override
   public void prepare(TransactionLocks lks)
       throws TransactionContextException, StorageException {
 
     // if the list is not empty then check for the lock types
     // lock type is checked after when list length is checked
-    // because some times in the tx handler the acquire lock
+    // because sometimes in the tx handler, the 'acquire lock'
     // function is empty and in that case tlm will throw
     // null pointer exceptions
     Collection<INode> removed = getRemoved();
@@ -143,8 +313,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
               lock != TransactionLockTypes.INodeLockType.WRITE && lock !=
               TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT) {
             throw new LockUpgradeException(
-                "Trying to remove inode id=" + inode.getId() +
-                    " acquired lock was " + lock);
+                "Trying to remove inode " + inode.getLocalName() + ", id=" + inode.getId() +
+                        " acquired lock was " + lock);
           }
         }
       }
@@ -157,7 +327,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
               lock != TransactionLockTypes.INodeLockType.WRITE && lock !=
               TransactionLockTypes.INodeLockType.WRITE_ON_TARGET_AND_PARENT) {
             throw new LockUpgradeException(
-                "Trying to update inode id=" + inode.getId() +
+                "Trying to update inode " + inode.getLocalName() + ", id=" + inode.getId() +
                     " acquired lock was " + lock);
           }
         }
@@ -174,13 +344,6 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     }
     
     dataAccess.prepare(removed, added, modified);
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Transaction will REMOVE the following INodes (" + removed.size() + "): " +
-              StringUtils.join(removed, ", "));
-      LOG.debug("Transaction will MODIFY the following INodes (" + modified.size() + "): " +
-              StringUtils.join(modified, ", "));
-    }
   }
 
   @Override
@@ -229,15 +392,26 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       throws TransactionContextException, StorageException {
     INode result = null;
     final Long inodeId = (Long) params[0];
+
+    // First, check the local, in-memory metadata cache.
+    result = checkCache(inodeId);
+    if (result != null) {
+      if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode '" + result.getLocalName() + "' (ID=" +
+              inodeId + ") from local metadata cache.");
+      return result;
+    }
+
     if (contains(inodeId)) {
       result = get(inodeId);
       if(result!=null) {
         if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode '" + result.getLocalName() + "' (ID=" +
                 inodeId + ") from transaction context.");
+
         hit(inodeFinder, result, "id", inodeId, "name", result.getLocalName(), "parent_id", result.getParentId(),
             "partition_id", result.getPartitionId());
-      }else{
-        if (LOG.isTraceEnabled()) LOG.trace("INode ID=" + inodeId + " was in transaction context as null...");
+      } else{
+        if (LOG.isTraceEnabled()) LOG.trace("INode ID=" +
+                inodeId + " was in transaction context as null...");
         hit(inodeFinder, result, "id", inodeId);
       }
     } else {
@@ -250,7 +424,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         inodesNameParentIndex.put(result.nameParentKey(), result);
         miss(inodeFinder, result, "id", inodeId, "name", result.getLocalName(), "parent_id", result.getParentId(),
           "partition_id", result.getPartitionId());
-      }else {
+        tryUpdateCache(result);
+      } else {
         if (LOG.isTraceEnabled()) LOG.trace("Failed to retrieve INode ID=" + inodeId + " from intermediate storage.");
         miss(inodeFinder, result, "id");
       }
@@ -260,7 +435,6 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
   private INode findByNameParentIdAndPartitionIdPK(INode.Finder inodeFinder, Object[] params)
       throws TransactionContextException, StorageException {
-
     INode result = null;
     final String name = (String) params[0];
     final Long parentId = (Long) params[1];
@@ -269,7 +443,19 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     if (params.length == 4) {
       possibleInodeId = (Long) params[3];
     }
+    boolean canCheckCache = true;
+    if (params.length == 5) {
+      canCheckCache = (boolean) params[4];
+    }
     final String nameParentKey = INode.nameParentKey(parentId, name);
+
+    if (canCheckCache) {
+      result = checkCache(name, parentId);
+      if (result != null) {
+        if (LOG.isTraceEnabled()) LOG.trace("Retrieved INode '" + name + "', parentID=" + parentId + " from local metadata cache.");
+        return result;
+      }
+    }
 
     if (inodesNameParentIndex.containsKey(nameParentKey)) {
       result = inodesNameParentIndex.get(nameParentKey);
@@ -278,10 +464,12 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
         if (LOG.isTraceEnabled()) LOG.trace("Re-reading INode " + name + " from NDB to upgrade the lock.");
         //trying to upgrade lock. re-read the row from DB
         aboutToAccessStorage(inodeFinder, params);
+
         result = dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);
         gotFromDBWithPossibleInodeId(result, possibleInodeId);
         inodesNameParentIndex.put(nameParentKey, result);
         missUpgrade(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
+        tryUpdateCache(result);
       } else {
         if (LOG.isTraceEnabled()) LOG.trace("Successfully retrieved INode '" + name + "', parentID=" + parentId + " from INode Hint Cache.");
         hit(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId);
@@ -290,17 +478,19 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       if (!isNewlyAdded(parentId) && !containsRemoved(parentId, name)) {
         if (canReadCachedRootINode(name, parentId)) {
           result = RootINodeCache.getRootINode();
-          LOG.trace("Reading root inode from the cache. "+result);
+          LOG.trace("Reading root inode from the RootINodeCache: " + result);
        } else {
           if (LOG.isTraceEnabled()) LOG.trace("Cannot resolve INode '" + name + "', parentID=" + parentId +
                   " from either cache. Reading from NDB instead.");
           aboutToAccessStorage(inodeFinder, params);
+
           result = dataAccess.findInodeByNameParentIdAndPartitionIdPK(name, parentId, partitionId);
         }
         gotFromDBWithPossibleInodeId(result, possibleInodeId);
         inodesNameParentIndex.put(nameParentKey, result);
         miss(inodeFinder, result, "name", name, "parent_id", parentId, "partition_id", partitionId,
             "possible_inode_id",possibleInodeId);
+        tryUpdateCache(result);
       }
     }
     return result;
@@ -355,6 +545,7 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     final String[] names = (String[]) params[0];
     final long[] parentIds = (long[]) params[1];
     final long[] partitionIds = (long[]) params[2];
+    boolean canUseLocalCache = (boolean) params[3];
 
     List<String> namesRest = Lists.newArrayList();
     List<Long> parentIdsRest = Lists.newArrayList();
@@ -366,12 +557,25 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
 
     for(int i=0; i<names.length; i++){
       final String nameParentKey = INode.nameParentKey(parentIds[i], names[i]);
-      INode node = inodesNameParentIndex.get(nameParentKey);
-      if(node != null){
+
+      INode node;
+
+      // First, check in-memory cache, if we're not doing a write operation.
+      if (canUseLocalCache) {
+        node = checkCache(names[i], parentIds[i]);
+        if (node != null) {
+          result.set(i, node);
+          continue;
+        }
+      }
+
+      // Next, try INode Hint Cache.
+      node = inodesNameParentIndex.get(nameParentKey);
+
+      if (node != null) {
         result.set(i, node);
         hit(inodeFinder, node, "name", names[i], "parent_id", parentIds[i], "partition_id", partitionIds[i]);
-      }else{
-        namesRest.add(names[i]);
+      } else {namesRest.add(names[i]);
         parentIdsRest.add(parentIds[i]);
         partitionIdsRest.add(partitionIds[i]);
         unpopulatedIndeces.add(i);
@@ -400,14 +604,14 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
   }
 
   private List<INode> findBatch(INode.Finder inodeFinder, String[] names,
-                                long[] parentIds, long[] partitionIds) throws StorageException {
+                                long[] parentIds, long[] partitionIds) throws StorageException, TransactionContextException {
     INode rootINode = null;
     boolean addCachedRootInode = false;
     if (canReadCachedRootINode(names[0], parentIds[0])) {
       rootINode = RootINodeCache.getRootINode();
       if (rootINode != null) {
         if(names[0].equals(INodeDirectory.ROOT_NAME) && parentIds[0] == HdfsConstantsClient.GRANDFATHER_INODE_ID){
-          LOG.trace("Reading root inode from the cache "+rootINode);
+          LOG.trace("Reading root inode from the RootINodeCache "+rootINode);
           //remove root from the batch operation. Cached root inode will be added later to the results
           names = Arrays.copyOfRange(names, 1, names.length);
           parentIds = Arrays.copyOfRange(parentIds, 1, parentIds.length);
@@ -426,11 +630,11 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
     return syncInodeInstances(batch);
   }
 
-  private List<INode> syncInodeInstances(List<INode> newInodes) {
+  private List<INode> syncInodeInstances(List<INode> newInodes) throws TransactionContextException, StorageException {
     List<INode> finalList = new ArrayList<>(newInodes.size());
 
     if (LOG.isTraceEnabled()) LOG.trace("Retrieved batch of INodes from NDB: " + StringUtils.join(newInodes, ", "));
-
+    
     for (INode inode : newInodes) {
       if (isRemoved(inode.getId())) {
         continue;
@@ -447,6 +651,8 @@ public class INodeContext extends BaseEntityContext<Long, INode> {
       } else {
         inodesNameParentIndex.put(key, inode);
       }
+
+      tryUpdateCache(inode);
     }
     Collections.sort(finalList, INode.Order.ByName);
     return finalList;

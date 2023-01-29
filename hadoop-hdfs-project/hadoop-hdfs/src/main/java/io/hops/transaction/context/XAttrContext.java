@@ -24,8 +24,13 @@ import io.hops.exception.StorageException;
 import io.hops.exception.TransactionContextException;
 import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.XAttrDataAccess;
+import io.hops.metadata.hdfs.entity.Ace;
 import io.hops.metadata.hdfs.entity.StoredXAttr;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.cache.MetadataCacheManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,13 +40,80 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey,
-    StoredXAttr> {
+public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey, StoredXAttr> {
+  public static final Logger LOG = LoggerFactory.getLogger(XAttrContext.class);
   
   private final XAttrDataAccess<StoredXAttr, StoredXAttr.PrimaryKey> dataAccess;
   private final Map<Long, Collection<StoredXAttr>> xAttrsByInodeId =
       new HashMap<>();
-  
+
+  private MetadataCacheManager getMetadataCacheManager() {
+    NameNode instance = NameNode.tryGetNameNodeInstance(false);
+    if (instance == null) {
+      return null;
+    }
+    return instance.getNamesystem().getMetadataCacheManager();
+  }
+
+  /**
+   * Check the metadata cache for the Ace associated with the given INode.
+   */
+  private List<StoredXAttr> checkCache(List<StoredXAttr.PrimaryKey> pks) {
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return null;
+    }
+
+    List<StoredXAttr> xAttrs = Lists.newArrayListWithExpectedSize(pks.size());
+    for (StoredXAttr.PrimaryKey pk : pks) {
+      StoredXAttr xAttr = metadataCacheManager.getStoredXAttr(pk.getInodeId(), pk.getNamespace(), pk.getName());
+      if (xAttr == null)
+        return null;
+      xAttrs.add(xAttr);
+    }
+
+    return xAttrs;
+  }
+
+  private StoredXAttr checkCache(StoredXAttr.PrimaryKey pk) {
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return null;
+    }
+
+    return metadataCacheManager.getStoredXAttr(pk.getInodeId(), pk.getNamespace(), pk.getName());
+  }
+
+  /**
+   * Cache the Ace instances retrieved from intermediate storage in our local, in-memory metadata cache.
+   *
+   * The INode ID of each ace will be the same as the one we pass in. It's just for convenience.
+   */
+  private void cacheResult(StoredXAttr.PrimaryKey pk, StoredXAttr xAttr) {
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return;
+    }
+
+    metadataCacheManager.putStoredXAttr(pk.getInodeId(), pk.getNamespace(), pk.getName(), xAttr);
+  }
+
+  private void cacheResults(List<StoredXAttr> xAttrs) {
+    MetadataCacheManager metadataCacheManager = getMetadataCacheManager();
+    if (metadataCacheManager == null) {
+      return;
+    }
+
+    for (StoredXAttr xAttr : xAttrs) {
+      StoredXAttr.PrimaryKey pk = xAttr.getPrimaryKey();
+      metadataCacheManager.putStoredXAttr(pk.getInodeId(), pk.getNamespace(), pk.getName(), xAttr);
+    }
+  }
+
   public XAttrContext(XAttrDataAccess dataAccess){
     this.dataAccess = dataAccess;
   }
@@ -88,11 +160,15 @@ public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey,
   private StoredXAttr findByPrimaryKey(StoredXAttr.Finder finder,
       Object[] params) throws StorageException, StorageCallPreventedException {
     final StoredXAttr.PrimaryKey pk = (StoredXAttr.PrimaryKey) params[0];
-    StoredXAttr result = null;
+    StoredXAttr result = checkCache(pk);
+
+    if (result != null)
+      return result;
+
     if(contains(pk)){
       result = get(pk);
       hit(finder, result, "pk", pk, "results", result);
-    }else{
+    } else {
       aboutToAccessStorage(finder, params);
       List<StoredXAttr> results =
           dataAccess.getXAttrsByPrimaryKeyBatch(Arrays.asList(pk));
@@ -100,17 +176,24 @@ public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey,
       gotFromDB(pk, result);
       miss(finder, result, "pk", pk, "results", results);
     }
+
+    cacheResult(pk, result);
     return result;
   }
   
   private StoredXAttr findByPrimaryKeyLocal(StoredXAttr.Finder finder,
       Object[] params) throws StorageException, StorageCallPreventedException {
     final StoredXAttr.PrimaryKey pk = (StoredXAttr.PrimaryKey) params[0];
-    StoredXAttr result = null;
+    StoredXAttr result = checkCache(pk);
+
+    if (result != null)
+      return result;
+
     if(contains(pk)){
       result = get(pk);
       hit(finder, result, "pk", pk, "results", result);
     }
+    cacheResult(pk, result);
     return result;
   }
   
@@ -122,6 +205,7 @@ public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey,
       results = xAttrsByInodeId.get(inodeId);
       hit(finder, results, "inodeId", inodeId, "results", results);
     }else{
+      LOG.debug("Accessing intermediate storage for StoredXAttr instances for INode ID=" + inodeId);
       aboutToAccessStorage(finder, params);
       results = dataAccess.getXAttrsByInodeId(inodeId);
       gotFromDB(results);
@@ -146,6 +230,12 @@ public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey,
       Object[] params) throws StorageException, StorageCallPreventedException {
     final List<StoredXAttr.PrimaryKey> pks = (List<StoredXAttr.PrimaryKey>) params[0];
     List<StoredXAttr> results = null;
+
+    results = checkCache(pks);
+
+    if (results != null)
+      return results;
+
     if(containsAll(pks)){
       results = getAll(pks);
       hit(finder, results, "pks", pks, "results", results);
@@ -155,6 +245,8 @@ public class XAttrContext extends BaseEntityContext<StoredXAttr.PrimaryKey,
       gotFromDB(pks, results);
       miss(finder, results, "pks", pks, "results", results);
     }
+
+    cacheResults(results);
     return results;
   }
   

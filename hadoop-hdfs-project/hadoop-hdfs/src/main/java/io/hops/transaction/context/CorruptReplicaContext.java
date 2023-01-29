@@ -24,15 +24,20 @@ import io.hops.exception.TransactionContextException;
 import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.CorruptReplicaDataAccess;
 import io.hops.metadata.hdfs.entity.CorruptReplica;
+import io.hops.metadata.hdfs.entity.CorruptReplica;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.cache.ReplicaCache;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class CorruptReplicaContext
     extends BaseReplicaContext<BlockPK.ReplicaPK, CorruptReplica> {
+  public static final Logger LOG = LoggerFactory.getLogger(CorruptReplicaContext.class);
 
   CorruptReplicaDataAccess dataAccess;
 
@@ -40,6 +45,44 @@ public class CorruptReplicaContext
     this.dataAccess = dataAccess;
   }
 
+  private ReplicaCache<BlockPK.ReplicaPK, CorruptReplica> getReplicaCache() {
+    NameNode instance = NameNode.tryGetNameNodeInstance(false);
+    if (instance == null)
+      return null;
+
+    return (ReplicaCache<BlockPK.ReplicaPK, CorruptReplica>) instance.getNamesystem().getMetadataCacheManager().getReplicaCacheManager().getReplicaCache(this.getClass());
+  }
+
+  private List<CorruptReplica> checkCacheByINodeId(long inodeId) {
+    ReplicaCache<BlockPK.ReplicaPK, CorruptReplica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByINodeId(inodeId);
+  }
+
+  private List<CorruptReplica> checkCacheByBlockId(long blockId) {
+    ReplicaCache<BlockPK.ReplicaPK, CorruptReplica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByBlockId(blockId);
+  }
+
+  private void updateCache(long inodeId, long blockId, int storageId, CorruptReplica replica) {
+    ReplicaCache<BlockPK.ReplicaPK, CorruptReplica> cache = getReplicaCache();
+    if (cache == null) return;
+
+    cache.cacheEntry(new BlockPK.ReplicaPK(blockId, inodeId, storageId), replica);
+  }
+
+  private void updateCache(List<CorruptReplica> replicas) {
+    ReplicaCache<BlockPK.ReplicaPK, CorruptReplica> cache = getReplicaCache();
+    if (cache == null) return;
+
+    for (CorruptReplica replica : replicas) {
+      cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+    }
+  }
+  
   @Override
   public void update(CorruptReplica hopCorruptReplica)
       throws TransactionContextException {
@@ -103,13 +146,20 @@ public class CorruptReplicaContext
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long blockId = (Long) params[0];
     final long inodeId = (Long) params[1];
-    List<CorruptReplica> result = null;
+
+    List<CorruptReplica> result = checkCacheByBlockId(blockId);
+    if (result != null) return result;
+    result = checkCacheByINodeId(inodeId);
+    if (result != null && storageCallPrevented) return result;
+
     if (containsByBlock(blockId) || containsByINode(inodeId)) {
       result = getByBlock(blockId);
       hit(cFinder, result, "bid", blockId, "inodeid", inodeId);
     } else {
+      // LOG.debug("Retrieving CorruptReplica instances from NDB for INode ID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(cFinder, params);
       result = dataAccess.findByBlockId(blockId, inodeId);
+      updateCache(result);
       Collections.sort(result);
       gotFromDB(new BlockPK(blockId, null), result);
       miss(cFinder, result, "bid", blockId, "inodeid", inodeId);
@@ -120,13 +170,18 @@ public class CorruptReplicaContext
   private List<CorruptReplica> findByINodeId(CorruptReplica.Finder cFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long inodeId = (Long) params[0];
-    List<CorruptReplica> result = null;
+
+    List<CorruptReplica> result = checkCacheByINodeId(inodeId);
+    if (result != null) return  result;
+
     if (containsByINode(inodeId)) {
       result = getByINode(inodeId);
       hit(cFinder, result, "inodeid", inodeId);
     } else {
+      // LOG.debug("Retrieving CorruptReplica instances from NDB for INode ID=" + inodeId);
       aboutToAccessStorage(cFinder, params);
       result = dataAccess.findByINodeId(inodeId);
+      updateCache(result);
       gotFromDB(new BlockPK(null, inodeId), result);
       miss(cFinder, result, "inodeid", inodeId);
     }
@@ -136,6 +191,7 @@ public class CorruptReplicaContext
   private List<CorruptReplica> findByINodeIds(CorruptReplica.Finder cFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long[] inodeIds = (long[]) params[0];
+    // LOG.debug("Retrieving CorruptReplica instances from NDB for INode IDs=" + StringUtils.join(", ", Arrays.stream(inodeIds).boxed().collect(Collectors.toList())));
     aboutToAccessStorage(cFinder, params);
     List<CorruptReplica> result = dataAccess.findByINodeIds(inodeIds);
     miss(cFinder, result, "inodeids", Arrays.toString(inodeIds));

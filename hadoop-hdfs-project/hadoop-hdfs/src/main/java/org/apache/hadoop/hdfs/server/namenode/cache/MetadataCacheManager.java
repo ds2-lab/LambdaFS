@@ -20,11 +20,11 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.METADATA_CACHE_CAPACITY_DEFAU
 /**
  * Controls and manages access to several caches, each of which is responsible for caching a different type of metadata.
  *
- * The main cache is the {@link org.apache.hadoop.hdfs.server.namenode.cache.InMemoryINodeCache}.
+ * The main cache is the {@link InMemoryINodeCache}.
  * This is the cache that stores the INodes, which are the primary metadata object used by HopsFS.
  * This class also manages a cache of {@link Ace} objects and a cache of {@link EncryptionZone} objects.
  *
- * The other caches are of type {@link org.apache.hadoop.hdfs.server.namenode.cache.ReplicaCache}, and these are managed by a separate {@link org.apache.hadoop.hdfs.server.namenode.cache.ReplicaCacheManager}.
+ * The other caches are of type {@link ReplicaCache}, and these are managed by a separate {@link ReplicaCacheManager}.
  */
 public class MetadataCacheManager {
     public static final Logger LOG = LoggerFactory.getLogger(MetadataCacheManager.class);
@@ -32,7 +32,7 @@ public class MetadataCacheManager {
     /**
      * Caches INodes.
      */
-    private final org.apache.hadoop.hdfs.server.namenode.cache.InMemoryINodeCache inodeCache;
+    private final InMemoryINodeCache inodeCache;
 
     /**
      * Caches EncryptionZone instances. The key is INode ID.
@@ -60,7 +60,7 @@ public class MetadataCacheManager {
     /**
      * Manages the caches associated with the various types of replicas.
      */
-    private final org.apache.hadoop.hdfs.server.namenode.cache.ReplicaCacheManager replicaCacheManager;
+    private final ReplicaCacheManager replicaCacheManager;
 
     /**
      * Maximum elements in INode cache.
@@ -69,7 +69,7 @@ public class MetadataCacheManager {
 
     public MetadataCacheManager(Configuration configuration) {
         this.cacheCapacity = configuration.getInt(METADATA_CACHE_CAPACITY, METADATA_CACHE_CAPACITY_DEFAULT);
-        inodeCache = new org.apache.hadoop.hdfs.server.namenode.cache.InMemoryINodeCache(configuration);
+        inodeCache = new InMemoryINodeCache(configuration);
         encryptionZoneCache = Caffeine.newBuilder()
                 .initialCapacity(cacheCapacity)
                 .maximumSize(cacheCapacity)
@@ -91,16 +91,12 @@ public class MetadataCacheManager {
                 .maximumSize(cacheCapacity)
                 .build();
 
-//        encryptionZoneCache = new ConcurrentHashMap<>();
-//        aceCache = new ConcurrentHashMap<>();
-//        aceCacheByINodeId = new ConcurrentHashMap<>();
-
-        this.replicaCacheManager = org.apache.hadoop.hdfs.server.namenode.cache.ReplicaCacheManager.getInstance();
+        this.replicaCacheManager = ReplicaCacheManager.getInstance();
     }
 
-    public org.apache.hadoop.hdfs.server.namenode.cache.ReplicaCacheManager getReplicaCacheManager() { return this.replicaCacheManager; }
+    public ReplicaCacheManager getReplicaCacheManager() { return this.replicaCacheManager; }
 
-    public org.apache.hadoop.hdfs.server.namenode.cache.InMemoryINodeCache getINodeCache() { return inodeCache; }
+    public InMemoryINodeCache getINodeCache() { return inodeCache; }
 
     public int invalidateINodesByPrefix(String prefix) {
         Collection<INode> prefixedINodes = inodeCache.invalidateKeysByPrefix(prefix);
@@ -125,7 +121,6 @@ public class MetadataCacheManager {
             invalidateAces(inodeId);
             invalidateXAttrs(inodeId);
             encryptionZoneCache.invalidate(inodeId);
-            //encryptionZoneCache.remove(inodeId);
         }
 
         return inodeCache.invalidateKey(key, skipCheck);
@@ -135,9 +130,6 @@ public class MetadataCacheManager {
         encryptionZoneCache.invalidateAll();
         aceCache.invalidateAll();
         aceCacheByINodeId.invalidateAll();
-//        encryptionZoneCache.clear();
-//        aceCache.clear();
-//        aceCacheByINodeId.clear();
         inodeCache.invalidateEntireCache();
     }
 
@@ -145,7 +137,6 @@ public class MetadataCacheManager {
         invalidateAces(inodeId);
         encryptionZoneCache.invalidate(inodeId);
         invalidateXAttrs(inodeId);
-        //encryptionZoneCache.remove(inodeId);
         return inodeCache.invalidateKey(inodeId);
     }
 
@@ -158,7 +149,6 @@ public class MetadataCacheManager {
         for (StoredXAttr cachedXAttr : cachedXAttrs) {
             String key = getXAttrKey(cachedXAttr.getInodeId(), cachedXAttr.getNamespace(), cachedXAttr.getName());
             xAttrCache.invalidate(key);
-            //aceCache.remove(key);
         }
 
         cachedXAttrs.clear();
@@ -173,7 +163,6 @@ public class MetadataCacheManager {
         for (CachedAce cachedAce : cachedAces) {
             String key = getAceKey(cachedAce.inodeId, cachedAce.index);
             aceCache.invalidate(key);
-            //aceCache.remove(key);
         }
 
         cachedAces.clear();
@@ -186,7 +175,6 @@ public class MetadataCacheManager {
      */
     public EncryptionZone getEncryptionZone(long inodeId) {
         return encryptionZoneCache.getIfPresent(inodeId);
-        //return encryptionZoneCache.getOrDefault(inodeId, null);
     }
 
     /**
@@ -203,7 +191,6 @@ public class MetadataCacheManager {
     public Ace getAce(long inodeId, int index) {
         String key = getAceKey(inodeId, index);
         return aceCache.getIfPresent(key);
-        //return aceCache.getOrDefault(key,null);
     }
 
     public StoredXAttr getStoredXAttr(long inodeId, byte namespace, String name) {

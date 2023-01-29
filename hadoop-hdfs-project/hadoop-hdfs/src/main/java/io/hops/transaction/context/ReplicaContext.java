@@ -24,6 +24,10 @@ import io.hops.metadata.common.FinderType;
 import io.hops.metadata.hdfs.dal.ReplicaDataAccess;
 import io.hops.metadata.hdfs.entity.Replica;
 import io.hops.transaction.lock.TransactionLocks;
+import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.cache.ReplicaCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -31,11 +35,82 @@ import java.util.List;
 
 public class ReplicaContext
     extends BaseReplicaContext<BlockPK.ReplicaPK, Replica> {
+  public static final Logger LOG = LoggerFactory.getLogger(ReplicaContext.class);
 
   private ReplicaDataAccess dataAccess;
 
   public ReplicaContext(ReplicaDataAccess dataAccess) {
     this.dataAccess = dataAccess;
+  }
+
+  private ReplicaCache<BlockPK.ReplicaPK, Replica> getReplicaCache() {
+    NameNode instance = NameNode.tryGetNameNodeInstance(false);
+    if (instance == null)
+      return null;
+
+    return (ReplicaCache<BlockPK.ReplicaPK, Replica>) instance.getNamesystem().getMetadataCacheManager().getReplicaCacheManager().getReplicaCache(this.getClass());
+  }
+
+  private Replica checkCache(long inodeId, long blockId, int storageId) {
+    if (!EntityContext.areMetadataCacheReadsEnabled()) return null;
+
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    BlockPK.ReplicaPK pk = new BlockPK.ReplicaPK(blockId, inodeId, storageId);
+
+    return cache.getByPrimaryKey(pk);
+  }
+
+  // Uses same semantics as the `findByPK()` function.
+  private Replica checkCacheByPk(long blockId, int storageId) {
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    List<Replica> possibleReplicas = cache.getByBlockId(blockId);
+
+    if (possibleReplicas == null) return null;
+
+    for (Replica replica : possibleReplicas) {
+      if (replica.getStorageId() == storageId)
+        return replica;
+    }
+
+    return null;
+  }
+
+  private List<Replica> checkCacheByINodeId(long inodeId) {
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByINodeId(inodeId);
+  }
+
+  private List<Replica> checkCacheByBlockId(long blockId) {
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return null;
+
+    return cache.getByBlockId(blockId);
+  }
+
+  private void updateCache(Replica replica) {
+    if (replica == null) return;
+
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return;
+
+    cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+  }
+
+  private void updateCache(List<Replica> replicas) {
+    if (replicas == null) return;
+
+    ReplicaCache<BlockPK.ReplicaPK, Replica> cache = getReplicaCache();
+    if (cache == null) return;
+
+    for (Replica replica : replicas) {
+      cache.cacheEntry(new BlockPK.ReplicaPK(replica.getBlockId(), replica.getInodeId(), replica.getStorageId()), replica);
+    }
   }
 
   @Override
@@ -117,7 +192,9 @@ public class ReplicaContext
       Object[] params) {
     final long blockId = (Long) params[0];
     final int storageId = (Integer) params[1];
-    Replica result = null;
+    Replica result = checkCacheByPk(blockId, storageId);
+    if (result != null) return result;
+
     List<Replica> replicas = getByBlock(blockId);
     if (replicas != null) {
       for (Replica replica : replicas) {
@@ -137,13 +214,20 @@ public class ReplicaContext
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long blockId = (Long) params[0];
     final long inodeId = (Long) params[1];
-    List<Replica> results = null;
+
+    List<Replica> results = checkCacheByBlockId(blockId);
+    if (results != null) return results;
+    results = checkCacheByINodeId(inodeId);
+    if (results != null && storageCallPrevented) return results;
+
     if (containsByBlock(blockId) || (containsByINode(inodeId) && storageCallPrevented)) {
       results = getByBlock(blockId);
       hit(iFinder, results, "bid", blockId);
     } else {
+      if (LOG.isDebugEnabled()) LOG.debug("Going to NDB to find Replicas for INode ID=" + inodeId + ", BlockID=" + blockId);
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findReplicasById(blockId, inodeId);
+      updateCache(results);
       gotFromDB(new BlockPK(blockId, null), results);
       miss(iFinder, results, "bid", blockId, "inodeid", inodeId);
     }
@@ -153,13 +237,17 @@ public class ReplicaContext
   private List<Replica> findByINodeId(Replica.Finder iFinder,
       Object[] params) throws StorageCallPreventedException, StorageException {
     final long inodeId = (Long) params[0];
-    List<Replica> results = null;
+
+    List<Replica> results = checkCacheByINodeId(inodeId);
+    if (results != null) return results;
+
     if (containsByINode(inodeId)) {
       results = getByINode(inodeId);
       hit(iFinder, results, "inodeid", inodeId);
     } else {
       aboutToAccessStorage(iFinder, params);
       results = dataAccess.findReplicasByINodeId(inodeId);
+      updateCache(results);
       gotFromDB(new BlockPK(null, inodeId), results);
       miss(iFinder, results, "inodeid", inodeId);
     }

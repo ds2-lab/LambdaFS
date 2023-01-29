@@ -161,13 +161,18 @@ public class BlockPK {
     }
     return keys;
   }
-  
-  public static class CachedBlockPK extends BlockPK {
+
+  public  static class CachedBlockPK extends BlockPK {
     private String datanodeId=null;
 
     CachedBlockPK(long blockId, long inodeId, String datanodeId) {
       super(blockId, inodeId);
       this.datanodeId = datanodeId;
+    }
+
+    @Override
+    public String toString() {
+      return "CachedBlockPK[DataNodeID=" + datanodeId + ", BlockID=" + getBlockId() + ", INodeID=" + getInodeId() + "]";
     }
 
     CachedBlockPK(long blockId, long inodeId) {

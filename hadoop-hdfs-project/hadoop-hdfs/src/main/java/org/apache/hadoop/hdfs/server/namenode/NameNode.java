@@ -167,7 +167,7 @@ public class NameNode implements NameNodeStatusMXBean {
   }
 
   /**
-   * The singleton ServerlessNameNode instance associated with this container. There can only be one!
+   * The singleton NameNode instance associated with this container. There can only be one!
    */
   private static NameNode instance;
 
@@ -804,7 +804,7 @@ public class NameNode implements NameNodeStatusMXBean {
   }
 
   /**
-   * Returns the singleton ServerlessNameNode instance.
+   * Returns the singleton NameNode instance.
    *
    * @param commandLineArguments The command-line arguments given to the NameNode during initialization.
    */
@@ -827,13 +827,13 @@ public class NameNode implements NameNodeStatusMXBean {
   }
 
   /**
-   * Attempt to get the singleton ServerlessNameNode instance. This function will throw an exception if the
+   * Attempt to get the singleton NameNode instance. This function will throw an exception if the
    * instance does not exist. This is useful for trying to get the instance when you expect/need it to exist.
-   * This should be used when the caller feels that the ServerlessNameNode instance SHOULD exist, and that it would
+   * This should be used when the caller feels that the NameNode instance SHOULD exist, and that it would
    * be an error if it did not exist when this function is called.
    * @param exceptOnFailure If true, throw an exception if the NameNode does not exist.
-   * @return The ServerlessNameNode instance, if it exists.
-   * @throws IllegalStateException Thrown if the ServerlessNameNode instance does not exist and `exceptOnFailure`
+   * @return The NameNode instance, if it exists.
+   * @throws IllegalStateException Thrown if the NameNode instance does not exist and `exceptOnFailure`
    * is true.
    */
   public static synchronized NameNode tryGetNameNodeInstance(boolean exceptOnFailure)
@@ -842,7 +842,7 @@ public class NameNode implements NameNodeStatusMXBean {
       return instance;
 
     if (exceptOnFailure)
-      throw new IllegalStateException("ServerlessNameNode instance does not exist!");
+      throw new IllegalStateException("NameNode instance does not exist!");
     else
       return null;
   }
