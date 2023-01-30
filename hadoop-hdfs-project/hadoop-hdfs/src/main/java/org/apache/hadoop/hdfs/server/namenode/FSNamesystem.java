@@ -998,6 +998,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   public LocatedBlocks getBlockLocations(final String clientMachine, final String srcArg,
       final long offset, final long length) throws IOException {
 
+    if (LOG.isDebugEnabled()) LOG.debug("FSNamesystem::getBlockLocations() called!");
+
     // First try the operation using shared lock.
     // Upgrade the lock to exclusive lock if LockUpgradeException is encountered.
     // This operation tries to update the inode access time once every hr.
