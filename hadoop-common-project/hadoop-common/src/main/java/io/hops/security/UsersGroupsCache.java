@@ -92,7 +92,7 @@ class UsersGroupsCache {
           = new CacheLoader<String, List<String>>() {
     @Override
     public List<String> load(String userName) throws Exception {
-      // LOG.debug("Get groups from DB for user: " + userName);
+      LOG.trace("Get groups from DB for user: " + userName);
       List<Group> groups = getUserGroupsFromDB(userName, getUserId(userName));
       if (groups == null || groups.isEmpty()) {
         throw new GroupsNotFoundForUserException("No groups found for user (" + userName + ")");
@@ -120,7 +120,7 @@ class UsersGroupsCache {
   private CacheLoader<Integer, String> idToUserLoader = new CacheLoader<Integer, String>() {
     @Override
     public String load(Integer userId) throws Exception {
-      // LOG.debug("Get user from DB by ID. UserID: " + userId);
+      LOG.trace("Get user from DB by ID. UserID: " + userId);
       User user = getUserFromDB(null, userId);
       if (user != null) {
         userToIdCache.put(user.getName(), userId);
@@ -143,7 +143,7 @@ class UsersGroupsCache {
   private CacheLoader<String, Integer> userToIdLoader = new CacheLoader<String, Integer>() {
     @Override
     public Integer load(String userName) throws Exception {
-      // LOG.debug("Get user from DB by name: " + userName);
+      LOG.trace("Get user from DB by name: " + userName);
       User user = getUserFromDB(userName, null);
       if (user != null) {
         idToUserCache.put(user.getId(), userName);
@@ -368,7 +368,7 @@ class UsersGroupsCache {
     return (User) new LightWeightRequestHandler(UsersGroupsCache.UsersOperationsType.GET_USER) {
       @Override
       public Object performTask() throws IOException {
-        //LOG.debug("Get User: " + userName + " from DB.");
+        LOG.trace("Get User: " + userName + " from DB.");
         boolean fail = false;
         boolean localTx = !connector.isTransactionActive();
         if (localTx) {
