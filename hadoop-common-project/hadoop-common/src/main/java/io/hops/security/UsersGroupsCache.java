@@ -146,6 +146,7 @@ class UsersGroupsCache {
       LOG.debug("Get user from DB by name: " + userName);
       User user = getUserFromDB(userName, null);
       if (user != null) {
+        LOG.debug("Retrieved user " + user + " from DB. ID: " + user.getId() + ", username: " + userName);
         idToUserCache.put(user.getId(), userName);
         return user.getId();
       }
@@ -238,6 +239,12 @@ class UsersGroupsCache {
     this.userDataAccess = uda;
     this.userGroupDataAccess = ugda;
     this.groupDataAccess = gda;
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Creating UserGroupsCache now.");
+      LOG.debug("Eviction time: " + evectionTime + " second(s).");
+      LOG.debug("LRU Max: " + lrumax);
+    }
 
     userToGroupsCache = CacheBuilder.newBuilder()
             .maximumSize(lrumax)

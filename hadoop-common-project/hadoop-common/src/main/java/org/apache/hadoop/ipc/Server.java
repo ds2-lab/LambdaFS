@@ -2894,14 +2894,12 @@ public abstract class Server {
           }
           // always update the current call context
           CallerContext.setCurrent(call.callerContext);
-          call.run();
-// DISABLED For evaluation purposes.
-//          UserGroupInformation remoteUser = call.getRemoteUser();
-//          if (remoteUser != null) {
-//            remoteUser.doAs(call);
-//          } else {
-//            call.run();
-//          }
+          UserGroupInformation remoteUser = call.getRemoteUser();
+          if (remoteUser != null) {
+            remoteUser.doAs(call);
+          } else {
+            call.run();
+          }
         } catch (InterruptedException e) {
           if (running) {                          // unexpected -- log it
             LOG.info(Thread.currentThread().getName() + " unexpectedly interrupted", e);
