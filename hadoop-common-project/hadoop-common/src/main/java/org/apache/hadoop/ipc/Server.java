@@ -676,7 +676,7 @@ public abstract class Server {
     long timestamp;              // time received when response is null
                                  // time served when response is not null
     final long epoch;
-    private AtomicInteger responseWaitCount = new AtomicInteger(1);
+    private final AtomicInteger responseWaitCount = new AtomicInteger(1);
     final RPC.RpcKind rpcKind;
     final byte[] clientId;
     private final TraceScope traceScope; // the HTrace scope on the server side
@@ -2884,9 +2884,8 @@ public abstract class Server {
         TraceScope traceScope = null;
         try {
           final Call call = callQueue.take(); // pop the queue; maybe blocked here
-          if (LOG.isDebugEnabled()) {
-            LOG.debug(Thread.currentThread().getName() + ": " + call + " for RpcKind " + call.rpcKind);
-          }
+          if (LOG.isDebugEnabled()) LOG.debug(Thread.currentThread().getName() + ": " + call + " for RpcKind " + call.rpcKind);
+
           CurCall.set(call);
           if (call.traceScope != null) {
             call.traceScope.reattach();

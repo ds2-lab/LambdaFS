@@ -510,6 +510,10 @@ public class ProtobufRpcEngine implements RpcEngine {
           LOG.warn(msg);
           throw new RpcNoSuchMethodException(msg);
         }
+
+        if (LOG.isTraceEnabled())
+          LOG.trace("Calling RPC method " + methodName + " on " + connectionProtocolName + " protocol.");
+
         Message prototype = service.getRequestPrototype(methodDescriptor);
         Message param = request.getValue(prototype);
 
