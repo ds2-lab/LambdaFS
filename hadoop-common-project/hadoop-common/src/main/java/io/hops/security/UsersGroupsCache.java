@@ -92,11 +92,13 @@ class UsersGroupsCache {
           = new CacheLoader<String, List<String>>() {
     @Override
     public List<String> load(String userName) throws Exception {
-      LOG.debug("Getting groups from DB for user: " + userName);
+      if (LOG.isDebugEnabled()) LOG.debug("Getting groups from DB for user: " + userName);
       List<Group> groups = getUserGroupsFromDB(userName, getUserId(userName));
       if (groups == null || groups.isEmpty()) {
         throw new GroupsNotFoundForUserException("No groups found for user (" + userName + ")");
       }
+
+      if (LOG.isDebugEnabled()) LOG.debug("Retrieved " + groups.size() + " group(s) from DB for user " + userName);
 
       List<String> groupNames = Lists.newArrayListWithExpectedSize(groups.size());
 
@@ -120,7 +122,7 @@ class UsersGroupsCache {
   private CacheLoader<Integer, String> idToUserLoader = new CacheLoader<Integer, String>() {
     @Override
     public String load(Integer userId) throws Exception {
-      LOG.debug("Getting user from DB by ID. UserID: " + userId);
+      if (LOG.isDebugEnabled()) LOG.debug("Getting user from DB by ID. UserID: " + userId);
       User user = getUserFromDB(null, userId);
       if (user != null) {
         userToIdCache.put(user.getName(), userId);
@@ -143,10 +145,10 @@ class UsersGroupsCache {
   private CacheLoader<String, Integer> userToIdLoader = new CacheLoader<String, Integer>() {
     @Override
     public Integer load(String userName) throws Exception {
-      LOG.debug("Getting user from DB by name: " + userName);
+      if (LOG.isDebugEnabled()) LOG.debug("Loading user from DB by name: " + userName);
       User user = getUserFromDB(userName, null);
       if (user != null) {
-        LOG.debug("Retrieved user " + user + " from DB. ID: " + user.getId() + ", username: " + userName);
+        if (LOG.isDebugEnabled()) LOG.debug("Retrieved user " + user + " from DB. ID: " + user.getId() + ", username: " + userName);
         idToUserCache.put(user.getId(), userName);
         return user.getId();
       }
@@ -165,7 +167,7 @@ class UsersGroupsCache {
   private CacheLoader<Integer, String> idToGroupLoader = new CacheLoader<Integer, String>() {
     @Override
     public String load(Integer groupId) throws Exception {
-      LOG.debug("Getting group from DB by id: " + groupId);
+      if (LOG.isDebugEnabled()) LOG.debug("Getting group from DB by id: " + groupId);
       Group group = getGroupFromDB(null, groupId);
       if (group != null) {
         groupToIdCache.put(group.getName(), groupId);
@@ -187,7 +189,7 @@ class UsersGroupsCache {
   private CacheLoader<String, Integer> groupToIdsLoader = new CacheLoader<String, Integer>() {
     @Override
     public Integer load(String groupName) throws Exception {
-      LOG.debug("Getting group from DB by name: " + groupName);
+      if (LOG.isDebugEnabled()) LOG.debug("Getting group from DB by name: " + groupName);
       Group group = getGroupFromDB(groupName, null);
       if (group != null) {
         idToGroupCache.put(group.getId(), groupName);
@@ -375,7 +377,7 @@ class UsersGroupsCache {
     return (User) new LightWeightRequestHandler(UsersGroupsCache.UsersOperationsType.GET_USER) {
       @Override
       public Object performTask() throws IOException {
-        LOG.debug("Get User: " + userName + " from DB.");
+        if (LOG.isDebugEnabled()) LOG.debug("Getting User: " + userName + " from DB.");
         boolean fail = false;
         boolean localTx = !connector.isTransactionActive();
         if (localTx) {
@@ -386,6 +388,8 @@ class UsersGroupsCache {
           ugSharedLock(connector);
           User user = userName == null ? userDataAccess.getUser(userId) :
                   userDataAccess.getUser(userName);
+
+          if (LOG.isDebugEnabled()) LOG.debug("Retrieved user: " + user);
 
           if (localTx) {
             connector.commit();
