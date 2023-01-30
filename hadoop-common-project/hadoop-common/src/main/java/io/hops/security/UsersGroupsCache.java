@@ -92,7 +92,7 @@ class UsersGroupsCache {
           = new CacheLoader<String, List<String>>() {
     @Override
     public List<String> load(String userName) throws Exception {
-      LOG.debug("Get groups from DB for user: " + userName);
+      LOG.debug("Getting groups from DB for user: " + userName);
       List<Group> groups = getUserGroupsFromDB(userName, getUserId(userName));
       if (groups == null || groups.isEmpty()) {
         throw new GroupsNotFoundForUserException("No groups found for user (" + userName + ")");
@@ -120,7 +120,7 @@ class UsersGroupsCache {
   private CacheLoader<Integer, String> idToUserLoader = new CacheLoader<Integer, String>() {
     @Override
     public String load(Integer userId) throws Exception {
-      LOG.debug("Get user from DB by ID. UserID: " + userId);
+      LOG.debug("Getting user from DB by ID. UserID: " + userId);
       User user = getUserFromDB(null, userId);
       if (user != null) {
         userToIdCache.put(user.getName(), userId);
@@ -143,7 +143,7 @@ class UsersGroupsCache {
   private CacheLoader<String, Integer> userToIdLoader = new CacheLoader<String, Integer>() {
     @Override
     public Integer load(String userName) throws Exception {
-      LOG.debug("Get user from DB by name: " + userName);
+      LOG.debug("Getting user from DB by name: " + userName);
       User user = getUserFromDB(userName, null);
       if (user != null) {
         LOG.debug("Retrieved user " + user + " from DB. ID: " + user.getId() + ", username: " + userName);
@@ -165,7 +165,7 @@ class UsersGroupsCache {
   private CacheLoader<Integer, String> idToGroupLoader = new CacheLoader<Integer, String>() {
     @Override
     public String load(Integer groupId) throws Exception {
-      LOG.debug("Get group from DB by id: " + groupId);
+      LOG.debug("Getting group from DB by id: " + groupId);
       Group group = getGroupFromDB(null, groupId);
       if (group != null) {
         groupToIdCache.put(group.getName(), groupId);
@@ -187,7 +187,7 @@ class UsersGroupsCache {
   private CacheLoader<String, Integer> groupToIdsLoader = new CacheLoader<String, Integer>() {
     @Override
     public Integer load(String groupName) throws Exception {
-      LOG.debug("Get group from DB by name: " + groupName);
+      LOG.debug("Getting group from DB by name: " + groupName);
       Group group = getGroupFromDB(groupName, null);
       if (group != null) {
         idToGroupCache.put(group.getId(), groupName);
@@ -848,7 +848,7 @@ class UsersGroupsCache {
 
     try {
       int userID = userToIdCache.get(userName);
-      LOG.debug("Remove user from DB name: " + userName);
+      LOG.debug("Removing user from DB name: " + userName);
       removeUserFromDB(userID);
       invCacheUserRemoved(userID, userName);
     } catch (ExecutionException e) {
@@ -863,7 +863,7 @@ class UsersGroupsCache {
   public void removeGroup(String group) throws IOException {
     assert group != null;
 
-    LOG.debug("Remove group from DB name: " + group);
+    LOG.debug("Removing group from DB name: " + group);
     try {
       int groupID = groupToIdCache.get(group);
       removeGroupFromDB(groupID);
