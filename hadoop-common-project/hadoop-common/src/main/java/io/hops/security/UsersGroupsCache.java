@@ -95,6 +95,7 @@ class UsersGroupsCache {
       if (LOG.isDebugEnabled()) LOG.debug("Getting groups from DB for user: " + userName);
       List<Group> groups = getUserGroupsFromDB(userName, getUserId(userName));
       if (groups == null || groups.isEmpty()) {
+        LOG.error("No groups found for user (" + userName + ")");
         throw new GroupsNotFoundForUserException("No groups found for user (" + userName + ")");
       }
 

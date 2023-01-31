@@ -128,7 +128,7 @@ class FSPermissionChecker {
   
   FSPermissionChecker(String fsOwner, String supergroup,
       UserGroupInformation callerUgi) {
-    HashSet<String> s = new HashSet<String>(Arrays.asList(callerUgi.getGroupNames()));
+    HashSet<String> s = new HashSet<>(Arrays.asList(callerUgi.getGroupNames()));
     groups = Collections.unmodifiableSet(s);
     user = callerUgi.getShortUserName();
     isSuper = user.equals(fsOwner) || groups.contains(supergroup);
