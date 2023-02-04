@@ -363,7 +363,7 @@ public class InMemoryINodeCache {
      * Checks that the key has not been invalidated before checking the contents of the cache.
      */
     public boolean containsKey(Object key) {
-        if (key == null)
+        if (key == null || !enabled)
             return false;
 
         _mutex.readLock().lock();
@@ -407,6 +407,8 @@ public class InMemoryINodeCache {
      * invalidated.
      */
     public boolean containsKeySkipInvalidCheck(String key) {
+        if (!enabled) return false;
+
         _mutex.readLock().lock();
         try {
             // Directly check if the cache itself contains the key.
