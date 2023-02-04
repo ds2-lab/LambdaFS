@@ -510,8 +510,8 @@ public class UserServer {
      * @throws IllegalStateException When the server has not yet been started.
      */
     public int getTcpPort() {
-        if (!started)
-            LOG.warn("User server has not been started yet. TCP port may not have been assigned.");
+        //if (!started)
+        //    LOG.warn("User server has not been started yet. TCP port may not have been assigned.");
 
         return this.tcpPort;
     }
