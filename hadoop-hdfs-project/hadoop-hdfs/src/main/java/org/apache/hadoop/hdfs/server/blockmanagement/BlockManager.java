@@ -3467,8 +3467,6 @@ public class BlockManager {
   
   
   private void processMisReplicatesAsync() throws InterruptedException, IOException {
-    LOG.info("Cache reads enabled: " + EntityContext.areMetadataCacheReadsEnabled());
-    LOG.info("Cache writes enabled: " + EntityContext.areMetadataCacheWritesEnabled());
     final AtomicLong nrInvalid = new AtomicLong(0);
     final AtomicLong nrOverReplicated = new AtomicLong(0);
     final AtomicLong nrUnderReplicated = new AtomicLong(0);
@@ -3556,73 +3554,72 @@ public class BlockManager {
     try {
       Slicer.slice(allINodes.size(), slicerBatchSize, slicerNbThreads, 
           ((FSNamesystem) namesystem).getFSOperationsExecutor(),
-          new Slicer.OperationHandler() {
-        @Override
-        public void handle(int startIndex, int endIndex)
-            throws Exception {
-          final List<INodeIdentifier> inodeIdentifiers = allINodes.subList(startIndex, endIndex);
+              (startIndex, endIndex) -> {
+                EntityManager.toggleMetadataCacheReads(false);
+                EntityManager.toggleMetadataCacheWrites(false);
 
-          final HopsTransactionalRequestHandler processMisReplicatedBlocksHandler = new HopsTransactionalRequestHandler(
-              HDFSOperationType.PROCESS_MIS_REPLICATED_BLOCKS_PER_INODE_BATCH) {
-            @Override
-            public void acquireLock(TransactionLocks locks) throws IOException {
-              LockFactory lf = LockFactory.getInstance();
-              locks.add(lf.getMultipleINodesLock(inodeIdentifiers, INodeLockType.WRITE))
-                  .add(lf.getSqlBatchedBlocksLock()).add(
-                  lf.getSqlBatchedBlocksRelated(BLK.RE, BLK.IV, BLK.CR, BLK.UR,
-                      BLK.ER));
+                final List<INodeIdentifier> inodeIdentifiers = allINodes.subList(startIndex, endIndex);
 
-            }
+                final HopsTransactionalRequestHandler processMisReplicatedBlocksHandler = new HopsTransactionalRequestHandler(
+                    HDFSOperationType.PROCESS_MIS_REPLICATED_BLOCKS_PER_INODE_BATCH) {
+                  @Override
+                  public void acquireLock(TransactionLocks locks) throws IOException {
+                    LockFactory lf = LockFactory.getInstance();
+                    locks.add(lf.getMultipleINodesLock(inodeIdentifiers, INodeLockType.WRITE))
+                        .add(lf.getSqlBatchedBlocksLock()).add(
+                        lf.getSqlBatchedBlocksRelated(BLK.RE, BLK.IV, BLK.CR, BLK.UR,
+                            BLK.ER));
 
-            @Override
-            public Object performTask() throws IOException {
-              for (INodeIdentifier inodeIdentifier : inodeIdentifiers) {
-                INode inode = EntityManager.find(INode.Finder.ByINodeIdFTIS,
-                        inodeIdentifier.getInodeId());
-                if(inode == null){
-                  LOG.info("Process misreplicated blocks File with ID: "+inodeIdentifier.getInodeId()+
-                          " not found. File is overritten or deleted");
-                  continue;
-                }
-                if(inode instanceof  INodeSymlink){
-                 continue;
-                }
-                for (BlockInfoContiguous block : ((INodeFile) inode).getBlocks()) {
-                  MisReplicationResult res = processMisReplicatedBlock(block);
-                  if (LOG.isTraceEnabled()) {
-                    LOG.trace("block " + block + ": " + res);
                   }
-                  switch (res) {
-                    case UNDER_REPLICATED:
-                      nrUnderReplicated.incrementAndGet();
-                      break;
-                    case OVER_REPLICATED:
-                      nrOverReplicated.incrementAndGet();
-                      break;
-                    case INVALID:
-                      nrInvalid.incrementAndGet();
-                      break;
-                    case POSTPONE:
-                      nrPostponed.incrementAndGet();
-                      postponeBlock(block);
-                      break;
-                    case UNDER_CONSTRUCTION:
-                      nrUnderConstruction.incrementAndGet();
-                      break;
-                    case OK:
-                      break;
-                    default:
-                      throw new AssertionError("Invalid enum value: " + res);
+
+                  @Override
+                  public Object performTask() throws IOException {
+                    for (INodeIdentifier inodeIdentifier : inodeIdentifiers) {
+                      INode inode = EntityManager.find(INode.Finder.ByINodeIdFTIS,
+                              inodeIdentifier.getInodeId());
+                      if(inode == null){
+                        LOG.info("Process misreplicated blocks File with ID: "+inodeIdentifier.getInodeId()+
+                                " not found. File is overritten or deleted");
+                        continue;
+                      }
+                      if(inode instanceof  INodeSymlink){
+                       continue;
+                      }
+                      for (BlockInfoContiguous block : ((INodeFile) inode).getBlocks()) {
+                        MisReplicationResult res = processMisReplicatedBlock(block);
+                        if (LOG.isTraceEnabled()) {
+                          LOG.trace("block " + block + ": " + res);
+                        }
+                        switch (res) {
+                          case UNDER_REPLICATED:
+                            nrUnderReplicated.incrementAndGet();
+                            break;
+                          case OVER_REPLICATED:
+                            nrOverReplicated.incrementAndGet();
+                            break;
+                          case INVALID:
+                            nrInvalid.incrementAndGet();
+                            break;
+                          case POSTPONE:
+                            nrPostponed.incrementAndGet();
+                            postponeBlock(block);
+                            break;
+                          case UNDER_CONSTRUCTION:
+                            nrUnderConstruction.incrementAndGet();
+                            break;
+                          case OK:
+                            break;
+                          default:
+                            throw new AssertionError("Invalid enum value: " + res);
+                        }
+                        totalProcessed.incrementAndGet();
+                      }
+                    }
+                    return null;
                   }
-                  totalProcessed.incrementAndGet();
-                }
-              }
-              return null;
-            }
-          };
-          processMisReplicatedBlocksHandler.handle(namesystem);
-        }
-      });
+                };
+                processMisReplicatedBlocksHandler.handle(namesystem);
+              });
     } catch (Exception ex) {
       throw new IOException(ex);
     }
