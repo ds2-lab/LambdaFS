@@ -3199,12 +3199,14 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   boolean completeFile(final String srcArg, final String holder,
       final ExtendedBlock last, final long fileId, final byte[] data) throws IOException {
+    EntityManager.toggleMetadataCacheWrites(false);
+
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
     HopsTransactionalRequestHandler completeFileHandler =
         new HopsTransactionalRequestHandler(HDFSOperationType.COMPLETE_FILE, src) {
           @Override
-          public void acquireLock(TransactionLocks locks) throws IOException {
+          public void acquireLock(TransactionLocks locks) {
             LockFactory lf = getInstance();
             if (fileId == HdfsConstantsClient.GRANDFATHER_INODE_ID) {
               // Older clients may not have given us an inode ID to work with.
@@ -3241,7 +3243,9 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           }
         };
 
-    return (Boolean) completeFileHandler.handle(this);
+    boolean result = (Boolean) completeFileHandler.handle(this);
+    EntityManager.toggleMetadataCacheWrites(true);
+    return result;
   }
 
   private boolean completeFileInternal(String src, String holder, Block last, long fileId,
