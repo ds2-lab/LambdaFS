@@ -1180,7 +1180,7 @@ class DataStreamer extends Daemon {
 
     //get a new datanode
     final DatanodeInfo[] original = nodes;
-    final LocatedBlock lb = dfsClient.namenode.getAdditionalDatanode(
+    final LocatedBlock lb = dfsClient.getNameNodeBasedOnTargetPath(src).getAdditionalDatanode(
         src, stat.getFileId(), block, nodes, storageIDs,
         failed.toArray(new DatanodeInfo[failed.size()]),
         1, dfsClient.clientName);
@@ -1347,7 +1347,7 @@ class DataStreamer extends Daemon {
       }
 
       // get a new generation stamp and an access token
-      LocatedBlock lb = dfsClient.namenode.updateBlockForPipeline(block, dfsClient.clientName);
+      LocatedBlock lb = dfsClient.getNameNodeBasedOnTargetPath(src).updateBlockForPipeline(block, dfsClient.clientName);
       newGS = lb.getBlock().getGenerationStamp();
       accessToken = lb.getBlockToken();
 
@@ -1397,7 +1397,7 @@ class DataStreamer extends Daemon {
       // update pipeline at the namenode
       ExtendedBlock newBlock = new ExtendedBlock(
           block.getBlockPoolId(), block.getBlockId(), block.getNumBytes(), newGS);
-      dfsClient.namenode.updatePipeline(dfsClient.clientName, block, newBlock,
+      dfsClient.getNameNodeBasedOnTargetPath(src).updatePipeline(dfsClient.clientName, block, newBlock,
           nodes, storageIDs);
       // update client side generation stamp
       block = newBlock;
@@ -1502,7 +1502,7 @@ class DataStreamer extends Daemon {
 
       if (!success) {
         LOG.info("Abandoning " + block);
-        dfsClient.namenode.abandonBlock(block, stat.getFileId(), src,
+        dfsClient.getNameNodeBasedOnTargetPath(src).abandonBlock(block, stat.getFileId(), src,
             dfsClient.clientName);
         block = null;
         LOG.info("Excluding datanode " + nodes[errorIndex]);
@@ -1693,7 +1693,7 @@ class DataStreamer extends Daemon {
       long localstart = Time.monotonicNow();
       while (true) {
         try {
-          return dfsClient.namenode.addBlock(src, dfsClient.clientName,
+          return dfsClient.getNameNodeBasedOnTargetPath(src).addBlock(src, dfsClient.clientName,
               block, excludedNodes, stat.getFileId(), favoredNodes);
         } catch (RemoteException e) {
           IOException ue =

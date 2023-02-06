@@ -22,11 +22,7 @@ import static org.apache.hadoop.crypto.key.KeyProvider.KeyVersion;
 import static org.apache.hadoop.crypto.key.KeyProviderCryptoExtension
     .EncryptedKeyVersion;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_CRYPTO_CODEC_CLASSES_KEY_PREFIX;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CACHE_DROP_BEHIND_READS;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CACHE_DROP_BEHIND_WRITES;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CACHE_READAHEAD;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CONTEXT;
-import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_CONTEXT_DEFAULT;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.*;
 
 import com.google.common.hash.Hashing;
 import io.hops.leader_election.node.ActiveNode;
@@ -249,6 +245,13 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       new DFSHedgedReadMetrics();
   private static ThreadPoolExecutor HEDGED_READ_THREAD_POOL;
 
+  /**
+   * If true, then we use consistent hashing to select a target NameNode for FS operations.
+   *
+   * If false, then we do things the "normal" way.
+   */
+  private final boolean metadataCacheEnabled;
+
   public DfsClientConf getConf() {
     return dfsClientConf;
   }
@@ -319,6 +322,8 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
         conf.get(DFSConfigKeys.DFS_CLIENT_XCEIVER_SOCKET_FACTORY_CLASS_KEY,
             DFSConfigKeys.DEFAULT_DFS_CLIENT_XCEIVER_FACTORY_CLASS));
     this.dtpReplaceDatanodeOnFailure = ReplaceDatanodeOnFailure.get(conf);
+
+    this.metadataCacheEnabled = conf.getBoolean(METADATA_CACHE_ENABLED, METADATA_CACHE_ENABLED_DEFAULT);
 
     this.ugi = UserGroupInformation.getCurrentUser();
     this.latency = new DescriptiveStatistics();
@@ -419,10 +424,14 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
       TrustedChannelResolver.getInstance(conf), nnFallbackToSimpleAuth);
   }
 
-  private ClientProtocol getNameNodeBasedOnTargetPath(String target) {
-    int idx = consistentHash(Hashing.md5().hashUnencodedChars(DFSUtil.extractParentPath(target)), allNNs.size());
+  protected ClientProtocol getNameNodeBasedOnTargetPath(String target) {
+    if (metadataCacheEnabled) {
+      int idx = consistentHash(Hashing.md5().hashUnencodedChars(DFSUtil.extractParentPath(target)), allNNs.size());
 
-    return allNNs.get(idx);
+      return allNNs.get(idx);
+    } else {
+      return namenode;
+    }
   }
 
   /**

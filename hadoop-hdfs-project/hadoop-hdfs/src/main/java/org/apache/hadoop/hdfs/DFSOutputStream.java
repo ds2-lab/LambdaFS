@@ -243,7 +243,7 @@ public class DFSOutputStream extends FSOutputSummer
       while (shouldRetry) {
         shouldRetry = false;
         try {
-          stat = dfsClient.namenode.create(src, masked, dfsClient.clientName,
+          stat = dfsClient.getNameNodeBasedOnTargetPath(src).create(src, masked, dfsClient.clientName,
               new EnumSetWritable<CreateFlag>(flag), createParent, replication,
               blockSize, SUPPORTED_CRYPTO_VERSIONS, policy);
           break;
@@ -692,7 +692,7 @@ public class DFSOutputStream extends FSOutputSummer
       // namenode.
       if (streamer.getPersistBlocks().getAndSet(false) || updateLength) {
         try {
-          dfsClient.namenode.fsync(src, fileId, dfsClient.clientName,
+          dfsClient.getNameNodeBasedOnTargetPath(src).fsync(src, fileId, dfsClient.clientName,
               lastBlockLength);
         } catch (IOException ioe) {
           DFSClient.LOG.warn("Unable to persist blocks in hflush for " + src, ioe);
@@ -932,7 +932,7 @@ public class DFSOutputStream extends FSOutputSummer
 
     try {
       fileComplete =
-              dfsClient.namenode.complete(src, dfsClient.clientName, last, fileId, data);
+              dfsClient.getNameNodeBasedOnTargetPath(src).complete(src, dfsClient.clientName, last, fileId, data);
     } catch (RemoteException e) {
       IOException nonRetirableExceptions =
               e.unwrapRemoteException(NSQuotaExceededException.class,
