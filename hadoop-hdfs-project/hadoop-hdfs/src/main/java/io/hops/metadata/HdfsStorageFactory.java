@@ -98,6 +98,8 @@ public class HdfsStorageFactory {
   }
 
   public static void setConfiguration(Configuration conf) throws IOException {
+    LOG.info("`HdfsStorageFactory.setConfiguration() called...");
+
     IDsMonitor.getInstance().setConfiguration(conf);
     Cache.getInstance(conf);
     LockFactory.getInstance().setConfiguration(conf);
@@ -113,12 +115,17 @@ public class HdfsStorageFactory {
             .getBoolean(DFSConfigKeys.DFS_TRANSACTION_STATS_DETAILED_ENABLED,
                 DFSConfigKeys.DFS_TRANSACTION_STATS_DETAILED_ENABLED_DEFAULT));
     if (!isDALInitialized) {
+      LOG.info("Initializing Data Access Layer (DAL) now...");
+
       HdfsVariables.registerDefaultValues(conf);
-      addToClassPath(conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,
-          DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT));
-      dStorageFactory = DalDriver.load(
-          conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS,
-              DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS_DEFAULT));
+      String metadataDalJarPath = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE,
+              DFSConfigKeys.DFS_STORAGE_DRIVER_JAR_FILE_DEFAULT);
+      LOG.info("Adding the hops-metadata-dal-impl JAR to classpath. Path: " + metadataDalJarPath);
+      addToClassPath(metadataDalJarPath);
+      String dfsStorageDriverClass = conf.get(DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS,
+              DFSConfigKeys.DFS_STORAGE_DRIVER_CLASS_DEFAULT);
+      LOG.info("Attempting to load DFS storage driver class: " + dfsStorageDriverClass);
+      dStorageFactory = DalDriver.load(dfsStorageDriverClass);
       dStorageFactory.setConfiguration(getMetadataClusterConfiguration(conf));
       initDataAccessWrappers();
       EntityManager.addContextInitializer(getContextInitializer());
@@ -133,6 +140,8 @@ public class HdfsStorageFactory {
           .HOPS_UG_CACHE_SIZE_DEFUALT));
       
       isDALInitialized = true;
+    } else {
+      LOG.info("DAL is already initialized.");
     }
   }
 
