@@ -3396,12 +3396,12 @@ public class BlockManager {
       excessReplicateMap.clear();
     }
     replicationQueuesInitializer = new Daemon() {
-      
       @Override
       public void run() {
         try {
-          EntityContext.toggleMetadataCacheReads(false);
-          EntityContext.toggleMetadataCacheWrites(false);
+          EntityManager.toggleMetadataCacheReads(false);
+          EntityManager.toggleMetadataCacheWrites(false);
+          LOG.info("Disabled metadata cache reads and writes in the 'processMisReplicatedBlocks' Daemon.");
         } catch (Exception ex) {
           LOG.error("Async mis-replicated blocks processor failed to disable metadata cache reads and writes.");
         }
@@ -3467,6 +3467,8 @@ public class BlockManager {
   
   
   private void processMisReplicatesAsync() throws InterruptedException, IOException {
+    LOG.info("Cache reads enabled: " + EntityContext.areMetadataCacheReadsEnabled());
+    LOG.info("Cache writes enabled: " + EntityContext.areMetadataCacheWritesEnabled());
     final AtomicLong nrInvalid = new AtomicLong(0);
     final AtomicLong nrOverReplicated = new AtomicLong(0);
     final AtomicLong nrUnderReplicated = new AtomicLong(0);
