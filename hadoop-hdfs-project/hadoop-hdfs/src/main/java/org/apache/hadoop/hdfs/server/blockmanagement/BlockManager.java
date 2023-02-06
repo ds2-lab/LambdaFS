@@ -36,6 +36,7 @@ import io.hops.metadata.hdfs.entity.INodeIdentifier;
 import io.hops.metadata.hdfs.entity.MisReplicatedRange;
 import io.hops.metadata.security.token.block.NameNodeBlockTokenSecretManager;
 import io.hops.transaction.EntityManager;
+import io.hops.transaction.context.EntityContext;
 import io.hops.transaction.handler.HDFSOperationType;
 import io.hops.transaction.handler.HopsTransactionalRequestHandler;
 import io.hops.transaction.handler.LightWeightRequestHandler;
@@ -3398,6 +3399,12 @@ public class BlockManager {
       
       @Override
       public void run() {
+        try {
+          EntityContext.toggleMetadataCacheReads(false);
+          EntityContext.toggleMetadataCacheWrites(false);
+        } catch (Exception ex) {
+          LOG.error("Async mis-replicated blocks processor failed to disable metadata cache reads and writes.");
+        }
         try {
           processMisReplicatesAsync();
         } catch (InterruptedException ie) {
