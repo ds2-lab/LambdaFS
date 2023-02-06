@@ -879,6 +879,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   }
 
   NamespaceInfo getNamespaceInfo() throws IOException {
+    EntityManager.toggleMetadataCacheReads(true);
+
     return unprotectedGetNamespaceInfo();
   }
 
@@ -949,6 +951,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   void setPermission(String src, FsPermission permission) throws IOException {
     HdfsFileStatus auditStat;
+    EntityManager.toggleMetadataCacheReads(false);
+
     try {
       checkNameNodeSafeMode("Cannot set permission for " + src);
       auditStat = FSDirAttrOp.setPermission(dir, src, permission);
@@ -966,6 +970,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   void setOwner(String src, String username, String group)
       throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     HdfsFileStatus auditStat;
     try {
       checkNameNodeSafeMode("Cannot set owner for " + src);
@@ -997,6 +1003,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   public LocatedBlocks getBlockLocations(final String clientMachine, final String srcArg,
       final long offset, final long length) throws IOException {
+    EntityManager.toggleMetadataCacheReads(true);
 
     if (LOG.isDebugEnabled()) LOG.debug("FSNamesystem::getBlockLocations() called!");
 
@@ -1267,6 +1274,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * @throws IOException
    */
   void concat(final String target, final String[] srcs) throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
 
     checkNameNodeSafeMode("Cannot concat " + target);
     HdfsFileStatus stat = null;
@@ -1353,6 +1361,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
 
   void setMetaStatus(final String srcArg, final MetaStatus metaStatus)
       throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     final FSPermissionChecker pc = getPermissionChecker();
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(pc, srcArg, pathComponents);
@@ -1494,6 +1504,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
                    String clientName, String clientMachine,
                    long mtime)
       throws IOException, UnresolvedLinkException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     boolean ret;
     try {
       ret = truncateInt(src, newLength, clientName, clientMachine, mtime);
@@ -1830,6 +1842,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       final EnumSet<CreateFlag> flag, final boolean createParent,
       final short replication, final long blockSize,
       final CryptoProtocolVersion[] supportedVersions) throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
     
     HdfsFileStatus stat = null;
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
@@ -2437,6 +2450,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   LastBlockWithStatus appendFile(final String src, final String holder,
       final String clientMachine, EnumSet<CreateFlag> flag)
       throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     try{
       return appendFileHopFS(src, holder, clientMachine,
           flag.contains(CreateFlag.NEW_BLOCK));
@@ -2649,6 +2664,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   LocatedBlock getAdditionalBlock(final String srcArg, final long fileId, final String clientName,
       final ExtendedBlock previous, final Set<Node> excludedNodes,
       final List<String> favoredNodes) throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     final LocatedBlock[] onRetryBlock = new LocatedBlock[1];
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
@@ -3070,6 +3087,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   boolean abandonBlock(final ExtendedBlock b, final long fileId, final String srcArg,
       final String holder) throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     byte[][] pathComponents = FSDirectory.getPathComponentsForReservedPath(srcArg);
     final String src = dir.resolvePath(getPermissionChecker(), srcArg, pathComponents);
     HopsTransactionalRequestHandler abandonBlockHandler =
@@ -3244,6 +3263,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
         };
 
     boolean result = (Boolean) completeFileHandler.handle(this);
+
+    // Because reads are disabled, NNs have to resolve full paths using NDB when updating the cache during
+    // the `complete` operation. This results in tons of deadlocks though as lots of locks are held...
+    // So, just don't update the cache. Update it on a future read.
     EntityManager.toggleMetadataCacheWrites(true);
     return result;
   }
@@ -3443,6 +3466,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   @Deprecated
   boolean renameTo(String src, String dst)
       throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     //only for testing
     saveTimes();
     boolean ret = false;
@@ -3460,6 +3485,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   void renameTo(final String src, final String dst,
                 Options.Rename... options)
       throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     //only for testing
     saveTimes();
     Map.Entry<BlocksMapUpdateInfo, HdfsFileStatus> res = null;
@@ -3486,6 +3513,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   public boolean delete(String src, boolean recursive)
       throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     //only for testing
     saveTimes();
     
@@ -3566,6 +3595,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   public HdfsFileStatus getFileInfo(final String src, final boolean resolveLink)
       throws IOException {
+    EntityManager.toggleMetadataCacheReads(true);
+
     HdfsFileStatus stat = null;
     try {
       stat = FSDirStatAndListingOp.getFileInfo(dir, src, resolveLink);
@@ -3583,6 +3614,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   boolean isFileClosed(final String src)
       throws AccessControlException, UnresolvedLinkException,
       StandbyException, IOException {
+    EntityManager.toggleMetadataCacheReads(true);
+
     try {
       return FSDirStatAndListingOp.isFileClosed(dir, src);
     } catch (AccessControlException e) {
@@ -3596,6 +3629,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   boolean mkdirs(String src, PermissionStatus permissions,
       boolean createParent) throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     HdfsFileStatus auditStat = null;
     try {
       checkNameNodeSafeMode("Cannot create directory " + src);
@@ -4176,6 +4211,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * Renew the lease(s) held by the given client
    */
   void renewLease(final String holder) throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     new HopsTransactionalRequestHandler(HDFSOperationType.RENEW_LEASE) {
       @Override
       public void acquireLock(TransactionLocks locks) throws IOException {
@@ -4212,6 +4249,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   DirectoryListing getListing(final String src, byte[] startAfter,
       final boolean needLocation)
       throws IOException {
+    EntityManager.toggleMetadataCacheReads(true);
+
     DirectoryListing dl = null;
     try {
       dl = FSDirStatAndListingOp.getListingInt(dir, src, startAfter,
@@ -4463,6 +4502,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    * @see ClientProtocol#getStats()
    */
   long[] getStats() throws IOException {
+    EntityManager.toggleMetadataCacheReads(true);
+
     final long[] stats = datanodeStatistics.getStats();
     stats[ClientProtocol.GET_STATS_UNDER_REPLICATED_IDX] = getUnderReplicatedBlocks();
     stats[ClientProtocol.GET_STATS_CORRUPT_BLOCKS_IDX] = getCorruptReplicaBlocks();
@@ -5876,6 +5917,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
    */
   LocatedBlock updateBlockForPipeline(final ExtendedBlock block,
       final String clientName) throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     HopsTransactionalRequestHandler updateBlockForPipelineHandler =
         new HopsTransactionalRequestHandler(
             HDFSOperationType.UPDATE_BLOCK_FOR_PIPELINE) {
@@ -5932,6 +5975,8 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   void updatePipeline(final String clientName, final ExtendedBlock oldBlock,
       final ExtendedBlock newBlock, final DatanodeID[] newNodes, final String[] newStorageIDs)
       throws IOException {
+    EntityManager.toggleMetadataCacheReads(false);
+
     new HopsTransactionalRequestHandler(HDFSOperationType.UPDATE_PIPELINE) {
       INodeIdentifier inodeIdentifier;
 
