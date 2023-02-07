@@ -330,7 +330,7 @@ public abstract class BaseINodeLock extends Lock {
   }
 
   @Override
-  protected final Type getType() {
+  public final Type getType() {
     return Type.INode;
   }
 

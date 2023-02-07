@@ -117,7 +117,7 @@ public final class LeasePathLock extends Lock {
   }
   
   @Override
-  protected final Type getType() {
+  public final Type getType() {
     return Type.LeasePath;
   }
 

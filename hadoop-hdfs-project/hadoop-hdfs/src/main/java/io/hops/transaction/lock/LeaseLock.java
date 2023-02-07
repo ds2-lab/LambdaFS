@@ -113,7 +113,7 @@ public final class LeaseLock extends Lock {
   }
 
   @Override
-  protected final Type getType() {
+  public final Type getType() {
     return Type.Lease;
   }
 
