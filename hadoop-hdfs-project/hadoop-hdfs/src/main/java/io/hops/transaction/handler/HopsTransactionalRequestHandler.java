@@ -39,11 +39,18 @@ public abstract class HopsTransactionalRequestHandler
   }
 
   @Override
+  protected final boolean consistencyProtocol(long txStartTime, TransactionAttempt attempt) throws IOException {
+    return true;
+  }
+
+  @Override
+  public void commitEvents() {}
+
+  @Override
   protected TransactionLockAcquirer newLockAcquirer() {
     return new HdfsTransactionalLockAcquirer();
   }
 
-  
   @Override
   protected Object execute(final Object namesystem) throws IOException {
 
