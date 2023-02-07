@@ -646,7 +646,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     boolean enableUpdates = (targetDeployment == deploymentNumber);
 
     if (LOG.isTraceEnabled())
-      LOG.debug("Target path '" + target + "' has parent '" + parentOfTargetPath +
+      LOG.trace("Target path '" + target + "' has parent '" + parentOfTargetPath +
               "'. Parent consistently hashed to deployment " + targetDeployment +
               ". Cache updates will be " + (enableUpdates ? "ENABLED." : "DISABLED."));
 
