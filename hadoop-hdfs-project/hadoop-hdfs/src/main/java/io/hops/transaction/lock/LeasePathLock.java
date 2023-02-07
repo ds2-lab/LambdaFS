@@ -56,7 +56,7 @@ public final class LeasePathLock extends Lock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     if (locks.containsLock(Type.NameNodeLease)) {
       NameNodeLeaseLock nameNodeLeaseLock =
           (NameNodeLeaseLock) locks.getLock(Type.NameNodeLease);

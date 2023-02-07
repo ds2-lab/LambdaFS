@@ -32,7 +32,7 @@ import java.util.List;
 public class LastBlockReplicasHashBucketLock extends Lock {
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     BlockLock blockLock = (BlockLock) locks.getLock(Type.Block);
     for (INodeFile iNodeFile : blockLock.getFiles()) {
       Block lastBlock = iNodeFile.getLastBlock();

@@ -42,7 +42,7 @@ public final class SubTreeOpLock extends Lock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     if (this.pathPrefix != null) {
       //Inodes for the pathPrefix have already been resolved
       //if the last component of the resolved path is a file then ignore  

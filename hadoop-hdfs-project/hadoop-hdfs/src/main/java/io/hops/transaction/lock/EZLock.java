@@ -26,7 +26,7 @@ import org.apache.hadoop.hdfs.server.namenode.INode;
 public class EZLock extends Lock {
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     BaseINodeLock inodeLock = (BaseINodeLock) locks.getLock(Type.INode);
     List<Long> inodeIds = new ArrayList<>();
     for (INode inode : inodeLock.getAllResolvedINodes()) {

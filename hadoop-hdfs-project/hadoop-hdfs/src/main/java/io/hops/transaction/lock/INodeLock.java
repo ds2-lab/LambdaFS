@@ -102,7 +102,7 @@ public class INodeLock extends BaseINodeLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     if (paths != null) {
       /*
        * Needs to be sorted in order to avoid deadlocks. Otherwise one transaction

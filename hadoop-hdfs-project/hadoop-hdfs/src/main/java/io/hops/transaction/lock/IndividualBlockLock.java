@@ -41,7 +41,7 @@ class IndividualBlockLock extends BaseIndividualBlockLock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     readBlock(blockId, inodeId);
   }
 

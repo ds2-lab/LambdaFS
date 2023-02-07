@@ -32,7 +32,7 @@ public class IndividualAceLock extends Lock {
   }
   
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     setLockMode(TransactionLockTypes.LockType.WRITE);
     if (EntityManager.find(Ace.Finder.ByInodeIdAndIndices, inodeId, id) == null){
       EntityManager.update(new Ace(inodeId, id));

@@ -33,7 +33,7 @@ abstract class BatchedBlocksRelatedLock extends Lock {
   }
 
   @Override
-  protected void acquire(TransactionLocks locks) throws IOException {
+  public void acquire(TransactionLocks locks) throws IOException {
     Lock blockLock = locks.getLock(Type.Block);
     if (blockLock instanceof BatchedBlockLock) {
       Pair<int[], long[]> inodeBlockIds =
