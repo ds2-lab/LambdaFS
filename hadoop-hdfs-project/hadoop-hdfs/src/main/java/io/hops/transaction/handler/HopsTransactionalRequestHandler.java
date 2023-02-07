@@ -15,6 +15,7 @@
  */
 package io.hops.transaction.handler;
 
+import io.hops.metrics.TransactionAttempt;
 import io.hops.transaction.TransactionInfo;
 import io.hops.transaction.lock.HdfsTransactionalLockAcquirer;
 import io.hops.transaction.lock.TransactionLockAcquirer;
