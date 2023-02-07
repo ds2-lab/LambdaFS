@@ -59,7 +59,7 @@ public class LastBlockReplicasHashBucketLock extends Lock {
   }
   
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.HashBucket;
   }
 }

@@ -38,7 +38,7 @@ public class HashBucketLock extends Lock {
   }
 
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.HashBucket;
   }
 }

@@ -61,7 +61,7 @@ public class CachePoolLock extends Lock {
   }
 
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.cachePool;
   }
 }

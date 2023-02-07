@@ -54,7 +54,7 @@ abstract class BatchedBlocksRelatedLock extends Lock {
     }
 
     @Override
-    protected Type getType() {
+    public Type getType() {
       return Type.InvalidatedBlock;
     }
   }*/

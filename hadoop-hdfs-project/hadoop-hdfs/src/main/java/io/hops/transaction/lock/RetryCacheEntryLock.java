@@ -58,7 +58,7 @@ public class RetryCacheEntryLock extends Lock {
   }
 
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.retryCachEntry;
   }
 }

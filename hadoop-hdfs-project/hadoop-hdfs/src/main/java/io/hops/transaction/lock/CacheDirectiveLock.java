@@ -84,7 +84,7 @@ public class CacheDirectiveLock extends Lock {
   }
 
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.cacheDirective;
   }
   

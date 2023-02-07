@@ -40,7 +40,7 @@ public class AcesLock extends Lock {
   }
   
   @Override
-  protected Type getType() {
+  public Type getType() {
     return Type.Ace;
   }
 }
