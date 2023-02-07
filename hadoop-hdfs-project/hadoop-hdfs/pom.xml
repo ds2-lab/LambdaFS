@@ -53,6 +53,11 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>io.hops.metadata</groupId>
+      <artifactId>hops-metadata-dal</artifactId>
+      <type>jar</type>
+    </dependency>
+    <dependency>
       <groupId>io.hops</groupId>
       <artifactId>hadoop-auth</artifactId>
       <scope>provided</scope>
