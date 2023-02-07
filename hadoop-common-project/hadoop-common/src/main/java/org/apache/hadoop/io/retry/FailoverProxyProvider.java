@@ -30,7 +30,7 @@ import org.apache.hadoop.classification.InterfaceStability;
  */
 @InterfaceStability.Evolving
 public interface FailoverProxyProvider<T> extends Closeable {
-  static class ProxyInfo<T> {
+  class ProxyInfo<T> {
     public T proxy;
     /*
      * The information (e.g., the IP address) of the current proxy object. It
