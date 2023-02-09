@@ -729,7 +729,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
             if (result.getException() != null) {
                 LOG.error("NameNode encountered " + result.getException().getClass().getSimpleName() +
-                        " while executing task " + requestId + " (operation=" + operationName + ").");
+                        " while executing task " + requestId + " (operation=" + operationName + "): ", result.getException());
 
                 if (result.getException() instanceof FileNotFoundException)
                     throw (FileNotFoundException)result.getException();
@@ -998,7 +998,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     InvokerUtilities.base64StringToObject(response.getAsJsonPrimitive(EXCEPTION).getAsString());
 
             LOG.error("NameNode encountered " + ex.getClass().getSimpleName() +
-                    " while executing task " + requestId + " (operation=" + operationName + ").");
+                    " while executing task " + requestId + " (operation=" + operationName + "): ", ex);
 
             if (ex instanceof FileNotFoundException)
                 throw (FileNotFoundException)ex;
