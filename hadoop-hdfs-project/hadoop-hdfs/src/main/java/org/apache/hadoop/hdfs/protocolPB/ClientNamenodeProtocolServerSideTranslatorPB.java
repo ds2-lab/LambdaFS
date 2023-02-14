@@ -185,6 +185,7 @@ import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.SetXAttrRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.SetXAttrResponseProto;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
+import org.apache.hadoop.hdfs.server.namenode.metrics.GarbageCollectionInfo;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.proto.SecurityProtos.CancelDelegationTokenRequestProto;
@@ -411,11 +412,9 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
   RpcController controller, GetAbsoluteGCInfoRequestProto req)
           throws ServiceException {
     try {
-      HashMap<String, Long> result = server.getAbsoluteGCInformation();
+      GarbageCollectionInfo result = server.getAbsoluteGCInformation();
       return GetAbsoluteGCInfoResponseProto.newBuilder()
-              .
-      return GetServerDefaultsResponseProto.newBuilder()
-              .setServerDefaults(PBHelper.convert(result)).build();
+              .setGcInfo(PBHelper.convert(result)).build();
     } catch (IOException e) {
       throw new ServiceException(e);
     }
@@ -426,9 +425,9 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
           RpcController controller, GetRelativeGCInfoRequestProto req)
           throws ServiceException {
     try {
-      HashMap<String, Long> result = server.getRelativeGCInformation();
-      return GetServerDefaultsResponseProto.newBuilder()
-              .setServerDefaults(PBHelper.convert(result)).build();
+      GarbageCollectionInfo result = server.getRelativeGCInformation();
+      return GetRelativeGCInfoResponseProto.newBuilder()
+              .setGcInfo(PBHelper.convert(result)).build();
     } catch (IOException e) {
       throw new ServiceException(e);
     }
