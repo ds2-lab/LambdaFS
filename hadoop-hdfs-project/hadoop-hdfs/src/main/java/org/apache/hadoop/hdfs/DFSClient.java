@@ -60,6 +60,7 @@ import javax.net.SocketFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.util.Pair;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.CipherSuite;
@@ -1248,12 +1249,26 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     }
   }
 
-  public GarbageCollectionInfo getRelativeGCInformation() throws IOException {
-    return namenode.getRelativeGCInformation();
+  public Pair<Long, DescriptiveStatistics> getRelativeGCInformation() throws IOException {
+    DescriptiveStatistics gcTime = new DescriptiveStatistics();
+    long totalNumberOfGCs = 0;
+    for (ClientProtocol namenode : allNNs) {
+      GarbageCollectionInfo info = namenode.getRelativeGCInformation();
+      totalNumberOfGCs += info.getNumGCs();
+      gcTime.addValue(info.getGcTimeMs());
+    }
+    return new Pair<>(totalNumberOfGCs, gcTime);
   }
 
-  public GarbageCollectionInfo getAbsoluteGCInformation() throws IOException {
-    return namenode.getAbsoluteGCInformation();
+  public Pair<Long, DescriptiveStatistics> getAbsoluteGCInformation() throws IOException {
+    DescriptiveStatistics gcTime = new DescriptiveStatistics();
+    long totalNumberOfGCs = 0;
+    for (ClientProtocol namenode : allNNs) {
+      GarbageCollectionInfo info = namenode.getAbsoluteGCInformation();
+      totalNumberOfGCs += info.getNumGCs();
+      gcTime.addValue(info.getGcTimeMs());
+    }
+    return new Pair<>(totalNumberOfGCs, gcTime);
   }
 
   /**

@@ -22,6 +22,7 @@ import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
 import io.hops.metadata.hdfs.entity.MetaStatus;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.util.Pair;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -704,11 +705,11 @@ public class DistributedFileSystem extends FileSystem {
     }
   }
 
-  public GarbageCollectionInfo getAbsoluteGCInformation() throws IOException {
+  public Pair<Long, DescriptiveStatistics> getAbsoluteGCInformation() throws IOException {
     return dfs.getAbsoluteGCInformation();
   }
 
-  public GarbageCollectionInfo getRelativeGCInformation() throws IOException {
+  public Pair<Long, DescriptiveStatistics> getRelativeGCInformation() throws IOException {
     return dfs.getRelativeGCInformation();
   }
 
