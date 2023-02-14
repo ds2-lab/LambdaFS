@@ -24,7 +24,8 @@ import io.hops.leader_election.node.SortedActiveNodeListPBImpl;
 import io.hops.leader_election.proto.ActiveNodeProtos;
 import io.hops.metadata.hdfs.entity.EncodingPolicy;
 import io.hops.metadata.hdfs.entity.EncodingStatus;
-import java.util.EnumSet;
+
+import java.util.*;
 
 
 import com.google.common.collect.Lists;
@@ -153,6 +154,7 @@ import org.apache.hadoop.hdfs.protocol.proto.XAttrProtos.SetXAttrRequestProto;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.namenode.NotReplicatedYetException;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
+import org.apache.hadoop.hdfs.server.namenode.metrics.GarbageCollectionInfo;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.Text;
@@ -171,9 +173,7 @@ import org.apache.hadoop.security.token.Token;
 import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
 import org.apache.hadoop.hdfs.protocol.CachePoolEntry;
@@ -1052,7 +1052,26 @@ public class ClientNamenodeProtocolTranslatorPB
   public Object getUnderlyingProxyObject() {
     return rpcProxy;
   }
-  
+
+  @Override
+  public GarbageCollectionInfo getRelativeGCInformation() throws IOException {
+    GetRelativeGCInfoRequestProto requestProto = GetRelativeGCInfoRequestProto.newBuilder().build();
+    try {
+      return PBHelper.convert(rpcProxy.getRelativeGCInformation(null, requestProto));
+    } catch (ServiceException e) {
+      throw ProtobufHelper.getRemoteException(e);
+    }
+  }
+
+  @Override
+  public GarbageCollectionInfo getAbsoluteGCInformation() throws IOException {
+    GetAbsoluteGCInfoRequestProto requestProto = GetAbsoluteGCInfoRequestProto.newBuilder().build();
+    try {
+      return PBHelper.convert(rpcProxy.getAbsoluteGCInformation(null, requestProto));
+    } catch (ServiceException e) {
+      throw ProtobufHelper.getRemoteException(e);
+    }
+  }
 
   @Override
   public void ping() throws IOException {

@@ -102,6 +102,10 @@ import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetLis
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetListingResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetPreferredBlockSizeRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetPreferredBlockSizeResponseProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetAbsoluteGCInfoRequestProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetAbsoluteGCInfoResponseProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetRelativeGCInfoRequestProto;
+import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetRelativeGCInfoResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetServerDefaultsRequestProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.GetServerDefaultsResponseProto;
 import org.apache.hadoop.hdfs.protocol.proto.ClientNamenodeProtocolProtos.IsFileClosedRequestProto;
@@ -192,6 +196,7 @@ import org.apache.hadoop.security.proto.SecurityProtos.RenewDelegationTokenRespo
 import org.apache.hadoop.security.token.Token;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import org.apache.hadoop.fs.BatchedRemoteIterator.BatchedEntries;
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
@@ -396,6 +401,34 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
           builder = ClientNamenodeProtocolProtos.GetBlockChecksumResponseProto
           .newBuilder().setChecksum(checksum);
       return builder.build();
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  @Override
+  public GetAbsoluteGCInfoResponseProto getAbsoluteGCInformation()(
+  RpcController controller, GetAbsoluteGCInfoRequestProto req)
+          throws ServiceException {
+    try {
+      HashMap<String, Long> result = server.getAbsoluteGCInformation();
+      return GetAbsoluteGCInfoResponseProto.newBuilder()
+              .
+      return GetServerDefaultsResponseProto.newBuilder()
+              .setServerDefaults(PBHelper.convert(result)).build();
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  @Override
+  public GetRelativeGCInfoResponseProto getRelativeGCInformation()(
+          RpcController controller, GetRelativeGCInfoRequestProto req)
+          throws ServiceException {
+    try {
+      HashMap<String, Long> result = server.getRelativeGCInformation();
+      return GetServerDefaultsResponseProto.newBuilder()
+              .setServerDefaults(PBHelper.convert(result)).build();
     } catch (IOException e) {
       throw new ServiceException(e);
     }

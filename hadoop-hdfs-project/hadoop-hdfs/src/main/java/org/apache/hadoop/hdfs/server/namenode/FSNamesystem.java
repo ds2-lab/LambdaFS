@@ -83,6 +83,7 @@ import org.apache.hadoop.hdfs.server.common.StorageInfo;
 import org.apache.hadoop.hdfs.server.namenode.INode.BlocksMapUpdateInfo;
 import org.apache.hadoop.hdfs.server.namenode.cache.MetadataCacheManager;
 import org.apache.hadoop.hdfs.server.namenode.metrics.FSNamesystemMBean;
+import org.apache.hadoop.hdfs.server.namenode.metrics.GarbageCollectionInfo;
 import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.*;
 import org.apache.hadoop.hdfs.server.namenode.startupprogress.StartupProgress.Counter;
@@ -122,6 +123,8 @@ import org.apache.log4j.AsyncAppender;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.eclipse.jetty.util.ajax.JSON;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
@@ -364,7 +367,10 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   private final int leaseCreationLockRows;
   
   private final short dbReplicationFactor;
-  
+
+  private long numGarbageCollections;
+  private long garbageCollectionTime;
+
   /**
    * Notify that loading of this FSDirectory is complete, and
    * it is imageLoaded for use
@@ -507,6 +513,20 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       this.isPermissionEnabled = conf.getBoolean(DFS_PERMISSIONS_ENABLED_KEY,
           DFS_PERMISSIONS_ENABLED_DEFAULT);
 
+      List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+      this.numGarbageCollections = 0L;
+      this.garbageCollectionTime = 0L;
+      for (GarbageCollectorMXBean mxBean : mxBeans) {
+        long count = mxBean.getCollectionCount();
+        long time  = mxBean.getCollectionTime();
+
+        if (count > 0)
+          this.numGarbageCollections += count;
+
+        if (time > 0)
+          this.garbageCollectionTime += time;
+      }
+
       blockPoolId = StorageInfo.getStorageInfoFromDB().getBlockPoolId();
       blockManager.setBlockPoolId(blockPoolId);
       hopSpecificInitialization(conf);
@@ -602,6 +622,65 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       close();
       throw e;
     }
+  }
+
+  /**
+   * Return a GarbageCollectionInfo instance which wraps two values, the number of GCs and the time (in ms) spent
+   * garbage collecting.
+   *
+   * Specifically, getRelativeGCInformation() returns the information relevant to the last time this method was called.
+   *
+   * At time T = 0, getRelativeGCInformation() will return 0 for both quantities.
+   *
+   * At time T = 10, perhaps 3 GCs have occurred since T = 0 (and therefore since the last call to `getRelativeGCInformation`),
+   * so calling `getRelativeGCInformation()` at time T = 10 will return 3 for "num-gcs".
+   *
+   * If at time T = 15, a total of 4 GCs have occurred, then a call to `getRelativeGCInformation()` will return 1, since
+   * 1 GC occurred between times T=10 and T=15 (and `getRelativeGCInformation()` was called at time T=10).
+   */
+  public GarbageCollectionInfo getRelativeGCInformation() {
+    long numGarbageCollectionsNow = 0L;
+    long garbageCollectionTimeNow = 0L;
+    List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+    for (GarbageCollectorMXBean mxBean : mxBeans) {
+      long count = mxBean.getCollectionCount();
+      long time  = mxBean.getCollectionTime();
+
+      if (count > 0)
+        numGarbageCollectionsNow += count;
+
+      if (time > 0)
+        garbageCollectionTimeNow += time;
+    }
+
+    long numberOfGCsSinceLastCall = numGarbageCollectionsNow - numGarbageCollections;
+    long timeSpentGCingSinceLastCall = garbageCollectionTimeNow - garbageCollectionTime;
+
+    GarbageCollectionInfo info = new GarbageCollectionInfo(numberOfGCsSinceLastCall, timeSpentGCingSinceLastCall);
+
+    // Update the baseline.
+    numGarbageCollections = numGarbageCollectionsNow;
+    garbageCollectionTime = garbageCollectionTimeNow;
+
+    return info;
+  }
+
+  public GarbageCollectionInfo getAbsoluteGCInformation() {
+    List<GarbageCollectorMXBean> mxBeans = ManagementFactory.getGarbageCollectorMXBeans();
+    long numGarbageCollectionsNow = 0L;
+    long garbageCollectionTimeNow = 0L;
+    for (GarbageCollectorMXBean mxBean : mxBeans) {
+      long count = mxBean.getCollectionCount();
+      long time  = mxBean.getCollectionTime();
+
+      if (count > 0)
+        numGarbageCollectionsNow += count;
+
+      if (time > 0)
+        garbageCollectionTimeNow += time;
+    }
+
+    return new GarbageCollectionInfo(numGarbageCollectionsNow, garbageCollectionTimeNow);
   }
 
   @VisibleForTesting

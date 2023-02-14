@@ -50,6 +50,7 @@ import org.apache.hadoop.hdfs.server.blockmanagement.BRLoadBalancingOverloadExce
 import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
 import org.apache.hadoop.hdfs.server.common.StorageInfo;
+import org.apache.hadoop.hdfs.server.namenode.metrics.GarbageCollectionInfo;
 import org.apache.hadoop.hdfs.server.namenode.metrics.NameNodeMetrics;
 import org.apache.hadoop.hdfs.server.namenode.web.resources.NamenodeWebHdfsMethods;
 import org.apache.hadoop.hdfs.server.protocol.*;
@@ -1572,6 +1573,16 @@ class NameNodeRpcServer implements NamenodeProtocols {
     checkNNStartup();
     namesystem.checkSuperuserPrivilege();
     nn.tracerConfigurationManager.removeSpanReceiver(id);
+  }
+
+  @Override
+  public GarbageCollectionInfo getAbsoluteGCInformation() {
+    return namesystem.getAbsoluteGCInformation();
+  }
+
+  @Override
+  public GarbageCollectionInfo getRelativeGCInformation() {
+    return namesystem.getRelativeGCInformation();
   }
   
   @Override

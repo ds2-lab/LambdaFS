@@ -136,6 +136,7 @@ import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
 import org.apache.hadoop.hdfs.server.namenode.ha.HopsConsistentHashingFailoverProxyProvider;
+import org.apache.hadoop.hdfs.server.namenode.metrics.GarbageCollectionInfo;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.IOUtils;
@@ -1245,6 +1246,14 @@ public class DFSClient implements java.io.Closeable, RemotePeerFactory,
     try (TraceScope ignored = newPathTraceScope("newDFSInputStream", src)) {
       return new DFSInputStream(this, src, verifyChecksum, dfsClientConf.getForceClientToWriteSFToDisk());
     }
+  }
+
+  public GarbageCollectionInfo getRelativeGCInformation() throws IOException {
+    return namenode.getRelativeGCInformation();
+  }
+
+  public GarbageCollectionInfo getAbsoluteGCInformation() throws IOException {
+    return namenode.getAbsoluteGCInformation();
   }
 
   /**

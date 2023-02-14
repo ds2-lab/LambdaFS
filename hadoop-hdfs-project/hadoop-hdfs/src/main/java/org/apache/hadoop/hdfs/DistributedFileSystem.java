@@ -69,6 +69,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
 import org.apache.hadoop.hdfs.security.token.block.InvalidBlockTokenException;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import org.apache.hadoop.hdfs.server.namenode.metrics.GarbageCollectionInfo;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.Credentials;
@@ -82,11 +83,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveEntry;
 import org.apache.hadoop.hdfs.protocol.CacheDirectiveInfo;
@@ -706,6 +704,13 @@ public class DistributedFileSystem extends FileSystem {
     }
   }
 
+  public GarbageCollectionInfo getAbsoluteGCInformation() throws IOException {
+    return dfs.getAbsoluteGCInformation();
+  }
+
+  public GarbageCollectionInfo getRelativeGCInformation() throws IOException {
+    return dfs.getRelativeGCInformation();
+  }
 
   @SuppressWarnings("deprecation")
   @Override

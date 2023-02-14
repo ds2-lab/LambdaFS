@@ -675,6 +675,24 @@ message PingRequestProto { // empty request
 message PingResponseProto { // void response
 }
 
+message GarbageCollectionInfoProto {
+    required uint64 numGCs = 1;
+    required uint64 gcTimeMs = 2;
+}
+
+message GetAbsoluteGCInfoRequestProto { // empty request
+}
+
+message GetAbsoluteGCInfoResponseProto {
+    required GarbageCollectionInfoProto = 1;
+}
+
+message GetRelativeGCInfoRequestProto { // empty request
+}
+
+message GetRelativeGCInfoResponseProto {
+    required GarbageCollectionInfoProto = 1;
+}
 
 message ActiveNamenodeListRequestProto {
 }
@@ -904,6 +922,8 @@ service ClientNamenodeProtocol {
   rpc removeXAttr(RemoveXAttrRequestProto) returns(RemoveXAttrResponseProto);
   rpc getActiveNamenodesForClient (ActiveNamenodeListRequestProto) returns (ActiveNamenodeListResponseProto);
   rpc ping (PingRequestProto) returns (PingResponseProto);
+  rpc getRelativeGCInformation (GetRelativeGCInfoRequestProto) returns (GetRelativeGCInfoResponseProto);
+  rpc getAbsoluteGCInformation (GetAbsoluteGCInfoRequestProto) returns (GetAbsoluteGCInfoResponseProto);
   rpc getEncodingStatus (GetEncodingStatusRequestProto) returns (GetEncodingStatusResponseProto);
   rpc encodeFile (EncodeFileRequestProto) returns (EncodeFileResponseProto);
   rpc revokeEncoding (RevokeEncodingRequestProto) returns (RevokeEncodingResponseProto);

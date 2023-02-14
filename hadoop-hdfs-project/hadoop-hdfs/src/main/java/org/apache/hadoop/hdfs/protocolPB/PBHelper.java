@@ -49,6 +49,7 @@ import org.apache.hadoop.fs.permission.AclEntryScope;
 import org.apache.hadoop.fs.permission.AclEntryType;
 import org.apache.hadoop.fs.permission.AclStatus;
 import org.apache.hadoop.fs.permission.FsAction;
+import org.apache.hadoop.hdfs.server.namenode.metrics.GarbageCollectionInfo;
 import org.apache.hadoop.hdfs.server.protocol.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.protocol.Block;
@@ -2544,6 +2545,20 @@ public class PBHelper {
       builder.setRevoked(encodingStatus.getRevoked());
     }
     return builder.build();
+  }
+
+  public static ClientNamenodeProtocolProtos.GarbageCollectionInfoProto convert(
+          GarbageCollectionInfo garbageCollectionInfo) {
+    ClientNamenodeProtocolProtos.GarbageCollectionInfoProto.Builder builder =
+            ClientNamenodeProtocolProtos.GarbageCollectionInfoProto.newBuilder();
+    builder.setNumGCs(garbageCollectionInfo.getNumGCs());
+    builder.setGcTimeMs(garbageCollectionInfo.getGcTimeMs());
+    return builder.build();
+  }
+
+  public static GarbageCollectionInfo convert(ClientNamenodeProtocolProtos.GarbageCollectionInfoProto
+                                              garbageCollectionInfoProto) {
+    return new GarbageCollectionInfo(garbageCollectionInfoProto.getNumGCs(), garbageCollectionInfoProto.getGcTimeMs());
   }
 
   public static ClientNamenodeProtocolProtos.EncodingPolicyProto convert(

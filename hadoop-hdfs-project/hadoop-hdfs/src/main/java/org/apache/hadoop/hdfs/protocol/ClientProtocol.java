@@ -52,6 +52,7 @@ import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifie
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenSelector;
 import org.apache.hadoop.hdfs.server.namenode.NotReplicatedYetException;
 import org.apache.hadoop.hdfs.server.namenode.SafeModeException;
+import org.apache.hadoop.hdfs.server.namenode.metrics.GarbageCollectionInfo;
 import org.apache.hadoop.hdfs.server.protocol.DatanodeStorageReport;
 import org.apache.hadoop.io.EnumSetWritable;
 import org.apache.hadoop.io.Text;
@@ -64,6 +65,7 @@ import org.apache.hadoop.security.token.TokenInfo;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import org.apache.hadoop.fs.CacheFlag;
 import org.apache.hadoop.io.retry.AtMostOnce;
@@ -1357,7 +1359,12 @@ public interface ClientProtocol {
    */
   @Idempotent
   public DataEncryptionKey getDataEncryptionKey() throws IOException;
-  
+
+  @Idempotent
+  public GarbageCollectionInfo getAbsoluteGCInformation() throws IOException;
+
+  @AtMostOnce
+  public GarbageCollectionInfo getRelativeGCInformation() throws IOException;
 
   /**
    * Ping RPC to check if the namenode is alive
