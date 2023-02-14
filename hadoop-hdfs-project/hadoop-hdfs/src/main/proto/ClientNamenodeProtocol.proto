@@ -684,14 +684,14 @@ message GetAbsoluteGCInfoRequestProto { // empty request
 }
 
 message GetAbsoluteGCInfoResponseProto {
-    required GarbageCollectionInfoProto = 1;
+    required GarbageCollectionInfoProto gcInfo = 1;
 }
 
 message GetRelativeGCInfoRequestProto { // empty request
 }
 
 message GetRelativeGCInfoResponseProto {
-    required GarbageCollectionInfoProto = 1;
+    required GarbageCollectionInfoProto gcInfo = 1;
 }
 
 message ActiveNamenodeListRequestProto {
