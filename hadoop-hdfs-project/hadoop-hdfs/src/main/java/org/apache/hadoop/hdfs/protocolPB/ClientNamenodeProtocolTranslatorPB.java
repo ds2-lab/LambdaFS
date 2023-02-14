@@ -1061,7 +1061,7 @@ public class ClientNamenodeProtocolTranslatorPB
   public GarbageCollectionInfo getRelativeGCInformation() throws IOException {
     GetRelativeGCInfoRequestProto requestProto = GetRelativeGCInfoRequestProto.newBuilder().build();
     try {
-      return PBHelper.convert(rpcProxy.getRelativeGCInformation(null, requestProto));
+      return PBHelper.convert(rpcProxy.getRelativeGCInformation(null, requestProto).getGcInfo());
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }
@@ -1071,7 +1071,7 @@ public class ClientNamenodeProtocolTranslatorPB
   public GarbageCollectionInfo getAbsoluteGCInformation() throws IOException {
     GetAbsoluteGCInfoRequestProto requestProto = GetAbsoluteGCInfoRequestProto.newBuilder().build();
     try {
-      return PBHelper.convert(rpcProxy.getAbsoluteGCInformation(null, requestProto));
+      return PBHelper.convert(rpcProxy.getAbsoluteGCInformation(null, requestProto).getGcInfo());
     } catch (ServiceException e) {
       throw ProtobufHelper.getRemoteException(e);
     }
