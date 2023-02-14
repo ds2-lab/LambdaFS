@@ -408,8 +408,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
   }
 
   @Override
-  public GetAbsoluteGCInfoResponseProto getAbsoluteGCInformation()(
-  RpcController controller, GetAbsoluteGCInfoRequestProto req)
+  public GetAbsoluteGCInfoResponseProto getAbsoluteGCInformation(RpcController controller, GetAbsoluteGCInfoRequestProto req)
           throws ServiceException {
     try {
       GarbageCollectionInfo result = server.getAbsoluteGCInformation();
@@ -421,7 +420,7 @@ public class ClientNamenodeProtocolServerSideTranslatorPB
   }
 
   @Override
-  public GetRelativeGCInfoResponseProto getRelativeGCInformation()(
+  public GetRelativeGCInfoResponseProto getRelativeGCInformation(
           RpcController controller, GetRelativeGCInfoRequestProto req)
           throws ServiceException {
     try {
