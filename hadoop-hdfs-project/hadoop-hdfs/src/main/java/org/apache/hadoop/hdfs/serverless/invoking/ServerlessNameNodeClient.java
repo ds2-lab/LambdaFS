@@ -877,6 +877,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
                 numTcpRequestsAttempted++;
             }
+            catch (TcpRequestCancelledException ex) {
+                // We'll retry using TCP before falling back to HTTP.
+                numTcpRequestsAttempted++;
+            }
         }
 
         throw new IOException("Failed to successfully issue a TCP/UDP request for task " + requestId + " after " +
