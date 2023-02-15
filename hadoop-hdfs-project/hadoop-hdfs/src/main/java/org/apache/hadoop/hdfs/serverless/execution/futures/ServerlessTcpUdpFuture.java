@@ -49,8 +49,8 @@ public class ServerlessTcpUdpFuture extends ServerlessFuture<NameNodeResult> {
     public void cancel(String reason, boolean shouldRetry) throws InterruptedException {
         state = State.CANCELLED;
         resultQueue.put(CancelledResult.getInstance());
-        if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " +
-                operationName + ". Reason: " + reason);
+        if (LOG.isDebugEnabled())
+            LOG.debug("Cancelled future " + requestId + " for operation " + operationName + ". Reason: " + reason);
     }
 
     @Override

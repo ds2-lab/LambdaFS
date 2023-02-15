@@ -1095,7 +1095,8 @@ public class UserServer {
         List<ServerlessTcpUdpFuture> incompleteFutures = submittedFutures.get(nameNodeId);
 
         if (incompleteFutures == null) {
-            if (LOG.isDebugEnabled()) LOG.debug(serverPrefix + " There were no futures associated with now-closed connection to NN " + nameNodeId);
+            if (LOG.isDebugEnabled()) LOG.debug(serverPrefix +
+                    " There were no futures associated with now-closed connection to NN " + nameNodeId);
             return;
         }
 
@@ -1113,7 +1114,10 @@ public class UserServer {
 
         // Cancel each of the futures.
         for (ServerlessTcpUdpFuture future : incompleteFutures) {
-            if (LOG.isDebugEnabled()) LOG.debug("    " + serverPrefix + " Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(serverPrefix + " Cancelling future " + future.getRequestId() +
+                        " for operation " + future.getOperationName());
+            }
             try {
                 future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
             } catch (InterruptedException ex) {
