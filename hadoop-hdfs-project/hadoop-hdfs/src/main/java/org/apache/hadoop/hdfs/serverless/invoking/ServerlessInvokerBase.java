@@ -544,7 +544,7 @@ public abstract class ServerlessInvokerBase {
         //if (LOG.isDebugEnabled()) LOG.debug("Started async HTTP client.");
 
         int totalNumDeployments = numNormalAndWriteOnlyDeployments + numFaultTolerantDeployments;
-        outgoingRequests = new ArrayList<LinkedBlockingQueue<JsonObject>>(totalNumDeployments);
+        outgoingRequests = new ArrayList<>(totalNumDeployments);
 
         // Create an outgoing request queue for each deployment.
         for (int i = 0; i < totalNumDeployments; i++) {
@@ -608,7 +608,7 @@ public abstract class ServerlessInvokerBase {
      * @param targetDeployment The deployment to which this request is to be directed.
      */
     private void enqueueRequest(JsonObject requestArguments, int targetDeployment) {
-        outgoingRequests[targetDeployment].add(requestArguments);
+        outgoingRequests.get(targetDeployment).add(requestArguments);
     }
 
     public void setConsistencyProtocolEnabled(boolean enabled) {
