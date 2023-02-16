@@ -75,15 +75,15 @@ public class NuclioInvoker extends ServerlessInvokerBase {
         if (requestId == null) requestId = UUID.randomUUID().toString();
 
         JsonObject fsArgs = fileSystemOperationArguments.convertToJsonObject();
-        HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fsArgs));
+        // HttpPost request = new HttpPost(getFunctionUri(targetDeployment, fsArgs));
 
         return enqueueHttpRequestInt(operationName, nameNodeArgumentsJson, fsArgs, requestId,
                 targetDeployment, subtreeOperation);
     }
 
-    private String getFunctionUri(int targetDeployment, JsonObject fileSystemOperationArguments) {
-        throw new NotImplementedException("Needs to be updated.");
-    }
+//    private String getFunctionUri(int targetDeployment, JsonObject fileSystemOperationArguments) {
+//        throw new NotImplementedException("Needs to be updated.");
+//    }
 
     @Override
     public CloseableHttpAsyncClient getHttpClient() throws NoSuchAlgorithmException, KeyManagementException, CertificateException, KeyStoreException, IOReactorException {

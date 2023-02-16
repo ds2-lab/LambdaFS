@@ -165,9 +165,11 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
         if (totalNumRequestsBatched == 0)
             return;
 
+        int totalNumDeployments = numNormalAndWriteOnlyDeployments + numFaultTolerantDeployments;
+
         // We've created all the batches. Now we need to issue the requests.
         int totalNumBatchedRequestsIssued = 0;
-        for (int i = 0; i < numNormalAndWriteOnlyDeployments; i++) {
+        for (int i = 0; i < totalNumDeployments; i++) {
             List<JsonObject> deploymentBatches = batchedRequests.get(i);
 
             if (deploymentBatches.size() > 0) {

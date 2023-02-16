@@ -171,7 +171,7 @@ public abstract class ServerlessInvokerBase {
      * If these are enabled AND a value > 0 is specified for the number of fault tolerant deployments (in the
      * hdfs-site.xml configuration file), then this value will be non-zero.
      */
-    private int numFaultTolerantDeployments;
+    protected int numFaultTolerantDeployments;
 
     /**
      * Indicates whether this Invoker instance is used by a client/user. When false, indicates that this
