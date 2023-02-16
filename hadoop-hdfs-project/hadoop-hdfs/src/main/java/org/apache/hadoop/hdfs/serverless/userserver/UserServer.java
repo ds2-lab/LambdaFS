@@ -9,13 +9,11 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.exceptions.NoConnectionAvailableException;
-import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
@@ -66,7 +64,7 @@ public class UserServer {
      * Map from deployment number to the smallest NameNode ID.
      * We try to target write operations to this NameNode when possible.
      */
-    private final ConcurrentHashMap<Integer, Long> writeNameNodes;
+    // private final ConcurrentHashMap<Integer, Long> writeNameNodes;
 
     /**
      * Caches the active connections in lists per deployment.
@@ -123,7 +121,9 @@ public class UserServer {
     /**
      * Number of unique deployments.
      */
-    private final int totalNumberOfDeployments;
+    private final int numNormalAndWriteOnlyDeployments;
+
+    private final int numFaultTolerantDeployments;
 
     private static final Random rng = new Random();
 
@@ -196,7 +196,7 @@ public class UserServer {
         this.activeFutures = new ConcurrentHashMap<>();
         this.futureToNameNodeMapping = new ConcurrentHashMap<>();
         this.nameNodeIdToDeploymentMapping = new ConcurrentHashMap<>();
-        this.writeNameNodes = new ConcurrentHashMap<>();
+        // this.writeNameNodes = new ConcurrentHashMap<>();
         this.activeConnectionsPerDeployment = new ArrayList<>();
         //this.completedFutures = new ConcurrentHashMap<>();
         this.completedFutures = Caffeine.newBuilder()
@@ -209,8 +209,8 @@ public class UserServer {
                 .build();
         this.client = client;
 
-        int maxNumClients = conf.getInt(SERVERLESS_CLIENTS_PER_TCP_SERVER,
-                SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT);
+        // int maxNumClients = conf.getInt(SERVERLESS_CLIENTS_PER_TCP_SERVER,
+        //        SERVERLESS_CLIENTS_PER_TCP_SERVER_DEFAULT);
         int maxBufferSize = conf.getInt(SERVERLESS_TCP_MAX_BUFFER_SIZE, SERVERLESS_TCP_MAX_BUFFER_SIZE_DEFAULT);
 
         // If the configuration specifies a value <= 0, then all clients on this VM will use the same TCP server.
@@ -231,8 +231,10 @@ public class UserServer {
         // Read some options from config file.
         enabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
-        totalNumberOfDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
+        numNormalAndWriteOnlyDeployments = conf.getInt(DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS,
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        numFaultTolerantDeployments = conf.getBoolean(USE_FAULT_TOLERANT_DEPLOYMENTS, USE_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT) ?
+                conf.getInt(NUM_FAULT_TOLERANT_DEPLOYMENTS, NUM_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT) : 0;
 
 //        if (LOG.isDebugEnabled())
 //            LOG.debug("User server " + (enabled ? "ENABLED." : "DISABLED.") + " Running in " +
@@ -247,8 +249,9 @@ public class UserServer {
         //else
         //    LOG.debug("KryoNet Debug logging is DISABLED.");
 
+        int totalNumDeployments = numFaultTolerantDeployments + numNormalAndWriteOnlyDeployments;
         // Populate the active connections mapping with default, empty hash maps for each deployment.
-        for (int deployNum = 0; deployNum < totalNumberOfDeployments; deployNum++) {
+        for (int deployNum = 0; deployNum < totalNumDeployments; deployNum++) {
             activeConnectionsPerDeployment.add(new ConcurrentHashMap<>());
         }
 
@@ -778,7 +781,8 @@ public class UserServer {
         StringBuilder msg = new StringBuilder("Num Active Connections: " + numActiveConnections + ", Active Futures: " +
                 activeFutures.size() + ", Completed Futures: " + completedFutures.asMap().size() + ". ");
 
-        for (int deploymentNumber = 0; deploymentNumber < totalNumberOfDeployments; deploymentNumber++) {
+        int totalNumDeployments = numNormalAndWriteOnlyDeployments + numFaultTolerantDeployments;
+        for (int deploymentNumber = 0; deploymentNumber < totalNumDeployments; deploymentNumber++) {
             ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections = activeConnectionsPerDeployment.get(deploymentNumber);
             nnIds.addAll(deploymentConnections.keySet());
             msg.append("D ").append(deploymentNumber).append(": ").append(deploymentConnections.size()).append(", ");
