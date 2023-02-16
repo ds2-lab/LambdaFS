@@ -165,6 +165,16 @@ public abstract class ServerlessInvokerBase {
     protected int numWriteOnlyDeployments;
 
     /**
+     * If true, then L-MDS will expect there to be "fault tolerant deployments" with high action-level
+     * concurrency values. These deployments are used when falling back to HTTP from TCP to avoid prompting
+     * OpenWhisk to over-provision NameNodes.
+     *
+     * If these are enabled AND a value > 0 is specified for the number of fault tolerant deployments (in the
+     * hdfs-site.xml configuration file), then this value will be non-zero.
+     */
+    private int numFaultTolerantDeployments;
+
+    /**
      * Indicates whether this Invoker instance is used by a client/user. When false, indicates that this
      * Invoker is useb by a DataNode.
      */
@@ -492,11 +502,18 @@ public abstract class ServerlessInvokerBase {
             numReadWriteDeployments = 1;
             totalNumDeployments = 1;
             numWriteOnlyDeployments = 0;
+            numFaultTolerantDeployments = 0;
         }
         else {
             this.totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
             this.numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
             this.numReadWriteDeployments = this.totalNumDeployments - this.numWriteOnlyDeployments;
+
+            // If fault-tolerant deployments are enabled, then assign the value of the "num fault tolerant deployments"
+            // configuration parameter to the `numFaultTolerantDeployments` variable. Otherwise, assign 0.
+            // Fault-tolerant deployments are numbered after normal and write-only deployments.
+            numFaultTolerantDeployments = (conf.getBoolean(USE_FAULT_TOLERANT_DEPLOYMENTS, USE_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT)) ?
+                conf.getInt(NUM_FAULT_TOLERANT_DEPLOYMENTS, NUM_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT) : 0;
         }
 
         this.invokerIdentity = invokerIdentity;

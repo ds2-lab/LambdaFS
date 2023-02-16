@@ -467,6 +467,22 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final String NUMBER_OF_WRITE_ONLY_DEPLOYMENTS = "num.write-only.deployments";
   public static final int NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT = 0;
 
+  /**
+   * If true, then L-MDS will expect there to be "fault tolerant deployments" with high action-level
+   * concurrency values. These deployments are used when falling back to HTTP from TCP to avoid prompting
+   * OpenWhisk to over-provision NameNodes.
+   *
+   * Fault-tolerant deployments are numbered after normal and write-only deployments.
+   */
+  public static final String USE_FAULT_TOLERANT_DEPLOYMENTS = "serverless.use-fault-tolerant-deployments";
+  public static final boolean USE_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT = true;
+
+  /**
+   * Note that fault-tolerant deployments are numbered after normal and write-only deployments.
+   */
+  public static final String NUM_FAULT_TOLERANT_DEPLOYMENTS = "serverless.num-fault-tolerant-deployments";
+  public static final int NUM_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT = 2;
+
   /*for client failover api*/
   // format {ip:port, ip:port, ip:port} comma separated
   public static final String DFS_NAMENODES_RPC_ADDRESS_KEY = "dfs.namenodes.rpc.addresses";

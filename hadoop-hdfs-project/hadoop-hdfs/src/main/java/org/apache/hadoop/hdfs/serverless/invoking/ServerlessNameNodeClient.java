@@ -107,6 +107,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     /**
      * The total number of deployments, including write-only and mixed (read-write) deployments.
+     *
+     * Notably, this does NOT include fault-tolerant deployments.
      */
     private final int totalNumDeployments;
 
@@ -115,6 +117,16 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * totalNumDeployments - numWriteDeployments.
      */
     private final int numWriteOnlyDeployments;
+
+    /**
+     * If true, then L-MDS will expect there to be "fault tolerant deployments" with high action-level
+     * concurrency values. These deployments are used when falling back to HTTP from TCP to avoid prompting
+     * OpenWhisk to over-provision NameNodes.
+     *
+     * If these are enabled AND a value > 0 is specified for the number of fault tolerant deployments (in the
+     * hdfs-site.xml configuration file), then this value will be non-zero.
+     */
+    private int numFaultTolerantDeployments;
 
     /**
      * Flag that dictates whether TCP requests can be used to perform FS operations.
@@ -313,11 +325,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             totalNumDeployments = 1;
             numReadWriteDeployments = 1;
             numWriteOnlyDeployments = 0;
+            numFaultTolerantDeployments = 0;
         }
         else {
             this.totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
             this.numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
             this.numReadWriteDeployments = this.totalNumDeployments - this.numWriteOnlyDeployments;
+
+            // If fault-tolerant deployments are enabled, then assign the value of the "num fault tolerant deployments"
+            // configuration parameter to the `numFaultTolerantDeployments` variable. Otherwise, assign 0.
+            // Fault-tolerant deployments are numbered after normal and write-only deployments.
+            numFaultTolerantDeployments = (conf.getBoolean(USE_FAULT_TOLERANT_DEPLOYMENTS, USE_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT)) ?
+                    conf.getInt(NUM_FAULT_TOLERANT_DEPLOYMENTS, NUM_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT) : 0;
         }
 
 //        if (LOG.isDebugEnabled()) {
@@ -930,6 +949,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // Indicates whether a TCP request was submitted and subsequently got cancelled or otherwise failed.
         // Used for metrics and debugging.
         boolean tcpTriedAndFailed = false;
+        boolean httpTargetFaultTolerantDeployment = false;
 
         // Unique identifier of the request.
         String requestId = UUID.randomUUID().toString();
@@ -946,15 +966,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             try {
                 return trySubmitFsOperationViaTcp(targetDeployment, operationName, requestId, subtreeOperation,
                         opArguments, srcFileOrDirectory, writeOp);
-            } catch (NoConnectionAvailableException | TcpRequestCancelledException | IOException ex) {
-                // Handle exception, fallback to TCP.
+            } catch (NoConnectionAvailableException | IOException | TcpRequestCancelledException ex) {
+                // Fallback to TCP.
                 tcpTriedAndFailed = true;
+
+                if (ex instanceof TcpRequestCancelledException)
+                    httpTargetFaultTolerantDeployment = true;
             }
         }
 
         // If TCP is disabled, or if the TCP request failed for some reason, then issue an HTTP request instead.
         return submitFsOperationViaHttp(targetDeployment, operationName, requestId, subtreeOperation, opArguments,
-                tcpTriedAndFailed, srcFileOrDirectory);
+                tcpTriedAndFailed, srcFileOrDirectory, httpTargetFaultTolerantDeployment);
     }
 
     /**
@@ -969,13 +992,36 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      * @param tcpTriedAndFailed Indicates whether we tried issuing this request by TCP (and the TCP request
      *                          subsequently failed for whatever reason).
      * @param srcFileOrDirectory The target file/directory, if it exists and is available.
+     * @param httpTargetFaultTolerantDeployment We are falling back to HTTP because we lost our TCP connection to a
+     *                                          NameNode. This means that there could be a large volume of HTTP being
+     *                                          generated concurrently. So, we'll target the fault-tolerant deployments
+     *                                          to avoid over-provisioning standard NameNodes.
      * @return Object returned by the NameNode after performing the file system operation.
      */
     private Object submitFsOperationViaHttp(int targetDeployment, String operationName, String requestId,
                                             boolean subtreeOperation, ArgumentContainer opArguments,
-                                            boolean tcpTriedAndFailed, String srcFileOrDirectory)
+                                            boolean tcpTriedAndFailed, String srcFileOrDirectory,
+                                            boolean httpTargetFaultTolerantDeployment)
             throws IOException {
-        if (LOG.isTraceEnabled()) LOG.trace("Issuing HTTP request for request " + requestId + "(op=" + operationName + ")");
+        if (LOG.isTraceEnabled())
+            LOG.trace("Issuing HTTP request for request " + requestId + "(op=" + operationName + ")");
+
+        // If we're supposed to use a fault-tolerant deployment, then there had better be
+        // fault tolerant deployments available/enabled/provisioned in the first place.
+        if (httpTargetFaultTolerantDeployment && numFaultTolerantDeployments > 0) {
+            // First, generate a random fault-tolerant deployment to target.
+            int faultTolerantDeploymentIdx = rng.nextInt(numFaultTolerantDeployments);
+
+            // The actual numbering of fault-tolerant deployments begins after the normal and write-only
+            // deployments. So, add the randomly-generated index to the `totalNumDeployments` variable to
+            // get the real number of the target fault-tolerant deployment.
+            targetDeployment = totalNumDeployments + faultTolerantDeploymentIdx;
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Targeting fault-tolerant deployment " + faultTolerantDeploymentIdx +
+                        ", which is 'actually' numbered " + targetDeployment);
+            }
+        }
 
         long startTime = System.currentTimeMillis();
 
@@ -2287,11 +2333,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
     @Override
     public void prewarm(int numPingsPerThread, int numThreadsPerDeployment) throws IOException {
-        Thread[] threads = new Thread[totalNumDeployments * numThreadsPerDeployment];
-        CountDownLatch startLatch = new CountDownLatch(totalNumDeployments * numThreadsPerDeployment);
+        // We do pre-warm fault-tolerant deployments here.
+        // Fault-tolerant deployments are numbered after normal and write-only deployments.
+        int numDeploymentsToTarget = totalNumDeployments + numFaultTolerantDeployments;
+
+        Thread[] threads = new Thread[numDeploymentsToTarget * numThreadsPerDeployment];
+        CountDownLatch startLatch = new CountDownLatch(numDeploymentsToTarget * numThreadsPerDeployment);
 
         int counter = 0;
-        for (int deploymentNumber = 0; deploymentNumber < totalNumDeployments; deploymentNumber++) {
+        for (int deploymentNumber = 0; deploymentNumber < numDeploymentsToTarget; deploymentNumber++) {
             final int depNum = deploymentNumber;
             for (int j = 0; j < numThreadsPerDeployment; j++) {
                 Thread thread = new Thread(() -> {
