@@ -7,7 +7,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -168,7 +167,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
 
         // We've created all the batches. Now we need to issue the requests.
         int totalNumBatchedRequestsIssued = 0;
-        for (int i = 0; i < totalNumDeployments; i++) {
+        for (int i = 0; i < numNormalAndWriteOnlyDeployments; i++) {
             List<JsonObject> deploymentBatches = batchedRequests.get(i);
 
             if (deploymentBatches.size() > 0) {

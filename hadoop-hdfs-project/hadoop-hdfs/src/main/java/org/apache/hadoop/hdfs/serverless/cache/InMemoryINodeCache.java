@@ -90,11 +90,11 @@ public class InMemoryINodeCache {
     /**
      * The total number of deployments, including write-only and mixed (read-write) deployments.
      */
-    private final int totalNumDeployments;
+    private final int numNormalAndWriteOnlyDeployments;
 
     /**
      * The number of write-only deployments. The first write-only deployment can be calculated as
-     * totalNumDeployments - numWriteDeployments.
+     * numNormalAndWriteOnlyDeployments - numWriteDeployments.
      */
     private final int numWriteOnlyDeployments;
 
@@ -114,9 +114,9 @@ public class InMemoryINodeCache {
          * Maximum elements in INode cache.
          */
         int cacheCapacity = conf.getInt(SERVERLESS_METADATA_CACHE_CAPACITY, SERVERLESS_METADATA_CACHE_CAPACITY_DEFAULT);
-        this.totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+        this.numNormalAndWriteOnlyDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
         this.numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
-        this.numReadWriteDeployments = this.totalNumDeployments - this.numWriteOnlyDeployments;
+        this.numReadWriteDeployments = this.numNormalAndWriteOnlyDeployments - this.numWriteOnlyDeployments;
         this.idToFullPathMap = new ConcurrentHashMap<>(cacheCapacity, loadFactor);
         this.parentIdPlusLocalNameToFullPathMapping = new ConcurrentHashMap<>(cacheCapacity, loadFactor);
         this.deploymentNumber = deploymentNumber;

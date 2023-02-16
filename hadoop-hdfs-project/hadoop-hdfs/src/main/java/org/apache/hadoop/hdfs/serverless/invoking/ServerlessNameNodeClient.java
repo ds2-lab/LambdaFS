@@ -23,7 +23,6 @@ import org.apache.hadoop.fs.permission.AclStatus;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSClient;
-import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.security.token.block.DataEncryptionKey;
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier;
@@ -110,13 +109,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *
      * Notably, this does NOT include fault-tolerant deployments.
      */
-    private final int totalNumDeployments;
+    private final int numNormalAndWriteOnlyDeployments;
 
     /**
      * The number of write-only deployments. The first write-only deployment can be calculated as
-     * totalNumDeployments - numWriteDeployments.
+     * numNormalAndWriteOnlyDeployments - numWriteDeployments.
      */
     private final int numWriteOnlyDeployments;
+
+
 
     /**
      * If true, then L-MDS will expect there to be "fault tolerant deployments" with high action-level
@@ -322,15 +323,15 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // zkClient.connect();
 
         if (localMode) {
-            totalNumDeployments = 1;
+            numNormalAndWriteOnlyDeployments = 1;
             numReadWriteDeployments = 1;
             numWriteOnlyDeployments = 0;
             numFaultTolerantDeployments = 0;
         }
         else {
-            this.totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+            this.numNormalAndWriteOnlyDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
             this.numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
-            this.numReadWriteDeployments = this.totalNumDeployments - this.numWriteOnlyDeployments;
+            this.numReadWriteDeployments = this.numNormalAndWriteOnlyDeployments - this.numWriteOnlyDeployments;
 
             // If fault-tolerant deployments are enabled, then assign the value of the "num fault tolerant deployments"
             // configuration parameter to the `numFaultTolerantDeployments` variable. Otherwise, assign 0.
@@ -958,7 +959,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         if (srcArgument != null) {
             srcFileOrDirectory = (String)srcArgument;
             targetDeployment = getDeploymentForPath(srcFileOrDirectory, operationName,
-                    totalNumDeployments, numReadWriteDeployments);
+                    numNormalAndWriteOnlyDeployments, numReadWriteDeployments);
         }
 
         // If tcpEnabled is false, we don't even bother checking to see if we can issue a TCP request.
@@ -1013,9 +1014,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             int faultTolerantDeploymentIdx = rng.nextInt(numFaultTolerantDeployments);
 
             // The actual numbering of fault-tolerant deployments begins after the normal and write-only
-            // deployments. So, add the randomly-generated index to the `totalNumDeployments` variable to
+            // deployments. So, add the randomly-generated index to the `numNormalAndWriteOnlyDeployments` variable to
             // get the real number of the target fault-tolerant deployment.
-            targetDeployment = totalNumDeployments + faultTolerantDeploymentIdx;
+            targetDeployment = numNormalAndWriteOnlyDeployments + faultTolerantDeploymentIdx;
 
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Targeting fault-tolerant deployment " + faultTolerantDeploymentIdx +
@@ -1312,11 +1313,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         System.out.println("\n-- REQUESTS PER DEPLOYMENT ---------------------------------------------------------------------------------------------------");
         HashMap<Integer, Integer> requestsPerDeployment = OperationPerformed.getRequestsPerDeployment(opsPerformedList);
         StringBuilder deploymentHeader = new StringBuilder();
-        for (int i = 0; i < totalNumDeployments; i++)
+        for (int i = 0; i < numNormalAndWriteOnlyDeployments; i++)
             deploymentHeader.append(i).append('\t');
         System.out.println(deploymentHeader);
         StringBuilder valuesString = new StringBuilder();
-        for (int i = 0; i < totalNumDeployments; i++) {
+        for (int i = 0; i < numNormalAndWriteOnlyDeployments; i++) {
             int requests = requestsPerDeployment.getOrDefault(i, 0);
             valuesString.append(requests).append("\t");
         }
@@ -2335,7 +2336,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public void prewarm(int numPingsPerThread, int numThreadsPerDeployment) throws IOException {
         // We do pre-warm fault-tolerant deployments here.
         // Fault-tolerant deployments are numbered after normal and write-only deployments.
-        int numDeploymentsToTarget = totalNumDeployments + numFaultTolerantDeployments;
+        int numDeploymentsToTarget = numNormalAndWriteOnlyDeployments + numFaultTolerantDeployments;
 
         Thread[] threads = new Thread[numDeploymentsToTarget * numThreadsPerDeployment];
         CountDownLatch startLatch = new CountDownLatch(numDeploymentsToTarget * numThreadsPerDeployment);

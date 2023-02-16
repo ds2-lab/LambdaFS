@@ -253,11 +253,11 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   /**
    * The total number of deployments, including write-only and mixed (read-write) deployments.
    */
-  private int totalNumDeployments;
+  private int numNormalAndWriteOnlyDeployments;
 
   /**
    * The number of write-only deployments. The first write-only deployment can be calculated as
-   * totalNumDeployments - numWriteDeployments.
+   * numNormalAndWriteOnlyDeployments - numWriteDeployments.
    */
   private int numWriteOnlyDeployments;
 
@@ -490,7 +490,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     return numReadWriteDeployments;
   }
 
-  public int getTotalNumDeployments() { return this.totalNumDeployments; }
+  public int getNumNormalAndWriteOnlyDeployments() { return this.numNormalAndWriteOnlyDeployments; }
 
   public int getNumWriteOnlyDeployments() { return this.numWriteOnlyDeployments; }
 
@@ -859,7 +859,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
   public void refreshActiveNameNodesList() throws IOException {
     synchronized (this) {
       if (activeNameNodes == null)
-        activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.totalNumDeployments);
+        activeNameNodes = new ActiveServerlessNameNodeList(this.zooKeeperClient, this.numNormalAndWriteOnlyDeployments);
     }
 
     activeNameNodes.refreshFromZooKeeper(this.zooKeeperClient);
@@ -2279,17 +2279,17 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
     if (localModeEnabled) {
       numReadWriteDeployments = 1;
-      totalNumDeployments = 1;
+      numNormalAndWriteOnlyDeployments = 1;
       numWriteOnlyDeployments = 0;
     }
     else {
       numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
-      totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
-      numReadWriteDeployments = totalNumDeployments - numWriteOnlyDeployments;
+      numNormalAndWriteOnlyDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+      numReadWriteDeployments = numNormalAndWriteOnlyDeployments - numWriteOnlyDeployments;
     }
 
     if (LOG.isDebugEnabled()) {
-      LOG.debug("There are a total of " + totalNumDeployments + " deployment(s). There are " +
+      LOG.debug("There are a total of " + numNormalAndWriteOnlyDeployments + " deployment(s). There are " +
               numReadWriteDeployments + " mixed (read+write) deployment(s) and " + numWriteOnlyDeployments +
               " write-only deployments.");
     }
@@ -3476,7 +3476,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     // If not in cache, then check ZooKeeper. We'll check for the existence of a persistent ZNode
     // in the permanent sub-group of each deployment. If one does not exist, then the NN is dead.
     ZKClient zkClient = instance.getZooKeeperClient();
-    int numDeployments = instance.getTotalNumDeployments();
+    int numDeployments = instance.getNumNormalAndWriteOnlyDeployments();
 
     // If we encounter an exception, then we'll just be conservative and assume the NameNode is alive.
     boolean exceptionEncountered = false;

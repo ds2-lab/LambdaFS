@@ -1,6 +1,5 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
-import com.google.common.hash.Hashing;
 import com.google.gson.*;
 import io.hops.metrics.TransactionEvent;
 import io.hops.transaction.context.TransactionsStats;
@@ -156,11 +155,11 @@ public abstract class ServerlessInvokerBase {
     /**
      * The total number of deployments, including write-only and mixed (read-write) deployments.
      */
-    protected int totalNumDeployments;
+    protected int numNormalAndWriteOnlyDeployments;
 
     /**
      * The number of write-only deployments. The first write-only deployment can be calculated as
-     * totalNumDeployments - numWriteDeployments.
+     * numNormalAndWriteOnlyDeployments - numWriteDeployments.
      */
     protected int numWriteOnlyDeployments;
 
@@ -258,7 +257,7 @@ public abstract class ServerlessInvokerBase {
      * Outgoing requests are placed in this list and sent in batches
      * (of a configurable size) on a configurable interval.
      */
-    private LinkedBlockingQueue<JsonObject>[] outgoingRequests;
+    private List<LinkedBlockingQueue<JsonObject>> outgoingRequests;
 
     /**
      * We batch individual requests together to reduce per-request overhead.
@@ -320,13 +319,15 @@ public abstract class ServerlessInvokerBase {
         if (batchedRequests.size() > 0)
             throw new IllegalArgumentException("The batchedRequests list must be initially empty.");
 
+        int totalNumDeployments = numNormalAndWriteOnlyDeployments + numFaultTolerantDeployments;
+
         // Iterate over the request queue for each of the deployments.
         // For each queue, we check if it has at least one enqueued request.
         // If there are none, then we skip that queue.
         // If it has at least one request, then we partition however many requests there are into batches.
         int totalNumRequests = 0;
         for (int i = 0; i < totalNumDeployments; i++) {
-            LinkedBlockingQueue<JsonObject> deploymentQueue = outgoingRequests[i];
+            LinkedBlockingQueue<JsonObject> deploymentQueue = outgoingRequests.get(i);
 
             // This will just be empty if there are no requests queued for this deployment.
             List<JsonObject> deploymentBatches = new ArrayList<>();
@@ -500,14 +501,14 @@ public abstract class ServerlessInvokerBase {
 
         if (this.localMode) {
             numReadWriteDeployments = 1;
-            totalNumDeployments = 1;
+            numNormalAndWriteOnlyDeployments = 1;
             numWriteOnlyDeployments = 0;
             numFaultTolerantDeployments = 0;
         }
         else {
-            this.totalNumDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
+            this.numNormalAndWriteOnlyDeployments = conf.getInt(SERVERLESS_MAX_DEPLOYMENTS, SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
             this.numWriteOnlyDeployments = conf.getInt(NUMBER_OF_WRITE_ONLY_DEPLOYMENTS, NUMBER_OF_WRITE_ONLY_DEPLOYMENTS_DEFAULT);
-            this.numReadWriteDeployments = this.totalNumDeployments - this.numWriteOnlyDeployments;
+            this.numReadWriteDeployments = this.numNormalAndWriteOnlyDeployments - this.numWriteOnlyDeployments;
 
             // If fault-tolerant deployments are enabled, then assign the value of the "num fault tolerant deployments"
             // configuration parameter to the `numFaultTolerantDeployments` variable. Otherwise, assign 0.
@@ -542,11 +543,12 @@ public abstract class ServerlessInvokerBase {
         httpClient.start();
         //if (LOG.isDebugEnabled()) LOG.debug("Started async HTTP client.");
 
-        outgoingRequests = new LinkedBlockingQueue[totalNumDeployments];
+        int totalNumDeployments = numNormalAndWriteOnlyDeployments + numFaultTolerantDeployments;
+        outgoingRequests = new ArrayList<LinkedBlockingQueue<JsonObject>>(totalNumDeployments);
 
         // Create an outgoing request queue for each deployment.
         for (int i = 0; i < totalNumDeployments; i++) {
-            outgoingRequests[i] = new LinkedBlockingQueue<>();
+            outgoingRequests.add(new LinkedBlockingQueue<>());
         }
 
         configured = true;
@@ -766,7 +768,7 @@ public abstract class ServerlessInvokerBase {
                 // The write-only deployments begin after the mixed (read-write) deployments. So, we
                 // generate an integer between [Number of Mixed Deployments, Total Number of Deployments].
                 targetDeployment = ThreadLocalRandom.current().nextInt(
-                        invokerInstance.numReadWriteDeployments, invokerInstance.totalNumDeployments);
+                        invokerInstance.numReadWriteDeployments, invokerInstance.numNormalAndWriteOnlyDeployments);
             } else {
                 targetDeployment = rng.nextInt(invokerInstance.numReadWriteDeployments);
             }

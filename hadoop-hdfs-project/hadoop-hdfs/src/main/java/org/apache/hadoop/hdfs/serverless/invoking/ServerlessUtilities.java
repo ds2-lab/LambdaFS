@@ -32,14 +32,16 @@ public class ServerlessUtilities {
      * This function returns -1 if no such entry exists.
      * @param fileOrDirectory The file or directory in question.
      * @param opName The name of the FS operation to be performed.
-     * @param totalNumDeployments The number of unique deployments, including read-only and mixed (read-write).
+     * @param numDeployments The number of unique deployments, including read-only and mixed (read-write).
      * @param numReadWriteDeployments The number of mixed (read-write) deployments.
      * @return The number of the NN to which the file or directory is mapped, if an entry exists in the cache. If no
      * entry exists, then -1 is returned.
      */
-    public static int getDeploymentForPath(String fileOrDirectory, String opName, int totalNumDeployments, int numReadWriteDeployments) {
-        if (WRITE_OPS.contains(opName) && totalNumDeployments != numReadWriteDeployments) {
-            int numWriteDeployments = totalNumDeployments - numReadWriteDeployments;
+    public static int getDeploymentForPath(String fileOrDirectory, String opName,
+                                           int numDeployments,
+                                           int numReadWriteDeployments) {
+        if (WRITE_OPS.contains(opName) && numDeployments != numReadWriteDeployments) {
+            int numWriteDeployments = numDeployments - numReadWriteDeployments;
 
             // This will generate a number between [0, numWriteDeployments).
             // Need to adjust, since write-only deployments start after the mixed (read-write) deployments.
