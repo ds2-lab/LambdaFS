@@ -2338,6 +2338,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // Fault-tolerant deployments are numbered after normal and write-only deployments.
         int numDeploymentsToTarget = numNormalAndWriteOnlyDeployments + numFaultTolerantDeployments;
 
+        if (LOG.isDebugEnabled()) LOG.debug("Targeting a total of " + numDeploymentsToTarget + " deployment(s).");
+
         Thread[] threads = new Thread[numDeploymentsToTarget * numThreadsPerDeployment];
         CountDownLatch startLatch = new CountDownLatch(numDeploymentsToTarget * numThreadsPerDeployment);
 
