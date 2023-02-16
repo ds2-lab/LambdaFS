@@ -419,7 +419,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             return res;
         }
         else if (resultPayload instanceof JsonObject)
-            return serverlessInvoker.extractResultFromJsonResponse((JsonObject) resultPayload);
+            return ServerlessInvokerBase.extractResultFromJsonResponse((JsonObject) resultPayload);
         else
             throw new IllegalStateException("Unexpected result payload type from NN: " +
                     resultPayload.getClass().getSimpleName());
@@ -850,6 +850,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // If we successfully issue a TCP request, then its value will still be 0.
         int numTcpRequestsAttempted = 0;
 
+        // If we fail due to a connection loss, then we'll first try to target another NameNode from the
+        // same deployment. If none are available, then we'll simply target another deployment at-random via TCP.
+        // If no TCP connections exist whatsoever, then we will fall back to HTTP. In this case, we may target
+        // one of the "fault-tolerant" deployments, which have a higher action-level concurrency to support handling
+        // large quantities of redirected requests. This mechanism serves to prevent the FaaS platform from
+        // over-provisioning a large number of new NameNodes within deployments that suffered failures.
+        boolean failedDueToConnectionLoss = false;
+
         // We loop here. Basically, we try to find a viable TCP server. If we find one, then we issue TCP request.
         // If that request fails, then we loop again, trying to find a (possibly different) TCP server. If we find
         // one, then issue TCP request. This continues until we are successful. Alternatively, if we cannot find
@@ -858,10 +866,21 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // Attempt to find a viable TCP server.
             UserServer targetServer = tryGetUserServer(targetDeploymentTcp);
 
-            // If we failed to find one AND Anti-Thrashing Mode is enabled, then we will try to use
-            // any TCP server on this VM that has at least one active connection to ANY deployment.
-            if (targetServer == null && antiThrashingModeEnabled) {
-                if (LOG.isTraceEnabled()) LOG.trace("Anti-Thrashing Mode is enabled. Will attempt to use any available TCP connection for request.");
+            // If the target server is null, then there are no connections to the target deployment.
+            // There are two cases for which we do *not* immediately fall-back to using HTTP.
+            // The first is if anti-thrashing mode is enabled. In this case, we want to avoid using HTTP, as
+            // HTTP requests may prompt the FaaS platform to provision additional NameNodes, and this could cause
+            // thrashing (if anti-thrashing mode is enabled, then we're presumably worried about the risk of thrashing).
+            //
+            // Alternatively, if we just experienced a TCP request failure due to a dropped connection, then we prefer
+            // to issue TCP requests to other deployments rather than issuing HTTP requests. The reason for this is
+            // that there may be many (10's or 100's) of requests that had targeted the crashed/reclaimed NameNode.
+            // If all of these requests were to fall back to HTTP, then the FaaS platform may massively over-provision
+            // NameNodes in that deployment due to the surge of requests.
+            if (targetServer == null && (antiThrashingModeEnabled || failedDueToConnectionLoss)) {
+                if (LOG.isTraceEnabled())
+                    LOG.trace("Anti-thrashing mode is enabled or we recently experienced a crash/reclamation. " +
+                            "Will attempt to use any available TCP connection for request.");
 
                 // If anti-thrashing mode is enabled, then we'll just try to use ANY available TCP connections.
                 // By passing -1, we'll randomly select a TCP connection from among all active deployments.
@@ -877,11 +896,20 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                     targetServer = tcpServer;
                 else if (connectionSharingEnabled) {
                     // If it is enabled, then we do it 100% of the time due to anti-thrashing.
-                    if (LOG.isTraceEnabled()) LOG.trace("Attempting to use Connection Sharing in conjunction with Anti-Thrashing mode.");
+                    if (LOG.isTraceEnabled())
+                        LOG.trace("Attempting to use Connection Sharing in conjunction with Anti-Thrashing/Fault Recovery mode.");
                     targetServer = serverAndInvokerManager.findServerWithAtLeastOneActiveConnection();
                 }
+
+                // Slightly different error state from the one below. In this case, we could not find a connection
+                // to the original target deployment, nor could we find a viable connection to ANY other deployments.
+                if (targetServer == null)
+                    throw new NoConnectionAvailableException(
+                            "No TCP/UDP connection to original target deployment " + targetDeploymentTcp +
+                                    " (src: " + srcArgument + "), and could not find viable connection to any other deployments. (RequestID: " + requestId + ")");
             }
 
+            // If the target server is null, then there are no connections to the target deployment.
             if (targetServer == null)
                 throw new NoConnectionAvailableException("No TCP/UDP connection to deployment " + targetDeploymentTcp +
                         " (src: " + srcArgument + "). RequestID: " + requestId);
@@ -899,6 +927,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             }
             catch (TcpRequestCancelledException ex) {
                 // We'll retry using TCP before falling back to HTTP.
+                failedDueToConnectionLoss = true;
                 numTcpRequestsAttempted++;
             }
         }
@@ -999,7 +1028,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      *                                          to avoid over-provisioning standard NameNodes.
      * @return Object returned by the NameNode after performing the file system operation.
      */
-    private Object submitFsOperationViaHttp(int targetDeployment, String operationName, String requestId,
+    private JsonObject submitFsOperationViaHttp(int targetDeployment, String operationName, String requestId,
                                             boolean subtreeOperation, ArgumentContainer opArguments,
                                             boolean tcpTriedAndFailed, String srcFileOrDirectory,
                                             boolean httpTargetFaultTolerantDeployment)
@@ -1026,19 +1055,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         long startTime = System.currentTimeMillis();
 
-        JsonObject response = ServerlessInvokerBase.issueHttpRequestWithRetries(
+        JsonObject response = serverlessInvoker.issueHttpRequestWithRetries(
                 serverlessInvoker, operationName, dfsClient.serverlessEndpoint,
                 null, opArguments, requestId, targetDeployment, subtreeOperation);
 
         long endTime = System.currentTimeMillis();
 
         addLatency(-1, endTime - startTime);
-
-        if (LOG.isTraceEnabled())
-            LOG.trace("Response: " + response);
-
-        if (response.has("body"))
-            response = response.get("body").getAsJsonObject();
 
         if (!benchmarkModeEnabled)
             createAndStoreOperationPerformed(response, operationName, requestId, startTime, endTime,
@@ -1383,7 +1406,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             System.out.println("NOT Resubmitted [min: " + notResubmittedStatistics.getMin() + ", max: " + notResubmittedStatistics.getMax() +
                     ", avg: " + notResubmittedStatistics.getMean() + ", std dev: " + notResubmittedStatistics.getStandardDeviation() +
                     ", N: " + notResubmittedStatistics.getN() + "]");
-
         }
         System.out.println("\n==================================================================");
     }

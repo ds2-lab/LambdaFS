@@ -731,6 +731,57 @@ public abstract class ServerlessInvokerBase {
     }
 
     /**
+     * Asynchronously invoke a file system operation via HTTP. This directly returns the Future that is normally
+     * awaited internally. There is no retry logic or exponential back-off; these become responsibilities of the
+     * client issuing the file system operation.
+     *
+     * @param invokerInstance The {@link ServerlessInvokerBase} class to use to invoke the serverless function.
+     * @param operationName The FS operation being performed. This is passed to the NameNode so that it knows which of
+     *                      its functions it should execute. This is sort of taking the place of the RPC mechanism,
+     *                      where ordinarily you'd just invoke an RPC method.
+     * @param functionUriBase The base URI of the serverless function. We issue an HTTP request to this URI
+     *                        in order to invoke the function. Before the request is issued, a number is appended
+     *                        to the end of the URI to target a particular serverless name node. After the number is
+     *                        appended, we also append a string ?blocking=true to ensure that the operation blocks
+     *                        until it is completed so that the result may be returned to the caller.
+     * @param nameNodeArguments Arguments for the Name Node itself. These would traditionally be passed as command line
+     *                          arguments when using a serverful name node. We generally don't need to pass anything
+     *                          for this parameter.
+     * @param fileSystemOperationArguments The parameters to the FS operation. Specifically, these are the arguments
+     *                                     to the Java function which performs the FS operation. The NameNode will
+     *                                     extract these after it sees what function it is supposed to execute. These
+     *                                     would traditionally just be passed as arguments to the RPC call, but we
+     *                                     aren't using RPC.
+     * @param requestId The unique ID used to match this request uniquely against its corresponding TCP request. If
+     *                  passed a null, then a random ID is generated.
+     * @param targetDeployment Specify the deployment to target. Use -1 to use the cache or a random deployment if no
+     *                         cache entry exists.
+     * @param subtreeOperation If this is a subtree operation, then the timeout needs to be adjusted.
+     *
+     * @return The response from the Serverless NameNode.
+     */
+    public static ServerlessHttpFuture issueHttpRequestAsync(ServerlessInvokerBase invokerInstance,
+                                                             String operationName, String functionUriBase,
+                                                             HashMap<String, Object> nameNodeArguments,
+                                                             ArgumentContainer fileSystemOperationArguments,
+                                                             String requestId, int targetDeployment,
+                                                             boolean subtreeOperation) throws IOException {
+        if (targetDeployment == -1) {
+            if (ServerlessUtilities.WRITE_OPS.contains(operationName)) {
+                // The write-only deployments begin after the mixed (read-write) deployments. So, we
+                // generate an integer between [Number of Mixed Deployments, Total Number of Deployments].
+                targetDeployment = ThreadLocalRandom.current().nextInt(
+                        invokerInstance.numReadWriteDeployments, invokerInstance.numNormalAndWriteOnlyDeployments);
+            } else {
+                targetDeployment = rng.nextInt(invokerInstance.numReadWriteDeployments);
+            }
+        }
+
+        return invokerInstance.enqueueHttpRequest(operationName, functionUriBase,
+                nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment, subtreeOperation);
+    }
+
+    /**
      * Helper function to issue an HTTP request with retries. This is how HTTP requests should be issued, as it
      * provides for exception handling and exponential backoff for retries.
      *
@@ -758,7 +809,7 @@ public abstract class ServerlessInvokerBase {
      * @param subtreeOperation If this is a subtree operation, then the timeout needs to be adjusted.
      * @return The response from the Serverless NameNode.
      */
-    public static JsonObject issueHttpRequestWithRetries(ServerlessInvokerBase invokerInstance, String operationName,
+    public JsonObject issueHttpRequestWithRetries(ServerlessInvokerBase invokerInstance, String operationName,
                                                    String functionUriBase, HashMap<String, Object> nameNodeArguments,
                                                    ArgumentContainer fileSystemOperationArguments,
                                                    String requestId, int targetDeployment, boolean subtreeOperation)
@@ -789,20 +840,20 @@ public abstract class ServerlessInvokerBase {
                     (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries + ".");
 
         do {
-            ServerlessHttpFuture future = invokerInstance.enqueueHttpRequest(operationName, functionUriBase,
+            ServerlessHttpFuture future = enqueueHttpRequest(operationName, functionUriBase,
                     nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment, subtreeOperation);
 
             JsonObject response;
             try {
                 response = future.get();
-
-                // Received a valid result. Return it to the client.
-                // First though, we should mark the request as complete.
-                invokerInstance.markComplete(requestId);
-                return response;
             }
             catch (InterruptedException ex) {
                 LOG.error("Interrupted while waiting for result for HTTP request.");
+
+                long backoffInterval = exponentialBackoff.getBackOffInMillis();
+                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                invokerInstance.doSleep(backoffInterval);
+                continue;
             }
             catch (ExecutionException ex) {
                 Throwable underlyingException = ex.getCause();
@@ -816,11 +867,24 @@ public abstract class ServerlessInvokerBase {
                 } else {
                     LOG.error("Exception encountered while waiting on Future for HTTP request:", underlyingException);
                 }
+
+                long backoffInterval = exponentialBackoff.getBackOffInMillis();
+                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+                invokerInstance.doSleep(backoffInterval);
+                continue;
             }
 
-            long backoffInterval = exponentialBackoff.getBackOffInMillis();
-            LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-            invokerInstance.doSleep(backoffInterval);
+            if (LOG.isTraceEnabled())
+                LOG.trace("Response: " + response);
+
+            if (response.has("body"))
+                response = response.get("body").getAsJsonObject();
+
+            // Received a valid result. Return it to the client.
+            // First though, we should mark the request as complete.
+            invokerInstance.markComplete(requestId);
+
+            return response;
         } while (exponentialBackoff.getNumberOfRetries() < exponentialBackoff.getMaximumRetries());
 
         throw new IOException("The file system operation could not be completed. " +
@@ -1083,7 +1147,7 @@ public abstract class ServerlessInvokerBase {
      * @param resp The response from the NameNode.
      * @return The result contained within the JsonObject returned by the NameNode.
      */
-    public Object extractResultFromJsonResponse(JsonObject resp) {
+    public static Object extractResultFromJsonResponse(JsonObject resp) {
         JsonObject response = resp;
 
         // TODO: This might happen if all requests to a NN time out, in which case we should either handle
@@ -1102,33 +1166,6 @@ public abstract class ServerlessInvokerBase {
             requestId = response.getAsJsonPrimitive(REQUEST_ID).getAsString();
         else
             requestId = "N/A";
-
-        // First, let's check and see if there's any information about file/directory-to-function mappings.
-//        if (response.has(ServerlessNameNodeKeys.DEPLOYMENT_MAPPING) && cache != null) {
-//            JsonObject functionMapping = response.getAsJsonObject(ServerlessNameNodeKeys.DEPLOYMENT_MAPPING);
-//
-//            String src = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FILE_OR_DIR).getAsString();
-//            long parentINodeId = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.PARENT_ID).getAsLong();
-//            int function = functionMapping.getAsJsonPrimitive(ServerlessNameNodeKeys.FUNCTION).getAsInt();
-//
-//            // cache.addEntry(src, function, false);
-//        }
-
-        // COMMENTED OUT: We handle exception processing elsewhere (e.g., in the submitFsOperationViaHttp function)
-        // Print any exceptions that were encountered first.
-//        if (response.has(ServerlessNameNodeKeys.EXCEPTIONS)) {
-//            JsonArray exceptionsJson = response.get(ServerlessNameNodeKeys.EXCEPTIONS).getAsJsonArray();
-//
-//            int numExceptions = exceptionsJson.size();
-//
-//            if (numExceptions > 0) {
-//                LOG.warn("*** The ServerlessNameNode encountered " + numExceptions +
-//                        (numExceptions == 1 ? " exception. ***" : " exceptions. ***"));
-//
-//                for (int i = 0; i < exceptionsJson.size(); i++)
-//                    LOG.error(exceptionsJson.get(i).getAsString());
-//            }
-//        }
 
         // This is just related to debugging/metrics. There are objects called "STATISTICS PACKAGES" that have
         // certain statistics about NN execution. We're just checking if there are any included here and, if so,

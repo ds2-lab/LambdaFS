@@ -165,13 +165,12 @@ class BPServiceActor implements Runnable {
 
         fsArgs.put("uuid", "N/A"); // This will always result in a groupId of 0 being assigned...
 
-        JsonObject response = ServerlessInvokerBase.issueHttpRequestWithRetries(
+        JsonObject response = serverlessInvoker.issueHttpRequestWithRetries(
                 serverlessInvoker, "versionRequest", dnConf.serverlessEndpoint,
                 null, fsArgs, null, -1, false);
 
-        LOG.info("responseJson = " + response.toString());
+        Object result = ServerlessInvokerBase.extractResultFromJsonResponse(response);
 
-        Object result = serverlessInvoker.extractResultFromJsonResponse(response);
         if (result != null)
           nsInfo = (NamespaceInfo)result;
 
