@@ -18,6 +18,7 @@ import org.apache.hadoop.util.ExponentialBackOff;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
+import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.concurrent.FutureCallback;
@@ -41,6 +42,7 @@ import org.apache.http.util.EntityUtils;
 import javax.net.ssl.*;
 import java.io.*;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.security.*;
 import java.security.cert.CertificateException;
@@ -786,8 +788,6 @@ public abstract class ServerlessInvokerBase {
             LOG.debug("Issuing HTTP request " + requestId + " to deployment " + targetDeployment + ", attempt " +
                     (exponentialBackoff.getNumberOfRetries()+1) + "/" + invokerInstance.maxHttpRetries + ".");
 
-        long backoffInterval = exponentialBackoff.getBackOffInMillis();
-
         do {
             ServerlessHttpFuture future = invokerInstance.enqueueHttpRequest(operationName, functionUriBase,
                     nameNodeArguments, fileSystemOperationArguments, requestId, targetDeployment, subtreeOperation);
@@ -795,44 +795,33 @@ public abstract class ServerlessInvokerBase {
             JsonObject response;
             try {
                 response = future.get();
-            } catch (InterruptedException | ExecutionException ex) {
-                LOG.error("Exception encountered while waiting on Future for HTTP request...");
-                LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                invokerInstance.doSleep(backoffInterval);
-                backoffInterval = exponentialBackoff.getBackOffInMillis();
-                continue;
-            }
 
-            if (response.has(LOCAL_EXCEPTION)) {
-                String genericExceptionType = response.get(LOCAL_EXCEPTION).getAsString();
-
-                if (genericExceptionType.equalsIgnoreCase("NoHttpResponseException") ||
-                        genericExceptionType.equalsIgnoreCase("SocketTimeoutException")) {
-                    double timeElapsed = (System.nanoTime() - invokeStart) / 1000000.0;
-                    LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) +
-                            " to issue request targeting deployment " + targetDeployment +
-                            " timed out. Time elapsed: " + timeElapsed + " ms.");
-                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                    invokerInstance.doSleep(backoffInterval);
-                    backoffInterval = exponentialBackoff.getBackOffInMillis();
-                }
-                else if (genericExceptionType.equalsIgnoreCase("IOException")) {
-                    LOG.error("Encountered IOException while invoking NN via HTTP.");
-                    LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
-                    invokerInstance.doSleep(backoffInterval);
-                    backoffInterval = exponentialBackoff.getBackOffInMillis();
-                } else {
-                    LOG.error("Unexpected error encountered while invoking NN via HTTP: " + genericExceptionType);
-                    throw new IOException("The file system operation could not be completed. "
-                            + "Encountered unexpected " + genericExceptionType + " while invoking NN.");
-                }
-            } else {
                 // Received a valid result. Return it to the client.
                 // First though, we should mark the request as complete.
                 invokerInstance.markComplete(requestId);
                 return response;
             }
-        } while (backoffInterval > 0);
+            catch (InterruptedException ex) {
+                LOG.error("Interrupted while waiting for result for HTTP request.");
+            }
+            catch (ExecutionException ex) {
+                Throwable underlyingException = ex.getCause();
+
+                if (underlyingException instanceof SocketTimeoutException ||
+                        underlyingException instanceof  NoHttpResponseException) {
+                    double timeElapsed = (System.nanoTime() - invokeStart) / 1000000.0;
+                    LOG.error("Attempt " + (exponentialBackoff.getNumberOfRetries()) +
+                            " to issue request targeting deployment " + targetDeployment +
+                            " timed out. Time elapsed: " + timeElapsed + " ms.");
+                } else {
+                    LOG.error("Exception encountered while waiting on Future for HTTP request:", underlyingException);
+                }
+            }
+
+            long backoffInterval = exponentialBackoff.getBackOffInMillis();
+            LOG.warn("Sleeping for " + backoffInterval + " milliseconds before trying again...");
+            invokerInstance.doSleep(backoffInterval);
+        } while (exponentialBackoff.getNumberOfRetries() < exponentialBackoff.getMaximumRetries());
 
         throw new IOException("The file system operation could not be completed. " +
                 "Failed to invoke Serverless NameNode " + targetDeployment + " after " +

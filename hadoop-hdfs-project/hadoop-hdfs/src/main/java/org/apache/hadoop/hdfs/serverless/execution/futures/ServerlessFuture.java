@@ -7,6 +7,7 @@ import org.apache.hadoop.hdfs.serverless.execution.results.NullResult;
 import org.apache.hadoop.hdfs.serverless.userserver.UserServer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 
+import javax.annotation.Nonnull;
 import java.util.concurrent.*;
 
 /**
@@ -77,37 +78,6 @@ public abstract class ServerlessFuture<T> implements Future<T> {
     @Override
     public synchronized boolean isDone() {
         return state == State.DONE || state == State.CANCELLED;
-    }
-
-    @Override
-    public T get() throws InterruptedException, ExecutionException {
-        if (LOG.isDebugEnabled()) LOG.debug("Waiting for result for request " + requestId + " now...");
-        final T resultOrNull = this.resultQueue.take();
-        if (LOG.isDebugEnabled()) LOG.debug("Got result for future " + requestId + ".");
-
-        // Check if the NullResult object was placed in the queue, in which case we should return null.
-        // Note: This presently cannot happen, as we always make the type parameter
-        //       a NameNodeResult, and NullResult is a completely separate class.
-        if (resultOrNull instanceof NullResult)
-            return null;
-
-        return resultOrNull;
-    }
-
-    @Override
-    public T get(long timeout, TimeUnit unit)
-            throws InterruptedException, ExecutionException, TimeoutException {
-        final T resultOrNull = this.resultQueue.poll(timeout, unit);
-        if (resultOrNull == null) {
-            throw new TimeoutException();
-        }
-
-        // Note: This presently cannot happen, as we always make the type parameter
-        //       a NameNodeResult, and NullResult is a completely separate class.
-        if (resultOrNull instanceof NullResult)
-            return null;
-
-        return resultOrNull;
     }
 
     /**
