@@ -926,6 +926,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 numTcpRequestsAttempted++;
             }
             catch (TcpRequestCancelledException ex) {
+                LOG.error("Request " + requestId + " was cancelled due to connection loss.");
                 // We'll retry using TCP before falling back to HTTP.
                 failedDueToConnectionLoss = true;
                 numTcpRequestsAttempted++;
