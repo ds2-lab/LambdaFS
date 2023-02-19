@@ -567,7 +567,6 @@ public abstract class ServerlessInvokerBase {
      * {@link ServerlessInvokerBase#sendInterval} milliseconds.
      */
     private void scheduledRequestProcessor() {
-        if (LOG.isTraceEnabled()) LOG.trace("Batching and sending HTTP requests now.");
         try {
             sendEnqueuedRequests();
         } catch (Exception e) {
