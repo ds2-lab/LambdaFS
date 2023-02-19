@@ -560,7 +560,7 @@ public class UserServer {
 
         // Do not add the excluded NN to the set of connections from which we're randomly picking one.
         for (NameNodeConnection conn : deploymentConnections.values()) {
-            if (excludedNameNode == conn.name)
+            if (conn.name != excludedNameNode)
                 values.add(conn);
         }
 
@@ -735,7 +735,7 @@ public class UserServer {
         // If we still have a connection to the specified NN, then we need to have at least one other connection.
         // If we do not stil have such a connection, then having any connections at all would suffice.
         if (deploymentConnections.containsKey(excludedNameNodeId))
-            return deploymentConnections.size() > 1;
+            return deploymentConnections.size() >= 2;
         else
             return deploymentConnections.size() > 0;
     }
@@ -877,9 +877,12 @@ public class UserServer {
             // Check if we already have a mapping to another NN connection for this future.
             NameNodeConnection previousConnection = futureToNameNodeMapping.getOrDefault(requestId, null);
 
+
             // Avoid race in the case that the connection gets terminated between containsKey() returning
             // and us trying to retrieve the mapped connection from the futureToNameNodeMapping map.
             if (previousConnection != null) {
+                if (LOG.isTraceEnabled()) LOG.trace("Found previous request with ID " + requestId + ". Used connection to NN " + previousConnection.name + ". Looking for other connection to same deployment (#" + deploymentNumber + ").");
+
                 // We only want to try to grab a connection if at least one other connection to this deployment exists.
                 // If no other connections are available, then we raise an exception.
                 if (connectionExists(deploymentNumber, previousConnection.name))
@@ -988,6 +991,9 @@ public class UserServer {
 
             // Resolve that ID to a deployment, and use that as the target deployment.
             deploymentNumber = nameNodeIdToDeploymentMapping.get(nameNodeId);
+
+            if (LOG.isTraceEnabled())
+                LOG.trace("No target deployment specified for TCP request. Randomly selected deployment " + deploymentNumber);
         }
 
         if (resultsWithoutFutures.asMap().containsKey(requestId)) {

@@ -663,12 +663,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             long requestTimeout = calculateRequestTimeout(
                     stragglerResubmissionAlreadyOccurred, backoffInterval, subtreeOperation);
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug((userServer.isUdpEnabled() ? "UDP" : "TCP") +
-                        ". OpName=" + operationName + ". RequestID=" + requestId + ". Attempt " +
-                        exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
-                        ". Target='" + sourceArgument + "'. TargetDeployment=" + targetDeployment);
-            } else if (LOG.isTraceEnabled()) {
+            if (LOG.isTraceEnabled()) {
                 LOG.trace((userServer.isUdpEnabled() ? "UDP" : "TCP") + ". OpName=" + operationName +
                         ". RequestID=" + requestId + ". Attempt " + exponentialBackOff.getNumberOfRetries() +
                         (stragglerResubmissionAlreadyOccurred ? "*" : "") + "/" + maxRetries +
@@ -676,6 +671,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         (System.currentTimeMillis() - opStart) + " ms. Timeout=" + requestTimeout + " ms. " +
                         (stragglerResubmissionAlreadyOccurred ? "Straggler resubmission occurred." :
                                 "Straggler resubmission NOT occurred. TargetDeployment=" + targetDeployment));
+            } else if (LOG.isDebugEnabled()) {
+                LOG.debug((userServer.isUdpEnabled() ? "UDP" : "TCP") +
+                        ". OpName=" + operationName + ". RequestID=" + requestId + ". Attempt " +
+                        exponentialBackOff.getNumberOfRetries() + "/" + maxRetries +
+                        ". Target='" + sourceArgument + "'. TargetDeployment=" + targetDeployment);
             }
 
             long localStart = System.currentTimeMillis();
