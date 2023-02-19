@@ -247,7 +247,7 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
    * The interval, in milliseconds, that batched HTTP requests are issued.
    */
   public static final String SERVERLESS_HTTP_SEND_INTERVAL = "serverless.http.send-interval";
-  public static final int SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT = 25;
+  public static final int SERVERLESS_HTTP_SEND_INTERVAL_DEFAULT = 15;
 
   public static final String SERVERLESS_METADATA_CACHE_ENABLED = "serverless.metadatacache.enabled";
   public static final boolean SERVERLESS_METADATA_CACHE_ENABLED_DEFAULT = true;

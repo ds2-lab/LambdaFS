@@ -567,6 +567,7 @@ public abstract class ServerlessInvokerBase {
      * {@link ServerlessInvokerBase#sendInterval} milliseconds.
      */
     private void scheduledRequestProcessor() {
+        if (LOG.isTraceEnabled()) LOG.trace("Batching and sending HTTP requests now.");
         try {
             sendEnqueuedRequests();
         } catch (Exception e) {
@@ -591,8 +592,7 @@ public abstract class ServerlessInvokerBase {
         for (String requestId : processedRequestIds) {
             ServerlessHttpFuture future = futures.get(requestId);
             if (future != null) {
-                // TODO: Change this to trace.
-                if (LOG.isDebugEnabled()) LOG.debug("Cancelling future associated with HTTP request " + requestId);
+                if (LOG.isTraceEnabled()) LOG.trace("Cancelling future associated with HTTP request " + requestId);
                 future.cancel(true);
                 totalNumFuturesCancelled++;
             }
