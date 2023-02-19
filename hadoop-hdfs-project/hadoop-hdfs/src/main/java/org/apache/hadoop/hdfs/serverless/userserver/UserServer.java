@@ -14,6 +14,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.serverless.ServerlessNameNodeKeys;
 import org.apache.hadoop.hdfs.serverless.exceptions.NoConnectionAvailableException;
+import org.apache.hadoop.hdfs.serverless.invoking.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessNameNodeClient;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResult;
 import org.apache.hadoop.hdfs.serverless.execution.results.NameNodeResultWithMetrics;
@@ -735,6 +736,7 @@ public class UserServer {
         // If we still have a connection to the specified NN, then we need to have at least one other connection.
         // If we do not stil have such a connection, then having any connections at all would suffice.
         if (deploymentConnections.containsKey(excludedNameNodeId))
+            // If we have a connection to the excluded NN, we need at least one other in order to return 'true'.
             return deploymentConnections.size() >= 2;
         else
             return deploymentConnections.size() > 0;
@@ -881,8 +883,6 @@ public class UserServer {
             // Avoid race in the case that the connection gets terminated between containsKey() returning
             // and us trying to retrieve the mapped connection from the futureToNameNodeMapping map.
             if (previousConnection != null) {
-                if (LOG.isTraceEnabled()) LOG.trace("Found previous request with ID " + requestId + ". Used connection to NN " + previousConnection.name + ". Looking for other connection to same deployment (#" + deploymentNumber + ").");
-
                 // We only want to try to grab a connection if at least one other connection to this deployment exists.
                 // If no other connections are available, then we raise an exception.
                 if (connectionExists(deploymentNumber, previousConnection.name))
@@ -1102,8 +1102,18 @@ public class UserServer {
      * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
      */
     private void cancelActiveFutures(long nameNodeId) {
-        List<ServerlessTcpUdpFuture> incompleteFutures = submittedFutures.get(nameNodeId);
+        cancelActiveFutures(nameNodeId, submittedFutures.get(nameNodeId));
+    }
 
+    /**
+     * Cancel the active (i.e., unfinished) requests associated with a particular NameNode.
+     *
+     * This is used when the TCP connection to that NameNode is disconnected.
+     *
+     * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
+     * @param incompleteFutures The futures to be cancelled.
+     */
+    private void cancelActiveFutures(long nameNodeId, List<ServerlessTcpUdpFuture> incompleteFutures) {
         if (incompleteFutures == null) {
             if (LOG.isDebugEnabled()) LOG.debug(serverPrefix + " There were no futures associated with now-closed connection to NN " + nameNodeId);
             return;
@@ -1257,16 +1267,21 @@ public class UserServer {
                         activeConnectionsPerDeployment.get(mappedDeploymentNumber);
                 deploymentConnections.remove(nnId);
 
-                cancelActiveFutures(nnId);
+                // If a NameNode crashes while actively serving requests, then we'll ping that deployment, as
+                // we were using that NameNode and didn't want the FaaS provider to reclaim the resources yet.
+                // (So, by pinging the deployment, we'll prompt the provider to provision a new NN in that deployment
+                // to make up for the lost NN. Again, we only do this if the reclaimed/crashed NN was actively
+                // serving requests at the time the connection was lost.)
+                try {
+                    client.pingNoReturn(mappedDeploymentNumber);
+                } catch (IOException ex) {
+                    LOG.error("Failed to asynchronously ping deployment " + mappedDeploymentNumber + "" +
+                            " after NN " + nnId + " crashed/was reclaimed:", ex);
+                }
 
-                // Check the status of the NN whom we lost connection to in the future.
-                // At the time of writing this, ZooKeeper is configured with a tick time of 1,000ms.
-                // Sessions expire after two tick times, which is 2,000ms. Thus, we wait to check on
-                // the status of the NameNode until after ZooKeeper would've detected that it stopped.
-//                ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-//                scheduler.schedule(() -> {
-//                    checkStatusOfDisconnectedNameNode(nnId, mappedDeploymentNumber);
-//                }, 2500, TimeUnit.MILLISECONDS);
+                List<ServerlessTcpUdpFuture> incompleteFutures = submittedFutures.get(nnId);
+
+                cancelActiveFutures(nnId, incompleteFutures);
             } else {
                 InetSocketAddress address = conn.getRemoteAddressTCP();
                 if (address == null)

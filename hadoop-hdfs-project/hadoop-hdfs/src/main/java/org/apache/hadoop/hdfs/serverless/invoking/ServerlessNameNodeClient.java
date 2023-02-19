@@ -2351,11 +2351,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     }
 
     @Override
-    public void ping() throws IOException {
-		throw new UnsupportedOperationException("Function has not yet been implemented.");
-    }
-
-    @Override
     public void prewarm(int numPingsPerThread, int numThreadsPerDeployment) throws IOException {
         // We do pre-warm fault-tolerant deployments here.
         // Fault-tolerant deployments are numbered after normal and write-only deployments.
@@ -2406,6 +2401,25 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 e.printStackTrace();
             }
         }
+    }
+
+
+    @Override
+    public void ping() throws IOException {
+        throw new UnsupportedOperationException("Function has not yet been implemented.");
+    }
+
+    /**
+     * Ping the specified deployment via HTTP without waiting for the result.
+     */
+    public void pingNoReturn(int targetDeployment) throws IOException {
+        // If there is no "source" file/directory argument, or if there was no existing mapping for the given source
+        // file/directory, then we'll just use an HTTP request.
+        serverlessInvoker.enqueueHttpRequest(
+                "ping",
+                dfsClient.serverlessEndpoint,
+                null, // We do not have any additional/non-default arguments to pass to the NN.
+                new ArgumentContainer(), UUID.randomUUID().toString(), targetDeployment, false);
     }
 
     @Override
