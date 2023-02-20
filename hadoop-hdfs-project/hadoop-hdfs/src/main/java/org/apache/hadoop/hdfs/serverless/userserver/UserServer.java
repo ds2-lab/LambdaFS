@@ -41,6 +41,14 @@ public class UserServer {
     private static final org.apache.commons.logging.Log LOG = LogFactory.getLog(UserServer.class);
 
     /**
+     * Used to determine which UserServer should ping the deployment of an unexpectedly-disconnected NameNode.
+     * If too many servers ping the deployment at the same time, then it may lead to over-provisioning if the
+     * ping operations are not batched together (which may occur by chance).
+     */
+    private static ConcurrentHashMap<Long, Boolean> disconnectionMap
+            = new ConcurrentHashMap<>();
+
+    /**
      * The KryoNet server object. This is the actual server itself.
      */
     private final Server server;
@@ -1270,16 +1278,22 @@ public class UserServer {
                 List<ServerlessTcpUdpFuture> incompleteFutures = submittedFutures.get(nnId);
 
                 if (incompleteFutures.size() > 0) {
-                    // If a NameNode crashes while actively serving requests, then we'll ping that deployment, as
-                    // we were using that NameNode and didn't want the FaaS provider to reclaim the resources yet.
-                    // (So, by pinging the deployment, we'll prompt the provider to provision a new NN in that deployment
-                    // to make up for the lost NN. Again, we only do this if the reclaimed/crashed NN was actively
-                    // serving requests at the time the connection was lost.)
-                    try {
-                        client.pingNoReturn(mappedDeploymentNumber);
-                    } catch (IOException ex) {
-                        LOG.error("Failed to asynchronously ping deployment " + mappedDeploymentNumber + "" +
-                                " after NN " + nnId + " crashed/was reclaimed:", ex);
+                    Boolean previousValue = disconnectionMap.putIfAbsent(nnId, true);
+
+                    // The first server to set the value will obtain `null` as the return value from `putIfAbsent`.
+                    // This is the server that should issue the asynchronous `ping` operation.
+                    if (previousValue == null) {
+                        // If a NameNode crashes while actively serving requests, then we'll ping that deployment, as
+                        // we were using that NameNode and didn't want the FaaS provider to reclaim the resources yet.
+                        // (So, by pinging the deployment, we'll prompt the provider to provision a new NN in that deployment
+                        // to make up for the lost NN. Again, we only do this if the reclaimed/crashed NN was actively
+                        // serving requests at the time the connection was lost.)
+                        try {
+                            client.pingNoReturn(mappedDeploymentNumber);
+                        } catch (IOException ex) {
+                            LOG.error("Failed to asynchronously ping deployment " + mappedDeploymentNumber + "" +
+                                    " after NN " + nnId + " crashed/was reclaimed:", ex);
+                        }
                     }
                 }
 
