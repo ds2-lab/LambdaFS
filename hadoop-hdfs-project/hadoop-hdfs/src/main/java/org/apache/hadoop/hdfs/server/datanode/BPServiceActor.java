@@ -37,7 +37,6 @@ import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdfs.server.common.IncorrectVersionException;
 import org.apache.hadoop.hdfs.server.protocol.*;
-import org.apache.hadoop.hdfs.serverless.execution.futures.ServerlessHttpFuture;
 import org.apache.hadoop.hdfs.serverless.invoking.ArgumentContainer;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerBase;
 import org.apache.hadoop.hdfs.serverless.invoking.ServerlessInvokerFactory;
@@ -50,7 +49,6 @@ import org.apache.hadoop.util.VersionUtil;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 
 import static org.apache.hadoop.hdfs.serverless.invoking.InvokerUtilities.serializableToBase64String;
 
@@ -166,7 +164,7 @@ class BPServiceActor implements Runnable {
         fsArgs.put("uuid", "N/A"); // This will always result in a groupId of 0 being assigned...
 
         JsonObject response = serverlessInvoker.issueHttpRequestWithRetries(
-                serverlessInvoker, "versionRequest", dnConf.serverlessEndpoint,
+                serverlessInvoker, dnConf.serverlessEndpoint,
                 null, fsArgs, null, -1, false);
 
         Object result = ServerlessInvokerBase.extractResultFromJsonResponse(response);

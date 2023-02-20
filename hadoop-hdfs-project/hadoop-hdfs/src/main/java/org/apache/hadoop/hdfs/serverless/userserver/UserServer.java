@@ -594,7 +594,7 @@ public class UserServer {
      *                      connection is already closed and that is why we are removing it.
      * @return True if a connection was removed, otherwise false.
      */
-    private boolean deleteConnection(long nameNodeId, boolean deleteIfActive, boolean errorIfActive) {
+    private boolean deleteConnection(long nameNodeId, boolean deleteIfActive, boolean errorIfActive) throws IOException {
         NameNodeConnection connection = allActiveConnections.getOrDefault(nameNodeId, null);
 
         if (connection != null) {
@@ -615,27 +615,6 @@ public class UserServer {
                     ConcurrentHashMap<Long, NameNodeConnection> deploymentConnections =
                             activeConnectionsPerDeployment.get(deploymentNumber);
                     deploymentConnections.remove(nameNodeId);
-
-                    // If the smallest NN ID is equal to the ID of the NN whose connection we're deleting,
-                    // then we need to change the ID stored in the `writeNameNodes` mapping.
-//                    writeNameNodes.computeIfPresent(deploymentNumber, (k,v) -> {
-//                        if (v == nameNodeId) {
-//                            // Will default to -1 if there are no other active connections.
-//                            long smallestId = -1L;
-//                            for (Long id : deploymentConnections.keySet()) {
-//                                if (id < smallestId || smallestId == -1L)
-//                                    smallestId = id;
-//                            }
-//
-//                            return smallestId;
-//                        }
-//
-//                        return v;
-//                    });
-//
-//                    if (writeNameNodes.get(deploymentNumber) == nameNodeId) {
-//                        writeNameNodes.remove(deploymentNumber);
-//                    }
 
                     cancelActiveFutures(connection.name);
 
@@ -758,7 +737,7 @@ public class UserServer {
      * @param nameNodeId The ID of the NN for which we're querying the existence of a connection.
      * @return True if a connection currently exists, otherwise false.
      */
-    public boolean connectionExists(long nameNodeId) {
+    public boolean connectionExists(long nameNodeId) throws IOException {
         Connection tcpConnection = getConnection(nameNodeId);
 
         if (tcpConnection != null) {
@@ -1101,7 +1080,7 @@ public class UserServer {
      *
      * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
      */
-    private void cancelActiveFutures(long nameNodeId) {
+    private void cancelActiveFutures(long nameNodeId) throws IOException {
         cancelActiveFutures(nameNodeId, submittedFutures.get(nameNodeId));
     }
 
@@ -1113,7 +1092,7 @@ public class UserServer {
      * @param nameNodeId The ID of the NameNode whose requests must be cancelled.
      * @param incompleteFutures The futures to be cancelled.
      */
-    private void cancelActiveFutures(long nameNodeId, List<ServerlessTcpUdpFuture> incompleteFutures) {
+    private void cancelActiveFutures(long nameNodeId, List<ServerlessTcpUdpFuture> incompleteFutures) throws IOException {
         if (incompleteFutures == null) {
             if (LOG.isDebugEnabled()) LOG.debug(serverPrefix + " There were no futures associated with now-closed connection to NN " + nameNodeId);
             return;
@@ -1132,15 +1111,18 @@ public class UserServer {
         // TODO: Alternatively, we could implement batching on the HTTP side so that always occurs.
 
         // Cancel each of the futures.
-        for (ServerlessTcpUdpFuture future : incompleteFutures) {
-            if (LOG.isDebugEnabled()) LOG.debug(serverPrefix + " Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
-            try {
-                future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
-            } catch (InterruptedException ex) {
-                LOG.error("Error encountered while cancelling future " + future.getRequestId()
-                        + " for operation " + future.getOperationName() + ":", ex);
-            }
-        }
+//        for (ServerlessTcpUdpFuture future : incompleteFutures) {
+//            if (LOG.isDebugEnabled()) LOG.debug(serverPrefix + " Cancelling future " + future.getRequestId() +
+//                    " for operation " + future.getOperationName());
+//            try {
+//                future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
+//            } catch (InterruptedException ex) {
+//                LOG.error("Error encountered while cancelling future " + future.getRequestId()
+//                        + " for operation " + future.getOperationName() + ":", ex);
+//            }
+//        }
+
+        client.getServerlessInvoker().submitFailedTcpRequestBatch(incompleteFutures);
 
         submittedFutures.remove(nameNodeId);
     }
@@ -1283,7 +1265,12 @@ public class UserServer {
                     }
                 }
 
-                cancelActiveFutures(nnId, incompleteFutures);
+                try {
+                    cancelActiveFutures(nnId, incompleteFutures);
+                } catch (IOException e) {
+                    LOG.error("IOException encountered while canceling futures associated with disconnected NN " +
+                            nnId + ":", e);
+                }
             } else {
                 InetSocketAddress address = conn.getRemoteAddressTCP();
                 if (address == null)

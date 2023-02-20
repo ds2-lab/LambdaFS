@@ -28,6 +28,11 @@ public class ServerlessTcpUdpFuture extends ServerlessFuture<NameNodeResult> {
      */
     private final long targetNameNodeId;
 
+    /**
+     * The payload submitted with the TCP request.
+     */
+    private final TcpUdpRequestPayload associatedPayload;
+
     public ServerlessTcpUdpFuture(TcpUdpRequestPayload associatedPayload, long targetNameNodeId) {
         super(associatedPayload.getRequestId(), associatedPayload.getOperationName());
 
@@ -35,6 +40,7 @@ public class ServerlessTcpUdpFuture extends ServerlessFuture<NameNodeResult> {
          * The payload that was submitted for this request.
          */
         this.targetNameNodeId = targetNameNodeId;
+        this.associatedPayload = associatedPayload;
     }
 
     @Override
@@ -83,14 +89,22 @@ public class ServerlessTcpUdpFuture extends ServerlessFuture<NameNodeResult> {
      */
     @Override
     public void cancel(String reason, boolean shouldRetry) throws InterruptedException {
-        state = State.CANCELLED;
-        resultQueue.put(CancelledResult.getInstance());
-        if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " +
-                operationName + ". Reason: " + reason);
+        throw new NotImplementedException("cancel(String, boolean) is not supported for TCP/UDP futures.");
     }
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
         throw new NotImplementedException("cancel(boolean) is not supported for TCP/UDP futures.");
+    }
+
+    public void cancel(String reason, ServerlessHttpFuture httpFuture) throws InterruptedException {
+        state = State.CANCELLED;
+        resultQueue.put(new CancelledResult(httpFuture));
+        if (LOG.isDebugEnabled()) LOG.debug("Cancelled future " + requestId + " for operation " +
+                operationName + ". Reason: " + reason);
+    }
+
+    public TcpUdpRequestPayload getAssociatedPayload() {
+        return associatedPayload;
     }
 }

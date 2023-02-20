@@ -362,7 +362,7 @@ class FSDirDeleteOp {
               int targetDeploymentFinalized = targetDeployment;
               Future<Boolean> future = executorService.submit(() -> {
                 JsonObject response = serverlessInvoker.issueHttpRequestWithRetries(
-                        serverlessInvoker, "subtreeDeleteSubOperation", serverlessEndpointBase,
+                        serverlessInvoker, serverlessEndpointBase,
                         null, argumentContainer, requestId, targetDeploymentFinalized, true);
 
                 Object result = ServerlessInvokerBase.extractResultFromJsonResponse(response);

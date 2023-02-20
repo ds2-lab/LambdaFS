@@ -644,7 +644,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         TcpUdpRequestPayload tcpRequestPayload = new TcpUdpRequestPayload(requestId, operationName,
                 consistencyProtocolEnabled, OpenWhiskHandler.getLogLevelIntFromString(serverlessFunctionLogLevel),
                 opArguments.getAllArguments(), benchmarkModeEnabled, serverAndInvokerManager.getActiveTcpPorts(),
-                udpEnabled ? serverAndInvokerManager.getActiveUdpPorts() : null);
+                udpEnabled ? serverAndInvokerManager.getActiveUdpPorts() : null, targetDeployment);
 
         boolean stragglerResubmissionAlreadyOccurred = false;
         boolean wasResubmittedViaStragglerMitigation = false;
@@ -723,11 +723,10 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
             // This only ever happens when the request is cancelled.
             if (response instanceof CancelledResult) {
-                opArguments.addPrimitive(FORCE_REDO, true);
-
+                ServerlessHttpFuture httpFuture = ((CancelledResult) response).getHttpFuture();
                 // Throw the exception. This will be caught, and the request will be resubmitted via HTTP.
                 throw new TcpRequestCancelledException("The TCP future for request " + requestId +
-                        " (operation = " + operationName + ") has been cancelled.");
+                        " (operation = " + operationName + ") has been cancelled.", httpFuture);
             }
 
             NameNodeResult result = (NameNodeResult)response;
@@ -997,12 +996,18 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             try {
                 return trySubmitFsOperationViaTcp(targetDeployment, operationName, requestId, subtreeOperation,
                         opArguments, srcFileOrDirectory, writeOp);
-            } catch (NoConnectionAvailableException | IOException | TcpRequestCancelledException ex) {
-                // Fallback to TCP.
+            } catch (NoConnectionAvailableException | IOException ex) {
+                // Fallback to HTTP.
                 tcpTriedAndFailed = true;
+            } catch (TcpRequestCancelledException ex) {
+                tcpTriedAndFailed = true;
+                httpTargetFaultTolerantDeployment = true;
 
-                if (ex instanceof TcpRequestCancelledException)
-                    httpTargetFaultTolerantDeployment = true;
+                ServerlessHttpFuture httpFuture = ex.getResubmissionFuture();
+
+                if (httpFuture != null) {
+
+                }
             }
         }
 
@@ -1056,8 +1061,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
 
         long startTime = System.currentTimeMillis();
 
-        JsonObject response = serverlessInvoker.issueHttpRequestWithRetries(
-                serverlessInvoker, operationName, dfsClient.serverlessEndpoint,
+        JsonObject response = serverlessInvoker.issueHttpRequestWithRetries(dfsClient.serverlessEndpoint,
                 null, opArguments, requestId, targetDeployment, subtreeOperation);
 
         long endTime = System.currentTimeMillis();
@@ -2377,7 +2381,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                         try {
                             ServerlessHttpFuture future = serverlessInvoker.enqueueHttpRequest(
                                     "prewarm",
-                                    dfsClient.serverlessEndpoint,
                                     null, // We do not have any additional/non-default arguments to pass to the NN.
                                     new ArgumentContainer(), requestId, depNum, false);
                             future.get();
@@ -2417,7 +2420,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // file/directory, then we'll just use an HTTP request.
         serverlessInvoker.enqueueHttpRequest(
                 "ping",
-                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 new ArgumentContainer(), UUID.randomUUID().toString(), targetDeployment, false);
     }
@@ -2430,7 +2432,6 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // file/directory, then we'll just use an HTTP request.
         ServerlessHttpFuture future = serverlessInvoker.enqueueHttpRequest(
                 "ping",
-                dfsClient.serverlessEndpoint,
                 null, // We do not have any additional/non-default arguments to pass to the NN.
                 new ArgumentContainer(), requestId, targetDeployment, false);
 

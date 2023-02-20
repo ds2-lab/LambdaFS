@@ -21,8 +21,9 @@ import java.util.Map;
  * This class essentially encapsulates the argument-packing logic, which ultimately makes the code cleaner and easier
  * to use.
  */
-public class ArgumentContainer {
+public class ArgumentContainer implements Serializable {
     private static final Log LOG = LogFactory.getLog(ArgumentContainer.class);
+    private static final long serialVersionUID = -265085874520944868L;
 
     /**
      * Contains primitive arguments, including Strings.

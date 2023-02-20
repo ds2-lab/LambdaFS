@@ -57,7 +57,7 @@ public class NuclioInvoker extends ServerlessInvokerBase {
     }
 
     @Override
-    public ServerlessHttpFuture enqueueHttpRequest(String operationName, String functionUriBase,
+    public ServerlessHttpFuture enqueueHttpRequest(String operationName,
                                                    HashMap<String, Object> nameNodeArguments,
                                                    ArgumentContainer fileSystemOperationArguments,
                                                    String requestId, int targetDeployment,

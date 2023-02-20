@@ -40,27 +40,7 @@ public class TcpUdpRequestPayload implements Serializable {
      */
     private boolean benchmarkingModeEnabled;
 
-    /**
-     * Indicates whether the operation has been cancelled.
-     *
-     * This is transient because it is only used client-side and thus does not need to be serialized.
-     */
-    // private transient boolean cancelled = false;
-
-    /**
-     * Used when cancelling this task. Indicates whether the task should be re-submitted to the NN.
-     *
-     * This is transient because it is only used client-side and thus does not need to be serialized.
-     */
-    // private transient boolean shouldRetry = false;
-
-    /**
-     * Reason that this request has been cancelled. Only used if cancelled is set to true (i.e., when the
-     * request gets cancelled).
-     *
-     * This is transient because it is only used client-side and thus does not need to be serialized.
-     */
-    // private transient String cancellationReason = null;
+    private int targetDeployment;
 
     /**
      * All the actively-used TCP ports on our VM. The NN uses these to connect to the other servers.
@@ -75,7 +55,7 @@ public class TcpUdpRequestPayload implements Serializable {
     public TcpUdpRequestPayload(String requestId, String operationName, boolean consistencyProtocolEnabled,
                                 int serverlessFunctionLogLevel, HashMap<String, Object> fsOperationArguments,
                                 boolean benchmarkingModeEnabled, List<Integer> activeTcpPorts,
-                                List<Integer> activeUdpPorts) {
+                                List<Integer> activeUdpPorts, int targetDeployment) {
         this.requestId = requestId;
         this.operationName = operationName;
         this.consistencyProtocolEnabled = consistencyProtocolEnabled;
@@ -83,6 +63,7 @@ public class TcpUdpRequestPayload implements Serializable {
         this.benchmarkingModeEnabled = benchmarkingModeEnabled;
         this.activeTcpPorts = activeTcpPorts;
         this.activeUdpPorts = activeUdpPorts;
+        this.targetDeployment = targetDeployment;
 
         if (fsOperationArguments != null)
             this.fsOperationArguments = fsOperationArguments;
@@ -137,5 +118,9 @@ public class TcpUdpRequestPayload implements Serializable {
         return String.format(
                 "TcpRequestPayload(requestId=%s, operationName=%s, consistProtoEnabled=%b, logLevel=%s, numFsArgs=%d)",
                 requestId, operationName, consistencyProtocolEnabled, serverlessFunctionLogLevel, fsOperationArguments.size());
+    }
+
+    public int getTargetDeployment() {
+        return targetDeployment;
     }
 }

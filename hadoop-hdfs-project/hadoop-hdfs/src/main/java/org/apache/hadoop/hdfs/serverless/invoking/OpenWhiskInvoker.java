@@ -118,8 +118,6 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
      * the requestID to ensure it only completes that particular FS operation once.
      *
      * @param operationName The name of the file system operation to be performed.
-     * @param functionUriBase The base URI of the serverless function. This tells the invoker where to issue the
-     *                        HTTP POST request to.
      * @param nameNodeArguments Arguments for the NameNode itself. These would normally be passed in via the
      *                          commandline in traditional, serverful HopsFS.
      * @param fileSystemOperationArguments The arguments for the filesystem operation.
@@ -131,8 +129,7 @@ public class OpenWhiskInvoker extends ServerlessInvokerBase {
      * @return The response from the serverless NameNode.
      */
     @Override
-    public ServerlessHttpFuture enqueueHttpRequest(String operationName, String functionUriBase,
-                                                   HashMap<String, Object> nameNodeArguments,
+    public ServerlessHttpFuture enqueueHttpRequest(String operationName, HashMap<String, Object> nameNodeArguments,
                                                    ArgumentContainer fileSystemOperationArguments,
                                                    String requestId, int targetDeployment,
                                                    boolean subtreeOperation)
