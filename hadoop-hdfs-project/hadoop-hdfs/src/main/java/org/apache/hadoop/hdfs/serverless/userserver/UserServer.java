@@ -1283,6 +1283,11 @@ public class UserServer {
                     // The first server to set the value will obtain `null` as the return value from `putIfAbsent`.
                     // This is the server that should issue the asynchronous `ping` operation.
                     if (previousValue == null) {
+                        if (LOG.isTraceEnabled()) {
+                            LOG.trace("Pinging deployment " + mappedDeploymentNumber + " because NN " +
+                                    nnId + " disconnected unexpectedly.");
+                        }
+
                         // If a NameNode crashes while actively serving requests, then we'll ping that deployment, as
                         // we were using that NameNode and didn't want the FaaS provider to reclaim the resources yet.
                         // (So, by pinging the deployment, we'll prompt the provider to provision a new NN in that deployment

@@ -801,7 +801,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // If connection sharing is enabled, then RNG to see if we should perform connection
         // sharing. If we don't, then we'll just fall back to HTTP.
         else if (connectionSharingEnabled && Math.random() > (1.0 - connectionSharingProbability)) {
-            if (LOG.isTraceEnabled()) LOG.trace("No TCP connections available for deployment " + targetDeploymentTcp + ". Attempting to perform Connection Sharing now...");
+            if (LOG.isTraceEnabled()) LOG.trace("No TCP connections available for deployment " + targetDeploymentTcp + ". Attempting to perform connection sharing now...");
 
             // Random HTTP-TCP replacement. See comment above for more detailed explanation.
             if (!randomHttpEnabled || Math.random() > randomHttpChance)
@@ -811,7 +811,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
                 if (targetServer != null)
                     LOG.trace("Found another server with active connection to target deployment " + targetDeploymentTcp);
                 else
-                    LOG.trace("Failed to find another server with active connection to target deployment " + targetDeploymentTcp + ", possibly due to random HTTP replacement.");
+                    LOG.trace("Failed to find another server with active connection to target deployment " +
+                            targetDeploymentTcp + ", possibly due to random HTTP replacement.");
             }
         }
 
