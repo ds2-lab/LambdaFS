@@ -104,11 +104,15 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final double SERVERLESS_CONNECTION_SHARING_CHANCE_DEFAULT = 0.85;
 
   /**
-   * If no TCP connection exists to target deployment, then these are the odds we
-   * issue an HTTP chance rather than target another deployment with a TCP request.
+   * If no TCP connection exists to target deployment AND the target deployment recently experienced a failure or
+   * reclamation, then we want to reduce the volume of HTTP requests issued to that deployment. This is the chance of
+   * still issuing an HTTP request to a deployment that recently experienced a failure/reclaim event.
+   *
+   * This is only really used when the failure/reclaim event resulted in there being no active NNs in that deployment,
+   * or at least no active connections to any of the NNs in that deployment.
    */
-  public static final String SERVERLESS_ISSUE_HTTP_CHANCE = "serverless.http.chance";
-  public static final double SERVERLESS_ISSUE_HTTP_CHANCE_DEFAULT = 0.75;
+  public static final String SERVERLESS_ISSUE_HTTP_CHANCE_AFTER_FAILURE_CHANCE = "serverless.http.chance";
+  public static final double SERVERLESS_ISSUE_HTTP_CHANCE_AFTER_FAILURE_CHANCE_DEFAULT = 0.10;
 
   /**
    * Minimum timeout when using straggler mitigation.

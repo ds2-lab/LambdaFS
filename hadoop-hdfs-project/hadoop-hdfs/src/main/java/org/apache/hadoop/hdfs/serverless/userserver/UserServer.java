@@ -1279,7 +1279,7 @@ public class UserServer {
 
                 List<ServerlessTcpUdpFuture> incompleteFutures = submittedFutures.get(nnId);
 
-                if (incompleteFutures.size() > 0) {
+                if (incompleteFutures != null && incompleteFutures.size() > 0) {
                     Boolean previousValue = disconnectionMap.putIfAbsent(nnId, true);
 
                     // The first server to set the value will obtain `null` as the return value from `putIfAbsent`.

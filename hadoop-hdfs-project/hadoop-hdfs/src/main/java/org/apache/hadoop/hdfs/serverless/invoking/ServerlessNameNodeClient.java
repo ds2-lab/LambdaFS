@@ -282,7 +282,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private final int maxNumTcpAttempts;
 
-    private final double issueHttpChance;
+    /**
+     * Currently using this as the chances of submitting an HTTP request specifically when a failure has
+     * occurred recently in the target deployment. This is different from its original purpose.
+     */
+    private final double issueHttpAfterFailureChance;
 
     /**
      * Keep track of deployments that recently experienced a failure. We decrease the volume of HTTP requests
@@ -330,7 +334,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         connectionSharingProbability = conf.getDouble(SERVERLESS_CONNECTION_SHARING_CHANCE,
                 SERVERLESS_CONNECTION_SHARING_CHANCE_DEFAULT);
         maxNumTcpAttempts = conf.getInt(SERVERLESS_TCP_RETRY_MAX, SERVERLESS_TCP_RETRY_MAX_DEFAULT);
-        issueHttpChance = conf.getDouble(SERVERLESS_ISSUE_HTTP_CHANCE, SERVERLESS_ISSUE_HTTP_CHANCE_DEFAULT);
+        issueHttpAfterFailureChance = conf.getDouble(SERVERLESS_ISSUE_HTTP_CHANCE_AFTER_FAILURE_CHANCE,
+                SERVERLESS_ISSUE_HTTP_CHANCE_AFTER_FAILURE_CHANCE_DEFAULT);
 
         zkClient = new SyncZKClient(conf);
         // zkClient.connect();
@@ -906,7 +911,9 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // that there may be many (10's or 100's) of requests that had targeted the crashed/reclaimed NameNode.
             // If all of these requests were to fall back to HTTP, then the FaaS platform may massively over-provision
             // NameNodes in that deployment due to the surge of requests.
-            if (targetServer == null && (recentFailuresCache.asMap().containsKey(targetDeploymentTcp) || failedDueToConnectionLoss || antiThrashingModeEnabled)) {
+            if (targetServer == null && (failedDueToConnectionLoss || antiThrashingModeEnabled ||
+                    (recentFailuresCache.asMap().containsKey(targetDeploymentTcp) && Math.random() <= issueHttpAfterFailureChance))) {
+
                 if (LOG.isTraceEnabled())
                     LOG.trace("Anti-thrashing mode is enabled or we recently experienced a crash/reclamation. " +
                             "Will attempt to use any available TCP connection for request.");
