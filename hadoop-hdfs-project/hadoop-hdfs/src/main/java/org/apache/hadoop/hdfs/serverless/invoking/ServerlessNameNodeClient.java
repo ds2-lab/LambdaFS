@@ -279,6 +279,8 @@ public class ServerlessNameNodeClient implements ClientProtocol {
      */
     private final int maxNumTcpAttempts;
 
+    private final double issueHttpChance;
+
     /**
      * Create a new instance of {@link ServerlessNameNodeClient}.
      *
@@ -318,6 +320,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         connectionSharingProbability = conf.getDouble(SERVERLESS_CONNECTION_SHARING_CHANCE,
                 SERVERLESS_CONNECTION_SHARING_CHANCE_DEFAULT);
         maxNumTcpAttempts = conf.getInt(SERVERLESS_TCP_RETRY_MAX, SERVERLESS_TCP_RETRY_MAX_DEFAULT);
+        issueHttpChance = conf.getDouble(SERVERLESS_ISSUE_HTTP_CHANCE, SERVERLESS_ISSUE_HTTP_CHANCE_DEFAULT);
 
         zkClient = new SyncZKClient(conf);
         // zkClient.connect();
@@ -801,18 +804,20 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         // If connection sharing is enabled, then RNG to see if we should perform connection
         // sharing. If we don't, then we'll just fall back to HTTP.
         else if (connectionSharingEnabled && Math.random() > (1.0 - connectionSharingProbability)) {
-            if (LOG.isTraceEnabled()) LOG.trace("No TCP connections available for deployment " + targetDeploymentTcp + ". Attempting to perform connection sharing now...");
+            if (LOG.isTraceEnabled()) LOG.trace("No TCP connections available for deployment " +
+                    targetDeploymentTcp + ". Attempting to perform connection sharing now...");
 
             // Random HTTP-TCP replacement. See comment above for more detailed explanation.
-            if (!randomHttpEnabled || Math.random() > randomHttpChance)
-                targetServer = serverAndInvokerManager.findServerWithActiveConnectionToDeployment(targetDeploymentTcp);
+            // if (!randomHttpEnabled || Math.random() > randomHttpChance)
+            targetServer = serverAndInvokerManager.findServerWithActiveConnectionToDeployment(targetDeploymentTcp);
 
             if (LOG.isTraceEnabled()) {
                 if (targetServer != null)
                     LOG.trace("Found another server with active connection to target deployment " + targetDeploymentTcp);
                 else
                     LOG.trace("Failed to find another server with active connection to target deployment " +
-                            targetDeploymentTcp + ", possibly due to random HTTP replacement.");
+                            targetDeploymentTcp + ".");
+                            // targetDeploymentTcp + ", possibly due to random HTTP replacement.");
             }
         }
 
@@ -878,7 +883,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // that there may be many (10's or 100's) of requests that had targeted the crashed/reclaimed NameNode.
             // If all of these requests were to fall back to HTTP, then the FaaS platform may massively over-provision
             // NameNodes in that deployment due to the surge of requests.
-            if (targetServer == null && (antiThrashingModeEnabled || failedDueToConnectionLoss)) {
+            if (targetServer == null && (Math.random() <= issueHttpChance || antiThrashingModeEnabled || failedDueToConnectionLoss)) {
                 if (LOG.isTraceEnabled())
                     LOG.trace("Anti-thrashing mode is enabled or we recently experienced a crash/reclamation. " +
                             "Will attempt to use any available TCP connection for request.");

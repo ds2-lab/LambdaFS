@@ -104,6 +104,13 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final double SERVERLESS_CONNECTION_SHARING_CHANCE_DEFAULT = 0.85;
 
   /**
+   * If no TCP connection exists to target deployment, then these are the odds we
+   * issue an HTTP chance rather than target another deployment with a TCP request.
+   */
+  public static final String SERVERLESS_ISSUE_HTTP_CHANCE = "serverless.http.chance";
+  public static final double SERVERLESS_ISSUE_HTTP_CHANCE_DEFAULT = 0.75;
+
+  /**
    * Minimum timeout when using straggler mitigation.
    */
   public static final String SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT = "serverless.straggler.mitigation.timeout.min";
