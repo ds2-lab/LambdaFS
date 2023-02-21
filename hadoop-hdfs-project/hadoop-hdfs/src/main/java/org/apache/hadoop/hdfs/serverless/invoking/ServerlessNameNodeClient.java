@@ -1,5 +1,7 @@
 package org.apache.hadoop.hdfs.serverless.invoking;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.gson.JsonObject;
 import de.davidm.textplots.Histogram;
 import de.davidm.textplots.Plot;
@@ -55,6 +57,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.FileAlreadyExistsException;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -282,6 +285,13 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     private final double issueHttpChance;
 
     /**
+     * Keep track of deployments that recently experienced a failure. We decrease the volume of HTTP requests
+     * directed at these deployments in order to prevent the over-provisioning of NameNodes in response to a
+     * crash or reclamation.
+     */
+    private final Cache<Integer, Boolean> recentFailuresCache;
+
+    /**
      * Create a new instance of {@link ServerlessNameNodeClient}.
      *
      * IMPORTANT: The {@link ServerlessNameNodeClient#registerAndStartTcpServer()} function must be called after
@@ -377,6 +387,11 @@ public class ServerlessNameNodeClient implements ClientProtocol {
         this.latencyTcp = new DescriptiveStatistics();
         this.latencyHttp = new DescriptiveStatistics();
         this.latencyWithWindow = new DescriptiveStatistics(latencyWindowSize);
+
+        this.recentFailuresCache = Caffeine.newBuilder()
+                .maximumSize(numNormalAndWriteOnlyDeployments)
+                .expireAfterWrite(Duration.ofSeconds(20))
+                .build();
     }
 
     public void setBenchmarkModeEnabled(boolean benchmarkModeEnabled) {
@@ -392,6 +407,14 @@ public class ServerlessNameNodeClient implements ClientProtocol {
     public ZKClient getZkClient() { return this.zkClient; }
 
     public boolean isTcpEnabled() { return tcpEnabled; }
+
+    /**
+     * Record in the `recentFailuresCache` that a NameNode crashed or was reclaimed in the specified deployment.
+     * @param deployment The deployment that experienced a crash or reclamation.
+     */
+    public void recordNameNodeCrash(int deployment) {
+        recentFailuresCache.put(deployment, true);
+    }
 
     /**
      * Extract the result from the NN.
@@ -883,7 +906,7 @@ public class ServerlessNameNodeClient implements ClientProtocol {
             // that there may be many (10's or 100's) of requests that had targeted the crashed/reclaimed NameNode.
             // If all of these requests were to fall back to HTTP, then the FaaS platform may massively over-provision
             // NameNodes in that deployment due to the surge of requests.
-            if (targetServer == null && (Math.random() <= issueHttpChance || antiThrashingModeEnabled || failedDueToConnectionLoss)) {
+            if (targetServer == null && (recentFailuresCache.asMap().containsKey(targetDeploymentTcp) || failedDueToConnectionLoss || antiThrashingModeEnabled)) {
                 if (LOG.isTraceEnabled())
                     LOG.trace("Anti-thrashing mode is enabled or we recently experienced a crash/reclamation. " +
                             "Will attempt to use any available TCP connection for request.");

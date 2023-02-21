@@ -1275,6 +1275,8 @@ public class UserServer {
                         activeConnectionsPerDeployment.get(mappedDeploymentNumber);
                 deploymentConnections.remove(nnId);
 
+                client.recordNameNodeCrash(mappedDeploymentNumber);
+
                 List<ServerlessTcpUdpFuture> incompleteFutures = submittedFutures.get(nnId);
 
                 if (incompleteFutures.size() > 0) {
@@ -1300,9 +1302,9 @@ public class UserServer {
                                     " after NN " + nnId + " crashed/was reclaimed:", ex);
                         }
                     }
-                }
 
-                cancelActiveFutures(nnId, incompleteFutures);
+                    cancelActiveFutures(nnId, incompleteFutures);
+                }
             } else {
                 InetSocketAddress address = conn.getRemoteAddressTCP();
                 if (address == null)
