@@ -772,7 +772,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     });
     operations.put("create", this::create);
     operations.put("delete", this::delete);
-    operations.put("getActiveNamenodesForClient", args -> (Serializable)getActiveNameNodesWithRefresh());
+    operations.put("getActiveNamenodesForClient", args -> getActiveNameNodesWithRefresh());
     operations.put("getBlockLocations", this::getBlockLocations);
     operations.put("getDatanodeReport", this::getDatanodeReport);
     operations.put("getFileInfo", this::getFileInfo);
@@ -825,6 +825,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
     });
     operations.put("subtreeDeleteSubOperation", this::subtreeDeleteSubOperation);
     operations.put("truncate", this::truncate);
+    operations.put("terminate", args -> {
+      System.exit(0);
+      return null;
+    });
     operations.put("updatePipeline", args -> {
       updatePipeline(args);
       return null;
@@ -3532,16 +3536,6 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   public ZKClient getZooKeeperClient() {
     return zooKeeperClient;
-  }
-
-  /**
-   * Return the current version of the active name nodes list.
-   *
-   * ClientProtocol.
-   */
-  private SortedActiveNodeList getActiveNamenodesForClient(TaskArguments fsArgs) {
-    EntityManager.toggleMetadataCacheReads(true);
-    return this.getActiveNameNodes();
   }
 
   /**
