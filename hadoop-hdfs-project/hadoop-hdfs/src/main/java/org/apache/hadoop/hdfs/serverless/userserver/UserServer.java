@@ -179,6 +179,9 @@ public class UserServer {
      */
     // private final int maxNumClients;
 
+    private final int tcpKeepAlive;
+    private final int tcpTimeout;
+
     /**
      * Constructor.
      *
@@ -244,6 +247,9 @@ public class UserServer {
                 DFSConfigKeys.SERVERLESS_MAX_DEPLOYMENTS_DEFAULT);
         numFaultTolerantDeployments = conf.getBoolean(USE_FAULT_TOLERANT_DEPLOYMENTS, USE_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT) ?
                 conf.getInt(NUM_FAULT_TOLERANT_DEPLOYMENTS, NUM_FAULT_TOLERANT_DEPLOYMENTS_DEFAULT) : 0;
+
+        tcpTimeout = conf.getInt(SERVERLESS_TCP_TIMEOUT, SERVERLESS_TCP_TIMEOUT_DEFAULT);
+        tcpKeepAlive = conf.getInt(SERVERLESS_TCP_KEEPALIVE_INTERVAL, SERVERLESS_TCP_KEEPALIVE_INTERVAL_DEFAULT);
 
 //        if (LOG.isDebugEnabled())
 //            LOG.debug("User server " + (enabled ? "ENABLED." : "DISABLED.") + " Running in " +
@@ -1190,8 +1196,8 @@ public class UserServer {
         public void connected(Connection conn) {
             if (LOG.isDebugEnabled())
                 LOG.debug(serverPrefix + " Connection established with remote NameNode at " + conn.getRemoteAddressTCP());
-            conn.setKeepAliveTCP(5000);
-            conn.setTimeout(20000);
+            conn.setKeepAliveTCP(tcpKeepAlive);
+            conn.setTimeout(tcpTimeout);
         }
 
         /**

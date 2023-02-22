@@ -115,6 +115,18 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final double SERVERLESS_ISSUE_HTTP_CHANCE_AFTER_FAILURE_CHANCE_DEFAULT = 0.10;
 
   /**
+   * Milliseconds.
+   */
+  public static final String SERVERLESS_TCP_KEEPALIVE_INTERVAL = "serverless.tcp.keep-alive-interval";
+  public static final int SERVERLESS_TCP_KEEPALIVE_INTERVAL_DEFAULT = 5000;
+
+  /**
+   * Milliseconds.
+   */
+  public static final String SERVERLESS_TCP_TIMEOUT = "serverless.tcp.timeout";
+  public static final int SERVERLESS_TCP_TIMEOUT_DEFAULT = 12000;
+
+  /**
    * Minimum timeout when using straggler mitigation.
    */
   public static final String SERVERLESS_STRAGGLER_MITIGATION_MIN_TIMEOUT = "serverless.straggler.mitigation.timeout.min";

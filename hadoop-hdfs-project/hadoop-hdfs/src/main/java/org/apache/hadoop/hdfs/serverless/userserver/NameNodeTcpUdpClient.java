@@ -436,8 +436,8 @@ public class NameNodeTcpUdpClient {
                         + " in " + connectMilliseconds + " milliseconds! There are now approximately " +
                         clients.estimatedSize() + " active connections.");
 
-            tcpClient.setKeepAliveTCP(5000);
-            tcpClient.setTimeout(20000);
+            //tcpClient.setKeepAliveTCP(5000);
+            //tcpClient.setTimeout(20000);
 
             // Now that we've registered the classes to be transferred, we can register with the server.
             registerWithClient(tcpClient);
