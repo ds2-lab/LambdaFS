@@ -1141,6 +1141,7 @@ public class UserServer {
 
         // Cancel each of the futures.
         for (ServerlessTcpUdpFuture future : incompleteFutures) {
+            if (future == null) continue;
             if (LOG.isDebugEnabled()) LOG.debug(serverPrefix + " Cancelling future " + future.getRequestId() + " for operation " + future.getOperationName());
             try {
                 future.cancel(ServerlessNameNodeKeys.REASON_CONNECTION_LOST, true);
