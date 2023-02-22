@@ -66,6 +66,12 @@ public class OpenWhiskHandler extends BaseHandler {
 
         int actionMemory;
         JsonObject userArguments;
+
+        if (args.has("TERMINATE")) {
+            LOG.warn("Received instruction to terminate.");
+            System.exit(0);
+        }
+
         if (args.has("LOCAL_MODE")) {
             LOG.debug("LOCAL MODE IS ENABLED.");
             localModeEnabled = true;
