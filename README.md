@@ -1,4 +1,4 @@
-# Serverless Hops Hadoop Distribution
+# λFS
 
 ![Logo](https://github.com/ds2-lab/ds2-lab.github.io/blob/master/docs/images/lfs_logo.png)
 
