@@ -2,9 +2,12 @@
 
 ![Logo](https://github.com/ds2-lab/ds2-lab.github.io/blob/master/docs/images/lfs_logo.png)
 
+**λFS** is an elastic, scalable, and high-performance metadata service for large-scale distributed file systems (DFSes). λFS scales a DFS metadata cache elastically on a FaaS (Function-as-a-Service) platform and synthesizes a series of techniques to overcome the obstacles that are encountered when building large, stateful, and performance-sensitive applications on FaaS platforms. λFS takes full advantage of the unique benefits offered by FaaS--elastic scaling and massive parallelism--to realize a highly-optimized metadata service capable of sustaining up to multi-fold higher throughput than a state-of-the-art DFS. 
+
+λFS is implemented as a fork of HopsFS 3.2.0.3. Currently we support the [OpenWhisk](https://openwhisk.apache.org/) serverless platform. Serverless functions enable better scalability and cost-effectiveness as well as ease-of-use.
+
 **Hops** (<b>H</b>adoop <b>O</b>pen <b>P</b>latform-as-a-<b>S</b>ervice) is a next generation distribution of [Apache Hadoop](http://hadoop.apache.org/core/) with scalable, highly available, customizable metadata. Hops consists internally of two main sub projects, HopsFs and HopsYarn. <b>HopsFS</b> is a new implementation of the Hadoop Filesystem (HDFS), that supports multiple stateless NameNodes, where the metadata is stored in [MySQL Cluster](https://www.mysql.com/products/cluster/), an in-memory distributed database. HopsFS enables more scalable clusters than Apache HDFS (up to ten times larger clusters), and enables NameNode metadata to be both customized and analyzed, because it can now be easily accessed via a SQL API. <b>HopsYARN</b> introduces a distributed stateless Resource Manager, whose state is migrated to MySQL Cluster. This enables our YARN architecture to have no down-time, with failover of a ResourceManager happening in a few seconds. Together, HopsFS and HopsYARN enable Hadoop clusters to scale to larger volumes and higher throughput.
 
-We have modified HopsFS to work with serverless functions. Currently we support the [OpenWhisk](https://openwhisk.apache.org/) serverless platform. Serverless functions enable better scalability and cost-effectiveness as well as ease-of-use.
 
 # How to Build
 
