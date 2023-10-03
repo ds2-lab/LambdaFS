@@ -21,3 +21,9 @@ scripts
 dev-support/private_ips.txt
 dev-support/public_ips_no_user.txt
 dev-support/output/
+
+aws-setup/config_aws.yaml
+aws-setup/config_eks.yaml
+aws-setup/infrastructure_json/*.json
+
+aws-setup/test_start_datanode.py
