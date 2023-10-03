@@ -1,6 +1,6 @@
 # AWS Setup 
 
-The following document provides a set of directions for creating the required AWS infrastructure to deploy and run $\lambda$FS and HopsFS. Much of this process can be automated using the `create_aws_infrastructure.py` and `configure_eks_cluster.py` scripts. The `configure_eks_cluster.py` script should be executed once the AWS EKS cluster created by the `create_aws_infrastructure.py` script becomes operational. 
+The following document provides a set of directions for creating the required AWS infrastructure to deploy and run λFS and HopsFS. Much of this process can be automated using the `create_aws_infrastructure.py` and `configure_eks_cluster.py` scripts. The `configure_eks_cluster.py` script should be executed once the AWS EKS cluster created by the `create_aws_infrastructure.py` script becomes operational. 
 
 Please note that the `setup_tldr.md` document provides an abridged version of these instructions. 
 
@@ -21,7 +21,7 @@ You must install and configure `kubectl`, the Kubernetes command-line tool, whic
 ## Required Manual Configuration
 
 The default values for most parameters will be sufficient. There are a few that must be specified explicitly. These include:
-- `ssh_keypair_name`: In order to be able to connect to the various virtual machines used by $\lambda$FS and HopsFS, you will need to create and register an *EC2 key pair* with AWS. (If you have already done so, then you may reuse an existing key pair, provided the key is an RSA key.) [See this documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html) from AWS concerning "Amazon EC2 key pairs and Linux instances" for additional details. 
+- `ssh_keypair_name`: In order to be able to connect to the various virtual machines used by λFS and HopsFS, you will need to create and register an *EC2 key pair* with AWS. (If you have already done so, then you may reuse an existing key pair, provided the key is an RSA key.) [See this documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html) from AWS concerning "Amazon EC2 key pairs and Linux instances" for additional details. 
 - `ssh_key_path`: This is a path to the private key of the EC2 key pair specified in the `ssh_keypair_name` parameter. **This must be an RSA key.**
 - `aws_profile` (*possibly*): Depending on how you've configured the AWS credentials on your computer, you may be able to simply use the default AWS credentials profile. If you've not configured any AWS credentials on your computer, then this can be done by installing the [AWS CLI](https://aws.amazon.com/cli/). See [this AWS documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) concerning "configuration and credential file settings" for more details.
 
@@ -33,13 +33,13 @@ The `create_aws_infrastructure.py` script will automatically provision the follo
 - Security group
 - Public & private subnets 
 - EC2 virtual machines for:
-  - MySQL NDB Cluster (used by both HopsFS and $\lambda$FS)
+  - MySQL NDB Cluster (used by both HopsFS and λFS)
     - The manager node and however many data nodes
-  - "Primary" client VMs (which serve as experiment drivers) for HopsFS and $\lambda$FS
-  - ZooKeeper nodes used by $\lambda$FS
-- Launch templates for $\lambda$FS clients, HopsFS clients, and HopsFS NameNodes. 
-- Auto-scaling groups for $\lambda$FS clients, HopsFS clients, and HopsFS NameNodes.
-- AWS Elastic Kubernetes Service (EKS) cluster, onto which we deploy OpenWhisk, the FaaS platform used by $\lambda$FS.
+  - "Primary" client VMs (which serve as experiment drivers) for HopsFS and λFS
+  - ZooKeeper nodes used by λFS
+- Launch templates for λFS clients, HopsFS clients, and HopsFS NameNodes. 
+- Auto-scaling groups for λFS clients, HopsFS clients, and HopsFS NameNodes.
+- AWS Elastic Kubernetes Service (EKS) cluster, onto which we deploy OpenWhisk, the FaaS platform used by λFS.
   - The script also creates a number of other componets required by the AWS EKS cluster, including an IAM role, service accounts, etc.
 
 The script can be configured by creating a `config_aws.yaml` file within the same directory as the script (i.e., the `aws-setup/` directory). There is a `sample_config_aws.yaml` provided with explanations of the various configuration parameters. 
@@ -48,12 +48,12 @@ If you are interested in manually deploying or configuring your VPC, the `Networ
 
 # AWS Elastic Kubernetes Service (EKS)
 
-The AWS EKS cluster used by $\lambda$FS can be created automatically using both the `create_aws_infrastructure.py` and `configure_eks_cluster.py` scripts. As described above, the `configure_eks_cluster.py` script should be executed once the AWS EKS cluster created by the `create_aws_infrastructure.py` script becomes operational. 
+The AWS EKS cluster used by λFS can be created automatically using both the `create_aws_infrastructure.py` and `configure_eks_cluster.py` scripts. As described above, the `configure_eks_cluster.py` script should be executed once the AWS EKS cluster created by the `create_aws_infrastructure.py` script becomes operational. 
 
 Nevertheless, we have found it to be a little tricky to deploy OpenWhisk on AWS EKS. The following are some useful resources concerning the creation of an AWS EKS cluster and the subsequent deployment of OpenWhisk onto the AWS EKS cluster:
 
 - [Official OpenWhisk Documentation: "Deploying OpenWhisk on Amazon EKS"](https://github.com/apache/openwhisk-deploy-kube/blob/master/docs/k8s-aws.md). 
-  - In particular, you should follow the ["Configuring OpenWhisk using SSL and IAM"](https://github.com/apache/openwhisk-deploy-kube/blob/master/docs/k8s-aws.md#configuring-openwhisk-using-ssl-and-iam) section. We also use the configuration described in the ["Configuring Openwhisk using SSL and Elastic Loadbalancers"](https://github.com/apache/openwhisk-deploy-kube/blob/master/docs/k8s-aws.md#configuring-openwhisk-using-ssl-and-iam) section; however, you can still use self-signed certificates if you are simply looking to test and experiment with $\lambda$FS (which is *not* what their documentation says).
+  - In particular, you should follow the ["Configuring OpenWhisk using SSL and IAM"](https://github.com/apache/openwhisk-deploy-kube/blob/master/docs/k8s-aws.md#configuring-openwhisk-using-ssl-and-iam) section. We also use the configuration described in the ["Configuring Openwhisk using SSL and Elastic Loadbalancers"](https://github.com/apache/openwhisk-deploy-kube/blob/master/docs/k8s-aws.md#configuring-openwhisk-using-ssl-and-iam) section; however, you can still use self-signed certificates if you are simply looking to test and experiment with λFS (which is *not* what their documentation says).
 - [Amazon EBS CSI driver](https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html). You will need to install the Amazon EBS CSI driver on your Amazon EKS cluster in order for OpenWhisk to work. The deployment script (`create_aws_infrastructure.py`) *should* perform this step for you automatically; however, if the script encounters any issues, then you can simply follow the AWS documentation to manually install the Amazin EBS CSI driver. We will also include our own instructions below, as supplementary material. 
 
 ## Manual Creation/Deployment Instructions
@@ -64,7 +64,7 @@ You can manually create and deploy the AWS EKS cluster using either the AWS Web 
 
 You may name the AWS EKS cluster whatever you'd like. We will use `"LambdaFS_EKS_Cluster"`.
 
-The `Kubernetes version` should be specified as 1.24, as this is what $\lambda$FS was developed on. Other versions of Kubernetes may work fine, but we've not tested them with $\lambda$FS ourselves. 
+The `Kubernetes version` should be specified as 1.24, as this is what λFS was developed on. Other versions of Kubernetes may work fine, but we've not tested them with λFS ourselves. 
 
 You must create an IAM role to serve as the "Amazon EKS cluster role". Please follow the [instructions in the official AWS documentation](https://docs.aws.amazon.com/eks/latest/userguide/service_IAM_role.html#create-service-role) concerning this step. We will refer to this role by name as `eksClusterRole`. 
 
@@ -236,9 +236,9 @@ The steps to avoid/resolve this error are described above in the "**OpenWhisk NG
 
 Once you've created and configured your AWS EKS Cluster, you can deploy OpenWhisk.
 
-To do this, we recommend creating the $\lambda$FS "primary" client and experimental driver virtual machine using the `create_aws_infrastructure.py` script. Alternatively, you can create and deploy an EC2 VM yourself using the AMI `ami-01d2cba66e4fe4e1e`. Ensure this virtual machine is running before connecting to the instance via SSH. 
+To do this, we recommend creating the λFS "primary" client and experimental driver virtual machine using the `create_aws_infrastructure.py` script. Alternatively, you can create and deploy an EC2 VM yourself using the AMI `ami-01d2cba66e4fe4e1e`. Ensure this virtual machine is running before connecting to the instance via SSH. 
 
-Navigate to the `/home/ubuntu/repos/openwhisk-deploy-kube` directory. This directory contains a local GitHub repository of the repository found [here](https://github.com/Scusemua/openwhisk-deploy-kube). The repository contains a pre-configured deployment of OpenWhisk with the same settings as the one used by $\lambda$FS.  
+Navigate to the `/home/ubuntu/repos/openwhisk-deploy-kube` directory. This directory contains a local GitHub repository of the repository found [here](https://github.com/Scusemua/openwhisk-deploy-kube). The repository contains a pre-configured deployment of OpenWhisk with the same settings as the one used by λFS.  
 
 **NOTE:** Before deploying OpenWhisk, we recommend pre-creating the required NGINX `secret`. This process is described in the **Creating NGINX Secret** section above. If you executed the `configure_eks_cluster.py` script, then this step was already performed for you.
 
@@ -329,7 +329,7 @@ Once OpenWhisk is up-and-running, you are almost done setting everything up!
 
 ### **Creating the Serverless NameNode Deployments**
 
-Next, you must register a number of unique serverless NameNode deployments with OpenWhisk. There is a script that helps to automate this process available in at `whisk_helper_gcp.py`. Although this script is labeled "gcp", it will work for an AWS-based deployment of OpenWhisk just as well. In our evaluation of $\lambda$FS, we used 20 NameNode deployments. In order to create 20 NameNode deployments using the provided script, execute the following command:
+Next, you must register a number of unique serverless NameNode deployments with OpenWhisk. There is a script that helps to automate this process available in at `whisk_helper_gcp.py`. Although this script is labeled "gcp", it will work for an AWS-based deployment of OpenWhisk just as well. In our evaluation of λFS, we used 20 NameNode deployments. In order to create 20 NameNode deployments using the provided script, execute the following command:
 
 ```
 python3 /home/ubuntu/repos/hops/dev-support/whisk/whisk_helper_gcp.py -n 20 --create --memory 20000 --concurrency 4
