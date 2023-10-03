@@ -1,0 +1,123 @@
+#####################################################
+# Used by the 'create_aws_infrastructure.py' script #
+#####################################################
+
+# Toggles color formatting in the log/console output of the installation/setup script.
+no_color: False
+
+# AWS CLI profile - we need credentials to create AWS resources.
+aws_profile: <FILL THIS IN>
+
+# The region in which to reate the AWS resources. The AMIs are only availabe in us-east-1, so you should use this 
+# region unless you know of a way to clone/copy the AMIs to another region yourself.
+aws_region: "us-east-1"
+
+# Your public IPv4 address. We need this to create security rules to enable SSH between your computer and the AWS resources.
+user_public_ip: "DEFAULT_VALUE"
+
+# Name of the virtual private cloud. All of the Lambda-FS and HopsFS resources will be created inside this VPC.
+vpc_name: "LambdaFS_VPC"
+
+# The name for the security group to assign to all Lambda-FS and HopsFS resources.
+security_group_name: "lambda-fs-security-group"
+# Name of the AWS EKS Kubernetes cluster, onto which we deploy OpenWhisk, the FaaS platform used by Lambda-FS.
+eks_cluster_name : "lambda-fs-eks-cluster"
+# Name of the IAM role to be created for use with the AWS EKS Kubernetes cluster.
+eks_iam_role_name: "lambda-fs-eks-cluster-role"
+
+# The name of the keypair as registered with AWS. 
+# We will assign this keypair to VMs, and you will need to use this keypair to SSH to the VMs.
+# The key should be in RSA format.
+ssh_keypair_name: <FILL THIS IN>
+# Path to the private key located on your device (wherever you're running this script from).
+ssh_key_path: <FILL THIS IN>
+
+# EC2 instance type to use for Lambda-FS clients.
+# Specifically the client VMs managed by the autoscaling group.
+lfs_client_autoscaling_group_instance_type: "r5.4xlarge"
+# EC2 instance type to use for HopsFS clients.
+# Specifically the client VMs managed by the autoscaling group.
+hopsfs_client_autoscaling_group_instance_type: "r5.4xlarge"
+# EC2 instance type to use for HopsFS NameNodes.
+# Specifically the client VMs managed by the autoscaling group.
+hopsfs_namenode_autoscaling_group_instance_type: "r5.4xlarge"
+# EC2 instance type to use for the primary Lambda-FS client VM, 
+# which also serves as the Lambda-FS experiment driver.
+lfs_client_vm_instance_type: "r5.4xlarge"
+# EC2 instance type to use for the MySQL NDB Manager Node.
+ndb_manager_instance_type: "r5.4xlarge"
+# EC2 instance type to use for the MySQL NDB Data Nodes.
+ndb_datanode_instance_type: "r5.4xlarge"
+# EC2 instance type to use for the Lambda-FS ZooKeeper nodes.
+lambdafs_zk_instance_type: "r5.4xlarge"
+# EC2 instance type to use for the primary HopsFS client VM, 
+# which also serves as the Lambda-FS experiment driver.
+hopsfs_client_vm_instance_type: "r5.4xlarge"
+
+# Create the primary Lambda-FS client VM and experiment driver.
+create_lambda_fs_client_vm: True
+# Create the primary HopsFS client VM and experiment driver.
+create_hops_fs_client_vm: True
+
+# If you run the script once and generate some of the infrastructure, the IDs of the generated 
+# components will be written to a file in the aws_setup/infrastructure_json/ directory.
+# You can pass this file to the script for future executions and reuse the already-created components.
+#
+# For example, you can just create the VPC the first time you run the script.
+# In subsequent executions, you can set `skip_vpc_creation` to True and simply pass the JSON file to the
+# script. The script will then read the VPC ID from the JSON file. (The script can also resolve the ID
+# using the VPC name, which is another parameter to the script, but this general mechanism works for
+# all of the infrastructure created/managed by the script.)
+#
+# The use-case for this is if something goes wrong while executing the script for some reason -- you 
+# can essentially use these JSON files as checkpoints to execute the script again without having to
+# delete and recreate everything first.
+# infrastructure_json_file_name: "./infrastructure_json"
+
+# Start the ZooKeeper cluster. If you are not creating the VMs as well, then you need to pass a YAML list of 
+# IPs via the "zk_node_public_IPs" YAML parameter.
+#
+# This would look like:
+#
+# zk_node_public_IPs:
+#   - <IP1>
+#   - <IP2>
+#   - ... 
+#
+start_zookeeper_cluster: True
+# Populate the ZooKeeper cluster with the data required by Lambda-FS.
+populate_zookeeper_cluster: True 
+# Size in megabytes of the JVM heap (for client and server) for ZooKeeper. used 12000 in evaluation.
+zookeeper_jvm_heap_size: 4000
+# The number of ZooKeeper VMs to create.
+num_lambda_fs_zk_vms: 3
+
+# You only need to specify this argument if you've already setup the ZooKeeper cluster and just want to (e.g.,) start the cluster on the already-running VMs.
+# See the comment above the `start_zookeeper_cluster` property for more details.
+# zk_node_public_IPs:
+# - <IP1>
+# - <IP2>
+# - <IP3>
+
+# If True, create the MySQL NDB Cluster VMs (manager node and data nodes).
+create_ndb_cluster: True
+# If True, start the MySQL NDB Cluster VMs (manager node and data nodes).
+start_ndb_cluster: True 
+# If True, then populate the MySQL Cluster NDB database with HopsFS/LambdaFS tables.
+populate_mysql_ndb_tables: True 
+# The number of MySQL NDB Data Nodes to create. We used four in our ASPLOS'23 evaluation,
+# but performance does not change significantly. 2 would also work, especially for testing and debugging. 
+num_ndb_datanodes: 4
+
+# If True, do NOT create the IAM role used by the AWS EKS cluster.
+skip_iam_role_creation: False
+# If True, do NOT create the VPC used by HopsFS and LambdaFS.
+skip_vpc_creation: False
+# If True, do NOT create the AWS EKS cluster.
+skip_eks: False
+# If True, do NOT create the ZooKeeper VMs (used by Lambda-FS).
+skip_zookeeper_vm_creation: False
+# If True, do NOT create the AWS EC2 Launch Templates used for the Lambda-FS and HopsFS client VMs.
+skip_launch_templates: False
+# If True, do NOT create the AWS EC2 Autoscaling Groups used for the Lambda-FS and HopsFS client VMs.
+skip_autoscaling_groups: False
