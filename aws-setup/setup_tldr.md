@@ -74,7 +74,7 @@ kubectl create secret tls owdev-nginx --cert=CERT.pem --key=KEY.pem
 
 ## Step 6: OpenWhisk
 
-If you have not done so already, create the $\lambda$FS "primary" client and experimental driver virtual machine using the `create_aws_infrastructure.py` script. Connect to the machine via SSH.
+If you have not done so already, create the λFS "primary" client and experimental driver virtual machine using the `create_aws_infrastructure.py` script. Connect to the machine via SSH.
 
 Navigate to the `/home/ubuntu/repos/openwhisk-deploy-kube` directory. 
 
