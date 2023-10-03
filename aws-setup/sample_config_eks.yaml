@@ -1,0 +1,25 @@
+#################################################
+# Used by the 'configure_eks_cluster.py' script #
+#################################################
+
+# Toggles color formatting in the log/console output of the installation/setup script.
+no_color: False
+
+# AWS CLI profile - we need credentials to create AWS resources.
+aws_profile: <FILL THIS IN>
+
+# The region in which to reate the AWS resources. The AMIs are only availabe in us-east-1, so you should use this 
+# region unless you know of a way to clone/copy the AMIs to another region yourself.
+aws_region: "us-east-1"
+
+# Public IPv4 of the Lambda-FS "primary" client and experimental driver VM.
+lambda_fs_vm_public_ipv4: <FILL ME IN>
+
+# The name you assigned your AWS EKS cluster.
+eks_cluster_name: <FILL ME IN>
+
+# Path to the private key located on your device (wherever you're running this script from).
+ssh_key_path: <FILL THIS IN>
+
+# Your AWS account ID. See the following if you are unsure how to find this: https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-identifiers.html
+aws_account_id: <FILL THIS IN>
