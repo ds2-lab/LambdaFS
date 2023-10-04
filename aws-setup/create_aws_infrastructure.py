@@ -20,6 +20,11 @@ from requests import get
 from time import sleep
 from tqdm import tqdm
 
+Component_PrimaryClientVM = 'PrimaryClientVM'
+Component_ZooKeeperVM = "ZooKeeperVM"
+Component_NDB_ManagerVM = "NDB_MGM_VM"
+Component_NDB_DataNodeVM = "NDB_DataNodeVM"
+
 os.system("color")
 
 """
@@ -390,16 +395,18 @@ def create_hops_fs_client_vm(
         TagSpecifications=[{
             'ResourceType': 'instance',
             'Tags': 
-                [
-                    {
+                [{
                     'Key': 'Name',
                     'Value': "hops-fs-client-driver"
-                    },
-                    {
+                },
+                {
                     'Key': 'Project',
                     'Value': 'LambdaFS'
-                    }
-                ]
+                },
+                {
+                    'Key': 'Component',
+                    'Value': Component_PrimaryClientVM
+                }]
         }]  
     )
     
@@ -441,14 +448,19 @@ def create_lambda_fs_client_vm(
         }],
         TagSpecifications=[{
             'ResourceType': 'instance',
-            'Tags': [{
+            'Tags': 
+                [{
                     'Key': 'Name',
                     'Value': "lambda-fs-client-driver"
-                    },
-                    {
+                },
+                {
                     'Key': 'Project',
                     'Value': 'LambdaFS'
-                    }]
+                },
+                {
+                    'Key': 'Component',
+                    'Value': Component_PrimaryClientVM
+                }]
         }]  
     )
     
@@ -495,14 +507,19 @@ def create_lambda_fs_zookeeper_vms(
             }],
             TagSpecifications=[{
                 'ResourceType': 'instance',
-                'Tags': [{
-                            'Key': 'Name',
-                            'Value': instance_name
-                        },
-                        {
-                            'Key': 'Project',
-                            'Value': 'LambdaFS'
-                        }]
+                'Tags': 
+                    [{
+                        'Key': 'Name',
+                        'Value': instance_name
+                    },
+                    {
+                        'Key': 'Project',
+                        'Value': 'LambdaFS'
+                    },
+                    {
+                        'Key': 'Component',
+                        'Value': Component_ZooKeeperVM
+                    }]
             }]  
         )
         zookeeper_node_ids.append(zoo_keeper_node[0].id)
@@ -1025,6 +1042,10 @@ def create_ndb_cluster(
                     {
                         'Key': 'Project',
                         'Value': 'LambdaFS'
+                    },
+                    {
+                        'Key': 'Component',
+                        'Value': Component_NDB_ManagerVM
                     }]
         }]  
     )
@@ -1063,14 +1084,19 @@ def create_ndb_cluster(
             }],
             TagSpecifications=[{
                 'ResourceType': 'instance',
-                'Tags': [{
-                            'Key': 'Name',
-                            'Value': instance_name
-                        },
-                        {
-                            'Key': 'Project',
-                            'Value': 'LambdaFS'
-                        }]
+                'Tags': 
+                    [{
+                        'Key': 'Name',
+                        'Value': instance_name
+                    },
+                    {
+                        'Key': 'Project',
+                        'Value': 'LambdaFS'
+                    },
+                    {
+                        'Key': 'Component',
+                        'Value': Component_NDB_DataNodeVM
+                    }]
             }]   
         ) # end of call to ec2_client.create_instances()
         type1_datanodes.append(type1_datanode[0].id)
@@ -1096,16 +1122,21 @@ def create_ndb_cluster(
             }],
             TagSpecifications=[{
                 'ResourceType': 'instance',
-                'Tags': [{
-                            'Key': 'Name',
-                            'Value': instance_name
-                        },
-                        {
-                            'Key': 'Project',
-                            'Value': 'LambdaFS'
-                        }]
+                'Tags': 
+                    [{
+                        'Key': 'Name',
+                        'Value': instance_name
+                    },
+                    {
+                        'Key': 'Project',
+                        'Value': 'LambdaFS'
+                    },
+                    {
+                        'Key': 'Component',
+                        'Value': Component_NDB_DataNodeVM
+                    }]
             }], 
-        ) # end of call to ec2_client.create_instances()
+        )
         type2_datanodes.append(type2_datanode[0].id)
         datanode_ids.append(type2_datanode[0].id)
         datnaode_private_ips.append(type2_datanode[0].private_ip_address)
@@ -1448,6 +1479,8 @@ def get_args() -> argparse.Namespace:
 def main():
     global NO_COLOR
     
+    start_time = time.time()
+    
     current_datetime = str(datetime.now())
     current_datetime = current_datetime.replace(":", "_")
     
@@ -1519,6 +1552,7 @@ def main():
             do_create_hops_fs_client_vm = arguments.get("create_hops_fs_client_vm", True)
             do_start_zookeeper_cluster = arguments.get("start_zookeeper_cluster", True)
             do_populate_zookeeper_cluster = arguments.get("populate_zookeeper_cluster", True)
+            create_zookeeper_vms = arguments.get("create_zookeeper_vms", True)
             
             do_create_ndb_cluster = arguments.get("create_ndb_cluster", True)
             do_start_ndb_cluster = arguments.get("start_ndb_cluster", True)
@@ -1527,7 +1561,6 @@ def main():
             skip_iam_role_creation = arguments.get("skip_iam_role_creation", False)
             skip_vpc_creation = arguments.get("skip_vpc_creation", False)
             skip_eks = arguments.get("skip_eks", False)
-            skip_zookeeper_vm_creation = arguments.get("skip_zookeeper_vm_creation", False)
             skip_launch_templates = arguments.get("skip_launch_templates", False)
             skip_autoscaling_groups = arguments.get("skip_autoscaling_groups", False)
             
@@ -1546,11 +1579,11 @@ def main():
             # start_zookeeper = arguments.get("start_zoo_keeper", False)
             # start_ndb = arguments.get("start_ndb", False)
             
-            if ssh_key_path == None and (do_create_ndb_cluster or not skip_zookeeper_vm_creation or do_create_lambda_fs_client_vm or do_create_hops_fs_client_vm):
+            if ssh_key_path == None and (do_create_ndb_cluster or create_zookeeper_vms or do_create_lambda_fs_client_vm or do_create_hops_fs_client_vm):
                 log_error("The SSH key path cannot be None.")
                 exit(1)
                 
-            if ssh_keypair_name == None and (do_create_ndb_cluster or not skip_zookeeper_vm_creation or do_create_lambda_fs_client_vm or do_create_hops_fs_client_vm):
+            if ssh_keypair_name == None and (do_create_ndb_cluster or create_zookeeper_vms or do_create_lambda_fs_client_vm or do_create_hops_fs_client_vm):
                 log_error("The SSH keypair name cannot be None.")
                 exit(1)
     else:
@@ -1963,7 +1996,7 @@ def main():
         json.dump(data, f, ensure_ascii=False, indent=4)
     
     zk_node_public_IPs = None
-    if not skip_zookeeper_vm_creation:
+    if create_zookeeper_vms:
         logger.info("Creating the λFS ZooKeeper nodes now.")
         zk_node_IDs = create_lambda_fs_zookeeper_vms(
             ec2_resource = ec2_resource, 
@@ -2039,7 +2072,12 @@ def main():
     with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
     
-    logger.info("Newly created AWS infrastrucutre:")
+    end_time = time.time()
+    print()
+    print()
+    print()
+    log_important("Script has finished execution. Time elapsed: %.4f seconds." % (end_time - start_time))
+    log_important("Newly created AWS infrastrucutre:")
     for k,v in data.items():
         logger.info("%s: %s" % (k, str(v)))
     
