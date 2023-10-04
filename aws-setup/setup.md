@@ -325,11 +325,11 @@ You may monitor the progress of the OpenWhisk deployment by inspecting the vario
 kubectl get pods 
 ```
 
-Once OpenWhisk is up-and-running, you are almost done setting everything up!
+Once OpenWhisk is up-and-running, you are almost done setting everything up! The next step is to register the serverless NameNode deployments with OpenWhisk.
 
 ### **Creating the Serverless NameNode Deployments**
 
-Next, you must register a number of unique serverless NameNode deployments with OpenWhisk. There is a script that helps to automate this process available in at `whisk_helper_gcp.py`. Although this script is labeled "gcp", it will work for an AWS-based deployment of OpenWhisk just as well. In our evaluation of λFS, we used 20 NameNode deployments. In order to create 20 NameNode deployments using the provided script, execute the following command:
+You must register a number of unique serverless NameNode deployments with OpenWhisk. There is a script that helps to automate this process available in at `whisk_helper_gcp.py`. Although this script is labeled "gcp", it will work for an AWS-based deployment of OpenWhisk just as well. In our evaluation of λFS, we used 20 NameNode deployments. In order to create 20 NameNode deployments using the provided script, execute the following command:
 
 ```
 python3 /home/ubuntu/repos/hops/dev-support/whisk/whisk_helper_gcp.py -n 20 --create --memory 20000 --concurrency 4
@@ -352,3 +352,5 @@ We provide two utility scripts to start the ZooKeeper cluster once the VMs have 
 The NDB virtual machines required by λFS are automatically created by the `create_aws_infrastructure.py` script. This script uses the public λFS NDB AMIs to create the NDB Manager Node and NDB Data Nodes. The script also automatically updates their configuration. Optionally, the script will start the NDB cluster once it's been created. It can also populate the NDB cluster with the necessary table structure (as required by λFS). 
 
 As with ZooKeeper, we provide two utility scripts to start the MySQL NDB cluster once the VMs have already been created. One of these scripts is `aws-setup/scripts/start-ndb.sh`. This can be executed from your local computer (if your computer is capable of executing shell scripts). There is an equivalent script located in `/home/ubuntu/scripts/start-ndb.sh` on the λFS primary client/experiment driver virtual machine/AMI. 
+
+To see what tables are created (and required) by HopsFS and λFS, you can see the SQL scripts used to populate the NDB cluster in `aws-setup/sql_scripts`. The `aws-setup/sql_scripts/serverless.sql` file contains the table definitions that are specific to λFS, while the other `.sql` files contain table definitions used by both λFS and HopsFS.
