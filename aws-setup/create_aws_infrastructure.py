@@ -1462,9 +1462,6 @@ def populate_mysql_ndb_tables(
     log_success("Executed %d MySQL scripts." % len(mysql_scripts))
     
     ssh_client.close()
-    
-    # subprocess.call(["create_mysql_user.sh", ndb_mgm_ip, ssh_key_path])
-    # subprocess.call(["populate_mysql_tables.sh", ndb_mgm_ip, ssh_key_path])
 
 def get_args() -> argparse.Namespace:
     """
