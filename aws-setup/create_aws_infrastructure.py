@@ -20,7 +20,8 @@ from requests import get
 from time import sleep
 from tqdm import tqdm
 
-Component_PrimaryClientVM = 'PrimaryClientVM'
+Component_LambdaFSPrimaryClientVM = 'PrimaryLambdaFSClientVM'
+Component_HopsFSPrimaryClientVM = 'PrimaryHopsFSClientVM'
 Component_ZooKeeperVM = "ZooKeeperVM"
 Component_NDB_ManagerVM = "NDB_MGM_VM"
 Component_NDB_DataNodeVM = "NDB_DataNodeVM"
@@ -36,9 +37,9 @@ and to replicate the experiments conducted in the paper,
 MYSQL_NDB_MANAGER_AMI = "ami-0959eff7dbad22195" # "ami-0a0e055a66e58df2c"
 MYSQL_NDB_DATANODE1_AMI = "ami-05792675c2d4527ac" # "ami-075e47140b5fd017a"
 MYSQL_NDB_DATANODE2_AMI = "ami-0f81038ce29b2523a" # "ami-0fdbf79b2ec52386e"
-HOPSFS_CLIENT_AMI = "ami-07107db7fb656025d"
+HOPSFS_CLIENT_AMI = "ami-01d2cba66e4fe4e1e"
 HOPSFS_NAMENODE_AMI = "ami-0cc88cd1a5dfaef18"
-LAMBDA_FS_CLIENT_AMI = "ami-027b04d5fece878a8"
+LAMBDA_FS_CLIENT_AMI = "ami-0d51e1ea4e0a55885"
 LAMBDA_FS_ZOOKEEPER_AMI = "ami-0dbd3f0e8300ba676"
 
 # Starts ZooKeeper.
@@ -405,7 +406,7 @@ def create_hops_fs_client_vm(
                 },
                 {
                     'Key': 'Component',
-                    'Value': Component_PrimaryClientVM
+                    'Value': Component_HopsFSPrimaryClientVM
                 }]
         }]  
     )
@@ -459,7 +460,7 @@ def create_lambda_fs_client_vm(
                 },
                 {
                     'Key': 'Component',
-                    'Value': Component_PrimaryClientVM
+                    'Value': Component_LambdaFSPrimaryClientVM
                 }]
         }]  
     )
