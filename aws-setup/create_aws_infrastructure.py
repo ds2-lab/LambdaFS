@@ -36,7 +36,7 @@ and to replicate the experiments conducted in the paper,
 MYSQL_NDB_MANAGER_AMI = "ami-0959eff7dbad22195" # "ami-0a0e055a66e58df2c"
 MYSQL_NDB_DATANODE1_AMI = "ami-05792675c2d4527ac" # "ami-075e47140b5fd017a"
 MYSQL_NDB_DATANODE2_AMI = "ami-0f81038ce29b2523a" # "ami-0fdbf79b2ec52386e"
-HOPSFS_CLIENT_AMI = "ami-01d2cba66e4fe4e1e"
+HOPSFS_CLIENT_AMI = "ami-07107db7fb656025d"
 HOPSFS_NAMENODE_AMI = "ami-0cc88cd1a5dfaef18"
 LAMBDA_FS_CLIENT_AMI = "ami-027b04d5fece878a8"
 LAMBDA_FS_ZOOKEEPER_AMI = "ami-0dbd3f0e8300ba676"
