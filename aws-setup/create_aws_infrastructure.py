@@ -40,7 +40,7 @@ MYSQL_NDB_DATANODE2_AMI = "ami-0f81038ce29b2523a" # "ami-0fdbf79b2ec52386e"
 HOPSFS_CLIENT_AMI = "ami-01d2cba66e4fe4e1e"
 HOPSFS_NAMENODE_AMI = "ami-0cc88cd1a5dfaef18"
 LAMBDA_FS_CLIENT_AMI = "ami-0d51e1ea4e0a55885"
-LAMBDA_FS_ZOOKEEPER_AMI = "ami-0dbd3f0e8300ba676"
+LAMBDA_FS_ZOOKEEPER_AMI = "ami-0700bf4465e5fd16d"
 
 # Starts ZooKeeper.
 START_ZK_COMMAND = "sudo /opt/zookeeper/bin/zkServer.sh start"
