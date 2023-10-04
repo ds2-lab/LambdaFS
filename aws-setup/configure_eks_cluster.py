@@ -115,6 +115,14 @@ def install_amazon_ebs_csi_driver(
     # Second, create the Amazon EBS CSI Driver Addon.
     create_ebs_csi_driver_addon(aws_eks_cluster_name = aws_eks_cluster_name, aws_account_id = aws_account_id, ebs_csi_driver_iam_role_name = ebs_csi_driver_iam_role_name, eks_client = eks_client)
     
+    print()
+    print()
+    print()
+    log_important("This script will now try to annotate the Kubernetes service account with the EBS CSI Driver IAM role.")
+    log_important("If this fails, you can simply do this part manually by executing a single command:")
+    print()
+    log_important("kubectl annotate serviceaccount ebs-csi-controller-sa -n kube-system ks.amazonaws.com/role-arn=arn:aws:iam::%s:role/%s" % (aws_account_id, ebs_csi_driver_iam_role_name))
+    
     # Finally, annotate the Kubernetes service account.
     annotate_k8s_service_account(aws_account_id = aws_account_id, ebs_csi_driver_iam_role_name = ebs_csi_driver_iam_role_name)
 
@@ -252,8 +260,12 @@ def annotate_k8s_service_account(
             logger.info(stdout.read())
             log_error("%s" % stderr.read())
         except Exception as ex:
+            print()
+            print()
             log_error("Exception while attempting to run the 'annotate_k8s_sa.sh' script located in aws-setup/scripts/annotate_k8s_sa.sh.")
-            raise ex 
+            log_important("Please perform this last step manually by executing the following command: ")
+            log_important("kubectl annotate serviceaccount ebs-csi-controller-sa -n kube-system ks.amazonaws.com/role-arn=arn:aws:iam::%s:role/%s" % (aws_account_id, ebs_csi_driver_iam_role_name))
+            exit(1)
     else:
         try:
             logger.info("Executing shell command via subprocess module.")
@@ -261,7 +273,9 @@ def annotate_k8s_service_account(
             subprocess.call(['sh', './scripts/annotate_k8s_sa.sh', 'aws_account_id', 'ebs_csi_driver_iam_role_name'])
         except Exception as ex:
             log_error("Exception while attempting to run the 'annotate_k8s_sa.sh' script located in aws-setup/scripts/annotate_k8s_sa.sh.")
-            raise ex 
+            log_important("Please perform this last step manually by executing the following command: ")
+            log_important("kubectl annotate serviceaccount ebs-csi-controller-sa -n kube-system ks.amazonaws.com/role-arn=arn:aws:iam::%s:role/%s" % (aws_account_id, ebs_csi_driver_iam_role_name))
+            exit(1)
 
 def main():
     global NO_COLOR
