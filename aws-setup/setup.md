@@ -340,3 +340,15 @@ The `-n` flag specifies how many deployments to create. The `--create` flag indi
 ```
 python3 /home/ubuntu/repos/hops/dev-support/whisk/whisk_helper_gcp.py --help
 ```
+
+# ZooKeeper
+
+The ZooKeeper virtual machines required by λFS are automatically created by the `create_aws_infrastructure.py` script. This script uses the public λFS ZooKeeper AMI to create the virtaul machines. The script also automatically updates their configuration. Optionally, the script will start the ZooKeeper cluster once it's been created. It can also populate the ZooKeeper cluster with the necessary `ZNode` structure (as required by λFS). 
+
+We provide two utility scripts to start the ZooKeeper cluster once the VMs have already been created (i.e., if you create the cluster using the `create_aws_infrastructure.py` script and then shut down the virtaul machines). One of these scripts is `aws-setup/scripts/start-zk.sh`. This can be executed from your local computer (if your computer is capable of executing shell scripts). There is an equivalent script located in `/home/ubuntu/scripts/start-zk.sh` on the λFS primary client/experiment driver virtual machine/AMI. 
+
+# MySQL Cluster NDB
+
+The NDB virtual machines required by λFS are automatically created by the `create_aws_infrastructure.py` script. This script uses the public λFS NDB AMIs to create the NDB Manager Node and NDB Data Nodes. The script also automatically updates their configuration. Optionally, the script will start the NDB cluster once it's been created. It can also populate the NDB cluster with the necessary table structure (as required by λFS). 
+
+As with ZooKeeper, we provide two utility scripts to start the MySQL NDB cluster once the VMs have already been created. One of these scripts is `aws-setup/scripts/start-ndb.sh`. This can be executed from your local computer (if your computer is capable of executing shell scripts). There is an equivalent script located in `/home/ubuntu/scripts/start-ndb.sh` on the λFS primary client/experiment driver virtual machine/AMI. 
