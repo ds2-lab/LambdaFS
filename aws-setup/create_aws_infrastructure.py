@@ -1576,23 +1576,23 @@ def ndb_part(
         datanode_ids = ndb_resp["data-node-ids"]
         ndb_manager_node_id = ndb_resp["manager-node-id"]
             
-        key = RSAKey(filename = ssh_key_path)
+        # key = RSAKey(filename = ssh_key_path)
         # Make sure the mysqld process is stopped on the manager node.
-        success = stop_mysqld_process(ip = ndb_mgm_public_ip, key = key)
-        if not success:
-            log_error("Failed to stop MYSQLD process on NDB manager node.")
-            log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
-            exit(1)
+        # success = stop_mysqld_process(ip = ndb_mgm_public_ip, key = key)
+        # if not success:
+        #     log_error("Failed to stop MYSQLD process on NDB manager node.")
+        #     log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
+        #     exit(1)
 
-        # Make sure the mysqld process is stopped on the data nodes.
-        for i in tqdm(range(len(data_node_public_ips))):
-            data_node_ip = data_node_public_ips[i]
+        # # Make sure the mysqld process is stopped on the data nodes.
+        # for i in tqdm(range(len(data_node_public_ips))):
+        #     data_node_ip = data_node_public_ips[i]
 
-            success = stop_mysqld_process(ip = data_node_ip, key = key)
-            if not success:
-                log_error("Failed to stop MYSQLD process on NDB data node at %s." % data_node_ip)
-                log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
-                exit(1)
+        #     success = stop_mysqld_process(ip = data_node_ip, key = key)
+        #     if not success:
+        #         log_error("Failed to stop MYSQLD process on NDB data node at %s." % data_node_ip)
+        #         log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
+        #         exit(1)
         
         try:
             print()
@@ -1631,9 +1631,9 @@ def ndb_part(
             data_node_public_ips = infrastructure_json.get("data-node-public-ips", None)
             datanode_ids = infrastructure_json.get("data-node-ids", None)
         
-        logger.info("Sleeping for 30 seconds while the mysqld processes shut down.")
-        for _ in tqdm(range(120)):
-            sleep(0.25)
+        # logger.info("Sleeping for 30 seconds while the mysqld processes shut down.")
+        # for _ in tqdm(range(120)):
+        #     sleep(0.25)
         
         print()
         logger.info("Starting the MySQL NDB cluster now.")
