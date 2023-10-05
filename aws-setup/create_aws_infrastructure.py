@@ -34,7 +34,7 @@ and to replicate the experiments conducted in the paper,
 "λ FS: A Scalable and Elastic Distributed File System Metadata Service using Serverless Functions"
 """
 
-MYSQL_NDB_MANAGER_AMI = "ami-0959eff7dbad22195" # "ami-0a0e055a66e58df2c"
+MYSQL_NDB_MANAGER_AMI = "ami-0ef872c16032b2aeb" # "ami-0a0e055a66e58df2c"
 MYSQL_NDB_DATANODE1_AMI = "ami-05792675c2d4527ac" # "ami-075e47140b5fd017a"
 MYSQL_NDB_DATANODE2_AMI = "ami-0f81038ce29b2523a" # "ami-0fdbf79b2ec52386e"
 HOPSFS_CLIENT_AMI = "ami-00b50df44bd99ab5f"
@@ -44,6 +44,7 @@ LAMBDA_FS_ZOOKEEPER_AMI = "ami-0700bf4465e5fd16d"
 
 # Starts ZooKeeper.
 START_ZK_COMMAND = "sudo /opt/zookeeper/bin/zkServer.sh start"
+STOP_MYSQLD_COMMAND = "/usr/local/mysql/bin/mysqladmin -u root shutdown"
 
 # Set up logging.
 logger = logging.getLogger(__name__)
@@ -1296,7 +1297,6 @@ def create_ndb_config(
     
     ssh_client.close()
 
-STOP_MYSQLD_COMMAND = "/usr/local/mysql/bin/mysqladmin -u root shutdown"
 def stop_mysqld_process(
     ip:str = None,
     key:RSAKey = None,
