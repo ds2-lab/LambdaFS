@@ -45,7 +45,7 @@ LAMBDA_FS_ZOOKEEPER_AMI = "ami-0700bf4465e5fd16d"
 # Starts ZooKeeper.
 START_ZK_COMMAND = "sudo /opt/zookeeper/bin/zkServer.sh start"
 STOP_MYSQLD_COMMAND = "/usr/local/mysql/bin/mysqladmin -u root shutdown"
-START_MYSQLD_COMMAND = "/home/ubuntu/mysql.server start"
+START_MYSQLD_COMMAND = "/home/ubuntu/mysql.server start %"
 
 # Set up logging.
 logger = logging.getLogger(__name__)
@@ -1435,6 +1435,10 @@ def start_mysqld_process(
     
     logger.info("Restarted MySQL service on VM at %s. Time elapsed: %.2f seconds." % (ip, time.time() - st))
     
+    logger.info("Sleeping for 30 seconds so the MYSQLD process has time to start-up.")
+    for _ in tqdm(range(120)):
+        sleep(0.25)
+            
     return True 
 
 def populate_mysql_ndb_tables(
