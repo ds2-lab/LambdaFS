@@ -37,8 +37,8 @@ and to replicate the experiments conducted in the paper,
 MYSQL_NDB_MANAGER_AMI = "ami-0959eff7dbad22195" # "ami-0a0e055a66e58df2c"
 MYSQL_NDB_DATANODE1_AMI = "ami-05792675c2d4527ac" # "ami-075e47140b5fd017a"
 MYSQL_NDB_DATANODE2_AMI = "ami-0f81038ce29b2523a" # "ami-0fdbf79b2ec52386e"
-HOPSFS_CLIENT_AMI = "ami-01d2cba66e4fe4e1e"
-HOPSFS_NAMENODE_AMI = "ami-0cc88cd1a5dfaef18"
+HOPSFS_CLIENT_AMI = "ami-00b50df44bd99ab5f"
+HOPSFS_NAMENODE_AMI = "ami-00b50df44bd99ab5f"
 LAMBDA_FS_CLIENT_AMI = "ami-0d51e1ea4e0a55885"
 LAMBDA_FS_ZOOKEEPER_AMI = "ami-0700bf4465e5fd16d"
 
@@ -1144,8 +1144,8 @@ def create_ndb_cluster(
     
     logger.info("Created NDB EC2 instances.")
     logger.info("Created 1 NDB Manager Node and %d NDB DataNode(s)." % len(datanode_ids))
-    logger.info("Sleeping for 45 seconds while the NDB VMs start-up.")
-    for i in tqdm(range(180)):
+    logger.info("Sleeping for 60 seconds while the NDB VMs start-up.")
+    for i in tqdm(range(240)):
         sleep(0.25)
     
     # Resolving this separately/explicitly, as it kept being None when I tried to access the field, even after waiting.
@@ -1296,6 +1296,7 @@ def create_ndb_config(
     
     ssh_client.close()
 
+STOP_MYSQLD_COMMAND = "/usr/local/mysql/bin/mysqladmin -u root shutdown"
 def stop_mysqld_process(
     ip:str = None,
     key:RSAKey = None,
@@ -1313,7 +1314,7 @@ def stop_mysqld_process(
     logger.info("Connecting to NDB VM at %s" % ip)
     ssh_client.connect(hostname = ip, port = 22, username = "ubuntu", pkey = key)
     logger.info("Connected! Stopping mysqld process first.")
-    _, stdout, stderr = ssh_client.exec_command("sudo service mysql stop")
+    _, stdout, stderr = ssh_client.exec_command(STOP_MYSQLD_COMMAND)
     logger.info(stdout.read().decode())
     stderr_output = stderr.read().decode()
 
@@ -1321,7 +1322,6 @@ def stop_mysqld_process(
         log_error(stderr_output)
         
         if "ERROR" in stderr_output.upper() or "EXCEPTION" in stderr_output.upper():
-            log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
             return False 
     
     return True 
@@ -1628,6 +1628,8 @@ def main():
                 
                 log_success("Loaded existing infrastructure:")
                 logger.info(str(infrastructure_json))
+                
+                data.update(infrastructure_json)
             
             # start_zookeeper = arguments.get("start_zoo_keeper", False)
             # start_ndb = arguments.get("start_ndb", False)
@@ -1988,6 +1990,7 @@ def main():
         success = stop_mysqld_process(ip = ndb_mgm_public_ip, key = key)
         if not success:
             log_error("Failed to stop MYSQLD process on NDB manager node.")
+            log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
             exit(1)
 
         # Make sure the mysqld process is stopped on the data nodes.
@@ -1997,6 +2000,7 @@ def main():
             success = stop_mysqld_process(ip = data_node_ip, key = key)
             if not success:
                 log_error("Failed to stop MYSQLD process on NDB data node at %s." % data_node_ip)
+                log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
                 exit(1)
         
         try:
