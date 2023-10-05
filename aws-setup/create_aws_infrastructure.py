@@ -1296,6 +1296,36 @@ def create_ndb_config(
     
     ssh_client.close()
 
+def stop_mysqld_process(
+    ip:str = None,
+    key:RSAKey = None,
+)->bool:
+    if ip == None:
+        log_error("IP cannot be None.")
+        return 
+        
+    if key == None:
+        log_error("SSH key cannot be None.")
+        return 
+
+    ssh_client = SSHClient()
+    ssh_client.set_missing_host_key_policy(AutoAddPolicy)
+    logger.info("Connecting to NDB VM at %s" % ip)
+    ssh_client.connect(hostname = ip, port = 22, username = "ubuntu", pkey = key)
+    logger.info("Connected! Stopping mysqld process first.")
+    _, stdout, stderr = ssh_client.exec_command("sudo service mysql stop")
+    logger.info(stdout.read().decode())
+    stderr_output = stderr.read().decode()
+
+    if len(stderr_output.strip()) > 0:
+        log_error(stderr_output)
+        
+        if "ERROR" in stderr_output.upper() or "EXCEPTION" in stderr_output.upper():
+            log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
+            return False 
+    
+    return True 
+
 def start_ndb_cluster(
     ndb_mgm_ip:str = None,
     data_node_ips:list[str] = None,
@@ -1308,18 +1338,18 @@ def start_ndb_cluster(
     """
     if ndb_mgm_ip == None:
         log_error("Received no NDB manager node IP address. Cannot start the cluster.")
-        return 
+        return False
 
     if data_node_ips == None or len(data_node_ips) == 0:
         log_error("Received no NDB data node IP addresses. Cannot start the cluster.")
-        return 
+        return False
         
     if ssh_key_path == None:
         log_error("SSH key path cannot be None.")
-        return 
+        return False
     
     key = RSAKey(filename = ssh_key_path)
-
+    
     if start_manager_node:
         ssh_client = SSHClient()
         ssh_client.set_missing_host_key_policy(AutoAddPolicy)
@@ -1327,9 +1357,7 @@ def start_ndb_cluster(
         ssh_client.connect(hostname = ndb_mgm_ip, port = 22, username = "ubuntu", pkey = key)
         logger.info("Connected! Starting manager now.")
     
-        _, stdout, stderr = ssh_client.exec_command("sudo -S /usr/local/bin/ndb_mgmd --skip-config-cache -f /var/lib/mysql-cluster/config.ini")    
-        logger.info(stdout.read().decode())
-        
+        _, stdout, stderr = ssh_client.exec_command("sudo -S /usr/local/bin/ndb_mgmd --initial --skip-config-cache -f /var/lib/mysql-cluster/config.ini")    
         logger.info(stdout.read().decode())
         stderr_output = stderr.read().decode()
         
@@ -1339,7 +1367,7 @@ def start_ndb_cluster(
             if "ERROR" in stderr_output.upper() or "EXCEPTION" in stderr_output.upper():
                 log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
                 # TODO: Terminate NDB EC2 VMs at this point?
-                return 
+                return False
     
         log_success("Started NDB manager node.")
         ssh_client.close()
@@ -1364,40 +1392,65 @@ def start_ndb_cluster(
 
         logger.info("Started data node (hopefully).")
 
-    logger.info("Restarting mysql service. (This may take a minute or two.)")
-    st = time.time() 
+    logger.info("Sleeping for 30 seconds before starting mysqld process on NDB manager node.")
+    for _ in tqdm(range(40)):
+        sleep(0.25)
+
+    logger.info("Restarting mysql service on NDB manager node. (This may take a minute or two.)")
     
+    # Restart mysqld on manager node.
+    restart_mysqld_process(ip = ndb_mgm_ip, key = key)
+    
+    # Restart mysqld on each data node.
+    # for i in tqdm(range(len(data_node_ips))):
+    #     data_node_ip = data_node_ips[i]
+
+    #     restart_mysqld_process(ip = data_node_ip, key = key)
+    
+    return True 
+
+def restart_mysqld_process(
+    ip:str = None,
+    key:RSAKey = None,
+)->bool:
+    if ip == None:
+        log_error("IP cannot be None.")
+        return False
+        
+    if key == None:
+        log_error("SSH key cannot be None.")
+        return False
+
     ssh_client = SSHClient()
     ssh_client.set_missing_host_key_policy(AutoAddPolicy)
-    logger.info("Connecting to MySQL NDB Manager Node VM at %s" % ndb_mgm_ip)
-    ssh_client.connect(hostname = ndb_mgm_ip, port = 22, username = "ubuntu", pkey = key)
+    logger.info("Connecting to NDB VM at %s" % ip)
+    ssh_client.connect(hostname = ip, port = 22, username = "ubuntu", pkey = key)
     logger.info("Connected! Restarting mysql service now.")
     
+    st = time.time() 
     _, stdout, stderr = ssh_client.exec_command("sudo -S service mysql restart")    
     logger.info(stdout.read().decode())
     logger.info(stderr.read().decode())
     
-    logger.info("Restarted MySQL service. Time elapsed: %.2f seconds." % (time.time() - st))
+    logger.info("Restarted MySQL service on VM at %s. Time elapsed: %.2f seconds." % (ip, time.time() - st))
     
-    logger.info("Sleeping for 15 seconds.")
-    for _ in tqdm(range(60)):
-        sleep(0.25)
+    return True 
 
 def populate_mysql_ndb_tables(
     ndb_mgm_ip:str = None,
     ssh_key_path:str = None,
     create_user:bool = True,
-):
+)->bool:
     """
     Populate the MySQL Cluster NDB tables.
     """
     if ndb_mgm_ip == None:
         log_error("Received no NDB manager node IP address. Cannot start the cluster.")
-        return 
+        return False
         
     if ssh_key_path == None:
         log_error("SSH key path cannot be None.")
-        return 
+        return False
     
     key = RSAKey(filename = ssh_key_path)
 
@@ -1458,11 +1511,13 @@ def populate_mysql_ndb_tables(
             
             if "ERROR" in stderr_output.upper() or "EXCEPTION" in stderr_output.upper():
                 log_error("Exiting.")
-                return 
+                return False
         
     log_success("Executed %d MySQL scripts." % len(mysql_scripts))
     
     ssh_client.close()
+    
+    return True 
 
 def get_args() -> argparse.Namespace:
     """
@@ -1927,6 +1982,22 @@ def main():
         data_node_private_ips = ndb_resp["data-node-private-ips"]
         datanode_ids = ndb_resp["data-node-ids"]
         ndb_manager_node_id = ndb_resp["manager-node-id"]
+            
+        key = RSAKey(filename = ssh_key_path)
+        # Make sure the mysqld process is stopped on the manager node.
+        success = stop_mysqld_process(ip = ndb_mgm_public_ip, key = key)
+        if not success:
+            log_error("Failed to stop MYSQLD process on NDB manager node.")
+            exit(1)
+
+        # Make sure the mysqld process is stopped on the data nodes.
+        for i in tqdm(range(len(data_node_public_ips))):
+            data_node_ip = data_node_public_ips[i]
+
+            success = stop_mysqld_process(ip = data_node_ip, key = key)
+            if not success:
+                log_error("Failed to stop MYSQLD process on NDB data node at %s." % data_node_ip)
+                exit(1)
         
         try:
             print()
@@ -1965,14 +2036,29 @@ def main():
             data_node_public_ips = infrastructure_json.get("data-node-public-ips", None)
             datanode_ids = infrastructure_json.get("data-node-ids", None)
         
+        logger.info("Sleeping for 30 seconds while the mysqld processes shut down.")
+        for _ in tqdm(range(120)):
+            sleep(0.25)
+        
         print()
         logger.info("Starting the MySQL NDB cluster now.")
-        start_ndb_cluster(ndb_mgm_ip = ndb_mgm_public_ip, ssh_key_path = ssh_key_path, data_node_ips = data_node_public_ips)
-        log_success("Successfully started the MySQL NDB cluster (hopefully).")
+        success = start_ndb_cluster(ndb_mgm_ip = ndb_mgm_public_ip, ssh_key_path = ssh_key_path, data_node_ips = data_node_public_ips)
+        
+        if success:
+            log_success("Successfully started the MySQL NDB cluster (hopefully).")
+        else:
+            log_error("Failed to start the MySQL NDB cluster.")
+            log_error("Terminating NDB manager node.")
+            ec2_client.terminate_instances(InstanceIds = [ndb_manager_node_id])
+            log_error("Terminating the %d NDB data node(s)." % len(datanode_ids))
+            ec2_client.terminate_instances(InstanceIds = datanode_ids)
         
         logger.info("Sleeping for 60 seconds while the MySQL NDB Cluster begins running.")
         for _ in tqdm(range(240)):
             sleep(0.25)
+
+    with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
     if do_populate_mysql_ndb_tables:
         if ndb_mgm_public_ip == None:
@@ -1987,11 +2073,13 @@ def main():
         
         print()
         logger.info("Populating the MySQL NDB database now.")
-        populate_mysql_ndb_tables(ndb_mgm_ip = ndb_mgm_public_ip, ssh_key_path = ssh_key_path)
-        log_success("Successfully populated the MySQL NDB cluster (hopefully).")
-    
-    with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+        success = populate_mysql_ndb_tables(ndb_mgm_ip = ndb_mgm_public_ip, ssh_key_path = ssh_key_path)
+        
+        if success:
+            log_success("Successfully populated the MySQL NDB cluster.")
+        else:
+            log_error("Failed to populate MySQL cluster with tables. See log output for relevant error messages, if any exist.")
+            exit(1)
     
     zk_node_public_IPs = None
     if create_zookeeper_vms:
