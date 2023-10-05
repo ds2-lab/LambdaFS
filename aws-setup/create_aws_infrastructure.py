@@ -35,8 +35,8 @@ and to replicate the experiments conducted in the paper,
 """
 
 MYSQL_NDB_MANAGER_AMI = "ami-0ef872c16032b2aeb" # "ami-0a0e055a66e58df2c"
-MYSQL_NDB_DATANODE1_AMI = "ami-05792675c2d4527ac" # "ami-075e47140b5fd017a"
-MYSQL_NDB_DATANODE2_AMI = "ami-0f81038ce29b2523a" # "ami-0fdbf79b2ec52386e"
+MYSQL_NDB_DATANODE1_AMI = "ami-02b05337b4142f447" # "ami-075e47140b5fd017a"
+MYSQL_NDB_DATANODE2_AMI = "ami-0a3d55fdd1fe9a6b8" # "ami-0fdbf79b2ec52386e"
 HOPSFS_CLIENT_AMI = "ami-00b50df44bd99ab5f"
 HOPSFS_NAMENODE_AMI = "ami-00b50df44bd99ab5f"
 LAMBDA_FS_CLIENT_AMI = "ami-0d51e1ea4e0a55885"
@@ -45,6 +45,7 @@ LAMBDA_FS_ZOOKEEPER_AMI = "ami-0700bf4465e5fd16d"
 # Starts ZooKeeper.
 START_ZK_COMMAND = "sudo /opt/zookeeper/bin/zkServer.sh start"
 STOP_MYSQLD_COMMAND = "/usr/local/mysql/bin/mysqladmin -u root shutdown"
+START_MYSQLD_COMMAND = "/home/ubuntu/mysql.server start"
 
 # Set up logging.
 logger = logging.getLogger(__name__)
@@ -1399,17 +1400,17 @@ def start_ndb_cluster(
     logger.info("Restarting mysql service on NDB manager node. (This may take a minute or two.)")
     
     # Restart mysqld on manager node.
-    restart_mysqld_process(ip = ndb_mgm_ip, key = key)
+    start_mysqld_process(ip = ndb_mgm_ip, key = key)
     
     # Restart mysqld on each data node.
     # for i in tqdm(range(len(data_node_ips))):
     #     data_node_ip = data_node_ips[i]
 
-    #     restart_mysqld_process(ip = data_node_ip, key = key)
+    #     start_mysqld_process(ip = data_node_ip, key = key)
     
     return True 
 
-def restart_mysqld_process(
+def start_mysqld_process(
     ip:str = None,
     key:RSAKey = None,
 )->bool:
@@ -1425,10 +1426,10 @@ def restart_mysqld_process(
     ssh_client.set_missing_host_key_policy(AutoAddPolicy)
     logger.info("Connecting to NDB VM at %s" % ip)
     ssh_client.connect(hostname = ip, port = 22, username = "ubuntu", pkey = key)
-    logger.info("Connected! Restarting mysql service now.")
+    logger.info("Connected! Restarting mysql service now with command \"%s\"" % START_MYSQLD_COMMAND)
     
     st = time.time() 
-    _, stdout, stderr = ssh_client.exec_command("sudo -S service mysql restart")    
+    _, stdout, stderr = ssh_client.exec_command(START_MYSQLD_COMMAND)    
     logger.info(stdout.read().decode())
     logger.info(stderr.read().decode())
     
@@ -1519,6 +1520,162 @@ def populate_mysql_ndb_tables(
     
     return True 
 
+def ndb_part(
+    do_create_ndb_cluster:bool = True,
+    do_start_ndb_cluster:bool = True,
+    do_populate_mysql_ndb_tables:bool = True,
+    ndb_datanode_data_directory:str = "/usr/local/mysql/data",
+    ndb_mgm_data_directory:str = "/var/lib/mysql-cluster",
+    num_ndb_datanodes:int = 4,
+    security_group_ids:list[str] = [],
+    public_subnet_ids:list[str] = [],
+    ndb_manager_instance_type:str = "r5.4xlarge",
+    ndb_datanode_instance_type:str = "r5.4xlarge",
+    ssh_keypair_name:str = None,
+    ssh_key_path:str = None,
+    ec2_resource = None,
+    ec2_client = None,  
+    data:dict = None ,
+    infrastructure_json = None,
+    current_datetime = None
+):
+    """
+    Setup MySQL Cluster NDB. 
+    
+    This may include:
+    - Creating the EC2 VMs for the NDB Manager Node and NDB Data Node(s).
+    - Updating the configuration for the various NDB nodes.
+    - Starting the NDB cluster.
+    - Populating the cluster with the SQL tables required by λFS and HopsFS.
+    """
+    ndb_mgm_public_ip = None
+    data_node_public_ips = None 
+    datanode_ids = None
+    ndb_manager_node_id = None
+    if do_create_ndb_cluster:
+        logger.info("Creating the MySQL NDB cluster nodes now.")
+        ndb_resp = create_ndb_cluster(
+            ec2_resource = ec2_resource, 
+            ec2_client = ec2_client,
+            ssh_keypair_name = ssh_keypair_name, 
+            num_datanodes = num_ndb_datanodes, 
+            security_group_ids = security_group_ids,
+            subnet_id = public_subnet_ids[0],
+            ndb_manager_instance_type = ndb_manager_instance_type,
+            ndb_datanode_instance_type = ndb_datanode_instance_type)
+        
+        log_success("Created NDB Manager Node: %s" % ndb_resp["manager-node-id"])
+        log_success("Created %d NDB Data Node(s): %s" % (len(ndb_resp["data-node-ids"]), str(ndb_resp["data-node-ids"])))
+        
+        data.update(ndb_resp)
+        
+        ndb_mgm_public_ip = ndb_resp["manager-node-public-ip"]
+        ndb_mgm_private_ip = ndb_resp["manager-node-private-ip"]
+        data_node_public_ips = ndb_resp["data-node-public-ips"]
+        data_node_private_ips = ndb_resp["data-node-private-ips"]
+        datanode_ids = ndb_resp["data-node-ids"]
+        ndb_manager_node_id = ndb_resp["manager-node-id"]
+            
+        key = RSAKey(filename = ssh_key_path)
+        # Make sure the mysqld process is stopped on the manager node.
+        success = stop_mysqld_process(ip = ndb_mgm_public_ip, key = key)
+        if not success:
+            log_error("Failed to stop MYSQLD process on NDB manager node.")
+            log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
+            exit(1)
+
+        # Make sure the mysqld process is stopped on the data nodes.
+        for i in tqdm(range(len(data_node_public_ips))):
+            data_node_ip = data_node_public_ips[i]
+
+            success = stop_mysqld_process(ip = data_node_ip, key = key)
+            if not success:
+                log_error("Failed to stop MYSQLD process on NDB data node at %s." % data_node_ip)
+                log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
+                exit(1)
+        
+        try:
+            print()
+            logger.info("Creating/updating NDB configuration now.")
+            create_ndb_config(ndb_mgm_public_ip = ndb_mgm_public_ip, ndb_mgm_private_ip = ndb_mgm_private_ip, ssh_key_path = ssh_key_path, ndb_datanode_data_directory = ndb_datanode_data_directory, ndb_mgm_data_directory = ndb_mgm_data_directory, data_node_public_ips = data_node_public_ips, data_node_private_ips = data_node_private_ips)
+        except Exception as ex:
+            log_error("Exception encountered while creating NDB configuration files.")
+            log_error(repr(ex))
+            log_error("Terminating NDB manager node.")
+            ec2_client.terminate_instances(InstanceIds = [ndb_manager_node_id])
+            log_error("Terminating the %d NDB data node(s)." % len(datanode_ids))
+            ec2_client.terminate_instances(InstanceIds = datanode_ids)
+            raise ex 
+   
+    with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+    
+    if do_start_ndb_cluster:
+        if ndb_mgm_public_ip == None:
+            if "manager-node-public-ip" not in infrastructure_json:
+                log_error("We did not just create the MySQL NDB cluster; however, the `infrastructure_json` data does not have an entry for the NDB manager node's public IP address.")
+                log_error("Consequently, we cannot start the NDB cluster as instructed.")
+                exit(1)
+            
+            logger.debug("Retrieving NDB manager node's IP from the `infrastructure_json` data.")
+            ndb_mgm_public_ip = infrastructure_json.get("manager-node-public-ip", None)
+            ndb_manager_node_id = infrastructure_json.get("manager-node-id", None)
+        
+        if data_node_public_ips == None:
+            if "data-node-public-ips" not in infrastructure_json:
+                log_error("We did not just create the MySQL NDB cluster; however, the `infrastructure_json` data does not have an entry for the NDB data nodes' public IP address.")
+                log_error("Consequently, we cannot start the NDB cluster as instructed.")
+                exit(1)
+            
+            logger.debug("Retrieving NDB data nodes' IP from the `infrastructure_json` data.")
+            data_node_public_ips = infrastructure_json.get("data-node-public-ips", None)
+            datanode_ids = infrastructure_json.get("data-node-ids", None)
+        
+        logger.info("Sleeping for 30 seconds while the mysqld processes shut down.")
+        for _ in tqdm(range(120)):
+            sleep(0.25)
+        
+        print()
+        logger.info("Starting the MySQL NDB cluster now.")
+        success = start_ndb_cluster(ndb_mgm_ip = ndb_mgm_public_ip, ssh_key_path = ssh_key_path, data_node_ips = data_node_public_ips)
+        
+        if success:
+            log_success("Successfully started the MySQL NDB cluster (hopefully).")
+        else:
+            log_error("Failed to start the MySQL NDB cluster.")
+            log_error("Terminating NDB manager node.")
+            ec2_client.terminate_instances(InstanceIds = [ndb_manager_node_id])
+            log_error("Terminating the %d NDB data node(s)." % len(datanode_ids))
+            ec2_client.terminate_instances(InstanceIds = datanode_ids)
+        
+        logger.info("Sleeping for 60 seconds while the MySQL NDB Cluster begins running.")
+        for _ in tqdm(range(240)):
+            sleep(0.25)
+
+    with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+    if do_populate_mysql_ndb_tables:
+        if ndb_mgm_public_ip == None:
+            if "manager-node-public-ip" not in infrastructure_json:
+                log_error("We did not just create the MySQL NDB cluster; however, the `infrastructure_json` data does not have an entry for the NDB manager node's public IP address.")
+                log_error("Consequently, we cannot start the NDB cluster as instructed.")
+                exit(1)
+            
+            logger.debug("Retrieving NDB manager node's IP from the `infrastructure_json` data.")
+            ndb_mgm_public_ip = infrastructure_json.get("manager-node-public-ip", None)
+            ndb_manager_node_id = infrastructure_json.get("manager-node-id", None)
+        
+        print()
+        logger.info("Populating the MySQL NDB database now.")
+        success = populate_mysql_ndb_tables(ndb_mgm_ip = ndb_mgm_public_ip, ssh_key_path = ssh_key_path)
+        
+        if success:
+            log_success("Successfully populated the MySQL NDB cluster.")
+        else:
+            log_error("Failed to populate MySQL cluster with tables. See log output for relevant error messages, if any exist.")
+            exit(1)
+    
 def get_args() -> argparse.Namespace:
     """
     Parse the commandline arguments.
@@ -1669,7 +1826,6 @@ def main():
     else:
         logger.info("Selected AWS profile: \"%s\"" % aws_profile_name)
 
-    
     print()
     print()
     print()
@@ -1957,134 +2113,29 @@ def main():
     data['public_subnet_ids'] = public_subnet_ids
     data['private_subnet_ids'] = private_subnet_ids
     
-    ndb_mgm_public_ip = None
-    data_node_public_ips = None 
-    datanode_ids = None
-    ndb_manager_node_id = None
-    if do_create_ndb_cluster:
-        logger.info("Creating the MySQL NDB cluster nodes now.")
-        ndb_resp = create_ndb_cluster(
-            ec2_resource = ec2_resource, 
-            ec2_client = ec2_client,
-            ssh_keypair_name = ssh_keypair_name, 
-            num_datanodes = num_ndb_datanodes, 
-            security_group_ids = security_group_ids,
-            subnet_id = public_subnet_ids[0],
-            ndb_manager_instance_type = ndb_manager_instance_type,
-            ndb_datanode_instance_type = ndb_datanode_instance_type)
-        
-        log_success("Created NDB Manager Node: %s" % ndb_resp["manager-node-id"])
-        log_success("Created %d NDB Data Node(s): %s" % (len(ndb_resp["data-node-ids"]), str(ndb_resp["data-node-ids"])))
-        
-        data.update(ndb_resp)
-        
-        ndb_mgm_public_ip = ndb_resp["manager-node-public-ip"]
-        ndb_mgm_private_ip = ndb_resp["manager-node-private-ip"]
-        data_node_public_ips = ndb_resp["data-node-public-ips"]
-        data_node_private_ips = ndb_resp["data-node-private-ips"]
-        datanode_ids = ndb_resp["data-node-ids"]
-        ndb_manager_node_id = ndb_resp["manager-node-id"]
-            
-        key = RSAKey(filename = ssh_key_path)
-        # Make sure the mysqld process is stopped on the manager node.
-        success = stop_mysqld_process(ip = ndb_mgm_public_ip, key = key)
-        if not success:
-            log_error("Failed to stop MYSQLD process on NDB manager node.")
-            log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
-            exit(1)
+    ###########################
+    # Setup MySQL Cluster NDB #
+    ###########################
+    ndb_part(
+        do_create_ndb_cluster = do_create_ndb_cluster,
+        do_start_ndb_cluster = do_start_ndb_cluster,
+        do_populate_mysql_ndb_tables = do_populate_mysql_ndb_tables,
+        ndb_datanode_data_directory = ndb_datanode_data_directory,
+        ndb_mgm_data_directory = ndb_mgm_data_directory,
+        num_ndb_datanodes = num_ndb_datanodes,
+        security_group_ids = security_group_ids,
+        public_subnet_ids = public_subnet_ids,
+        ndb_manager_instance_type = ndb_manager_instance_type,
+        ndb_datanode_instance_type = ndb_datanode_instance_type,
+        ssh_keypair_name = ssh_keypair_name,
+        ssh_key_path = ssh_key_path,
+        ec2_resource = ec2_resource,
+        ec2_client = ec2_client,  
+        data = data,
+        infrastructure_json = infrastructure_json,
+        current_datetime = current_datetime
+    )
 
-        # Make sure the mysqld process is stopped on the data nodes.
-        for i in tqdm(range(len(data_node_public_ips))):
-            data_node_ip = data_node_public_ips[i]
-
-            success = stop_mysqld_process(ip = data_node_ip, key = key)
-            if not success:
-                log_error("Failed to stop MYSQLD process on NDB data node at %s." % data_node_ip)
-                log_error("Exiting. The NDB EC2 VMs will NOT be terminated, though. Please visit the AWS EC2 Console to terminate the VMs (or use the command-line).")
-                exit(1)
-        
-        try:
-            print()
-            logger.info("Creating/updating NDB configuration now.")
-            create_ndb_config(ndb_mgm_public_ip = ndb_mgm_public_ip, ndb_mgm_private_ip = ndb_mgm_private_ip, ssh_key_path = ssh_key_path, ndb_datanode_data_directory = ndb_datanode_data_directory, ndb_mgm_data_directory = ndb_mgm_data_directory, data_node_public_ips = data_node_public_ips, data_node_private_ips = data_node_private_ips)
-        except Exception as ex:
-            log_error("Exception encountered while creating NDB configuration files.")
-            log_error(repr(ex))
-            log_error("Terminating NDB manager node.")
-            ec2_client.terminate_instances(InstanceIds = [ndb_manager_node_id])
-            log_error("Terminating the %d NDB data node(s)." % len(datanode_ids))
-            ec2_client.terminate_instances(InstanceIds = datanode_ids)
-            raise ex 
-   
-    with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    
-    if do_start_ndb_cluster:
-        if ndb_mgm_public_ip == None:
-            if "manager-node-public-ip" not in infrastructure_json:
-                log_error("We did not just create the MySQL NDB cluster; however, the `infrastructure_json` data does not have an entry for the NDB manager node's public IP address.")
-                log_error("Consequently, we cannot start the NDB cluster as instructed.")
-                exit(1)
-            
-            logger.debug("Retrieving NDB manager node's IP from the `infrastructure_json` data.")
-            ndb_mgm_public_ip = infrastructure_json.get("manager-node-public-ip", None)
-            ndb_manager_node_id = infrastructure_json.get("manager-node-id", None)
-        
-        if data_node_public_ips == None:
-            if "data-node-public-ips" not in infrastructure_json:
-                log_error("We did not just create the MySQL NDB cluster; however, the `infrastructure_json` data does not have an entry for the NDB data nodes' public IP address.")
-                log_error("Consequently, we cannot start the NDB cluster as instructed.")
-                exit(1)
-            
-            logger.debug("Retrieving NDB data nodes' IP from the `infrastructure_json` data.")
-            data_node_public_ips = infrastructure_json.get("data-node-public-ips", None)
-            datanode_ids = infrastructure_json.get("data-node-ids", None)
-        
-        logger.info("Sleeping for 30 seconds while the mysqld processes shut down.")
-        for _ in tqdm(range(120)):
-            sleep(0.25)
-        
-        print()
-        logger.info("Starting the MySQL NDB cluster now.")
-        success = start_ndb_cluster(ndb_mgm_ip = ndb_mgm_public_ip, ssh_key_path = ssh_key_path, data_node_ips = data_node_public_ips)
-        
-        if success:
-            log_success("Successfully started the MySQL NDB cluster (hopefully).")
-        else:
-            log_error("Failed to start the MySQL NDB cluster.")
-            log_error("Terminating NDB manager node.")
-            ec2_client.terminate_instances(InstanceIds = [ndb_manager_node_id])
-            log_error("Terminating the %d NDB data node(s)." % len(datanode_ids))
-            ec2_client.terminate_instances(InstanceIds = datanode_ids)
-        
-        logger.info("Sleeping for 60 seconds while the MySQL NDB Cluster begins running.")
-        for _ in tqdm(range(240)):
-            sleep(0.25)
-
-    with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-    if do_populate_mysql_ndb_tables:
-        if ndb_mgm_public_ip == None:
-            if "manager-node-public-ip" not in infrastructure_json:
-                log_error("We did not just create the MySQL NDB cluster; however, the `infrastructure_json` data does not have an entry for the NDB manager node's public IP address.")
-                log_error("Consequently, we cannot start the NDB cluster as instructed.")
-                exit(1)
-            
-            logger.debug("Retrieving NDB manager node's IP from the `infrastructure_json` data.")
-            ndb_mgm_public_ip = infrastructure_json.get("manager-node-public-ip", None)
-            ndb_manager_node_id = infrastructure_json.get("manager-node-id", None)
-        
-        print()
-        logger.info("Populating the MySQL NDB database now.")
-        success = populate_mysql_ndb_tables(ndb_mgm_ip = ndb_mgm_public_ip, ssh_key_path = ssh_key_path)
-        
-        if success:
-            log_success("Successfully populated the MySQL NDB cluster.")
-        else:
-            log_error("Failed to populate MySQL cluster with tables. See log output for relevant error messages, if any exist.")
-            exit(1)
-    
     zk_node_public_IPs = None
     if create_zookeeper_vms:
         logger.info("Creating the λFS ZooKeeper nodes now.")

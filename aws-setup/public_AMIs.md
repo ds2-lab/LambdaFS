@@ -2,7 +2,7 @@
 - **$\lambda$FS Client `ami-0d51e1ea4e0a55885`**: The $\lambda$FS client and the driver(s) for the experiments (for $\lambda$FS).
 - **$\lambda$FS ZooKeeper Node `ami-0700bf4465e5fd16d`**: ZooKeeper node used by $\lambda$FS. (Specifically, $\lambda$FS uses three ZooKeeper nodes, all of which can be created with this AMI.)
 - **MySQL NDB Manager `ami-0ef872c16032b2aeb`**
-- **MySQL NDB Data Node 1 `ami-075e47140b5fd017a`**
-- **MySQL NDB Data Node 2 `ami-0fdbf79b2ec52386e`**
+- **MySQL NDB Data Node 1 `ami-02b05337b4142f447`**
+- **MySQL NDB Data Node 2 `ami-0a3d55fdd1fe9a6b8`**
 - **Vanilla HopsFS Client `ami-00b50df44bd99ab5f`**: Contains the Vanilla HopsFS Client as well as the driver(s) for the experiments (for Vanilla HopsFS).
 - **Vanilla HopsFS NameNode `ami-00b50df44bd99ab5f`**: Used to create the Vanilla HopsFS NameNodes, all of which can be created with this AMI. Same as the Vanilla HopsFS NameNode AMI.
