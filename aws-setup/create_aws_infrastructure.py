@@ -45,7 +45,7 @@ LAMBDA_FS_ZOOKEEPER_AMI = "ami-0700bf4465e5fd16d"
 # Starts ZooKeeper.
 START_ZK_COMMAND = "sudo /opt/zookeeper/bin/zkServer.sh start"
 STOP_MYSQLD_COMMAND = "/usr/local/mysql/bin/mysqladmin -u root shutdown"
-START_MYSQLD_COMMAND = "/home/ubuntu/mysql.server start %"
+START_MYSQLD_COMMAND = "/home/ubuntu/mysql.server start &"
 
 # Set up logging.
 logger = logging.getLogger(__name__)
@@ -996,6 +996,7 @@ def create_ndb_cluster(
     subnet_id:str = None,
     ndb_manager_instance_type:str = "r5.4xlarge",
     ndb_datanode_instance_type:str = "r5.4xlarge",
+    ndb_mgm_private_ipv4:str = "10.0.6.227",
     security_group_ids:list = [],
 ): 
     """
@@ -1032,6 +1033,8 @@ def create_ndb_cluster(
         KeyName = ssh_keypair_name,
         NetworkInterfaces = [{
             "AssociatePublicIpAddress": True,
+            "DeleteOnTermination": True,
+            "PrivateIpAddress": ndb_mgm_private_ipv4,
             "DeviceIndex": 0,
             "SubnetId": subnet_id,
                 "Groups": security_group_ids
@@ -1394,7 +1397,7 @@ def start_ndb_cluster(
         logger.info("Started data node (hopefully).")
 
     logger.info("Sleeping for 30 seconds before starting mysqld process on NDB manager node.")
-    for _ in tqdm(range(40)):
+    for _ in tqdm(range(120)):
         sleep(0.25)
 
     logger.info("Restarting mysql service on NDB manager node. (This may take a minute or two.)")
@@ -1429,14 +1432,18 @@ def start_mysqld_process(
     logger.info("Connected! Restarting mysql service now with command \"%s\"" % START_MYSQLD_COMMAND)
     
     st = time.time() 
-    _, stdout, stderr = ssh_client.exec_command(START_MYSQLD_COMMAND)    
-    logger.info(stdout.read().decode())
-    logger.info(stderr.read().decode())
+    try:
+        _, stdout, stderr = ssh_client.exec_command(START_MYSQLD_COMMAND, timeout = 30)    
+        logger.info(stdout.read().decode())
+        logger.info(stderr.read().decode())
+    except Exception:
+        logger.info("Starting mysqld did not return within 30 seconds. Continuing with the assumption that it started correctly...")
+        pass
     
     logger.info("Restarted MySQL service on VM at %s. Time elapsed: %.2f seconds." % (ip, time.time() - st))
-    
+
     logger.info("Sleeping for 30 seconds so the MYSQLD process has time to start-up.")
-    for _ in tqdm(range(120)):
+    for _ in tqdm(range(180)):
         sleep(0.25)
             
     return True 
@@ -1483,7 +1490,7 @@ def populate_mysql_ndb_tables(
         
         log_success("Created MySQL user \"user\"")
     
-    logger.debug("Executing MySQL script: \"schema.sql\"")
+    # logger.debug("Executing MySQL script: \"schema.sql\"")
     
     mysql_scripts = [
         "schema.sql",
@@ -1535,6 +1542,7 @@ def ndb_part(
     public_subnet_ids:list[str] = [],
     ndb_manager_instance_type:str = "r5.4xlarge",
     ndb_datanode_instance_type:str = "r5.4xlarge",
+    ndb_mgm_private_ipv4:str = "10.0.6.227",
     ssh_keypair_name:str = None,
     ssh_key_path:str = None,
     ec2_resource = None,
@@ -1564,7 +1572,8 @@ def ndb_part(
             ssh_keypair_name = ssh_keypair_name, 
             num_datanodes = num_ndb_datanodes, 
             security_group_ids = security_group_ids,
-            subnet_id = public_subnet_ids[0],
+            subnet_id = public_subnet_ids[1],
+            ndb_mgm_private_ipv4 = ndb_mgm_private_ipv4,
             ndb_manager_instance_type = ndb_manager_instance_type,
             ndb_datanode_instance_type = ndb_datanode_instance_type)
         
@@ -1772,6 +1781,10 @@ def main():
             do_start_ndb_cluster = arguments.get("start_ndb_cluster", True)
             do_populate_mysql_ndb_tables = arguments.get("populate_mysql_ndb_tables", True)
             
+            # If you change this, you'll have to rebuild and reconfigure the λFS NameNode image, as
+            # it is configured by-default to expect the NDB manager node to have the IP address 10.0.6.227.
+            ndb_mgm_private_ipv4 = arguments.get("ndb_mgm_private_ipv4", "10.0.6.227")
+            
             skip_iam_role_creation = arguments.get("skip_iam_role_creation", False)
             skip_vpc_creation = arguments.get("skip_vpc_creation", False)
             skip_eks = arguments.get("skip_eks", False)
@@ -1839,6 +1852,8 @@ def main():
     if using_yaml:
         for arg_name, arg_value in arguments.items():
             logger.info("{:50s}= \"{}\"".format(arg_name, str(arg_value)))
+        
+        logger.info("{:50s}= \"{}\"".format("NDB manager private IPv4", str(ndb_mgm_private_ipv4)))
     else:
         for arg in vars(command_line_args):
             logger.info("{:50s}= \"{}\"".format(arg, str(getattr(command_line_args, arg))))
@@ -2131,6 +2146,7 @@ def main():
         public_subnet_ids = public_subnet_ids,
         ndb_manager_instance_type = ndb_manager_instance_type,
         ndb_datanode_instance_type = ndb_datanode_instance_type,
+        ndb_mgm_private_ipv4 = ndb_mgm_private_ipv4,
         ssh_keypair_name = ssh_keypair_name,
         ssh_key_path = ssh_key_path,
         ec2_resource = ec2_resource,
@@ -2148,7 +2164,7 @@ def main():
             ssh_keypair_name = ssh_keypair_name, 
             num_vms = num_lambda_fs_zk_vms, 
             security_group_ids = security_group_ids,
-            subnet_id = public_subnet_ids[0],
+            subnet_id = public_subnet_ids[1],
             instance_type = lambdafs_zk_instance_type)
         log_success("Created %d ZooKeeper node(s): %s" % (len(zk_node_IDs), str(zk_node_IDs)))
         
@@ -2199,7 +2215,7 @@ def main():
     
     if do_create_lambda_fs_client_vm:
         logger.info("Creating λFS client virtual machine.")
-        lambda_fs_primary_client_vm_id = create_lambda_fs_client_vm(ec2_resource = ec2_resource, ssh_keypair_name = ssh_keypair_name, instance_type = lfs_client_vm_instance_type, subnet_id = public_subnet_ids[0], security_group_ids = security_group_ids)
+        lambda_fs_primary_client_vm_id = create_lambda_fs_client_vm(ec2_resource = ec2_resource, ssh_keypair_name = ssh_keypair_name, instance_type = lfs_client_vm_instance_type, subnet_id = public_subnet_ids[1], security_group_ids = security_group_ids)
         log_success("Created λFS client virtual machine: %s" % lambda_fs_primary_client_vm_id)
         
         data["lambda_fs_primary_client_vm_id"] = lambda_fs_primary_client_vm_id
@@ -2209,7 +2225,7 @@ def main():
         
     if do_create_hops_fs_client_vm:
         logger.info("Creating HopsFS client virtual machine.")
-        hops_fs_primary_client_vm_id = create_hops_fs_client_vm(ec2_resource = ec2_resource, ssh_keypair_name = ssh_keypair_name, instance_type = hopsfs_client_vm_instance_type, subnet_id = public_subnet_ids[0], security_group_ids = security_group_ids)
+        hops_fs_primary_client_vm_id = create_hops_fs_client_vm(ec2_resource = ec2_resource, ssh_keypair_name = ssh_keypair_name, instance_type = hopsfs_client_vm_instance_type, subnet_id = public_subnet_ids[1], security_group_ids = security_group_ids)
         log_success("Created HopsFS client virtual machine: %s" % hops_fs_primary_client_vm_id)
         
         data["hops_fs_primary_client_vm_id"] = hops_fs_primary_client_vm_id
