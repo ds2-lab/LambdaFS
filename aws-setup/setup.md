@@ -236,7 +236,7 @@ The steps to avoid/resolve this error are described above in the "**OpenWhisk NG
 
 Once you've created and configured your AWS EKS Cluster, you can deploy OpenWhisk.
 
-To do this, we recommend creating the λFS "primary" client and experimental driver virtual machine using the `create_aws_infrastructure.py` script. Alternatively, you can create and deploy an EC2 VM yourself using the AMI `ami-0d51e1ea4e0a55885`. Ensure this virtual machine is running before connecting to the instance via SSH. 
+To do this, we recommend creating the λFS "primary" client and experimental driver virtual machine using the `create_aws_infrastructure.py` script. Alternatively, you can create and deploy an EC2 VM yourself using the AMI `ami-0ab2d4e7b34dd78af`. Ensure this virtual machine is running before connecting to the instance via SSH. 
 
 Navigate to the `/home/ubuntu/repos/openwhisk-deploy-kube` directory. This directory contains a local GitHub repository of the repository found [here](https://github.com/Scusemua/openwhisk-deploy-kube). The repository contains a pre-configured deployment of OpenWhisk with the same settings as the one used by λFS.  
 

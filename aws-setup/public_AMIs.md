@@ -1,5 +1,5 @@
 # Publicly-Available EC2 AMIs for $\lambda$FS and HopsFS
-- **$\lambda$FS Client `ami-0d51e1ea4e0a55885`**: The $\lambda$FS client and the driver(s) for the experiments (for $\lambda$FS).
+- **$\lambda$FS Client `ami-0ab2d4e7b34dd78af`**: The $\lambda$FS client and the driver(s) for the experiments (for $\lambda$FS).
 - **$\lambda$FS ZooKeeper Node `ami-0700bf4465e5fd16d`**: ZooKeeper node used by $\lambda$FS. (Specifically, $\lambda$FS uses three ZooKeeper nodes, all of which can be created with this AMI.)
 - **MySQL NDB Manager `ami-0ef872c16032b2aeb`**
 - **MySQL NDB Data Node 1 `ami-02b05337b4142f447`**
