@@ -37,15 +37,19 @@ and to replicate the experiments conducted in the paper,
 MYSQL_NDB_MANAGER_AMI = "ami-0ef872c16032b2aeb" # "ami-0a0e055a66e58df2c"
 MYSQL_NDB_DATANODE1_AMI = "ami-02b05337b4142f447" # "ami-075e47140b5fd017a"
 MYSQL_NDB_DATANODE2_AMI = "ami-0a3d55fdd1fe9a6b8" # "ami-0fdbf79b2ec52386e"
-HOPSFS_CLIENT_AMI = "ami-00b50df44bd99ab5f"
-HOPSFS_NAMENODE_AMI = "ami-00b50df44bd99ab5f"
-LAMBDA_FS_CLIENT_AMI = "ami-0ab2d4e7b34dd78af"
+HOPSFS_CLIENT_AMI = "ami-093cb0299f0b291e6"
+HOPSFS_NAMENODE_AMI = "ami-093cb0299f0b291e6"
+LAMBDA_FS_CLIENT_AMI = "ami-00de48ff2e1d6bfc6"
 LAMBDA_FS_ZOOKEEPER_AMI = "ami-0700bf4465e5fd16d"
 
 # Starts ZooKeeper.
 START_ZK_COMMAND = "sudo /opt/zookeeper/bin/zkServer.sh start"
 STOP_MYSQLD_COMMAND = "/usr/local/mysql/bin/mysqladmin -u root shutdown"
 START_MYSQLD_COMMAND = "/home/ubuntu/mysql.server start &"
+
+# We'll use these IPs for the first three ZooKeeper VMs, as the λFS NameNode configuration 
+# expects the ZooKeeper servers to be running on VMs with these private IPv4 addresses.
+ZOOKEEPER_IPV4s = ["10.0.8.233", "10.0.4.113", "10.0.14.89"]
 
 # Set up logging.
 logger = logging.getLogger(__name__)
@@ -489,42 +493,76 @@ def create_lambda_fs_zookeeper_vms(
     if ssh_keypair_name == None:
         log_error("SSH keypair name cannot be null when creating the λFS ZooKeeper nodes.")
         exit(1)
-        
-    
+         
     logger.info("Creating %d λFS ZooKeeper node(s) of type %s." % (num_vms, instance_type))
     
     zookeeper_node_ids = []
     for i in range(0, num_vms):
         instance_name = "lambdafs-zookeeper-%d" % i
-        zoo_keeper_node = ec2_resource.create_instances(
-            MinCount = 1,
-            MaxCount = 1,
-            ImageId = LAMBDA_FS_ZOOKEEPER_AMI,
-            InstanceType = instance_type,
-            KeyName = ssh_keypair_name,
-            NetworkInterfaces = [{
-                "AssociatePublicIpAddress": True,
-                "DeviceIndex": 0,
-                "SubnetId": subnet_id,
-                    "Groups": security_group_ids
-            }],
-            TagSpecifications=[{
-                'ResourceType': 'instance',
-                'Tags': 
-                    [{
-                        'Key': 'Name',
-                        'Value': instance_name
-                    },
-                    {
-                        'Key': 'Project',
-                        'Value': 'LambdaFS'
-                    },
-                    {
-                        'Key': 'Component',
-                        'Value': Component_ZooKeeperVM
-                    }]
-            }]  
-        )
+        if i <= 2:
+            logger.info("Creating ZooKeeper VM \"%s\" with private IPv4 address \"%s\" now." % (instance_name, ZOOKEEPER_IPV4s[i]))
+            zoo_keeper_node = ec2_resource.create_instances(
+                MinCount = 1,
+                MaxCount = 1,
+                ImageId = LAMBDA_FS_ZOOKEEPER_AMI,
+                InstanceType = instance_type,
+                KeyName = ssh_keypair_name,
+                NetworkInterfaces = [{
+                    "AssociatePublicIpAddress": True,
+                    "DeviceIndex": 0,
+                    "PrivateIpAddress": ZOOKEEPER_IPV4s[i], 
+                    "SubnetId": subnet_id,
+                        "Groups": security_group_ids
+                }],
+                TagSpecifications=[{
+                    'ResourceType': 'instance',
+                    'Tags': 
+                        [{
+                            'Key': 'Name',
+                            'Value': instance_name
+                        },
+                        {
+                            'Key': 'Project',
+                            'Value': 'LambdaFS'
+                        },
+                        {
+                            'Key': 'Component',
+                            'Value': Component_ZooKeeperVM
+                        }]
+                }]  
+            )
+        else:
+            log_warning("Creating ZooKeeper VM \"%s\" without specifying the private IPv4 address." % instance_name)
+            log_warning("You'll need to manually update your configuration files to include this VM's private IPv4 address.")
+            zoo_keeper_node = ec2_resource.create_instances(
+                MinCount = 1,
+                MaxCount = 1,
+                ImageId = LAMBDA_FS_ZOOKEEPER_AMI,
+                InstanceType = instance_type,
+                KeyName = ssh_keypair_name,
+                NetworkInterfaces = [{
+                    "AssociatePublicIpAddress": True,
+                    "DeviceIndex": 0,
+                    "SubnetId": subnet_id,
+                        "Groups": security_group_ids
+                }],
+                TagSpecifications=[{
+                    'ResourceType': 'instance',
+                    'Tags': 
+                        [{
+                            'Key': 'Name',
+                            'Value': instance_name
+                        },
+                        {
+                            'Key': 'Project',
+                            'Value': 'LambdaFS'
+                        },
+                        {
+                            'Key': 'Component',
+                            'Value': Component_ZooKeeperVM
+                        }]
+                }]  
+            )
         zookeeper_node_ids.append(zoo_keeper_node[0].id)
     
     return zookeeper_node_ids
@@ -1761,6 +1799,22 @@ def main():
                 log_warning("Changing this value can break the NDB deployment unless you are careful and know what you're doing.")
             
             num_lambda_fs_zk_vms = arguments.get("num_lambda_fs_zk_vms", 3)
+            
+            if num_lambda_fs_zk_vms > 3:
+                log_warning("You specified %d ZooKeeper VM(s) to be created." % num_lambda_fs_zk_vms)
+                log_warning("This script will only FULLY automatically provision exactly 3 ZooKeeper nodes.")
+                log_warning("Provisioning more than 3 ZooKeeper nodes will require significantly manual configuration on your part.")
+                log_warning("You'll need to update the configuration files for the λFS client(s) and NameNodes, which will ultimately include rebuilding the λFS NameNode runtime Docker image, among other things.")
+            elif num_lambda_fs_zk_vms < 3:
+                if num_lambda_fs_zk_vms > 0:
+                    log_warning("You specified %d ZooKeeper VM(s) to be created." % num_lambda_fs_zk_vms)
+                    log_warning("This script will only FULLY automatically provision exactly 3 ZooKeeper nodes.")
+                    log_warning("Provisioning less than 3 ZooKeeper nodes will require significantly manual configuration on your part.")
+                    log_warning("You'll need to update the configuration files for the λFS client(s) and NameNodes, which will ultimately include rebuilding the λFS NameNode runtime Docker image, among other things.")
+                else:
+                    log_error("Invalid number of ZooKeeper VMs specified: %d" % num_lambda_fs_zk_vms)
+                    log_error("Please specify a positive number. We highly recommend that you use 3.")
+                    exit(1)
             
             lfs_client_ags_it = arguments.get("lfs_client_autoscaling_group_instance_type", "r5.4xlarge")
             hopsfs_client_ags_it = arguments.get("hopsfs_client_autoscaling_group_instance_type", "r5.4xlarge")
