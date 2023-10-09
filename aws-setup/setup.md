@@ -158,6 +158,12 @@ If you named your OpenWhisk deployment `owdev`, then the command would be:
 kubectl create secret tls owdev-nginx --cert=CERT.pem --key=KEY.pem
 ```
 
+### **Labeling EKS Nodes as OpenWhisk Invokers**
+
+OpenWhisk's `Invoker` component can only be scheduled onto Kubernetes nodes labeled with the key-value tag/pair `openwhisk-role=invoker`. 
+
+Execute `kubectl label nodes --all openwhisk-role=invoker` to designate all nodes as invokers. Alternatively, you specify specific nodes by their ID in place of using the `--all` flag.
+
 ## Common Issues & Errors
 
 In this section, we describe some commonly-encountered problems (and their solutions) when creating the AWS EKS cluster and deploying OpenWhisk onto it. 

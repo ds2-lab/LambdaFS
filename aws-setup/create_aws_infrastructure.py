@@ -631,8 +631,6 @@ def create_eks_iam_role(iam, iam_role_name:str = "lambda-fs-eks-cluster-role") -
 
 def create_eks_openwhisk_cluster(
     aws_profile_name:str = None, 
-    aws_region:str = "us-east-1", 
-    vpc_name:str = "LambdaFS_VPC", 
     eks_iam_role_name = "lambda-fs-eks-cluster-role", 
     vpc_id:str = None, 
     eks_cluster_name:str = "lambda-fs-eks-cluster",
@@ -2147,9 +2145,7 @@ def main():
     if create_eks_cluster:
         create_eks_openwhisk_cluster(
             aws_profile_name = aws_profile_name, 
-            aws_region = aws_region, 
             vpc_id = vpc_id,
-            vpc_name = vpc_name,
             eks_cluster_name = eks_cluster_name,
             ec2_client = ec2_client,
             create_eks_iam_role = create_eks_iam_role,

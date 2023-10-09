@@ -72,7 +72,13 @@ If you named your OpenWhisk deployment `owdev`, then the command would be:
 kubectl create secret tls owdev-nginx --cert=CERT.pem --key=KEY.pem
 ```
 
-## Step 6: OpenWhisk
+## Step 6: **Labeling EKS Nodes as OpenWhisk Invokers**
+
+OpenWhisk's `Invoker` component can only be scheduled onto Kubernetes nodes labeled with the key-value tag/pair `openwhisk-role=invoker`. 
+
+Once your AWS EKS nodes have been created and are running, execute `kubectl label nodes --all openwhisk-role=invoker` to designate all nodes as invokers. Alternatively, you specify specific nodes by their ID in place of using the `--all` flag.
+
+## Step 7: Configuring and Deploying OpenWhisk
 
 If you have not done so already, create the λFS "primary" client and experimental driver virtual machine using the `create_aws_infrastructure.py` script. Connect to the machine via SSH.
 
@@ -161,7 +167,7 @@ You may monitor the progress of the OpenWhisk deployment by inspecting the vario
 kubectl get pods 
 ```
 
-## Step 7: Create NameNode Deployments
+## Step 8: Create NameNode Deployments
 
 Execute the following command to automatically register 20 NameNode deployments with OpenWhisk:
 
