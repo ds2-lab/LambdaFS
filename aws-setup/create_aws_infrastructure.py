@@ -1638,6 +1638,36 @@ def populate_mysql_ndb_tables(
     
     return True 
 
+def copy_ssh_key_to_vm(
+    ssh_key_path_local:str = None,
+    ssh_key_path_dest:str = "/home/ubuntu/id_rsa",
+    vm_ip:str = None,
+):
+    if ssh_key_path_local == None:
+        log_error("ssh_key_path_local cannot be None.")
+        return
+    
+    if ssh_key_path_dest == None:
+        log_error("ssh_key_path_dest cannot be None.")
+        return
+    
+    if vm_ip == None:
+        log_error("vm_ip cannot be None.")
+        return
+
+    key = RSAKey(filename = ssh_key_path_local)
+
+    ssh_client = SSHClient()
+    ssh_client.set_missing_host_key_policy(AutoAddPolicy)
+    logger.info("Connecting to client VM at %s" % vm_ip)
+    ssh_client.connect(hostname = vm_ip, port = 22, username = "ubuntu", pkey = key)
+    logger.info("Connected! Copying local SSH key at \"%s\" to remote file \"%s\" now." % (ssh_key_path_local, ssh_key_path_dest))
+    
+    sftp = ssh_client.open_sftp()
+    sftp.put(ssh_key_path_local, ssh_key_path_dest)
+    logger.info("Copied SSH key.")
+    ssh_client.close()
+
 def ndb_part(
     do_create_ndb_cluster:bool = True,
     do_start_ndb_cluster:bool = True,
@@ -2349,8 +2379,21 @@ def main():
         
         data["lambda_fs_primary_client_vm_id"] = lambda_fs_primary_client_vm_id
         
-    with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+        with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        
+        logger.info("Sleeping 30 seconds for λFS client VM to start.")
+        for _ in tqdm(range(120)):
+            sleep(0.25)
+        
+        resp = ec2_client.describe_instances(InstanceIds = [lambda_fs_primary_client_vm_id])
+        lambdafs_client_vm_public_ipv4 = resp['Reservations'][0]['Instances'][0]['PublicIpAddress']
+        
+        if lambdafs_client_vm_public_ipv4 == None or lambdafs_client_vm_public_ipv4 == "":
+            log_error("Could not resolve public IPv4 of λFS client virtual machine. Cannot copy SSH key to VM.")
+        else:
+            logger.info("Copying SSH key onto λFS client virtual machine with IP=%s" % lambdafs_client_vm_public_ipv4)
+            copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = lambdafs_client_vm_public_ipv4)
         
     if do_create_hops_fs_client_vm:
         logger.info("Creating HopsFS client virtual machine.")
@@ -2358,9 +2401,22 @@ def main():
         log_success("Created HopsFS client virtual machine: %s" % hops_fs_primary_client_vm_id)
         
         data["hops_fs_primary_client_vm_id"] = hops_fs_primary_client_vm_id
-    
-    with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+        
+        with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        
+        logger.info("Sleeping 30 seconds for HopsFS client VM to start.")
+        for _ in tqdm(range(120)):
+            sleep(0.25)
+        
+        resp = ec2_client.describe_instances(InstanceIds = [hops_fs_primary_client_vm_id])
+        hopsfs_client_vm_public_ipv4 = resp['Reservations'][0]['Instances'][0]['PublicIpAddress']
+        
+        if hopsfs_client_vm_public_ipv4 == None or hopsfs_client_vm_public_ipv4 == "":
+            log_error("Could not resolve public IPv4 of HopsFS client virtual machine. Cannot copy SSH key to VM.")
+        else:
+            logger.info("Copying SSH key onto HopsFS client virtual machine with IP=%s" % hopsfs_client_vm_public_ipv4)
+            copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = hopsfs_client_vm_public_ipv4)
     
     end_time = time.time()
     print()

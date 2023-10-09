@@ -6,34 +6,56 @@
 
 λFS is implemented as a fork of HopsFS 3.2.0.3. Currently we support the [OpenWhisk](https://openwhisk.apache.org/) serverless platform. Serverless functions enable better scalability and cost-effectiveness as well as ease-of-use.
 
-**Hops** (<b>H</b>adoop <b>O</b>pen <b>P</b>latform-as-a-<b>S</b>ervice) is a next generation distribution of [Apache Hadoop](http://hadoop.apache.org/core/) with scalable, highly available, customizable metadata. Hops consists internally of two main sub projects, HopsFs and HopsYarn. <b>HopsFS</b> is a new implementation of the Hadoop Filesystem (HDFS), that supports multiple stateless NameNodes, where the metadata is stored in [MySQL Cluster](https://www.mysql.com/products/cluster/), an in-memory distributed database. HopsFS enables more scalable clusters than Apache HDFS (up to ten times larger clusters), and enables NameNode metadata to be both customized and analyzed, because it can now be easily accessed via a SQL API. <b>HopsYARN</b> introduces a distributed stateless Resource Manager, whose state is migrated to MySQL Cluster. This enables our YARN architecture to have no down-time, with failover of a ResourceManager happening in a few seconds. Together, HopsFS and HopsYARN enable Hadoop clusters to scale to larger volumes and higher throughput.
-
+For λFS-specific documentation, please refer to the `setup.md` file located in the `aws-setup` directory [here](https://github.com/ds2-lab/LambdaFS/tree/serverless-namenode-aws/aws-setup).
 
 # How to Build
 
 ### Software Required
-For compiling the Hops Hadoop Distribution you will need the following software.
-- Java 1.7 or higher
-- Maven
-- cmake for compiling the native code 
+The exact software used to build λFS is as follows:
+- OpenJDK "1.8.0_382"
+  - OpenJDK Runtime Environment (build 1.8.0_382-8u382-ga-1~22.04.1-b05)
+  - OpenJDK 64-Bit Server VM (build 25.382-b05, mixed mode)
+- Apache Maven 3.6.3
 - [Google Protocol Buffer](https://github.com/google/protobuf) Version [2.5](https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz)
 - [MySQL Cluster NDB](https://dev.mysql.com/downloads/cluster/) native client library 
 - Kubernetes
-- Helm
-- Redis
+- kubectl
+  - Client Version: v1.26.1
+  - Kustomize Version: v4.5.7
+  - Server Version: v1.24.16-eks-2d98532
+- Helm v3.11.0
+  - Git commit: `472c5736ab01133de504a826bd9ee12cbe4e7904`
+  - Go version: 1.18.10
 - Docker
+  - Docker Engine Client - Community
+    - Version:           20.10.23
+    - API version:       1.41
+    - Go version:        1.18.10
+    - Git commit:        7155243
+  - Docker Engine Server - Community
+    - Version:          20.10.23
+    - API version:      1.41 (minimum version 1.12)
+    - Go version:       1.18.10
+  - containerd:
+    - Version:          1.6.15
+  - runc:
+    - Version:          1.1.4
+  - docker-init:
+    - Version:          0.19.0
 
-We combine Apache and GPL licensed code, from Hops and MySQL Cluster, respectively, by providing a DAL API (similar to JDBC). We dynamically link our DAL implementation for MySQL Cluster with the Hops code. Both binaries are distributed separately.
+The operating system used during development and testing was Ubuntu 22.04.1 LTS.  
 
-Perform the following steps in the following order to compile the Hops Hadoop Distribution.
+We use Apache and GPL licensed code from HopsFS and MySQL Cluster. We make use of the same DAL API (similar to JDBC) provided by HopsFS (although it has been extended to support the necessary function required by λFS). We dynamically link the DAL implementation for MySQL Cluster NDB with the λFS code.
+
+Perform the following steps in the following order to compile λFS or the associated HopsFS fork (found in the branch `3.2.0.2-caching`):
 
 ### Preparing Your VM Image
 
-The following steps can be performed to create a virtual machine capable of building and driving Serverless HopsFS. These steps have been tested using a fresh virtual machine on both Google Cloud Platform (GCP) and IBM Cloud Platform (IBM Cloud). On GCP, the virtual machine was running Ubuntu 18.04.5 LTS (Bionic Beaver). On IBM Cloud, the virtual machine was running Ubuntu 18.04.6 LTS (Bionic Beaver).
+The following steps can be performed to create a virtual machine capable of building and driving λFS. These steps have been tested using a fresh virtual machine on both Google Cloud Platform (GCP), IBM Cloud Platform (IBM Cloud), and most recently Amazon Web Services (AWS). On GCP, the virtual machine was running Ubuntu 18.04.5 LTS (Bionic Beaver). On IBM Cloud, the virtual machine was running Ubuntu 18.04.6 LTS (Bionic Beaver). On AWS, the virtual machine was running Ubuntu 22.04.1 LTS. As such, **Ubuntu 22.04.1 LTS** is the recommended operating system for running λFS. There may be issues if using any other OS, including the versions of Ubuntu used on GCP and IBM Cloud.
 
 #### Install JDK 1.8
 
-Execute the following commands to install JDK 8. These are the commands we executed when developing Serverless HopsFS.
+Execute the following commands to install JDK 8. These are the commands we executed when developing λFS.
 
 ```
 sudo apt-get purge openjdk*
@@ -90,7 +112,7 @@ Bats is used when building `hadoop-common-project`, more specifically the `hadoo
 
 #### Additional Optional Libraries
 
-The following libraries are all optional. We installed them when developing Serverless HopsFS.
+The following libraries are all optional. We installed them when developing λFS.
 
 - **Snappy Compression**: `sudo apt-get install snappy libsnappy-dev`
 
@@ -102,63 +124,19 @@ The following libraries are all optional. We installed them when developing Serv
 
 - **ZStandard compression**: `sudo apt-get install zstd`
 
-#### Installing Redis
-
-Clients of Serverless HopsFS use a local Redis instance to cache file-to-NameNode mapping information. You can install Redis via `apt install redis-server`. Once installed, you can optionally configure Redis to start on boot for that VM (if you intend to use that VM as a Serverless HopsFS client going forward). This can be done via `sudo systemctl enable redis`. If you receive an error "Failed to enable unit: Refusing to operate on linked unit file redis.service", then you can try the following command instead: `sudo systemctl enable /lib/systemd/system/redis-server.service`. 
-
-### Installing and Building the Serverless HopsFS Source Code
+### Installing and Building the λFS Source Code
 
 #### Database Abstraction Layer
 
-**TODO: The hops-metadata-dal and hops-metadata-dal-impl-ndb layers are included in this base project. They should not be retrieved separately. (The custom libndbclient.so file can/should be retrieved separately, however.)**
+The `hops-metadata-dal` and `hops-metadata-dal-impl-ndb` layers are included in this base project. They should not be retrieved separately. The custom `libndbclient.so` file can/should be retrieved separately, however.
 
-```sh
-git clone https://github.com/hopshadoop/hops-metadata-dal
-```
-The `master` branch contains all the newly developed features and bug fixes. For more stable version you can use the branches corresponding to releases. If you choose to use a release branch then also checkout the corresponding release branch in the other Hops Projects.
-
-```sh
-git checkout master
-mvn clean install -DskipTests
-```
-
-#### Database Abstraction Layer Implementation
-
-**TODO: The hops-metadata-dal and hops-metadata-dal-impl-ndb layers are included in this base project. They should not be retrieved separately. (The custom libndbclient.so file can/should be retrieved separately, however.)**
-
-```sh
-git clone https://github.com/hopshadoop/hops-metadata-dal-impl-ndb
-git checkout master
-mvn clean install -DskipTests
-```
-This project also contains c++ code that requires NDB `libndbclient.so` library. Download the [MySQL Cluster Distribution](https://dev.mysql.com/downloads/cluster/) and extract the `libndbclient.so` library. Alternatively you can download a custom MySQL Cluster library from our servers. Our custom library supports binding I/O threads to CPU cores for better performance.		
-```sh
-cd tmp
-wget https://archiva.hops.works/repository/Hops/com/mysql/ndb/clusterj-native/7.6.10/clusterj-native-7.6.10-natives-linux.jar
-unzip clusterj-native-7.6.10-natives-linux.jar
-cp libndbclient.so /usr/lib
-```
-
-See this [section](#connecting-the-driver-to-the-database) for specifying the database `URI` and `username/password`. 
-
-#### Building Hops Hadoop 
+#### Building λFS
 ```sh
 git clone https://github.com/hopshadoop/hops
-git checkout master
-```
-##### Building a Distribution
-
-First, enter the `hadoop-build-tools` directory and execute `mvn install`. Do the same for the `hadoop-assemblies` and `hadoop-maven-plugins` projects/modules/directories. Then go back to the root project directory.
-
-Do this AFTER manually/explicitly building `hops-metadata-dal` and `hops-metadata-dal-impl-ndb` first.
-
-```sh
-mvn package generate-sources -Pdist,native -DskipTests -Dtar -Dmaven.test.skip=true
+git checkout serverless-namenode-aws
 ```
 
-If you get `maven-enforcer-plugin` errors about dependency convergence and whatnot, you _may_ be able to get it to work by adding the `-Denforcer.fail=false` flag to the build command. Obviously this can cause issues if there are really some critical errors, but sometimes the dependency convergence issues can be ignored.
-
-#### Connecting the Driver to the Database
+#### **Connecting the Driver to the Database**
 There are two way to configure the NDB data access layer driver 
 - **Hard Coding The Database Configuration Parameters: **
 While compiling the database access layer all the required configuration parameters can be written to the ```./hops-metadata-dal-impl-ndb/src/main/resources/ndb-config.properties``` file. When the diver is loaded it will try to connect to the database specified in the configuration file. 
@@ -174,7 +152,7 @@ Add `dfs.storage.driver.configfile` parameter to hdfs-site.xml to read the confi
 
 #### Setting up MySQL Cluster NDB
 
-We recommend following the official documented (located [here](https://dev.mysql.com/doc/mysql-cluster-excerpt/5.7/en/mysql-cluster-install-linux-binary.html)) to install and create your MySQL NDB cluster. Once your cluster is up and running, you can move onto creating the necessary database tables to run Serverless HopsFS. We used the "Generic Linux" version of MySQL Cluster v8.0.26.
+The `aws-setup/create_aws_infrastructure.py` script can be used to automatically create the MySQL NDB cluster. If you wish to create the cluster manually, then we recommend following the official documented (located [here](https://dev.mysql.com/doc/mysql-cluster-excerpt/5.7/en/mysql-cluster-install-linux-binary.html)) to install and create your MySQL NDB cluster. Once your cluster is up and running, you can move onto creating the necessary database tables to run λFS. We used the "Generic Linux" version of MySQL Cluster v8.0.26.
 
 There are several pre-written `.sql` files and associated scripts in the `hops-metadata-dal-impl-ndb` project. These files automate the process of creating the necessary database tables. Simply navigate to the `/hops-metadata-dal-impl-ndb/schema/` directory and execute the `create-tables.sh` script. This script takes several arguments. The first is the hostname (IP address) of the MySQL server. We recommend running this script from the VM hosting the MySQL instance, in which case the first parameter will be `localhost`. The second parameter is the port, which is `3306` by default for MySQL. The third and forth parameters are the username and password of a MySQL user with which the MySQL commands will be executed.
 
@@ -186,13 +164,11 @@ GRANT ALL PRIVILEGES ON *.* TO 'user'@'%';
 FLUSH PRIVILEGES;
 ```
 
-Note that this is highly insecure, and it is recommended that you replace the '%' with a specific IP address (such as the IP of the VM hosting the MySQL server) to prevent unauthorized users from trying to login using your newly-created root user.
-
-Once this user is created, you can pass the username "user" and whatever password you used to the `create-tables.sh` script. 
+Note that this is **highly insecure** and is not recommended for production environments. Once the user is created, you can pass the username "user" and whatever password you used to the `create-tables.sh` script. 
 
 Finally, the last parameter to the script is the database. You can create a new database by connecting to the MySQL server and executing `CREATE DATABASE <database_name>`. Make sure you update the HopsFS configuration files (i.e., the `hops-ndb-config.properties` described in the previous section) to reflect the new user and database. 
 
-Thus, to run the script, you would execute: `./create-tables.sh localhost 3306 <username> <password> <database_name>`. After this, you should also create the additional tables required by Serverless HopsFS. These are written out in the `serverless.sql` file. Simply execute the following command to do this: `mysql --host=localhost --port=3306 -u <username> -p<password> <database_name> < serverless.sql`. Notice how there is no space between the `-p` (password) flag and the password itself.
+Thus, to run the script, you would execute: `./create-tables.sh localhost 3306 <username> <password> <database_name>`. After this, you should also create the additional tables required by λFS. These are written out in the `serverless.sql` file. Simply execute the following command to do this: `mysql --host=localhost --port=3306 -u <username> -p<password> <database_name> < serverless.sql`. Notice how there is no space between the `-p` (password) flag and the password itself.
 
 ### Common Errors/Issues During Building
 
@@ -202,7 +178,7 @@ Thus, to run the script, you would execute: `./create-tables.sh localhost 3306 <
 
 # Setting Up an OpenWhisk Kubernetes Deployment (via Helm)
 
-We provide a separate repoistory in which we've pre-configured an OpenWhisk deployment specifically for use with Serverless HopsFS. This repository is available [here](https://github.com/Scusemua/openwhisk-deploy-kube).
+We provide a separate repoistory in which we've pre-configured an OpenWhisk deployment specifically for use with λFS. This repository is available [here](https://github.com/Scusemua/openwhisk-deploy-kube).
 
 Simply clone the repository and navigate to the `openwhisk-deploy-kube/helm/openwhisk` directory. Then execute the following command:
 
