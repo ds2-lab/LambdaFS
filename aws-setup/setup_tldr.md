@@ -12,7 +12,7 @@ You must install and configure `kubectl`, the Kubernetes command-line tool, whic
 
 Install the Python modules listed in the `aws-setup/requirements.txt` field. This can be performed in a single step using the `pip` module:
 
-```
+``` sh
 python3 -m pip install -r requirements.txt
 ```
 
@@ -28,7 +28,7 @@ Once your configuration file has been created and is located within the `aws-set
 
 Execute the `create_aws_infrastructure.py` script as follows:
 
-```
+``` sh
 python3 create_aws_infrastructure.py --yaml ./config_aws.yaml
 ```
 
@@ -38,7 +38,7 @@ Wait 10 - 15 minutes until the newly-created AWS EKS cluster becomes operational
 
 Once you've created a `config_eks.yaml` file based off of the `sample_config_eks.yaml` file, you can execute the `configure_eks_cluster.py` script as follows:
 
-```
+``` sh
 configure_eks_cluster.py --yaml config_eks.yaml  
 ```
 
@@ -46,7 +46,7 @@ This script will install the Amazon EBS CSI Driver, which is required by OpenWhi
 
 Once this script finishes execution, you must annotate Kubernetes service account with the ARN of the IAM role. Execute the following command, replacing `111122223333` with your account ID and `AmazonEKS_EBS_CSI_DriverRole` with the name of the IAM role:
 
-```
+``` sh
 kubectl annotate serviceaccount ebs-csi-controller-sa \
     -n kube-system \
     eks.amazonaws.com/role-arn=arn:aws:iam::111122223333:role/AmazonEKS_EBS_CSI_DriverRole
@@ -56,19 +56,19 @@ kubectl annotate serviceaccount ebs-csi-controller-sa \
 
 Generate the certificate and key (replace `KEY` and `CERT` with whatever you want the generated files to be named):
 
-```
+``` sh
 openssl req -x509 -newkey rsa:4096 -keyout KEY.pem -out CERT.pem -sha256 -days 365 -nodes
 ```
 
 Next, create the `secret`. The secret must be named `"<OpenWhisk-deployment-name>-nginx"`. The name of the OpenWhisk deployment is whatever you specify to `helm` when deploying the OpenWhisk chart via `helm install <deployment_name> values.yaml .` (as described later in the documentation). Once again, replace `KEY` and `CERT` with whatever you specified when generating the files:
 
-```
+``` sh
 kubectl create secret tls OPENWHISK_DEPLOYMENT_NAME-nginx --cert=CERT.pem --key=KEY.pem
 ```
 
 If you named your OpenWhisk deployment `owdev`, then the command would be:
 
-```
+``` sh
 kubectl create secret tls owdev-nginx --cert=CERT.pem --key=KEY.pem
 ```
 
@@ -88,25 +88,25 @@ Navigate to the `/home/ubuntu/repos/openwhisk-deploy-kube` directory.
 
 First, generate the self-signed certificates. You can change the `key.pem` and `cert.pem` filenames if desired for whatever reason. 
 
-```
+``` sh
 openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 365 -nodes
 ```
 
 Next, upload to IAM (changing the `cert.pem` and `key.pem` if you changed them in the previous command):
 
-```
+``` sh
 aws iam upload-server-certificate --server-certificate-name ow-self-signed-test --certificate-body file://cert.pem --private-key file://key.pem
 ```
 
 Verify that the upload was successful by using the command:
 
-```
+``` sh
 aws iam list-server-certificates
 ```
 
 Add the following to your `values.yaml`. Make sure to replace the `111222333444` with your AWS account ID. Likewise, use your certificate's ARN instead of the example one:
 
-```
+``` yaml
 whisk:
   ingress:
     ...
@@ -121,18 +121,15 @@ whisk:
 
 **IMPORTANT:** Please ensure you are using the `aws` branch of the `openwhisk-deploy-kube` repository.
 
-To deploy OpenWhisk for the first time, navigate to the `openwhisk-deploy-kube/helm/openwhisk` directory and execute the following command:
+To deploy OpenWhisk for the first time, navigate to the `openwhisk-deploy-kube/helm/openwhisk` directory and execute the following command. Note that you can change `owdev` to be whatever you want. It will be the name of the OpenWhisk Kubernetes deployment.
 
-```
-# Note that you can change `owdev` to be whatever you want.
-# It will be the name of the OpenWhisk Kubernetes deployment.
+``` sh
 helm install owdev -f values.yaml .
 ```
 
-If you wish to update your existing OpenWhisk deployment after modifying some settings, navigate to the `openwhisk-deploy-kube/helm/openwhisk` directory and execute the following command:
+If you wish to update your existing OpenWhisk deployment after modifying some settings, navigate to the `openwhisk-deploy-kube/helm/openwhisk` directory and execute the following command. Make sure to change `owdev` to whatever name you assigned to your OpenWhisk Kubernetes deployment.
 
-```
-# Change `owdev` to whatever name you assigned to your OpenWhisk Kubernetes deployment.
+``` sh
 helm upgrade owdev -f values.yaml .
 ```
 
@@ -140,7 +137,7 @@ Shortly after you deploy your helm chart, an ELB should be automatically created
 
 Use the value in the the `EXTERNAL-IP` column for the nginx service and port 80 to define your wsk `apihost` property:
 
-```
+``` sh
 wsk -i property set --apihost http://<EXTERNAL-IP>:80
 ```
 
@@ -148,7 +145,7 @@ wsk -i property set --apihost http://<EXTERNAL-IP>:80
 
 You may also modify the `apiHostName` and `apiHostPort` fields of the `values.yaml` file to contain the new API host and port as specified in the command above.
 
-```
+``` yaml
 whisk:
   # Ingress defines how to access OpenWhisk from outside the Kubernetes cluster.
   # Only a subset of the values are actually used on any specific type of cluster.
@@ -163,7 +160,7 @@ whisk:
 
 You may monitor the progress of the OpenWhisk deployment by inspecting the various pods.
 
-```
+``` sh
 kubectl get pods 
 ```
 
@@ -171,7 +168,6 @@ kubectl get pods
 
 Execute the following command to automatically register 20 NameNode deployments with OpenWhisk:
 
-```
+``` sh
 python3 /home/ubuntu/repos/hops/dev-support/whisk/whisk_helper_gcp.py -n 20 --create --memory 20000 --concurrency 4
 ```
-

@@ -138,11 +138,11 @@ git checkout serverless-namenode-aws
 
 #### **Connecting the Driver to the Database**
 There are two way to configure the NDB data access layer driver 
-- **Hard Coding The Database Configuration Parameters: **
+- **Hard Coding The Database Configuration Parameters:**
 While compiling the database access layer all the required configuration parameters can be written to the ```./hops-metadata-dal-impl-ndb/src/main/resources/ndb-config.properties``` file. When the diver is loaded it will try to connect to the database specified in the configuration file. 
 
-- **hdfs-site.xml: **
-Add `dfs.storage.driver.configfile` parameter to hdfs-site.xml to read the configuration file from a sepcified path. For example, to read the configuration file in the current directory add the following the hdfs-site.xml
+- **The `hdfs-site.xml` configuration file**:
+Add `dfs.storage.driver.configfile` parameter to `hdfs-site.xml` to read the configuration file from a sepcified path. For example, to read the configuration file in the current directory add the following the `hdfs-site.xml`
 ```xml
 <property>
       <name>dfs.storage.driver.configfile</name>
