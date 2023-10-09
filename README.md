@@ -4,7 +4,7 @@
 
 **λFS** is an elastic, scalable, and high-performance metadata service for large-scale distributed file systems (DFSes). λFS scales a DFS metadata cache elastically on a FaaS (Function-as-a-Service) platform and synthesizes a series of techniques to overcome the obstacles that are encountered when building large, stateful, and performance-sensitive applications on FaaS platforms. λFS takes full advantage of the unique benefits offered by FaaS--elastic scaling and massive parallelism--to realize a highly-optimized metadata service capable of sustaining up to multi-fold higher throughput than a state-of-the-art DFS. 
 
-λFS is implemented as a fork of HopsFS 3.2.0.3. Currently we support the [OpenWhisk](https://openwhisk.apache.org/) serverless platform. Serverless functions enable better scalability and cost-effectiveness as well as ease-of-use.
+λFS is implemented as a fork of HopsFS 3.2.0.3. Currently we support the [OpenWhisk](https://openwhisk.apache.org/) serverless platform, though we've successfully used [Nuclio](https://nuclio.io/) as well. Serverless functions enable better scalability and cost-effectiveness as well as ease-of-use.
 
 For λFS-specific documentation, please refer to the `setup.md` file located in the `aws-setup` directory [here](https://github.com/ds2-lab/LambdaFS/tree/serverless-namenode-aws/aws-setup).
 
@@ -231,3 +231,21 @@ and <a href="https://secure-web.cisco.com/1ujOsbmH037MKBTOxPNGDQ-UEwf1lyUZU_T8lu
 
 Hops is released under an [Apache 2.0 license](LICENSE.txt).
 
+# Associated Publications
+
+This software was the subject of the paper, *λFS: A Scalable and Elastic Distributed File System Metadata Service using Serverless Functions*. This paper can be found [here](https://arxiv.org/abs/2306.11877) and is set to appear in the proceedings of ASPLOS'23. The software found [here](https://github.com/ds2-lab/LambdaFS-Benchmark-Utility) was used to evaluate λFS and HopsFS for the paper.
+
+**BibTeX Citation (for arXiv preprint)**:
+```
+@misc{
+    lambdafs_asplos23,
+    title={$\lambda$FS: A Scalable and Elastic Distributed File System Metadata Service using Serverless Functions}, 
+    author={Benjamin Carver and Runzhou Han and Jingyaun Zhang and Mai Zheng and Yue Cheng},
+    year={2023},
+    eprint={2306.11877},
+    archivePrefix={arXiv},
+    primaryClass={cs.DC}
+}
+```
+
+This citation will be updated once the paper is officially published in the proceedings of ASPLOS'23. 
