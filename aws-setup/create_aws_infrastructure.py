@@ -475,6 +475,7 @@ def create_lambda_fs_client_vm(
 
 def create_lambda_fs_zookeeper_vms(
     ec2_resource = None,
+    ec2_client = None,
     ssh_keypair_name:str = None,
     num_vms:int = 3,
     subnet_id:str = None,
@@ -564,6 +565,20 @@ def create_lambda_fs_zookeeper_vms(
                 }]  
             )
         zookeeper_node_ids.append(zoo_keeper_node[0].id)
+    
+    # The "log" disk is not set to delete on termination. 
+    # We explicitly/manually modify that here.
+    for instance_id in zookeeper_node_ids:
+        ec2_client.modify_instance_attribute(
+            InstanceId = instance_id,
+            BlockDeviceMappings = [{
+                # This is set to not delete on termination, and then we're left with a bunch of storage devices.
+                "DeviceName": "/dev/sdb", 
+                "Ebs": {
+                    "DeleteOnTermination": True
+                }
+            }]
+        )
     
     return zookeeper_node_ids
 
@@ -2278,6 +2293,7 @@ def main():
         logger.info("Creating the λFS ZooKeeper nodes now.")
         zk_node_IDs = create_lambda_fs_zookeeper_vms(
             ec2_resource = ec2_resource, 
+            ec2_client = ec2_client,
             ssh_keypair_name = ssh_keypair_name, 
             num_vms = num_lambda_fs_zk_vms, 
             security_group_ids = security_group_ids,
