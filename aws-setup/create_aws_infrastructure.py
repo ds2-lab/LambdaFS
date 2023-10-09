@@ -773,24 +773,74 @@ def create_launch_template(
         log_error("EC2 client cannot be null when creating a launch template.")
         exit(1)
     
-    response = ec2_client.create_launch_template(
-        LaunchTemplateName = launch_template_name,
-        VersionDescription = launch_template_description,
-        LaunchTemplateData = {
-            "ImageId": ami_id,
-            "InstanceType": instance_type,
-            "SecurityGroupIds": security_group_ids,
-            "NetworkInterfaces": [{
-                'AssociatePublicIpAddress': True,
-                'DeviceIndex': 0,
-            }]
-        }
-    )
-    
-    logger.info("Response from creating launch template \"%s\": %s" % (launch_template_name, str(response)))
-    
-    template_name = response['LaunchTemplate']['LaunchTemplateName']
-    template_id = response['LaunchTemplate']['LaunchTemplateId']
+    try:
+        response = ec2_client.create_launch_template(
+            LaunchTemplateName = launch_template_name,
+            VersionDescription = launch_template_description,
+            LaunchTemplateData = {
+                "ImageId": ami_id,
+                "InstanceType": instance_type,
+                "SecurityGroupIds": security_group_ids,
+                "NetworkInterfaces": [{
+                    'AssociatePublicIpAddress': True,
+                    'DeviceIndex': 0,
+                }]
+            }
+        )
+        
+        logger.info("Response from creating launch template \"%s\": %s" % (launch_template_name, str(response)))
+        
+        template_name = response['LaunchTemplate']['LaunchTemplateName']
+        template_id = response['LaunchTemplate']['LaunchTemplateId']
+    except botocore.exceptions.ClientError as err:
+        if err.response['Error']['Code'] == 'InvalidLaunchTemplateName.AlreadyExistsException':
+            log_warning("Launch template %s already exists.", launch_template_name)
+            
+            
+            response = ec2_client.describe_launch_templates(
+                LaunchTemplateNames = [launch_template_name]
+            )
+            
+            num_templates_found = response['LaunchTemplates']
+            if len(num_templates_found > 1):
+                print()
+                log_warning("Attempted to resolve existing launch template \"%s\", but found %d launch templates instead of just one..." % (launch_template_name, num_templates_found))
+                
+                for i, launch_template in enumerate(response['LaunchTemplates']):
+                    log_warning("Found template #%d: \"%s\" (ID=%s) created at time %s by IAM principal %s." % (i+1, launch_template['LaunchTemplateName'], launch_template['LaunchTemplateId'], launch_template['CreateTime'], launch_template['CreatedBy']))
+                
+                choice:int = -1 
+                while True:
+                    print()
+                    logger.info("Which launch template (specified by number) should we use? The original name you specified was \"%s\"." % launch_template_name)
+                    choice_str:str = input("> ")
+                    
+                    try:
+                        choice = int(choice_str)
+                    except ValueError:
+                        log_error("Invalid choice -- your input of \"%s\" could not be parsed as an integer." % choice_str)
+                        log_error("Please specify a valid integer between 0 and %d (inclusive)." % (1, num_templates_found))
+                        continue
+                    
+                    if choice > num_templates_found:
+                        log_error("Invalid choice -- there are no templates identified with the number \"%d\"." % choice)
+                        log_error("Please specify an integer between 0 and %d (inclusive)." % (1, num_templates_found))
+                        continue
+                    
+                    break
+                
+                # We displayed the launch templates numbered from 1 to N, rather than 0 to N-1, where N is equal to len(response['LaunchTemplates'])
+                template_name = response['LaunchTemplates'][choice - 1]['LaunchTemplateName']
+                template_id = response['LaunchTemplates'][choice - 1]['LaunchTemplateId']
+                
+                print()
+                log_warning("Continuing. Using existing template \"%s\" (ID=%s). Originally-specified template name: \"%s\"." % (template_name, template_id, launch_template_name))
+            else:
+                print()
+                log_warning("Continuing. Please verify that the existing \"%s\" launch template is configured correctly, though." % launch_template_name)
+            
+            template_name = response['LaunchTemplates'][0]['LaunchTemplateName']
+            template_id = response['LaunchTemplates'][0]['LaunchTemplateId']
     
     return template_name, template_id 
 
@@ -800,16 +850,17 @@ def create_launch_templates_and_instance_groups(
     lfs_client_ags_it:str = "r5.4xlarge",
     hopsfs_client_ags_it:str = "r5.4xlarge",
     hopsfs_namenode_ags_it:str = "r5.4xlarge",
-    skip_launch_templates:bool = False,
-    skip_autoscaling_groups:bool = False,
+    create_launch_templates:bool = False,
+    create_autoscaling_groups:bool = False,
     security_group_ids:list = [],
+    aws_region:str = "us-east-1",
     data = {}
 ):
     """
     Create the launch templates and auto-scaling groups for λFS clients, HopsFS clients, and HopsFS NameNodes.
     """
 
-    if not skip_launch_templates:
+    if not create_launch_templates:
         logger.info("Creating the EC2 launch templates now.")
         
         # λFS clients.
@@ -834,15 +885,20 @@ def create_launch_templates_and_instance_groups(
     else:
         logger.info("Skipping the creation of the EC2 launch templates.")
     
-    if not skip_autoscaling_groups:
+    if not create_autoscaling_groups:
         logger.info("Creating the EC2 auto-scaling groups now.")
+        
+        # We'll use the "us-east-1b" availability zone (or the 'b' zone for whatever region was specified, presumably "us-east-1" since that's where the AMIs are located).
+        availability_zones = [aws_region + "b"]
+        
+        logger.info("Specifying the following availability zone(s) for auto-scaling groups: %s" % str(availability_zones))
         
         # λFS clients.
         create_ec2_auto_scaling_group(auto_scaling_group_name = "lambda_fs_clients_ags", autoscaling_client = autoscaling_client, launch_template_name = "lambda_fs_clients")
         # HopsFS clients.
-        create_ec2_auto_scaling_group(auto_scaling_group_name = "hopsfs_clients_ags",autoscaling_client = autoscaling_client, launch_template_name = "hopsfs_clients")
+        create_ec2_auto_scaling_group(auto_scaling_group_name = "hopsfs_clients_ags", autoscaling_client = autoscaling_client, launch_template_name = "hopsfs_clients")
         # HopsFS NameNodes.
-        create_ec2_auto_scaling_group(auto_scaling_group_name = "hopsfs_namenodes_ags",autoscaling_client = autoscaling_client, launch_template_name = "hopsfs_namenodes")
+        create_ec2_auto_scaling_group(auto_scaling_group_name = "hopsfs_namenodes_ags", autoscaling_client = autoscaling_client, launch_template_name = "hopsfs_namenodes")
         
         logger.info("Created the EC2 auto-scaling groups.")
     else:
@@ -1839,11 +1895,11 @@ def main():
             # it is configured by-default to expect the NDB manager node to have the IP address 10.0.6.227.
             ndb_mgm_private_ipv4 = arguments.get("ndb_mgm_private_ipv4", "10.0.6.227")
             
-            skip_iam_role_creation = arguments.get("skip_iam_role_creation", False)
-            skip_vpc_creation = arguments.get("skip_vpc_creation", False)
-            skip_eks = arguments.get("skip_eks", False)
-            skip_launch_templates = arguments.get("skip_launch_templates", False)
-            skip_autoscaling_groups = arguments.get("skip_autoscaling_groups", False)
+            create_eks_iam_role = arguments.get("create_eks_iam_role", False)
+            create_vpc = arguments.get("create_vpc", False)
+            create_eks_cluster = arguments.get("create_eks_cluster", False)
+            create_launch_templates = arguments.get("create_launch_templates", False)
+            create_autoscaling_groups = arguments.get("create_autoscaling_groups", False)
             
             zookeeper_jvm_heap_size = arguments.get("zookeeper_jvm_heap_size", 4000)
             
@@ -1955,7 +2011,7 @@ def main():
     data["vpc_name"] = vpc_name 
 
     vpc_id:str = None 
-    if not skip_vpc_creation:
+    if create_vpc:
         logger.info("Creating Virtual Private Cloud now.")
         vpc_id = create_vpc(
             aws_region = aws_region,
@@ -2073,7 +2129,7 @@ def main():
     with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
       
-    if not skip_eks:
+    if create_eks_cluster:
         create_eks_openwhisk_cluster(
             aws_profile_name = aws_profile_name, 
             aws_region = aws_region, 
@@ -2081,9 +2137,12 @@ def main():
             vpc_name = vpc_name,
             eks_cluster_name = eks_cluster_name,
             ec2_client = ec2_client,
-            create_eks_iam_role = not skip_iam_role_creation,
+            create_eks_iam_role = create_eks_iam_role,
             eks_iam_role_name = eks_iam_role_name,
         )
+    else:
+        logger.info("Skipping creation of AWS EKS cluster.")
+        print()
     
     with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
@@ -2103,17 +2162,21 @@ def main():
     
     data["security_group_ids"] = security_group_ids
     
-    create_launch_templates_and_instance_groups(
-        ec2_client = ec2_client,
-        autoscaling_client = autoscaling_client,
-        security_group_ids = security_group_ids,
-        lfs_client_ags_it = lfs_client_ags_it,
-        hopsfs_client_ags_it = hopsfs_client_ags_it,
-        hopsfs_namenode_ags_it = hopsfs_namenode_ags_it,
-        skip_launch_templates = skip_launch_templates,
-        skip_autoscaling_groups = skip_autoscaling_groups,
-        data = data
-    )
+    if create_autoscaling_groups or create_launch_templates:
+        create_launch_templates_and_instance_groups(
+            ec2_client = ec2_client,
+            autoscaling_client = autoscaling_client,
+            security_group_ids = security_group_ids,
+            lfs_client_ags_it = lfs_client_ags_it,
+            hopsfs_client_ags_it = hopsfs_client_ags_it,
+            hopsfs_namenode_ags_it = hopsfs_namenode_ags_it,
+            create_launch_templates = create_launch_templates,
+            create_autoscaling_groups = create_autoscaling_groups,
+            aws_region = aws_region,
+            data = data
+        )
+    else:
+        logger.info("Skipping the creation of the EC2 launch templates and auto-scaling groups.")
     
     with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)

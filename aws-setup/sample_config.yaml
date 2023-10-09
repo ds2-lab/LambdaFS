@@ -87,7 +87,7 @@ create_hops_fs_client_vm: True
 start_zookeeper_cluster: True
 # Populate the ZooKeeper cluster with the data required by Lambda-FS.
 populate_zookeeper_cluster: True 
-# Size in megabytes of the JVM heap (for client and server) for ZooKeeper. used 12000 in evaluation.
+# Size in megabytes of the JVM heap (for client and server) for ZooKeeper. We used 12000 in evaluation.
 zookeeper_jvm_heap_size: 4000
 # The number of ZooKeeper VMs to create.
 num_lambda_fs_zk_vms: 3
@@ -107,17 +107,19 @@ create_ndb_cluster: True
 start_ndb_cluster: True 
 # If True, then populate the MySQL Cluster NDB database with HopsFS/LambdaFS tables.
 populate_mysql_ndb_tables: True 
-# The number of MySQL NDB Data Nodes to create. We used four in our ASPLOS'23 evaluation,
-# but performance does not change significantly. 2 would also work, especially for testing and debugging. 
+# The number of MySQL NDB Data Nodes to create. 
+# We used 4 in our ASPLOS'23 evaluation, but performance does not change too significantly. 2 works fine as well.
 num_ndb_datanodes: 4
 
-# If True, do NOT create the IAM role used by the AWS EKS cluster.
-skip_iam_role_creation: False
-# If True, do NOT create the VPC used by HopsFS and LambdaFS.
-skip_vpc_creation: False
-# If True, do NOT create the AWS EKS cluster.
-skip_eks: False
+# If True, create the IAM role used by the AWS EKS cluster.
+create_eks_iam_role: True
+# If True, create the VPC used by HopsFS and LambdaFS.
+create_vpc: True
+# If True, create the AWS EKS cluster.
+create_eks_cluster: True
+# If True, do NOT create the ZooKeeper VMs (used by Lambda-FS).
+create_zookeeper_vms: True
 # If True, do NOT create the AWS EC2 Launch Templates used for the Lambda-FS and HopsFS client VMs.
-skip_launch_templates: False
+create_launch_templates: True
 # If True, do NOT create the AWS EC2 Autoscaling Groups used for the Lambda-FS and HopsFS client VMs.
-skip_autoscaling_groups: False
+create_autoscaling_groups: True
