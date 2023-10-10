@@ -121,7 +121,7 @@ whisk:
     ...
 ```
 
-### Deploying & Updating OpenWhisk
+### **Deploying OpenWhisk**
 
 **IMPORTANT:** Please ensure you are using the `aws` branch of the `openwhisk-deploy-kube` repository.
 
@@ -136,6 +136,8 @@ If you wish to update your existing OpenWhisk deployment after modifying some se
 ``` sh
 helm upgrade owdev -f values.yaml .
 ```
+
+### **Post-Deployment Configuration (APIHOST Property)**
 
 Shortly after you deploy your helm chart, an ELB should be automatically created. You can determine its hostname by issuing the command `kubectl get services -o wide`. 
 
@@ -183,6 +185,8 @@ sudo /home/ubuntu/repos/hops/hadoop-dist/target/hadoop-3.2.0.2-RC0/bin/hdfs name
 ```
 
 The only difference between the two commands is the file path. There will be no errors or exceptions in the output if the file system was formatted correctly.
+
+**NOTE:** If you ran the `create_aws_infrastructure.py` script, then this step was probably performed automatically for you (unless you specified `format_filesystem: False` in the `config_aws.yaml` file). This step can be skipped if it was already performed by `create_aws_infrastructure.py`.
 
 ## Step 9: Create NameNode Deployments
 

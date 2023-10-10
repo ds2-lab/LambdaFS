@@ -1887,6 +1887,11 @@ def format_filesystem(
     channel = transport.open_session()
     logger.info("Executing command: \"%s\"" % format_command)
     channel.exec_command(format_command)
+    
+    # The output when formatting the file system is rather long.
+    # Also, formatting the file system takes a few seconds. 
+    # Typically less than a minute, but long enough that we want to read the output as it is generated.
+    # So, we have this loop here to consume it as it is generated.
     while True:
         # Check if there's stderr data to be read.
         if channel.recv_stderr_ready():
@@ -2041,7 +2046,7 @@ def main():
             create_launch_templates = arguments.get("create_launch_templates", False)
             create_autoscaling_groups = arguments.get("create_autoscaling_groups", False)
             
-            format_filesystem = arguments.get("format_filesystem", True)
+            do_format_filesystem = arguments.get("format_filesystem", True)
             
             infrastructure_json_path = arguments.get("infrastructure_json_path", None)
             infrastructure_json = None 
@@ -2528,12 +2533,18 @@ def main():
             data["hopsfs_client_vm_public_ipv4"] = hopsfs_client_vm_public_ipv4
             copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = hopsfs_client_vm_public_ipv4)
     
-    if format_filesystem:
+    if do_format_filesystem:
         # Now we need to format the file system. The command we use will differ slightly depending on which client VM the user had us create.
         if created_lambdafs_client_vm:
-            pass 
+            format_filesystem(
+                vm_ip = lambdafs_client_vm_public_ipv4, 
+                ssh_key_path = ssh_key_path,
+                format_command = FORMAT_LAMBDAFS_COMMAND)
         elif created_hops_fs_client_vm:
-            pass 
+            format_filesystem(
+                vm_ip = hopsfs_client_vm_public_ipv4, 
+                ssh_key_path = ssh_key_path,
+                format_command = FORMAT_HOPSFS_COMMAND) 
         else:
             log_warning("Make sure you format the file system before attempting to use it.")
             log_warning("For λFS, the command is:\n%s" % FORMAT_LAMBDAFS_COMMAND)
