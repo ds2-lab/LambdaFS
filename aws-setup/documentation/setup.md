@@ -368,4 +368,6 @@ To execute the `BasicTest.jar`, execute the following command from the `/home/ub
 java -Dlog4j.configuration=file:resources/log4j.properties -cp ".:/home/ubuntu/BasicTest.jar:$HADOOP_HOME/share/hadoop/hdfs/lib/*:$HADOOP_HOME/share/hadoop/common/lib/*" com.gmail.benrcarver.distributed.BasicTest
 ```
 
-If everything works, then you'll see a message prefixed with `[SUCCESS]` before the application exits. If there's an error, then you'll see a message prefixed with `[ERROR]` (or you'll simply encounter some sort of Java exception).
+This application will create an empty file named `"test.txt"` in the root directory of the λFS file system (so, the full path of the file is `/test.txt`). Then, the application will perform a `list` operation on the root directory `/`, listing the directory's contents. You should see the `test.txt` file when this list operation is performed.
+
+If everything works, then you'll also see a message prefixed with `[SUCCESS]` before the application exits. If there's an error, then you'll see a message prefixed with `[ERROR]` (or you'll simply encounter some sort of Java exception).
