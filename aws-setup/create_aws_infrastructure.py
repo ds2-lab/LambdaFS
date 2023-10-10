@@ -1686,7 +1686,7 @@ def populate_mysql_ndb_tables(
 
 def copy_ssh_key_to_vm(
     ssh_key_path_local:str = None,
-    ssh_key_path_dest:str = "/home/ubuntu/id_rsa",
+    ssh_key_path_dest:str = "/home/ubuntu/.ssh/id_rsa",
     vm_ip:str = None,
 ):
     if ssh_key_path_local == None:
@@ -1710,8 +1710,8 @@ def copy_ssh_key_to_vm(
     logger.info("Connected! Copying local SSH key at \"%s\" to remote file \"%s\" now." % (ssh_key_path_local, ssh_key_path_dest))
     
     sftp = ssh_client.open_sftp()
-    sftp.put(ssh_key_path_local, ssh_key_path_dest)
-    logger.info("Copied SSH key.")
+    res = sftp.put(ssh_key_path_local, ssh_key_path_dest)
+    logger.info("Copied SSH key: %s" % str(res))
     ssh_client.close()
 
 def setup_ndb(
@@ -1907,28 +1907,54 @@ def format_filesystem(
         if channel.recv_stderr_ready():
             # There's stderr data ready to be read. 
             # As long as there's more data, keep reading it.
+            buf = bytearray()
             while channel.recv_stderr_ready():
-                log_error(channel.recv_stderr(1024))
+                bytes = channel.recv_stderr(1024)
+                buf += bytearray(bytes)
+            
+            msg = buf.decode()
+            for line in msg.split("\n"):
+                if "ERROR" in line.upper() or "EXCEPTION" in line.upper():
+                    # There's always a log message like "... FixedByteBufferPoolImpl<init> for DBImplErrorBufferPool ...".
+                    # It isn't actually an error; the classname just has "Error" in it. So, don't print it.
+                    if "FixedByteBufferPoolImpl<init> for DBImplErrorBufferPool" not in line:
+                        log_error(line)
+                # else:
+                #     logger.debug(msg)
                 
         # Check if there's data to be read.
-        if channel.recv_ready():
-            # There's data ready to be read. 
-            # As long as there's more data, keep reading it.
-            while channel.recv_ready():
-                logger.debug(channel.recv(1024))
+        # if channel.recv_ready():
+        #     # There's data ready to be read. 
+        #     # As long as there's more data, keep reading it.
+        #     while channel.recv_ready():
+        #         logger.debug(channel.recv(1024).decode())
         
         # Check if we're done receiving output.
         if channel.exit_status_ready():
             # Make sure to read everything before exiting.
             if channel.recv_stderr_ready():
                 # As long as there's more data, keep reading it.
+                buf = bytearray()
                 while channel.recv_stderr_ready():
-                    log_error(channel.recv_stderr(1024))
-                    
-            if channel.recv_ready():
-                # As long as there's more data, keep reading it.
-                while channel.recv_ready():
-                    logger.debug(channel.recv(1024))
+                    bytes = channel.recv_stderr(1024)
+                    buf += bytearray(bytes)
+                
+                msg = buf.decode()
+                for line in msg.split("\n"):
+                    if "ERROR" in line.upper() or "EXCEPTION" in line.upper():
+                        # There's always a log message like "... FixedByteBufferPoolImpl<init> for DBImplErrorBufferPool ...".
+                        # It isn't actually an error; the classname just has "Error" in it. So, don't print it.
+                        if "FixedByteBufferPoolImpl<init> for DBImplErrorBufferPool" not in line:
+                            log_error(line)
+                    # else:
+                    #     logger.debug(msg)
+                    # else:
+                    #     logger.debug(msg)
+                        
+            # if channel.recv_ready():
+            #     # As long as there's more data, keep reading it.
+            #     while channel.recv_ready():
+            #         logger.debug(channel.recv(1024).decode())
             
             break
         
@@ -2056,6 +2082,7 @@ def main():
             create_launch_templates = arguments.get("create_launch_templates", False)
             create_autoscaling_groups = arguments.get("create_autoscaling_groups", False)
             
+            sftp_ssh_key_to_client_vms = arguments.get("sftp_ssh_key", True)
             do_format_filesystem = arguments.get("format_filesystem", True)
             
             infrastructure_json_path = arguments.get("infrastructure_json_path", None)
@@ -2302,8 +2329,6 @@ def main():
     with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
     
-    logger.info("Creating EC2 launch templates and instance groups now.")
-    
     sec_grp_resp = ec2_client.describe_security_groups(
         Filters = [{
             'Name': 'vpc-id',
@@ -2318,6 +2343,7 @@ def main():
     data["security_group_ids"] = security_group_ids
     
     if create_autoscaling_groups or create_launch_templates:
+        logger.info("Creating EC2 launch templates and/or autoscaling groups now.")
         create_launch_templates_and_instance_groups(
             ec2_client = ec2_client,
             autoscaling_client = autoscaling_client,
@@ -2488,6 +2514,7 @@ def main():
             populate_zookeeper(ips = zk_node_public_IPs, ssh_key_path = ssh_key_path)
     
     created_lambdafs_client_vm = False
+    lambda_fs_primary_client_vm_id = None
     if do_create_lambda_fs_client_vm:
         logger.info("Creating λFS client virtual machine.")
         lambda_fs_primary_client_vm_id = create_lambda_fs_client_vm(ec2_resource = ec2_resource, ssh_keypair_name = ssh_keypair_name, instance_type = lfs_client_vm_instance_type, subnet_id = public_subnet_ids[1], security_group_ids = security_group_ids)
@@ -2499,8 +2526,11 @@ def main():
             json.dump(data, f, ensure_ascii=False, indent=4)
         
         created_lambdafs_client_vm = True 
+    elif "lambda_fs_primary_client_vm_id" in data:
+        lambda_fs_primary_client_vm_id = data["lambda_fs_primary_client_vm_id"]
         
     created_hops_fs_client_vm = False
+    hops_fs_primary_client_vm_id = None
     if do_create_hops_fs_client_vm:
         logger.info("Creating HopsFS client virtual machine.")
         hops_fs_primary_client_vm_id = create_hops_fs_client_vm(ec2_resource = ec2_resource, ssh_keypair_name = ssh_keypair_name, instance_type = hopsfs_client_vm_instance_type, subnet_id = public_subnet_ids[1], security_group_ids = security_group_ids)
@@ -2512,6 +2542,8 @@ def main():
             json.dump(data, f, ensure_ascii=False, indent=4)
         
         created_hops_fs_client_vm = True 
+    elif "hops_fs_primary_client_vm_id" in data:
+        hops_fs_primary_client_vm_id = data["hops_fs_primary_client_vm_id"]
     
     # We can wait for both at the same time.
     if created_lambdafs_client_vm or created_hops_fs_client_vm:
@@ -2520,7 +2552,7 @@ def main():
             sleep(0.25)
     
     # Copy SSH key to λFS client VM, if we created the VM.
-    if created_lambdafs_client_vm:
+    if sftp_ssh_key_to_client_vms and lambda_fs_primary_client_vm_id != None:
         resp = ec2_client.describe_instances(InstanceIds = [lambda_fs_primary_client_vm_id])
         lambdafs_client_vm_public_ipv4 = resp['Reservations'][0]['Instances'][0]['PublicIpAddress']
         
@@ -2532,7 +2564,7 @@ def main():
             copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = lambdafs_client_vm_public_ipv4)
     
     # Copy SSH key to HopsFS client VM, if we created the VM.
-    if created_hops_fs_client_vm:
+    if sftp_ssh_key_to_client_vms and hops_fs_primary_client_vm_id != None:
         resp = ec2_client.describe_instances(InstanceIds = [hops_fs_primary_client_vm_id])
         hopsfs_client_vm_public_ipv4 = resp['Reservations'][0]['Instances'][0]['PublicIpAddress']
         
@@ -2545,12 +2577,12 @@ def main():
     
     if do_format_filesystem:
         # Now we need to format the file system. The command we use will differ slightly depending on which client VM the user had us create.
-        if created_lambdafs_client_vm:
+        if lambda_fs_primary_client_vm_id != None:
             format_filesystem(
                 vm_ip = lambdafs_client_vm_public_ipv4, 
                 ssh_key_path = ssh_key_path,
                 format_command = FORMAT_LAMBDAFS_COMMAND)
-        elif created_hops_fs_client_vm:
+        elif hops_fs_primary_client_vm_id != None:
             format_filesystem(
                 vm_ip = hopsfs_client_vm_public_ipv4, 
                 ssh_key_path = ssh_key_path,
