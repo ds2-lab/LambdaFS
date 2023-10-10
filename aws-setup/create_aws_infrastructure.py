@@ -6,6 +6,7 @@ import logging
 import os 
 import paramiko 
 import requests 
+import select
 import shutil
 import socket
 import subprocess 
@@ -46,6 +47,9 @@ LAMBDA_FS_ZOOKEEPER_AMI = "ami-0700bf4465e5fd16d"
 START_ZK_COMMAND = "sudo /opt/zookeeper/bin/zkServer.sh start"
 STOP_MYSQLD_COMMAND = "/usr/local/mysql/bin/mysqladmin -u root shutdown"
 START_MYSQLD_COMMAND = "/home/ubuntu/mysql.server start &"
+
+FORMAT_LAMBDAFS_COMMAND = "sudo /home/ubuntu/repos/hops/hadoop-dist/target/hadoop-3.2.0.3-SNAPSHOT/bin/hdfs namenode -format -nonInteractive"
+FORMAT_HOPSFS_COMMAND = "sudo /home/ubuntu/repos/hops/hadoop-dist/target/hadoop-3.2.0.2-RC0/bin/hdfs namenode -format -nonInteractive"
 
 # We'll use these IPs for the first three ZooKeeper VMs, as the λFS NameNode configuration 
 # expects the ZooKeeper servers to be running on VMs with these private IPv4 addresses.
@@ -1696,7 +1700,7 @@ def copy_ssh_key_to_vm(
     logger.info("Copied SSH key.")
     ssh_client.close()
 
-def ndb_part(
+def setup_ndb(
     do_create_ndb_cluster:bool = True,
     do_start_ndb_cluster:bool = True,
     do_populate_mysql_ndb_tables:bool = True,
@@ -1854,6 +1858,70 @@ def ndb_part(
             log_error("Failed to populate MySQL cluster with tables. See log output for relevant error messages, if any exist.")
             exit(1)
     
+def format_filesystem(
+    vm_ip:str = None,
+    ssh_key_path:str = None,
+    format_command:str = None
+):
+    if ssh_key_path == None:
+        log_error("ssh_key_path cannot be None.")
+        return
+    
+    if format_command == None:
+        log_error("format_command cannot be None.")
+        return
+    
+    if vm_ip == None:
+        log_error("vm_ip cannot be None.")
+        return
+
+    key = RSAKey(filename = ssh_key_path)
+
+    ssh_client = SSHClient()
+    ssh_client.set_missing_host_key_policy(AutoAddPolicy)
+    logger.info("Connecting to client VM at %s" % vm_ip)
+    ssh_client.connect(hostname = vm_ip, port = 22, username = "ubuntu", pkey = key)
+    logger.info("Connected! Attempting to format the filesystem now.")
+    
+    transport = ssh_client.get_transport()
+    channel = transport.open_session()
+    logger.info("Executing command: \"%s\"" % format_command)
+    channel.exec_command(format_command)
+    while True:
+        # Check if there's stderr data to be read.
+        if channel.recv_stderr_ready():
+            # There's stderr data ready to be read. 
+            # As long as there's more data, keep reading it.
+            while channel.recv_stderr_ready():
+                log_error(channel.recv_stderr(1024))
+                
+        # Check if there's data to be read.
+        if channel.recv_ready():
+            # There's data ready to be read. 
+            # As long as there's more data, keep reading it.
+            while channel.recv_ready():
+                logger.debug(channel.recv(1024))
+        
+        # Check if we're done receiving output.
+        if channel.exit_status_ready():
+            # Make sure to read everything before exiting.
+            if channel.recv_stderr_ready():
+                # As long as there's more data, keep reading it.
+                while channel.recv_stderr_ready():
+                    log_error(channel.recv_stderr(1024))
+                    
+            if channel.recv_ready():
+                # As long as there's more data, keep reading it.
+                while channel.recv_ready():
+                    logger.debug(channel.recv(1024))
+            
+            break
+        
+        # Wait a quarter second or so before polling again.
+        time.sleep(0.25)
+
+    ssh_client.close()
+    
 def get_args() -> argparse.Namespace:
     """
     Parse the commandline arguments.
@@ -1957,6 +2025,7 @@ def main():
             do_start_zookeeper_cluster = arguments.get("start_zookeeper_cluster", True)
             do_populate_zookeeper_cluster = arguments.get("populate_zookeeper_cluster", True)
             create_zookeeper_vms = arguments.get("create_zookeeper_vms", True)
+            zookeeper_jvm_heap_size = arguments.get("zookeeper_jvm_heap_size", 4000)
             
             do_create_ndb_cluster = arguments.get("create_ndb_cluster", True)
             do_start_ndb_cluster = arguments.get("start_ndb_cluster", True)
@@ -1972,7 +2041,7 @@ def main():
             create_launch_templates = arguments.get("create_launch_templates", False)
             create_autoscaling_groups = arguments.get("create_autoscaling_groups", False)
             
-            zookeeper_jvm_heap_size = arguments.get("zookeeper_jvm_heap_size", 4000)
+            format_filesystem = arguments.get("format_filesystem", True)
             
             infrastructure_json_path = arguments.get("infrastructure_json_path", None)
             infrastructure_json = None 
@@ -2324,7 +2393,7 @@ def main():
     ###########################
     # Setup MySQL Cluster NDB #
     ###########################
-    ndb_part(
+    setup_ndb(
         do_create_ndb_cluster = do_create_ndb_cluster,
         do_start_ndb_cluster = do_start_ndb_cluster,
         do_populate_mysql_ndb_tables = do_populate_mysql_ndb_tables,
@@ -2435,6 +2504,7 @@ def main():
         for _ in tqdm(range(240)):
             sleep(0.25)
     
+    # Copy SSH key to λFS client VM, if we created the VM.
     if created_lambdafs_client_vm:
         resp = ec2_client.describe_instances(InstanceIds = [lambda_fs_primary_client_vm_id])
         lambdafs_client_vm_public_ipv4 = resp['Reservations'][0]['Instances'][0]['PublicIpAddress']
@@ -2446,6 +2516,7 @@ def main():
             data["lambdafs_client_vm_public_ipv4"] = lambdafs_client_vm_public_ipv4
             copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = lambdafs_client_vm_public_ipv4)
     
+    # Copy SSH key to HopsFS client VM, if we created the VM.
     if created_hops_fs_client_vm:
         resp = ec2_client.describe_instances(InstanceIds = [hops_fs_primary_client_vm_id])
         hopsfs_client_vm_public_ipv4 = resp['Reservations'][0]['Instances'][0]['PublicIpAddress']
@@ -2456,6 +2527,17 @@ def main():
             logger.info("Copying SSH key onto HopsFS client virtual machine with IP=%s" % hopsfs_client_vm_public_ipv4)
             data["hopsfs_client_vm_public_ipv4"] = hopsfs_client_vm_public_ipv4
             copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = hopsfs_client_vm_public_ipv4)
+    
+    if format_filesystem:
+        # Now we need to format the file system. The command we use will differ slightly depending on which client VM the user had us create.
+        if created_lambdafs_client_vm:
+            pass 
+        elif created_hops_fs_client_vm:
+            pass 
+        else:
+            log_warning("Make sure you format the file system before attempting to use it.")
+            log_warning("For λFS, the command is:\n%s" % FORMAT_LAMBDAFS_COMMAND)
+            log_warning("For HopsFS, the command is:\n%s" % FORMAT_HOPSFS_COMMAND)
     
     end_time = time.time()
     print()
