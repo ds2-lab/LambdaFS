@@ -11,18 +11,36 @@ no_color: False
 # AWS CLI profile - we need credentials to create AWS resources.
 aws_profile: <FILL THIS IN>
 
-# The region in which to reate the AWS resources. The AMIs are only availabe in us-east-1, so you should use this 
-# region unless you know of a way to clone/copy the AMIs to another region yourself.
-aws_region: "us-east-1"
-
-# Public IPv4 of the Lambda-FS "primary" client and experimental driver VM.
-lambda_fs_vm_public_ipv4: <FILL ME IN>
-
-# The name you assigned your AWS EKS cluster.
-eks_cluster_name: <FILL ME IN>
-
 # Path to the private key located on your device (wherever you're running this script from).
 ssh_key_path: <FILL THIS IN>
 
+# The name of the keypair as registered with AWS. 
+# We will assign this keypair to VMs, and you will need to use this keypair to SSH to the VMs.
+# The key should be in RSA format.
+# This should be the same key you used in the config_aws.yaml. 
+ssh_keypair_name: <FILL THIS IN>
+
 # Your AWS account ID. See the following if you are unsure how to find this: https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-identifiers.html
 aws_account_id: <FILL THIS IN>
+
+# Number of VMs to provision within the EKS Cluster for hosting the "core" OpenWhisk components (controllers, couchDB, kafka, etc.)
+num_openwhisk_core_vms: 3
+
+# Number of VMs to provision within the EKS Cluster for hosting the "invoker" OpenWhisk components, which host the actual λFS NameNodes.
+num_openwhisk_invoker_vms: 8
+
+# The instance type used by the OpenWhisk core components within the AWS EKS cluster.
+openwhisk_core_instance_type: "r5.xlarge"
+
+# The instance type used by the OpenWhisk invoker components, which host the actual λFS NameNodes.
+openwhisk_invoker_instance_type: "r5.4xlarge"
+
+# The name of the "infrastructure json" file that was generated when you ran the `create_aws_infrastructure.py` script.
+# This file should be located within the "aws-setup/infrastructure_json/" directory.
+# 
+# The `configure_eks_cluster.py` script needs to extract some information from that file. 
+#
+# If you're running the `configure_eks_cluster.py` script from the AWS directory, and your "infrastructure JSON" file
+# is located in the `aws-setup/infrastructure_json/` directory, then you can specify a relative path of the form:
+# ./infrastructure_json/<file_name>.json
+infrastructure_json_path: "<FILL_THIS_IN>"

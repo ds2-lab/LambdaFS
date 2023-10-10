@@ -277,6 +277,84 @@ def annotate_k8s_service_account(
             log_important("kubectl annotate serviceaccount ebs-csi-controller-sa -n kube-system ks.amazonaws.com/role-arn=arn:aws:iam::%s:role/%s" % (aws_account_id, ebs_csi_driver_iam_role_name))
             exit(1)
 
+def create_eks_node_groups(
+    aws_profile_name:str = None, 
+    subnet_ids:list[str] = [],
+    eks_cluster_name:str = "lambda-fs-eks-cluster",
+    security_group_ids:list[str] = [],
+    openwhisk_core_instance_type:str = "r5.xlarge",
+    openwhisk_invoker_instance_type:str = "r5.4xlarge",
+    num_openwhisk_core_vms:int = 3,
+    num_openwhisk_invoker_vms:int = 8,
+    ssh_keypair_name:str = "",
+):
+    if aws_profile_name is not None:
+        logger.info("Attempting to create AWS Session using explicitly-specified credentials profile \"%s\" now..." % aws_profile_name)
+        try:
+            session = boto3.Session(profile_name = aws_profile_name)
+            log_success("Successfully created boto3 Session using AWS profile \"%s\"" % aws_profile_name)
+        except Exception as ex: 
+            log_error("Exception encountered while trying to use AWS credentials profile \"%s\"." % aws_profile_name, no_header = False)
+            raise ex 
+        
+        eks = session.client('eks')
+    else:
+        eks = boto3.client('eks')
+    
+    # First, the "core" NodeGroup.
+    logger.info("Creating the NodeGroup for the OpenWhisk \"core\" components now.")
+    try:
+        response = eks.create_nodegroup(
+            clusterName = eks_cluster_name,
+            nodegroupName = "core-nodes",
+            scalingConfig = {
+                'minSize': 0,
+                'maxSize': num_openwhisk_core_vms,
+                'desiredSize': num_openwhisk_core_vms
+            },
+            remoteAccess = {
+                'ec2SshKey': ssh_keypair_name,
+                'sourceSecurityGroups': security_group_ids
+            },
+            instanceTypes = [openwhisk_core_instance_type],
+            subnets = subnet_ids,
+            amiType = "AL2_x86_64",
+            capacityType = "ON_DEMAND",
+            diskSize = 25,
+            labels = {"openwhisk-role", "core"},
+            tags = {"Component", "EKS_CoreNode"},
+        )
+    except Exception as ex:
+        log_error("Exception encountered when creating AWS EKS NodeGroup for OpenWhisk \"core\" components.")
+        raise ex
+    
+    # Second, the "invoker" NodeGroup.
+    logger.info("Creating the NodeGroup for the OpenWhisk \"invoker\" components now.")
+    try:
+        response = eks.create_nodegroup(
+            clusterName = eks_cluster_name,
+            nodegroupName = "invoker-nodes",
+            scalingConfig = {
+                'minSize': 0,
+                'maxSize': num_openwhisk_invoker_vms,
+                'desiredSize': num_openwhisk_invoker_vms
+            },
+            instanceTypes = [openwhisk_invoker_instance_type],
+            remoteAccess = {
+                'ec2SshKey': ssh_keypair_name,
+                'sourceSecurityGroups': security_group_ids
+            },
+            subnets = subnet_ids,
+            amiType = "AL2_x86_64",
+            capacityType = "ON_DEMAND",
+            diskSize = 25,
+            labels = {"openwhisk-role", "invoker"},
+            tags = {"Component", "EKS_InvokerNode"},
+        )
+    except Exception as ex:
+        log_error("Exception encountered when creating AWS EKS NodeGroup for OpenWhisk \"invoker\" components.")
+        raise ex
+
 def main():
     global NO_COLOR
     
@@ -300,12 +378,33 @@ def main():
             
             NO_COLOR = arguments.get("no_color", False)
             aws_profile_name = arguments.get("aws_profile", None)
-            aws_region = arguments.get("aws_region", "us-east-1")
-            aws_eks_cluster_name = arguments.get("aws_eks_cluster_name", None)
+            #aws_region = arguments.get("aws_region", "us-east-1")
+            #aws_eks_cluster_name = arguments.get("aws_eks_cluster_name", None)
             lambda_fs_vm_public_ipv4 = arguments.get("lambda_fs_vm_public_ipv4", None)
+            ssh_keypair_name = arguments.get("ssh_keypair_name", None)
             ssh_key_path = arguments.get("ssh_key_path", None)
             aws_account_id = arguments.get("aws_account_id", None)
             ebs_csi_driver_iam_role_name = arguments.get("ebs_csi_driver_iam_role_name", "AmazonEKS_EBS_CSI_DriverRole")
+            
+            openwhisk_invoker_instance_type = arguments.get("openwhisk_invoker_instance_type", "r5.4xlarge")
+            openwhisk_core_instance_type = arguments.get("openwhisk_core_instance_type", "r5.xlarge")
+            num_openwhisk_invoker_vms = arguments.get("num_openwhisk_invoker_vms", 8)
+            num_openwhisk_core_vms = arguments.get("num_openwhisk_core_vms", 3)
+            
+            infrastructure_json_path = arguments.get("infrastructure_json_path", None)
+            infrastructure_json = None 
+            if infrastructure_json_path == None:
+                log_error("Please provide the file path for the \"infrastructure JSON\" file generated when you ran the create_aws_infrastructure.py script. This file path is specified via the \"infrastructure_json_path\" parameter.")
+                exit(1)
+            else:
+                with open(infrastructure_json_path, "r") as infrastructure_json_file:
+                    infrastructure_json = json.load(infrastructure_json_file)
+                
+                subnet_ids = infrastructure_json["public_subnet_ids"]
+                security_group_ids = infrastructure_json["security_group_ids"]
+                aws_region = infrastructure_json["aws_region"]
+                aws_eks_cluster_name = infrastructure_json["eks_cluster_name"]
+                lambda_fs_vm_public_ipv4 = infrastructure_json["lambdafs_client_vm_public_ipv4"]
             
             if aws_eks_cluster_name is None:
                 log_error("Please provide the name of your AWS Elastic Kubernetes Service (EKS) cluster via the \"aws_eks_cluster_name\" parameter.")
@@ -315,6 +414,10 @@ def main():
                 log_error("Please provide the public IPv4 of the primary lfs client and experiment driver VM via the \"lambda_fs_vm_public_ipv4\" parameter.")
                 exit(1)
             
+            if ssh_keypair_name is None:
+                log_error("Please provide the path to your private SSH key via the \"ssh_keypair_name\" parameter.")
+                exit(1)
+                
             if ssh_key_path is None:
                 log_error("Please provide the path to your private SSH key via the \"ssh_key_path\" parameter.")
                 exit(1)
@@ -349,6 +452,18 @@ def main():
         iam_client = boto3.client('iam', region_name = aws_region)
     
     install_amazon_ebs_csi_driver(aws_eks_cluster_name = aws_eks_cluster_name, aws_account_id = aws_account_id, aws_region = aws_region, eks_client = eks_client, iam_client = iam_client, ebs_csi_driver_iam_role_name = ebs_csi_driver_iam_role_name)
+    
+    create_eks_node_groups(
+        aws_profile_name = aws_profile_name,
+        eks_cluster_name = aws_eks_cluster_name,
+        openwhisk_core_instance_type = openwhisk_core_instance_type,
+        openwhisk_invoker_instance_type = openwhisk_invoker_instance_type,
+        num_openwhisk_core_vms = num_openwhisk_core_vms,
+        num_openwhisk_invoker_vms = num_openwhisk_invoker_vms,
+        ssh_keypair_name = ssh_keypair_name,
+        subnet_ids = subnet_ids,
+        security_group_ids = security_group_ids,
+    )
 
 if __name__ == "__main__":
     main()

@@ -635,7 +635,8 @@ def create_eks_openwhisk_cluster(
     vpc_id:str = None, 
     eks_cluster_name:str = "lambda-fs-eks-cluster",
     create_eks_iam_role = True,
-    ec2_client = None
+    ec2_client = None,
+    data:dict = None
 ):
     """
     Create the AWS EKS cluster and deploy OpenWhisk on that cluster.
@@ -729,7 +730,10 @@ def create_eks_openwhisk_cluster(
     log_important("AWS EKS Cluster creation API call succeeded.")
     log_important("According to the AWS documentation, it can typically take 10 - 15 minutes for the cluster to be fully created and become operational.")
     log_important("We will begin creating some of the other components while we wait for the EKS Cluster to finish being created.")
-
+    
+    data["eks_cluster_id"] = cluster_response["id"]
+    data["eks_cluster_arn"] = cluster_response["arn"]
+    
 def create_ec2_auto_scaling_group(
     auto_scaling_group_name:str = "",
     launch_template_name:str = "",
@@ -775,6 +779,7 @@ def create_launch_template(
     ec2_client = None,
     ami_id:str = "", 
     instance_type:str = "",
+    ssh_keypair_name:str = "",
     security_group_ids:list = [],
 ):
     """
@@ -793,6 +798,7 @@ def create_launch_template(
             LaunchTemplateData = {
                 "ImageId": ami_id,
                 "InstanceType": instance_type,
+                "KeyName": ssh_keypair_name,
                 "SecurityGroupIds": security_group_ids,
                 "NetworkInterfaces": [{
                     'AssociatePublicIpAddress': True,
@@ -866,6 +872,7 @@ def create_launch_templates_and_instance_groups(
     create_launch_templates:bool = False,
     create_autoscaling_groups:bool = False,
     security_group_ids:list = [],
+    ssh_keypair_name:str = None,
     aws_region:str = "us-east-1",
     data = {}
 ):
@@ -877,19 +884,40 @@ def create_launch_templates_and_instance_groups(
         logger.info("Creating the EC2 launch templates now.")
         
         # λFS clients.
-        name, id = create_launch_template(ec2_client = ec2_client, launch_template_name = "lambda_fs_clients", launch_template_description = "LambdaFS_Clients_Ver1", ami_id = LAMBDA_FS_CLIENT_AMI, instance_type = lfs_client_ags_it, security_group_ids = security_group_ids)
+        name, id = create_launch_template(
+            ec2_client = ec2_client, 
+            launch_template_name = "lambda_fs_clients", 
+            launch_template_description = "LambdaFS_Clients_Ver1", 
+            ami_id = LAMBDA_FS_CLIENT_AMI, 
+            instance_type = lfs_client_ags_it, 
+            ssh_keypair_name = ssh_keypair_name,
+            security_group_ids = security_group_ids)
         
         data["lfs-client-launch-template-name"] = name
         data["lfs-client-launch-template-id"] = id 
         
         # HopsFS clients.
-        name, id = create_launch_template(ec2_client = ec2_client, launch_template_name = "hopsfs_clients", launch_template_description = "HopsFS_Clients_Ver1", ami_id = HOPSFS_CLIENT_AMI, instance_type = hopsfs_client_ags_it, security_group_ids = security_group_ids)
+        name, id = create_launch_template(
+            ec2_client = ec2_client, 
+            launch_template_name = "hopsfs_clients", 
+            launch_template_description = "HopsFS_Clients_Ver1", 
+            ami_id = HOPSFS_CLIENT_AMI, 
+            instance_type = hopsfs_client_ags_it, 
+            ssh_keypair_name = ssh_keypair_name,
+            security_group_ids = security_group_ids)
         
         data["hospfs-client-launch-template-name"] = name
         data["hospfs-client-launch-template-id"] = id 
         
         # HopsFS NameNodes.
-        name, id = create_launch_template(ec2_client = ec2_client, launch_template_name = "hopsfs_namenodes", launch_template_description = "HopsFS_NameNodes_Ver1", ami_id = HOPSFS_NAMENODE_AMI, instance_type = hopsfs_namenode_ags_it, security_group_ids = security_group_ids)
+        name, id = create_launch_template(
+            ec2_client = ec2_client, 
+            launch_template_name = "hopsfs_namenodes", 
+            launch_template_description = "HopsFS_NameNodes_Ver1", 
+            ami_id = HOPSFS_NAMENODE_AMI, 
+            instance_type = hopsfs_namenode_ags_it, 
+            ssh_keypair_name = ssh_keypair_name,
+            security_group_ids = security_group_ids)
         
         data["hopsfs-nn-launch-template-name"] = name
         data["hopsfs-nn-launch-template-id"] = id 
@@ -2172,6 +2200,8 @@ def main():
     with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
       
+    data["eks_cluster_name"] = eks_cluster_name
+    data["eks_iam_role_name"] = eks_iam_role_name
     if create_eks_cluster:
         create_eks_openwhisk_cluster(
             aws_profile_name = aws_profile_name, 
@@ -2214,6 +2244,7 @@ def main():
             create_launch_templates = create_launch_templates,
             create_autoscaling_groups = create_autoscaling_groups,
             aws_region = aws_region,
+            ssh_keypair_name = ssh_keypair_name,
             data = data
         )
     else:
@@ -2393,6 +2424,7 @@ def main():
             log_error("Could not resolve public IPv4 of λFS client virtual machine. Cannot copy SSH key to VM.")
         else:
             logger.info("Copying SSH key onto λFS client virtual machine with IP=%s" % lambdafs_client_vm_public_ipv4)
+            data["lambdafs_client_vm_public_ipv4"] = lambdafs_client_vm_public_ipv4
             copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = lambdafs_client_vm_public_ipv4)
         
     if do_create_hops_fs_client_vm:
@@ -2416,6 +2448,7 @@ def main():
             log_error("Could not resolve public IPv4 of HopsFS client virtual machine. Cannot copy SSH key to VM.")
         else:
             logger.info("Copying SSH key onto HopsFS client virtual machine with IP=%s" % hopsfs_client_vm_public_ipv4)
+            data["hopsfs_client_vm_public_ipv4"] = hopsfs_client_vm_public_ipv4
             copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = hopsfs_client_vm_public_ipv4)
     
     end_time = time.time()

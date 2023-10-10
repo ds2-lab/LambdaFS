@@ -111,7 +111,7 @@ hopsfs_namenode_autoscaling_group_instance_type: "r5.4xlarge"
 # The use-case for this is if something goes wrong while executing the script for some reason -- you 
 # can essentially use these JSON files as checkpoints to execute the script again without having to
 # delete and recreate everything first.
-# infrastructure_json_file_name: "./infrastructure_json"
+# infrastructure_json_path: "./infrastructure_json"
 
 # Start the ZooKeeper cluster. If you are not creating the VMs as well, then you need to pass a YAML list of 
 # IPs via the "zk_node_public_IPs" YAML parameter.
