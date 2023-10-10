@@ -1581,8 +1581,13 @@ def start_mysqld_process(
     
     logger.info("Restarted MySQL service on VM at %s. Time elapsed: %.2f seconds." % (ip, time.time() - st))
 
+    # TODO(Ben):
+    # We ultimately seleep for 60 seconds after returning from this method and the next.
+    # The 60-second sleep is to allow the NDB cluster to start-up. 
+    # So, I don't think we need this 30 second sleep here, as that means we sleep for 90 seconds in total, which is probably a lot longer than we need.
+    # Maybe we could sleep for 15-20 seconds here? If at all.
     logger.info("Sleeping for 30 seconds so the MYSQLD process has time to start-up.")
-    for _ in tqdm(range(180)):
+    for _ in tqdm(range(60)):
         sleep(0.25)
             
     return True 
@@ -1655,10 +1660,19 @@ def populate_mysql_ndb_tables(
         _, stdout, stderr = ssh_client.exec_command("cd /home/ubuntu/mysql_scripts; sudo /usr/local/mysql/bin/mysql --host=localhost --port=22 -u user -p123password123 vanilla_hopsfs < %s" % mysql_script)  
         logger.info(stdout.read().decode())
 
-        stderr_output = stderr.read().decode()
+        stderr_output = stderr.read().decode().strip()
         
-        if len(stderr_output.strip()) > 0:
-            log_error(stderr_output)
+        if len(stderr_output) > 0:
+            # It always prints this error message, and it'll just confuse the user or needlessly spook them into thinking something might be going wrong.
+            # Just suppress the error message. We do say in the documentation that what we're doing here is not particularly secure. 
+            if stderr_output == "mysql: [Warning] Using a password on the command line interface can be insecure.":
+                pass 
+            # If we receive some other error message that begins with a warning, then print it as a warning, rather than a full-blown error.
+            elif stderr_output.startswith("mysql: [Warning]"):
+                log_warning(stderr_output)
+            # Otherwise, log the stderr output as a full-blown error. 
+            else:
+                log_error(stderr_output)
             
             if "ERROR" in stderr_output.upper() or "EXCEPTION" in stderr_output.upper():
                 log_error("Exiting.")
@@ -1812,10 +1826,6 @@ def setup_ndb(
             logger.debug("Retrieving NDB data nodes' IP from the `infrastructure_json` data.")
             data_node_public_ips = infrastructure_json.get("data-node-public-ips", None)
             datanode_ids = infrastructure_json.get("data-node-ids", None)
-        
-        # logger.info("Sleeping for 30 seconds while the mysqld processes shut down.")
-        # for _ in tqdm(range(120)):
-        #     sleep(0.25)
         
         print()
         logger.info("Starting the MySQL NDB cluster now.")
