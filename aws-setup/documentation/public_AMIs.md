@@ -1,5 +1,5 @@
 # Publicly-Available EC2 AMIs for λFS and HopsFS
-- **λFS Client `ami-00d0d702dff48410d`**: The λFS client and the driver(s) for the experiments (for λFS).
+- **λFS Client `ami-005d46e228a2e351a`**: The λFS client and the driver(s) for the experiments (for λFS).
 - **λFS ZooKeeper Node `ami-0700bf4465e5fd16d`**: ZooKeeper node used by λFS. (Specifically, λFS uses three ZooKeeper nodes, all of which can be created with this AMI.)
 - **MySQL NDB Manager `ami-0ef872c16032b2aeb`**
 - **MySQL NDB Data Node 1 `ami-02b05337b4142f447`**
