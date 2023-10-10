@@ -2,7 +2,7 @@
 
 The following document provides a set of directions for creating the required AWS infrastructure to deploy and run λFS and HopsFS. Much of this process can be automated using the `create_aws_infrastructure.py` and `configure_eks_cluster.py` scripts. The `configure_eks_cluster.py` script should be executed once the AWS EKS cluster created by the `create_aws_infrastructure.py` script becomes operational. 
 
-Please note that the `setup_tldr.md` document provides an abridged version of these instructions. 
+Please note that the `setup_tldr.md` document provides a shortened step-by-step version of these instructions. We recommend following those instructions by default and referring to this if you encounter issues or want to perform certain steps manually (instead of using the `create_aws_infrastructure.py` script).
 
 # Requirements
 

@@ -340,11 +340,11 @@ def main():
         except Exception as ex: 
             log_error("Exception encountered while trying to use AWS credentials profile \"%s\"." % aws_profile_name)
             raise ex 
-        ec2_client = session.client('ec2', region_name = aws_region)
+        # ec2_client = session.client('ec2', region_name = aws_region)
         eks_client = session.client('eks', region_name = aws_region)
         iam_client = session.client('iam', region_name = aws_region)
     else:
-        ec2_client = boto3.client('ec2', region_name = aws_region)
+        # ec2_client = boto3.client('ec2', region_name = aws_region)
         eks_client = boto3.client('eks', region_name = aws_region)
         iam_client = boto3.client('iam', region_name = aws_region)
     

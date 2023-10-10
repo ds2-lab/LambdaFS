@@ -164,7 +164,25 @@ You may monitor the progress of the OpenWhisk deployment by inspecting the vario
 kubectl get pods 
 ```
 
-## Step 8: Create NameNode Deployments
+## Step 8: Format the File System
+
+Before you can use either λFS or HopsFS, you must first format the file system. To do this, SSH to the primary client VM of whichever system you're using. Then, execute one of the two following commands, depending on which framework you're using:
+
+λFS:
+``` sh
+sudo /home/ubuntu/repos/hops/hadoop-dist/target/hadoop-3.2.0.3-SNAPSHOT/bin/hdfs namenode -format -nonInteractive
+```
+
+HopsFS:
+``` sh
+sudo /home/ubuntu/repos/hops/hadoop-dist/target/hadoop-3.2.0.2-RC0/bin/hdfs namenode -format -nonInteractive
+```
+
+The only difference between the two commands is the file path. There will be no errors or exceptions in the output if the file system was formatted correctly.
+
+## Step 9: Create NameNode Deployments
+
+This step be performed as soon as OpenWhisk is up-and-running (i.e., when all of the OpenWhisk pods have entered the `RUNNING` state). 
 
 Execute the following command to automatically register 20 NameNode deployments with OpenWhisk:
 
