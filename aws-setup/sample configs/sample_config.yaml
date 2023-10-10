@@ -2,29 +2,23 @@
 # Used by the 'create_aws_infrastructure.py' script #
 #####################################################
 
+# NOTE: When creating your own "config_aws.yaml" file, we recommend placing it directly within the "aws-setup/" directory.
+# So, the full path would be: "".../LambdaFS/aws-setup/config_aws.yaml"
+
 # Toggles color formatting in the log/console output of the installation/setup script.
 no_color: False
 
+#############################
+# General AWS Configuration #
+############################# 
+
 # AWS CLI profile - we need credentials to create AWS resources.
 aws_profile: <FILL THIS IN>
-
 # The region in which to reate the AWS resources. The AMIs are only availabe in us-east-1, so you should use this 
 # region unless you know of a way to clone/copy the AMIs to another region yourself.
 aws_region: "us-east-1"
-
 # Your public IPv4 address. We need this to create security rules to enable SSH between your computer and the AWS resources.
 user_public_ip: "DEFAULT_VALUE"
-
-# Name of the virtual private cloud. All of the Lambda-FS and HopsFS resources will be created inside this VPC.
-vpc_name: "LambdaFS_VPC"
-
-# The name for the security group to assign to all Lambda-FS and HopsFS resources.
-security_group_name: "lambda-fs-security-group"
-# Name of the AWS EKS Kubernetes cluster, onto which we deploy OpenWhisk, the FaaS platform used by Lambda-FS.
-eks_cluster_name : "lambda-fs-eks-cluster"
-# Name of the IAM role to be created for use with the AWS EKS Kubernetes cluster.
-eks_iam_role_name: "lambda-fs-eks-cluster-role"
-
 # The name of the keypair as registered with AWS. 
 # We will assign this keypair to VMs, and you will need to use this keypair to SSH to the VMs.
 # The key should be in RSA format.
@@ -32,6 +26,64 @@ ssh_keypair_name: <FILL THIS IN>
 # Path to the private key located on your device (wherever you're running this script from).
 ssh_key_path: <FILL THIS IN>
 
+#####################
+# VPC Configuration #
+#####################
+# Configuration specific to the Virtual Private Cloud (VPC).
+# A Virtual Private Cloud is a logically isolated section of the AWS Cloud. 
+# All of the resources that we create will be located within this VPC.
+
+# If True, create the VPC used by HopsFS and LambdaFS.
+create_vpc: True
+# Name of the virtual private cloud. All of the Lambda-FS and HopsFS resources will be created inside this VPC.
+vpc_name: "LambdaFS_VPC"
+# The name for the security group to assign to all Lambda-FS and HopsFS resources.
+security_group_name: "lambda-fs-security-group"
+
+#########################
+# AWS EKS Configuration #
+#########################
+# AWS Elastic Kubernetes Service (EKS) is a managed Kubernetes service to run Kubernetes in the AWS cloud.
+# We deploy OpenWhisk, an open source Functions-as-a-Service platform, on AWS EKS.
+# λFS uses OpenWhisk as its FaaS backend.
+
+# If True, create the AWS EKS cluster.
+create_eks_cluster: True
+# If True, create the IAM role used by the AWS EKS cluster.
+create_eks_iam_role: True
+# Name of the AWS EKS Kubernetes cluster, onto which we deploy OpenWhisk, the FaaS platform used by Lambda-FS.
+eks_cluster_name : "lambda-fs-eks-cluster"
+# Name of the IAM role to be created for use with the AWS EKS Kubernetes cluster.
+eks_iam_role_name: "lambda-fs-eks-cluster-role"
+# Number of VMs to provision within the EKS Cluster for hosting the "core" OpenWhisk components (controllers, couchDB, kafka, etc.)
+num_openwhisk_core_vms: 3
+# Number of VMs to provision within the EKS Cluster for hosting the "invoker" OpenWhisk components, which host the actual λFS NameNodes.
+num_openwhisk_invoker_vms: 8
+# The instance type used by the OpenWhisk core components within the AWS EKS cluster.
+openwhisk_core_instance_type: "r5.xlarge"
+# The instance type used by the OpenWhisk invoker components, which host the actual λFS NameNodes.
+openwhisk_invoker_instance_type: "r5.4xlarge"
+
+##########################################
+# Client & NameNode EC2 VM Configuration #
+##########################################
+
+# Create the primary Lambda-FS client VM and experiment driver.
+create_lambda_fs_client_vm: True
+# EC2 instance type to use for the primary Lambda-FS client VM, 
+# which also serves as the Lambda-FS experiment driver.
+lfs_client_vm_instance_type: "r5.4xlarge"
+
+# Create the primary HopsFS client VM and experiment driver.
+create_hops_fs_client_vm: True
+# EC2 instance type to use for the primary HopsFS client VM, 
+# which also serves as the Lambda-FS experiment driver.
+hopsfs_client_vm_instance_type: "r5.4xlarge"
+
+# If True, do NOT create the AWS EC2 Launch Templates used for the Lambda-FS and HopsFS client VMs.
+create_launch_templates: True
+# If True, do NOT create the AWS EC2 Autoscaling Groups used for the Lambda-FS and HopsFS client VMs.
+create_autoscaling_groups: True
 # EC2 instance type to use for Lambda-FS clients.
 # Specifically the client VMs managed by the autoscaling group.
 lfs_client_autoscaling_group_instance_type: "r5.4xlarge"
@@ -41,23 +93,10 @@ hopsfs_client_autoscaling_group_instance_type: "r5.4xlarge"
 # EC2 instance type to use for HopsFS NameNodes.
 # Specifically the client VMs managed by the autoscaling group.
 hopsfs_namenode_autoscaling_group_instance_type: "r5.4xlarge"
-# EC2 instance type to use for the primary Lambda-FS client VM, 
-# which also serves as the Lambda-FS experiment driver.
-lfs_client_vm_instance_type: "r5.4xlarge"
-# EC2 instance type to use for the MySQL NDB Manager Node.
-ndb_manager_instance_type: "r5.4xlarge"
-# EC2 instance type to use for the MySQL NDB Data Nodes.
-ndb_datanode_instance_type: "r5.4xlarge"
-# EC2 instance type to use for the Lambda-FS ZooKeeper nodes.
-lambdafs_zk_instance_type: "r5.4xlarge"
-# EC2 instance type to use for the primary HopsFS client VM, 
-# which also serves as the Lambda-FS experiment driver.
-hopsfs_client_vm_instance_type: "r5.4xlarge"
 
-# Create the primary Lambda-FS client VM and experiment driver.
-create_lambda_fs_client_vm: True
-# Create the primary HopsFS client VM and experiment driver.
-create_hops_fs_client_vm: True
+###########################
+# ZooKeeper Configuration #
+###########################
 
 # If you run the script once and generate some of the infrastructure, the IDs of the generated 
 # components will be written to a file in the aws_setup/infrastructure_json/ directory.
@@ -83,7 +122,10 @@ create_hops_fs_client_vm: True
 #   - <IP1>
 #   - <IP2>
 #   - ... 
-#
+
+# If True, create the ZooKeeper VMs (used by Lambda-FS).
+create_zookeeper_vms: True
+# If True, start the ZooKeeper software on VMs.
 start_zookeeper_cluster: True
 # Populate the ZooKeeper cluster with the data required by Lambda-FS.
 populate_zookeeper_cluster: True 
@@ -91,8 +133,8 @@ populate_zookeeper_cluster: True
 zookeeper_jvm_heap_size: 4000
 # The number of ZooKeeper VMs to create.
 num_lambda_fs_zk_vms: 3
-# If True, create the ZooKeeper VMs (used by Lambda-FS).
-create_zookeeper_vms: False
+# EC2 instance type to use for the Lambda-FS ZooKeeper nodes.
+lambdafs_zk_instance_type: "r5.4xlarge"
 
 # You only need to specify this argument if you've already setup the ZooKeeper cluster and just want to (e.g.,) start the cluster on the already-running VMs.
 # See the comment above the `start_zookeeper_cluster` property for more details.
@@ -100,6 +142,10 @@ create_zookeeper_vms: False
 # - <IP1>
 # - <IP2>
 # - <IP3>
+
+###################################
+# MySQL Cluster NDB Configuration #
+###################################
 
 # If True, create the MySQL NDB Cluster VMs (manager node and data nodes).
 create_ndb_cluster: True
@@ -110,16 +156,13 @@ populate_mysql_ndb_tables: True
 # The number of MySQL NDB Data Nodes to create. 
 # We used 4 in our ASPLOS'23 evaluation, but performance does not change too significantly. 2 works fine as well.
 num_ndb_datanodes: 4
+# EC2 instance type to use for the MySQL NDB Manager Node.
+ndb_manager_instance_type: "r5.4xlarge"
+# EC2 instance type to use for the MySQL NDB Data Nodes.
+ndb_datanode_instance_type: "r5.4xlarge"
 
-# If True, create the IAM role used by the AWS EKS cluster.
-create_eks_iam_role: True
-# If True, create the VPC used by HopsFS and LambdaFS.
-create_vpc: True
-# If True, create the AWS EKS cluster.
-create_eks_cluster: True
-# If True, do NOT create the ZooKeeper VMs (used by Lambda-FS).
-create_zookeeper_vms: True
-# If True, do NOT create the AWS EC2 Launch Templates used for the Lambda-FS and HopsFS client VMs.
-create_launch_templates: True
-# If True, do NOT create the AWS EC2 Autoscaling Groups used for the Lambda-FS and HopsFS client VMs.
-create_autoscaling_groups: True
+# If true, then attempt to format the filesystem automatically once the LambdaFS/HopsFS VM is up-and-running.
+# The file system must be formatted if you're creating NDB for the first time.
+# This requires that the NDB VMs are created, the MySQL NDB Cluster software is running, and the databases has been populated with the necessary tables.
+# Additionally, either the LambdaFS or HopsFS primary client VM/experiment driver must be up-and-running.
+format_filesystem: True 

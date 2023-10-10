@@ -2,6 +2,9 @@
 # Used by the 'configure_eks_cluster.py' script #
 #################################################
 
+# NOTE: When creating your own "config_eks.yaml" file, we recommend placing it directly within the "aws-setup/" directory.
+# So, the full path would be: "".../LambdaFS/aws-setup/config_eks.yaml"
+
 # Toggles color formatting in the log/console output of the installation/setup script.
 no_color: False
 
