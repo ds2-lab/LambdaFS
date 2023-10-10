@@ -31,6 +31,10 @@ os.system("color")
 AmazonEBSCSIDriverPolicyARN = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 AmazonEBSCSIDriverAddonName = "aws-ebs-csi-driver"
 
+AmazonEKSWorkerNodePolicyARN = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+AmazonEC2ContainerRegistryReadOnlyARN = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+AmazonEKS_CNI_PolicyARN = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+
 # Set up logging.
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -277,6 +281,58 @@ def annotate_k8s_service_account(
             log_important("kubectl annotate serviceaccount ebs-csi-controller-sa -n kube-system ks.amazonaws.com/role-arn=arn:aws:iam::%s:role/%s" % (aws_account_id, ebs_csi_driver_iam_role_name))
             exit(1)
 
+def try_get_existing_iam_node_role(
+    iam = None
+)->dict:  
+    try:
+        role_resp = iam.get_role(RoleName = "eksNodeRole")
+        
+        if validate_iam_node_role(iam = iam, role_name = "eksNodeRole"):
+            return role_resp
+    except iam.exceptions.NoSuchEntityException:
+        pass 
+    
+    try:
+        role_resp = iam.get_role(RoleName = "AmazonEKSNodeRole")
+        
+        if validate_iam_node_role(iam = iam, role_name = "AmazonEKSNodeRole"):
+            return role_resp
+    except iam.exceptions.NoSuchEntityException:
+        pass 
+    
+    try:
+        role_resp = iam.get_role(RoleName = "NodeInstanceRole")
+        
+        if validate_iam_node_role(iam = iam, role_name = "NodeInstanceRole"):
+            return role_resp
+    except iam.exceptions.NoSuchEntityException:
+        pass 
+    
+    return None
+
+def validate_iam_node_role(
+    iam = None,
+    role_name:str = None
+)->bool:
+    try:
+        has_AmazonEKSWorkerNodePolicy = False 
+        has_AmazonEC2ContainerRegistryReadOnly = False 
+        # has_AmazonEKS_CNI_Policy = False 
+        resp = iam.list_attached_role_policies(RoleName = role_name)
+        
+        for policy in resp['AttachedPolicies']:
+            if policy["PolicyName"] == "AmazonEKSWorkerNodePolicy":
+                has_AmazonEKSWorkerNodePolicy = True 
+            elif policy["PolicyName"] == "AmazonEC2ContainerRegistryReadOnly":
+                has_AmazonEC2ContainerRegistryReadOnly = True 
+            # elif policy["PolicyName"] == "AmazonEKS_CNI_Policy":
+            #    has_AmazonEKS_CNI_Policy = True 
+        
+        return has_AmazonEKSWorkerNodePolicy and has_AmazonEC2ContainerRegistryReadOnly
+    except iam.exceptions.NoSuchEntityException:
+        log_error("Got 'NoSuchEntityException' when validating supposedly-existing role \"%s\"." % role_name)
+        return False 
+
 def create_eks_node_groups(
     aws_profile_name:str = None, 
     subnet_ids:list[str] = [],
@@ -298,10 +354,65 @@ def create_eks_node_groups(
             raise ex 
         
         eks = session.client('eks')
+        iam = session.client('iam')
     else:
         eks = boto3.client('eks')
+        iam = boto3.client('iam')
     
-    # First, the "core" NodeGroup.
+    # First, we need to determine if we need to create an IAM role for the nodes.
+    # It's possible one already exists, so we'll check for that first.
+    
+    existing_iam_role = try_get_existing_iam_node_role(iam = iam)
+    
+    # If we did not find an existing role that we can use, then we'll need to create one now.
+    if existing_iam_role != None:
+        node_role = existing_iam_role["Role"]["RoleName"]
+        logger.info("Reusing existing IAM role for the EKS nodes: \"%s\"" % node_role)
+        
+        # Make sure it has this.
+        iam.attach_role_policy(
+            RoleName = node_role,
+            PolicyArn = AmazonEKS_CNI_PolicyARN
+        )
+    else:
+        logger.info("Creating new IAM role for the EKS nodes: \"AmazonEKSNodeRole\"")
+        trust_relationship = {
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": ["ec2.amazonaws.com"]
+                },
+                "Action": ["sts:AssumeRole"]
+            }],
+        }
+        
+        try:
+            iam.create_role(
+                Path = "/",
+                RoleName = "AmazonEKSNodeRole",
+                AssumeRolePolicyDocument = trust_relationship,
+            )
+        except iam.exceptions.EntityAlreadyExistsException:
+            log_warning("Apparently, IAM role \"AmazonEKSNodeRole\" already exists. It must have been missing a required policy.")
+        
+        iam.attach_role_policy(
+            RoleName = "AmazonEKSNodeRole",
+            PolicyArn = AmazonEKSWorkerNodePolicyARN
+        )
+        
+        iam.attach_role_policy(
+            RoleName = "AmazonEKSNodeRole",
+            PolicyArn = AmazonEC2ContainerRegistryReadOnlyARN
+        )
+        
+        iam.attach_role_policy(
+            RoleName = "AmazonEKSNodeRole",
+            PolicyArn = AmazonEKS_CNI_PolicyARN
+        )
+        
+        node_role = "AmazonEKSNodeRole"
+    # Next, the "core" NodeGroup.
     logger.info("Creating the NodeGroup for the OpenWhisk \"core\" components now.")
     try:
         response = eks.create_nodegroup(
@@ -316,6 +427,7 @@ def create_eks_node_groups(
                 'ec2SshKey': ssh_keypair_name,
                 'sourceSecurityGroups': security_group_ids
             },
+            nodeRole = node_role,
             instanceTypes = [openwhisk_core_instance_type],
             subnets = subnet_ids,
             amiType = "AL2_x86_64",
@@ -328,7 +440,7 @@ def create_eks_node_groups(
         log_error("Exception encountered when creating AWS EKS NodeGroup for OpenWhisk \"core\" components.")
         raise ex
     
-    # Second, the "invoker" NodeGroup.
+    # Finally, the "invoker" NodeGroup.
     logger.info("Creating the NodeGroup for the OpenWhisk \"invoker\" components now.")
     try:
         response = eks.create_nodegroup(
@@ -344,6 +456,7 @@ def create_eks_node_groups(
                 'ec2SshKey': ssh_keypair_name,
                 'sourceSecurityGroups': security_group_ids
             },
+            nodeRole = node_role,
             subnets = subnet_ids,
             amiType = "AL2_x86_64",
             capacityType = "ON_DEMAND",

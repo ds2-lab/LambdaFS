@@ -34,7 +34,7 @@ python3 create_aws_infrastructure.py --yaml ./config_aws.yaml
 
 ## Step 4: Execute `configure_eks_cluster.py`
 
-Wait 10 - 15 minutes until the newly-created AWS EKS cluster becomes operational. Once the cluster has become operational, execute the `configure_eks_cluster.py` script. Just as with the `create_aws_infrastructure.py` script, the `configure_eks_cluster.py` script requires a YAML configuration file. A sample configuration file is provided in `aws-setup/sample_config_eks.yaml`. The configuration parameters for the `configure_eks_cluster.py` script are very similar to those of the `create_aws_infrastructure.py` script, with only a few minor differences. The sample configuration file is annotated with comments explaining the purpose of each configuration parameter.
+Wait 10 - 15 minutes until the newly-created AWS EKS cluster becomes operational. Once the cluster has become operational, execute the `configure_eks_cluster.py` script. Just as with the `create_aws_infrastructure.py` script, the `configure_eks_cluster.py` script requires a YAML configuration file. A sample configuration file is provided in `aws-setup/sample_configs/sample_config_eks.yaml`. The configuration parameters for the `configure_eks_cluster.py` script are very similar to those of the `create_aws_infrastructure.py` script, with only a few minor differences. The sample configuration file is annotated with comments explaining the purpose of each configuration parameter.
 
 Once you've created a `config_eks.yaml` file based off of the `sample_config_eks.yaml` file, you can execute the `configure_eks_cluster.py` script as follows:
 
@@ -51,6 +51,8 @@ kubectl annotate serviceaccount ebs-csi-controller-sa \
     -n kube-system \
     eks.amazonaws.com/role-arn=arn:aws:iam::111122223333:role/AmazonEKS_EBS_CSI_DriverRole
 ```
+
+The `configure_eks_cluster.py` script will also automatically create AWS EKS NodeGroups for the cluster.
 
 ## Step 5: NGINX Secret
 
@@ -72,11 +74,13 @@ If you named your OpenWhisk deployment `owdev`, then the command would be:
 kubectl create secret tls owdev-nginx --cert=CERT.pem --key=KEY.pem
 ```
 
-## Step 6: **Labeling EKS Nodes as OpenWhisk Invokers**
+## Step 6: Labeling EKS Nodes as OpenWhisk Invokers
 
 OpenWhisk's `Invoker` component can only be scheduled onto Kubernetes nodes labeled with the key-value tag/pair `openwhisk-role=invoker`. 
 
 Once your AWS EKS nodes have been created and are running, execute `kubectl label nodes --all openwhisk-role=invoker` to designate all nodes as invokers. Alternatively, you specify specific nodes by their ID in place of using the `--all` flag.
+
+**NOTE:** If you used the `configure_eks_cluster.py` script, then the NodeGroups should have been created such that the nodes will already have labels, so you can skip this step in that case.
 
 ## Step 7: Configuring and Deploying OpenWhisk
 
