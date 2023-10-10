@@ -2403,6 +2403,7 @@ def main():
             logger.info("Populating ZooKeeper cluster now.")
             populate_zookeeper(ips = zk_node_public_IPs, ssh_key_path = ssh_key_path)
     
+    created_lambdafs_client_vm = False
     if do_create_lambda_fs_client_vm:
         logger.info("Creating λFS client virtual machine.")
         lambda_fs_primary_client_vm_id = create_lambda_fs_client_vm(ec2_resource = ec2_resource, ssh_keypair_name = ssh_keypair_name, instance_type = lfs_client_vm_instance_type, subnet_id = public_subnet_ids[1], security_group_ids = security_group_ids)
@@ -2413,20 +2414,9 @@ def main():
         with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         
-        logger.info("Sleeping 30 seconds for λFS client VM to start.")
-        for _ in tqdm(range(120)):
-            sleep(0.25)
+        created_lambdafs_client_vm = True 
         
-        resp = ec2_client.describe_instances(InstanceIds = [lambda_fs_primary_client_vm_id])
-        lambdafs_client_vm_public_ipv4 = resp['Reservations'][0]['Instances'][0]['PublicIpAddress']
-        
-        if lambdafs_client_vm_public_ipv4 == None or lambdafs_client_vm_public_ipv4 == "":
-            log_error("Could not resolve public IPv4 of λFS client virtual machine. Cannot copy SSH key to VM.")
-        else:
-            logger.info("Copying SSH key onto λFS client virtual machine with IP=%s" % lambdafs_client_vm_public_ipv4)
-            data["lambdafs_client_vm_public_ipv4"] = lambdafs_client_vm_public_ipv4
-            copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = lambdafs_client_vm_public_ipv4)
-        
+    created_hops_fs_client_vm = False
     if do_create_hops_fs_client_vm:
         logger.info("Creating HopsFS client virtual machine.")
         hops_fs_primary_client_vm_id = create_hops_fs_client_vm(ec2_resource = ec2_resource, ssh_keypair_name = ssh_keypair_name, instance_type = hopsfs_client_vm_instance_type, subnet_id = public_subnet_ids[1], security_group_ids = security_group_ids)
@@ -2437,10 +2427,26 @@ def main():
         with open("./infrastructure_json/infrastructure_ids_%s.json" % current_datetime, "w", encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         
-        logger.info("Sleeping 30 seconds for HopsFS client VM to start.")
-        for _ in tqdm(range(120)):
+        created_hops_fs_client_vm = True 
+    
+    # We can wait for both at the same time.
+    if created_lambdafs_client_vm or created_hops_fs_client_vm:
+        logger.info("Sleeping 60 seconds for client VM(s) to start.")
+        for _ in tqdm(range(240)):
             sleep(0.25)
+    
+    if created_lambdafs_client_vm:
+        resp = ec2_client.describe_instances(InstanceIds = [lambda_fs_primary_client_vm_id])
+        lambdafs_client_vm_public_ipv4 = resp['Reservations'][0]['Instances'][0]['PublicIpAddress']
         
+        if lambdafs_client_vm_public_ipv4 == None or lambdafs_client_vm_public_ipv4 == "":
+            log_error("Could not resolve public IPv4 of λFS client virtual machine. Cannot copy SSH key to VM.")
+        else:
+            logger.info("Copying SSH key onto λFS client virtual machine with IP=%s" % lambdafs_client_vm_public_ipv4)
+            data["lambdafs_client_vm_public_ipv4"] = lambdafs_client_vm_public_ipv4
+            copy_ssh_key_to_vm(ssh_key_path_local = ssh_key_path, vm_ip = lambdafs_client_vm_public_ipv4)
+    
+    if created_hops_fs_client_vm:
         resp = ec2_client.describe_instances(InstanceIds = [hops_fs_primary_client_vm_id])
         hopsfs_client_vm_public_ipv4 = resp['Reservations'][0]['Instances'][0]['PublicIpAddress']
         
