@@ -197,3 +197,15 @@ Execute the following command to automatically register 20 NameNode deployments 
 ``` sh
 python3 /home/ubuntu/repos/hops/dev-support/whisk/whisk_helper_gcp.py -n 20 --create --memory 20000 --concurrency 4
 ```
+
+## Step 10: Basic Test
+
+In the home directory (`~/`, `/home/ubuntu/`) of the λFS AMI, there is a `BasicTest.jar` file. This can be used to perform a basic test to verify that the system is working.
+
+To execute the `BasicTest.jar`, execute the following command from the `/home/ubuntu` directory:
+
+``` sh
+java -Dlog4j.configuration=file:resources/log4j.properties -cp ".:/home/ubuntu/BasicTest.jar:$HADOOP_HOME/share/hadoop/hdfs/lib/*:$HADOOP_HOME/share/hadoop/common/lib/*" com.gmail.benrcarver.distributed.BasicTest
+```
+
+If everything works, then you'll see a message prefixed with `[SUCCESS]` before the application exits. If there's an error, then you'll see a message prefixed with `[ERROR]` (or you'll simply encounter some sort of Java exception).

@@ -357,3 +357,15 @@ The NDB virtual machines required by λFS are automatically created by the `crea
 As with ZooKeeper, we provide two utility scripts to start the MySQL NDB cluster once the VMs have already been created. One of these scripts is `aws-setup/scripts/start-ndb.sh`. This can be executed from your local computer (if your computer is capable of executing shell scripts). There is an equivalent script located in `/home/ubuntu/scripts/start-ndb.sh` on the λFS primary client/experiment driver virtual machine/AMI. 
 
 To see what tables are created (and required) by HopsFS and λFS, you can see the SQL scripts used to populate the NDB cluster in `aws-setup/sql_scripts`. The `aws-setup/sql_scripts/serverless.sql` file contains the table definitions that are specific to λFS, while the other `.sql` files contain table definitions used by both λFS and HopsFS.
+
+# Basic Test 
+
+In the home directory (`~/`, `/home/ubuntu/`) of the λFS AMI, there is a `BasicTest.jar` file. This can be used to perform a basic test to verify that the system is working.
+
+To execute the `BasicTest.jar`, execute the following command from the `/home/ubuntu` directory:
+
+``` sh
+java -Dlog4j.configuration=file:resources/log4j.properties -cp ".:/home/ubuntu/BasicTest.jar:$HADOOP_HOME/share/hadoop/hdfs/lib/*:$HADOOP_HOME/share/hadoop/common/lib/*" com.gmail.benrcarver.distributed.BasicTest
+```
+
+If everything works, then you'll see a message prefixed with `[SUCCESS]` before the application exits. If there's an error, then you'll see a message prefixed with `[ERROR]` (or you'll simply encounter some sort of Java exception).
