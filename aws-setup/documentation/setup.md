@@ -242,7 +242,19 @@ The steps to avoid/resolve this error are described above in the "**OpenWhisk NG
 
 Once you've created and configured your AWS EKS Cluster, you can deploy OpenWhisk.
 
-To do this, we recommend creating the λFS "primary" client and experimental driver virtual machine using the `create_aws_infrastructure.py` script. Alternatively, you can create and deploy an EC2 VM yourself using the AMI `ami-005d46e228a2e351a`. Ensure this virtual machine is running before connecting to the instance via SSH. 
+To do this, we recommend creating the λFS "primary" client and experimental driver virtual machine using the `create_aws_infrastructure.py` script. Alternatively, you can create and deploy an EC2 VM yourself using the AMI `ami-079ac4c46055b2bdf`. Ensure this virtual machine is running before connecting to the instance via SSH. 
+
+You'll need to use the AWS CLI for this part. You should begin by configuring your AWS CLI, which ultimately amounts to providing your AWS account credentials:
+``` sh
+aws configure
+```
+
+Once you've done this, you should execute the following command, replacing `"lambda-fs-eks-cluster"` with the name of your AWS EKS cluster:
+``` sh
+aws eks update-kubeconfig --name lambda-fs-eks-cluster
+```
+
+This command updates your `kubectl` configuration so that it is "pointing to" the correct Kubernetes cluster.
 
 Navigate to the `/home/ubuntu/repos/openwhisk-deploy-kube` directory. This directory contains a local GitHub repository of the repository found [here](https://github.com/Scusemua/openwhisk-deploy-kube). The repository contains a pre-configured deployment of OpenWhisk with the same settings as the one used by λFS.  
 
