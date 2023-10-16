@@ -570,6 +570,11 @@ def create_lambda_fs_zookeeper_vms(
             )
         zookeeper_node_ids.append(zoo_keeper_node[0].id)
     
+    # Sleep for a few seconds to provide time for the secondary disks to be attached.
+    logger.info("Sleeping for 15 seconds to provide time for the secondary disks to be attached to the ZooKeeper instances.")
+    for i in tqdm(range(60)):
+        sleep(0.25)
+    
     # The "log" disk is not set to delete on termination. 
     # We explicitly/manually modify that here.
     for instance_id in zookeeper_node_ids:

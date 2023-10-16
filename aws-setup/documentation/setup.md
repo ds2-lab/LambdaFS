@@ -358,6 +358,31 @@ As with ZooKeeper, we provide two utility scripts to start the MySQL NDB cluster
 
 To see what tables are created (and required) by HopsFS and λFS, you can see the SQL scripts used to populate the NDB cluster in `aws-setup/sql_scripts`. The `aws-setup/sql_scripts/serverless.sql` file contains the table definitions that are specific to λFS, while the other `.sql` files contain table definitions used by both λFS and HopsFS.
 
+You can manually start the MySQL Cluster NDB Manager Node via:
+``` sh
+sudo /usr/local/bin/ndb_mgmd --skip-config-cache -f /var/lib/mysql-cluster/config.ini --reload
+```
+
+**NOTE:** If you're starting the NDB Manager Node for the very first time (i.e., with a new cluster), then you should add the `--initial` flag and omit the `--reload` flag as follows:
+``` sh
+sudo /usr/local/bin/ndb_mgmd --initial --skip-config-cache -f /var/lib/mysql-cluster/config.ini
+```
+
+You may need to restart the `mysql` service on the NDB Manager Node's VM after starting the NDB Manager Node via: 
+``` sh
+sudo service mysql restart
+```
+
+And you can manually start the MySQL Cluster NDB Data Nodes via: 
+``` sh
+sudo ndbmtd
+```
+
+If you're starting the NDB Data Node for the very first time (i.e., with a new cluster), then you should add the `--initial` flag to the `sudo ndbmtd ` command as follows:
+``` sh
+sudo ndbmtd --initial
+```
+
 # Basic Test 
 
 In the home directory (`~/`, `/home/ubuntu/`) of the λFS AMI, there is a `BasicTest.jar` file. This can be used to perform a basic test to verify that the system is working.
