@@ -45,11 +45,13 @@ if __name__ == "__main__":
         default = "namenode",
         help = "The base name of the serverless functions. Default: \"namenode\". The created functions will be named <prefix>1, <prefix>2, etc.")
 
-    parser.add_argument("-i", "--image",
-        dest = "docker_image",
-        type = str,
-        default = "scusemua/java8action:latest",
-        help = "The name of the docker image to use. Default: \"scusemua/java8action:latest\"")
+    # We use a custom `namenode` "kind" for our OpenWhisk action, and OpenWhisk prohibits the specification of a docker image argument and a kind argument when creating or updating an action.
+    # The docker image used by our custom `namenode` "kind" is specified in the runtimes.json file (same directory as the values.yaml) in the openwhisk-deploy-kube repository.
+    # parser.add_argument("-i", "--image",
+    #     dest = "docker_image",
+    #     type = str,
+    #     default = "scusemua/java8action:latest",
+    #     help = "The name of the docker image to use. Default: \"scusemua/java8action:latest\"")
 
     parser.add_argument("-c", "--concurrency", default = 1, type = int, dest = "concurrency",
                         help = "the maximum intra-container concurrent activation LIMIT for the action (default 1)")
@@ -80,7 +82,7 @@ if __name__ == "__main__":
     prefix = arguments.prefix
     do_update = arguments.update
     do_create = arguments.create
-    docker_image = arguments.docker_image
+    # docker_image = arguments.docker_image
     main_class = arguments.main_class
     jar_path = arguments.jar_path
     concurrency = arguments.concurrency
@@ -123,18 +125,15 @@ if __name__ == "__main__":
 
     logger.debug("Number of functions to create: %d" % num_functions_to_create)
     logger.debug("Function prefix: \"%s\"" % prefix)
-    logger.debug("Docker image: \"%s\"" % docker_image)
 
     for i in range(starting_index, ending_index):
         function_name = "%s%d" % (prefix, i)
 
         if do_create:
             logger.debug("Creating function with name \"%s\"" % function_name)
-            #command = "wsk -i action create /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
             command = "wsk -i action create %s %s --main %s --web true --concurrency %d --kind %s --memory %d --param actionMemory %d" % (function_name, jar_path, main_class, concurrency, kind, memory, memory)
         else:
             logger.debug("Updating function with name \"%s\"" % function_name)
-            #command = "wsk -i action update /whisk.system/%s %s --main %s --web true --docker %s" % (function_name, jar_path, main_class, docker_image)
             command = "wsk -i action update %s %s --main %s --web true --concurrency %d --kind %s --memory %d --param actionMemory %d" % (function_name, jar_path, main_class, concurrency, kind, memory, memory)
 
         split_command = command.split(" ")
