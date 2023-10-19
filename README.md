@@ -6,7 +6,7 @@
 
 λFS is implemented as a fork of HopsFS 3.2.0.3. Currently we support the [OpenWhisk](https://openwhisk.apache.org/) serverless platform, though we've successfully used [Nuclio](https://nuclio.io/) as well. Serverless functions enable better scalability and cost-effectiveness as well as ease-of-use.
 
-For λFS-specific documentation, please refer to the `setup.md` file located in the `aws-setup` directory [here](https://github.com/ds2-lab/LambdaFS/tree/serverless-namenode-aws/aws-setup).
+**NOTE:** For the most accurate, detailed, and up-to-date instructions, please see the `setup.md` file available [here](https://github.com/ds2-lab/LambdaFS/blob/serverless-namenode-aws/aws-setup/documentation/setup.md) or its "TL;DR" (i.e., shortened) version available [here](https://github.com/ds2-lab/LambdaFS/blob/serverless-namenode-aws/aws-setup/documentation/setup_tldr.md).
 
 # How to Build
 
