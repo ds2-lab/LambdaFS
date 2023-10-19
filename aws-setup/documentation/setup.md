@@ -408,3 +408,47 @@ java -Dlog4j.configuration=file:resources/log4j.properties -cp ".:/home/ubuntu/B
 This application will create an empty file named `"test.txt"` in the root directory of the λFS file system (so, the full path of the file is `/test.txt`). Then, the application will perform a `list` operation on the root directory `/`, listing the directory's contents. You should see the `test.txt` file when this list operation is performed.
 
 If everything works, then you'll also see a message prefixed with `[SUCCESS]` before the application exits. If there's an error, then you'll see a message prefixed with `[ERROR]` (or you'll simply encounter some sort of Java exception).
+
+# λFS Benchmarking Utility
+
+To run the same software we used when evaluating λFS and HopsFS, you can navigate to the `/home/ubuntu/repos/LambdaFS-BenchmarkingUtility` directory. The branch compatible with λFS is the `origin/generic` branch, while the branch compatible with HopsFS is the `origin/vanilla-distributed` branch.
+
+You can execute this application with the following command:
+``` sh
+java -Dlog4j.configuration=file:/home/ubuntu/repos/LambdaFS-BenchmarkingUtility/src/main/resources/log4j.properties \
+-Dsun.io.serialization.extendedDebugInfo=true -Xmx2g -Xms2g -XX:+UseConcMarkSweepGC -XX:+UnlockDiagnosticVMOptions \
+-XX:ParGCCardsPerStrideChunk=4096 -XX:+CMSScavengeBeforeRemark -XX:MaxGCPauseMillis=350 -XX:MaxTenuringThreshold=2 \
+-XX:MaxNewSize=2000m -XX:+CMSClassUnloadingEnabled -XX:+ScavengeBeforeFullGC \
+-cp ".:target/HopsFSBenchmark-1.0-jar-with-dependencies.jar:$HADOOP_HOME/share/hadoop/hdfs/lib/*:$HADOOP_HOME/share/hadoop/common/lib/*" \
+com.gmail.benrcarver.distributed.InteractiveTest --leader_ip <PRIVATE IPv4 OF VM> --leader_port 8000 --yaml_path <PATH TO>/config.yaml
+```
+
+Note that we're setting the JVM heap size to 2GB in the above command via the flags `-Xmx2g -Xms2g`. If you're using a VM with less than 2GB of RAM, then you should adjust this value accordingly. We recommend at least 256-512MB of RAM for basic testing with single file system operations and 1-2GB for benchmarks, especially if running in `distributed` mode. 
+
+### Distributed Mode
+
+**NOTE:** This information is covered in greater detail in the LambdaFS-Benchmarking-Utility GitHub repository available [here](https://github.com/ds2-lab/LambdaFS-Benchmark-Utility).
+
+To run the benchmarking utility in `distributed` mode, you need to provision additional virtual machines with the repository setup and installed in the same directory as your primary client (i.e., experiment driver) machine. For these instructions, we'll assume the repository is located in `/home/ubuntu/repos/LambdaFS-Benchmark-Utility`. Create a `config.yaml` file in that directory (i.e., `/home/ubuntu/repos/LambdaFS-Benchmark-Utility/config.yaml`) with the following structure:
+```yaml
+namenodeEndpoint: hdfs://ip-10-0-0-1.ec2.internal:9000/
+hdfsConfigFile: /home/ubuntu/repos/hops/hadoop-dist/target/hadoop-3.2.0.3-SNAPSHOT/etc/hadoop/hdfs-site.xml
+commanderExecutesToo: true
+followers:
+        -
+                ip: 10.0.0.2
+                user: ubuntu
+        -
+                ip: 10.0.0.3
+                user: ubuntu
+        -
+                ip: 10.0.0.4
+                user: ubuntu
+```
+
+There are several configuration parameters to set:
+- `hdfsConfigFile`: The path to the `hdfs-site.xml` configuration file associated with your local λFS or HopsFS installation. 
+- `commanderExecutesToo`: Determines whether the experiment driver also hosts actual file system clients that execute file system operations during benchmarks. This is `true` by default; it hasn't been fully tested when set to `false`.
+- `namenodeEndpoint`: This is the endpoint of the local NameNode; this is relevant only when using this application with HopsFS (as opposed to λFS, in which case this configuration parameter is ignored). For consistency, we recommend using the private IPv4 address of whatever VM you're using as the "primary client" (i.e., experiment driver) as the basis for the `namenodeEndpoint` parameter. In the example `config.yaml` shown above, this IP is `10.0.0.1`. 
+
+For each "follower" (i.e., other machine on which you'd like to run the benchmarking software), you must add an entry to the `followers` list using the format shown above. If deployed on AWS EC2 within a VPC, then the `ip` is the private IPv4 of the EC2 VM. For `username`, specify the OS username that should be used when SSH-ing to the machine. If using our provided EC2 AMIs, then this will be `ubuntu`. 
