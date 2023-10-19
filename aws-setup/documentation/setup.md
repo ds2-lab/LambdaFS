@@ -419,13 +419,15 @@ You can execute this application with the following command:
 ``` sh
 java -Dlog4j.configuration=file:/home/ubuntu/repos/LambdaFS-BenchmarkingUtility/src/main/resources/log4j.properties \
 -Dsun.io.serialization.extendedDebugInfo=true -Xmx2g -Xms2g -XX:+UseConcMarkSweepGC -XX:+UnlockDiagnosticVMOptions \
--XX:ParGCCardsPerStrideChunk=4096 -XX:+CMSScavengeBeforeRemark -XX:MaxGCPauseMillis=350 -XX:MaxTenuringThreshold=2 \
--XX:MaxNewSize=2000m -XX:+CMSClassUnloadingEnabled -XX:+ScavengeBeforeFullGC \
+-XX:ParGCCardsPerStrideChunk=512 -XX:+CMSScavengeBeforeRemark -XX:MaxGCPauseMillis=350 -XX:MaxTenuringThreshold=2 \
+-XX:MaxNewSize=1024m -XX:+CMSClassUnloadingEnabled -XX:+ScavengeBeforeFullGC \
 -cp ".:target/HopsFSBenchmark-1.0-jar-with-dependencies.jar:$HADOOP_HOME/share/hadoop/hdfs/lib/*:$HADOOP_HOME/share/hadoop/common/lib/*" \
 com.gmail.benrcarver.distributed.InteractiveTest --leader_ip <PRIVATE IPv4 OF VM> --leader_port 8000 --yaml_path <PATH TO>/config.yaml
 ```
 
-Note that we're setting the JVM heap size to 2GB in the above command via the flags `-Xmx2g -Xms2g`. If you're using a VM with less than 2GB of RAM, then you should adjust this value accordingly. We recommend at least 256-512MB of RAM for basic testing with single file system operations and 1-2GB for small-scale benchmarks. If you are running in `distributed` mode, then we recommend *at least* 2GB, but this should be significantly higher if you're running larger-scale benchmarks and/or using multiple other client VMs (in `distributed` mode).
+We're setting the JVM heap size to 2GB in the above command via the flags `-Xmx2g -Xms2g`. If you're using a VM with less than 2GB of RAM, then you should adjust this value accordingly. We're also specifying several other garbage-collection-related JVM arguments in that of `-XX:ParGCCardsPerStrideChunk` and `-XX:MaxNewSize`. If you reduce the JVM heap size (via the `-Xmx` and `-Xms` flags), then you should also adjust these other GC-related flags accordingly.
+
+We recommend at least 256-512MB of RAM for basic testing with single file system operations and 1-2GB for small-scale benchmarks. If you are running in `distributed` mode, then we recommend *at least* 2GB, but this should be significantly higher if you're running larger-scale benchmarks and/or using multiple other client VMs (in `distributed` mode).
 
 ### Distributed Mode
 
@@ -452,3 +454,32 @@ There are several configuration parameters to set:
 - `namenodeEndpoint`: This is the endpoint of the local NameNode; this is relevant only when using this application with HopsFS (as opposed to λFS, in which case this configuration parameter is ignored). For consistency, we recommend using the private IPv4 address of whatever VM you're using as the "primary client" (i.e., experiment driver) as the basis for the `namenodeEndpoint` parameter. In the example `config.yaml` shown above, this IP is `10.0.0.1`. 
 
 For each "follower" (i.e., other machine on which you'd like to run the benchmarking software), you must add an entry to the `followers` list using the format shown above. If deployed on AWS EC2 within a VPC, then the `ip` is the private IPv4 of the EC2 VM. For `user`, specify the OS username that should be used when SSH-ing to the machine. If using our provided EC2 AMIs, then this will be `ubuntu`. 
+
+## Full List of Available Command-Line Arguments
+
+The following is the full list of available command-line arguments for the λFS Benchmarking Utility.
+```
+-w  --worker                      [no value] [default: false]
+  If passed/set, then run the application as a "worker", listening to commands provided by a remote leader.
+
+-l  --leader_ip                   [string] [required]
+  The IP address of the Leader. Only used when this process is designated as a worker.
+  When running on AWS EC2 within a VPC, this should be the private IPv4 of the leader's VM.
+
+-p  --leader_port                 [int] [required]
+  The port of the Leader. Only used when this process is designated as a worker.
+
+-n  --nondistributed              [no value] [default: false]
+  Run in non-distributed mode, meaning we don't launch any followers.
+
+-f  --num_followers               [int] [default: -1]
+  Start only the first 'f' followers listed in the config.
+
+-j  --scp_jars                    [no value] [default: false]
+  The commander should SCP the JAR files to each follower.
+
+-c  --scp_config                  [no value] [default: false]
+  The command should SCP the hdfs-site.xml config file to each follower.
+
+-m  --manually_launch_followers   [no value] [default: false]
+```
