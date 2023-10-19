@@ -228,4 +228,4 @@ com.gmail.benrcarver.distributed.InteractiveTest --leader_ip <PRIVATE IPv4 OF VM
 
 Note that we're setting the JVM heap size to 2GB in the above command via the flags `-Xmx2g -Xms2g`. If you're using a VM with less than 2GB of RAM, then you should adjust this value accordingly. We recommend at least 256-512MB of RAM for basic testing with single file system operations and 1-2GB for benchmarks, especially if running in `distributed` mode. 
 
-For more detailed instructions on the `distributed` mode of the benchmarking utility, please refer to the `setup.md` file (in `aws-setup/documentation/setup.md`) or the LambdaFS-Benchmarking-Utility GitHub repository available [here](https://github.com/ds2-lab/LambdaFS-Benchmark-Utility).
+For more detailed instructions on the `distributed` mode of the benchmarking utility, please refer to the `setup.md` file (in `aws-setup/documentation/setup.md`) or the LambdaFS-Benchmarking-Utility GitHub repository available [here](https://github.com/ds2-lab/LambdaFS-Benchmarking).

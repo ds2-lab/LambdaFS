@@ -233,7 +233,7 @@ Hops is released under an [Apache 2.0 license](LICENSE.txt).
 
 # Associated Publications
 
-This software was the subject of the paper, *λFS: A Scalable and Elastic Distributed File System Metadata Service using Serverless Functions*. This paper can be found [here](https://arxiv.org/abs/2306.11877) and is set to appear in the proceedings of ASPLOS'23. The software found [here](https://github.com/ds2-lab/LambdaFS-Benchmark-Utility) was used to evaluate λFS and HopsFS for the paper.
+This software was the subject of the paper, *λFS: A Scalable and Elastic Distributed File System Metadata Service using Serverless Functions*. This paper can be found [here](https://arxiv.org/abs/2306.11877) and is set to appear in the proceedings of ASPLOS'23. The software found [here](https://github.com/ds2-lab/LambdaFS-Benchmarking) was used to evaluate λFS and HopsFS for the paper.
 
 **BibTeX Citation (for arXiv preprint)**:
 ```
