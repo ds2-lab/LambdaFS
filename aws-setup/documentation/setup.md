@@ -397,7 +397,7 @@ sudo ndbmtd --initial
 
 # Basic Test 
 
-In the home directory (`~/`, `/home/ubuntu/`) of the λFS AMI, there is a `BasicTest.jar` file. This can be used to perform a basic test to verify that the system is working.
+In the home directory (`/home/ubuntu/`) of the λFS AMI, there is a `BasicTest.jar` file. This can be used to perform a basic test to verify that the system is working.
 
 To execute the `BasicTest.jar`, execute the following command from the `/home/ubuntu` directory:
 
@@ -405,11 +405,13 @@ To execute the `BasicTest.jar`, execute the following command from the `/home/ub
 java -Dlog4j.configuration=file:resources/log4j.properties -cp ".:/home/ubuntu/BasicTest.jar:$HADOOP_HOME/share/hadoop/hdfs/lib/*:$HADOOP_HOME/share/hadoop/common/lib/*" com.gmail.benrcarver.distributed.BasicTest
 ```
 
-This application will create an empty file named `"test.txt"` in the root directory of the λFS file system (so, the full path of the file is `/test.txt`). Then, the application will perform a `list` operation on the root directory `/`, listing the directory's contents. You should see the `test.txt` file when this list operation is performed.
+This application will create an empty file named `"test.txt"` in the root directory of the λFS file system (so, the full path of the file is `/test.txt`). Then, the application will perform a `list` operation on the root directory `/`, listing the directory's contents. You should see the `test.txt` file when this list operation is performed. After this, the application creates a directory called `my_directory` in the root directory of the file system. Once created, the application will prompt you to enter an integer between 1 and 100 (inclusive) before creating that many empty files in the `my_directory` directory. The application will list the contents of `my_directory` and then proceed to delete `my_directory` (and all of its contents) as well as the `test.txt` file created at the beginning.
 
 If everything works, then you'll also see a message prefixed with `[SUCCESS]` before the application exits. If there's an error, then you'll see a message prefixed with `[ERROR]` (or you'll simply encounter some sort of Java exception).
 
 # λFS Benchmarking Utility
+
+**NOTE:** This information is covered in greater detail in the LambdaFS-Benchmarking-Utility GitHub repository available [here](https://github.com/ds2-lab/LambdaFS-Benchmark-Utility).
 
 To run the same software we used when evaluating λFS and HopsFS, you can navigate to the `/home/ubuntu/repos/LambdaFS-BenchmarkingUtility` directory. The branch compatible with λFS is the `origin/generic` branch, while the branch compatible with HopsFS is the `origin/vanilla-distributed` branch.
 
@@ -423,11 +425,9 @@ java -Dlog4j.configuration=file:/home/ubuntu/repos/LambdaFS-BenchmarkingUtility/
 com.gmail.benrcarver.distributed.InteractiveTest --leader_ip <PRIVATE IPv4 OF VM> --leader_port 8000 --yaml_path <PATH TO>/config.yaml
 ```
 
-Note that we're setting the JVM heap size to 2GB in the above command via the flags `-Xmx2g -Xms2g`. If you're using a VM with less than 2GB of RAM, then you should adjust this value accordingly. We recommend at least 256-512MB of RAM for basic testing with single file system operations and 1-2GB for benchmarks, especially if running in `distributed` mode. 
+Note that we're setting the JVM heap size to 2GB in the above command via the flags `-Xmx2g -Xms2g`. If you're using a VM with less than 2GB of RAM, then you should adjust this value accordingly. We recommend at least 256-512MB of RAM for basic testing with single file system operations and 1-2GB for small-scale benchmarks. If you are running in `distributed` mode, then we recommend *at least* 2GB, but this should be significantly higher if you're running larger-scale benchmarks and/or using multiple other client VMs (in `distributed` mode).
 
 ### Distributed Mode
-
-**NOTE:** This information is covered in greater detail in the LambdaFS-Benchmarking-Utility GitHub repository available [here](https://github.com/ds2-lab/LambdaFS-Benchmark-Utility).
 
 To run the benchmarking utility in `distributed` mode, you need to provision additional virtual machines with the repository setup and installed in the same directory as your primary client (i.e., experiment driver) machine. For these instructions, we'll assume the repository is located in `/home/ubuntu/repos/LambdaFS-Benchmark-Utility`. Create a `config.yaml` file in that directory (i.e., `/home/ubuntu/repos/LambdaFS-Benchmark-Utility/config.yaml`) with the following structure:
 ```yaml
@@ -451,4 +451,4 @@ There are several configuration parameters to set:
 - `commanderExecutesToo`: Determines whether the experiment driver also hosts actual file system clients that execute file system operations during benchmarks. This is `true` by default; it hasn't been fully tested when set to `false`.
 - `namenodeEndpoint`: This is the endpoint of the local NameNode; this is relevant only when using this application with HopsFS (as opposed to λFS, in which case this configuration parameter is ignored). For consistency, we recommend using the private IPv4 address of whatever VM you're using as the "primary client" (i.e., experiment driver) as the basis for the `namenodeEndpoint` parameter. In the example `config.yaml` shown above, this IP is `10.0.0.1`. 
 
-For each "follower" (i.e., other machine on which you'd like to run the benchmarking software), you must add an entry to the `followers` list using the format shown above. If deployed on AWS EC2 within a VPC, then the `ip` is the private IPv4 of the EC2 VM. For `username`, specify the OS username that should be used when SSH-ing to the machine. If using our provided EC2 AMIs, then this will be `ubuntu`. 
+For each "follower" (i.e., other machine on which you'd like to run the benchmarking software), you must add an entry to the `followers` list using the format shown above. If deployed on AWS EC2 within a VPC, then the `ip` is the private IPv4 of the EC2 VM. For `user`, specify the OS username that should be used when SSH-ing to the machine. If using our provided EC2 AMIs, then this will be `ubuntu`. 

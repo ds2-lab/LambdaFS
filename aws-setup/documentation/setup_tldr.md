@@ -200,7 +200,7 @@ python3 /home/ubuntu/repos/hops/dev-support/whisk/whisk_helper_gcp.py -n 20 --cr
 
 ## Step 10: Basic Test
 
-In the home directory (`~/`, `/home/ubuntu/`) of the λFS AMI, there is a `BasicTest.jar` file. This can be used to perform a basic test to verify that the system is working.
+In the home directory (`/home/ubuntu/`) of the λFS AMI, there is a `BasicTest.jar` file. This can be used to perform a basic test to verify that the system is working.
 
 To execute the `BasicTest.jar`, execute the following command from the `/home/ubuntu` directory:
 
@@ -228,30 +228,4 @@ com.gmail.benrcarver.distributed.InteractiveTest --leader_ip <PRIVATE IPv4 OF VM
 
 Note that we're setting the JVM heap size to 2GB in the above command via the flags `-Xmx2g -Xms2g`. If you're using a VM with less than 2GB of RAM, then you should adjust this value accordingly. We recommend at least 256-512MB of RAM for basic testing with single file system operations and 1-2GB for benchmarks, especially if running in `distributed` mode. 
 
-### Distributed Mode
-
-**NOTE:** This information is covered in greater detail in the LambdaFS-Benchmarking-Utility GitHub repository available [here](https://github.com/ds2-lab/LambdaFS-Benchmark-Utility).
-
-To run the benchmarking utility in `distributed` mode, you need to provision additional virtual machines with the repository setup and installed in the same directory as your primary client (i.e., experiment driver) machine. For these instructions, we'll assume the repository is located in `/home/ubuntu/repos/LambdaFS-Benchmark-Utility`. Create a `config.yaml` file in that directory (i.e., `/home/ubuntu/repos/LambdaFS-Benchmark-Utility/config.yaml`) with the following structure:
-```yaml
-namenodeEndpoint: hdfs://ip-10-0-0-1.ec2.internal:9000/
-hdfsConfigFile: /home/ubuntu/repos/hops/hadoop-dist/target/hadoop-3.2.0.3-SNAPSHOT/etc/hadoop/hdfs-site.xml
-commanderExecutesToo: true
-followers:
-        -
-                ip: 10.0.0.2
-                user: ubuntu
-        -
-                ip: 10.0.0.3
-                user: ubuntu
-        -
-                ip: 10.0.0.4
-                user: ubuntu
-```
-
-There are several configuration parameters to set:
-- `hdfsConfigFile`: The path to the `hdfs-site.xml` configuration file associated with your local λFS or HopsFS installation. 
-- `commanderExecutesToo`: Determines whether the experiment driver also hosts actual file system clients that execute file system operations during benchmarks. This is `true` by default; it hasn't been fully tested when set to `false`.
-- `namenodeEndpoint`: This is the endpoint of the local NameNode; this is relevant only when using this application with HopsFS (as opposed to λFS, in which case this configuration parameter is ignored). For consistency, we recommend using the private IPv4 address of whatever VM you're using as the "primary client" (i.e., experiment driver) as the basis for the `namenodeEndpoint` parameter. In the example `config.yaml` shown above, this IP is `10.0.0.1`. 
-
-For each "follower" (i.e., other machine on which you'd like to run the benchmarking software), you must add an entry to the `followers` list using the format shown above. If deployed on AWS EC2 within a VPC, then the `ip` is the private IPv4 of the EC2 VM. For `username`, specify the OS username that should be used when SSH-ing to the machine. If using our provided EC2 AMIs, then this will be `ubuntu`. 
+For more detailed instructions on the `distributed` mode of the benchmarking utility, please refer to the `setup.md` file (in `aws-setup/documentation/setup.md`) or the LambdaFS-Benchmarking-Utility GitHub repository available [here](https://github.com/ds2-lab/LambdaFS-Benchmark-Utility).
