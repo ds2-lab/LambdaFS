@@ -413,9 +413,9 @@ If everything works, then you'll also see a message prefixed with `[SUCCESS]` be
 
 **NOTE:** This information is covered in greater detail in the LambdaFS-Benchmarking-Utility GitHub repository available [here](https://github.com/ds2-lab/LambdaFS-Benchmarking).
 
-To run the same software we used when evaluating λFS and HopsFS, you can navigate to the `/home/ubuntu/repos/LambdaFS-BenchmarkingUtility` directory. The branch compatible with λFS is the `origin/generic` branch, while the branch compatible with HopsFS is the `origin/vanilla-distributed` branch.
+To run the same software we used when evaluating λFS and HopsFS, you can navigate to the `/home/ubuntu/repos/LambdaFS-BenchmarkingUtility` directory. All (Java) commands related to executing the benchmarking utility must be executed from the root directory of the local repository. On the publicly available AMIs, this is the `/home/ubuntu/repos/LambdaFS-BenchmarkingUtility` directory. The git branch compatible with λFS is the `origin/generic` branch, while the branch compatible with HopsFS is the `origin/vanilla-distributed` branch.
 
-You can execute this application with the following command:
+You can execute this application with the following command (from the root of the benchmarking repository):
 ``` sh
 java -Dlog4j.configuration=file:/home/ubuntu/repos/LambdaFS-BenchmarkingUtility/src/main/resources/log4j.properties \
 -Dsun.io.serialization.extendedDebugInfo=true -Xmx2g -Xms2g -XX:+UseConcMarkSweepGC -XX:+UnlockDiagnosticVMOptions \
@@ -509,3 +509,7 @@ This software also drives simulations of the HDFS Spotify workload described in 
 - `interleaved.ls.files.percentage`(**recommended:** `0.68`): Percentage of `LIST-FILE` operations.
 - `interleaved.file.getInfo.percentage`(**recommended:** `13.54`): Percentage of `STAT-FILE` operations.
 - `interleaved.dir.getInfo.percentage`(**recommended:** `3.77`): Percentage of `STAT-DIRECTORY` operations.
+
+# Reproducing the Experiments from the ASPLOS'23 Paper
+
+For documentation concerning how to reproduce the experiments used in the ASPLOS'23 paper, please refer to the documentation contained within the `./documentation/asplos23_experiments.md` file found in the `LambdaFS-Benchmark-Utility` GitHub repository [link](https://github.com/ds2-lab/LambdaFS-Benchmarking).
