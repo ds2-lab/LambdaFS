@@ -8,6 +8,11 @@
 
 **NOTE:** For the most accurate, detailed, and up-to-date instructions, please see the `setup.md` file available [here](https://github.com/ds2-lab/LambdaFS/blob/serverless-namenode-aws/aws-setup/documentation/setup.md) or its "TL;DR" (i.e., shortened) version available [here](https://github.com/ds2-lab/LambdaFS/blob/serverless-namenode-aws/aws-setup/documentation/setup_tldr.md).
 
+# Associated Repositories
+- **λFS Benchmarking Software**: [ds2/LambdaFS-Benchmarking](https://github.com/ds2-lab/LambdaFS-Benchmarking)
+- **λFS Kubernetes Deployment Repository**: [ds2/openwhisk-deploy-kube](https://github.com/ds2-lab/openwhisk-deploy-kube)
+- **λFS Java Serverless Function Runtime**: [ds2/openwhisk-runtime-java](https://github.com/ds2-lab/openwhisk-runtime-java)
+
 # How to Build
 
 ### Software Required
