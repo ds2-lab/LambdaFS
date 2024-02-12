@@ -240,18 +240,27 @@ Hops is released under an [Apache 2.0 license](LICENSE.txt).
 
 # Associated Publications
 
-This software was the subject of the paper, *λFS: A Scalable and Elastic Distributed File System Metadata Service using Serverless Functions*. This paper can be found [here](https://arxiv.org/abs/2306.11877) and is set to appear in the proceedings of ASPLOS'23. The software found [here](https://github.com/ds2-lab/LambdaFS-Benchmarking) was used to evaluate λFS and HopsFS for the paper.
+This software was the subject of the paper, *λFS: A Scalable and Elastic Distributed File System Metadata Service using Serverless Functions*. 
 
-**BibTeX Citation (for arXiv preprint)**:
+This paper can be found [here on arXiv](https://arxiv.org/abs/2306.11877) and [here](https://dl.acm.org/doi/10.1145/3623278.3624765) in the proceedings of ASPLOS'23. The software found [here](https://github.com/ds2-lab/LambdaFS-Benchmarking) was used to evaluate λFS and HopsFS for the paper.
+
+**BibTeX Citation)**:
 ```
-@misc{
-    lambdafs_asplos23,
-    title={$\lambda$FS: A Scalable and Elastic Distributed File System Metadata Service using Serverless Functions}, 
-    author={Benjamin Carver and Runzhou Han and Jingyaun Zhang and Mai Zheng and Yue Cheng},
-    year={2023},
-    eprint={2306.11877},
-    archivePrefix={arXiv},
-    primaryClass={cs.DC}
+@proceedings{asplos23_lambdafs,
+  author = {Carver, Benjamin and Han, Runzhou and Zhang, Jingyuan and Zheng, Mai and Cheng, Yue},
+  title = {λFS: A Scalable and Elastic Distributed File System Metadata Service using Serverless Functions},
+  year = {2024},
+  isbn = {9798400703942},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/3623278.3624765},
+  doi = {10.1145/3623278.3624765},
+  abstract = {The metadata service (MDS) sits on the critical path for distributed file system (DFS) operations, and therefore it is key to the overall performance of a large-scale DFS. Common "serverful" MDS architectures, such as a single server or cluster of servers, have a significant shortcoming: either they are not scalable, or they make it difficult to achieve an optimal balance of performance, resource utilization, and cost. A modern MDS requires a novel architecture that addresses this shortcoming.To this end, we design and implement γFS, an elastic, high-performance metadata service for large-scale DFSes. γFS scales a DFS metadata cache elastically on a FaaS (Function-as-a-Service) platform and synthesizes a series of techniques to overcome the obstacles that are encountered when building large, stateful, and performance-sensitive applications on FaaS platforms. γFS takes full advantage of the unique benefits offered by FaaS---elastic scaling and massive parallelism---to realize a highly-optimized metadata service capable of sustaining up to 4.13X higher throughput, 90.40\% lower latency, 85.99\% lower cost, 3.33X better performance-per-cost, and better resource utilization and efficiency than a state-of-the-art DFS for an industrial workload.},
+  booktitle = {Proceedings of the 28th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 4},
+  pages = {394–411},
+  numpages = {18},
+  location = {, Vancouver, BC, Canada, },
+  series = {ASPLOS '23}
 }
 ```
 
