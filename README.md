@@ -15,6 +15,13 @@
 - **λFS Kubernetes Deployment Repository**: [ds2/openwhisk-deploy-kube](https://github.com/ds2-lab/openwhisk-deploy-kube)
 - **λFS Java Serverless Function Runtime**: [ds2/openwhisk-runtime-java](https://github.com/ds2-lab/openwhisk-runtime-java)
 
+# Architecture Overview
+
+![LambdaFS Architecture](docs/lambdafs_architecture.png)
+
+The diagram above presents an overview of the system architecture of λFS. Please refer to Section 3 of the 
+[λFS paper](https://arxiv.org/pdf/2306.11877) for a detailed description of λFS' architecture and design.
+
 # How to Build
 
 ### Software Required
