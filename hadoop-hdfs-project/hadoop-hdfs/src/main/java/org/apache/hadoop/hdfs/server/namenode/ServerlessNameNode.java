@@ -1319,7 +1319,13 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 //      previous = fsArgs.getObject("previous");;
 //    }
 
-    DatanodeInfo[] excludeNodes = fsArgs.getObjectArray("excludedNodes");
+    DatanodeInfo[] excludeNodes;
+    try {
+      excludeNodes = fsArgs.getObjectArray("excludedNodes");
+    } catch (IllegalArgumentException ex) {
+      excludeNodes = null;
+    }
+
 //    if (fsArgs.contains("excludeNodes")) {
 //      // Decode and deserialize the DatanodeInfo[].
 ////      JsonArray excludedNodesJsonArray = fsArgs.getAsJsonArray("excludeNodes");
