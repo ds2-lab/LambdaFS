@@ -494,6 +494,12 @@ public abstract class ServerlessInvokerBase {
                 DFSConfigKeys.SERVERLESS_HTTP_RETRY_MAX_DEFAULT);
         tcpEnabled = conf.getBoolean(DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED,
                 DFSConfigKeys.SERVERLESS_TCP_REQUESTS_ENABLED_DEFAULT);
+
+        if (!isClientInvoker && tcpEnabled) {
+            LOG.warn("IsClientInvoker is set to false. Overriding tcpEnabled (true): setting to false.");
+            tcpEnabled = false;
+        }
+
         udpEnabled = conf.getBoolean(SERVERLESS_USE_UDP, SERVERLESS_USE_UDP_DEFAULT);
         httpTimeoutMilliseconds = conf.getInt(DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT,
                 DFSConfigKeys.SERVERLESS_HTTP_TIMEOUT_DEFAULT) * 1000; // Convert from seconds to milliseconds.
