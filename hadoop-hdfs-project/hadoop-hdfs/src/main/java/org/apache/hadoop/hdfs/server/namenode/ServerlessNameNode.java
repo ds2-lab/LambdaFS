@@ -1207,7 +1207,7 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
    */
   private List<DatanodeRegistration> registerDataNodesFromIntermediateStorage() throws IOException {
     // Retrieve the DataNodes from intermediate storage.
-//    LOG.info("Retrieving list of DataNodes from intermediate storage now...");
+    LOG.info("Retrieving list of DataNodes from intermediate storage now...");
     DataNodeDataAccess<DataNodeMeta> dataAccess = (DataNodeDataAccess)
             HdfsStorageFactory.getDataAccess(DataNodeDataAccess.class);
     List<DataNodeMeta> dataNodes = dataAccess.getAllDataNodes();
@@ -1280,8 +1280,10 @@ public class ServerlessNameNode implements NameNodeStatusMXBean {
 
       if (namesystem.getBlockManager().getDatanodeManager().getDatanodeByUuid(
               datanodeRegistration.getDatanodeUuid()) != null) {
+        LOG.trace("DataNode " + datanodeRegistration.getDatanodeUuid() + " is already registered.");
         continue;
       } else {
+        LOG.debug("Registering DataNode using DatanodeRegistration: " + datanodeRegistration);
         namesystem.registerDatanode(datanodeRegistration);
       }
 
